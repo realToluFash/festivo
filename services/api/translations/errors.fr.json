@@ -1,0 +1,13 @@
+{
+    "bad_request": "La requête n'a pas pu être interprétée.",
+    "validation_failed": "Certaines informations fournies ne sont pas valides.",
+    "method_not_allowed": "Cette action n'est pas disponible ici.",
+    "not_found": "Nous n'avons pas trouvé ce que vous avez demandé.",
+    "conflict": "Cela entre en conflit avec un élément existant.",
+    "unsupported_media_type": "Ce format n'est pas pris en charge.",
+    "unauthenticated": "Veuillez vous connecter pour continuer.",
+    "forbidden": "Vous n'avez pas l'autorisation de faire cela.",
+    "too_many_requests": "Trop de tentatives. Veuillez patienter et réessayer.",
+    "internal_error": "Une erreur s'est produite de notre côté.",
+    "service_unavailable": "Le service est temporairement indisponible."
+}
