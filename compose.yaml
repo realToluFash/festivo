@@ -77,6 +77,13 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       LOCALES_FILE: /locales.json
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
+      STORAGE_PUBLIC_ENDPOINT: ${STORAGE_PUBLIC_ENDPOINT}
+      STORAGE_KEY: ${STORAGE_KEY}
+      STORAGE_SECRET: ${STORAGE_SECRET}
+      STORAGE_BUCKET_PRIVATE: ${STORAGE_BUCKET_PRIVATE}
+      STORAGE_BUCKET_PUBLIC: ${STORAGE_BUCKET_PUBLIC}
+      STORAGE_REGION: ${STORAGE_REGION}
       APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
       DATABASE_URL: ${DATABASE_URL}
       REDIS_HOST: redis
@@ -107,13 +114,75 @@ services:
         condition: service_healthy
       mercure:
         condition: service_healthy
+      # S3, locally.
+  #
+  # LocalStack rather than MinIO: MinIO's images are no longer pullable from
+  # Docker Hub, and an unavailable base image is a stack that cannot be brought
+  # up on a new machine. Scoped to S3 so this is not the whole of AWS.
+  storage:
+    image: localstack/localstack:4
+    environment:
+      SERVICES: s3
+      AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
+      PERSISTENCE: 1
+    ports:
+      - '${STORAGE_PORT:-4566}:4566'
+    volumes:
+      - storage-data:/var/lib/localstack
     healthcheck:
-      test: ['CMD', 'curl', '-fsS', 'http://localhost/api/health']
-      interval: 10s
+      # Accepts "available" (ready, unused) and "running" (ready, used). Matching
+      # only the first reports a working stack as unhealthy the moment anything
+      # touches it.
+      test:
+        - CMD-SHELL
+        - >-
+          curl -sf http://localhost:4566/_localstack/health | grep -qE
+          '"s3": ?"(available|running)"'
+      interval: 5s
       timeout: 5s
-      retries: 6
-      start_period: 20s
+      retries: 20
+      start_period: 15s
     restart: unless-stopped
+
+  # Creates the buckets and exits. Re-run after changing them:
+  #   docker compose up storage-init
+  storage-init:
+    image: amazon/aws-cli:2.22.0
+    depends_on:
+      storage:
+        condition: service_healthy
+    environment:
+      BUCKET_PRIVATE: ${STORAGE_BUCKET_PRIVATE:-soirely-private}
+      BUCKET_PUBLIC: ${STORAGE_BUCKET_PUBLIC:-soirely-public}
+      AWS_ACCESS_KEY_ID: ${STORAGE_KEY:-soirely}
+      AWS_SECRET_ACCESS_KEY: ${STORAGE_SECRET:-soirely-dev-secret}
+      AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        E=http://storage:4566
+        aws --endpoint-url $$E s3 mb s3://$${BUCKET_PRIVATE} 2>/dev/null || true
+        aws --endpoint-url $$E s3 mb s3://$${BUCKET_PUBLIC} 2>/dev/null || true
+
+        # Deny anonymous reads on the private bucket EXPLICITLY. Relying on a
+        # default is how a local environment ends up more permissive than
+        # production, and the difference stays invisible until something
+        # private turns out to be readable by anybody holding the URL.
+        aws --endpoint-url $$E s3api put-public-access-block \
+          --bucket $${BUCKET_PRIVATE} \
+          --public-access-block-configuration \
+          BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+
+        # The public bucket is public on purpose: an invitation page is read by
+        # a guest with no account and no credentials.
+        aws --endpoint-url $$E s3api put-bucket-policy --bucket $${BUCKET_PUBLIC} --policy \
+          '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::'$${BUCKET_PUBLIC}'/*"}]}'
+
+        echo "buckets ready"
+    restart: 'no'
 
   # ── Local provider sinks ────────────────────────────────────────────────────
   # Nothing here reaches a real provider. Switching to one is a change to
@@ -181,6 +250,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  storage-data:
   postgres-data:
   redis-data:
   mercure-data:

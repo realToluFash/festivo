@@ -1403,6 +1403,34 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     default_cookie_lifetime?: int|Param, // Default lifetime of the cookie containing the JWT, in seconds. Defaults to the value of "framework.session.cookie_lifetime". // Default: null
  *     enable_profiler?: bool|Param, // Deprecated: The child node "enable_profiler" at path "mercure.enable_profiler" is deprecated. // Enable Symfony Web Profiler integration.
  * }
+ * @psalm-type AsyncAwsConfig = array{
+ *     register_service?: bool|Param, // If set to false, no services will be created. // Default: true
+ *     credential_provider?: scalar|Param|null, // A service name for AsyncAws\Core\Credentials\CredentialProvider. // Default: null
+ *     credential_provider_cache?: scalar|Param|null, // A service implementing Symfony\Contracts\Cache\CacheInterface to efficiently cache credentials. // Default: "cache.app"
+ *     http_client?: scalar|Param|null, // A service name for Symfony\Contracts\HttpClient\HttpClientInterface.
+ *     logger?: scalar|Param|null, // A service name for Psr\Log\LoggerInterface.
+ *     config?: array<string, mixed>,
+ *     clients?: array<string, array{ // Default: []
+ *         register_service?: bool|Param, // If set to false, no service will be created for this AWS type. // Default: true
+ *         config?: array<string, mixed>,
+ *         type?: "app_sync"|"athena"|"bedrock_agent"|"bedrock_agent_core"|"bedrock_runtime"|"cloud_formation"|"cloud_front"|"cloud_watch"|"cloud_watch_logs"|"code_build"|"code_commit"|"code_deploy"|"cognito_identity_provider"|"comprehend"|"dynamo_db"|"ec2"|"ecr"|"elasti_cache"|"event_bridge"|"firehose"|"iam"|"image_builder"|"iot"|"iot_data"|"kinesis"|"kms"|"lambda"|"location_service"|"media_convert"|"rds_data_service"|"rekognition"|"route53"|"s3"|"simple_s3"|"s3_vectors"|"scheduler"|"secrets_manager"|"ses"|"sns"|"sqs"|"ssm"|"sso"|"sso_oidc"|"sts"|"step_functions"|"timestream_query"|"timestream_write"|"translate"|"x_ray"|Param, // A valid AWS type. The service name will be used as default.
+ *         credential_provider?: scalar|Param|null, // A service name for AsyncAws\Core\Credentials\CredentialProvider.
+ *         http_client?: scalar|Param|null, // A service name for Symfony\Contracts\HttpClient\HttpClientInterface.
+ *         logger?: scalar|Param|null, // A service name for Psr\Log\LoggerInterface.
+ *     }>,
+ *     secrets?: bool|array{ // The SSM EnvLoader configuration.
+ *         enabled?: bool|Param, // Default: false
+ *         path?: scalar|Param|null, // Path to the parameters. // Default: null
+ *         recursive?: bool|Param, // Retrieve all parameters within a hierarchy. // Default: true
+ *         max_results?: int|Param, // The maximum number of items for each ssm call. Maximum value of 50. // Default: null
+ *         client?: scalar|Param|null, // Name of the SSM client. When null, use the default SSM configuration. // Default: null
+ *         cache?: bool|array{
+ *             enabled?: bool|Param, // Default: false
+ *             pool?: scalar|Param|null, // Identifier of the Symfony Cache Pool. // Default: "cache.system"
+ *             ttl?: int|Param, // Duration of cache in seconds // Default: 600
+ *         },
+ *     },
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1413,6 +1441,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     doctrine_migrations?: DoctrineMigrationsConfig,
  *     api_platform?: ApiPlatformConfig,
  *     mercure?: MercureConfig,
+ *     async_aws?: AsyncAwsConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1423,6 +1452,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         api_platform?: ApiPlatformConfig,
  *         mercure?: MercureConfig,
+ *         async_aws?: AsyncAwsConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1434,6 +1464,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         doctrine_migrations?: DoctrineMigrationsConfig,
  *         api_platform?: ApiPlatformConfig,
  *         mercure?: MercureConfig,
+ *         async_aws?: AsyncAwsConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1446,6 +1477,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         dama_doctrine_test?: DamaDoctrineTestConfig,
  *         api_platform?: ApiPlatformConfig,
  *         mercure?: MercureConfig,
+ *         async_aws?: AsyncAwsConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

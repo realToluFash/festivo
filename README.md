@@ -40,6 +40,7 @@ docker compose up -d   # the stack
 | `mailpit`  | 8025      | mail sink — every email the API sends lands here |
 | `smocker`  | 8088      | SMS mock — UI; mock endpoint on 8086             |
 | `oidc`     | 8089      | stands in for Google and Apple sign-in           |
+| `storage`  | 4566      | S3, locally (LocalStack)                         |
 | `api`      | 8080      | the Symfony API                                  |
 
 Every service has a healthcheck, and `docker compose ps` reports it. Dependents wait on
@@ -73,6 +74,30 @@ again — it names which one and why.
 npm test                 # the API suite
 npm run lint:php         # check
 npm run format:php       # fix
+```
+
+### Files
+
+Uploads go **straight from the client to the store** on a signed URL — bytes never pass
+through the API. A fifteen-megabyte guest list uploaded through PHP would occupy a worker
+for the length of somebody's hotel wifi.
+
+LocalStack rather than MinIO: MinIO's images are no longer pullable from Docker Hub, and an
+unavailable base image is a stack that cannot be brought up on a new machine.
+
+Two buckets. `soirely-public` is readable by anybody — an invitation page is opened by a
+guest with no account. `soirely-private` is not, and holds guest imports and support
+attachments.
+
+> **Local storage is more permissive than production.** LocalStack does not enforce a
+> public access block, so an anonymous read of a private object succeeds here and would be
+> denied by real S3. The block is configured in `compose.yaml` and is what protects
+> production — but do not use this stack to check whether something is private.
+
+Re-run the bucket setup after changing it:
+
+```bash
+docker compose up storage-init
 ```
 
 ### Nothing reaches a real provider
