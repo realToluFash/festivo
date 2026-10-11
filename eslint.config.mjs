@@ -40,7 +40,7 @@ export default [
     },
   },
   {
-    files: ['scripts/**/*.mjs', '**/*.config.{js,mjs,ts}'],
+    files: ['scripts/**/*.mjs', '**/scripts/**/*.mjs', '**/*.config.{js,mjs,ts}'],
     rules: { 'no-console': 'off' },
   },
 ];

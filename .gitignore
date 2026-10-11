@@ -27,3 +27,7 @@ public/bundles/
 # duplicate services.
 services/api/compose.yaml
 services/api/compose.override.yaml
+
+# The OpenAPI document is fetched to generate types; the generated file is
+# committed, the fetched document is not.
+packages/api-client/.openapi.json
