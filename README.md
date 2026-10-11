@@ -24,6 +24,32 @@ boundary. Adding a field to the guest model touches Symfony, the mobile app and 
 guest page; as separate repos that is three pull requests that have to land in order, and
 nothing to review them against each other. Here it is one.
 
+## Running it locally
+
+```bash
+npm run setup          # node deps, PHP deps, git hooks, and .env from .env.example
+docker compose up -d   # the stack
+```
+
+| Service    | Host port | What it is                                   |
+| ---------- | --------- | -------------------------------------------- |
+| `postgres` | 5432      | the database                                 |
+| `redis`    | 6379      | cache and queues                             |
+| `mercure`  | 3000      | the hub that carries live updates to clients |
+
+Every service has a healthcheck, and `docker compose ps` reports it. Dependents wait on
+_healthy_ rather than on _started_ — "it started" and "it can answer" are different facts.
+
+**Stopping:** `docker compose down` keeps your data. `docker compose down -v` destroys the
+volumes, which is how you get a clean database — and it is the only time the scripts in
+`infra/postgres/init` run again.
+
+**Mercure uses two different keys**, one to publish and one to subscribe. One shared key
+would let any subscriber publish, which here would mean a guest's browser could forge a
+service-floor update. The API gets the publisher key; clients get the subscriber key.
+
+To work against a physical device, add its address to `MERCURE_CORS_ORIGINS` in `.env`.
+
 ## How work happens
 
 1. **An epic is a scope of work**, not a stack. "Auth" is one epic covering the Symfony

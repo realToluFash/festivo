@@ -156,6 +156,12 @@ PR page or with `gh pr ready <number>`.
 Suggest `/fix-pr-checks <number>` once CI has started. Note that some workflows skip draft
 PRs; if no checks appear, that is why.
 
+## Attribution
+
+**Never reference Claude, Claude Code or Anthropic anywhere in the pull request** — no
+footer, no generated-with line, no session link, no co-author trailer. The same applies to
+every commit on the branch. The work reads as the developer's own.
+
 ## Guidelines
 
 - The reviewer is the audience. Write for someone who has not seen the story.
