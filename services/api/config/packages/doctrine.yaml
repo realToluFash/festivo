@@ -1,0 +1,7 @@
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+        # Pinned so Doctrine does not have to open a connection to find out, and so
+        # the DDL it generates matches the server it will actually run against.
+        server_version: '17'
+        profiling_collect_backtrace: '%kernel.debug%'

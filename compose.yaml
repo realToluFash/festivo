@@ -70,6 +70,43 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  api:
+    build:
+      context: ./services/api
+      target: dev
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_HOST: redis
+      REDIS_PORT_INTERNAL: 6379
+      MERCURE_PUBLISH_URL: ${MERCURE_PUBLISH_URL}
+      MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL}
+      MERCURE_PUBLISHER_KEY: ${MERCURE_PUBLISHER_KEY}
+      # FrankenPHP serves plain HTTP here; TLS terminates upstream in deployment.
+      SERVER_NAME: ':80'
+    volumes:
+      # Source is mounted so an edit is live, but vendor comes from the image —
+      # a developer with no local PHP has no way to populate it otherwise.
+      - ./services/api:/app
+      - /app/vendor
+    ports:
+      - '${API_PORT:-8080}:80'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mercure:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost/api/health']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
   # ── Local provider sinks ────────────────────────────────────────────────────
   # Nothing here reaches a real provider. Switching to one is a change to
   # environment variables only — see .env.example.
