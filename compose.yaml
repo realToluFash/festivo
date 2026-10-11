@@ -1,0 +1,77 @@
+# The local stack.
+#
+# `docker compose up -d` from the repository root. Every service declares a
+# healthcheck and dependents wait on it being healthy rather than on the
+# container merely having started — "it started" and "it can answer" are
+# different facts, and the gap between them is where flaky local setups live.
+
+name: soirely
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-soirely}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soirely}
+      POSTGRES_DB: ${POSTGRES_DB:-soirely}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # The database name is named explicitly: pg_isready succeeds against the
+      # cluster before the database itself is created on first boot.
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-soirely} -d ${POSTGRES_DB:-soirely}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  mercure:
+    image: dunglas/mercure:v0.16
+    environment:
+      # Two different keys on purpose. The API publishes with one; clients
+      # subscribe with the other. One shared key would let any subscriber
+      # publish, which on this product means any guest's browser could forge a
+      # service-floor update.
+      MERCURE_PUBLISHER_JWT_KEY: ${MERCURE_PUBLISHER_KEY:-dev-publisher-key-change-me}
+      MERCURE_SUBSCRIBER_JWT_KEY: ${MERCURE_SUBSCRIBER_KEY:-dev-subscriber-key-change-me}
+      MERCURE_EXTRA_DIRECTIVES: |
+        cors_origins ${MERCURE_CORS_ORIGINS:-http://localhost:5173 http://localhost:8081 http://localhost:19006}
+        subscriptions
+      # Caddy writes a cert store it cannot reach as a read-only user otherwise.
+      SERVER_NAME: ':80'
+    ports:
+      - '${MERCURE_PORT:-3000}:80'
+    volumes:
+      - mercure-data:/data
+      - mercure-config:/config
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost/healthz']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  mercure-data:
+  mercure-config:

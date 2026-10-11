@@ -111,9 +111,9 @@ Body, wrapped at 72 characters:
 Explain _why_, not what — the diff already says what. A body listing the files changed is
 worthless.
 
-End with the `Co-Authored-By` trailer this environment sets. (The developer's other
-repositories omit assistant attribution entirely; if that is wanted here, change this
-section and this section only — the rest of the skill does not depend on it.)
+**Never mention Claude, AI assistance or the session** — not in the subject, not in the
+body, and never as a `Co-Authored-By` trailer. The commits read as the developer's own
+work. The same applies to pull requests.
 
 ## Step 6: Report
 
