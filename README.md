@@ -31,11 +31,14 @@ npm run setup          # node deps, PHP deps, git hooks, and .env from .env.exam
 docker compose up -d   # the stack
 ```
 
-| Service    | Host port | What it is                                   |
-| ---------- | --------- | -------------------------------------------- |
-| `postgres` | 5432      | the database                                 |
-| `redis`    | 6379      | cache and queues                             |
-| `mercure`  | 3000      | the hub that carries live updates to clients |
+| Service    | Host port | What it is                                       |
+| ---------- | --------- | ------------------------------------------------ |
+| `postgres` | 5432      | the database                                     |
+| `redis`    | 6379      | cache and queues                                 |
+| `mercure`  | 3000      | the hub that carries live updates to clients     |
+| `mailpit`  | 8025      | mail sink — every email the API sends lands here |
+| `smocker`  | 8088      | SMS mock — UI; mock endpoint on 8086             |
+| `oidc`     | 8089      | stands in for Google and Apple sign-in           |
 
 Every service has a healthcheck, and `docker compose ps` reports it. Dependents wait on
 _healthy_ rather than on _started_ — "it started" and "it can answer" are different facts.
@@ -47,6 +50,33 @@ volumes, which is how you get a clean database — and it is the only time the s
 **Mercure uses two different keys**, one to publish and one to subscribe. One shared key
 would let any subscriber publish, which here would mean a guest's browser could forge a
 service-floor update. The API gets the publisher key; clients get the subscriber key.
+
+### Nothing reaches a real provider
+
+Mail, SMS and sign-in all go to local containers. No provider credentials are needed to
+develop or test any of it, and switching to a real provider is a change to `.env` only.
+
+- **Mail** — <http://localhost:8025>
+- **SMS** — <http://localhost:8088>, with captured requests under History
+- **Sign-in** — discovery at `localhost:8089/{google,apple}/.well-known/openid-configuration`
+
+Mint a token to test sign-in against:
+
+```bash
+curl -s -XPOST http://localhost:8089/google/token \
+  -d grant_type=password -d username=x -d password=y \
+  -d scope=openid+email+profile -d client_id=soirely-dev
+```
+
+Its claims come from `infra/oidc/oidc.json` — edit, then `docker compose restart oidc`.
+
+The SMS mock returns a provider-shaped `201`. Sending to **+1 500 555 0000** returns a `400`
+instead, so the failure path can be exercised deliberately. After editing
+`infra/smocker/mocks.yml`:
+
+```bash
+docker compose up smocker-init
+```
 
 To work against a physical device, add its address to `MERCURE_CORS_ORIGINS` in `.env`.
 
