@@ -11,7 +11,7 @@ Not a layer, not a screen, not a noun. If two scopes both need to know something
 them owns it and the other asks. If neither owns it, you have found a scope that does not
 exist yet.
 
-The test for a scope is: *can you say when it is finished?* "Messaging" can — guests and
+The test for a scope is: _can you say when it is finished?_ "Messaging" can — guests and
 staff reliably get told things. "Push notifications" cannot, because it is a detail of
 something else that was given its own namespace.
 
@@ -20,14 +20,14 @@ something else that was given its own namespace.
 The Go implementation had 28 modules. Nine of them were under 700 lines, and reading their
 exported surface says plainly what they were:
 
-| Module | Its entire job | What it actually was |
-|---|---|---|
-| `push` | `RegisterToken`, `UnregisterToken`, `DisableToken` | a token store for one delivery channel |
-| `reminders` | `SendConfirmation`, `RunSweep` | two scheduled sends |
-| `aiprices` | `Fetch`, `CostUSD`, `Credits` | a price table for the meter |
-| `places` | `Autocomplete`, `Details` | a Google Places proxy |
-| `groups` | `List`, `Create`, `Update`, `Delete` | CRUD on a guest attribute |
-| `sectionsync` | `AfterSectionWrite`, `AfterGroupWrite`, `Reconcile` | — |
+| Module        | Its entire job                                      | What it actually was                   |
+| ------------- | --------------------------------------------------- | -------------------------------------- |
+| `push`        | `RegisterToken`, `UnregisterToken`, `DisableToken`  | a token store for one delivery channel |
+| `reminders`   | `SendConfirmation`, `RunSweep`                      | two scheduled sends                    |
+| `aiprices`    | `Fetch`, `CostUSD`, `Credits`                       | a price table for the meter            |
+| `places`      | `Autocomplete`, `Details`                           | a Google Places proxy                  |
+| `groups`      | `List`, `Create`, `Update`, `Delete`                | CRUD on a guest attribute              |
+| `sectionsync` | `AfterSectionWrite`, `AfterGroupWrite`, `Reconcile` | —                                      |
 
 That last row is the important one. A module whose whole exported surface is write hooks
 and a `Reconcile` function is not a feature. It is the maintenance cost of having stored
@@ -43,8 +43,8 @@ notifications 6471 + feed 2024 + announcements 670
 
 An announcement, a reminder, an invitation and an in-app feed item are the same thing sent
 for different reasons. Splitting them meant each learned the rules separately, and they
-disagreed. One rule — *browser push rides along with another channel and is never chosen
-instead of one* — ended up written twice, in `pickChannels` and again in the composer's
+disagreed. One rule — _browser push rides along with another channel and is never chosen
+instead of one_ — ended up written twice, in `pickChannels` and again in the composer's
 `plan()`, because neither module owned it.
 
 Guests cost 9,227 lines across `guests`, `invite` and `groups`, which is why a plus-one

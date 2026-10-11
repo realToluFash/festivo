@@ -128,10 +128,10 @@ Only proceed on explicit approval.
 Workspace **soirely**. The destination is fixed — do not ask, and do not let the model
 pick:
 
-| Field | Value |
-|---|---|
-| Team | Tolulope Fasugba's Team — `6acb7a32-5acb-464f-b80d-b0994da161b4` |
-| Owner | `6acb7a32-5323-4319-be6c-6d43226fd986` |
+| Field | Value                                                            |
+| ----- | ---------------------------------------------------------------- |
+| Team  | Tolulope Fasugba's Team — `6acb7a32-5acb-464f-b80d-b0994da161b4` |
+| Owner | `6acb7a32-5323-4319-be6c-6d43226fd986`                           |
 
 Use `epics-create`. Name the epic after the outcome, not the mechanism — `Guests & RSVP`,
 not `Guest endpoints`. Keep names short enough to read in a list.
