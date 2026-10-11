@@ -39,6 +39,7 @@ docker compose up -d   # the stack
 | `mailpit`  | 8025      | mail sink — every email the API sends lands here |
 | `smocker`  | 8088      | SMS mock — UI; mock endpoint on 8086             |
 | `oidc`     | 8089      | stands in for Google and Apple sign-in           |
+| `api`      | 8080      | the Symfony API                                  |
 
 Every service has a healthcheck, and `docker compose ps` reports it. Dependents wait on
 _healthy_ rather than on _started_ — "it started" and "it can answer" are different facts.
@@ -50,6 +51,28 @@ volumes, which is how you get a clean database — and it is the only time the s
 **Mercure uses two different keys**, one to publish and one to subscribe. One shared key
 would let any subscriber publish, which here would mean a guest's browser could forge a
 service-floor update. The API gets the publisher key; clients get the subscriber key.
+
+### The API
+
+Symfony 7.4 LTS on PHP 8.4, served by FrankenPHP — one container rather than nginx plus
+php-fpm. **LTS deliberately:** security fixes run to 2029, and a product being built over
+months should not be chasing a new framework minor every few weeks.
+
+```bash
+curl -s localhost:8080/api/health
+```
+
+It reports each dependency as `ok` or `error`, checked by a real round trip rather than by
+configuration being present, and answers `503` when anything is down. Stop Redis and ask
+again — it names which one and why.
+
+**You do not need PHP installed.** Everything runs in the container:
+
+```bash
+npm test                 # the API suite
+npm run lint:php         # check
+npm run format:php       # fix
+```
 
 ### Nothing reaches a real provider
 
