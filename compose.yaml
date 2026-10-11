@@ -76,6 +76,7 @@ services:
       target: dev
     environment:
       APP_ENV: ${APP_ENV:-dev}
+      LOCALES_FILE: /locales.json
       APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
       DATABASE_URL: ${DATABASE_URL}
       REDIS_HOST: redis
@@ -93,6 +94,10 @@ services:
       # class rather than the cause. Composer runs through a container that writes
       # to the host (scripts/php-tool.mjs), so the host vendor is always current.
       - ./services/api:/app
+      # The locale declaration lives at the repository root because the web and
+      # mobile clients read it too. Mounted read-only at a fixed path rather
+      # than reached by path arithmetic from inside the application.
+      - ./locales.json:/locales.json:ro
     ports:
       - '${API_PORT:-8080}:80'
     depends_on:

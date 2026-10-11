@@ -3,6 +3,21 @@
 Four locales: **en, es, fr, pt**. A string that exists in one and not the others is a bug,
 not a follow-up.
 
+## One declaration
+
+`/locales.json` at the repository root is the single statement of which languages this
+product speaks. The API reads it, and `apps/web` and `apps/mobile` read the same file.
+
+It has to be repeated in a couple of places that cannot read JSON at the right moment — a
+PHP constant on the request path, and Symfony's `enabled_locales`. Each of those works
+perfectly while disagreeing with the others, so **a test fails when any of them drifts**,
+naming which one.
+
+Adding a language is: one entry in `locales.json`, one catalogue per domain, and the
+constant. The test tells you if you miss one — including the case where a locale is
+declared but has no catalogue at all, which would render raw keys to anybody who selected
+it.
+
 ## Two resolution orders, deliberately different
 
 Conflating them is the bug this design exists to prevent. An organiser working in English
