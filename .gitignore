@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+vendor/
+
+# builds
+dist/
+build/
+.expo/
+ios/
+android/
+var/
+public/bundles/
+
+# local state
+.data/
+.env
+.env.local
+*.log
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/
