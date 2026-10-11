@@ -21,3 +21,9 @@ public/bundles/
 .DS_Store
 .idea/
 .vscode/
+
+# Symfony Flex recipes install a compose file per service. The stack is defined
+# once at the root; a second one here would quietly claim ports and define
+# duplicate services.
+services/api/compose.yaml
+services/api/compose.override.yaml

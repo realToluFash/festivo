@@ -1,88 +1,80 @@
 # The API contract
 
-One shape, every endpoint. A client that has to recognise a different envelope per
-endpoint ends up with a different error path per endpoint, and most of those never get
-exercised until something breaks in front of a user.
+**API Platform**, serving plain JSON, with errors as RFC 7807 problem documents.
 
-## Success
+## Why API Platform
 
-```json
-{ "success": true, "data": { "id": "018f3a4c-…", "name": "Adaeze Okonkwo" } }
-```
+Three reasons specific to this product, in the order they mattered:
 
-`data` is whatever the endpoint returns — an object, a list, or `null` for a `204`.
+1. **It generates the OpenAPI document**, which is how `packages/api-client` learns the
+   shape of the API. Hand-written client types are a second copy of a fact, and two copies
+   of a fact diverge.
+2. **Mercure publishing is declarative.** `mercure: true` on a resource publishes on write.
+   The previous build's worst realtime failure was a publish that silently never happened —
+   no error, no log, just a screen that never updated. Removing the chance to forget
+   removes the class.
+3. **Lists are the bulk of the work.** Six hundred guests with search, filters by RSVP and
+   dietary and group, sorting and pagination — declarative rather than written per endpoint.
 
-## Failure
+### What it does not do for us
 
-```json
-{
-  "success": false,
-  "error": "We could not find what you asked for.",
-  "code": "not_found",
-  "correlation_id": "018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f"
-}
-```
+**The service floor is not CRUD.** "Mark this plate served", "assign this table to Mary",
+"chase this ticket" are commands. They stay plain controllers alongside the resources. That
+is a supported mix, not a workaround.
 
-- **`code`** is the stable, `snake_case` identifier a client branches and translates on. It
-  never changes once released. Two different `409`s are the same HTTP status and entirely
-  different problems; the code is what tells them apart.
-- **`error`** is a human sentence. It is a **fallback**, not the message a user should
-  normally see — a client with the code translated shows its own wording.
-- **`correlation_id`** ties the response to the server logs for the same request.
+**It does not enforce our access rule.** `security` on an operation is optional in API
+Platform, and ours is that a route without a declared policy must fail at boot. That needs
+a check walking its resource metadata — the same work as for plain controllers, in a
+different place. See sc-64.
 
-Every code lives in `App\Http\ErrorCode`. It is an enum, not a set of strings, so the list
-is closed and a test can walk it. Codes invented at the call site cannot be enumerated,
-cannot be translated ahead of time, and drift into near-duplicates — `not_found`,
-`notfound`, `resource_missing` — that mean one thing to a person and three to a `switch`.
+## Plain JSON, not JSON-LD
 
-**A code added without a message in all four locales fails `ErrorCodeCatalogueTest`.** That
-guard exists because the failure is otherwise invisible: no exception, no log line, no
-failing request — just `errors.not_found` rendered on a guest's screen in Portuguese.
+JSON-LD is API Platform's default and the right one for a public, self-describing API. This
+one has two known clients that we also write, and `@context`/`@id`/`@type` on every object
+is weight they would strip and ignore. The OpenAPI document is how they learn the shape.
 
-## Validation
+## Errors
+
+RFC 7807, `Content-Type: application/problem+json`:
 
 ```json
 {
-  "success": false,
-  "error": "Some of the information provided is not valid.",
-  "code": "validation_failed",
-  "fields": {
-    "email": { "code": "not_an_email", "message": "That is not an email address." }
-  }
+  "type": "https://soirely.com/errors/not_found",
+  "title": "We could not find what you asked for.",
+  "status": 404,
+  "detail": "No guest with that id.",
+  "correlationId": "018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f"
 }
 ```
 
-`fields` lets a form mark the offending input rather than showing one banner above
-everything. One violation per field: an input carrying four stacked messages is not more
-helpful than one carrying its first.
+- **`type`** is the stable identifier a client branches and translates on. It never changes
+  once released. Two different `409`s are the same status and entirely different problems;
+  the type is what tells them apart. The URI is an identifier, not a promise to serve a page
+  there.
+- **`title`** is the human sentence, from the catalogue, in the reader's language.
+- **`detail`** is this particular instance of the problem. **Present on a `4xx`, never on a
+  `5xx`** — that message is ours and routinely quotes a query, a path or a connection
+  string.
+- **`correlationId`** ties the response to the server logs for the same request.
+- **`violations`** carries per-field validation failures, each with `propertyPath`,
+  `message` and `code`, so a form marks the offending input rather than showing one banner.
+
+Every type comes from `App\Http\ErrorCode`. It is an enum, not a set of strings, so the
+list is closed and a test can walk it. **A code added without a message in all four locales
+fails `ErrorCodeCatalogueTest`** — a guard worth having because the failure is otherwise
+invisible: no exception, no log line, just `not_found` rendered as a title on a guest's
+screen.
 
 ## Pagination
 
-Decided once, here. The previous build returned three different pagination shapes and
-every client carried three readers for them.
-
-```json
-{
-  "success": true,
-  "data": {
-    "items": [],
-    "meta": { "page": 2, "per_page": 50, "total": 412, "total_pages": 9 }
-  }
-}
-```
-
-A cursor-paged list carries `next_cursor` and **omits `total`** rather than reporting
-zero — a zero reads as "no results" to anything rendering a count.
+API Platform's, not a hand-rolled one. Fifty per page by default, two hundred maximum, and
+the client may ask for a different size within that.
 
 ## What never appears in a response
 
 - A stack trace, a file path or a line number, in **any** environment
-- The text of a `5xx` exception. That message is ours and routinely quotes a query, a path
-  or a connection string. It goes to the log; the caller gets the catalogue's wording and
-  the correlation id that joins the two
+- The text of a `5xx` exception
 - Anything that distinguishes "this exists but is not yours" from "this does not exist"
-
-A `4xx` may carry its own message, because it describes what the caller did.
 
 ## Errors are JSON in every environment
 
