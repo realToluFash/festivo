@@ -1,0 +1,13 @@
+{
+    "bad_request": "The request could not be understood.",
+    "validation_failed": "Some of the information provided is not valid.",
+    "method_not_allowed": "That action is not available here.",
+    "not_found": "We could not find what you asked for.",
+    "conflict": "That conflicts with something that already exists.",
+    "unsupported_media_type": "That format is not supported.",
+    "unauthenticated": "Please sign in to continue.",
+    "forbidden": "You do not have permission to do that.",
+    "too_many_requests": "Too many attempts. Please wait and try again.",
+    "internal_error": "Something went wrong on our side.",
+    "service_unavailable": "The service is temporarily unavailable."
+}
