@@ -1,0 +1,11 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Services a test fetches from the container must be public, or the compiler
+    # removes them as unused — which they are, until something injects them.
+    # Listed explicitly rather than making everything public, so the list is also
+    # a record of what has a test and no caller yet.
+    App\Audit\Auditor:
+        public: true

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\SoftDeletable;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -21,6 +22,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'schema_probe')]
 class SchemaProbe
 {
+    use SoftDeletable;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
     private Uuid $id;
