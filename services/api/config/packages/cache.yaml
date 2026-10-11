@@ -17,3 +17,22 @@ framework:
         # Namespaced pools use the above "app" backend by default
         #pools:
         #my.dedicated.cache: null
+
+when@test:
+    framework:
+        cache:
+            pools:
+                # Rate-limit budgets in memory, so each kernel boot starts with a
+                # full one.
+                #
+                # On the filesystem they survive both the test and the run: a
+                # suite that exercises a limited endpoint enough times exhausts
+                # the budget partway through and every later test gets a 429 —
+                # which looks like whatever those tests were actually asserting,
+                # and gets worse as tests are added rather than failing cleanly
+                # once.
+                #
+                # Still a real limiter, so the limit itself is still tested; see
+                # AssistantTest.
+                cache.rate_limiter:
+                    adapter: cache.adapter.array
