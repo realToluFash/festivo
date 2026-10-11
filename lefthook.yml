@@ -1,0 +1,26 @@
+# Git hooks. Fast enough that nobody is tempted to bypass them.
+#
+# Everything here runs on STAGED files only. A hook that lints the whole
+# repository on every commit is a hook people start passing --no-verify to,
+# and then it is not a hook at all.
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: '*.{js,mjs,cjs,ts,tsx,json,md,yml,yaml}'
+      run: npx prettier --write {staged_files}
+      stage_fixed: true
+    lint:
+      glob: '*.{js,mjs,cjs,ts,tsx}'
+      run: npx eslint --fix {staged_files}
+      stage_fixed: true
+    php:
+      glob: '*.php'
+      run: node scripts/php-tool.mjs php-cs-fixer fix {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    conventional:
+      run: node scripts/check-commit-msg.mjs {1}
