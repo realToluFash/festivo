@@ -136,6 +136,27 @@ Twenty-eight modules become sixteen scopes. The cuts are not cosmetic:
 - Plus-ones and staffing modelled correctly on the first migration rather than corrected
   by one later.
 
+## Which surface owns what
+
+The product has two interfaces and they are not the same product at different sizes. The
+work splits by where it actually happens.
+
+|                                           | Primary                                                             | Companion                         |
+| ----------------------------------------- | ------------------------------------------------------------------- | --------------------------------- |
+| Accounts, organisations, billing          | **web**                                                             | mobile sign-in                    |
+| Guests, seating, menu, schedule, staffing | **web** — desktop work, spreadsheet-adjacent                        | mobile for review and quick edits |
+| Service floor, arrivals, run of show      | **mobile and tablet** — a server carrying plates is not at a laptop | a web pass view                   |
+| Guest invitations and RSVP                | **web** — guests will never install an app                          | —                                 |
+| Marketing                                 | **web**                                                             | —                                 |
+
+So it is not "web primary, mobile secondary". It is **planning on the web, the night on
+mobile**, and each epic should say which it is.
+
+What the two share is `packages/api-client` and `packages/domain` — the wire types and the
+rules. Not the interface: React Native's primitives fight dense desktop work, and sharing
+across two genuinely different interaction models costs more than it returns. A rule
+implemented twice will diverge; a button implemented twice will not.
+
 ## When to add a scope
 
 When a set of facts has no owner. Not when a file gets long, and not when something needs
