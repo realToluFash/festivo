@@ -22,7 +22,7 @@ return (new PhpCsFixer\Config())
     ->setRiskyAllowed(true)
     ->setRules([
         '@Symfony' => true,
-        '@PHP82Migration' => true,
+        '@PHP84Migration' => true,
         'declare_strict_types' => true,
         'global_namespace_import' => [
             'import_classes' => true,

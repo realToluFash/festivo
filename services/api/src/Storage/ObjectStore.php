@@ -111,7 +111,7 @@ final readonly class ObjectStore
         return sprintf(
             '%s/%s/%s%s',
             $purpose->value,
-            (new DateTimeImmutable())->format('Y/m'),
+            new DateTimeImmutable()->format('Y/m'),
             Uuid::v7()->toRfc4122(),
             $extension,
         );

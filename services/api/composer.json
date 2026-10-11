@@ -4,9 +4,13 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.2",
+        "php": ">=8.4",
+        "ext-bcmath": "*",
         "ext-ctype": "*",
         "ext-iconv": "*",
+        "ext-intl": "*",
+        "ext-pdo_pgsql": "*",
+        "ext-redis": "*",
         "api-platform/doctrine-orm": "^5.0",
         "api-platform/symfony": "^5.0",
         "async-aws/async-aws-bundle": "^1.18",
@@ -15,6 +19,7 @@
         "doctrine/doctrine-bundle": "^3.3",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.7",
+        "php-standard-library/php-standard-library": "^6.3",
         "symfony/console": "7.4.*",
         "symfony/dotenv": "7.4.*",
         "symfony/flex": "^2",
@@ -34,6 +39,15 @@
             "php-http/discovery": true,
             "symfony/flex": true,
             "symfony/runtime": true
+        },
+        "platform": {
+            "php": "8.4",
+            "ext-bcmath": "8.4",
+            "ext-ctype": "8.4",
+            "ext-iconv": "8.4",
+            "ext-intl": "8.4",
+            "ext-pdo_pgsql": "8.4",
+            "ext-redis": "8.4"
         },
         "bump-after-update": true,
         "sort-packages": true
