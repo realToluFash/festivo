@@ -23,3 +23,19 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    App\Storage\ObjectStore:
+        # Public so tests can fetch it. A `when@test` override cannot do this:
+        # re-declaring the service there replaces this definition rather than
+        # merging with it, and the arguments below are silently lost.
+        public: true
+        arguments:
+            $privateBucket: '%env(STORAGE_BUCKET_PRIVATE)%'
+            $publicBucket: '%env(STORAGE_BUCKET_PUBLIC)%'
+            $publicEndpoint: '%env(STORAGE_PUBLIC_ENDPOINT)%'
+
+    # Autowires completely, so it needs no arguments — but the compiler removes
+    # it as unused until a scope injects it, and a test cannot fetch what is
+    # not there.
+    App\Audit\Auditor:
+        public: true
