@@ -38,6 +38,18 @@ A value computed in two places is two values.
 
 ## Soft delete, with a window
 
+Use the `SoftDeletable` trait. `SoftDeleteFilter` is **enabled by default**, so deleted
+rows are absent from every ordinary read without anybody thinking about it. Seeing them is
+deliberate and visible:
+
+```php
+$em->getFilters()->disable('soft_delete');
+```
+
+That default is the whole mechanism. Excluding deleted rows at each query is a rule every
+read has to remember, and the read that forgets leaks a deleted guest into a list — which
+reads as the deletion not having worked.
+
 Anything a user can destroy is soft-deleted and recoverable for a defined period. Support
 cannot help with a hard delete — "it's gone" is the entire conversation — and the people
 who need help most are the ones who deleted something an hour before an event.
@@ -45,6 +57,20 @@ who need help most are the ones who deleted something an hour before an event.
 Hard deletion happens on a schedule after the window, or on an explicit erasure request.
 
 ## Audit
+
+One call, through `Auditor::record()`. It picks up the request's correlation id and IP
+itself, so an entry is never missing them because somebody did not know they existed.
+
+`Auditor::diff()` builds the changes map and keeps only what differs. Record **before and
+after** — "role changed" is not an answer to "changed from what?", and the before is the
+half nothing can reconstruct later.
+
+The actor's name is stored as text, as it was at the time. Resolving it at read time
+answers who that id belongs to _now_, which is a different question, and after the account
+is deleted it answers nothing.
+
+`AuditEntry` has no setters and the application cannot delete one. A trail the application
+can edit answers "who changed this" with "somebody who could also change the answer".
 
 Every state change records who, what, when and from where — **including changes made by a
 support agent**. An agent action that is not audited is indistinguishable from a breach.

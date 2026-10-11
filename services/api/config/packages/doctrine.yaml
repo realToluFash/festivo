@@ -11,6 +11,13 @@ doctrine:
         identity_generation_preferences:
             Doctrine\DBAL\Platforms\PostgreSQLPlatform: identity
         auto_mapping: true
+        filters:
+            soft_delete:
+                class: App\Doctrine\SoftDeleteFilter
+                # Enabled by default. A deleted row being absent has to be what
+                # happens when nobody thinks about it, or the read that forgets
+                # leaks one into a list — which reads as the deletion not working.
+                enabled: true
         mappings:
             App:
                 type: attribute
