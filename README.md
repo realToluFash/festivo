@@ -10,14 +10,15 @@ attached to a Shortcut epic.
 
 ## Layout
 
-| path               | what lives there                                     |
-| ------------------ | ---------------------------------------------------- |
-| `apps/mobile`      | React Native (Expo) — organiser and staff app        |
-| `apps/web`         | Vite + React — marketing site and guest-facing pages |
-| `services/api`     | Symfony — the API, with Mercure for live updates     |
-| `services/support` | Support and QA agent console                         |
-| `infra`            | Docker Compose, deploy, local provider mocks         |
-| `docs`             | Specs and design references                          |
+| path               | what lives there                                                      |
+| ------------------ | --------------------------------------------------------------------- |
+| `apps/mobile`      | React Native (Expo) — the night: service floor, arrivals, run of show |
+| `apps/web`         | Vite + React — **the product**, plus marketing and guest pages        |
+| `services/api`     | Symfony — the API, with Mercure for live updates                      |
+| `services/support` | Support and QA agent console                                          |
+| `infra`            | Docker Compose, deploy, local provider mocks                          |
+| `packages`         | shared across both clients: API types and domain rules                |
+| `docs`             | Specs and design references                                           |
 
 One repository rather than five, because a scope of work does not respect a stack
 boundary. Adding a field to the guest model touches Symfony, the mobile app and the web
