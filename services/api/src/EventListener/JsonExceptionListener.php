@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\EventListener;
 
-use App\Http\ApiResponse;
 use App\Http\ErrorCode;
 use App\Http\Exception\ApiException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
@@ -17,7 +17,12 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 use Throwable;
 
 /**
- * Turns anything thrown under /api into the envelope.
+ * Renders anything thrown under /api as an RFC 7807 problem document.
+ *
+ * The same shape API Platform produces for its own errors, so a client has one
+ * error reader rather than one per kind of endpoint. API Platform covers the
+ * resources; this covers the command-shaped controllers and anything that
+ * escapes before it gets involved.
  *
  * Runs in every environment, dev included. A client developed against HTML
  * error pages has never had its error path exercised, and finds out in
@@ -41,33 +46,50 @@ final readonly class JsonExceptionListener
         }
 
         $e = $event->getThrowable();
-        [$code, $fields] = $this->classify($e);
+        [$code, $violations] = $this->classify($e);
 
         if ($code->status() >= 500) {
             $this->logger->error($e->getMessage(), ['exception' => $e]);
         }
 
-        $correlationId = $request->attributes->get(CorrelationIdListener::ATTRIBUTE);
+        $problem = [
+            'type' => $code->type(),
+            'title' => $this->translator->trans($code->translationKey(), [], ErrorCode::DOMAIN),
+            'status' => $code->status(),
+        ];
 
-        $event->setResponse(ApiResponse::error(
-            $code,
-            $this->message($e, $code),
-            $fields,
-            is_string($correlationId) ? $correlationId : null,
-        ));
+        // `detail` is the specific instance of the problem. A 4xx may describe
+        // what the caller did; a 5xx never does — that message is ours and
+        // routinely quotes a query, a path or a connection string.
+        if ($code->status() < 500 && '' !== $e->getMessage()) {
+            $problem['detail'] = $e->getMessage();
+        }
+
+        if ([] !== $violations) {
+            $problem['violations'] = $violations;
+        }
+
+        $correlationId = $request->attributes->get(CorrelationIdListener::ATTRIBUTE);
+        if (\is_string($correlationId)) {
+            $problem['correlationId'] = $correlationId;
+        }
+
+        $response = new JsonResponse($problem, $code->status());
+        $response->headers->set('Content-Type', 'application/problem+json');
+        $event->setResponse($response);
     }
 
     /**
-     * @return array{0: ErrorCode, 1: array<string, array{code: string, message: string}>}
+     * @return array{0: ErrorCode, 1: list<array{propertyPath: string, message: string, code: string}>}
      */
     private function classify(Throwable $e): array
     {
         if ($e instanceof ApiException) {
-            return [$e->errorCode, $e->fields];
+            return [$e->errorCode, $e->violations];
         }
 
         if ($e instanceof ValidationFailedException) {
-            return [ErrorCode::ValidationFailed, $this->fieldsFrom($e)];
+            return [ErrorCode::ValidationFailed, $this->violationsFrom($e)];
         }
 
         if ($e instanceof HttpExceptionInterface) {
@@ -78,37 +100,19 @@ final readonly class JsonExceptionListener
     }
 
     /**
-     * @return array<string, array{code: string, message: string}>
+     * @return list<array{propertyPath: string, message: string, code: string}>
      */
-    private function fieldsFrom(ValidationFailedException $e): array
+    private function violationsFrom(ValidationFailedException $e): array
     {
-        $fields = [];
+        $violations = [];
         foreach ($e->getViolations() as $violation) {
-            $path = $violation->getPropertyPath() ?: '_';
-            // First violation per field wins. A form that marks one input with
-            // four stacked messages is not more helpful than one.
-            $fields[$path] ??= [
-                'code' => (string) $violation->getCode(),
+            $violations[] = [
+                'propertyPath' => $violation->getPropertyPath(),
                 'message' => (string) $violation->getMessage(),
+                'code' => (string) $violation->getCode(),
             ];
         }
 
-        return $fields;
-    }
-
-    /**
-     * The caller's own mistake can be described. Ours cannot.
-     *
-     * A 5xx message is written by us and routinely quotes a query, a file path
-     * or a DSN. It goes to the log; the caller gets the catalogue's wording and
-     * the correlation id that ties the two together.
-     */
-    private function message(Throwable $e, ErrorCode $code): string
-    {
-        if ($code->status() < 500 && '' !== $e->getMessage()) {
-            return $e->getMessage();
-        }
-
-        return $this->translator->trans($code->translationKey(), [], 'errors');
+        return $violations;
     }
 }

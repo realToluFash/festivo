@@ -31,11 +31,14 @@ final class JsonExceptionListenerTest extends TestCase
         $leaky = new RuntimeException('SQLSTATE[08006] pgsql://soirely:hunter2@postgres:5432');
         $body = $this->handle($leaky);
 
-        self::assertFalse($body['success']);
-        self::assertSame('internal_error', $body['code']);
-        self::assertStringNotContainsString('hunter2', $body['error']);
-        self::assertStringNotContainsString('SQLSTATE', $body['error']);
-        self::assertSame('translated:errors.internal_error', $body['error']);
+        self::assertSame('https://soirely.com/errors/internal_error', $body['type']);
+        self::assertSame(500, $body['status']);
+        self::assertSame('translated:internal_error', $body['title']);
+        // detail is the specific instance of a problem, and on a 5xx there is
+        // nothing safe to put there.
+        self::assertArrayNotHasKey('detail', $body);
+        self::assertStringNotContainsString('hunter2', json_encode($body, \JSON_THROW_ON_ERROR));
+        self::assertStringNotContainsString('SQLSTATE', json_encode($body, \JSON_THROW_ON_ERROR));
     }
 
     #[Test]
@@ -43,7 +46,7 @@ final class JsonExceptionListenerTest extends TestCase
     {
         $body = $this->handle(new RuntimeException('boom'), correlationId: 'abc-123');
 
-        self::assertSame('abc-123', $body['correlation_id']);
+        self::assertSame('abc-123', $body['correlationId']);
     }
 
     #[Test]
@@ -54,7 +57,7 @@ final class JsonExceptionListenerTest extends TestCase
         self::assertArrayNotHasKey('trace', $body);
         self::assertArrayNotHasKey('file', $body);
         self::assertArrayNotHasKey('line', $body);
-        self::assertSame(['success', 'error', 'code', 'correlation_id'], array_keys($body));
+        self::assertSame(['type', 'title', 'status', 'correlationId'], array_keys($body));
     }
 
     /** A 4xx describes what the caller did, so it may say so. */
@@ -63,8 +66,8 @@ final class JsonExceptionListenerTest extends TestCase
     {
         $body = $this->handle(ApiException::notFound('No guest with that id.'));
 
-        self::assertSame('not_found', $body['code']);
-        self::assertSame('No guest with that id.', $body['error']);
+        self::assertSame('https://soirely.com/errors/not_found', $body['type']);
+        self::assertSame('No guest with that id.', $body['detail']);
     }
 
     #[Test]
@@ -72,7 +75,8 @@ final class JsonExceptionListenerTest extends TestCase
     {
         $body = $this->handle(new ApiException(ErrorCode::Forbidden));
 
-        self::assertSame('translated:errors.forbidden', $body['error']);
+        self::assertSame('translated:forbidden', $body['title']);
+        self::assertArrayNotHasKey('detail', $body);
     }
 
     #[Test]
@@ -80,7 +84,8 @@ final class JsonExceptionListenerTest extends TestCase
     {
         $body = $this->handle(new NotFoundHttpException('No route found'));
 
-        self::assertSame('not_found', $body['code']);
+        self::assertSame('https://soirely.com/errors/not_found', $body['type']);
+        self::assertSame(404, $body['status']);
     }
 
     /** Only /api is ours to reshape; anything else keeps Symfony's behaviour. */

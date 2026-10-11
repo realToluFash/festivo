@@ -8,6 +8,23 @@ description: The conventions the Soirely API is held to — Doctrine entities an
 What everything under `services/api` is held to. Read before adding an endpoint, an
 entity or a migration.
 
+## It is API Platform
+
+Resources are Doctrine entities carrying `#[ApiResource]`. The OpenAPI document it
+generates is what `packages/api-client` builds the client types from, so **the API's shape
+is defined by the entity and its operations**, not by a controller.
+
+Three things follow:
+
+- **Do not hand-write a CRUD controller.** If you are writing `GET /guests` by hand, the
+  resource is not configured.
+- **Commands are different and stay controllers.** "Mark this plate served", "chase this
+  ticket" — these are not resource operations and should not be contorted into them.
+- **`security` is optional in API Platform and mandatory here.** Every operation declares
+  one, and a check walks the resource metadata to enforce it. See the access rule below.
+
+Errors are RFC 7807 problem documents. See `docs/architecture/api-contract.md`.
+
 ## Access is mounted, not remembered
 
 **Every event-scoped route carries its access check as part of the route definition**, not

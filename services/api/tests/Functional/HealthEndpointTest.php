@@ -41,12 +41,15 @@ final class HealthEndpointTest extends WebTestCase
 
         $response = $client->getResponse();
         self::assertSame(404, $response->getStatusCode());
-        self::assertStringContainsString('json', (string) $response->headers->get('Content-Type'));
+        self::assertStringContainsString(
+            'application/problem+json',
+            (string) $response->headers->get('Content-Type'),
+        );
 
         $body = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
-        self::assertFalse($body['success']);
-        self::assertSame('not_found', $body['code']);
-        self::assertArrayHasKey('correlation_id', $body);
+        self::assertSame('https://soirely.com/errors/not_found', $body['type']);
+        self::assertSame(404, $body['status']);
+        self::assertArrayHasKey('correlationId', $body);
     }
 
     #[Test]

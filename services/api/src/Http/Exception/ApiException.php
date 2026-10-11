@@ -18,7 +18,7 @@ use Throwable;
 class ApiException extends RuntimeException
 {
     /**
-     * @param array<string, array{code: string, message: string}> $fields
+     * @param list<array{propertyPath: string, message: string, code: string}> $violations
      */
     public function __construct(
         // Not $code: \Exception already owns that, as an int. Shadowing it with
@@ -27,7 +27,7 @@ class ApiException extends RuntimeException
         // facts and were conflated throughout the previous build.
         public readonly ErrorCode $errorCode,
         string $message = '',
-        public readonly array $fields = [],
+        public readonly array $violations = [],
         ?Throwable $previous = null,
     ) {
         parent::__construct($message, $errorCode->status(), $previous);
@@ -49,10 +49,10 @@ class ApiException extends RuntimeException
     }
 
     /**
-     * @param array<string, array{code: string, message: string}> $fields
+     * @param list<array{propertyPath: string, message: string, code: string}> $violations
      */
-    public static function validation(array $fields, string $message = ''): self
+    public static function validation(array $violations, string $message = ''): self
     {
-        return new self(ErrorCode::ValidationFailed, $message, $fields);
+        return new self(ErrorCode::ValidationFailed, $message, $violations);
     }
 }

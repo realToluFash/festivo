@@ -53,10 +53,43 @@ enum ErrorCode: string
         };
     }
 
-    /** The key its message lives under, in every locale file. */
+    /**
+     * The translation domain its message lives in.
+     *
+     * Messages are in translations/errors.<locale>.json, keyed by the bare
+     * value — `not_found`, not `errors.not_found`. Passing a domain-prefixed
+     * key INTO that domain looks up `errors.not_found` inside errors.*.json,
+     * finds nothing, and renders the key itself as the title.
+     */
+    public const DOMAIN = 'errors';
+
+    /** The key its message lives under, within self::DOMAIN. */
     public function translationKey(): string
     {
-        return 'errors.' . $this->value;
+        return $this->value;
+    }
+
+    /**
+     * The RFC 7807 `type` for this code.
+     *
+     * A problem document's type is exactly what this enum was invented to be —
+     * a stable machine identifier a client branches and translates on, distinct
+     * from the human sentence beside it. So rather than inventing a `code`
+     * field alongside it, the code IS the type.
+     *
+     * The URI is an identifier, not a promise to serve a page there.
+     */
+    public function type(): string
+    {
+        return 'https://soirely.com/errors/' . $this->value;
+    }
+
+    public static function fromType(string $type): ?self
+    {
+        $prefix = 'https://soirely.com/errors/';
+        $value = str_starts_with($type, $prefix) ? substr($type, \strlen($prefix)) : $type;
+
+        return self::tryFrom($value);
     }
 
     public static function forStatus(int $status): self
