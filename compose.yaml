@@ -70,6 +70,71 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  # ── Local provider sinks ────────────────────────────────────────────────────
+  # Nothing here reaches a real provider. Switching to one is a change to
+  # environment variables only — see .env.example.
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    environment:
+      MP_MAX_MESSAGES: 5000
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+    ports:
+      - '${MAILPIT_UI_PORT:-8025}:8025'
+      - '${MAILPIT_SMTP_PORT:-1025}:1025'
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:8025/readyz']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  smocker:
+    image: thiht/smocker:0.18.5
+    ports:
+      - '${SMOCKER_MOCK_PORT:-8086}:8080'
+      - '${SMOCKER_UI_PORT:-8088}:8081'
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:8081/version']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Loads the SMS mock definitions, then exits. `docker compose up smocker-init`
+  # re-loads them after editing infra/smocker/mocks.yml.
+  smocker-init:
+    image: curlimages/curl:8.11.0
+    depends_on:
+      smocker:
+        condition: service_healthy
+    volumes:
+      - ./infra/smocker:/mocks:ro
+    entrypoint:
+      - sh
+      - -c
+      - 'curl -fsS -XPOST --header "Content-Type: application/x-yaml"
+        --data-binary "@/mocks/mocks.yml"
+        "http://smocker:8081/mocks?reset=true" && echo "SMS mocks loaded"'
+    restart: 'no'
+
+  oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    environment:
+      # The container reads its config from this variable, not from a file.
+      JSON_CONFIG_PATH: /config/oidc.json
+      PORT: 8080
+    volumes:
+      - ./infra/oidc:/config:ro
+    ports:
+      - '${OIDC_PORT:-8089}:8080'
+    # No healthcheck: this image is distroless — no shell, no wget, no curl — so
+    # any check would fail forever while the service answered normally, and a
+    # permanently red status is worse than none. Check it from the host instead:
+    #   curl -sf localhost:8089/google/.well-known/openid-configuration
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:

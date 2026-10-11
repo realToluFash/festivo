@@ -1,0 +1,46 @@
+# Stands in for the SMS provider.
+#
+# Returns a provider-shaped 201 so the API's client parses a real response
+# rather than a simplified one that hides a mapping bug until production.
+#
+# Reload after editing:  docker compose up smocker-init
+
+- request:
+    method: POST
+    path:
+      matcher: ShouldMatch
+      value: '/2010-04-01/Accounts/.*/Messages\.json'
+  response:
+    status: 201
+    headers:
+      Content-Type: [application/json]
+    body: >
+      {
+        "sid": "SM00000000000000000000000000000000",
+        "account_sid": "ACdevelopment00000000000000000000",
+        "status": "queued",
+        "direction": "outbound-api",
+        "num_segments": "1",
+        "error_code": null,
+        "error_message": null
+      }
+
+# An unroutable number, so the failure path can be exercised deliberately.
+- request:
+    method: POST
+    path:
+      matcher: ShouldMatch
+      value: '/2010-04-01/Accounts/.*/Messages\.json'
+    body:
+      matcher: ShouldContainSubstring
+      value: '%2B15005550000'
+  response:
+    status: 400
+    headers:
+      Content-Type: [application/json]
+    body: >
+      {
+        "code": 21211,
+        "message": "The 'To' number is not a valid phone number.",
+        "status": 400
+      }
