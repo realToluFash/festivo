@@ -10,6 +10,8 @@
     "lint": "npm run lint:js && npm run lint:php",
     "lint:js": "eslint .",
     "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
+    "test": "npm run test:api",
+    "test:api": "docker compose exec -T api sh -c \"APP_ENV=test vendor/bin/phpunit\"",
     "format": "npm run format:js && npm run format:php",
     "format:js": "prettier --write .",
     "format:php": "node scripts/php-tool.mjs php-cs-fixer fix",

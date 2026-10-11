@@ -57,6 +57,13 @@ if (!dockerAvailable()) {
   process.exit(1);
 }
 
+// php-cs-fixer refuses multiple paths without an explicit config, and looks for
+// a composer.json in the working directory to infer a PHP version — the
+// repository root has neither. Both are supplied here rather than at every call
+// site, so the hook and the npm script cannot drift apart.
+const toolArgs =
+  tool === 'php-cs-fixer' ? [args[0], '--config=.php-cs-fixer.dist.php', ...args.slice(1)] : args;
+
 const cwd = process.cwd();
 const dockerArgs = [
   'run',
@@ -68,7 +75,7 @@ const dockerArgs = [
   '--user',
   `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`,
   IMAGES[tool],
-  ...args,
+  ...toolArgs,
 ];
 
 const result = spawnSync('docker', dockerArgs, { stdio: 'inherit' });

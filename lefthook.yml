@@ -17,7 +17,9 @@ pre-commit:
       stage_fixed: true
     php:
       glob: '*.php'
-      run: node scripts/php-tool.mjs php-cs-fixer fix {staged_files}
+      # intersection: fix only the staged files that the config's finder also
+      # covers, rather than everything the finder matches.
+      run: node scripts/php-tool.mjs php-cs-fixer fix --path-mode=intersection {staged_files}
       stage_fixed: true
 
 commit-msg:
