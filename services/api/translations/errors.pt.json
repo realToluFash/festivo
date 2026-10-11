@@ -1,0 +1,13 @@
+{
+    "bad_request": "Não foi possível interpretar o pedido.",
+    "validation_failed": "Parte da informação fornecida não é válida.",
+    "method_not_allowed": "Essa acção não está disponível aqui.",
+    "not_found": "Não encontrámos aquilo que solicitou.",
+    "conflict": "Isso entra em conflito com algo que já existe.",
+    "unsupported_media_type": "Esse formato não é suportado.",
+    "unauthenticated": "Inicie sessão para continuar.",
+    "forbidden": "Não tem permissão para fazer isso.",
+    "too_many_requests": "Demasiadas tentativas. Aguarde e tente novamente.",
+    "internal_error": "Ocorreu um erro do nosso lado.",
+    "service_unavailable": "O serviço está temporariamente indisponível."
+}

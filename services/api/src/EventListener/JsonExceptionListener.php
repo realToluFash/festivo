@@ -4,29 +4,32 @@ declare(strict_types=1);
 
 namespace App\EventListener;
 
+use App\Http\ApiResponse;
+use App\Http\ErrorCode;
+use App\Http\Exception\ApiException;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Symfony\Contracts\Translation\TranslatorInterface;
+use Throwable;
 
 /**
- * An API answers in JSON, including when it is failing.
+ * Turns anything thrown under /api into the envelope.
  *
- * Symfony's default is an HTML error page, which a mobile client parses as
- * nothing at all — so the one case a client most needs to understand is the one
- * it cannot read. This applies in every environment: dev included, because a
- * client developed against HTML errors has never had its error path exercised.
- *
- * sc-46 formalises the full contract. This establishes only that the shape is
- * JSON and that nothing internal escapes.
+ * Runs in every environment, dev included. A client developed against HTML
+ * error pages has never had its error path exercised, and finds out in
+ * production.
  */
 #[AsEventListener(event: KernelEvents::EXCEPTION, priority: -64)]
 final readonly class JsonExceptionListener
 {
-    public function __construct(private LoggerInterface $logger)
-    {
+    public function __construct(
+        private LoggerInterface $logger,
+        private TranslatorInterface $translator,
+    ) {
     }
 
     public function __invoke(ExceptionEvent $event): void
@@ -38,46 +41,74 @@ final readonly class JsonExceptionListener
         }
 
         $e = $event->getThrowable();
-        $isHttp = $e instanceof HttpExceptionInterface;
-        $status = $isHttp ? $e->getStatusCode() : 500;
+        [$code, $fields] = $this->classify($e);
 
-        if ($status >= 500) {
+        if ($code->status() >= 500) {
             $this->logger->error($e->getMessage(), ['exception' => $e]);
         }
 
-        // A 4xx carries its own message because it describes what the caller
-        // did. A 5xx never does: the message is ours, and it routinely quotes
-        // a query, a path or a DSN.
-        $message = $isHttp && $status < 500
-            ? ($e->getMessage() ?: 'Request could not be processed.')
-            : 'Something went wrong on our side.';
-
-        $body = [
-            'success' => false,
-            'error' => $message,
-            'code' => $isHttp ? $this->codeFor($status) : 'internal_error',
-        ];
-
         $correlationId = $request->attributes->get(CorrelationIdListener::ATTRIBUTE);
-        if (is_string($correlationId)) {
-            $body['correlation_id'] = $correlationId;
-        }
 
-        $event->setResponse(new JsonResponse($body, $status));
+        $event->setResponse(ApiResponse::error(
+            $code,
+            $this->message($e, $code),
+            $fields,
+            is_string($correlationId) ? $correlationId : null,
+        ));
     }
 
-    private function codeFor(int $status): string
+    /**
+     * @return array{0: ErrorCode, 1: array<string, array{code: string, message: string}>}
+     */
+    private function classify(Throwable $e): array
     {
-        return match ($status) {
-            400 => 'bad_request',
-            401 => 'unauthenticated',
-            403 => 'forbidden',
-            404 => 'not_found',
-            405 => 'method_not_allowed',
-            409 => 'conflict',
-            422 => 'validation_failed',
-            429 => 'too_many_requests',
-            default => 'request_failed',
-        };
+        if ($e instanceof ApiException) {
+            return [$e->errorCode, $e->fields];
+        }
+
+        if ($e instanceof ValidationFailedException) {
+            return [ErrorCode::ValidationFailed, $this->fieldsFrom($e)];
+        }
+
+        if ($e instanceof HttpExceptionInterface) {
+            return [ErrorCode::forStatus($e->getStatusCode()), []];
+        }
+
+        return [ErrorCode::InternalError, []];
+    }
+
+    /**
+     * @return array<string, array{code: string, message: string}>
+     */
+    private function fieldsFrom(ValidationFailedException $e): array
+    {
+        $fields = [];
+        foreach ($e->getViolations() as $violation) {
+            $path = $violation->getPropertyPath() ?: '_';
+            // First violation per field wins. A form that marks one input with
+            // four stacked messages is not more helpful than one.
+            $fields[$path] ??= [
+                'code' => (string) $violation->getCode(),
+                'message' => (string) $violation->getMessage(),
+            ];
+        }
+
+        return $fields;
+    }
+
+    /**
+     * The caller's own mistake can be described. Ours cannot.
+     *
+     * A 5xx message is written by us and routinely quotes a query, a file path
+     * or a DSN. It goes to the log; the caller gets the catalogue's wording and
+     * the correlation id that ties the two together.
+     */
+    private function message(Throwable $e, ErrorCode $code): string
+    {
+        if ($code->status() < 500 && '' !== $e->getMessage()) {
+            return $e->getMessage();
+        }
+
+        return $this->translator->trans($code->translationKey(), [], 'errors');
     }
 }
