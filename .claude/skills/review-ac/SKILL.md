@@ -35,15 +35,15 @@ with no code behind it is a story that is not finished.
 Run the AC through the same checklist `create-ticket` writes to. For each surface the
 story touches, ask whether the AC covers it:
 
-| Surface | Look for |
-|---|---|
-| API endpoint | status codes, response shape, who is refused and with what |
-| Doctrine migration | what happens to rows predating the change |
-| Mobile screen | all three layouts, keyboard behaviour, empty and error states |
-| Web page | responsive behaviour, what an unauthenticated visitor sees |
-| Mercure topic | what the client does on receive, and after a reconnect gap |
-| Permission | who can, who cannot, what the refusal looks like |
-| User-facing copy | every string present in all four locales |
+| Surface            | Look for                                                      |
+| ------------------ | ------------------------------------------------------------- |
+| API endpoint       | status codes, response shape, who is refused and with what    |
+| Doctrine migration | what happens to rows predating the change                     |
+| Mobile screen      | all three layouts, keyboard behaviour, empty and error states |
+| Web page           | responsive behaviour, what an unauthenticated visitor sees    |
+| Mercure topic      | what the client does on receive, and after a reconnect gap    |
+| Permission         | who can, who cannot, what the refusal looks like              |
+| User-facing copy   | every string present in all four locales                      |
 
 Then the cross-cutting ones, which are missed most often:
 

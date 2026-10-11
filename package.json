@@ -1,0 +1,27 @@
+{
+  "name": "soirely",
+  "private": true,
+  "description": "Event management for the people running the event.",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "lint": "npm run lint:js && npm run lint:php",
+    "lint:js": "eslint .",
+    "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
+    "format": "npm run format:js && npm run format:php",
+    "format:js": "prettier --write .",
+    "format:php": "node scripts/php-tool.mjs php-cs-fixer fix",
+    "format:check": "prettier --check .",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "eslint": "^9.37.0",
+    "globals": "^16.4.0",
+    "lefthook": "^1.13.6",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.46.0"
+  }
+}

@@ -35,7 +35,7 @@ These are **not** outcomes, and must not be commits on their own:
 In a monorepo the layer temptation is stronger, because the layers are right there in
 adjacent directories. Resist it. A commit that adds a Doctrine field, the endpoint that
 writes it and the screen that sets it is **one** commit — they deliver one outcome and
-none of them stands up alone. A commit that adds that field *and* changes an unrelated
+none of them stands up alone. A commit that adds that field _and_ changes an unrelated
 query is two.
 
 ## Step 1: Find the outcomes
@@ -108,7 +108,7 @@ Body, wrapped at 72 characters:
    rather than another. Why this had to be in this commit. What happens to data that
    predates the change.
 
-Explain *why*, not what — the diff already says what. A body listing the files changed is
+Explain _why_, not what — the diff already says what. A body listing the files changed is
 worthless.
 
 End with the `Co-Authored-By` trailer this environment sets. (The developer's other

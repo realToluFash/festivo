@@ -1,0 +1,11 @@
+node_modules/
+vendor/
+dist/
+build/
+var/
+.agents/
+ios/
+android/
+*.lock
+package-lock.json
+composer.lock

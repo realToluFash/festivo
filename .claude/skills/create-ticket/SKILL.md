@@ -39,14 +39,14 @@ Vague AC comes from vague understanding, and AC naming the wrong field is worse 
 4. **Note which surfaces the change touches**, because each carries its own AC
    expectations:
 
-   | Surface | AC must cover |
-   |---|---|
-   | `services/api` endpoint | status codes, the shape of the response, who is refused |
-   | Doctrine entity / migration | what happens to rows that predate the change |
-   | `apps/mobile` screen | all three layouts, keyboard behaviour, empty and error states |
-   | `apps/web` page | responsive behaviour, what an unauthenticated visitor sees |
-   | Mercure topic | what the client does on receive, and on reconnect after a gap |
-   | permission | who can, who cannot, and what the refusal looks like |
+   | Surface                     | AC must cover                                                 |
+   | --------------------------- | ------------------------------------------------------------- |
+   | `services/api` endpoint     | status codes, the shape of the response, who is refused       |
+   | Doctrine entity / migration | what happens to rows that predate the change                  |
+   | `apps/mobile` screen        | all three layouts, keyboard behaviour, empty and error states |
+   | `apps/web` page             | responsive behaviour, what an unauthenticated visitor sees    |
+   | Mercure topic               | what the client does on receive, and on reconnect after a gap |
+   | permission                  | who can, who cannot, and what the refusal looks like          |
 
 Never invent a field name, option value or label. If you cannot find it, that is a
 question for Step 2, not a guess.
@@ -87,7 +87,7 @@ Keep it short. Its job is orientation; the AC carries the detail.
 
 ### AC
 
-A flat list of ` - ` bullets, nested one level with four spaces for field-level detail.
+A flat list of `-` bullets, nested one level with four spaces for field-level detail.
 
 - **Bold** every screen, section, field and button name exactly as it appears.
 - Enumerate the exact options a field offers rather than describing them.
@@ -114,14 +114,14 @@ seat rather than merging, so clearing them on the guest clears them on the floor
 
 # AC
 
- - A seat whose guest has one or more dietary tags shows them on the seat card in **Service** > **Pass**:
-     - The tag names exactly as stored — Vegetarian, Vegan, Halal, Kosher, Gluten-free, Nut allergy, Dairy-free
-     - Where a guest has more than two, the first two show and the rest collapse to a count
- - The kitchen ticket for that seat lists every tag in full, with no collapsing.
- - A tag added or removed on the guest reaches an open **Pass** screen without a reload, on the `event/<id>/service` Mercure topic.
- - A guest with no tags shows nothing in either place — not an empty chip, not "None".
- - A tag value that is not one of the seven listed options is ignored rather than displayed, and is reported once in the server log.
- - Seat state, plate progress and the existing seat-card layout keep working as they do now.
+- A seat whose guest has one or more dietary tags shows them on the seat card in **Service** > **Pass**:
+  - The tag names exactly as stored — Vegetarian, Vegan, Halal, Kosher, Gluten-free, Nut allergy, Dairy-free
+  - Where a guest has more than two, the first two show and the rest collapse to a count
+- The kitchen ticket for that seat lists every tag in full, with no collapsing.
+- A tag added or removed on the guest reaches an open **Pass** screen without a reload, on the `event/<id>/service` Mercure topic.
+- A guest with no tags shows nothing in either place — not an empty chip, not "None".
+- A tag value that is not one of the seven listed options is ignored rather than displayed, and is reported once in the server log.
+- Seat state, plate progress and the existing seat-card layout keep working as they do now.
 ```
 
 That example names the exact navigation path, states the replace-not-merge rule up front,
@@ -139,10 +139,10 @@ Only proceed on explicit approval.
 
 Workspace **soirely**. Fixed — do not ask:
 
-| Field | Value |
-|---|---|
-| Team | Tolulope Fasugba's Team — `6acb7a32-5acb-464f-b80d-b0994da161b4` |
-| Workflow | Standard — `500000005` |
+| Field    | Value                                                            |
+| -------- | ---------------------------------------------------------------- |
+| Team     | Tolulope Fasugba's Team — `6acb7a32-5acb-464f-b80d-b0994da161b4` |
+| Workflow | Standard — `500000005`                                           |
 
 Workflow states: Backlog `500000006` · To Do `500000007` · In Progress `500000008` ·
 In Review `500000009` · Done `500000010`.
