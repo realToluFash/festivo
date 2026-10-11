@@ -39,3 +39,12 @@ services:
     # not there.
     App\Audit\Auditor:
         public: true
+
+    App\Address\NominatimProvider:
+        arguments:
+            $endpoint: '%env(ADDRESS_ENDPOINT)%'
+            $userAgent: '%env(ADDRESS_USER_AGENT)%'
+
+    # One adapter behind the interface. Switching provider is this line plus a
+    # class, and nothing above it learns which one is in use.
+    App\Address\AddressProvider: '@App\Address\NominatimProvider'

@@ -1,0 +1,9 @@
+framework:
+    rate_limiter:
+        address_lookup:
+            # Per IP. An autocomplete field fires on keystrokes, so the budget is
+            # generous — but a budget that cannot be exhausted is a provider bill
+            # somebody else gets to set.
+            policy: token_bucket
+            limit: 60
+            rate: { interval: '1 minute', amount: 30 }

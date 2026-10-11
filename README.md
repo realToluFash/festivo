@@ -100,6 +100,22 @@ Re-run the bucket setup after changing it:
 docker compose up storage-init
 ```
 
+### Addresses
+
+`GET /api/addresses/suggest?q=` and `GET /api/addresses/{id}`, proxied through the API so a
+provider key never reaches a browser or a phone — and so rate limiting and caching live on
+one side of that boundary rather than in two client implementations.
+
+OpenStreetMap's Nominatim is the first adapter because it needs no key, so the whole path
+develops and tests without an account. A commercial provider is another class behind the
+same interface and one line of configuration.
+
+Queries shorter than three characters are answered without asking anybody; identical
+queries are cached. Autocomplete fires on keystrokes, and every call is billable somewhere.
+
+A provider outage returns `503` with a specific type, distinct from `404`. Autocomplete
+being down is never a reason to stop somebody saving a venue they typed out themselves.
+
 ### Nothing reaches a real provider
 
 Mail, SMS and sign-in all go to local containers. No provider credentials are needed to
