@@ -52,9 +52,21 @@ final readonly class JsonExceptionListener
             $this->logger->error($e->getMessage(), ['exception' => $e]);
         }
 
+        // The locale is read from the request rather than from the translator's
+        // ambient state. Ambient locale depends on a listener having pushed it
+        // into every locale-aware service, which a decorator can silently drop —
+        // and the symptom is every response answering in English while the
+        // negotiation looks correct.
+        $locale = $request->attributes->get(RequestLocaleListener::ATTRIBUTE);
+
         $problem = [
             'type' => $code->type(),
-            'title' => $this->translator->trans($code->translationKey(), [], ErrorCode::DOMAIN),
+            'title' => $this->translator->trans(
+                $code->translationKey(),
+                [],
+                ErrorCode::DOMAIN,
+                \is_string($locale) ? $locale : null,
+            ),
             'status' => $code->status(),
         ];
 

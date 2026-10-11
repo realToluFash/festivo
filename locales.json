@@ -1,0 +1,10 @@
+{
+  "$comment": "The single declaration of which languages this product speaks. Read by the API, by apps/web and by apps/mobile. Everything else that names a locale is checked against this file by a test — see docs/architecture/localisation.md.",
+  "default": "en",
+  "supported": [
+    { "code": "en", "name": "English", "nativeName": "English", "dir": "ltr" },
+    { "code": "es", "name": "Spanish", "nativeName": "Español", "dir": "ltr" },
+    { "code": "fr", "name": "French", "nativeName": "Français", "dir": "ltr" },
+    { "code": "pt", "name": "Portuguese", "nativeName": "Português", "dir": "ltr" }
+  ]
+}
