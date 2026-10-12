@@ -68,16 +68,65 @@ passed. Neither produces an error.
 
 ## Guards
 
-Three, all failing tests rather than conventions:
+All failing tests rather than conventions, because every failure here renders _fluently_
+in the wrong way. None of them throws, none produces a log line, and the reader who
+notices is the one reading the language nobody on the team reads.
 
-- **Every error code has a message in all four locales.** `ErrorCodeCatalogueTest` walks
-  the `ErrorCode` enum, which is closed, so it can.
-- **Every domain has the same key set in every locale**, and no empty messages.
-- **A message has the same placeholders in every locale.** A slot present in one and absent
-  in another breaks at render time in one language only — the one nobody on the team reads.
+### One implementation, every surface
+
+`packages/i18n-lint` owns them and drives them from a registry of surfaces — `apps/web`,
+`apps/mobile`, the API's error catalogues. Adding a surface adds its checks.
+
+That consolidation is the point. There were three copies of "the same key set in every
+locale", one per app, with three subtly different ideas of what parity meant — so three
+places to forget, and no answer to "is this checked everywhere?".
+
+| Check                           | What it catches                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| A catalogue per declared locale | A locale declared in `locales.json` with no file renders raw key paths to anybody who selects it |
+| Identical key sets              | A key in English and missing elsewhere renders as its own path — fluent-looking rubbish          |
+| No empty messages               | An empty message renders as nothing, which reads as a layout bug                                 |
+| Identical interpolation slots   | `{{count}}` in one locale and `{{total}}` in another leaves a hole in a sentence                 |
+| Complete plural families        | `_one` with no `_other` falls back for every number except one — the plural most readers see     |
+
+Each of those is proved to fail by a deliberately-broken fixture under
+`packages/i18n-lint/src/__fixtures__`. A guard nobody has watched fail is a guard nobody
+should trust.
+
+The server keeps **`ErrorCodeCatalogueTest`** as well, which is not duplication: it walks
+the `ErrorCode` enum — closed, and invisible to anything outside PHP — so it alone can
+catch a _code with no message_ and a _message for a code that no longer exists_.
 
 A missing key is additionally **logged once per key, domain and locale**, because the
 fallback renders fine and nothing else would say so.
+
+### No user-facing literals
+
+The check that catches what nothing else does: a string that renders perfectly in
+English, has no key, and is simply absent in the other three languages.
+
+It is **parsed, not pattern-matched**. The previous build's sweep used a single-line
+regex; it could not see prose wrapped across several lines of markup, eleven strings
+passed every check, and they shipped. A parser has no lines — a JSX text node spans
+however much of the file it spans — so wrapped prose is the same node as prose on one
+line and there is nothing to miss. It also removes the false positives a `>…<` pattern
+invites: `=>`, `Array<string>` and `a > b` all contain the characters such a pattern looks
+for, and none of them is text.
+
+It flags text sitting in markup, and a literal in a prop a person reads — the list of
+those props is in `surfaces.ts`. It does not flag punctuation or decoration (`←`, `·`,
+`—`, `×`, a number), because those are identical in every language and flagging them
+trains people to add exemptions, which is how a guard stops being read.
+
+**Exemptions live in one list, in `surfaces.ts`, and each carries a reason.** Not
+suppression comments scattered through the code: those are invisible in review, they
+accumulate, and nobody ever audits whether they are still needed. Two tests keep the list
+honest — one fails on an exemption with no real reason, and one fails on an exemption that
+no longer suppresses anything, so the list shrinks on its own.
+
+There is exactly one today: the mobile boot-failure screen, which renders when
+localisation itself failed to initialise and therefore has no translator to render it
+with.
 
 ## Writing a message
 
@@ -87,6 +136,9 @@ fallback renders fine and nothing else would say so.
   "one versus everything else" in every language.
 - **A label in a module-level constant cannot be translated where it sits** — it is built
   at import time, before any translator exists. Store the key, resolve at render.
+- **A string a reader sees goes through `t()` with no exceptions you decide yourself.** If
+  something genuinely cannot be translated, it goes in `LITERAL_EXEMPT` with a reason,
+  where somebody else can disagree with it.
 
 ## Register
 
