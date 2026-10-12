@@ -9,6 +9,8 @@ use App\Address\AddressNotFound;
 use App\Address\ProviderUnavailable;
 use App\Http\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Http\Input;
+use Psl\Type;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -35,11 +37,20 @@ final class AddressController
     {
         $this->limit($request);
 
-        $query = (string) $request->query->get('q', '');
-        $country = $request->query->get('country');
+        // Declared rather than cast. The previous build's version of this read
+        // `$request->query->get('country')` straight into a `string ...$parts`
+        // cache-key builder, PHP coerced the null, and every countryless
+        // suggestion became a 500 that never mentioned the country.
+        $input = Input::query($request, Type\shape([
+            'q' => Type\optional(Type\string()),
+            'country' => Type\optional(Type\nullable(Type\string())),
+        ]));
 
         try {
-            $suggestions = $this->lookup->suggest($query, \is_string($country) ? $country : null);
+            // A missing `q` is shorter than the minimum, so it short-circuits
+            // the same way "lo" does rather than being an error. Asking for
+            // suggestions before typing is not a client mistake.
+            $suggestions = $this->lookup->suggest($input['q'] ?? '', $input['country'] ?? null);
         } catch (ProviderUnavailable $e) {
             throw $this->unavailable($e);
         }

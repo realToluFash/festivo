@@ -16,7 +16,7 @@ import { join } from 'node:path';
 const API_DIR = 'services/api';
 
 const IMAGES = {
-  'php-cs-fixer': 'ghcr.io/php-cs-fixer/php-cs-fixer:3-php8.3',
+  'php-cs-fixer': 'ghcr.io/php-cs-fixer/php-cs-fixer:3-php8.4',
   composer: 'composer:2',
 };
 

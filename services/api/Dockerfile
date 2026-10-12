@@ -3,7 +3,12 @@
 # first is a moving part with no job here.
 FROM dunglas/frankenphp:1-php8.4 AS base
 
+# bcmath is a hard requirement of azjezz/psl, which every boundary in this
+# service coerces through. Listed with the rest rather than as a special case,
+# because a missing extension fails at composer install and the message names
+# the extension without naming what wanted it.
 RUN install-php-extensions \
+    bcmath \
     pdo_pgsql \
     intl \
     opcache \

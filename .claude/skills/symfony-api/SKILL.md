@@ -25,6 +25,84 @@ Three things follow:
 
 Errors are RFC 7807 problem documents. See `docs/architecture/api-contract.md`.
 
+## Input is coerced, never cast
+
+PHP answers bad input with a falsy value and a silent coercion, and its types stop at the
+function signature. `json_decode` returns `null` for a malformed body and for the literal
+`null`. A declared `string $country` accepts an integer. `strpos` returns `0` and `false`
+and only `===` tells them apart. Every one of those is a defect that typechecks, and the
+previous build shipped several — a cache-key builder declaring `string ...$parts` was handed
+a null country code, PHP coerced it on the way in, and it surfaced three frames later as a
+500 that never mentioned the country.
+
+So `php-standard-library` is a production dependency, and the rules below are not optional.
+
+**Every boundary declares the shape it needs.** A handler never reaches into `$request`:
+
+```php
+$input = Input::query($request, Type\shape([
+    'q' => Type\optional(Type\string()),
+    'country' => Type\optional(Type\nullable(Type\string())),
+]));
+```
+
+`Input::body()` and `Input::query()` are in `src/Http/Input.php`. A body that is not JSON
+is a 400 — there is no field to blame. A readable request of the wrong shape is a 422
+carrying the failing path as a violation. Neither is a 500, and neither silently coerces.
+
+**Leave shapes closed.** `allowUnknownFields` defaults to `false`, and on `coerce()` that
+_drops_ undeclared fields rather than refusing them — which is the behaviour you want: a
+client's tracking parameter is not an error, and the handler receives declared keys only.
+Pass `allowUnknownFields: true` only when a payload must travel onwards intact; it keeps
+whatever was sent, so never spread that result into an entity.
+
+**Bodies coerce, they do not assert.** `assert()` closes the shape but would refuse
+`{"latitude": 51}` for a declared float, because JSON has one number type and that decodes
+to an int. The coordinate was sent correctly; refusing it would be the bug.
+
+**A provider's response is input too.** Coerce it at the adapter, never at the call site —
+see `NominatimProvider::result()`. Declare the fields the adapter actually reads, and make
+_required_ the ones whose absence means the integration is broken rather than the result
+being thin. `display_name` is required there for exactly that reason: optional, a renamed
+key read as a blank address line instead of as an error.
+
+**Which Psl replaces what** — listed where it removes a footgun, not to rename a function:
+
+| Instead of                                | Use                                           | Because                                                                                                        |
+| ----------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `json_decode` / `json_encode`             | `Psl\Json\decode` / `Psl\Json\encode`         | They throw. `RawDecodingTest` fails the build if either appears in `src/`.                                     |
+| `strpos`                                  | `Psl\Str\search`                              | Answers `?int`, not `int` or `false` — where the legitimate `0` and the failure are the same value under `==`. |
+| `substr`, `trim`, `strtolower`, `explode` | `Psl\Str\slice`, `trim`, `lowercase`, `split` | Total: nothing returns `false` for you to forget.                                                              |
+| `array_map` + `array_values`              | `Psl\Vec\map`                                 | Already a list, so the second call cannot be left off.                                                         |
+
+**Where raw PHP stays**, deliberately:
+
+- Doctrine hydration. The entity's property types are the contract there.
+- Symfony's own surfaces — `Request`, `Response`, the container. Coerce what comes _out_ of
+  them; do not wrap them.
+- `RequestLocaleListener` reads the `locale` query parameter directly. It runs at priority
+  34, before the error envelope exists, and a bad locale must fall back rather than fail the
+  request.
+
+`declare(strict_types=1)` is on every file, enforced by php-cs-fixer's `declare_strict_types`
+rather than by anybody remembering it.
+
+## Dependencies
+
+`composer.json` pins `config.platform` to the PHP version and extension set the **container**
+runs, not whatever the tooling image happens to have. Composer runs through
+`scripts/php-tool.mjs`, whose image ships a newer PHP than FrankenPHP does, so without the
+pin every dependency resolves against a platform nothing deploys on — a package requiring
+`^8.5` installs cleanly and then fails inside the API container, naming a class rather than
+the cause.
+
+Two rules follow:
+
+- **Run composer from `services/api`**, not the repository root. The tool mounts the working
+  directory, so from the root it writes a second, empty `composer.json` beside the real one.
+- **An extension the image installs is declared in `require`.** They were not, so nothing
+  noticed that the resolver had neither `intl` nor `bcmath` available.
+
 ## Access is mounted, not remembered
 
 **Every event-scoped route carries its access check as part of the route definition**, not
