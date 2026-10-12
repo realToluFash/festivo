@@ -139,10 +139,20 @@ jobs:
         run: node scripts/php-tool.mjs composer install
 
       - name: Bring up what the API needs
-        # --wait, so the next step starts when Postgres can answer rather than
-        # when its container exists. Every healthcheck in compose exists for
-        # this moment.
-        run: docker compose up -d --wait postgres redis
+        # --wait, so the next step starts when each service can ANSWER rather
+        # than when its container exists. Every healthcheck in compose exists
+        # for this moment.
+        #
+        # storage is in here because the suite reaches it: the object-store
+        # tests sign a URL and then fetch it, which is the point of them — a
+        # signature the provider rejects is the failure worth catching, and a
+        # mocked store cannot catch it.
+        run: docker compose up -d --wait postgres redis storage
+
+      - name: Create the buckets
+        # A one-shot that exits. Without it the store is up and empty, and
+        # every upload fails on a bucket that does not exist.
+        run: docker compose up storage-init
 
       - name: Build the API image
         run: docker compose build api
