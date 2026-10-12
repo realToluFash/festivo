@@ -13,8 +13,13 @@ public/bundles/
 
 # local state
 .data/
-.env
-.env.local
+# Anchored. Unanchored, it matched at every level — including
+# services/api/.env, which Symfony reads and which holds only non-secret
+# defaults (secrets go in .env.local, ignored by that package's own rules).
+# Ignoring it meant `composer install` failed on a fresh clone, because the
+# post-install cache:clear could not read an environment file nobody had.
+/.env
+/.env.local
 *.log
 
 # editors / os

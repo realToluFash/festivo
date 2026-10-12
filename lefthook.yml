@@ -21,6 +21,13 @@ pre-commit:
       # covers, rather than everything the finder matches.
       run: node scripts/php-tool.mjs php-cs-fixer fix --path-mode=intersection {staged_files}
       stage_fixed: true
+    actions:
+      glob: '.github/workflows/*.{yml,yaml}'
+      # A CI script is shell that nobody reviews as carefully as the code it
+      # checks. actionlint runs shellcheck over every `run:` block, and the
+      # first draft of this repository's workflow had an `A && B || C` that is
+      # not if-then-else — caught here rather than by a wrong result in CI.
+      run: node scripts/lint-actions.mjs
 
 commit-msg:
   commands:
