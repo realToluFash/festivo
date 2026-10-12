@@ -258,6 +258,17 @@ into the same output. actionlint caught it.
 
 ## Status
 
-Foundation is complete: the toolchain, the compose stack, the API skeleton with its
-response and error contracts, object storage, address lookup, the assistant transport, the
-web and mobile skeletons, the localisation guards, and CI. Everything else follows it.
+Foundation's original scope is built: the toolchain, the compose stack, the API skeleton
+with its response and error contracts, object storage, address lookup, the assistant
+transport, the web and mobile skeletons, the localisation guards, and CI.
+
+Three stories remain in that epic and are **blocked on Accounts & sign-in**, not forgotten
+— each needs an authenticated organiser to scope against, and the assistant currently
+records every turn as `System`:
+
+- server-side tool and resource execution, so the access check can be mounted rather than
+  remembered
+- contexts declaring their own tools
+- the server gathering the resource context from a reference instead of trusting a blob
+
+No domain model exists yet. The first entity belongs to the scope that owns it.
