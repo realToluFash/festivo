@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "Soirely"
+  },
+  "home": {
+    "title": "Soirely",
+    "subtitle": "The night, from your pocket.",
+    "openLayouts": "Layout demonstration"
+  },
+  "status": {
+    "title": "Service status",
+    "checking": "Checking…",
+    "healthy": "All services are responding.",
+    "degraded": "Some services are not responding.",
+    "unreachable": "The API could not be reached.",
+    "retry": "Try again",
+    "check": "Check",
+    "state": "State",
+    "usingFallback": "No API URL is configured, so this is trying localhost. That works on a simulator and not on a device — see the README."
+  },
+  "language": {
+    "label": "Language",
+    "automatic": "Automatic"
+  },
+  "layouts": {
+    "title": "Layouts",
+    "intro": "This screen exists to prove the three branches render. It is removable in one commit.",
+    "kind": "Layout",
+    "size": "Window",
+    "phone": "Phone — one column, the controls within a thumb of the bottom.",
+    "tabletPortrait": "Tablet portrait — two columns, the detail below the list.",
+    "tabletLandscape": "Tablet landscape — a list beside a persistent detail pane.",
+    "listPane": "List",
+    "detailPane": "Detail",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items"
+  }
+}

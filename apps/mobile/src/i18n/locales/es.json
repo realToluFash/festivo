@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "Soirely"
+  },
+  "home": {
+    "title": "Soirely",
+    "subtitle": "La noche, desde su bolsillo.",
+    "openLayouts": "Demostración de diseños"
+  },
+  "status": {
+    "title": "Estado del servicio",
+    "checking": "Comprobando…",
+    "healthy": "Todos los servicios responden.",
+    "degraded": "Algunos servicios no responden.",
+    "unreachable": "No se ha podido contactar con la API.",
+    "retry": "Inténtelo de nuevo",
+    "check": "Comprobación",
+    "state": "Estado",
+    "usingFallback": "No hay ninguna URL de API configurada, por lo que se está intentando localhost. Eso funciona en un simulador y no en un dispositivo; consulte el archivo README."
+  },
+  "language": {
+    "label": "Idioma",
+    "automatic": "Automático"
+  },
+  "layouts": {
+    "title": "Diseños",
+    "intro": "Esta pantalla existe para demostrar que las tres variantes se representan. Se puede eliminar en una sola confirmación.",
+    "kind": "Diseño",
+    "size": "Ventana",
+    "phone": "Teléfono: una columna, con los controles al alcance del pulgar.",
+    "tabletPortrait": "Tableta en vertical: dos columnas, con el detalle debajo de la lista.",
+    "tabletLandscape": "Tableta en horizontal: una lista junto a un panel de detalle permanente.",
+    "listPane": "Lista",
+    "detailPane": "Detalle",
+    "itemCount_one": "{{count}} elemento",
+    "itemCount_other": "{{count}} elementos"
+  }
+}

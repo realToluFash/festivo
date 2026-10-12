@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "Soirely"
+  },
+  "home": {
+    "title": "Soirely",
+    "subtitle": "La soirée, depuis votre poche.",
+    "openLayouts": "Démonstration des mises en page"
+  },
+  "status": {
+    "title": "État du service",
+    "checking": "Vérification…",
+    "healthy": "Tous les services répondent.",
+    "degraded": "Certains services ne répondent pas.",
+    "unreachable": "L'API n'a pas pu être contactée.",
+    "retry": "Veuillez réessayer",
+    "check": "Vérification",
+    "state": "État",
+    "usingFallback": "Aucune URL d'API n'est configurée : localhost est donc utilisé. Cela fonctionne sur un simulateur et non sur un appareil — veuillez consulter le fichier README."
+  },
+  "language": {
+    "label": "Langue",
+    "automatic": "Automatique"
+  },
+  "layouts": {
+    "title": "Mises en page",
+    "intro": "Cet écran existe pour démontrer que les trois variantes s'affichent. Il est supprimable en une seule validation.",
+    "kind": "Mise en page",
+    "size": "Fenêtre",
+    "phone": "Téléphone : une colonne, les commandes à portée de pouce.",
+    "tabletPortrait": "Tablette en portrait : deux colonnes, le détail sous la liste.",
+    "tabletLandscape": "Tablette en paysage : une liste à côté d’un volet de détail permanent.",
+    "listPane": "Liste",
+    "detailPane": "Détail",
+    "itemCount_one": "{{count}} élément",
+    "itemCount_other": "{{count}} éléments"
+  }
+}

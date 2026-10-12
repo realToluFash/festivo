@@ -1,0 +1,61 @@
+import type { ExpoConfig } from 'expo/config';
+
+/**
+ * Expo configuration, as code so it can read the environment.
+ *
+ * The API URL is bundled here rather than fetched at boot, which is the
+ * OPPOSITE of apps/web — and deliberately so. A web deployment serves one built
+ * image to every environment, so baking its URL in is the bug that cost an
+ * afternoon. A mobile bundle is the artefact: it is built per environment and
+ * shipped through a store or an update channel, so there is no later moment at
+ * which a file beside it could be rewritten.
+ *
+ * What is NOT acceptable in either is a literal in a source file. See the
+ * README for pointing a device on the same network at a development machine.
+ */
+const config: ExpoConfig = {
+  name: 'Soirely',
+  slug: 'soirely',
+  version: '0.0.0',
+  scheme: 'soirely',
+  orientation: 'default',
+  userInterfaceStyle: 'light',
+  // No newArchEnabled either, and for the same reason as the edge-to-edge flag
+  // below: the New Architecture is the only architecture in this SDK, so the
+  // toggle no longer exists. Both keys typecheck as errors rather than being
+  // ignored, which is the good outcome — a silently-accepted dead flag reads
+  // as a decision somebody made.
+  ios: {
+    supportsTablet: true,
+    bundleIdentifier: 'com.soirely.app',
+  },
+  android: {
+    package: 'com.soirely.app',
+    // There is deliberately NO edge-to-edge flag here. This SDK has none — the
+    // toggle was removed because Android now enforces edge to edge, so the
+    // layout always owns the area behind the system bars.
+    //
+    // Which makes the safe-area wrapper load-bearing rather than polite:
+    // src/components/Screen.tsx is the only thing keeping content out of the
+    // status bar and off the home indicator, and a screen built on a bare View
+    // will look correct on the simulator it was written on and put a button
+    // under the gesture bar on the next device.
+  },
+  web: {
+    bundler: 'metro',
+    output: 'single',
+  },
+  plugins: ['expo-router', 'expo-font', 'expo-localization'],
+  experiments: {
+    typedRoutes: true,
+  },
+  extra: {
+    // Read at build time from the environment, never written as a literal.
+    // Absent is a legitimate state in development — src/config.ts explains
+    // what it falls back to and why that is safe only on a simulator.
+    apiUrl: process.env.EXPO_PUBLIC_API_URL,
+    environment: process.env.EXPO_PUBLIC_ENVIRONMENT ?? 'development',
+  },
+};
+
+export default config;
