@@ -161,14 +161,14 @@ Every pull request to `main` is checked, **scoped to what it touched**. A monore
 runs the whole estate on a one-line web change wastes minutes on every review and teaches
 people to stop reading the result.
 
-| Status          | Runs when                            | What it does                                                                                                   |
-| --------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| Lint and format | always                               | `eslint`, `prettier --check` — cheap, and repository-wide by nature                                            |
-| API             | `services/api/**`                    | Brings up Postgres and Redis, builds the image, migrates a throwaway database, runs PHPUnit and `php-cs-fixer` |
-| Web             | `apps/web/**`, `packages/**`         | typecheck, tests, production build                                                                             |
-| Mobile          | `apps/mobile/**`, `packages/**`      | typecheck, tests, web bundle                                                                                   |
-| Packages        | `packages/**`                        | typecheck and tests for the shared packages                                                                    |
-| Localisation    | any catalogue, or any client surface | The parity guards and the untranslated-literal scan                                                            |
+| Status       | Runs when                            | What it does                                                                                                                                                                   |
+| ------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Repository   | always                               | `eslint`, `prettier --check`, actionlint over this workflow, and the tests for the change filter below                                                                         |
+| API          | `services/api/**`                    | Creates `.env` from the example, installs vendor onto the host, brings up Postgres and Redis, builds the image, migrates a throwaway database, runs PHPUnit and `php-cs-fixer` |
+| Web          | `apps/web/**`, `packages/**`         | typecheck, tests, production build                                                                                                                                             |
+| Mobile       | `apps/mobile/**`, `packages/**`      | typecheck, tests, web bundle                                                                                                                                                   |
+| Packages     | `packages/**`                        | typecheck and tests for the shared packages                                                                                                                                    |
+| Localisation | any catalogue, or any client surface | The parity guards and the untranslated-literal scan                                                                                                                            |
 
 A change to **shared root configuration** — `package.json`, the lockfile, the eslint or
 prettier config, `compose.yaml`, `locales.json`, `scripts/`, the workflow itself — runs
@@ -197,11 +197,19 @@ laptop is worse than a slow CI.
 
 ### Wall clock
 
-A single-surface pull request is one filter job plus one surface job plus lint. The
-Node surfaces install from a lockfile-keyed cache and should sit comfortably inside five
-minutes; the API surface spends most of its time building the image, and is the one to
-watch. The first runs on `main` establish the real baseline — the number is not guessed
-here.
+Measured on the first run rather than estimated:
+
+| Job          | First run |
+| ------------ | --------- |
+| Localisation | 37s       |
+| Packages     | 38s       |
+| Web          | 40s       |
+| Mobile       | 1m 11s    |
+| API          | 2m 19s    |
+
+A single-surface pull request is comfortably inside five minutes. The API surface spends
+most of its time building the image and is the one to watch if that stops being true;
+Docker layer caching is the next move if it does.
 
 ### What CI cannot do, and is not configured here
 

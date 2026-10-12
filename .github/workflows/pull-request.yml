@@ -115,6 +115,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Local environment
+        # `.env` is gitignored, and compose reads DATABASE_URL and the rest from
+        # it. A fresh clone creates it from the example — `npm run setup` does
+        # exactly this — so CI does too rather than inventing its own values,
+        # which would then drift from what a developer runs against.
+        run: cp .env.example .env
+
+      - run: npm ci
+
+      - name: PHP dependencies, onto the host
+        # Onto the HOST, which looks odd for a containerised service and is
+        # required: compose bind-mounts services/api over the image's /app,
+        # vendor included. That is deliberate (see compose.yaml) — the host's
+        # vendor is always the current one — and it means the host must have
+        # one. Without this the container starts and `bin/console` reports
+        # "Dependencies are missing", naming composer rather than the mount.
+        run: node scripts/php-tool.mjs composer install
+
       - name: Bring up what the API needs
         # --wait, so the next step starts when Postgres can answer rather than
         # when its container exists. Every healthcheck in compose exists for

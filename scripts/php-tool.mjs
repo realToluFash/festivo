@@ -11,13 +11,38 @@
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/*
+ * The repository root, from this file's own location rather than from the
+ * caller's working directory.
+ *
+ * Earlier it was `process.cwd()`, which quietly made every invocation
+ * depend on where you were standing: run from services/api, composer mounted
+ * services/api as the root and created a second, empty composer.json beside the
+ * real one. Derived from the script path, it is the same answer from anywhere.
+ */
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const API_DIR = 'services/api';
 
-const IMAGES = {
-  'php-cs-fixer': 'ghcr.io/php-cs-fixer/php-cs-fixer:3-php8.4',
-  composer: 'composer:2',
+/*
+ * Each tool, with the directory it has to run in.
+ *
+ * They differ, and that is the whole reason this lives here rather than at the
+ * call sites. composer needs the directory holding composer.json; php-cs-fixer
+ * needs the repository root, because its config is there and its finder points
+ * down into services/api from it.
+ *
+ * Getting that wrong is not loud: `npm run setup` ran composer at the
+ * repository root, where there is no composer.json, so the documented
+ * one-command setup of a fresh clone failed — and the error named composer
+ * rather than the working directory. CI found it.
+ */
+const TOOLS = {
+  'php-cs-fixer': { image: 'ghcr.io/php-cs-fixer/php-cs-fixer:3-php8.4', workdir: '.' },
+  composer: { image: 'composer:2', workdir: API_DIR },
 };
 
 function hasPhpSources(dir) {
@@ -41,12 +66,12 @@ function dockerAvailable() {
 
 const [tool, ...args] = process.argv.slice(2);
 
-if (!tool || !IMAGES[tool]) {
-  console.error(`usage: php-tool <${Object.keys(IMAGES).join('|')}> [args...]`);
+if (!tool || !TOOLS[tool]) {
+  console.error(`usage: php-tool <${Object.keys(TOOLS).join('|')}> [args...]`);
   process.exit(2);
 }
 
-if (tool === 'php-cs-fixer' && !hasPhpSources(API_DIR)) {
+if (tool === 'php-cs-fixer' && !hasPhpSources(join(ROOT, API_DIR))) {
   console.log(`php-cs-fixer: no PHP sources in ${API_DIR} yet — nothing to check.`);
   process.exit(0);
 }
@@ -64,17 +89,20 @@ if (!dockerAvailable()) {
 const toolArgs =
   tool === 'php-cs-fixer' ? [args[0], '--config=.php-cs-fixer.dist.php', ...args.slice(1)] : args;
 
-const cwd = process.cwd();
+// The repository root is mounted whatever the tool, so a relative path in a
+// config resolves the same way it does on the host. Only the working directory
+// inside it differs, and that comes from TOOLS rather than from wherever the
+// caller happened to be standing.
 const dockerArgs = [
   'run',
   '--rm',
   '--volume',
-  `${cwd}:/work`,
+  `${ROOT}:/work`,
   '--workdir',
-  '/work',
+  join('/work', TOOLS[tool].workdir),
   '--user',
   `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`,
-  IMAGES[tool],
+  TOOLS[tool].image,
   ...toolArgs,
 ];
 
