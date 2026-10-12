@@ -51,6 +51,21 @@ final class AssistantController
      */
     private const FORBIDDEN = ['system', 'systemPrompt', 'system_prompt', 'instructions'];
 
+    /**
+     * Ceilings on everything a client controls the size of.
+     *
+     * Every one of these lands in the prompt, and the prompt is what we are
+     * billed for — so unbounded means a client sets our provider bill, and
+     * stores it: the resource context is written to a TEXT column on every
+     * row. Numbers chosen to be far above any real screen and far below
+     * anything that could inflate a turn, and refused at the boundary with the
+     * field named rather than silently truncated. A truncated conversation
+     * answers a question nobody asked.
+     */
+    private const MAX_RESOURCE_CONTEXT = 16384;
+    private const MAX_MESSAGES = 200;
+    private const MAX_TOOLS = 64;
+
     public function __construct(
         private readonly Assistant $assistant,
         private readonly Availability $availability,
@@ -170,6 +185,8 @@ final class AssistantController
             }
         }
 
+        $this->refuseOversized($body);
+
         $context = AssistantContext::tryFrom($body['context']);
         if (null === $context) {
             // Named, and the alternatives listed. An unknown context silently
@@ -200,6 +217,56 @@ final class AssistantController
             locale: $request->getLocale(),
             resourceContext: $body['resourceContext'] ?? null,
             sessionId: $body['sessionId'] ?? null,
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    private function refuseOversized(array $body): void
+    {
+        $oversized = [];
+
+        if (\count($body['messages']) > self::MAX_MESSAGES) {
+            $oversized['messages'] = sprintf(
+                'A conversation may carry at most %d turns; this one has %d. Compact the history before sending it.',
+                self::MAX_MESSAGES,
+                \count($body['messages']),
+            );
+        }
+
+        if (\count($body['tools'] ?? []) > self::MAX_TOOLS) {
+            $oversized['tools'] = sprintf(
+                'At most %d tools may be offered; this request offers %d.',
+                self::MAX_TOOLS,
+                \count($body['tools'] ?? []),
+            );
+        }
+
+        $resourceContext = $body['resourceContext'] ?? null;
+        if (null !== $resourceContext && mb_strlen($resourceContext) > self::MAX_RESOURCE_CONTEXT) {
+            $oversized['resourceContext'] = sprintf(
+                'The resource context may be at most %d characters; this one is %d. Send what is on the screen, not the whole record.',
+                self::MAX_RESOURCE_CONTEXT,
+                mb_strlen($resourceContext),
+            );
+        }
+
+        if ([] === $oversized) {
+            return;
+        }
+
+        throw ApiException::validation(
+            array_map(
+                static fn (string $path, string $message): array => [
+                    'propertyPath' => $path,
+                    'message' => $message,
+                    'code' => 'too_large',
+                ],
+                array_keys($oversized),
+                array_values($oversized),
+            ),
+            'The request is larger than the assistant accepts.',
         );
     }
 

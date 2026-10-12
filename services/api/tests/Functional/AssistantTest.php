@@ -140,6 +140,61 @@ final class AssistantTest extends WebTestCase
         self::assertSame('context', $body['violations'][0]['propertyPath']);
     }
 
+    /**
+     * Everything a client controls the size of has a ceiling.
+     *
+     * All of it lands in the prompt and the prompt is what we are billed for,
+     * so unbounded means a client sets our provider bill — and stores it: the
+     * resource context is written to a column on every row.
+     */
+    #[Test]
+    public function anOversizedRequestIsRefusedWithTheFieldNamed(): void
+    {
+        $cases = [
+            'resourceContext' => [
+                'context' => 'organiser',
+                'messages' => [['role' => 'user', 'content' => 'hello']],
+                'resourceContext' => str_repeat('a', 16385),
+            ],
+            'messages' => [
+                'context' => 'organiser',
+                'messages' => array_fill(0, 201, ['role' => 'user', 'content' => 'hello']),
+            ],
+            'tools' => [
+                'context' => 'organiser',
+                'messages' => [['role' => 'user', 'content' => 'hello']],
+                'tools' => array_map(
+                    static fn (int $i): array => ['name' => 'tool_' . $i, 'description' => 'x'],
+                    range(1, 65),
+                ),
+            ],
+        ];
+
+        foreach ($cases as $field => $payload) {
+            $body = $this->chat($payload);
+
+            self::assertResponseStatusCodeSame(422, "{$field} should be refused");
+            self::assertSame($field, $body['violations'][0]['propertyPath']);
+            self::assertSame('too_large', $body['violations'][0]['code']);
+            // Refused, not truncated. A truncated conversation answers a
+            // question nobody asked.
+            self::assertSame(0, $this->interactionCount(), "{$field} should not have reached the provider");
+        }
+    }
+
+    /** At the ceiling, not over it, is accepted. */
+    #[Test]
+    public function aRequestExactlyAtTheCeilingIsAccepted(): void
+    {
+        $this->chat([
+            'context' => 'organiser',
+            'messages' => [['role' => 'user', 'content' => 'hello']],
+            'resourceContext' => str_repeat('a', 16384),
+        ]);
+
+        self::assertResponseIsSuccessful();
+    }
+
     #[Test]
     public function anUnreadableBodyIsABadRequest(): void
     {
