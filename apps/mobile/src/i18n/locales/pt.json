@@ -1,0 +1,38 @@
+{
+  "app": {
+    "name": "Soirely"
+  },
+  "home": {
+    "title": "Soirely",
+    "subtitle": "A noite, a partir do seu bolso.",
+    "openLayouts": "Demonstração de disposições"
+  },
+  "status": {
+    "title": "Estado do serviço",
+    "checking": "A verificar…",
+    "healthy": "Todos os serviços estão a responder.",
+    "degraded": "Alguns serviços não estão a responder.",
+    "unreachable": "Não foi possível contactar a API.",
+    "retry": "Tente novamente",
+    "check": "Verificação",
+    "state": "Estado",
+    "usingFallback": "Não está configurado qualquer URL da API, pelo que está a ser tentado o localhost. Isso funciona num simulador e não num dispositivo — consulte o ficheiro README."
+  },
+  "language": {
+    "label": "Idioma",
+    "automatic": "Automático"
+  },
+  "layouts": {
+    "title": "Disposições",
+    "intro": "Este ecrã existe para demonstrar que as três variantes são apresentadas. Pode ser removido numa única consolidação.",
+    "kind": "Disposição",
+    "size": "Janela",
+    "phone": "Telemóvel: uma coluna, com os controlos ao alcance do polegar.",
+    "tabletPortrait": "Tablet na vertical: duas colunas, com o detalhe sob a lista.",
+    "tabletLandscape": "Tablet na horizontal: uma lista ao lado de um painel de detalhe permanente.",
+    "listPane": "Lista",
+    "detailPane": "Detalhe",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} itens"
+  }
+}
