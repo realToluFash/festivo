@@ -93,6 +93,14 @@ services:
       MERCURE_PUBLISH_URL: ${MERCURE_PUBLISH_URL}
       MERCURE_PUBLIC_URL: ${MERCURE_PUBLIC_URL}
       MERCURE_PUBLISHER_KEY: ${MERCURE_PUBLISHER_KEY}
+      # The assistant. Defaults to the in-process stand-in, so the stack comes
+      # up assisted without a provider account and nothing here is billable.
+      ASSISTANT_ENABLED: ${ASSISTANT_ENABLED:-true}
+      ASSISTANT_PROVIDER: ${ASSISTANT_PROVIDER:-scripted}
+      ASSISTANT_API_KEY: ${ASSISTANT_API_KEY:-}
+      ASSISTANT_MODEL: ${ASSISTANT_MODEL:-claude-opus-5}
+      ASSISTANT_EFFORT: ${ASSISTANT_EFFORT:-medium}
+      ASSISTANT_MAX_TOKENS: ${ASSISTANT_MAX_TOKENS:-16000}
       # FrankenPHP serves plain HTTP here; TLS terminates upstream in deployment.
       SERVER_NAME: ':80'
     volumes:

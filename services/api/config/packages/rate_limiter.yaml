@@ -7,3 +7,12 @@ framework:
             policy: token_bucket
             limit: 60
             rate: { interval: '1 minute', amount: 30 }
+
+        assistant_chat:
+            # Lower than the geocoder's and burstier than it looks: one thing an
+            # organiser asks for is several turns of an agent loop, each a
+            # request, so the burst has to cover a loop while the sustained rate
+            # does not cover a script. Per IP until there are accounts.
+            policy: token_bucket
+            limit: 20
+            rate: { interval: '1 minute', amount: 10 }

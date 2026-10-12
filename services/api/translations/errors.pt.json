@@ -9,5 +9,8 @@
     "forbidden": "Não tem permissão para fazer isso.",
     "too_many_requests": "Demasiadas tentativas. Aguarde e tente novamente.",
     "internal_error": "Ocorreu um erro do nosso lado.",
-    "service_unavailable": "O serviço está temporariamente indisponível."
+    "service_unavailable": "O serviço está temporariamente indisponível.",
+    "assistant_unavailable": "O assistente não está disponível.",
+    "assistant_busy": "O assistente está ocupado. Tente novamente dentro de momentos.",
+    "assistant_refused": "O assistente não quis responder a isso."
 }

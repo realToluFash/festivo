@@ -36,6 +36,14 @@ enum ErrorCode: string
     case InternalError = 'internal_error';
     case ServiceUnavailable = 'service_unavailable';
 
+    // The assistant, which has three outcomes a client must tell apart: it is
+    // not available here, it is busy right now, and it declined. Generic codes
+    // would collapse the first two into one 503 and leave a client advising a
+    // retry that can never succeed.
+    case AssistantUnavailable = 'assistant_unavailable';
+    case AssistantBusy = 'assistant_busy';
+    case AssistantRefused = 'assistant_refused';
+
     public function status(): int
     {
         return match ($this) {
@@ -50,6 +58,10 @@ enum ErrorCode: string
             self::TooManyRequests => 429,
             self::InternalError => 500,
             self::ServiceUnavailable => 503,
+            self::AssistantUnavailable, self::AssistantBusy => 503,
+            // Understood, and will not be fulfilled as asked. Not a 503: there
+            // is nothing to wait for.
+            self::AssistantRefused => 422,
         };
     }
 
