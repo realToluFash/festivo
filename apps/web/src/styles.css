@@ -1,0 +1,285 @@
+/*
+ * Desktop-first, and that is a product decision rather than a preference.
+ *
+ * Planning an event is desk work: four hundred guests, a seating plan, a
+ * budget, dense tables, a keyboard. So the base styles are the wide layout and
+ * the narrow one is the media query — the opposite of the usual order, because
+ * writing it mobile-first produces a phone layout stretched across a monitor
+ * and calls it responsive.
+ */
+
+:root {
+  --ink: #16141f;
+  --ink-soft: #5d5873;
+  --page: #f6f5fa;
+  --surface: #ffffff;
+  --line: #e4e1ee;
+  --brand: #5b3bf5;
+  --brand-ink: #ffffff;
+  --danger: #b3261e;
+  --danger-bg: #fdecea;
+
+  --sidebar: 16rem;
+  --gap: 1.5rem;
+  --radius: 0.625rem;
+
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  color: var(--ink);
+  background: var(--page);
+  line-height: 1.5;
+}
+
+h1 {
+  font-size: 1.625rem;
+  margin: 0 0 0.5rem;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Visible only once focused. A skip link that is always visible gets designed
+   away; one that is permanently hidden is not a skip link. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip-link:focus {
+  left: var(--gap);
+  top: var(--gap);
+  z-index: 10;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* ── The signed-in shell ──────────────────────────────────────────────────── */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar) 1fr;
+  min-height: 100vh;
+}
+
+.shell-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  padding: var(--gap);
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.shell-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.shell-nav a {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.shell-nav a:hover {
+  background: var(--page);
+}
+
+.shell-nav a.active {
+  background: var(--brand);
+  color: var(--brand-ink);
+}
+
+.shell-account {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: auto;
+  font-size: 0.875rem;
+}
+
+/* The width is used rather than reserved: a 1200px content column on a 2560px
+   monitor is the layout this product exists to avoid. */
+.shell-content {
+  padding: var(--gap) calc(var(--gap) * 1.5);
+  max-width: 100rem;
+}
+
+.brand {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.org-switcher select,
+.language-picker select {
+  width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+}
+
+/* ── Public and guest ─────────────────────────────────────────────────────── */
+
+.public-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: var(--gap);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.public-main,
+.guest-main {
+  padding: calc(var(--gap) * 2) var(--gap);
+  max-width: 44rem;
+  margin: 0 auto;
+}
+
+.public-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: var(--gap);
+}
+
+.button {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.button-primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--brand-ink);
+}
+
+/* ── Panels, tables, states ───────────────────────────────────────────────── */
+
+.panel {
+  padding: var(--gap);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.panel-error {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.panel-error h1,
+.panel-error h2 {
+  color: var(--danger);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--gap);
+  background: var(--surface);
+}
+
+.table th,
+.table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.pending {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: var(--gap) 0;
+  color: var(--ink-soft);
+}
+
+.pending-spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid var(--line);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Honoured rather than ignored: a spinner is decoration, and somebody who has
+   asked for less motion should not get it anyway. */
+@media (prefers-reduced-motion: reduce) {
+  .pending-spinner {
+    animation: none;
+  }
+}
+
+/* ── Narrower than a tablet ───────────────────────────────────────────────── */
+
+@media (max-width: 60rem) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+
+  .shell-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .shell-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .shell-account {
+    margin-top: 0;
+  }
+
+  .shell-content {
+    padding: var(--gap);
+  }
+}

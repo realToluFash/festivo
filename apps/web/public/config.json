@@ -1,0 +1,6 @@
+{
+  "$comment": "The development default. The container OVERWRITES this file at start-up from its environment — see apps/web/docker-entrypoint.sh. Editing it here only affects `npm run dev`.",
+  "apiBaseUrl": "http://localhost:8080",
+  "mercureUrl": "http://localhost:3000/.well-known/mercure",
+  "environment": "development"
+}
