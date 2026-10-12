@@ -157,6 +157,20 @@ rules. Not the interface: React Native's primitives fight dense desktop work, an
 across two genuinely different interaction models costs more than it returns. A rule
 implemented twice will diverge; a button implemented twice will not.
 
+## The design context
+
+Every scope's screens are built from one vocabulary rather than sixteen. The tokens, the
+type scale, the components and the layout patterns live in `docs/design/`, and each surface
+carries a gallery page rendering all of them — which is the only thing that keeps the
+design and the code from drifting apart across sixteen scopes.
+
+`docs/design/claude-design-brief.md` is the brief that produced it, kept beside it so a
+revision to either is a diff rather than an argument from memory.
+
+**A design is reproduced, then wired, then translated** — in that order, stopping between.
+Approximating one is how it drifts, and the drift is never visible in the pull request that
+caused it.
+
 ## When to add a scope
 
 When a set of facts has no owner. Not when a file gets long, and not when something needs
