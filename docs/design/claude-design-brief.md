@@ -3,6 +3,11 @@
 > Paste everything below the line into Claude Design. It is written to stand on
 > its own: a designer reading it needs no access to this repository.
 >
+> **The first exchange only needs this file down to the end of "Start by
+> proposing directions".** That step returns four directions and nothing else,
+> so the 197-component inventory below it is noise until one is chosen. Paste
+> the rest when it is.
+>
 > Keep this file as the brief is revised, so the design context and the brief it
 > came from stay together. What comes back lands in `docs/design/` beside it.
 
@@ -97,6 +102,13 @@ it either.
 - a typeface pairing, named
 - one line on why it fits _this_ product
 - one line on what it would feel wrong for
+
+**And render each direction as the same small specimen**, so the four can
+actually be compared rather than imagined: a page heading, a line of body text,
+a primary button, a quiet button, one dense table row of three guests with a
+status pill each, and one form field with its label. The same six things, four
+times, on one page. A direction described in prose cannot be chosen between;
+the same specimen four times can.
 
 Then stop and wait for a choice. Build out only the chosen direction.
 
