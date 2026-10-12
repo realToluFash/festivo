@@ -35,10 +35,17 @@ use Symfony\Component\Routing\Attribute\Route;
  * there is no amount of prompt wording that defends against being replaced.
  * So the client sends a context NAME and the prompt is resolved here.
  *
- * Stateless. The agent loop runs on the client: it sends the conversation and
- * the tools it can run, and gets back either text to show or one tool to run
- * and come back with. The server holds no session, which means a dropped
- * connection loses a turn rather than a conversation.
+ * Stateless. The client drives the loop: it sends the conversation and the tools
+ * on offer, and gets back either text to show or one tool call to satisfy and
+ * come back with. The server holds no session, so a dropped connection loses a
+ * turn rather than a conversation.
+ *
+ * Driving the loop is not the same as executing the tools, and at the moment
+ * the client does both. That is the half still missing: a tool executed on the
+ * client can only be authorised by whatever endpoint it eventually calls, which
+ * means the server cannot refuse one — and nothing here is event-scoped even
+ * though an organiser's event data is exactly what goes into the prompt.
+ * sc-79 moves execution server-side; sc-78 does the same for the data.
  */
 final class AssistantController
 {

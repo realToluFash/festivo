@@ -16,10 +16,14 @@ namespace App\Assistant;
  * here plus its prompt, and needs no change to anything else.
  *
  * The prompts live on the enum rather than in the database because a prompt is
- * code: it is reviewed, it is versioned with the tools it assumes, and a prompt
- * editable at runtime is a behaviour change with no diff. When somebody needs to
- * tune one without a deploy, that is a story about an override, and the default
- * still belongs here.
+ * code: it is reviewed, and a prompt editable at runtime is a behaviour change
+ * with no diff. When somebody needs to tune one without a deploy, that is a
+ * story about an override, and the default still belongs here.
+ *
+ * A prompt should also be versioned with the tools it assumes, and is not yet:
+ * nothing here declares a tool, so a prompt written for three can be handed a
+ * fourth it has never heard of. sc-77 moves that declaration onto the context,
+ * beside the prompt, which is the only place the two can be reviewed together.
  */
 enum AssistantContext: string
 {
