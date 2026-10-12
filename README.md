@@ -197,19 +197,26 @@ laptop is worse than a slow CI.
 
 ### Wall clock
 
-Measured on the first run rather than estimated:
+Measured on the first fully-green run, rather than estimated:
 
-| Job          | First run |
-| ------------ | --------- |
-| Localisation | 37s       |
-| Packages     | 38s       |
-| Web          | 40s       |
-| Mobile       | 1m 11s    |
-| API          | 2m 19s    |
+| Job                      | Duration   |
+| ------------------------ | ---------- |
+| What changed             | 7s         |
+| Localisation             | 26s        |
+| Packages                 | 30s        |
+| Web                      | 42s        |
+| Repository               | 46s        |
+| Mobile                   | 48s        |
+| API                      | 3m 13s     |
+| **Whole run, every job** | **3m 33s** |
 
-A single-surface pull request is comfortably inside five minutes. The API surface spends
-most of its time building the image and is the one to watch if that stops being true;
-Docker layer caching is the next move if it does.
+A single-surface pull request is one filter job plus one surface job plus Repository,
+so a web or mobile change lands in well under two minutes. Even the worst case — a
+root-config change running everything in parallel — is inside four minutes.
+
+The API job is 90% of that, and almost all of its time is the image build plus a
+composer install. Docker layer caching is the next move if it stops being
+comfortable; it is not worth the complexity yet.
 
 ### What CI cannot do, and is not configured here
 
