@@ -1,0 +1,65 @@
+{
+  "app": {
+    "name": "Soirely",
+    "skipToContent": "Ir para o conteúdo"
+  },
+  "nav": {
+    "dashboard": "Painel",
+    "events": "Eventos",
+    "guests": "Convidados",
+    "settings": "Definições",
+    "organisation": "Organização",
+    "signedInAs": "Sessão iniciada como {{name}}",
+    "switchOrganisation": "Mudar de organização",
+    "eventCount_one": "{{count}} evento",
+    "eventCount_other": "{{count}} eventos"
+  },
+  "language": {
+    "label": "Idioma",
+    "automatic": "Automático",
+    "automaticHint": "Seguir o idioma pedido pelo seu navegador"
+  },
+  "public": {
+    "tagline": "Planeie o evento. Conduza a noite.",
+    "body": "O Soirely é onde um evento se planeia à secretária e se conduz a partir do telemóvel. Convidados, disposição das mesas, ementas e alinhamento da noite, num só lugar e no seu idioma.",
+    "signIn": "Iniciar sessão",
+    "getStarted": "Começar"
+  },
+  "status": {
+    "title": "Estado do serviço",
+    "intro": "Lido em directo a partir da API através do cliente partilhado, pelo que uma falha nesta página indica um problema do cliente ou de CORS e não da página.",
+    "checking": "A verificar…",
+    "healthy": "Todos os serviços estão a responder.",
+    "degraded": "Alguns serviços não estão a responder.",
+    "unreachable": "Não foi possível contactar a API.",
+    "check": "Verificação",
+    "state": "Estado",
+    "retry": "Tente novamente"
+  },
+  "pending": {
+    "loading": "A carregar…"
+  },
+  "error": {
+    "title": "Ocorreu um erro",
+    "body": "Não foi possível mostrar esta parte da página. O resto da aplicação não é afectado.",
+    "retry": "Tente novamente",
+    "details": "Detalhes técnicos"
+  },
+  "forbidden": {
+    "title": "Não tem acesso a isto",
+    "body": "A sua conta não tem permissão para esta página. Se considera que deveria ter, fale com um administrador desta organização.",
+    "back": "Voltar ao painel"
+  },
+  "notFound": {
+    "title": "Esta página não existe",
+    "body": "O endereço pode ter mudado ou a ligação pode conter um erro.",
+    "home": "Ir para o início"
+  },
+  "guest": {
+    "invitationTitle": "Está convidado",
+    "invitationBody": "Não é necessária qualquer conta. Esta página é sua para este evento.",
+    "invalidTitle": "Esta ligação de convite não funciona",
+    "invalidBody": "Pode ter caducado, ter sido substituída por uma mais recente ou conter um erro. Peça uma nova ligação a quem o convidou — pode enviá-la num instante.",
+    "noAccountNeeded": "Não precisa de uma conta para responder."
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "app": {
+    "name": "Soirely",
+    "skipToContent": "Aller au contenu"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "events": "Événements",
+    "guests": "Invités",
+    "settings": "Paramètres",
+    "organisation": "Organisation",
+    "signedInAs": "Connecté en tant que {{name}}",
+    "switchOrganisation": "Changer d'organisation",
+    "eventCount_one": "{{count}} événement",
+    "eventCount_other": "{{count}} événements"
+  },
+  "language": {
+    "label": "Langue",
+    "automatic": "Automatique",
+    "automaticHint": "Suivre la langue demandée par votre navigateur"
+  },
+  "public": {
+    "tagline": "Préparez l'événement. Menez la soirée.",
+    "body": "Soirely est l'endroit où un événement se prépare au bureau et se mène depuis un téléphone. Invités, plan de table, menus et déroulé de la soirée, en un seul endroit et dans votre langue.",
+    "signIn": "Se connecter",
+    "getStarted": "Commencer"
+  },
+  "status": {
+    "title": "État du service",
+    "intro": "Lu en direct depuis l'API via le client partagé : un échec sur cette page signale donc un problème de client ou de CORS, et non de la page.",
+    "checking": "Vérification…",
+    "healthy": "Tous les services répondent.",
+    "degraded": "Certains services ne répondent pas.",
+    "unreachable": "L'API n'a pas pu être contactée.",
+    "check": "Vérification",
+    "state": "État",
+    "retry": "Veuillez réessayer"
+  },
+  "pending": {
+    "loading": "Chargement…"
+  },
+  "error": {
+    "title": "Une erreur s'est produite",
+    "body": "Cette partie de la page n'a pas pu être affichée. Le reste de l'application n'est pas affecté.",
+    "retry": "Veuillez réessayer",
+    "details": "Détails techniques"
+  },
+  "forbidden": {
+    "title": "Vous n'avez pas accès à cette page",
+    "body": "Votre compte n'a pas l'autorisation nécessaire. Si vous estimez qu'il devrait l'avoir, adressez-vous à un administrateur de cette organisation.",
+    "back": "Retour au tableau de bord"
+  },
+  "notFound": {
+    "title": "Cette page n'existe pas",
+    "body": "L'adresse a peut-être changé, ou le lien comporte une erreur.",
+    "home": "Aller à l'accueil"
+  },
+  "guest": {
+    "invitationTitle": "Vous êtes invité",
+    "invitationBody": "Aucun compte n'est nécessaire. Cette page vous est réservée pour cet événement.",
+    "invalidTitle": "Ce lien d'invitation ne fonctionne pas",
+    "invalidBody": "Il a peut-être expiré, été remplacé par un lien plus récent, ou comporte une erreur. Demandez un nouveau lien à la personne qui vous a invité : elle peut vous l'envoyer en un instant.",
+    "noAccountNeeded": "Vous n'avez pas besoin de compte pour répondre."
+  }
+}

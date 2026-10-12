@@ -1,0 +1,65 @@
+{
+  "app": {
+    "name": "Soirely",
+    "skipToContent": "Skip to content"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "events": "Events",
+    "guests": "Guests",
+    "settings": "Settings",
+    "organisation": "Organisation",
+    "signedInAs": "Signed in as {{name}}",
+    "switchOrganisation": "Switch organisation",
+    "eventCount_one": "{{count}} event",
+    "eventCount_other": "{{count}} events"
+  },
+  "language": {
+    "label": "Language",
+    "automatic": "Automatic",
+    "automaticHint": "Follow the language your browser asks for"
+  },
+  "public": {
+    "tagline": "Plan the event. Run the night.",
+    "body": "Soirely is where an event is planned at a desk and run from a phone. Guests, seating, menus, the running order — in one place, in your language.",
+    "signIn": "Sign in",
+    "getStarted": "Get started"
+  },
+  "status": {
+    "title": "Service status",
+    "intro": "Read live from the API through the shared client, so this page failing means the client or CORS is wrong rather than the page.",
+    "checking": "Checking…",
+    "healthy": "All services are responding.",
+    "degraded": "Some services are not responding.",
+    "unreachable": "The API could not be reached.",
+    "check": "Check",
+    "state": "State",
+    "retry": "Try again"
+  },
+  "pending": {
+    "loading": "Loading…"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "body": "This part of the page could not be shown. The rest of the application is unaffected.",
+    "retry": "Try again",
+    "details": "Technical details"
+  },
+  "forbidden": {
+    "title": "You do not have access to this",
+    "body": "Your account does not have permission for this page. If you believe it should, ask an administrator of this organisation.",
+    "back": "Back to the dashboard"
+  },
+  "notFound": {
+    "title": "This page does not exist",
+    "body": "The address may have changed, or the link may have been mistyped.",
+    "home": "Go to the start"
+  },
+  "guest": {
+    "invitationTitle": "You are invited",
+    "invitationBody": "No account is needed. This page is yours for this event.",
+    "invalidTitle": "This invitation link does not work",
+    "invalidBody": "It may have expired, been replaced by a newer one, or been mistyped. Ask whoever invited you for a fresh link — they can send one in a moment.",
+    "noAccountNeeded": "You do not need an account to reply."
+  }
+}

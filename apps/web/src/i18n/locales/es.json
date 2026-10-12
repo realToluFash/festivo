@@ -1,0 +1,65 @@
+{
+  "app": {
+    "name": "Soirely",
+    "skipToContent": "Ir al contenido"
+  },
+  "nav": {
+    "dashboard": "Panel",
+    "events": "Eventos",
+    "guests": "Invitados",
+    "settings": "Configuración",
+    "organisation": "Organización",
+    "signedInAs": "Sesión iniciada como {{name}}",
+    "switchOrganisation": "Cambiar de organización",
+    "eventCount_one": "{{count}} evento",
+    "eventCount_other": "{{count}} eventos"
+  },
+  "language": {
+    "label": "Idioma",
+    "automatic": "Automático",
+    "automaticHint": "Seguir el idioma que solicita su navegador"
+  },
+  "public": {
+    "tagline": "Planifique el evento. Dirija la noche.",
+    "body": "Soirely es donde un evento se planifica en un escritorio y se dirige desde el teléfono. Invitados, distribución de mesas, menús y el orden de la velada, en un solo lugar y en su idioma.",
+    "signIn": "Iniciar sesión",
+    "getStarted": "Comenzar"
+  },
+  "status": {
+    "title": "Estado del servicio",
+    "intro": "Se lee en directo desde la API mediante el cliente compartido, de modo que un fallo en esta página indica un problema del cliente o de CORS y no de la página.",
+    "checking": "Comprobando…",
+    "healthy": "Todos los servicios responden.",
+    "degraded": "Algunos servicios no responden.",
+    "unreachable": "No se ha podido contactar con la API.",
+    "check": "Comprobación",
+    "state": "Estado",
+    "retry": "Inténtelo de nuevo"
+  },
+  "pending": {
+    "loading": "Cargando…"
+  },
+  "error": {
+    "title": "Se ha producido un error",
+    "body": "No se ha podido mostrar esta parte de la página. El resto de la aplicación no está afectado.",
+    "retry": "Inténtelo de nuevo",
+    "details": "Detalles técnicos"
+  },
+  "forbidden": {
+    "title": "No tiene acceso a esto",
+    "body": "Su cuenta no tiene permiso para esta página. Si considera que debería tenerlo, consulte a un administrador de esta organización.",
+    "back": "Volver al panel"
+  },
+  "notFound": {
+    "title": "Esta página no existe",
+    "body": "La dirección puede haber cambiado o el enlace puede contener un error.",
+    "home": "Ir al inicio"
+  },
+  "guest": {
+    "invitationTitle": "Está invitado",
+    "invitationBody": "No necesita ninguna cuenta. Esta página es suya para este evento.",
+    "invalidTitle": "Este enlace de invitación no funciona",
+    "invalidBody": "Puede haber caducado, haber sido sustituido por uno más reciente o contener un error. Solicite un enlace nuevo a quien le invitó: puede enviarlo en un momento.",
+    "noAccountNeeded": "No necesita una cuenta para responder."
+  }
+}

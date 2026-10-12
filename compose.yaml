@@ -194,6 +194,40 @@ services:
         echo "buckets ready"
     restart: 'no'
 
+  # The web client.
+  #
+  # Deliberately NOT depends_on the api. The bundle is static and finds the API
+  # from the browser at runtime, so coupling the two means the web container
+  # refuses to start exactly when the API is broken — which is when somebody
+  # wants to open the status page and find out.
+  web:
+    build:
+      # The repository root, because the image installs the workspace: the web
+      # app depends on packages/api-client and packages/domain, and a context of
+      # apps/web cannot see either.
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: serve
+    environment:
+      # From the BROWSER, not from inside this network. `api` resolves in here
+      # and nowhere in the user's browser, and that mistake produces a client
+      # that works in curl and fails on screen.
+      SOIRELY_API_URL: ${SOIRELY_API_URL:-http://localhost:8080}
+      SOIRELY_MERCURE_URL: ${SOIRELY_MERCURE_URL:-http://localhost:3000/.well-known/mercure}
+      SOIRELY_ENVIRONMENT: ${APP_ENV:-dev}
+    ports:
+      - '${WEB_PORT:-5173}:80'
+    healthcheck:
+      # Checks the file the entrypoint writes, not just that nginx answers.
+      # nginx serving a stale or missing config.json is the failure worth
+      # catching, and "the port is open" does not catch it.
+      test: ['CMD-SHELL', 'wget -qO- http://localhost/config.json | grep -q apiBaseUrl']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
   # ── Local provider sinks ────────────────────────────────────────────────────
   # Nothing here reaches a real provider. Switching to one is a change to
   # environment variables only — see .env.example.

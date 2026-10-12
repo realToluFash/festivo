@@ -9,12 +9,23 @@ export default [
       '**/node_modules/**',
       'vendor/**',
       '**/vendor/**',
+      // Both spellings: a bare 'dist/**' matches only the repository root, so a
+      // built app under apps/*/dist was being linted — 10,000 errors from a
+      // minified bundle, which reads as a broken lint setup rather than as a
+      // missing ignore.
       'dist/**',
+      '**/dist/**',
       'build/**',
+      '**/build/**',
       '**/ios/**',
       '**/android/**',
       '.agents/**',
       'services/api/var/**',
+      // Vendored by Symfony's `assets:install`, which runs on every composer
+      // install. Git already ignores them; eslint does not read .gitignore, so
+      // it was linting API Platform's minified Swagger bundle and reporting
+      // nine thousand errors in code nobody here wrote.
+      '**/public/bundles/**',
     ],
   },
   js.configs.recommended,
