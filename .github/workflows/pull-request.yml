@@ -1,0 +1,261 @@
+# Checks on every pull request, scoped to what it touched.
+#
+# A monorepo that runs the whole estate on a one-line web change wastes minutes
+# on every pull request and teaches people to stop reading the result — so each
+# surface is a separate job with its own trigger and its own name. A failure
+# says which surface failed from the checks list, without opening a log.
+#
+# Drafts ARE checked. GitHub runs `pull_request` on a draft by default and that
+# default is kept deliberately: "no checks appeared" gets diagnosed as a broken
+# pipeline for an afternoon before anybody thinks to look at the draft flag.
+
+name: Pull request
+
+on:
+  pull_request:
+    branches: [main]
+  # So `main` has its own history of green, and a branch-protection rule has
+  # results to require.
+  push:
+    branches: [main]
+
+concurrency:
+  # A new push supersedes the run in flight. Without this a branch pushed three
+  # times holds three sets of runners and the newest result arrives last.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ── What changed ────────────────────────────────────────────────────────────
+  #
+  # Computed with git rather than a third-party action. It is twenty lines, it
+  # is readable in place, and it adds nothing to the set of things that can
+  # reach this repository's secrets.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      mobile: ${{ steps.filter.outputs.mobile }}
+      packages: ${{ steps.filter.outputs.packages }}
+      locales: ${{ steps.filter.outputs.locales }}
+      everything: ${{ steps.filter.outputs.everything }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Both sides of the comparison have to exist locally.
+          fetch-depth: 0
+
+      - id: filter
+        name: Decide which surfaces to check
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # A force-push or a first commit leaves no usable base. Everything
+          # runs rather than nothing — a filter that cannot tell what changed
+          # must not conclude that nothing did.
+          if [ -z "${BASE}" ] || ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "No usable base commit; checking everything."
+            node scripts/changed-surfaces.mjs --all < /dev/null | tee -a "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Changed files:"
+          git diff --name-only "${BASE}" "${HEAD}"
+
+          # The patterns live in the script, not here, so the test that asserts
+          # them cannot drift from what CI actually does. This is the only real
+          # logic in the workflow and the thing most likely to be quietly wrong:
+          # a pattern matching nothing means a surface silently stops being
+          # checked while the pull request still goes green.
+          git diff --name-only "${BASE}" "${HEAD}" \
+            | node scripts/changed-surfaces.mjs \
+            | tee -a "$GITHUB_OUTPUT"
+
+  # ── Repository-wide, and cheap ──────────────────────────────────────────────
+  lint:
+    name: Repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint:js
+      - run: npm run format:check
+      # Lints this workflow, including shellcheck over every `run:` block.
+      - run: npm run lint:actions
+      # And tests the change filter above. It always runs, because a filter that
+      # stopped matching a surface would otherwise hide its own failure: the
+      # surface silently goes unchecked and the pull request still goes green.
+      - name: CI change filter
+        run: npm run test:scripts
+
+  # ── The API, in the same container a developer runs ─────────────────────────
+  #
+  # Through docker compose rather than a PHP installed on the runner. It is
+  # slower than setup-php by about a minute, and it is what makes "the same
+  # shape on every machine" true rather than aspirational: CI runs the exact
+  # command from the README, against the exact image, with the same extensions.
+  # A green CI and a red laptop is worse than a slow CI.
+  api:
+    name: API
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || needs.changes.outputs.everything == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bring up what the API needs
+        # --wait, so the next step starts when Postgres can answer rather than
+        # when its container exists. Every healthcheck in compose exists for
+        # this moment.
+        run: docker compose up -d --wait postgres redis
+
+      - name: Build the API image
+        run: docker compose build api
+
+      - name: Start the API
+        run: docker compose up -d api
+
+      - name: Create a throwaway database and migrate it
+        # Drops and recreates, so a removed migration is actually gone — the
+        # only way to be sure of that.
+        run: npm run test:db
+
+      - name: Tests
+        run: npm run test:api
+
+      - name: PHP formatting
+        run: npm run lint:php
+
+      - name: Why it failed
+        if: failure()
+        run: docker compose logs --tail 80 api postgres
+
+  # ── The web client ──────────────────────────────────────────────────────────
+  web:
+    name: Web
+    needs: changes
+    if: >-
+      needs.changes.outputs.web == 'true' ||
+      needs.changes.outputs.packages == 'true' ||
+      needs.changes.outputs.everything == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace @soirely/web
+      - run: npm run test --workspace @soirely/web
+      # The build is a check in its own right: a change can lint and test and
+      # still not compile, and finding that at deploy is finding it late.
+      - run: npm run build --workspace @soirely/web
+
+  # ── The mobile client ───────────────────────────────────────────────────────
+  mobile:
+    name: Mobile
+    needs: changes
+    if: >-
+      needs.changes.outputs.mobile == 'true' ||
+      needs.changes.outputs.packages == 'true' ||
+      needs.changes.outputs.everything == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace @soirely/mobile
+      - run: npm run test --workspace @soirely/mobile
+      # The web target, because it is the one a runner can build without a
+      # simulator — and it bundles the same module graph, so a missing import
+      # or a broken package fails here. It does NOT prove the app runs on a
+      # device; nothing in CI can.
+      - name: Bundle
+        working-directory: apps/mobile
+        run: npx expo export --platform web --output-dir dist
+
+  # ── The shared packages ─────────────────────────────────────────────────────
+  packages:
+    name: Packages
+    needs: changes
+    if: needs.changes.outputs.packages == 'true' || needs.changes.outputs.everything == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace @soirely/domain --workspace @soirely/api-client --workspace @soirely/i18n-lint
+      - run: npm run test --workspace @soirely/domain --workspace @soirely/api-client
+
+  # ── Localisation, its own status ────────────────────────────────────────────
+  #
+  # Separate from `packages` even though it lives there, because this is the
+  # check whose failure needs to be unmistakable: every failure it catches
+  # renders fluently in the wrong way, and a status reading "Packages" would
+  # bury it.
+  locales:
+    name: Localisation
+    needs: changes
+    if: needs.changes.outputs.locales == 'true' || needs.changes.outputs.everything == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test --workspace @soirely/i18n-lint
+
+  # ── One status for branch protection to require ─────────────────────────────
+  #
+  # This job exists because of a trap. Requiring the per-surface statuses
+  # directly does not work: a job skipped by its `if` reports as *skipped*,
+  # GitHub treats a skipped required check as PENDING, and an API-only pull
+  # request would therefore wait forever for a Web check that was correctly
+  # never going to run.
+  #
+  # So protection requires this one gate instead. It always runs, and it fails
+  # only when something that DID run came back failed or cancelled — skipped is
+  # the expected state for most jobs on most pull requests.
+  required:
+    name: All checks
+    if: always()
+    needs: [changes, lint, api, web, mobile, packages, locales]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any check that ran did not pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+
+          echo "${RESULTS}"
+
+          # `failure` and `cancelled` are the only bad outcomes. `skipped` means
+          # the surface was untouched, which is the normal case.
+          if echo "${RESULTS}" | grep -qE '"result": *"(failure|cancelled)"'; then
+            echo "::error::At least one check failed. See the statuses above."
+            exit 1
+          fi
+
+          echo "Every check that ran passed."

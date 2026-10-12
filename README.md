@@ -155,7 +155,94 @@ To work against a physical device, add its address to `MERCURE_CORS_ORIGINS` in 
 
 Shortcut workspace: https://app.shortcut.com/soirely
 
+## Checks on a pull request
+
+Every pull request to `main` is checked, **scoped to what it touched**. A monorepo that
+runs the whole estate on a one-line web change wastes minutes on every review and teaches
+people to stop reading the result.
+
+| Status          | Runs when                            | What it does                                                                                                   |
+| --------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| Lint and format | always                               | `eslint`, `prettier --check` — cheap, and repository-wide by nature                                            |
+| API             | `services/api/**`                    | Brings up Postgres and Redis, builds the image, migrates a throwaway database, runs PHPUnit and `php-cs-fixer` |
+| Web             | `apps/web/**`, `packages/**`         | typecheck, tests, production build                                                                             |
+| Mobile          | `apps/mobile/**`, `packages/**`      | typecheck, tests, web bundle                                                                                   |
+| Packages        | `packages/**`                        | typecheck and tests for the shared packages                                                                    |
+| Localisation    | any catalogue, or any client surface | The parity guards and the untranslated-literal scan                                                            |
+
+A change to **shared root configuration** — `package.json`, the lockfile, the eslint or
+prettier config, `compose.yaml`, `locales.json`, `scripts/`, the workflow itself — runs
+everything, because it changes the meaning of every other job. The lockfile is in that
+list deliberately: a resolution change can break a surface whose own files are untouched.
+
+Each surface is a separately named status, so a failure says which one failed without
+anybody opening a log.
+
+One more status, **All checks**, always runs and fails if anything that ran did not pass.
+It exists because of a trap: a job skipped by its `if` reports as _skipped_, GitHub treats
+a skipped required check as **pending**, and requiring the per-surface statuses directly
+would leave an API-only pull request waiting forever for a Web check that was correctly
+never going to run. Branch protection requires this gate, not the surfaces.
+
+**Draft pull requests ARE checked.** That is GitHub's default and it is kept on purpose:
+"no checks appeared" otherwise gets diagnosed as a broken pipeline for an afternoon
+before somebody thinks to look at the draft flag.
+
+### Why the API job uses Docker rather than a PHP on the runner
+
+It is about a minute slower than installing PHP directly, and it is what makes _the same
+shape on every machine_ true rather than aspirational — CI runs the exact commands from
+this README, against the exact image, with the same extensions. A green CI beside a red
+laptop is worse than a slow CI.
+
+### Wall clock
+
+A single-surface pull request is one filter job plus one surface job plus lint. The
+Node surfaces install from a lockfile-keyed cache and should sit comfortably inside five
+minutes; the API surface spends most of its time building the image, and is the one to
+watch. The first runs on `main` establish the real baseline — the number is not guessed
+here.
+
+### What CI cannot do, and is not configured here
+
+**Branch protection is a repository setting, not a file — and it is NOT configured,
+because this plan cannot.** Both the branch-protection API and the newer rulesets API
+answer `403 Upgrade to GitHub Pro or make this repository public` for a private repository
+on the Free plan. So "a failing check blocks merge" and "`main` cannot be pushed to
+directly" are currently **conventions, not guarantees**: the convention is in _How work
+happens_ above, and nothing enforces it.
+
+Two ways to make it real — GitHub Pro, or making the repository public. Either way the
+command is ready, and `All checks` is the only context it needs:
+
+```sh
+gh api -X PUT repos/:owner/:repo/branches/main/protection \
+  -F required_status_checks[strict]=true \
+  -F 'required_status_checks[contexts][]=All checks' \
+  -F required_pull_request_reviews=null \
+  -F enforce_admins=false \
+  -F restrictions=null
+```
+
+Three deliberate choices in that. It requires **`All checks`** and nothing else, for the
+skipped-is-pending reason above. It does **not** require a review, because a single-person
+team requiring its own approval is a rule that gets bypassed rather than followed. And
+`enforce_admins=false` keeps an owner override, so a mistake in the workflow itself can
+never lock the repository against the person who has to fix it.
+
+The mobile job bundles for web, which proves the module graph resolves. It does **not**
+prove the app runs on a device, and nothing in CI does.
+
+### Linting the CI itself
+
+`npm run lint:actions` runs actionlint — which runs shellcheck over every `run:` block —
+in Docker, like the PHP tooling, and it is in the pre-commit hook. A CI script is shell
+that nobody reviews as carefully as the code it checks: the first draft of this workflow
+had an `A && B || C` that is not if-then-else and would have written two different values
+into the same output. actionlint caught it.
+
 ## Status
 
-Nothing is built yet. The Foundation epic lands the toolchain, CI and the compose stack;
-everything else follows it.
+Foundation is complete: the toolchain, the compose stack, the API skeleton with its
+response and error contracts, object storage, address lookup, the assistant transport, the
+web and mobile skeletons, the localisation guards, and CI. Everything else follows it.

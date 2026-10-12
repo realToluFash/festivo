@@ -7,10 +7,12 @@
   },
   "scripts": {
     "setup": "node scripts/setup.mjs",
-    "lint": "npm run lint:js && npm run lint:php",
+    "lint": "npm run lint:js && npm run lint:php && npm run lint:actions",
     "lint:js": "eslint .",
     "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
-    "test": "npm run test:api && npm run test:packages",
+    "lint:actions": "node scripts/lint-actions.mjs",
+    "test": "npm run test:scripts && npm run test:api && npm run test:packages",
+    "test:scripts": "vitest run --dir scripts",
     "test:db": "node scripts/test-db.mjs",
     "test:api": "docker compose exec -T api sh -c \"APP_ENV=test vendor/bin/phpunit\"",
     "test:packages": "npm run test --workspaces --if-present",
@@ -27,7 +29,8 @@
     "globals": "^16.4.0",
     "lefthook": "^1.13.6",
     "prettier": "^3.6.2",
-    "typescript-eslint": "^8.46.0"
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^4.1.11"
   },
   "workspaces": [
     "packages/*",
