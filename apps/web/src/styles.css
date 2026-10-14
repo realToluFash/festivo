@@ -6,23 +6,18 @@
  * the narrow one is the media query — the opposite of the usual order, because
  * writing it mobile-first produces a phone layout stretched across a monitor
  * and calls it responsive.
+ *
+ * Every value here comes from a token. `tokens.css` is generated from
+ * `docs/design/tokens.mjs`, so there is no hex in this file and no second copy
+ * of a colour to drift. If a value you need has no token, that is a question
+ * for the design rather than a number to invent.
  */
 
+@import './tokens.css';
+
 :root {
-  --ink: #16141f;
-  --ink-soft: #5d5873;
-  --page: #f6f5fa;
-  --surface: #ffffff;
-  --line: #e4e1ee;
-  --brand: #5b3bf5;
-  --brand-ink: #ffffff;
-  --danger: #b3261e;
-  --danger-bg: #fdecea;
-
-  --sidebar: 16rem;
-  --gap: 1.5rem;
-  --radius: 0.625rem;
-
+  /* Light only. The design has no dark appearance, so declaring one would
+     invite the browser to invert something it should not. */
   color-scheme: light;
 }
 
@@ -32,23 +27,33 @@
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    sans-serif;
-  color: var(--ink);
-  background: var(--page);
-  line-height: 1.5;
+  font: var(--typeBody);
+  letter-spacing: var(--typeBodyTracking);
+  color: var(--colorInk);
+  background: var(--colorPage);
 }
 
 h1 {
-  font-size: 1.625rem;
-  margin: 0 0 0.5rem;
+  font: var(--typeTitlePage);
+  letter-spacing: var(--typeTitlePageTracking);
+  margin: 0 0 var(--spaceSm);
+  text-wrap: balance;
+}
+
+h2 {
+  font: var(--typeTitleSection);
+  margin: 0 0 var(--spaceSm);
 }
 
 .muted {
-  color: var(--ink-soft);
+  color: var(--colorInkSecondary);
+}
+
+/* Columns of money, counts and times are read downwards, and proportional
+   figures make that harder than it needs to be. Monospace is reserved for step
+   numbers and shortcuts, so the answer is tabular figures in the body face. */
+.num {
+  font-variant-numeric: tabular-nums;
 }
 
 .visually-hidden {
@@ -68,16 +73,17 @@ h1 {
 }
 
 .skip-link:focus {
-  left: var(--gap);
-  top: var(--gap);
+  left: var(--space3xl);
+  top: var(--space3xl);
   z-index: 10;
-  padding: 0.5rem 0.75rem;
-  background: var(--surface);
-  border-radius: var(--radius);
+  padding: var(--spaceSm) var(--spaceLg);
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusNav);
 }
 
 :focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--colorAccent);
   outline-offset: 2px;
 }
 
@@ -85,70 +91,81 @@ h1 {
 
 .shell {
   display: grid;
-  grid-template-columns: var(--sidebar) 1fr;
+  grid-template-columns: var(--sizeRail) 1fr;
   min-height: 100vh;
 }
 
 .shell-sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--gap);
-  padding: var(--gap);
-  background: var(--surface);
-  border-right: 1px solid var(--line);
+  gap: var(--space3xl);
+  padding: var(--spaceXxl) var(--spaceLg);
+  background: var(--colorCard);
+  border-right: var(--borderCard);
 }
 
 .shell-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: var(--spaceHair);
 }
 
+/* 44px on the desktop too: a laptop has a touchscreen, and a nav item is the
+   most-pressed thing on the page. */
 .shell-nav a {
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius);
-  color: var(--ink);
+  display: flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border: 1px solid transparent;
+  border-radius: var(--radiusNav);
+  color: var(--colorInk);
   text-decoration: none;
 }
 
 .shell-nav a:hover {
-  background: var(--page);
+  background: var(--colorInset);
 }
 
+/* Selected is a tint with green ink, not a solid green fill: the fill is for
+   the one primary action on a screen, and a sidebar has no primary action. */
 .shell-nav a.active {
-  background: var(--brand);
-  color: var(--brand-ink);
+  background: var(--colorAccentTint);
+  border-color: var(--colorAccentTintBorder);
+  color: var(--colorAccentText);
+  font-weight: 600;
 }
 
 .shell-account {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--spaceXxs);
   margin-top: auto;
-  font-size: 0.875rem;
+  font: var(--typeSmall);
 }
 
 /* The width is used rather than reserved: a 1200px content column on a 2560px
    monitor is the layout this product exists to avoid. */
 .shell-content {
-  padding: var(--gap) calc(var(--gap) * 1.5);
+  padding: var(--space4xl) var(--space5xl);
   max-width: 100rem;
 }
 
 .brand {
-  font-weight: 700;
+  font: var(--typeTitleSection);
   letter-spacing: -0.01em;
 }
 
 .org-switcher select,
 .language-picker select {
   width: 100%;
-  padding: 0.375rem 0.5rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border: var(--borderControl);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
   color: inherit;
-  font: inherit;
+  font: var(--typeBody);
 }
 
 /* ── Public and guest ─────────────────────────────────────────────────────── */
@@ -157,89 +174,118 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--gap);
-  padding: var(--gap);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  gap: var(--space3xl);
+  padding: var(--spaceXl) var(--space5xl);
+  border-bottom: var(--borderHeader);
+  background: var(--colorHeader);
 }
 
 .public-main,
 .guest-main {
-  padding: calc(var(--gap) * 2) var(--gap);
+  padding: var(--space6xl) var(--spaceXl);
   max-width: 44rem;
   margin: 0 auto;
 }
 
-.public-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: var(--gap);
+/* A guest reads this once, on a phone, possibly with older eyes. It gets its
+   own larger body size. */
+.guest-main {
+  font: var(--typeBodyGuest);
 }
 
+.public-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceLg);
+  margin-top: var(--space3xl);
+}
+
+/* Buttons are pills, in three levels, and never below 44px. */
 .button {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+  border: var(--borderControl);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeButton);
   text-decoration: none;
   cursor: pointer;
 }
 
+.button:hover {
+  background: var(--colorInset);
+}
+
 .button-primary {
-  background: var(--brand);
-  border-color: var(--brand);
-  color: var(--brand-ink);
+  background: var(--colorAccent);
+  border-color: var(--colorAccent);
+  color: var(--colorInkOnDark);
+}
+
+.button-primary:hover {
+  background: var(--colorAccentHover);
+  border-color: var(--colorAccentHover);
 }
 
 /* ── Panels, tables, states ───────────────────────────────────────────────── */
 
 .panel {
-  padding: var(--gap);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  padding: var(--space3xl);
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  box-shadow: var(--shadowCard);
 }
 
 .panel-error {
-  border-color: var(--danger);
-  background: var(--danger-bg);
+  border-color: var(--colorBroken);
+  background: var(--colorBrokenTint);
 }
 
 .panel-error h1,
 .panel-error h2 {
-  color: var(--danger);
+  color: var(--colorBrokenText);
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: var(--gap);
-  background: var(--surface);
+  margin-top: var(--space3xl);
+  background: var(--colorCard);
+}
+
+.table th {
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+  color: var(--colorInkSecondary);
+  background: var(--colorInset);
 }
 
 .table th,
 .table td {
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--line);
+  padding: var(--spaceLg) var(--spaceXl);
+  border-bottom: var(--borderDivider);
   text-align: left;
 }
 
 .pending {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: var(--gap) 0;
-  color: var(--ink-soft);
+  gap: var(--spaceSm);
+  padding: var(--space3xl) 0;
+  color: var(--colorInkSecondary);
 }
 
 .pending-spinner {
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 2px solid var(--line);
-  border-top-color: var(--brand);
+  width: var(--spaceXl);
+  height: var(--spaceXl);
+  border: 2px solid var(--colorBorder);
+  border-top-color: var(--colorAccent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -258,7 +304,13 @@ h1 {
   }
 }
 
-/* ── Narrower than a tablet ───────────────────────────────────────────────── */
+/* ── Narrower than a tablet ───────────────────────────────────────────────────
+ *
+ * Only the surfaces that exist at this width: billing, account and
+ * organisation settings, the guest pages and the public pages. Event
+ * management is not responsive down to a phone — it is in the app, and a
+ * narrow browser reaching for it gets the handoff rather than a cramped table.
+ */
 
 @media (max-width: 60rem) {
   .shell {
@@ -267,7 +319,7 @@ h1 {
 
   .shell-sidebar {
     border-right: 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: var(--borderCard);
   }
 
   .shell-nav {
@@ -280,6 +332,10 @@ h1 {
   }
 
   .shell-content {
-    padding: var(--gap);
+    padding: var(--spaceXl);
+  }
+
+  .public-header {
+    padding: var(--spaceXl);
   }
 }

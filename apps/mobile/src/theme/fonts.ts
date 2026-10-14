@@ -22,6 +22,8 @@ import type { TextStyle } from 'react-native';
 export const WEIGHTS = {
   regular: '400',
   medium: '500',
+  /** The design's workhorse emphasis: row titles, labels, pills, buttons. */
+  semibold: '600',
   bold: '700',
 } as const satisfies Record<string, TextStyle['fontWeight']>;
 
@@ -34,6 +36,12 @@ export function weight(name: WeightName): Pick<TextStyle, 'fontWeight'> {
 
 /**
  * Custom faces, when there are any: one entry per weight, keyed so a mapper
- * can resolve fontWeight to a file. Empty until the design names a face.
+ * can resolve fontWeight to a file.
+ *
+ * The design names Instrument Sans (400/500/600/700) for everything a person
+ * reads, and JetBrains Mono (500/700) for step numbers and keyboard shortcuts
+ * only. No file is bundled yet — these resolve to the platform font until the
+ * faces are added — but the weights above are the set to ship, so a style
+ * asking for 600 is asking for something that will exist.
  */
 export const FONT_FACES: Record<string, never> = {};
