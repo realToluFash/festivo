@@ -54,7 +54,7 @@ in a different module from the thing that read it.
 
 ## The division
 
-Sixteen scopes. Each owns its facts.
+Seventeen scopes. Each owns its facts.
 
 ### Ground
 
@@ -111,6 +111,14 @@ by a clock; an announcement is one triggered by a person; the in-app feed is a c
 Absorbs `notifications`, `feed`, `announcements`, `messagetemplates`, `push` and
 `reminders`. Channel-selection rules live here once.
 
+**Budget & costs** — what the organiser spends on their event, and what they owe each
+vendor. Added after the original sixteen; see epic 81. It earns its place only because a
+cost here is a rate the organiser knows multiplied by a quantity **we already know** —
+acceptances, menu choices, tables, scheduled hours — so the governing rule is that it
+never asks for a number the product can answer. Introduces vendors, which nothing else
+owns. Not to be confused with the scope below it: one is their money, the other is ours,
+and the two must never share an error type or a component.
+
 **Plans & billing** — tiers, limits, metering, credits. Absorbs `aiprices`. There is one
 meter; anything that costs money reports to it. The previous build billed AI requests
 twice because a second meter was written by somebody who searched for "credit" and found
@@ -127,12 +135,14 @@ the features that use it so the cost and the prompt surface have an owner.
 
 ## What this buys
 
-Twenty-eight modules become sixteen scopes. The cuts are not cosmetic:
+Twenty-eight modules become sixteen scopes, with Budget & costs added since as a
+seventeenth. The cuts are not cosmetic:
 
 - No `sectionsync`, because nothing is stored twice.
 - One place that decides how a message reaches somebody, so the rule cannot be written
   twice and disagree with itself.
-- One meter, so nothing is billed twice.
+- One meter, so nothing is billed twice — and Budget & costs reports to none of it,
+  because money spent outside the product is not revenue.
 - Plus-ones and staffing modelled correctly on the first migration rather than corrected
   by one later.
 
@@ -141,13 +151,14 @@ Twenty-eight modules become sixteen scopes. The cuts are not cosmetic:
 The product has two interfaces and they are not the same product at different sizes. The
 work splits by where it actually happens.
 
-|                                           | Primary                                                             | Companion                         |
-| ----------------------------------------- | ------------------------------------------------------------------- | --------------------------------- |
-| Accounts, organisations, billing          | **web**                                                             | mobile sign-in                    |
-| Guests, seating, menu, schedule, staffing | **web** — desktop work, spreadsheet-adjacent                        | mobile for review and quick edits |
-| Service floor, arrivals, run of show      | **mobile and tablet** — a server carrying plates is not at a laptop | a web pass view                   |
-| Guest invitations and RSVP                | **web** — guests will never install an app                          | —                                 |
-| Marketing                                 | **web**                                                             | —                                 |
+|                                           | Primary                                                             | Companion                                    |
+| ----------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------- |
+| Accounts, organisations, billing          | **web**                                                             | mobile sign-in                               |
+| Guests, seating, menu, schedule, staffing | **web** — desktop work, spreadsheet-adjacent                        | mobile for review and quick edits            |
+| Service floor, arrivals, run of show      | **mobile and tablet** — a server carrying plates is not at a laptop | a web pass view                              |
+| Guest invitations and RSVP                | **web** — guests will never install an app                          | —                                            |
+| Budget, vendors, payments                 | **web** — desk work, and the only place billing already lives       | app for the total and marking a payment paid |
+| Marketing                                 | **web**                                                             | —                                            |
 
 So it is not "web primary, mobile secondary". It is **planning on the web, the night on
 mobile**, and each epic should say which it is.
@@ -159,10 +170,10 @@ implemented twice will diverge; a button implemented twice will not.
 
 ## The design context
 
-Every scope's screens are built from one vocabulary rather than sixteen. The tokens, the
+Every scope's screens are built from one vocabulary rather than seventeen. The tokens, the
 type scale, the components and the layout patterns live in `docs/design/`, and each surface
 carries a gallery page rendering all of them — which is the only thing that keeps the
-design and the code from drifting apart across sixteen scopes.
+design and the code from drifting apart across seventeen scopes.
 
 `docs/design/claude-design-brief.md` is the brief that produced it, kept beside it so a
 revision to either is a diff rather than an argument from memory.
