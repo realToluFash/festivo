@@ -60,6 +60,12 @@ State a non-obvious dependency in the message so nobody reorders it later:
 
 ## Step 3: Each commit must pass its own tests
 
+**This is load-bearing, because nothing is squashed.** The repository allows merge commits
+only — squash and rebase are both off — so every commit you write reaches `main` with its
+message and its SHA intact, and `git bisect` will check out the middle of your series. A
+commit that fails for unrelated reasons makes the whole history unusable for finding
+anything.
+
 Not just the tip. Someone checking out the third of five commits must get a green tree,
 and a bisect must not hit a commit failing for unrelated reasons.
 
@@ -194,6 +200,10 @@ npx lefthook run pre-commit
 - Never commit unrelated local edits that happen to be dirty. Check `git status` and stage
   explicitly by path — **never `git add -A` or `git add .`**.
 - Committing is not pushing. Do not push, force-push or open a PR unless asked.
+- **Never merge a pull request unless told to**, and an instruction to merge covers only
+  the pull requests open at that moment, not the next one. When merging is asked for, let
+  GitHub supply the merge commit's subject rather than passing `--subject`: it appends the
+  pull request number, which every merge on `main` carries.
 - When rewriting pushed history use `--force-with-lease`, never `--force`.
 - If the work genuinely is one outcome, one commit is correct. Do not manufacture a split
   to look thorough.
