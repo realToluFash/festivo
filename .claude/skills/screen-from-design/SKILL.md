@@ -1,6 +1,6 @@
 ---
 name: screen-from-design
-description: How a screen is built from the Soirely design in Claude Design — reading the design rather than guessing it, the four layouts and which codebase owns each, tokens as one source, and the numbers you take responsibility for by rendering them. Use when building or changing any screen or component in apps/web or apps/mobile.
+description: How a screen is built from the Soirely design in Claude Design — reading the design rather than guessing it, the four layouts and which codebase owns each, tokens as one source, the numbers you take responsibility for by rendering them, and how to surface what the spec never asked for instead of silently building or silently dropping it. Use when building or changing any screen or component in apps/web or apps/mobile.
 ---
 
 # A screen from the design
@@ -219,8 +219,66 @@ It will not, at the edges. The inventory was drawn from the planned areas of wor
   deviation.
 - If you can see a better interaction than the one drawn, propose it rather than building
   the drawn one badly. It goes back to the designer for feasibility.
+- Something the product could _have_, that nobody asked for, is §10 rather than this
+  section. This section is about a gap in the design for work already scoped.
 
-## 10. Before you report done
+## 10. Things we could have, and did not ask for
+
+Building a screen is the moment you see what the spec does not mention: a state nobody
+designed, an action this list obviously wants, a field the API already returns that
+nothing shows, two screens answering one question differently.
+
+**Surface those. Do not build them, and do not quietly drop them.** Both silences cost
+something. Building it unasked spends somebody's review on scope they did not choose.
+Dropping it loses the one moment when it was cheap and obvious, because you were already
+in the file.
+
+### The bar
+
+Report it when it is one of these:
+
+- **Free value** — the data is already there and nothing shows it. The cheapest kind of
+  finding, and the most common.
+- **A state that can happen with nothing designed for it** — empty, too many, permission
+  refused, offline, a 90-character name, a figure that cannot be calculated yet.
+- **An action the surrounding work implies** — rows select and there is nothing to do with
+  a selection; a record can be created and not deleted.
+- **A disagreement** — this screen and another solve the same problem differently, and
+  whichever gets built first wins by accident.
+- **A rule the code cannot honour as written** — then name the rule and why, rather than
+  approximating it and moving on.
+
+**Do not report taste.** "I would have arranged this differently" is not a finding unless
+it changes what somebody can do.
+
+### How to report it
+
+A short section in the pull request, headed **Noticed while building**, one or two lines
+each:
+
+> **Guests · nothing uses a selection.** Rows select and no action takes the selection.
+> The API already accepts a list of ids for group assignment, so this is UI only, roughly
+> half a day. Nothing is blocked without it.
+
+Each one says what you noticed, roughly what it would cost, and **whether anything is
+blocked without it**. That last clause is what separates a note from a question.
+
+### Three things not to do with one
+
+- **Do not leave it as a `TODO` in the code.** A comment nobody is assigned to read is not
+  a report, and it will still be there in a year.
+- **Do not half-build it** behind a flag, a stub or a disabled control. A disabled control
+  with no explanation is worse than the thing being absent.
+- **Do not open the ticket yourself.** The point is that somebody decides whether it is
+  worth having. If it is, a story gets written then — see **create-ticket** — and it lands
+  in the epic that owns it rather than the one you happened to be in.
+
+If something is genuinely **blocking**, it does not belong here: stop and ask, per §9.
+
+And if you noticed nothing, **say that**. An empty list reads as "nothing to report"; a
+missing list is ambiguous.
+
+## 11. Before you report done
 
 - `tsc --noEmit` clean for the files touched; the screen's suites green; locale parity
   green.
@@ -229,3 +287,4 @@ It will not, at the edges. The inventory was drawn from the planned areas of wor
 - No hex, no untranslated literal, no fixture import left behind.
 - Commits scoped per **making-commits**; never `git add -A`.
 - Say which layouts you checked and how, and name anything still unverified.
+- **Noticed while building** is in the pull request, or explicitly empty.
