@@ -10,7 +10,8 @@ The conventions, and the reason for each. Adopted from the reference project at
 does not yet follow one, it says so.
 
 Adjacent skills own their ground: **symfony-api** for resources, errors and access checks,
-**writing-tests** for the suite, **code-structure** for where a class lives,
+**writing-tests** for the suite, **writing-migrations** for the schema,
+**code-structure** for where a class lives,
 **code-comments** for what may be written in a comment, **locale-parity** for strings,
 **name-things** for naming, **making-commits** for landing it.
 
@@ -170,20 +171,6 @@ and a database is a rule nobody will write the fifth case for.
 
 ## Migrations
 
-These are the reference project's rules and they are hard-won:
-
-- **A data backfill belongs in the migration that needs it**, never in a one-off command
-  somebody runs by hand at deploy time.
-- **Write a backfill as raw SQL through `addSql`**, never through an entity or a
-  repository. The mapping describes the schema at HEAD, not the schema at this point in the
-  chain, so an entity-driven backfill breaks the moment a later migration changes a column.
-- **Order: backfill, then add the constraint.** Insert an explicit assert between them —
-  `RAISE EXCEPTION` if bad rows remain — only where the constraint's own error would not
-  identify them. `SET NOT NULL` on one column already names the table and the column, so it
-  needs no assert; one message covering two tables does.
-- **Read a generated migration before running it.** `doctrine:migrations:diff` cannot tell
-  a rename from a drop and a create, and emits the destructive pair. It also diffs against
-  whatever the database currently is, so a database behind on migrations produces a diff
-  that recreates tables that already exist.
-- What happens to rows that predate the change goes in the story's AC and the pull
-  request's Risks, per `docs/architecture/database.md` — not in a comment.
+**See the `writing-migrations` skill.** It owns the nowdoc rule that makes a column list
+readable, where a backfill belongs, the order of a backfill against a constraint, why a
+generated migration is read before it is run, and what `down()` owes the person who runs it.
