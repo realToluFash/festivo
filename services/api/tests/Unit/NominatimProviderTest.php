@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
-use App\Address\NominatimProvider;
-use App\Address\ProviderUnavailable;
+use App\Address\Exception\ProviderUnavailable;
+use App\Integrations\Nominatim\NominatimProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psl\Json;

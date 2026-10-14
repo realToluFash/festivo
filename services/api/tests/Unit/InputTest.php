@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
-use App\Http\ErrorCode;
+use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use PHPUnit\Framework\Attributes\Test;

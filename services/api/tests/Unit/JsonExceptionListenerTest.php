@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
-use App\EventListener\CorrelationIdListener;
-use App\EventListener\JsonExceptionListener;
-use App\Http\ErrorCode;
+use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Http\Listener\CorrelationIdListener;
+use App\Http\Listener\JsonExceptionListener;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;

@@ -9,13 +9,6 @@ use Psr\Log\LoggerInterface;
 use Redis;
 use Throwable;
 
-/**
- * Asks each dependency a question it can only answer by working.
- *
- * Configuration being present is not health. A DATABASE_URL that points at
- * nothing is still a DATABASE_URL, so each check here does a real round trip
- * and reports what came back.
- */
 final readonly class HealthChecker
 {
     public function __construct(
@@ -25,9 +18,7 @@ final readonly class HealthChecker
     ) {
     }
 
-    /**
-     * @return array{status: string, checks: array<string, array{status: string, error?: string}>}
-     */
+    /** @return array{status: string, checks: array<string, array{status: string, error?: string}>} */
     public function check(): array
     {
         $checks = [
@@ -47,9 +38,7 @@ final readonly class HealthChecker
         ];
     }
 
-    /**
-     * @return array{status: string, error?: string}
-     */
+    /** @return array{status: string, error?: string} */
     private function attempt(callable $probe): array
     {
         try {
@@ -57,10 +46,6 @@ final readonly class HealthChecker
 
             return ['status' => 'ok'];
         } catch (Throwable $e) {
-            // The message reaches the response, so it must say what is wrong
-            // without saying where anything lives. The full exception goes to
-            // the log, where credentials in a DSN are not being served to a
-            // caller who may be anybody.
             $this->logger->error('Health check failed', ['exception' => $e]);
 
             return [
@@ -74,7 +59,6 @@ final readonly class HealthChecker
     {
         $message = $e->getMessage();
 
-        // A DBAL connection failure quotes the whole DSN, password included.
         if (preg_match('#://[^@\s]+@#', $message)) {
             return 'connection refused';
         }

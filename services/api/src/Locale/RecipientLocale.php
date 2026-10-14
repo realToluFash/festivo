@@ -4,20 +4,6 @@ declare(strict_types=1);
 
 namespace App\Locale;
 
-/**
- * Which language something SENT to a person is written in.
- *
- * Deliberately separate from the request locale, because they answer different
- * questions and conflating them is the bug this class exists to prevent.
- *
- * An organiser working in English who invites a guest whose preference is
- * Portuguese must produce a Portuguese invitation. The request is in English;
- * the message is not. Resolving outbound language from the request would send
- * every guest the language of whoever happened to press the button.
- *
- * Order: the recipient's own stored preference, then the event's default, then
- * English.
- */
 final class RecipientLocale
 {
     /**

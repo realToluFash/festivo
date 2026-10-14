@@ -4,18 +4,13 @@ declare(strict_types=1);
 
 namespace App\Storage;
 
+use App\Enum\UploadPurpose;
+use App\Storage\Model\SignedUpload;
 use AsyncAws\S3\S3Client;
 use DateTimeImmutable;
 use InvalidArgumentException;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Signed URLs, so bytes never pass through the API.
- *
- * A fifteen-megabyte guest list uploaded through PHP occupies a worker for the
- * duration of somebody's hotel wifi. The client uploads straight to the store;
- * the API only ever says where, and for how long.
- */
 final readonly class ObjectStore
 {
     public function __construct(
@@ -28,12 +23,6 @@ final readonly class ObjectStore
     ) {
     }
 
-    /**
-     * Where to PUT a file, and what it will be called.
-     *
-     * The key is generated here, never taken from the client. A client-supplied
-     * key is a path traversal and an overwrite of somebody else's object.
-     */
     public function signUpload(UploadPurpose $purpose, string $contentType, string $filename): SignedUpload
     {
         if (!$purpose->allows($contentType)) {
@@ -66,13 +55,6 @@ final readonly class ObjectStore
         );
     }
 
-    /**
-     * A readable URL.
-     *
-     * Public objects are served directly and need no signature. Private ones
-     * get a short-lived signed URL — short, because a URL that is valid for a
-     * week is a credential that leaks into browser history and chat logs.
-     */
     public function urlFor(string $bucket, string $key): string
     {
         if ($bucket === $this->publicBucket) {
@@ -97,12 +79,6 @@ final readonly class ObjectStore
         return $this->s3->objectExists(['Bucket' => $bucket, 'Key' => $key])->isSuccess();
     }
 
-    /**
-     * A key the client cannot choose.
-     *
-     * Dated so an object's age is visible without a database, and prefixed by
-     * purpose so a misplaced lifecycle rule cannot reach the wrong kind.
-     */
     private function key(UploadPurpose $purpose, string $filename): string
     {
         $extension = strtolower(pathinfo($filename, \PATHINFO_EXTENSION));
@@ -117,14 +93,6 @@ final readonly class ObjectStore
         );
     }
 
-    /**
-     * Rewrite the signed URL's host for a browser.
-     *
-     * The API signs against the in-network endpoint and the browser uploads
-     * from the host, and locally those are different addresses. The signature
-     * covers the path and query, not the host, so swapping it is safe — and
-     * without it every signed URL points at a hostname no browser can resolve.
-     */
     private function forBrowser(string $url): string
     {
         $internal = parse_url($this->s3->getConfiguration()->get('endpoint') ?: '', \PHP_URL_HOST);

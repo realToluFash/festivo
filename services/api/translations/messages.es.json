@@ -1,0 +1,6 @@
+{
+    "actor.agent": "Agente de soporte",
+    "actor.api_client": "Cliente de la API",
+    "actor.system": "Sistema",
+    "actor.user": "Titular de la cuenta"
+}

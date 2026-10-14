@@ -4,21 +4,13 @@ declare(strict_types=1);
 
 namespace App\Doctrine;
 
+use App\Doctrine\Traits\SoftDeletable;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Query\Filter\SQLFilter;
 
-/**
- * Deleted rows are absent by default, everywhere.
- *
- * Excluding them at each query is a rule every read has to remember, and the
- * one that forgets leaks a deleted guest into a list — which reads as the
- * deletion not having worked. A default that has to be opted OUT of is the only
- * version of this that holds.
- *
- * Disabling it is deliberate and visible:
- *
- *     $em->getFilters()->disable('soft_delete');
- */
+// Registered enabled, so deleted rows are absent from every read without
+// anybody asking. Seeing them means disabling it deliberately:
+// $em->getFilters()->disable('soft_delete'). See docs/architecture/database.md.
 final class SoftDeleteFilter extends SQLFilter
 {
     public function addFilterConstraint(ClassMetadata $targetEntity, string $targetTableAlias): string

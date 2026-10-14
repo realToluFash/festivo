@@ -4,22 +4,14 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use App\Doctrine\SoftDeletable;
+use App\Doctrine\Traits\SoftDeletable;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Proof that entity → migration → database works, and nothing more.
- *
- * It exists so the path is exercised by a real round trip rather than assumed,
- * and so the conventions in docs/architecture/database.md have something that
- * demonstrates them. It carries no meaning and the first real entity should
- * replace it — see the note in that document.
- */
 #[ORM\Entity]
-#[ORM\Table(name: 'schema_probe')]
+#[ORM\Table(name: 'schema_probes')]
 class SchemaProbe
 {
     use SoftDeletable;
