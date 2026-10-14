@@ -90,6 +90,30 @@ apply gets `None.` rather than being deleted — an explicit "None" says you con
 
 Every PR is expected to carry tests.
 
+### Merged as a merge commit, never squashed
+
+The repository allows **merge commits only** — squash and rebase are both turned off.
+
+The commits in a pull request are the unit of review, and squashing discarded them at the
+moment they became useful. A reviewer reading `main` after a squash gets one commit with
+one message for work that was deliberately split into several outcomes, and `git bisect`
+can only ever land on a whole pull request.
+
+What follows from that, and it is not optional:
+
+- **Every commit must pass its own tests**, not just the tip. A bisect will check out the
+  third of five commits, and a commit that fails for unrelated reasons makes the whole
+  history unusable for finding anything. `making-commits` step 3 covers how to verify it.
+- **A commit carries the tests for its own outcome.** No final "add tests" commit — that
+  leaves every commit before it unverified.
+- **Order by dependency.** A commit must make sense given only the commits before it.
+- The merge commit itself takes the pull request's title and an empty body, so
+  `git log --first-parent` reads as one line per outcome landed, and the full log still has
+  every commit underneath it.
+
+Rebase is off as well as squash: it replays the commits with new SHAs and loses which pull
+request they arrived in.
+
 ## Hooks
 
 The pre-commit hook formats and lints **staged files only**, so it stays fast. If it
