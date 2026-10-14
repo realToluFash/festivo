@@ -12,7 +12,5 @@ return [
     ApiPlatform\Symfony\Bundle\ApiPlatformBundle::class => ['all' => true],
     Symfony\Bundle\MercureBundle\MercureBundle::class => ['all' => true],
     AsyncAws\Symfony\Bundle\AsyncAwsBundle::class => ['all' => true],
-    Symfony\Bundle\SecurityBundle\SecurityBundle::class => ['all' => true],
-    Lexik\Bundle\JWTAuthenticationBundle\LexikJWTAuthenticationBundle::class => ['all' => true],
     Elao\Enum\Bridge\Symfony\Bundle\ElaoEnumBundle::class => ['all' => true],
 ];
