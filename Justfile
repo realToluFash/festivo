@@ -69,6 +69,17 @@ psql:
 migrate-database-dev:
     {{CONSOLE}} doctrine:migrations:migrate --no-interaction --allow-no-migration
 
+# An unreleased migration edited in place leaves this database stale, and
+# silently: Doctrine records which version ran, not what it contained, so
+# migrate-database-dev reports nothing to do while the schema is wrong. This is
+# the way out, and it is destructive — the development database is dropped.
+#
+# Drop, recreate and migrate the development database.
+reset-database-dev:
+    {{CONSOLE}} doctrine:database:drop --if-exists --force
+    {{CONSOLE}} doctrine:database:create
+    {{CONSOLE}} doctrine:migrations:migrate --no-interaction --allow-no-migration
+
 # Dropping is the point. Migrating an existing test database leaves behind
 # anything a since-deleted migration created, and the suite then passes against
 # a schema no fresh environment will ever have.
