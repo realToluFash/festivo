@@ -182,7 +182,8 @@ night.
 
 ## 5. How we see each part working
 
-Fifteen areas of work. For each one: **everything somebody can do there** — so
+Fifteen areas of work here, and the support console in section 6 makes
+sixteen. For each one: **everything somebody can do there** — so
 the design is not built for a smaller product than we intend or a larger one —
 plus where it mostly happens and what makes it hard.
 
@@ -499,6 +500,83 @@ skipped_ the most important part of it. Sending to four hundred people is also
 irreversible and costs money, so the last step before it goes carries real
 weight.
 
+### Budget and costs
+
+**Not to be confused with the section below it.** This is the organiser's own
+money, spent on their event — caterers, flowers, staff. What they pay _us_ is
+Plans and billing.
+
+The point of this is not a place to keep a budget; a spreadsheet already does
+that, and theirs has formulas in it. The point is **cost that moves when the
+event moves.** A spreadsheet holds a stale cell reading "150 guests". We know
+that 163 have accepted, 12 are held pending their hosts, 9 have not answered,
+that 23 of them chose the vegetarian main and 4 need an allergy-specific plate,
+and that the seating ended up needing eleven tables. So a cost is a rate the
+organiser knows multiplied by a quantity **we** already know, and it stays right
+without anybody maintaining it.
+
+That gives the governing rule for this area: **never ask for a number the
+product already knows.** If any line needs a headcount typed into it, this
+feature is dead by the third week — which is how most budget features die.
+
+**What somebody does here**
+
+- Sets up cost lines, each on a **basis** rather than a flat amount: per head,
+  per table, per staff hour, per day, or genuinely fixed. They supply the rate;
+  we supply the quantity
+- Watches quantities look after themselves as the event changes — replies
+  landing, a menu choice made, a table added, a shift assigned, a message sent
+- Sees the total as a **range rather than a figure**: what is confirmed, and what
+  it becomes if everybody still deciding says yes
+- Sees **cost per head** as the headline number, live, because that is how
+  organisers and their clients already talk
+- Sees **what a decision costs before making it** — adding twenty guests,
+  switching a main course, extending a shift by an hour, adding a table
+- Records a **vendor** against a line: the caterer, the florist, the DJ, the
+  venue, the photographer — with their quote and what it covers
+- Builds a **payment schedule** per vendor: a deposit, instalments, a balance,
+  each with a date it falls due
+- Marks a payment **paid**, which is how actual spend gets recorded — there is no
+  separate expense to enter
+- Is **reminded before a payment is due**, not after
+- Splits the budget by **who is paying** — the couple, both sets of parents, a
+  contribution — so each person can see their own share
+- Sets a ceiling, and is warned on the way towards it rather than past it
+- Afterwards: sees **planned against actual** per line, and what the cost per
+  head actually turned out to be
+- Starts the next event of the same kind from figures **calibrated by the last
+  one**
+- Shares or prints it for a conversation with somebody who is not in the product
+
+**Where** A computer to build and reconcile. The apps for the headline number and
+the payment reminders — somebody standing in a venue wants to know what the total
+is now, not to edit a rate. Never guest-facing.
+
+**What makes it hard**
+
+The failure mode is **double entry**, and it is fatal rather than annoying: the
+moment this asks for something the product could have worked out, it stops being
+maintained and every number in it becomes a lie. The payment schedule is the
+device that avoids it — **the schedule _is_ the record of actual spend**, so
+nobody enters a transaction, they tick off something they had already planned.
+
+Numbers also have to be honest about what they do not know. An event three weeks
+out has a real range and a fake certainty, and showing a single confident total is
+worse than showing both ends of it.
+
+**It is deliberately not accounting.** No ledger, no receipts, no bank
+connection, no invoicing, no tax, no currency conversion — one currency per
+event. Those are other products and we would lose to them.
+
+And the money conversation usually involves somebody who will never sign in — a
+client, a parent, a committee — so some of this has to be presentable to a person
+with no account and no interest in the rest of the product.
+
+_(One thing to know: **vendors do not exist in the product yet.** A quote and a
+payment schedule need them, so this area introduces them. We think that is worth
+it on its own merits, but it is the part of this we are least settled on — if you
+see a version of this that earns its keep without them, say so.)_
+
 ### Plans and billing
 
 **What somebody does here**
@@ -673,9 +751,6 @@ customer's own for as long as the record exists.
 Genuine gaps rather than hidden requirements. Do not design around them silently;
 if the design needs an answer, say so and we will decide.
 
-- **A budget.** The previous product had one — planned spend against actual, per
-  line. It is not currently one of the fifteen areas above. Insights mentions
-  money only where it is already known.
 - **Where two-way conversations live.** Guests reply to messages and staff ask
   questions; we are not yet certain whether that is one inbox, a thread per
   person, or part of each area.

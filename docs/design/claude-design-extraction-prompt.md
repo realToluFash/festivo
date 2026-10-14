@@ -100,7 +100,7 @@ developer who disagrees with it**, and then by the second, differently.
 
 ### 7. Coverage
 
-What you have designed, and what you have not, against the fifteen areas of work
+What you have designed, and what you have not, against the sixteen areas of work
 in the brief. I need to know which areas have screens, which have only
 components, and which have nothing — so I can plan around the gaps rather than
 discover them. Do not fill a gap to make the list look complete; name it.
