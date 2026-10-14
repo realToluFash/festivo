@@ -98,6 +98,7 @@
         }
     },
     "require-dev": {
+        "carthage-software/mago": "^1.57",
         "dama/doctrine-test-bundle": "^8.7",
         "doctrine/doctrine-fixtures-bundle": "^4.3",
         "phpunit/phpunit": "^11",

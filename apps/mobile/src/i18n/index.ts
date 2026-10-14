@@ -12,6 +12,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEFAULT_LOCALE, LOCALE_CODES, narrowLocale } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
+// i18next's default export IS the instance, and `.use().init()` is the shape
+// its own documentation uses. The import plugin cannot tell that apart from a
+// named export reached by mistake.
+/* eslint-disable import/no-named-as-default-member */
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
 // Plural rules for the runtime, which Hermes does not ship with a full ICU.

@@ -5,15 +5,15 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Enum\ErrorCode;
+use App\Tests\ApiTestCase;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
  * What adopting API Platform is supposed to buy us, asserted rather than
  * assumed — these are the reasons the framework was chosen, so they are the
  * things worth failing a build over.
  */
-final class ApiPlatformContractTest extends WebTestCase
+final class ApiPlatformContractTest extends ApiTestCase
 {
     /**
      * The OpenAPI document is how both clients learn the shape of the API.
@@ -23,11 +23,10 @@ final class ApiPlatformContractTest extends WebTestCase
     #[Test]
     public function itServesAnOpenapiDocument(): void
     {
-        $client = static::createClient();
-        $client->request('GET', '/api/docs.json');
+        $this->client->request('GET', '/api/docs.json');
 
         self::assertResponseIsSuccessful();
-        $doc = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $doc = \json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
         self::assertArrayHasKey('openapi', $doc);
         self::assertStringStartsWith('3.', $doc['openapi']);
@@ -43,23 +42,22 @@ final class ApiPlatformContractTest extends WebTestCase
     #[Test]
     public function errorsAreRfc7807ProblemDocuments(): void
     {
-        $client = static::createClient();
-        $client->catchExceptions(true);
-        $client->request('GET', '/api/no-such-route');
+        $this->client->catchExceptions(true);
+        $this->client->request('GET', '/api/no-such-route');
 
         self::assertResponseStatusCodeSame(404);
         self::assertStringContainsString(
             'application/problem+json',
-            (string) $client->getResponse()->headers->get('Content-Type'),
+            (string) $this->client->getResponse()->headers->get('Content-Type'),
         );
 
-        $problem = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $problem = \json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
         // The three RFC 7807 members we always send.
         self::assertArrayHasKey('type', $problem);
         self::assertArrayHasKey('title', $problem);
         self::assertArrayHasKey('status', $problem);
-        self::assertSame($problem['status'], $client->getResponse()->getStatusCode());
+        self::assertSame($problem['status'], $this->client->getResponse()->getStatusCode());
     }
 
     /**
@@ -70,11 +68,10 @@ final class ApiPlatformContractTest extends WebTestCase
     #[Test]
     public function aProblemTypeResolvesBackToAKnownErrorCode(): void
     {
-        $client = static::createClient();
-        $client->catchExceptions(true);
-        $client->request('GET', '/api/no-such-route');
+        $this->client->catchExceptions(true);
+        $this->client->request('GET', '/api/no-such-route');
 
-        $problem = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $problem = \json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
         self::assertSame(ErrorCode::NotFound, ErrorCode::fromType($problem['type']));
     }
@@ -87,11 +84,10 @@ final class ApiPlatformContractTest extends WebTestCase
     #[Test]
     public function theTitleIsASentenceNotATranslationKey(): void
     {
-        $client = static::createClient();
-        $client->catchExceptions(true);
-        $client->request('GET', '/api/no-such-route');
+        $this->client->catchExceptions(true);
+        $this->client->request('GET', '/api/no-such-route');
 
-        $problem = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $problem = \json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
         self::assertStringNotContainsString('errors.', $problem['title']);
         self::assertNotSame(ErrorCode::NotFound->value, $problem['title']);
@@ -106,9 +102,8 @@ final class ApiPlatformContractTest extends WebTestCase
     #[Test]
     public function theEntrypointDoesNotNegotiateFormatsWeDidNotChoose(): void
     {
-        $client = static::createClient();
-        $client->catchExceptions(true);
-        $client->request('GET', '/api', server: ['HTTP_ACCEPT' => 'application/ld+json']);
+        $this->client->catchExceptions(true);
+        $this->client->request('GET', '/api', server: ['HTTP_ACCEPT' => 'application/ld+json']);
 
         self::assertResponseStatusCodeSame(400);
     }

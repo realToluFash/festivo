@@ -43,7 +43,7 @@ final class AddressController
 
         return new JsonResponse([
             'success' => true,
-            'data' => array_map(static fn ($s) => $s->toArray(), $suggestions),
+            'data' => \array_map(static fn ($s) => $s->toArray(), $suggestions),
         ]);
     }
 

@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Tests\ApiTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
-final class RequestLocaleTest extends WebTestCase
+final class RequestLocaleTest extends ApiTestCase
 {
     #[Test]
     #[DataProvider('headers')]
     public function itAnswersAnErrorInTheNegotiatedLanguage(string $header, string $contains): void
     {
-        $client = static::createClient();
-        $client->catchExceptions(true);
-        $client->request('GET', '/api/no-such-route', server: ['HTTP_ACCEPT_LANGUAGE' => $header]);
+        $this->client->catchExceptions(true);
+        $this->client->request('GET', '/api/no-such-route', server: ['HTTP_ACCEPT_LANGUAGE' => $header]);
 
-        $problem = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $problem = \json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
         self::assertStringContainsString($contains, $problem['title']);
     }
@@ -35,6 +34,9 @@ final class RequestLocaleTest extends WebTestCase
         // German is not supported; the next acceptable one wins.
         yield 'unsupported falls through' => ['de,fr;q=0.8', 'Nous n\'avons pas trouvé'];
         yield 'unsupported alone falls back' => ['de', 'could not find'];
+        // A quality that is not a number used to cast to 0.0, which ranked the
+        // language the client asked for below the one it offered as a fallback.
+        yield 'malformed quality keeps its tag' => ['fr;q=abc,es;q=0.1', 'Nous n\'avons pas trouvé'];
     }
 
     /**
@@ -44,11 +46,10 @@ final class RequestLocaleTest extends WebTestCase
     #[Test]
     public function anExplicitLocaleParameterOutranksTheHeader(): void
     {
-        $client = static::createClient();
-        $client->catchExceptions(true);
-        $client->request('GET', '/api/no-such-route?locale=es', server: ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
+        $this->client->catchExceptions(true);
+        $this->client->request('GET', '/api/no-such-route?locale=es', server: ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
 
-        $problem = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $problem = \json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         self::assertStringContainsString('No hemos encontrado', $problem['title']);
     }
 
@@ -60,11 +61,10 @@ final class RequestLocaleTest extends WebTestCase
     #[Test]
     public function negotiationAppliesToErrorsThrownDuringRouting(): void
     {
-        $client = static::createClient();
-        $client->catchExceptions(true);
-        $client->request('GET', '/api/definitely-not-a-route', server: ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
+        $this->client->catchExceptions(true);
+        $this->client->request('GET', '/api/definitely-not-a-route', server: ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
 
-        $problem = json_decode((string) $client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $problem = \json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         self::assertStringNotContainsString('could not find', $problem['title']);
     }
 }

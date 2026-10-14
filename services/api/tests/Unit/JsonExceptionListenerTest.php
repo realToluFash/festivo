@@ -37,8 +37,8 @@ final class JsonExceptionListenerTest extends TestCase
         // detail is the specific instance of a problem, and on a 5xx there is
         // nothing safe to put there.
         self::assertArrayNotHasKey('detail', $body);
-        self::assertStringNotContainsString('hunter2', json_encode($body, \JSON_THROW_ON_ERROR));
-        self::assertStringNotContainsString('SQLSTATE', json_encode($body, \JSON_THROW_ON_ERROR));
+        self::assertStringNotContainsString('hunter2', \json_encode($body, \JSON_THROW_ON_ERROR));
+        self::assertStringNotContainsString('SQLSTATE', \json_encode($body, \JSON_THROW_ON_ERROR));
     }
 
     #[Test]
@@ -57,7 +57,7 @@ final class JsonExceptionListenerTest extends TestCase
         self::assertArrayNotHasKey('trace', $body);
         self::assertArrayNotHasKey('file', $body);
         self::assertArrayNotHasKey('line', $body);
-        self::assertSame(['type', 'title', 'status', 'correlationId'], array_keys($body));
+        self::assertSame(['type', 'title', 'status', 'correlationId'], \array_keys($body));
     }
 
     /** A 4xx describes what the caller did, so it may say so. */
@@ -107,7 +107,7 @@ final class JsonExceptionListenerTest extends TestCase
         $response = $event->getResponse();
         self::assertNotNull($response);
 
-        return json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        return \json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
     }
 
     private function event(Throwable $e, string $path = '/api/thing', string $correlationId = 'cid'): ExceptionEvent

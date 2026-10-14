@@ -128,7 +128,7 @@ final class InputTest extends TestCase
             ]),
         );
 
-        self::assertSame('london', $input['q']);
+        self::assertSame('london', $input['q'] ?? null);
         self::assertArrayNotHasKey('country', $input);
     }
 

@@ -127,8 +127,28 @@ that service. A green suite is not evidence that a move worked.
 
 ## Enforcing it
 
-`mago guard` turns this document into a check: named layers and rules per namespace, in
-`perimeter` mode. The reference uses it to keep its analytics module out of its
-transactional one. For us it is how `scopes.md`'s seventeen scopes stop being a convention —
-right now nothing prevents `Domain/Guest` reaching into `Domain/Budget`. Worth adopting with
-the rest of mago; until then this is enforced by reading.
+`mago guard` turns this document into a check. It is configured in `services/api/mago.toml`
+in `perimeter` mode — named layers, then one rule per namespace saying what that namespace
+may depend on — and it runs in CI and as `just guard`.
+
+This is what makes `scopes.md`'s seventeen scopes a rule rather than a convention: nothing
+else prevents `Domain/Guest` reaching into `Domain/Budget`, because that code works.
+
+Two things it found on its first run, neither of which the formatter, the suite or the
+container lint could see:
+
+- **Two imports in `src/Enum/ErrorCode.php` that nothing referenced.** `no_unused_imports`
+  had kept them because the short names matched the enum's own cases — `use ...AssistantRefused`
+  beside `case AssistantRefused`. Exactly the trap in step 5 above, surviving in the file
+  that documents it.
+- **Eight unqualified global function calls**, which PHP resolves against the current
+  namespace before the global one. `sprintf()` inside `App\Integrations\Nominatim` reads to
+  guard as a dependency on that namespace, and to PHP as a lookup on every call.
+  `native_function_invocation` in `.php-cs-fixer.dist.php` now prefixes them, which is the
+  reference's own convention.
+
+**An exception is a narrower rule, not a disabled one.** `App\AI\Factory\` may import from
+`App\Integrations\` because it is the composition point: which assistant runs is an
+environment variable, a service id cannot be one, so something has to name both adapters in
+PHP. The rule is scoped to that namespace alone, so nothing else under `App\AI\` inherits
+it.

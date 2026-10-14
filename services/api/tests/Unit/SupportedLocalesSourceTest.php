@@ -58,7 +58,7 @@ final class SupportedLocalesSourceTest extends TestCase
         self::assertIsArray($enabled, 'translation.yaml declares no enabled_locales');
 
         $sorted = $enabled;
-        sort($sorted);
+        \sort($sorted);
 
         self::assertSame($this->declared(), $sorted, 'enabled_locales has drifted from /locales.json');
     }
@@ -71,7 +71,7 @@ final class SupportedLocalesSourceTest extends TestCase
     public function everyDeclaredLocaleHasAtLeastOneCatalogue(): void
     {
         foreach ($this->declared() as $locale) {
-            $found = glob(\dirname(__DIR__, 2) . "/translations/*.{$locale}.json") ?: [];
+            $found = \glob(\dirname(__DIR__, 2) . "/translations/*.{$locale}.json") ?: [];
             self::assertNotEmpty($found, "No catalogue at all for declared locale '{$locale}'");
         }
     }
@@ -79,11 +79,11 @@ final class SupportedLocalesSourceTest extends TestCase
     /** @return list<string> */
     private function declared(): array
     {
-        $codes = array_map(
+        $codes = \array_map(
             static fn (array $l): string => $l['code'],
             $this->source()['supported'],
         );
-        sort($codes);
+        \sort($codes);
 
         return $codes;
     }
@@ -95,11 +95,11 @@ final class SupportedLocalesSourceTest extends TestCase
         // The file lives at the repository root, which is outside the
         // application's own tree — guessing at its depth is how this test
         // starts passing vacuously when something moves.
-        $path = $_SERVER['LOCALES_FILE'] ?? getenv('LOCALES_FILE') ?: null;
+        $path = $_SERVER['LOCALES_FILE'] ?? \getenv('LOCALES_FILE') ?: null;
 
         self::assertIsString($path, 'LOCALES_FILE is not set — see compose.yaml');
         self::assertFileExists($path, 'The locale declaration is missing');
 
-        return json_decode((string) file_get_contents($path), true, 512, \JSON_THROW_ON_ERROR);
+        return \json_decode((string) \file_get_contents($path), true, 512, \JSON_THROW_ON_ERROR);
     }
 }

@@ -19,7 +19,9 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Str;
 use Psl\Type;
+use Psl\Vec;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -134,7 +136,7 @@ final class AssistantController
 
         foreach (self::FORBIDDEN as $key) {
             if (\array_key_exists($key, $body)) {
-                throw new ApiException(ErrorCode::BadRequest, sprintf(
+                throw new ApiException(ErrorCode::BadRequest, \sprintf(
                     'The system prompt is resolved by the server and cannot be set by a client. Remove "%s" and send a "context" instead.',
                     $key,
                 ));
@@ -145,17 +147,17 @@ final class AssistantController
 
         $context = AssistantContext::tryFrom($body['context']);
         if (null === $context) {
-            throw new ApiException(ErrorCode::BadRequest, sprintf(
+            throw new ApiException(ErrorCode::BadRequest, \sprintf(
                 'Unknown assistant context "%s". Known contexts: %s.',
                 $body['context'],
-                implode(', ', array_column(AssistantContext::cases(), 'value')),
+                Str\join(Vec\map(AssistantContext::cases(), static fn (AssistantContext $c): string => $c->value), ', '),
             ));
         }
 
         return new Ask(
             context: $context,
-            conversation: array_map($this->turn(...), $body['messages']),
-            tools: array_map(
+            conversation: \array_map($this->turn(...), $body['messages']),
+            tools: \array_map(
                 static fn (array $t): ToolDefinition => new ToolDefinition(
                     name: $t['name'],
                     description: $t['description'] ?? '',
@@ -175,7 +177,7 @@ final class AssistantController
         $oversized = [];
 
         if (\count($body['messages']) > self::MAX_MESSAGES) {
-            $oversized['messages'] = sprintf(
+            $oversized['messages'] = \sprintf(
                 'A conversation may carry at most %d turns; this one has %d. Compact the history before sending it.',
                 self::MAX_MESSAGES,
                 \count($body['messages']),
@@ -183,7 +185,7 @@ final class AssistantController
         }
 
         if (\count($body['tools'] ?? []) > self::MAX_TOOLS) {
-            $oversized['tools'] = sprintf(
+            $oversized['tools'] = \sprintf(
                 'At most %d tools may be offered; this request offers %d.',
                 self::MAX_TOOLS,
                 \count($body['tools'] ?? []),
@@ -191,11 +193,11 @@ final class AssistantController
         }
 
         $resourceContext = $body['resourceContext'] ?? null;
-        if (null !== $resourceContext && mb_strlen($resourceContext) > self::MAX_RESOURCE_CONTEXT) {
-            $oversized['resourceContext'] = sprintf(
+        if (null !== $resourceContext && \mb_strlen($resourceContext) > self::MAX_RESOURCE_CONTEXT) {
+            $oversized['resourceContext'] = \sprintf(
                 'The resource context may be at most %d characters; this one is %d. Send what is on the screen, not the whole record.',
                 self::MAX_RESOURCE_CONTEXT,
-                mb_strlen($resourceContext),
+                \mb_strlen($resourceContext),
             );
         }
 
@@ -204,14 +206,14 @@ final class AssistantController
         }
 
         throw ApiException::validation(
-            array_map(
+            \array_map(
                 static fn (string $path, string $message): array => [
                     'propertyPath' => $path,
                     'message' => $message,
                     'code' => 'too_large',
                 ],
-                array_keys($oversized),
-                array_values($oversized),
+                \array_keys($oversized),
+                \array_values($oversized),
             ),
             'The request is larger than the assistant accepts.',
         );
@@ -235,7 +237,7 @@ final class AssistantController
                 Type\string()->coerce($message['callId'] ?? ''),
                 $message['result'] ?? null,
             ),
-            default => throw new ApiException(ErrorCode::BadRequest, sprintf(
+            default => throw new ApiException(ErrorCode::BadRequest, \sprintf(
                 'Unknown message role "%s". Known roles: user, assistant, tool_call, tool_result.',
                 $role,
             )),

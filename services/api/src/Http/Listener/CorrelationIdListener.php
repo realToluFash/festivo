@@ -40,7 +40,7 @@ final class CorrelationIdListener
         }
 
         $id = $event->getRequest()->attributes->get(self::ATTRIBUTE);
-        if (is_string($id)) {
+        if (\is_string($id)) {
             $event->getResponse()->headers->set(self::HEADER, $id);
         }
     }

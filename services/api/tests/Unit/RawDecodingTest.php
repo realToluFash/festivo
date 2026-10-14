@@ -34,12 +34,12 @@ final class RawDecodingTest extends TestCase
         $offenders = [];
 
         foreach ($this->sourceFiles() as $file) {
-            $contents = file_get_contents($file);
+            $contents = \file_get_contents($file);
             self::assertIsString($contents);
 
             foreach (self::FORBIDDEN as $function) {
-                if (str_contains($contents, $function . '(')) {
-                    $offenders[] = sprintf('%s calls %s()', $this->relative($file), $function);
+                if (\str_contains($contents, $function . '(')) {
+                    $offenders[] = \sprintf('%s calls %s()', $this->relative($file), $function);
                 }
             }
         }
@@ -49,7 +49,7 @@ final class RawDecodingTest extends TestCase
             $offenders,
             "Decode through Psl\\Json\\decode and encode through Psl\\Json\\encode — both throw.\n"
             . "A JsonResponse encodes for you and needs neither.\n"
-            . implode("\n", $offenders),
+            . \implode("\n", $offenders),
         );
     }
 
@@ -69,7 +69,7 @@ final class RawDecodingTest extends TestCase
             }
         }
 
-        sort($files);
+        \sort($files);
 
         return $files;
     }
@@ -81,6 +81,6 @@ final class RawDecodingTest extends TestCase
 
     private function relative(string $path): string
     {
-        return str_replace($this->src() . '/', '', $path);
+        return \str_replace($this->src() . '/', '', $path);
     }
 }

@@ -4,21 +4,20 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Tests\ApiTestCase;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
-final class HealthEndpointTest extends WebTestCase
+final class HealthEndpointTest extends ApiTestCase
 {
     #[Test]
     public function itAnswersInTheEnvelope(): void
     {
-        $client = static::createClient();
-        $client->request('GET', '/api/health');
+        $this->client->request('GET', '/api/health');
 
-        $response = $client->getResponse();
+        $response = $this->client->getResponse();
         self::assertSame('application/json', $response->headers->get('Content-Type'));
 
-        $body = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $body = \json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
         self::assertArrayHasKey('success', $body);
         self::assertArrayHasKey('data', $body);
@@ -35,18 +34,17 @@ final class HealthEndpointTest extends WebTestCase
     #[Test]
     public function anUnknownApiRouteAnswersInJsonNotHtml(): void
     {
-        $client = static::createClient();
-        $client->catchExceptions(true);
-        $client->request('GET', '/api/no-such-route');
+        $this->client->catchExceptions(true);
+        $this->client->request('GET', '/api/no-such-route');
 
-        $response = $client->getResponse();
+        $response = $this->client->getResponse();
         self::assertSame(404, $response->getStatusCode());
         self::assertStringContainsString(
             'application/problem+json',
             (string) $response->headers->get('Content-Type'),
         );
 
-        $body = json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        $body = \json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         self::assertSame('https://soirely.com/errors/not_found', $body['type']);
         self::assertSame(404, $body['status']);
         self::assertArrayHasKey('correlationId', $body);
@@ -55,10 +53,9 @@ final class HealthEndpointTest extends WebTestCase
     #[Test]
     public function everyResponseCarriesACorrelationId(): void
     {
-        $client = static::createClient();
-        $client->request('GET', '/api/health');
+        $this->client->request('GET', '/api/health');
 
-        $id = $client->getResponse()->headers->get('X-Correlation-Id');
+        $id = $this->client->getResponse()->headers->get('X-Correlation-Id');
         self::assertNotNull($id);
         self::assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', $id);
     }
@@ -66,11 +63,10 @@ final class HealthEndpointTest extends WebTestCase
     #[Test]
     public function itKeepsACorrelationIdTheCallerSupplied(): void
     {
-        $client = static::createClient();
         $supplied = '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f';
-        $client->request('GET', '/api/health', server: ['HTTP_X_CORRELATION_ID' => $supplied]);
+        $this->client->request('GET', '/api/health', server: ['HTTP_X_CORRELATION_ID' => $supplied]);
 
-        self::assertSame($supplied, $client->getResponse()->headers->get('X-Correlation-Id'));
+        self::assertSame($supplied, $this->client->getResponse()->headers->get('X-Correlation-Id'));
     }
 
     /**
@@ -80,11 +76,10 @@ final class HealthEndpointTest extends WebTestCase
     #[Test]
     public function itReplacesACorrelationIdThatIsNotAUuid(): void
     {
-        $client = static::createClient();
         $junk = "not-a-uuid\nFAKE LOG LINE";
-        $client->request('GET', '/api/health', server: ['HTTP_X_CORRELATION_ID' => $junk]);
+        $this->client->request('GET', '/api/health', server: ['HTTP_X_CORRELATION_ID' => $junk]);
 
-        $id = $client->getResponse()->headers->get('X-Correlation-Id');
+        $id = $this->client->getResponse()->headers->get('X-Correlation-Id');
         self::assertNotSame($junk, $id);
         self::assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', (string) $id);
     }

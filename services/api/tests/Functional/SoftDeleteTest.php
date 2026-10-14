@@ -5,21 +5,21 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\SchemaProbe;
+use App\Tests\FunctionalTestCase;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;
 
-final class SoftDeleteTest extends KernelTestCase
+final class SoftDeleteTest extends FunctionalTestCase
 {
     private EntityManagerInterface $em;
 
     protected function setUp(): void
     {
-        self::bootKernel();
-        $this->em = self::getContainer()->get(EntityManagerInterface::class);
+        parent::setUp();
+        $this->em = self::service(EntityManagerInterface::class);
     }
 
     /**
@@ -51,7 +51,7 @@ final class SoftDeleteTest extends KernelTestCase
         $this->em->flush();
         $this->em->clear();
 
-        $labels = array_map(
+        $labels = \array_map(
             static fn (SchemaProbe $p): string => $p->label(),
             $this->em->getRepository(SchemaProbe::class)->findAll(),
         );

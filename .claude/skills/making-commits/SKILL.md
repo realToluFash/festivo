@@ -128,13 +128,66 @@ that. Never present an unverified split as verified.
 
 ## Hooks
 
-If a pre-commit hook fails on problems your change did not introduce, do not silently
-bypass it and do not quietly fix unrelated files to get past it. Establish the failures
-are pre-existing — check the same file on `main` — then use `--no-verify` and **say so**,
-naming what the hook was failing on.
+`lefthook.yml` holds them. Read it rather than guessing — this is a summary of what it
+does, and it is the file that is authoritative.
+
+### Most of it fixes rather than complains
+
+Prettier, ESLint and php-cs-fixer all run with their fixer on and `stage_fixed: true`, and
+`mago fix --no-fmt` applies the mago fixes that are safe. **So do not format by hand before
+committing, and do not re-stage after the hook runs — it has already done both.**
+
+What this means in practice:
+
+- A formatting-only failure should not happen. If the hook reports one, something is wrong
+  with the tooling, not with the file.
+- **The files in the commit may differ from the files you staged.** That is the fixers
+  working. Read `git show` after committing rather than assuming your staged version is
+  what landed.
+- A fixer that rewrites a file you had open means your editor's copy is now stale.
+
+### What cannot be fixed automatically
+
+Four checks report and stop, because no tool can guess the intent:
+
+| Check              | What it catches                                    | Where the rules are           |
+| ------------------ | -------------------------------------------------- | ----------------------------- |
+| `mago lint`        | a convention, such as a native call where Psl goes | `writing-php`                 |
+| `mago analyze`     | a type, signature or reachability error            | —                             |
+| `mago guard`       | a namespace depending on one it may not            | `code-structure`, `scopes.md` |
+| `check-commit-msg` | a subject that is not a conventional commit        | Step 5 above                  |
+
+The three mago checks run **project-wide**, not on staged files, and that is deliberate: a
+type error and a boundary violation are properties of the project rather than of a file. A
+staged signature change whose caller is not staged is exactly the commit they catch.
+
+**The consequence to expect: unrelated work in progress elsewhere in the tree can fail your
+commit.** That is not a bug in the hook. Establish it is pre-existing and unrelated, then
+see below.
+
+`mago lint` has a baseline at `services/api/.build/mago/lint-baseline.toml` holding the
+issues that existed when it was adopted, so it fails on a new one and not on the backlog.
+**Never add to that file to get a commit through.** A new entry means a new issue.
+
+### Bypassing
+
+If the hook fails on problems your change did not introduce, do not silently bypass it and
+do not quietly fix unrelated files to get past it. Establish the failures are pre-existing —
+check the same file on `main` — then use `--no-verify` and **say so**, naming what the hook
+was failing on.
 
 Bypassing is also right mid-split: the hook stashes unstaged changes, which is dangerous
 when several commits' worth of work is still in the tree.
+
+### Running them without committing
+
+```bash
+just check              # everything CI runs
+just lint               # the fixers' checks, every language
+just static-analysis    # mago analyze
+just guard              # mago guard
+npx lefthook run pre-commit
+```
 
 ## Guidelines
 

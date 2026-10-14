@@ -26,7 +26,7 @@ final readonly class Input
     {
         $raw = $request->getContent();
 
-        if ('' === trim($raw)) {
+        if ('' === \trim($raw)) {
             throw new ApiException(ErrorCode::BadRequest, 'A JSON body is required.');
         }
 
@@ -65,7 +65,7 @@ final readonly class Input
         } catch (CoercionException $e) {
             throw ApiException::validation(
                 [[
-                    'propertyPath' => implode('.', $e->getPaths()),
+                    'propertyPath' => \implode('.', $e->getPaths()),
                     'message' => $e->getMessage(),
                     'code' => 'invalid_shape',
                 ]],

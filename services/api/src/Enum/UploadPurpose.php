@@ -55,6 +55,6 @@ enum UploadPurpose: string
 
     public function allows(string $contentType): bool
     {
-        return \in_array(strtolower(trim($contentType)), $this->allowedTypes(), true);
+        return \in_array(\strtolower(\trim($contentType)), $this->allowedTypes(), true);
     }
 }

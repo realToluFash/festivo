@@ -9,7 +9,6 @@ use App\Address\Exception\ProviderUnavailable;
 use App\Address\Interfaces\AddressProviderInterface;
 use App\Address\Model\Address;
 use App\Address\Model\Suggestion;
-use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
@@ -20,7 +19,6 @@ final readonly class AddressLookup
     public function __construct(
         private AddressProviderInterface $provider,
         private CacheInterface $cache,
-        private LoggerInterface $logger,
         private int $suggestTtlSeconds = 3600,
         private int $resolveTtlSeconds = 86400,
     ) {
@@ -29,9 +27,9 @@ final readonly class AddressLookup
     /** @return list<Suggestion> */
     public function suggest(string $query, ?string $countryCode = null): array
     {
-        $trimmed = trim($query);
+        $trimmed = \trim($query);
 
-        if (mb_strlen($trimmed) < self::MIN_QUERY_LENGTH) {
+        if (\mb_strlen($trimmed) < self::MIN_QUERY_LENGTH) {
             return [];
         }
 
@@ -60,6 +58,6 @@ final readonly class AddressLookup
 
     private function key(string $kind, string ...$parts): string
     {
-        return sprintf('address.%s.%s', $kind, hash('xxh128', implode('|', $parts)));
+        return \sprintf('address.%s.%s', $kind, \hash('xxh128', \implode('|', $parts)));
     }
 }

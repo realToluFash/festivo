@@ -10,6 +10,30 @@ docker compose up -d   # the stack
 `npm run setup` reports what it did and what it skipped. PHP tooling runs in Docker —
 you do not need PHP installed.
 
+## Routines
+
+```bash
+brew install just      # once
+just                   # list every routine, with what it does
+```
+
+The `Justfile` at the root is the front door for anything you run more than once — the
+containers, the databases, the suites, the checks.
+
+```bash
+just up                      # start the stack and wait until it answers
+just prepare-database-test   # drop, recreate and migrate the test database
+just test-api                # the API suite  (just test-api RequestLocale for one class)
+just check                   # everything CI runs
+just guard                   # architectural boundaries
+just prune-build-cache       # when Docker has eaten the disk
+```
+
+Each recipe delegates to the npm script where one exists, and CI calls those same scripts.
+That is why there is no third definition of any routine, and why `just check` passing means
+the same thing as a green pull request. `just` itself is not installed in CI, so the npm
+scripts remain the contract.
+
 ## The shape of the work
 
 **An epic is a scope of work, not a stack.** "Auth" is one epic covering the Symfony

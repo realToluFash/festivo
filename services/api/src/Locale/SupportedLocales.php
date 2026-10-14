@@ -29,8 +29,6 @@ final class SupportedLocales
 
     private static function normalise(string $locale): string
     {
-        $language = strtolower(explode('-', str_replace('_', '-', trim($locale)))[0]);
-
-        return $language;
+        return \strtolower(\explode('-', \str_replace('_', '-', \trim($locale)))[0]);
     }
 }

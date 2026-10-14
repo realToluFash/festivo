@@ -25,7 +25,7 @@ final class AssistantContextTest extends TestCase
             // confidently with no idea what product it is in.
             self::assertGreaterThan(
                 200,
-                \strlen(trim($context->systemPrompt())),
+                \strlen(\trim($context->systemPrompt())),
                 "{$context->value} has no real system prompt",
             );
         }
@@ -39,12 +39,12 @@ final class AssistantContextTest extends TestCase
     #[Test]
     public function everyContextIsBilledUnderItsOwnName(): void
     {
-        $features = array_map(
+        $features = \array_map(
             static fn (AssistantContext $c): string => $c->usageFeature(),
             AssistantContext::cases(),
         );
 
-        self::assertSame(array_unique($features), $features, 'Two contexts share a usage feature');
+        self::assertSame(\array_unique($features), $features, 'Two contexts share a usage feature');
     }
 
     /**

@@ -9,12 +9,11 @@ use App\AI\Model\Answer;
 use App\AI\Model\Ask;
 use App\Entity\AssistantInteraction;
 use App\Enum\ErrorCode;
+use App\Tests\ApiTestCase;
 use Doctrine\ORM\EntityManagerInterface;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
-use Symfony\Bundle\FrameworkBundle\KernelBrowser;
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
@@ -25,15 +24,14 @@ use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
  * non-deterministic, and impossible in CI. That is the argument for the
  * stand-in existing, and this file is what it buys.
  */
-final class AssistantTest extends WebTestCase
+final class AssistantTest extends ApiTestCase
 {
-    private KernelBrowser $client;
     private EntityManagerInterface $em;
 
     protected function setUp(): void
     {
-        $this->client = self::createClient();
-        $this->em = self::getContainer()->get(EntityManagerInterface::class);
+        parent::setUp();
+        $this->em = self::service(EntityManagerInterface::class);
     }
 
     #[Test]
@@ -154,18 +152,18 @@ final class AssistantTest extends WebTestCase
             'resourceContext' => [
                 'context' => 'organiser',
                 'messages' => [['role' => 'user', 'content' => 'hello']],
-                'resourceContext' => str_repeat('a', 16385),
+                'resourceContext' => \str_repeat('a', 16385),
             ],
             'messages' => [
                 'context' => 'organiser',
-                'messages' => array_fill(0, 201, ['role' => 'user', 'content' => 'hello']),
+                'messages' => \array_fill(0, 201, ['role' => 'user', 'content' => 'hello']),
             ],
             'tools' => [
                 'context' => 'organiser',
                 'messages' => [['role' => 'user', 'content' => 'hello']],
-                'tools' => array_map(
+                'tools' => \array_map(
                     static fn (int $i): array => ['name' => 'tool_' . $i, 'description' => 'x'],
-                    range(1, 65),
+                    \range(1, 65),
                 ),
             ],
         ];
@@ -189,7 +187,7 @@ final class AssistantTest extends WebTestCase
         $this->chat([
             'context' => 'organiser',
             'messages' => [['role' => 'user', 'content' => 'hello']],
-            'resourceContext' => str_repeat('a', 16384),
+            'resourceContext' => \str_repeat('a', 16384),
         ]);
 
         self::assertResponseIsSuccessful();
@@ -415,7 +413,7 @@ final class AssistantTest extends WebTestCase
     #[Test]
     public function theConfiguredBudgetRunsOut(): void
     {
-        $limiter = self::getContainer()->get('limiter.assistant_chat')->create('a-single-caller');
+        $limiter = self::serviceById('limiter.assistant_chat', RateLimiterFactory::class)->create('a-single-caller');
 
         $accepted = 0;
         while ($limiter->consume()->isAccepted() && $accepted < 500) {

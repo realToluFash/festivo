@@ -13,7 +13,7 @@
  * for the design rather than a number to invent.
  */
 
-@import './tokens.css';
+@import url('./tokens.css');
 
 :root {
   /* Light only. The design has no dark appearance, so declaring one would
@@ -312,7 +312,7 @@ h2 {
  * narrow browser reaching for it gets the handoff rather than a cramped table.
  */
 
-@media (max-width: 60rem) {
+@media (width <= 60rem) {
   .shell {
     grid-template-columns: 1fr;
   }
@@ -323,8 +323,7 @@ h2 {
   }
 
   .shell-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-flow: row wrap;
   }
 
   .shell-account {

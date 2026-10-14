@@ -28,33 +28,33 @@ final class ErrorCodeCatalogueTest extends TestCase
 
         $missing = [];
         foreach (ErrorCode::cases() as $case) {
-            if (!isset($catalogue[$case->value]) || '' === trim($catalogue[$case->value])) {
+            if (!isset($catalogue[$case->value]) || '' === \trim($catalogue[$case->value])) {
                 $missing[] = $case->value;
             }
         }
 
-        self::assertSame([], $missing, "Missing in {$locale}: " . implode(', ', $missing));
+        self::assertSame([], $missing, "Missing in {$locale}: " . \implode(', ', $missing));
     }
 
     #[Test]
     #[DataProvider('locales')]
     public function noLocaleCarriesAMessageForACodeThatNoLongerExists(string $locale): void
     {
-        $known = array_map(static fn (ErrorCode $c): string => $c->value, ErrorCode::cases());
-        $orphans = array_diff(array_keys(self::catalogue($locale)), $known);
+        $known = \array_map(static fn (ErrorCode $c): string => $c->value, ErrorCode::cases());
+        $orphans = \array_diff(\array_keys(self::catalogue($locale)), $known);
 
-        self::assertSame([], array_values($orphans), "Orphaned in {$locale}: " . implode(', ', $orphans));
+        self::assertSame([], \array_values($orphans), "Orphaned in {$locale}: " . \implode(', ', $orphans));
     }
 
     #[Test]
     public function everyLocaleHasTheSameKeys(): void
     {
-        $reference = array_keys(self::catalogue('en'));
-        sort($reference);
+        $reference = \array_keys(self::catalogue('en'));
+        \sort($reference);
 
         foreach (self::LOCALES as $locale) {
-            $keys = array_keys(self::catalogue($locale));
-            sort($keys);
+            $keys = \array_keys(self::catalogue($locale));
+            \sort($keys);
             self::assertSame($reference, $keys, "Key set differs in {$locale}");
         }
     }
@@ -105,11 +105,12 @@ final class ErrorCodeCatalogueTest extends TestCase
     }
 
     /** @return array<string, string> */
+    /** @return array<string, string> */
     private static function catalogue(string $locale): array
     {
         $path = \dirname(__DIR__, 2) . "/translations/errors.{$locale}.json";
         self::assertFileExists($path, "No catalogue for {$locale}");
 
-        return json_decode((string) file_get_contents($path), true, 512, \JSON_THROW_ON_ERROR);
+        return \json_decode((string) \file_get_contents($path), true, 512, \JSON_THROW_ON_ERROR);
     }
 }

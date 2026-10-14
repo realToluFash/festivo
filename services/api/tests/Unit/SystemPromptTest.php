@@ -34,7 +34,7 @@ final class SystemPromptTest extends TestCase
     {
         $built = $this->build(locale: 'fr');
 
-        $language = implode("\n", $built['perRequest']);
+        $language = \implode("\n", $built['perRequest']);
 
         self::assertStringContainsString('French', $language);
         self::assertStringContainsString('(fr)', $language);
@@ -46,7 +46,7 @@ final class SystemPromptTest extends TestCase
         foreach (['es' => 'Spanish', 'pt' => 'Portuguese', 'en' => 'English'] as $locale => $name) {
             self::assertStringContainsString(
                 $name,
-                implode("\n", $this->build(locale: $locale)['perRequest']),
+                \implode("\n", $this->build(locale: $locale)['perRequest']),
                 "{$locale} should be named",
             );
         }

@@ -28,7 +28,16 @@ final readonly class NominatimProvider implements AddressProviderInterface
     ) {
     }
 
-    /** @return Type\TypeInterface<array{ */
+    /**
+     * @return Type\TypeInterface<array{
+     *     display_name: string,
+     *     osm_type?: string,
+     *     osm_id?: string,
+     *     lat?: float,
+     *     lon?: float,
+     *     address?: array<string, string>,
+     * }>
+     */
     private static function result(): Type\TypeInterface
     {
         return Type\shape([
@@ -71,10 +80,10 @@ final readonly class NominatimProvider implements AddressProviderInterface
 
     public function resolve(string $id): Address
     {
-        [$type, $osmId] = array_pad(Str\split($id, ':', 2), 2, '');
+        [$type, $osmId] = \array_pad(Str\split($id, ':', 2), 2, '');
 
-        if ('' === $osmId || !ctype_digit($osmId)) {
-            throw new AddressNotFound(sprintf('"%s" is not an address id.', $id));
+        if ('' === $osmId || !\ctype_digit($osmId)) {
+            throw new AddressNotFound(\sprintf('"%s" is not an address id.', $id));
         }
 
         $results = $this->call('/lookup', [
@@ -85,7 +94,7 @@ final readonly class NominatimProvider implements AddressProviderInterface
 
         $first = $results[0] ?? null;
         if (null === $first) {
-            throw new AddressNotFound(sprintf('No address for "%s".', $id));
+            throw new AddressNotFound(\sprintf('No address for "%s".', $id));
         }
 
         $parts = $first['address'] ?? [];
@@ -107,6 +116,13 @@ final readonly class NominatimProvider implements AddressProviderInterface
      * @param array<string, string|int> $params
      *
      * @return list<array{
+     *     display_name: string,
+     *     osm_type?: string,
+     *     osm_id?: string,
+     *     lat?: float,
+     *     lon?: float,
+     *     address?: array<string, string>,
+     * }>
      *
      * @throws ProviderUnavailable
      */
@@ -120,11 +136,11 @@ final readonly class NominatimProvider implements AddressProviderInterface
             ]);
 
             if ($response->getStatusCode() >= 400) {
-                throw new ProviderUnavailable(sprintf('Provider answered %d.', $response->getStatusCode()));
+                throw new ProviderUnavailable(\sprintf('Provider answered %d.', $response->getStatusCode()));
             }
 
             $decoded = $response->toArray(false);
-            $list = array_is_list($decoded) ? $decoded : [$decoded];
+            $list = \array_is_list($decoded) ? $decoded : [$decoded];
 
             return Type\vec(self::result())->coerce($list);
         } catch (ProviderUnavailable $e) {
@@ -147,6 +163,6 @@ final readonly class NominatimProvider implements AddressProviderInterface
             return $number;
         }
 
-        return null === $number ? $road : sprintf('%s %s', $number, $road);
+        return null === $number ? $road : \sprintf('%s %s', $number, $road);
     }
 }

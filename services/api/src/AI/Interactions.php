@@ -47,7 +47,7 @@ final readonly class Interactions
             model: $assistant->model(),
             locale: $ask->locale,
             outcome: $outcome,
-            systemPrompt: implode("\n\n", [...$prompt['cacheable'], ...$prompt['perRequest']]),
+            systemPrompt: \implode("\n\n", [...$prompt['cacheable'], ...$prompt['perRequest']]),
             userPrompt: $ask->lastUserMessage(),
             resourceContext: $ask->resourceContext,
             toolsOffered: Vec\map($ask->tools, static fn (ToolDefinition $t): string => $t->name),

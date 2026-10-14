@@ -10,6 +10,7 @@ The conventions, and the reason for each. Adopted from the reference project at
 does not yet follow one, it says so.
 
 Adjacent skills own their ground: **symfony-api** for resources, errors and access checks,
+**writing-tests** for the suite, **code-structure** for where a class lives,
 **code-comments** for what may be written in a comment, **locale-parity** for strings,
 **name-things** for naming, **making-commits** for landing it.
 
@@ -107,6 +108,46 @@ _drops_ undeclared fields; `allowUnknownFields: true` keeps them. Know which you
   is a second idea of what the same value means, and a uniqueness constraint only holds if
   every writer agrees.
 
+## A repository reads. It does not write
+
+**No `save()`, `remove()`, `persist()` or `flush()` on a repository.** A repository answers
+questions about what is stored. Writing is the caller's business, through
+`EntityManagerInterface`.
+
+The reference project has 183 repositories and two of them flush, which is the ratio this
+rule describes rather than a guess at it.
+
+It matters because `save()` on a repository decides, on the entity's behalf, that this
+change is its own transaction. Two of them in one use case are two commits, and the second
+one failing leaves the first in place — a half-finished registration with no way to tell
+from the row that it is half-finished. The use case is the only thing that knows where the
+transaction boundary is, so the use case calls `flush()`, once.
+
+It is also where the method ends up doing more than it says: `save()` grows a normalisation,
+then a timestamp, then a side effect, and the entity's invariants are now enforced in a
+class whose name says it only looks things up.
+
+```php
+// No.
+final class UserRepository extends ServiceEntityRepository
+{
+    public function save(User $user): void { ... }
+}
+
+// Yes — the repository answers questions.
+final class UserRepository extends ServiceEntityRepository
+{
+    public function findOneByEmail(string $email): ?User
+    {
+        return $this->findOneBy(['email' => User::normaliseEmail($email)]);
+    }
+}
+```
+
+A query that does not fit `findBy` goes here as a named method — `findOneByEmail`,
+`countActiveSince` — rather than a `QueryBuilder` assembled at the call site. That is the
+job.
+
 ## Types
 
 - A docblock carries only what PHP cannot express: generics, array shapes, `list<>`,
@@ -118,16 +159,14 @@ _drops_ undeclared fields; `allowUnknownFields: true` keeps them. Know which you
 
 ## Tests
 
-- **A factory, not a fixture file.** The reference has one `EntityFactory` with 210 static
-  `makeX()` methods: every parameter nullable, each cascading into the next
-  (`$organisation ?? self::makeOrganisation()`), and the id set by reflection so an
-  unpersisted entity still has one. A test overrides only the field under test and gets a
-  valid object graph with no database. **This does not exist here yet and should.**
-- **Prophecy for mocking**, not PHPUnit's own doubles.
-- A test that exists to catch one specific regression says which, in one line. That is one
-  of the few comments `code-comments` keeps.
-- The judgement goes in a pure function with its own test — the thing worth testing is the
-  rule, not the wiring around it.
+**See the `writing-tests` skill.** It owns the three kinds and their base cases, where
+doubles live, the database routine, and how to tell a guard from an assertion that can never
+fail.
+
+The one rule that belongs here, because it is about how the code is written rather than how
+it is tested: **the judgement goes in a pure function with its own test.** The thing worth
+testing is the rule, not the wiring around it. A rule reachable only through a controller
+and a database is a rule nobody will write the fifth case for.
 
 ## Migrations
 

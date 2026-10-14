@@ -79,7 +79,8 @@ final class ScriptedAssistantTest extends TestCase
         self::assertSame('count_replies', $answer->toolCall?->name);
         // Fixed, so a test can assert the id that comes back on the result
         // without reading it out of the response first.
-        self::assertSame('scripted_call_1', $answer->toolCall?->callId);
+        self::assertNotNull($answer->toolCall);
+        self::assertSame('scripted_call_1', $answer->toolCall->callId);
     }
 
     #[Test]
