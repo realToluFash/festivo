@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\AI;
 
+use SensitiveParameter;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class Availability
@@ -14,6 +15,7 @@ final readonly class Availability
         #[Autowire('%env(ASSISTANT_PROVIDER)%')]
         private string $provider,
         #[Autowire('%env(ASSISTANT_API_KEY)%')]
+        #[SensitiveParameter]
         private string $apiKey,
         #[Autowire('%env(bool:ASSISTANT_ENABLED)%')]
         private bool $enabled,
@@ -22,7 +24,7 @@ final readonly class Availability
 
     public function isConfigured(): bool
     {
-        return self::STAND_IN === $this->provider || '' !== trim($this->apiKey);
+        return self::STAND_IN === $this->provider || '' !== \trim($this->apiKey);
     }
 
     public function isEnabled(): bool

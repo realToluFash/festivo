@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Entity\SchemaProbe;
+use App\Tests\FunctionalTestCase;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
  * The two promises the test database makes.
@@ -15,13 +15,12 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  * Both are the sort of thing everybody assumes and nobody checks, and the cost
  * of either being false is a developer losing their local data to a test run.
  */
-final class DatabaseIsolationTest extends KernelTestCase
+final class DatabaseIsolationTest extends FunctionalTestCase
 {
     #[Test]
     public function theSuiteRunsAgainstADatabaseNamedForTesting(): void
     {
-        self::bootKernel();
-        $em = self::getContainer()->get(EntityManagerInterface::class);
+        $em = self::service(EntityManagerInterface::class);
 
         $name = $em->getConnection()->getDatabase();
 
@@ -32,8 +31,7 @@ final class DatabaseIsolationTest extends KernelTestCase
     #[Test]
     public function entityMappingReachesARealTable(): void
     {
-        self::bootKernel();
-        $em = self::getContainer()->get(EntityManagerInterface::class);
+        $em = self::service(EntityManagerInterface::class);
 
         $probe = new SchemaProbe('written by the suite');
         $em->persist($probe);
@@ -55,8 +53,7 @@ final class DatabaseIsolationTest extends KernelTestCase
     #[Test]
     public function nothingAPreviousTestWroteSurvivesIntoThisOne(): void
     {
-        self::bootKernel();
-        $em = self::getContainer()->get(EntityManagerInterface::class);
+        $em = self::service(EntityManagerInterface::class);
 
         $rows = $em->getRepository(SchemaProbe::class)->findBy(['label' => 'written by the suite']);
 

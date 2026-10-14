@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace App\Enum;
 
-use App\AI\Exception\AssistantRefused;
-use App\AI\Exception\AssistantUnavailable;
-
 // A case added here without a key in all four translation files fails
 // ErrorCodeCatalogueTest. The set being closed is what lets the test walk it.
 enum ErrorCode: string
@@ -64,7 +61,7 @@ enum ErrorCode: string
     public static function fromType(string $type): ?self
     {
         $prefix = 'https://soirely.com/errors/';
-        $value = str_starts_with($type, $prefix) ? substr($type, \strlen($prefix)) : $type;
+        $value = \str_starts_with($type, $prefix) ? \substr($type, \strlen($prefix)) : $type;
 
         return self::tryFrom($value);
     }

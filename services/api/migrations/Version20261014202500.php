@@ -23,14 +23,14 @@ final class Version20261014202500 extends AbstractMigration
     public function up(Schema $schema): void
     {
         foreach (self::RENAMES as $from => $to) {
-            $this->addSql(sprintf('ALTER TABLE %s RENAME TO %s', $from, $to));
+            $this->addSql(\sprintf('ALTER TABLE %s RENAME TO %s', $from, $to));
         }
     }
 
     public function down(Schema $schema): void
     {
         foreach (self::RENAMES as $from => $to) {
-            $this->addSql(sprintf('ALTER TABLE %s RENAME TO %s', $to, $from));
+            $this->addSql(\sprintf('ALTER TABLE %s RENAME TO %s', $to, $from));
         }
     }
 }

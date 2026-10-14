@@ -55,20 +55,25 @@ final class RequestLocaleListener
     {
         $parsed = [];
 
-        foreach (explode(',', $header) as $part) {
-            $bits = explode(';q=', trim($part));
-            $tag = trim($bits[0]);
+        foreach (\explode(',', $header) as $part) {
+            $bits = \explode(';q=', \trim($part));
+            $tag = \trim($bits[0]);
 
             if ('' === $tag || '*' === $tag) {
                 continue;
             }
 
-            $quality = isset($bits[1]) ? (float) $bits[1] : 1.0;
-            $parsed[] = ['tag' => $tag, 'q' => $quality];
+            // A quality that is not a number is treated as absent rather than
+            // cast. Casting made it 0.0, which ranked a language the client
+            // asked for below one it offered as a fallback.
+            $parsed[] = [
+                'tag' => $tag,
+                'q' => isset($bits[1]) && \is_numeric($bits[1]) ? (float) $bits[1] : 1.0,
+            ];
         }
 
-        usort($parsed, static fn (array $a, array $b): int => $b['q'] <=> $a['q']);
+        \usort($parsed, static fn (array $a, array $b): int => $b['q'] <=> $a['q']);
 
-        return array_map(static fn (array $p): string => $p['tag'], $parsed);
+        return \array_map(static fn (array $p): string => $p['tag'], $parsed);
     }
 }

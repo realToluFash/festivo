@@ -35,7 +35,9 @@ final class HealthCheckerTest extends TestCase
         self::assertSame('error', $result['checks']['postgres']['status']);
         // The other one still reports honestly rather than being dragged down.
         self::assertSame('ok', $result['checks']['redis']['status']);
-        self::assertStringContainsString('host name', $result['checks']['postgres']['error']);
+        $error = $result['checks']['postgres']['error'] ?? null;
+        self::assertNotNull($error);
+        self::assertStringContainsString('host name', $error);
     }
 
     /**
@@ -51,7 +53,8 @@ final class HealthCheckerTest extends TestCase
         );
 
         $result = $this->check(dbThrows: $leaky)->check();
-        $error = $result['checks']['postgres']['error'];
+        $error = $result['checks']['postgres']['error'] ?? null;
+        self::assertNotNull($error);
 
         self::assertStringNotContainsString('hunter2', $error);
         self::assertStringNotContainsString('soirely:', $error);
@@ -61,9 +64,11 @@ final class HealthCheckerTest extends TestCase
     #[Test]
     public function itTruncatesAVeryLongDriverMessage(): void
     {
-        $result = $this->check(dbThrows: new RuntimeException(str_repeat('x', 500)))->check();
+        $result = $this->check(dbThrows: new RuntimeException(\str_repeat('x', 500)))->check();
 
-        self::assertLessThanOrEqual(120, mb_strlen($result['checks']['postgres']['error']));
+        $error = $result['checks']['postgres']['error'] ?? null;
+        self::assertNotNull($error);
+        self::assertLessThanOrEqual(120, \mb_strlen($error));
     }
 
     #[Test]

@@ -72,9 +72,9 @@ final readonly class ScriptedAssistant implements AssistantInterface
         }
 
         if (null === $tool) {
-            throw new AssistantFailed(sprintf(
+            throw new AssistantFailed(\sprintf(
                 'No tool to call: the request offered %s.',
-                [] === $ask->tools ? 'none' : sprintf('%d, none named "%s"', \count($ask->tools), $name),
+                [] === $ask->tools ? 'none' : \sprintf('%d, none named "%s"', \count($ask->tools), $name),
             ));
         }
 
@@ -87,7 +87,7 @@ final readonly class ScriptedAssistant implements AssistantInterface
 
     private function reply(Ask $ask, string $message): string
     {
-        return sprintf(
+        return \sprintf(
             'Scripted reply in the %s context, answering in %s. You said: %s',
             $ask->context->value,
             $ask->locale,

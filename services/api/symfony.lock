@@ -16,6 +16,9 @@
     "async-aws/async-aws-bundle": {
         "version": "1.18.0"
     },
+    "carthage-software/mago": {
+        "version": "1.57.0"
+    },
     "dama/doctrine-test-bundle": {
         "version": "v8.7.0"
     },

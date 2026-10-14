@@ -27,7 +27,7 @@ final readonly class AssistantFactory
             'anthropic' => $this->anthropic,
             Availability::STAND_IN => $this->scripted,
 
-            default => throw new InvalidArgumentException(sprintf(
+            default => throw new InvalidArgumentException(\sprintf(
                 'Unknown ASSISTANT_PROVIDER "%s". Known providers: anthropic, %s.',
                 $this->provider,
                 Availability::STAND_IN,

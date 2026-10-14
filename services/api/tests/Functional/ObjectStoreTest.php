@@ -6,9 +6,9 @@ namespace App\Tests\Functional;
 
 use App\Enum\UploadPurpose;
 use App\Storage\ObjectStore;
+use App\Tests\FunctionalTestCase;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
  * Against the real store, not a double.
@@ -17,14 +17,14 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  * those is a way for it to be subtly wrong while looking perfectly correct in
  * a unit test, so these actually upload.
  */
-final class ObjectStoreTest extends KernelTestCase
+final class ObjectStoreTest extends FunctionalTestCase
 {
     private ObjectStore $store;
 
     protected function setUp(): void
     {
-        self::bootKernel();
-        $this->store = self::getContainer()->get(ObjectStore::class);
+        parent::setUp();
+        $this->store = self::service(ObjectStore::class);
     }
 
     #[Test]
@@ -155,42 +155,38 @@ final class ObjectStoreTest extends KernelTestCase
      */
     private function asSeenFromInsideTheNetwork(string $url): string
     {
-        return str_replace('localhost:4566', 'storage:4566', $url);
+        return \str_replace('localhost:4566', 'storage:4566', $url);
     }
 
     private function put(string $url, string $body, string $contentType): int
     {
         $url = $this->asSeenFromInsideTheNetwork($url);
 
-        $handle = curl_init($url);
-        curl_setopt_array($handle, [
+        $handle = \curl_init($url);
+        \curl_setopt_array($handle, [
             \CURLOPT_CUSTOMREQUEST => 'PUT',
             \CURLOPT_POSTFIELDS => $body,
             \CURLOPT_HTTPHEADER => ['Content-Type: ' . $contentType],
             \CURLOPT_RETURNTRANSFER => true,
             \CURLOPT_TIMEOUT => 10,
         ]);
-        curl_exec($handle);
-        $status = (int) curl_getinfo($handle, \CURLINFO_HTTP_CODE);
-        curl_close($handle);
+        \curl_exec($handle);
 
-        return $status;
+        return (int) \curl_getinfo($handle, \CURLINFO_HTTP_CODE);
     }
 
     private function headStatus(string $url): int
     {
         $url = $this->asSeenFromInsideTheNetwork($url);
 
-        $handle = curl_init($url);
-        curl_setopt_array($handle, [
+        $handle = \curl_init($url);
+        \curl_setopt_array($handle, [
             \CURLOPT_NOBODY => true,
             \CURLOPT_RETURNTRANSFER => true,
             \CURLOPT_TIMEOUT => 10,
         ]);
-        curl_exec($handle);
-        $status = (int) curl_getinfo($handle, \CURLINFO_HTTP_CODE);
-        curl_close($handle);
+        \curl_exec($handle);
 
-        return $status;
+        return (int) \curl_getinfo($handle, \CURLINFO_HTTP_CODE);
     }
 }

@@ -8,23 +8,23 @@ use App\Audit\Auditor;
 use App\Entity\AuditEntry;
 use App\Entity\SchemaProbe;
 use App\Enum\Actor;
+use App\Tests\FunctionalTestCase;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
 use ReflectionMethod;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;
 
-final class AuditTest extends KernelTestCase
+final class AuditTest extends FunctionalTestCase
 {
     private EntityManagerInterface $em;
     private Auditor $auditor;
 
     protected function setUp(): void
     {
-        self::bootKernel();
-        $this->em = self::getContainer()->get(EntityManagerInterface::class);
-        $this->auditor = self::getContainer()->get(Auditor::class);
+        parent::setUp();
+        $this->em = self::service(EntityManagerInterface::class);
+        $this->auditor = self::service(Auditor::class);
     }
 
     #[Test]
@@ -138,13 +138,13 @@ final class AuditTest extends KernelTestCase
     {
         $reflection = new ReflectionClass(AuditEntry::class);
 
-        $mutators = array_filter(
+        $mutators = \array_filter(
             $reflection->getMethods(ReflectionMethod::IS_PUBLIC),
-            static fn (ReflectionMethod $m): bool => str_starts_with($m->getName(), 'set')
-                || str_starts_with($m->getName(), 'with'),
+            static fn (ReflectionMethod $m): bool => \str_starts_with($m->getName(), 'set')
+                || \str_starts_with($m->getName(), 'with'),
         );
 
-        self::assertSame([], array_map(static fn ($m) => $m->getName(), $mutators));
+        self::assertSame([], \array_map(static fn ($m) => $m->getName(), $mutators));
     }
 
     /** Recording unchanged fields makes a diff nobody reads. */

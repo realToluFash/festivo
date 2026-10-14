@@ -58,7 +58,7 @@ final readonly class Auditor
     {
         $changes = [];
 
-        foreach (array_keys($before + $after) as $field) {
+        foreach (\array_keys($before + $after) as $field) {
             $was = $before[$field] ?? null;
             $now = $after[$field] ?? null;
 

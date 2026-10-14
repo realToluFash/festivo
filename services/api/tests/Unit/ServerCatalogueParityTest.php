@@ -34,19 +34,19 @@ final class ServerCatalogueParityTest extends TestCase
     public function everyDomainHasTheSameKeysInEveryLocale(): void
     {
         foreach ($this->domains() as $domain) {
-            $reference = array_keys($this->load($domain, SupportedLocales::DEFAULT));
-            sort($reference);
+            $reference = \array_keys($this->load($domain, SupportedLocales::DEFAULT));
+            \sort($reference);
 
             foreach (SupportedLocales::ALL as $locale) {
-                $keys = array_keys($this->load($domain, $locale));
-                sort($keys);
+                $keys = \array_keys($this->load($domain, $locale));
+                \sort($keys);
 
                 self::assertSame(
                     $reference,
                     $keys,
                     "Key set differs in {$domain}.{$locale}: missing "
-                    . implode(', ', array_diff($reference, $keys))
-                    . ' | extra ' . implode(', ', array_diff($keys, $reference)),
+                    . \implode(', ', \array_diff($reference, $keys))
+                    . ' | extra ' . \implode(', ', \array_diff($keys, $reference)),
                 );
             }
         }
@@ -80,7 +80,7 @@ final class ServerCatalogueParityTest extends TestCase
         foreach ($this->domains() as $domain) {
             foreach (SupportedLocales::ALL as $locale) {
                 foreach ($this->load($domain, $locale) as $key => $message) {
-                    self::assertNotSame('', trim($message), "{$domain}.{$locale}.{$key} is empty");
+                    self::assertNotSame('', \trim($message), "{$domain}.{$locale}.{$key} is empty");
                 }
             }
         }
@@ -90,8 +90,8 @@ final class ServerCatalogueParityTest extends TestCase
     private function domains(): array
     {
         $domains = [];
-        foreach (glob($this->dir() . '/*.' . SupportedLocales::DEFAULT . '.json') ?: [] as $path) {
-            $domains[] = basename($path, '.' . SupportedLocales::DEFAULT . '.json');
+        foreach (\glob($this->dir() . '/*.' . SupportedLocales::DEFAULT . '.json') ?: [] as $path) {
+            $domains[] = \basename($path, '.' . SupportedLocales::DEFAULT . '.json');
         }
 
         self::assertNotEmpty($domains, 'No catalogues found at all');
@@ -102,18 +102,18 @@ final class ServerCatalogueParityTest extends TestCase
     /** @return list<string> */
     private function placeholders(string $message): array
     {
-        preg_match_all('/\{\s*([a-zA-Z0-9_]+)\s*[,}]/', $message, $matches);
-        $found = array_unique($matches[1]);
-        sort($found);
+        \preg_match_all('/\{\s*([a-zA-Z0-9_]+)\s*[,}]/', $message, $matches);
+        $found = \array_unique($matches[1]);
+        \sort($found);
 
-        return array_values($found);
+        return \array_values($found);
     }
 
     /** @return array<string, string> */
     private function load(string $domain, string $locale): array
     {
-        return json_decode(
-            (string) file_get_contents($this->path($domain, $locale)),
+        return \json_decode(
+            (string) \file_get_contents($this->path($domain, $locale)),
             true,
             512,
             \JSON_THROW_ON_ERROR,

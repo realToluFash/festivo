@@ -31,6 +31,12 @@ return (new PhpCsFixer\Config())
         ],
         'ordered_imports' => ['sort_algorithm' => 'alpha'],
         'no_unused_imports' => true,
+        // A leading backslash on a global function. Without it PHP resolves the
+        // call against the current namespace first, which is both a lookup on
+        // every call and the reason mago's guard reads sprintf() inside a
+        // namespace as a dependency on that namespace.
+        'native_function_invocation' => ['include' => ['@all'], 'scope' => 'all', 'strict' => true],
+        'native_constant_invocation' => ['fix_built_in' => true, 'scope' => 'all', 'strict' => true],
         'single_line_throw' => false,
         'concat_space' => ['spacing' => 'one'],
         'phpdoc_to_comment' => false,

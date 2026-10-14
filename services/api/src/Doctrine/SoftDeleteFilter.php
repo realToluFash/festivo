@@ -19,7 +19,7 @@ final class SoftDeleteFilter extends SQLFilter
             return '';
         }
 
-        return sprintf('%s.deleted_at IS NULL', $targetTableAlias);
+        return \sprintf('%s.deleted_at IS NULL', $targetTableAlias);
     }
 
     private function isSoftDeletable(ClassMetadata $metadata): bool
@@ -28,7 +28,7 @@ final class SoftDeleteFilter extends SQLFilter
         $class = $metadata->getReflectionClass();
 
         while (false !== $class) {
-            $traits = [...$traits, ...array_keys($class->getTraits())];
+            $traits = [...$traits, ...\array_keys($class->getTraits())];
             $class = $class->getParentClass();
         }
 

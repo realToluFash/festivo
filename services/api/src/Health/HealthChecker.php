@@ -26,7 +26,7 @@ final readonly class HealthChecker
             'redis' => $this->attempt(fn () => $this->redis->ping()),
         ];
 
-        $healthy = array_reduce(
+        $healthy = \array_reduce(
             $checks,
             static fn (bool $carry, array $c): bool => $carry && 'ok' === $c['status'],
             true,
@@ -59,10 +59,10 @@ final readonly class HealthChecker
     {
         $message = $e->getMessage();
 
-        if (preg_match('#://[^@\s]+@#', $message)) {
+        if (\preg_match('#://[^@\s]+@#', $message)) {
             return 'connection refused';
         }
 
-        return mb_substr($message, 0, 120);
+        return \mb_substr($message, 0, 120);
     }
 }

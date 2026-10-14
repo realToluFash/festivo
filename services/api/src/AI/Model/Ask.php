@@ -28,7 +28,7 @@ final readonly class Ask
 
     public function lastUserMessage(): ?string
     {
-        foreach (array_reverse($this->conversation) as $turn) {
+        foreach (\array_reverse($this->conversation) as $turn) {
             if (TurnRole::User === $turn->role) {
                 return $turn->text;
             }

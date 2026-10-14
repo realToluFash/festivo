@@ -7,12 +7,9 @@ namespace App\Tests\Unit;
 use App\Address\AddressLookup;
 use App\Address\Exception\AddressNotFound;
 use App\Address\Exception\ProviderUnavailable;
-use App\Address\Interfaces\AddressProviderInterface;
-use App\Address\Model\Address;
-use App\Address\Model\Suggestion;
+use App\Tests\Double\CountingAddressProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Throwable;
 
@@ -123,7 +120,7 @@ final class AddressLookupTest extends TestCase
         $provider = $this->countingProvider(suggestThrows: new ProviderUnavailable('down'));
         $lookup = $this->lookup($provider);
 
-        foreach (range(1, 3) as $_) {
+        foreach (\range(1, 3) as $_) {
             try {
                 $lookup->suggest('london bridge');
             } catch (ProviderUnavailable) {
@@ -134,44 +131,15 @@ final class AddressLookupTest extends TestCase
         self::assertSame(3, $provider->suggestCalls);
     }
 
-    private function lookup(AddressProviderInterface $provider): AddressLookup
+    private function lookup(CountingAddressProvider $provider): AddressLookup
     {
-        return new AddressLookup($provider, new ArrayAdapter(), new NullLogger());
+        return new AddressLookup($provider, new ArrayAdapter());
     }
 
     private function countingProvider(
         ?Throwable $suggestThrows = null,
         ?Throwable $resolveThrows = null,
-    ): AddressProviderInterface {
-        return new class($suggestThrows, $resolveThrows) implements AddressProviderInterface {
-            public int $suggestCalls = 0;
-            public int $resolveCalls = 0;
-
-            public function __construct(
-                private readonly ?Throwable $suggestThrows,
-                private readonly ?Throwable $resolveThrows,
-            ) {
-            }
-
-            public function suggest(string $query, ?string $countryCode = null): array
-            {
-                ++$this->suggestCalls;
-                if (null !== $this->suggestThrows) {
-                    throw $this->suggestThrows;
-                }
-
-                return [new Suggestion('node:1', $query)];
-            }
-
-            public function resolve(string $id): Address
-            {
-                ++$this->resolveCalls;
-                if (null !== $this->resolveThrows) {
-                    throw $this->resolveThrows;
-                }
-
-                return new Address('somewhere');
-            }
-        };
+    ): CountingAddressProvider {
+        return new CountingAddressProvider($suggestThrows, $resolveThrows);
     }
 }

@@ -26,7 +26,7 @@ final readonly class ObjectStore
     public function signUpload(UploadPurpose $purpose, string $contentType, string $filename): SignedUpload
     {
         if (!$purpose->allows($contentType)) {
-            throw new InvalidArgumentException(sprintf(
+            throw new InvalidArgumentException(\sprintf(
                 '%s does not accept %s.',
                 $purpose->value,
                 $contentType,
@@ -42,7 +42,7 @@ final readonly class ObjectStore
                 'Key' => $key,
                 'ContentType' => $contentType,
             ]),
-            new DateTimeImmutable(sprintf('+%d seconds', $this->uploadTtlSeconds)),
+            new DateTimeImmutable(\sprintf('+%d seconds', $this->uploadTtlSeconds)),
         );
 
         return new SignedUpload(
@@ -58,12 +58,12 @@ final readonly class ObjectStore
     public function urlFor(string $bucket, string $key): string
     {
         if ($bucket === $this->publicBucket) {
-            return sprintf('%s/%s/%s', rtrim($this->publicEndpoint, '/'), $bucket, $key);
+            return \sprintf('%s/%s/%s', \rtrim($this->publicEndpoint, '/'), $bucket, $key);
         }
 
         $request = $this->s3->presign(
             new \AsyncAws\S3\Input\GetObjectRequest(['Bucket' => $bucket, 'Key' => $key]),
-            new DateTimeImmutable(sprintf('+%d seconds', $this->downloadTtlSeconds)),
+            new DateTimeImmutable(\sprintf('+%d seconds', $this->downloadTtlSeconds)),
         );
 
         return $this->forBrowser($request);
@@ -81,10 +81,10 @@ final readonly class ObjectStore
 
     private function key(UploadPurpose $purpose, string $filename): string
     {
-        $extension = strtolower(pathinfo($filename, \PATHINFO_EXTENSION));
-        $extension = 1 === preg_match('/^[a-z0-9]{1,8}$/', $extension) ? '.' . $extension : '';
+        $extension = \strtolower(\pathinfo($filename, \PATHINFO_EXTENSION));
+        $extension = 1 === \preg_match('/^[a-z0-9]{1,8}$/', $extension) ? '.' . $extension : '';
 
-        return sprintf(
+        return \sprintf(
             '%s/%s/%s%s',
             $purpose->value,
             new DateTimeImmutable()->format('Y/m'),
@@ -95,14 +95,14 @@ final readonly class ObjectStore
 
     private function forBrowser(string $url): string
     {
-        $internal = parse_url($this->s3->getConfiguration()->get('endpoint') ?: '', \PHP_URL_HOST);
-        $public = rtrim($this->publicEndpoint, '/');
+        $internal = \parse_url($this->s3->getConfiguration()->get('endpoint') ?: '', \PHP_URL_HOST);
+        $public = \rtrim($this->publicEndpoint, '/');
 
         if (null === $internal || '' === $public) {
             return $url;
         }
 
-        $parts = parse_url($url);
+        $parts = \parse_url($url);
         if (false === $parts || !isset($parts['path'])) {
             return $url;
         }

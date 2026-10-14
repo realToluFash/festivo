@@ -11,6 +11,9 @@
     "lint:js": "eslint .",
     "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
     "lint:actions": "node scripts/lint-actions.mjs",
+    "lint:api": "docker compose exec -T api php vendor/bin/mago lint",
+    "analyse:api": "docker compose exec -T api php vendor/bin/mago analyze",
+    "guard:api": "docker compose exec -T api php vendor/bin/mago guard",
     "test": "npm run test:scripts && npm run test:api && npm run test:packages",
     "test:scripts": "vitest run --dir scripts",
     "test:db": "node scripts/test-db.mjs",
@@ -20,6 +23,7 @@
     "format": "npm run format:js && npm run format:php",
     "format:js": "prettier --write .",
     "format:php": "node scripts/php-tool.mjs php-cs-fixer fix",
+    "fix:api": "docker compose exec -T api php vendor/bin/mago fix --no-fmt",
     "format:check": "prettier --check .",
     "prepare": "node scripts/install-hooks.mjs"
   },

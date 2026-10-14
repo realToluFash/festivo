@@ -13,6 +13,7 @@ use Anthropic\Messages\CacheControlEphemeral;
 use Anthropic\Messages\Message;
 use Anthropic\Messages\MessageParam;
 use Anthropic\Messages\MessageParam\Role;
+use Anthropic\Messages\OutputConfig\Effort;
 use Anthropic\Messages\StopReason;
 use Anthropic\Messages\TextBlock;
 use Anthropic\Messages\TextBlockParam;
@@ -36,23 +37,28 @@ use App\Enum\TurnRole;
 use Psl\Json;
 use Psl\Vec;
 use Psr\Log\LoggerInterface;
+use SensitiveParameter;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 final readonly class AnthropicAssistant implements AssistantInterface
 {
+    private Effort $effort;
+
     public function __construct(
         private Availability $availability,
         private SystemPrompt $systemPrompt,
         private LoggerInterface $logger,
         #[Autowire('%env(ASSISTANT_API_KEY)%')]
+        #[SensitiveParameter]
         private string $apiKey,
         #[Autowire('%env(ASSISTANT_MODEL)%')]
         private string $model,
         #[Autowire('%env(ASSISTANT_EFFORT)%')]
-        private string $effort = 'medium',
+        string $effort = 'medium',
         #[Autowire('%env(int:ASSISTANT_MAX_TOKENS)%')]
         private int $maxTokens = 16000,
     ) {
+        $this->effort = Effort::from($effort);
     }
 
     public function isEnabled(): bool
@@ -120,7 +126,7 @@ final readonly class AnthropicAssistant implements AssistantInterface
             }
         }
 
-        throw new AssistantFailed(sprintf(
+        throw new AssistantFailed(\sprintf(
             'The assistant returned nothing usable (stop reason: %s).',
             $response->stopReason ?? 'unknown',
         ));
