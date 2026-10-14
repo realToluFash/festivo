@@ -9,16 +9,6 @@ use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Translation\LocaleAwareInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * Wraps the translator so a missing key is discoverable rather than silent.
- *
- * A key with no message falls back to English and renders fine, which is the
- * right behaviour for the reader and the wrong behaviour for us — nothing
- * fails, nothing is logged, and the gap gets found by a customer.
- *
- * Reported once per key, domain and locale per process. A missing key on a hot
- * path would otherwise produce a line per request and bury itself.
- */
 final class LoggingTranslator implements TranslatorInterface, LocaleAwareInterface
 {
     /** @var array<string, true> */
@@ -34,8 +24,6 @@ final class LoggingTranslator implements TranslatorInterface, LocaleAwareInterfa
     {
         $translated = $this->inner->trans($id, $parameters, $domain, $locale);
 
-        // The translator returns the id itself when it finds nothing, including
-        // after the English fallback — which is the case worth hearing about.
         if ($translated === $id && '' !== $id) {
             $this->report($id, $domain, $locale ?? $this->getLocale());
         }

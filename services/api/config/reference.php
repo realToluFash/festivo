@@ -1431,6 +1431,22 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         },
  *     },
  * }
+ * @psalm-type ElaoEnumConfig = array{
+ *     doctrine?: array{
+ *         enum_sql_declaration?: bool|Param, // If true, generate DBAL types with an ENUM SQL declaration with enum values instead of a VARCHAR/INT (Your platform must support it) // Default: false
+ *         types?: array<string, Param|string|array{ // Default: []
+ *             class?: scalar|Param|null,
+ *             type?: "scalar"|"enum"|"flagbag"|Param, // Which column definition to use and the way the enumeration values are stored in the database: - scalar: VARCHAR/INT based on BackedEnum type - enum: ENUM(...values) as strings based on BackedEnum type (Your platform must support it) Default is either "scalar" or "enum", controlled by the `elao_enum.doctrine.enum_sql_declaration` option. Default for flagged enums is "int". // Default: null
+ *             default?: mixed, // Default enumeration case on NULL // Default: null
+ *         }>,
+ *     },
+ *     doctrine_mongodb?: array{
+ *         types?: array<string, Param|string|array{ // Default: []
+ *             class?: scalar|Param|null,
+ *             type?: "single"|"collection"|Param, // Default: "single"
+ *         }>,
+ *     },
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1442,6 +1458,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     api_platform?: ApiPlatformConfig,
  *     mercure?: MercureConfig,
  *     async_aws?: AsyncAwsConfig,
+ *     elao_enum?: ElaoEnumConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,
@@ -1453,6 +1470,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         api_platform?: ApiPlatformConfig,
  *         mercure?: MercureConfig,
  *         async_aws?: AsyncAwsConfig,
+ *         elao_enum?: ElaoEnumConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
@@ -1465,6 +1483,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         api_platform?: ApiPlatformConfig,
  *         mercure?: MercureConfig,
  *         async_aws?: AsyncAwsConfig,
+ *         elao_enum?: ElaoEnumConfig,
  *     },
  *     "when@test"?: array{
  *         imports?: ImportsConfig,
@@ -1478,6 +1497,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         api_platform?: ApiPlatformConfig,
  *         mercure?: MercureConfig,
  *         async_aws?: AsyncAwsConfig,
+ *         elao_enum?: ElaoEnumConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias
  *         imports?: ImportsConfig,

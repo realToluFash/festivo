@@ -5,22 +5,12 @@ declare(strict_types=1);
 namespace App\Audit;
 
 use App\Entity\AuditEntry;
-use App\EventListener\CorrelationIdListener;
+use App\Enum\Actor;
+use App\Http\Listener\CorrelationIdListener;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * Recording a change is one call.
- *
- * Not a pattern each service reimplements — a scope that has to remember to
- * audit is a scope that will forget, and the ones that get forgotten are the
- * sensitive ones, because they were written carefully and separately.
- *
- * The request's correlation id and IP are picked up here rather than passed in
- * at every call site, so an entry is never missing them because somebody did
- * not know they existed.
- */
 final readonly class Auditor
 {
     public function __construct(
@@ -29,9 +19,7 @@ final readonly class Auditor
     ) {
     }
 
-    /**
-     * @param array<string, array{0: mixed, 1: mixed}> $changes field => [before, after]
-     */
+    /** @param array<string, array{0: mixed, 1: mixed}> $changes field => [before, after] */
     public function record(
         string $action,
         string $subjectType,
@@ -61,11 +49,6 @@ final readonly class Auditor
     }
 
     /**
-     * Build a changes map from two states, keeping only what actually differs.
-     *
-     * Recording unchanged fields makes a diff that has to be read to find the
-     * one line that matters, which is how an audit trail stops being read.
-     *
      * @param array<string, mixed> $before
      * @param array<string, mixed> $after
      *

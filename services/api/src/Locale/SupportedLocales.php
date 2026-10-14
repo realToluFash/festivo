@@ -4,22 +4,6 @@ declare(strict_types=1);
 
 namespace App\Locale;
 
-/**
- * The locales this product speaks.
- *
- * Every resolution path narrows to this list. A locale we have no catalogue for
- * must never be selected: the failure is not an error but a page of raw
- * translation keys, which looks like text and is not.
- *
- * THE SOURCE OF TRUTH IS /locales.json AT THE REPOSITORY ROOT, not this class.
- * The web and mobile clients read that file too, and a set declared separately
- * in three places is three sets that will eventually disagree — quietly, because
- * each one works on its own.
- *
- * It is a constant here rather than a file read because this is on the path of
- * every request and static analysis should be able to see the values.
- * SupportedLocalesSourceTest fails when it stops matching the file.
- */
 final class SupportedLocales
 {
     public const DEFAULT = 'en';
@@ -32,14 +16,6 @@ final class SupportedLocales
         return null !== $locale && \in_array(self::normalise($locale), self::ALL, true);
     }
 
-    /**
-     * Narrow anything to a supported locale, or to the default.
-     *
-     * Accepts the forms a client actually sends — `pt-BR`, `fr_FR`, `EN` — and
-     * reduces them to the language. A Brazilian reader gets Portuguese rather
-     * than English, which is the point of matching on language rather than on
-     * the exact tag.
-     */
     public static function narrow(?string $locale): string
     {
         if (null === $locale) {

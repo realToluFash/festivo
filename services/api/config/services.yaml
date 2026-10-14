@@ -40,20 +40,20 @@ services:
     App\Audit\Auditor:
         public: true
 
-    App\Address\NominatimProvider:
+    App\Integrations\Nominatim\NominatimProvider:
         arguments:
             $endpoint: '%env(ADDRESS_ENDPOINT)%'
             $userAgent: '%env(ADDRESS_USER_AGENT)%'
 
     # One adapter behind the interface. Switching provider is this line plus a
     # class, and nothing above it learns which one is in use.
-    App\Address\AddressProvider: '@App\Address\NominatimProvider'
+    App\Address\Interfaces\AddressProviderInterface: '@App\Integrations\Nominatim\NominatimProvider'
 
     # The assistant's adapter is chosen by ASSISTANT_PROVIDER rather than by a
     # line here, because a service id cannot be an environment variable and
     # pointing this at the local stand-in should not be a code change.
-    App\Assistant\Assistant:
-        factory: ['@App\Assistant\AssistantFactory', 'create']
+    App\AI\Interfaces\AssistantInterface:
+        factory: ['@App\AI\Factory\AssistantFactory', 'create']
 
 when@test:
     services:
@@ -61,14 +61,14 @@ when@test:
         # happens to say on this machine. Every assisted path — the gate, the
         # validation, the proxy, the record — runs here, and none of it is
         # billable or dependent on somebody having an account.
-        App\Assistant\Assistant: '@App\Assistant\ScriptedAssistant'
+        App\AI\Interfaces\AssistantInterface: '@App\AI\ScriptedAssistant'
 
         # Re-declared in full, not merged: a `when@test` definition REPLACES the
         # autowired one, so every argument has to be named or it is lost. Pinned
         # rather than read from the environment so the gate is open in the suite
         # even on a machine configured for the real provider with no key.
-        App\Assistant\Availability:
+        App\AI\Availability:
             arguments:
-                $provider: !php/const App\Assistant\Availability::STAND_IN
+                $provider: !php/const App\AI\Availability::STAND_IN
                 $apiKey: ''
                 $enabled: true

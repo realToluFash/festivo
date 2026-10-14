@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Enum\UploadPurpose;
 use App\Storage\ObjectStore;
-use App\Storage\UploadPurpose;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;

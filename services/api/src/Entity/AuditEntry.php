@@ -4,24 +4,14 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
-use App\Audit\Actor;
+use App\Enum\Actor;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * One recorded change. Append-only.
- *
- * There is deliberately no setter and no way to delete one from the
- * application. An audit trail the application can edit answers "who changed
- * this" with "somebody who could also change the answer".
- *
- * It survives the soft deletion of its subject, because the history of a
- * deleted event is exactly what somebody will ask about.
- */
 #[ORM\Entity]
-#[ORM\Table(name: 'audit_entry')]
+#[ORM\Table(name: 'audit_entries')]
 #[ORM\Index(name: 'idx_audit_subject', columns: ['subject_type', 'subject_id'])]
 #[ORM\Index(name: 'idx_audit_occurred', columns: ['occurred_at'])]
 #[ORM\Index(name: 'idx_audit_actor', columns: ['actor_type', 'actor_id'])]
@@ -37,17 +27,9 @@ class AuditEntry
     #[ORM\Column(type: Types::STRING, length: 20, enumType: Actor::class)]
     private Actor $actorType;
 
-    /** Null for the system, which has no identity to record. */
     #[ORM\Column(type: 'uuid', nullable: true)]
     private ?Uuid $actorId;
 
-    /**
-     * Who the actor was AT THE TIME, as text.
-     *
-     * Denormalised on purpose. A name resolved at read time shows who that id
-     * belongs to now, which is a different question from who did this — and
-     * after the account is deleted it answers nothing at all.
-     */
     #[ORM\Column(type: Types::STRING, length: 180, nullable: true)]
     private ?string $actorLabel;
 
@@ -60,14 +42,7 @@ class AuditEntry
     #[ORM\Column(type: Types::STRING, length: 60)]
     private string $action;
 
-    /**
-     * What changed, as field => [before, after].
-     *
-     * Before AND after. "Role changed" is not an answer to "changed from what?",
-     * and the before is the half that cannot be reconstructed later.
-     *
-     * @var array<string, array{0: mixed, 1: mixed}>
-     */
+    /** @var array<string, array{0: mixed, 1: mixed}> */
     #[ORM\Column(type: Types::JSON)]
     private array $changes;
 
@@ -77,9 +52,7 @@ class AuditEntry
     #[ORM\Column(type: Types::STRING, length: 36, nullable: true)]
     private ?string $correlationId;
 
-    /**
-     * @param array<string, array{0: mixed, 1: mixed}> $changes
-     */
+    /** @param array<string, array{0: mixed, 1: mixed}> $changes */
     public function __construct(
         Actor $actorType,
         ?Uuid $actorId,

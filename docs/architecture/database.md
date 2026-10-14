@@ -8,12 +8,18 @@ decision.
 
 |              |                                                                   |
 | ------------ | ----------------------------------------------------------------- |
-| Tables       | `snake_case`, singular — `guest`, `event`, `org_member`           |
+| Tables       | `snake_case`, **plural** — `guests`, `events`, `org_members`      |
 | Columns      | `snake_case`, derived by the underscore naming strategy           |
 | Primary keys | **UUID v7**, never a sequence                                     |
 | Timestamps   | `TIMESTAMP WITHOUT TIME ZONE`, always UTC                         |
 | Enums        | stored as `VARCHAR` with a check constraint, mapped to a PHP enum |
 | Money        | integer minor units plus a currency column. Never a float         |
+
+**Plural rather than singular.** A table holds many rows, and the plural reads correctly
+in the place it is most often written: `FROM guests`, `JOIN org_members`. It also sidesteps
+a trap — `user` is a reserved word in Postgres, so a singular `user` table has to be
+quoted everywhere forever, including in hand-written SQL, where the query that forgets
+fails at runtime rather than at boot. `users` needs no quoting.
 
 **UUID v7 rather than v4 or a sequence.** A sequential integer leaks how many customers
 you have and how fast you are growing, and makes one tenant's ids guessable from another's.

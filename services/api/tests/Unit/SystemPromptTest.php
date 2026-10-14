@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
-use App\Assistant\Ask;
-use App\Assistant\AssistantContext;
-use App\Assistant\SystemPrompt;
-use App\Assistant\Turn;
+use App\AI\Model\Ask;
+use App\AI\Model\Turn;
+use App\AI\SystemPrompt;
+use App\Enum\AssistantContext;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;

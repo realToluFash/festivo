@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Assistant\Answer;
-use App\Assistant\Ask;
-use App\Assistant\Assistant;
+use App\AI\Interfaces\AssistantInterface;
+use App\AI\Model\Answer;
+use App\AI\Model\Ask;
 use App\Entity\AssistantInteraction;
-use App\Http\ErrorCode;
+use App\Enum\ErrorCode;
 use Doctrine\ORM\EntityManagerInterface;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
@@ -345,7 +345,7 @@ final class AssistantTest extends WebTestCase
     #[Test]
     public function aSwitchedOffAssistantIsUnavailableRatherThanBusy(): void
     {
-        self::getContainer()->set(Assistant::class, new class implements Assistant {
+        self::getContainer()->set(AssistantInterface::class, new class implements AssistantInterface {
             public function isEnabled(): bool
             {
                 return false;

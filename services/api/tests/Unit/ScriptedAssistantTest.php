@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
-use App\Assistant\Ask;
-use App\Assistant\AssistantContext;
-use App\Assistant\AssistantFailed;
-use App\Assistant\AssistantRefused;
-use App\Assistant\AssistantUnavailable;
-use App\Assistant\Availability;
-use App\Assistant\ScriptedAssistant;
-use App\Assistant\ToolDefinition;
-use App\Assistant\Turn;
+use App\AI\Availability;
+use App\AI\Exception\AssistantFailed;
+use App\AI\Exception\AssistantRefused;
+use App\AI\Exception\AssistantUnavailable;
+use App\AI\Model\Ask;
+use App\AI\Model\ToolDefinition;
+use App\AI\Model\Turn;
+use App\AI\ScriptedAssistant;
+use App\Enum\AssistantContext;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

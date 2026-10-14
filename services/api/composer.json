@@ -20,6 +20,7 @@
         "doctrine/doctrine-bundle": "^3.3",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.7",
+        "elao/enum": "^3.0",
         "nyholm/psr7": "^1.8",
         "php-standard-library/php-standard-library": "^6.3",
         "symfony/clock": "7.4.*",

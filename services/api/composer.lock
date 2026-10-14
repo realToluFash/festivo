@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "73f5e354fe17ae2c08ed2c9f79dc4c1f",
+    "content-hash": "7fae5605251ec54ec1fdbcec6e19a0e8",
     "packages": [
         {
             "name": "anthropic-ai/sdk",
@@ -2723,6 +2723,96 @@
                 "source": "https://github.com/doctrine/sql-formatter/tree/1.5.4"
             },
             "time": "2026-02-08T16:21:46+00:00"
+        },
+        {
+            "name": "elao/enum",
+            "version": "v3.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Elao/PhpEnums.git",
+                "reference": "9d00ebfceec8d2eb274e31d3f919d81550e4e4e9"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Elao/PhpEnums/zipball/9d00ebfceec8d2eb274e31d3f919d81550e4e4e9",
+                "reference": "9d00ebfceec8d2eb274e31d3f919d81550e4e4e9",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.4"
+            },
+            "conflict": {
+                "doctrine/dbal": ">=4.0,<4.2"
+            },
+            "require-dev": {
+                "composer/semver": "^3.2",
+                "doctrine/dbal": "^3.8|^4.2",
+                "doctrine/doctrine-bundle": "^2.18|^3.0",
+                "doctrine/orm": "^2.20|^3.0",
+                "ext-pdo_sqlite": "*",
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-symfony": "^2.0",
+                "phpunit/phpunit": "^10.5",
+                "symfony/browser-kit": "^6.4|^7.4|^8.0",
+                "symfony/config": "^6.4|^7.4|^8.0",
+                "symfony/dependency-injection": "^6.4|^7.4|^8.0",
+                "symfony/filesystem": "^6.4|^7.4|^8.0",
+                "symfony/form": "^6.4|^7.4|^8.0",
+                "symfony/framework-bundle": "^6.4|^7.4|^8.0",
+                "symfony/http-kernel": "^6.4|^7.4|^8.0",
+                "symfony/phpunit-bridge": "^6.4|^7.4|^8.0",
+                "symfony/translation": "^6.4|^7.4|^8.0",
+                "symfony/var-dumper": "^6.4|^7.4|^8.0",
+                "symfony/var-exporter": "^6.4|^7.4|^8.0",
+                "symfony/yaml": "^6.4|^7.4|^8.0"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-3.x": "3.x-dev"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "src/Bridge/Symfony/VarDumper/Resources/register_caster.php"
+                ],
+                "psr-4": {
+                    "Elao\\Enum\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Elao",
+                    "homepage": "https://www.elao.com"
+                },
+                {
+                    "name": "Maxime Steinhausser",
+                    "email": "maxime.steinhausser@gmail.com",
+                    "homepage": "https://github.com/ogizanagi"
+                }
+            ],
+            "description": "Extended PHP enums capabilities and frameworks integrations",
+            "homepage": "https://github.com/Elao/PhpEnums",
+            "keywords": [
+                "doctrine",
+                "enum",
+                "symfony"
+            ],
+            "support": {
+                "issues": "https://github.com/Elao/PhpEnums/issues",
+                "source": "https://github.com/Elao/PhpEnums/tree/v3.0.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/ogizanagi",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-04-13T11:55:37+00:00"
         },
         {
             "name": "lcobucci/jwt",

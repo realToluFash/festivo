@@ -7,20 +7,6 @@ namespace DoctrineMigrations;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * The assistant's record of what it was asked and what it answered.
- *
- * A new table, so there are no rows predating it and nothing to backfill.
- *
- * Append-only by convention rather than by grant: the application has no
- * update or delete path, and the question these rows answer — why did the
- * assistant say that, and what did it cost — is one an editable table cannot
- * be trusted with.
- *
- * Reversible: down() drops the table, which discards the history. Fine while
- * this is unreleased; once there is a deployment with rows in it, reverting is
- * a decision about losing them rather than a schema change.
- */
 final class Version20261011215815 extends AbstractMigration
 {
     public function getDescription(): string

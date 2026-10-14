@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit;
 
-use App\Address\Address;
 use App\Address\AddressLookup;
-use App\Address\AddressNotFound;
-use App\Address\AddressProvider;
-use App\Address\ProviderUnavailable;
-use App\Address\Suggestion;
+use App\Address\Exception\AddressNotFound;
+use App\Address\Exception\ProviderUnavailable;
+use App\Address\Interfaces\AddressProviderInterface;
+use App\Address\Model\Address;
+use App\Address\Model\Suggestion;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -134,7 +134,7 @@ final class AddressLookupTest extends TestCase
         self::assertSame(3, $provider->suggestCalls);
     }
 
-    private function lookup(AddressProvider $provider): AddressLookup
+    private function lookup(AddressProviderInterface $provider): AddressLookup
     {
         return new AddressLookup($provider, new ArrayAdapter(), new NullLogger());
     }
@@ -142,8 +142,8 @@ final class AddressLookupTest extends TestCase
     private function countingProvider(
         ?Throwable $suggestThrows = null,
         ?Throwable $resolveThrows = null,
-    ): AddressProvider {
-        return new class($suggestThrows, $resolveThrows) implements AddressProvider {
+    ): AddressProviderInterface {
+        return new class($suggestThrows, $resolveThrows) implements AddressProviderInterface {
             public int $suggestCalls = 0;
             public int $resolveCalls = 0;
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Audit\Actor;
 use App\Audit\Auditor;
 use App\Entity\AuditEntry;
 use App\Entity\SchemaProbe;
+use App\Enum\Actor;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
