@@ -27,11 +27,17 @@ export default function Home() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
-  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+  // The loading state belongs to the event that causes the reload, not to the
+  // effect. Setting it in the effect body made every attempt two renders
+  // instead of one, and on mount it set a state that was already the initial
+  // one.
+  const retry = useCallback(() => {
+    setState({ kind: 'loading' });
+    setAttempt((n) => n + 1);
+  }, []);
 
   useEffect(() => {
     let live = true;
-    setState({ kind: 'loading' });
 
     api
       .get<Health>('/api/health')

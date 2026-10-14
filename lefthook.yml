@@ -21,6 +21,13 @@ pre-commit:
       glob: '*.{js,mjs,cjs,ts,tsx}'
       run: npx eslint --fix {staged_files}
       stage_fixed: true
+    css:
+      glob: 'apps/web/src/**/*.css'
+      # tokens.css is generated and exempt from the formatting rules in
+      # stylelint.config.mjs, so --fix cannot rewrite it into disagreeing with
+      # docs/design/tokens.mjs.
+      run: npx stylelint --fix {staged_files}
+      stage_fixed: true
     php:
       glob: '*.php'
       # One command, in this order, because both halves rewrite PHP files and

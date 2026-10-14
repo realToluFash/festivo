@@ -121,6 +121,7 @@ check: lint static-analysis guard typecheck test
 # Formatting and the linters, across every language in the repository.
 lint:
     npm run lint:js
+    npm run lint:css
     npm run format:check
     npm run lint:actions
     npm run lint:php

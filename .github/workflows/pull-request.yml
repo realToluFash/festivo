@@ -91,6 +91,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint:js
+      # The web client's CSS, and the rule that keeps colour literals in the
+      # generated token file rather than spreading through the stylesheet.
+      - run: npm run lint:css
       - run: npm run format:check
       # Lints this workflow, including shellcheck over every `run:` block.
       - run: npm run lint:actions

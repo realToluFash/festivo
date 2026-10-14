@@ -98,6 +98,27 @@ overlays and the primary action all change form, not just size.
   Two live ones: `--sizeControlDense: 36px` contradicts the 44px rule, and `--typePill` is
   declared 12px where the screens mostly use 11px.
 
+### What a linter now refuses
+
+Three of the rules above stopped being advice. The tooling reports them, and `just check`
+and the pre-commit hook both fail on them:
+
+| Rule                                                                    | Where                  |
+| ----------------------------------------------------------------------- | ---------------------- |
+| No hex or named colour in CSS outside the generated `tokens.css`        | `stylelint.config.mjs` |
+| A custom property is camelCase, like the 201 generated ones             | `stylelint.config.mjs` |
+| Never write `fontFamily` — ask for a weight                             | `eslint.config.mjs`    |
+| Never import `Text` from `react-native` — use `src/components/Text.tsx` | `eslint.config.mjs`    |
+
+The last two are `src/theme/fonts.ts`'s own rules. Its rule 2 — no `Text` inside a `Text`,
+no `onPress` on a `Text` — is enforced by `apps/mobile/src/textGuard.test.ts`, which reads
+every screen and resolves markup wrapped over several lines.
+
+`eslint-plugin-react-hooks` also runs over both clients now. It is the one worth knowing
+about before you write a screen rather than after: a hook called inside a condition, and an
+effect that calls `setState` synchronously in its own body, are both correct TypeScript and
+both wrong. It found one of each in a skeleton of twenty-one components.
+
 ## 4. A number you render is a claim you own
 
 The costliest class of bug in the previous build, and it comes in through the design.

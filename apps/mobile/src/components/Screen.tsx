@@ -23,7 +23,7 @@ export interface ScreenProps {
   /** Scrolls by default. Off for a screen that owns its own scrolling. */
   scroll?: boolean;
   /** Which edges to inset. Default is all four. */
-  edges?: ReadonlyArray<'top' | 'bottom' | 'left' | 'right'>;
+  edges?: readonly ('top' | 'bottom' | 'left' | 'right')[];
   style?: ViewStyle;
   contentStyle?: ViewStyle;
 }
