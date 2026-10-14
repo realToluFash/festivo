@@ -37,7 +37,7 @@
   --colorBroken: #C2410C;
   --colorBrokenTint: #FDECE4;
   --colorBrokenText: #9A3412;
-  --optionGreen: #1E9A64;
+  --optionGreen: #6AA84F;
   --optionBlue: #3B7DD8;
   --optionAmber: #E3A72F;
   --optionPurple: #8B6CD6;
@@ -102,6 +102,7 @@
   --sizeHitPhoneHero: 52px;
   --sizeSegmentInner: 38px;
   --sizeControlDense: 36px;
+  --hitSlopDense: 4px;
   --sizePill: 22px;
   --sizeMark: 20px;
   --sizeAvatar: 36px;
@@ -179,12 +180,12 @@
   --replyComingRing: 0;
   --replyMaybeDot: #FBF1DC;
   --replyMaybeRing: 3px solid #B7791F;
-  --replyNotComingDot: #9CA3AF;
+  --replyNotComingDot: #6B7280;
   --replyNotComingRing: 0;
   --replyHeldDot: half #6B7280 / #FFFFFF;
   --replyHeldRing: 1px solid #6B7280;
   --replyNoReplyDot: transparent;
-  --replyNoReplyRing: 1.5px solid #9CA3AF;
+  --replyNoReplyRing: 1.5px solid #6B7280;
   --seatTakenFill: #1E9A64;
   --seatTakenRing: 1px solid #1E9A64;
   --seatTakenInk: #FFFFFF;

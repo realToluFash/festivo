@@ -76,6 +76,28 @@ describe('the CSS output', () => {
   });
 });
 
+/**
+ * Contrast, computed rather than claimed.
+ *
+ * Two of the decisions below are contrast decisions, and an assertion that
+ * says "this one passes" without doing the arithmetic is just a comment. WCAG
+ * relative luminance, so the reason is checkable and a future hex cannot
+ * quietly undo it.
+ */
+function luminance(hex) {
+  const channel = (c) => {
+    const v = parseInt(c, 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  const [r, g, b] = [hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)].map(channel);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a, b) {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
 describe('what the source itself asserts', () => {
   it('has one accent, and it is the green', () => {
     expect(tokens.colorAccent).toBe('#1E9A64');
@@ -92,18 +114,111 @@ describe('what the source itself asserts', () => {
     }
   });
 
-  it('keeps Held distinguishable from No reply by more than colour', () => {
-    const { held, noReply } = tokens.replyStates;
-    expect(held.word).not.toBe(noReply.word);
-    expect(held.dot).not.toBe(noReply.dot);
-    expect(held.ring).not.toBe(noReply.ring);
+  it('computes 4.5:1 for the secondary ink and less for the tertiary', () => {
+    // The source's own claim about these two, proved. It is why the decisions
+    // below moved information off the tertiary.
+    expect(contrast(tokens.colorInkSecondary, tokens.colorCard)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(tokens.colorInkTertiary, tokens.colorCard)).toBeLessThan(4.5);
+  });
+});
+
+/**
+ * The four contradictions, settled under sc-80.
+ *
+ * Each of these held a disagreement the design flagged, or one found while
+ * generating. They are tests rather than comments so that reopening one is a
+ * deliberate act with a failing suite attached — which is the only thing that
+ * stops the first screen built deciding them again by accident.
+ */
+describe('settled: the dense control is 36 tall and 44 to a finger', () => {
+  it('reaches the hit minimum with its slop on both sides', () => {
+    expect(tokens.sizeControlDense + 2 * tokens.hitSlopDense).toBe(tokens.sizeHit);
   });
 
-  it('still carries the one token that contradicts the 44 rule, unresolved', () => {
-    // Not a bug in the generator: the design context flags it itself, and
-    // sc-80 owes a decision. Asserted so that deleting or changing it is a
-    // deliberate act with a failing test attached, rather than a quiet edit.
-    expect(tokens.sizeControlDense).toBe(36);
+  it('is still smaller than the hit target, which is the whole point', () => {
+    // If these ever match, somebody has "fixed" the contradiction by deleting
+    // the dense control rather than by giving it a target.
     expect(tokens.sizeControlDense).toBeLessThan(tokens.sizeHit);
+    expect(tokens.hitSlopDense).toBeGreaterThan(0);
+  });
+});
+
+describe('settled: nothing a person reads is below 12px', () => {
+  const styles = Object.entries(tokens).filter(
+    ([k, v]) => k.startsWith('type') && typeof v === 'object',
+  );
+
+  it('covers every type style, and there are some', () => {
+    expect(styles.length).toBeGreaterThan(10);
+  });
+
+  for (const [name, style] of styles) {
+    it(`${name} is at least 12`, () => {
+      expect(style.size).toBeGreaterThanOrEqual(12);
+    });
+  }
+
+  it('keeps the pill at 12 rather than the 11 the screens drifted to', () => {
+    expect(tokens.typePill.size).toBe(12);
+  });
+});
+
+describe('settled: an option colour never borrows a colour that means something', () => {
+  const options = Object.entries(tokens).filter(
+    ([k]) => k.startsWith('option') && k !== 'optionNone',
+  );
+  // optionNone is excepted deliberately: it shares colorTrack, both mean
+  // absence, and absence is not a meaning that can be confused with a state.
+  const meaning = ['colorAccent', 'colorAccentHover', 'colorAttention', 'colorBroken'];
+
+  it('has options to check', () => {
+    expect(options.length).toBeGreaterThanOrEqual(5);
+  });
+
+  for (const [name, value] of options) {
+    it(`${name} is not a meaning colour`, () => {
+      for (const key of meaning) {
+        expect(value, `${name} is ${key}`).not.toBe(tokens[key]);
+      }
+    });
+  }
+
+  it('keeps every option distinguishable from every other', () => {
+    const values = options.map(([, v]) => v);
+    expect(new Set(values).size).toBe(values.length);
+  });
+});
+
+describe('settled: the reply states are told apart by shape, not by shades of grey', () => {
+  const { coming, maybe, notComing, held, noReply } = tokens.replyStates;
+
+  it('uses one grey, and it is the one that passes contrast', () => {
+    expect(notComing.dot).toBe(tokens.colorInkSecondary);
+    expect(noReply.ring).toContain(tokens.colorInkSecondary);
+    expect(held.ring).toContain(tokens.colorInkSecondary);
+  });
+
+  it('puts no information on the tertiary ink', () => {
+    for (const state of Object.values(tokens.replyStates)) {
+      expect(state.dot).not.toBe(tokens.colorInkTertiary);
+      expect(state.ring).not.toContain(tokens.colorInkTertiary);
+    }
+  });
+
+  it('gives each of the three not-yes states a different shape', () => {
+    // Solid, half, and an empty ring. This is what survives the greyscale
+    // print the kitchen makes, where all three greys would be one grey.
+    const shapes = [notComing.dot, held.dot, noReply.dot];
+    expect(new Set(shapes).size).toBe(3);
+  });
+
+  it('still separates yes and maybe by colour, because those two are the question', () => {
+    expect(coming.dot).toBe(tokens.colorAccent);
+    expect(maybe.ring).toContain(tokens.colorAttention);
+  });
+
+  it('names all five', () => {
+    const words = Object.values(tokens.replyStates).map((s) => s.word);
+    expect(words).toEqual(['Coming', 'Maybe', 'Not coming', 'Held', 'No reply']);
   });
 });

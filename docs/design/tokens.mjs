@@ -7,12 +7,28 @@
 // has drifted from this file. Two hand-maintained copies of a colour diverge;
 // that is the whole reason this is a generated pair.
 //
-// It is a verbatim copy of `design-context/tokens.js` in the Claude Design
-// project, kept verbatim so a later extraction can be diffed against it rather
-// than reconciled by hand. Its own annotations are part of the value: a `usage`
-// note says what a token is for, PROPOSED marks a change rather than a
-// description, and "Disagreements" / "Accidents" name where the screens
-// contradict themselves. A PROPOSED value is not settled — see sc-80.
+// It began as a verbatim copy of `design-context/tokens.js` in the Claude
+// Design project. Its own annotations are part of the value: a note says what a
+// token is for, PROPOSED marks a change rather than a description, and
+// "Disagreements" / "Accidents" name where the screens contradict themselves.
+//
+// FOUR DELIBERATE DIVERGENCES from that copy, settled under sc-80. Each is
+// marked SETTLED at its token, and each is held by a test in
+// scripts/build-tokens.test.mjs so that undoing one is a deliberate act:
+//
+//   1. hitSlopDense is new. The 36px dense control keeps its visual height and
+//      gains the slop that brings its touch target to 44, because a visual
+//      height and a hit area are different things and only one of them was
+//      ever in contention.
+//   2. typePill stays 12 against the screens' 11, and nothing a person reads
+//      now goes below 12.
+//   3. optionGreen moves off the accent's hex. A green-coded menu option was
+//      indistinguishable from a selected one.
+//   4. The reply states tell themselves apart by SHAPE; grey no longer comes in
+//      two values, and the two that failed contrast are gone.
+//
+// Everything else is still the extraction's own value, so a later extraction
+// can be diffed against this file and only these four should show up.
 //
 // Same names as the design's tokens.css (--colorInk ⇄ tokens.colorInk).
 
@@ -53,18 +69,25 @@ export const tokens = {
   colorAttentionText: '#8A5A12',
   colorAttentionBorder: '#F1E2BC',
   colorAttentionWash: '#FFFDF7', // card background for "proposed" and soft warnings
-  colorAttentionOnDark: '#E3A72F', // the live/failing dot on dark surfaces. Same hex as optionAmber (see "Accidents")
+  colorAttentionOnDark: '#E3A72F', // the live/failing dot on dark surfaces. SETTLED: deliberately the same hex as optionAmber — they never share a surface, and two roles naming one value is the point of role names
   colorBroken: '#C2410C', // broken, bounced, allergy outline
   colorBrokenTint: '#FDECE4',
   colorBrokenText: '#9A3412',
   // ── Colour · option palette (menu choices, groups). Always with a letter or word. ──
-  optionGreen: '#1E9A64', // same hex as colorAccent – see "Disagreements"
+  // SETTLED (sc-80). Was #1E9A64, the accent's own hex. The accent means
+  // selected / done / primary and cannot move, so the option moved: on the menu
+  // screen a green-coded dish was indistinguishable from a selected one, which
+  // is the one place the two genuinely meet. A yellower green, clear of both the
+  // accent and the teal below it. The HUE is a proposal the designer may swap;
+  // the RULE — no option colour may equal a colour that carries meaning — is
+  // settled, and tested.
+  optionGreen: '#6AA84F',
   optionBlue: '#3B7DD8',
   optionAmber: '#E3A72F',
   optionPurple: '#8B6CD6',
   optionTeal: '#2A9D8F',
   optionRose: '#D96C8A',
-  optionNone: '#D6D9E0', // "no pick" – same hex as colorTrack
+  optionNone: '#D6D9E0', // "no pick". SETTLED: deliberately the same hex as colorTrack — both mean absence, and changing one does not imply changing the other
   // ── Colour · scrims (web: rgba; native: same rgba on a full-screen View) ───
   scrimSheet: 'rgba(21,23,28,0.35)', // bottom sheets. Screens also use 0.25 and 0.3 – accidents
   scrimDialog: 'rgba(21,23,28,0.4)', // centred dialogs
@@ -89,7 +112,12 @@ export const tokens = {
   typeSmall: { size: 13, weight: 400, lineHeight: 1.45, letterSpacing: '0' }, // secondary lines under titles
   typeMeta: { size: 12, weight: 400, lineHeight: 1.4, letterSpacing: '0' }, // timestamps, footnotes
   typeLabel: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0.1em' }, // UPPERCASE section labels
-  typePill: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0' }, // status pills. Screens mostly use 11 – see "Accidents"
+  // SETTLED (sc-80). The screens mostly use 11; this file declared 12. 12 wins:
+  // a status pill carries a WORD, because meaning never rests on colour alone,
+  // and 11px is too small for the word to do that job. A declared value also
+  // beats an accident. It makes 12 the floor for everything a person reads,
+  // which is tested.
+  typePill: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0' }, // status pills
   typeButton: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // 44px buttons; 15 on phone primaries; 13 inside dense rows
   typeMonoTime: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // mono; 12–13 for provider strings, 20–26 for table numbers
   typeRoomNow: { size: 64, weight: 700, lineHeight: 1.05, letterSpacing: '-0.02em' }, // room screen only; 30 for "coming up", 20 for labels
@@ -114,7 +142,14 @@ export const tokens = {
   sizeHitPhonePrimary: 48, // phone primary buttons and inputs
   sizeHitPhoneHero: 52, // one-per-screen phone CTA ("I'm here" uses 56 – accident)
   sizeSegmentInner: 38, // button inside a 44px segmented track (track padding 3)
-  sizeControlDense: 36, // buttons inside dense rows – VIOLATES the 44 rule, see "Disagreements"
+  // SETTLED (sc-80). The design flagged this as violating the 44 rule. It does
+  // not: 36 is how tall the control LOOKS, and 44 is how big the target must
+  // be. Those are different properties, and conflating them is what made this
+  // look like a contradiction. A dense control is drawn at 36 and carries
+  // `hitSlopDense` on every side — hitSlop on native, padding on the web — so
+  // the thing a finger hits is 44. The invariant is tested.
+  sizeControlDense: 36, // buttons inside dense rows; visual height only
+  hitSlopDense: 4, // (44 − 36) / 2 · every dense control carries this on all four sides
   sizePill: 22, // status/badge pill height; 20 and 24 also used
   sizeMark: 20, // status mark circle in rows; 22 in headers, 18 in compact lists, 24 on tickets
   sizeAvatar: 36, // rows; 32 compact, 40 phone lists, 44 headers
@@ -242,12 +277,21 @@ export const tokens = {
     allergy: { glyph: '!', word: 'Allergy', fill: '#FFFFFF', ring: '#C2410C', ink: '#C2410C' }, // ring 1.5–2px; always listed first
     info: { glyph: 'i', word: '', fill: '#FFFFFF', ring: '#4B5563', ink: '#4B5563' },
   },
+  // SETTLED (sc-80). Two of these used #9CA3AF, which this file says itself
+  // fails 4.5:1 and must never carry information — and a status dot carries
+  // information even when a word sits beside it.
+  //
+  // So the system is now: colour separates only yes (green), maybe (amber) and
+  // not-yes (one grey, #6B7280, which passes), and SHAPE says which kind of
+  // not-yes it is — solid, half, or an empty ring. That is stronger than three
+  // greys would have been, because it survives the greyscale print the kitchen
+  // makes, and because Held stops being a shade away from No reply.
   replyStates: {
-    coming: { word: 'Coming', dot: '#1E9A64', ring: '0' },
-    maybe: { word: 'Maybe', dot: '#FBF1DC', ring: '3px solid #B7791F' },
-    notComing: { word: 'Not coming', dot: '#9CA3AF', ring: '0' },
-    held: { word: 'Held', dot: 'half #6B7280 / #FFFFFF', ring: '1px solid #6B7280' }, // web: linear-gradient 90deg 50%; native: two Views
-    noReply: { word: 'No reply', dot: 'transparent', ring: '1.5px solid #9CA3AF' },
+    coming: { word: 'Coming', dot: '#1E9A64', ring: '0' }, // solid green
+    maybe: { word: 'Maybe', dot: '#FBF1DC', ring: '3px solid #B7791F' }, // amber ring
+    notComing: { word: 'Not coming', dot: '#6B7280', ring: '0' }, // solid grey
+    held: { word: 'Held', dot: 'half #6B7280 / #FFFFFF', ring: '1px solid #6B7280' }, // half grey · web: linear-gradient 90deg 50%; native: two Views
+    noReply: { word: 'No reply', dot: 'transparent', ring: '1.5px solid #6B7280' }, // empty grey ring
   },
   seatStates: {
     taken: {

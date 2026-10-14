@@ -38,7 +38,7 @@ export const tokens = {
   "colorBroken": "#C2410C",
   "colorBrokenTint": "#FDECE4",
   "colorBrokenText": "#9A3412",
-  "optionGreen": "#1E9A64",
+  "optionGreen": "#6AA84F",
   "optionBlue": "#3B7DD8",
   "optionAmber": "#E3A72F",
   "optionPurple": "#8B6CD6",
@@ -175,6 +175,7 @@ export const tokens = {
   "sizeHitPhoneHero": 52,
   "sizeSegmentInner": 38,
   "sizeControlDense": 36,
+  "hitSlopDense": 4,
   "sizePill": 22,
   "sizeMark": 20,
   "sizeAvatar": 36,
@@ -372,7 +373,7 @@ export const tokens = {
     },
     "notComing": {
       "word": "Not coming",
-      "dot": "#9CA3AF",
+      "dot": "#6B7280",
       "ring": "0"
     },
     "held": {
@@ -383,7 +384,7 @@ export const tokens = {
     "noReply": {
       "word": "No reply",
       "dot": "transparent",
-      "ring": "1.5px solid #9CA3AF"
+      "ring": "1.5px solid #6B7280"
     }
   },
   "seatStates": {
