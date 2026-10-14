@@ -115,6 +115,29 @@ data:
 `just diff-database` shows what a migration would contain without writing one. Read that,
 then `just new-migration` and write the file.
 
+## Editing a migration that has already run
+
+While a migration is unreleased — not merged, not deployed — editing it in place is right.
+`rebuild-dont-increment` applies: a second migration correcting the first is two things to
+read where there should be one, and this project is pre-release.
+
+**But it leaves every environment that already ran it silently stale.** Doctrine records
+which version ran, not what it contained, so `doctrine:migrations:migrate` reports nothing
+to do while the schema is wrong — and it is `doctrine:schema:validate` that eventually tells
+you, in a different session, with no clue as to why.
+
+So after editing one:
+
+```bash
+just reset-database-dev       # drops, recreates, migrates. Destructive.
+just prepare-database-test    # the test database, which drops anyway
+just validate-database        # the check that would otherwise find this later
+```
+
+Once a migration has been merged, this stops being an option: somebody else's database has
+run it, and nothing you do to the file reaches them. From then on a correction is a new
+migration.
+
 ## What goes in `getDescription()`
 
 One sentence, in the present tense, saying what the schema can now hold — not what the
