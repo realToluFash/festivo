@@ -171,6 +171,30 @@ jobs:
       - name: PHP formatting
         run: npm run lint:php
 
+      - name: Lint
+        # mago's linter. Its baseline holds the issues that existed when it was
+        # adopted, so this fails on a new one and not on the backlog — see
+        # services/api/.build/mago/lint-baseline.toml for what is in there and
+        # why.
+        run: npm run lint:api
+
+      - name: Static analysis
+        # Types, inference and reachability. No baseline: this is clean, and the
+        # job is what keeps it that way.
+        #
+        # It is the only check here that reads a signature rather than a shape.
+        # It has already caught a truncated docblock that left a generic
+        # unclosed, an injected dependency nothing used, and an env var passed
+        # to a provider without being validated against the values the provider
+        # accepts — none of which the formatter or the suite could see.
+        run: npm run analyse:api
+
+      - name: Architectural boundaries
+        # mago's guard: which namespace may depend on which, from
+        # docs/architecture/scopes.md. A scope reaching into another scope is
+        # invisible to every other check in this file, because the code works.
+        run: npm run guard:api
+
       - name: Why it failed
         if: failure()
         run: docker compose logs --tail 80 api postgres

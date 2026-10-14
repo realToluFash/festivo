@@ -1,8 +1,14 @@
 # Git hooks. Fast enough that nobody is tempted to bypass them.
 #
-# Everything here runs on STAGED files only. A hook that lints the whole
-# repository on every commit is a hook people start passing --no-verify to,
-# and then it is not a hook at all.
+# The JavaScript commands run on STAGED files only. A hook that lints the whole
+# repository on every commit is a hook people start passing --no-verify to, and
+# then it is not a hook at all.
+#
+# The PHP command is the exception and says why below.
+#
+# Anything that can fix rather than complain, does, and re-stages what it
+# changed. A hook that tells you to run a formatter is a hook that wastes a
+# round trip.
 
 pre-commit:
   parallel: true
@@ -17,9 +23,34 @@ pre-commit:
       stage_fixed: true
     php:
       glob: '*.php'
-      # intersection: fix only the staged files that the config's finder also
-      # covers, rather than everything the finder matches.
-      run: node scripts/php-tool.mjs php-cs-fixer fix --path-mode=intersection {staged_files}
+      # One command, in this order, because both halves rewrite PHP files and
+      # `parallel: true` above would otherwise have them writing the same file
+      # at the same time.
+      #
+      # php-cs-fixer owns formatting and runs with --path-mode=intersection, so
+      # it fixes only the staged files the config's finder also covers rather
+      # than everything the finder matches.
+      #
+      # Then mago: `fix --no-fmt` applies the fixes that are safe (--no-fmt
+      # because php-cs-fixer already formatted, and two tools with two opinions
+      # rewriting the same lines is a loop), and the three checks report what is
+      # left.
+      #
+      # Those three are project-wide rather than staged-only, which is the one
+      # place this file breaks its own rule. A type error and a namespace
+      # violation are properties of the project and not of a file: staging a
+      # changed signature without the caller that now mismatches is exactly the
+      # commit they catch, and a staged-only run would wave it through. The
+      # whole API is about three seconds.
+      # Chained with && rather than one per line: a multi-line block carries the
+      # exit code of its last command, so a failure in the middle would be
+      # masked by the check that ran after it.
+      run: >
+        node scripts/php-tool.mjs php-cs-fixer fix --path-mode=intersection {staged_files}
+        && npm run fix:api
+        && npm run lint:api
+        && npm run analyse:api
+        && npm run guard:api
       stage_fixed: true
     actions:
       glob: '.github/workflows/*.{yml,yaml}'
