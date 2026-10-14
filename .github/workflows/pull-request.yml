@@ -160,6 +160,22 @@ jobs:
       - name: Start the API
         run: docker compose up -d api
 
+      - name: Let the API container cache the mago binary
+        # mago's composer package is a PHP shim that downloads its platform
+        # binary into vendor on first use. Two things make that awkward here and
+        # neither is avoidable:
+        #
+        # vendor is installed by the composer image as the runner's user, and
+        # the api container runs as 1000, so it cannot write there. And the
+        # binary is libc-specific — the composer image is Alpine and fetches
+        # -musl, while the api image is Debian and needs -gnu — so the install
+        # step cannot warm it either. The download path is fixed inside vendor
+        # with no environment variable to move it.
+        #
+        # So this lets that one package directory be written. Scoped to the
+        # package rather than to vendor, and the runner is thrown away after.
+        run: chmod -R a+w services/api/vendor/carthage-software/mago
+
       - name: Create a throwaway database and migrate it
         # Drops and recreates, so a removed migration is actually gone — the
         # only way to be sure of that.
