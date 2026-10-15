@@ -166,12 +166,24 @@ function Credentials({
 }) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
-  const [email, setEmail] = useState('');
-  const [secret, setSecret] = useState('');
   const password = useRef<TextInput>(null);
 
+  /**
+   * Held in refs, not in state, and the fields are uncontrolled.
+   *
+   * A `value` prop re-renders on every keystroke, and on a fast typist or a
+   * password manager the field is reset to the previous render's value between
+   * strokes — so characters go missing. A simulator typing an address at
+   * machine speed lost two thirds of the password, and nothing about the
+   * screen said so.
+   *
+   * Nothing here needs to read what has been typed until it is submitted, so
+   * nothing needs to re-render while it is.
+   */
+  const typed = useRef({ email: '', password: '' });
+
   const submit = (): void => {
-    onSubmit(email.trim(), secret);
+    onSubmit(typed.current.email.trim(), typed.current.password);
   };
 
   const busy = status.kind === 'signingIn';
@@ -228,8 +240,9 @@ function Credentials({
           autoCapitalize="none"
           autoCorrect={false}
           spellCheck={false}
-          value={email}
-          onChangeText={setEmail}
+          onChangeText={(text) => {
+            typed.current.email = text;
+          }}
           returnKeyType="next"
           onSubmitEditing={() => password.current?.focus()}
           placeholderTextColor={tokens.colorInkTertiary}
@@ -259,8 +272,9 @@ function Credentials({
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
-            value={secret}
-            onChangeText={setSecret}
+            onChangeText={(text) => {
+              typed.current.password = text;
+            }}
             returnKeyType="go"
             onSubmitEditing={submit}
             placeholderTextColor={tokens.colorInkTertiary}
