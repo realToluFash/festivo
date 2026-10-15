@@ -174,7 +174,8 @@ does not check the password at all. The time is the window's end, so it does not
 nobody is trying, and the right password at that time signs in. The clients round it up to
 the minute they show and lift the lock themselves when it arrives.
 
-The budgets live in the `cache.rate_limiter` pool.
+The budgets live in Redis (`cache.rate_limiter`), so every API container counts against the
+same one. In the test environment they are in memory; `cache.yaml` says why.
 
 ## The access token's fifteen minutes
 
