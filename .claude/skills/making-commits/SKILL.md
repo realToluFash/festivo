@@ -118,6 +118,22 @@ Rebuilding from a soft reset is usually simpler than a chain of `fixup!` commits
 interactive rebase, because the working tree is already the final state — the only question
 left is how to group it.
 
+**And it avoids a trap in the fixup route.** A `fixup!` is a patch made against the final
+state; applying it to an earlier commit conflicts wherever a later commit touched the same
+lines, and resolving that conflict in favour of the earlier commit **silently drops the fix
+from the final tree** — the later commit simply re-adds what it always added. That is how a
+comment deleted in a sweep came back: the fixup landed on the commit before the one that
+re-introduced the line.
+
+Whichever route you take, prove the rebuild changed no content:
+
+```bash
+git diff ORIG_HEAD HEAD   # must be empty — same tree, different history
+```
+
+Empty means you regrouped the work. Anything else means you changed it, and you now have to
+read what changed and decide whether you meant it.
+
 ### The exception, and it is the important half
 
 **A comment that sends you outside the pull request gets its own commit.** If the reviewer
