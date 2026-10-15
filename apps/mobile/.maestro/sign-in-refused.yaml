@@ -15,7 +15,7 @@ appId: host.exp.Exponent
     stopApp: true
 # Erased before each field is typed into, because `openLink` reaches the route
 # without remounting the screen: a field keeps what the last run left in it.
-- openLink: exp://127.0.0.1:8081/--/sign-in
+- openLink: ${METRO_URL}/--/sign-in
 - extendedWaitUntil:
     visible: 'Email'
     timeout: 60000

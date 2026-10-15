@@ -105,27 +105,72 @@ the AC rarely mentions them.
 
 ## 4. The environment
 
+**You have a stack of your own, and you never use the developer's.** A developer and a QA
+pass on one stack is two people editing the same thing: their suite drops the database you
+are reading, your offline test stops the API their suite is running in, and their branch
+switch changes the code halfway through your report. So QA lives apart:
+
+- **A worktree at `~/Projects/soirely-qa`**, on the _pushed_ head of the pull request, never
+  on a branch the developer has checked out. What you test is what the PR contains, not
+  somebody's unsaved edit.
+- **Compose project `soirely-qa`**: its own containers, volumes and database, every port
+  moved up by 10000, and `127.0.0.1` rather than `localhost`, so even the browser cookies
+  stay apart.
+- **Its own bundler (18081) and its own simulators**, `Soirely QA iPhone` and
+  `Soirely QA iPad`.
+
+**You are usually started in the developer's checkout, `~/Projects/soirely`. Work in the
+QA worktree anyway.** It is the main checkout's sibling, `../soirely-qa`. Your session's
+directory does not move, so you point every action at the worktree:
+
+- **Every shell command starts with `cd ~/Projects/soirely-qa &&`.** That includes `git`,
+  `docker compose`, `just`, `node .qa/bin/…`, `maestro` and `curl` writing to `.qa/`. A bare
+  `docker compose` in the main checkout reaches the developer's stack. A bare `git` reports
+  the developer's branch, not what you are testing.
+- **Every file you read, write or screenshot is under `~/Projects/soirely-qa/`**, as an
+  absolute path. Read the code, the docs and the Maestro flows there, because that is the
+  commit under test. The main checkout may be on another branch entirely.
+- **Write nothing in `~/Projects/soirely`.** It is somebody else's working tree. That
+  includes `.qa/` and new flows.
+
+Before anything else, check that the worktree exists:
+`test -f ~/Projects/soirely-qa/.qa/bin/qa-env.mjs`. If it doesn't, run `just qa-env setup`
+**once** from the main checkout to create it. That is the one command you run there. Then
+carry on from the worktree.
+
 ```sh
-just up                      # everything, waiting until each service can answer
-just qa-account              # a throwaway account, registered through the API
-just reset-database-dev      # when the data is in the way; it takes everything with it
+cd ~/Projects/soirely-qa
+node .qa/bin/qa-env.mjs checkout 36          # the PR under test: fetch, check out, rebuild, fresh database
+node .qa/bin/qa-env.mjs checkout sc-55       # or by story, when one remote branch names it
+node .qa/bin/qa-env.mjs status               # what is checked out, and whether it answers
+node .qa/bin/qa-env.mjs account --json       # a throwaway account, on this stack
 ```
 
-| What     | Where                   | For                                      |
-| -------- | ----------------------- | ---------------------------------------- |
-| API      | `http://localhost:8080` | every request                            |
-| Web      | `http://localhost:5173` | `npm run dev --workspace @soirely/web`   |
-| App      | Expo Go on a simulator  | `just qa-ios`                            |
-| Mailpit  | `http://localhost:8025` | every email the stack sends              |
-| Smocker  | `http://localhost:8088` | every SMS it sends                       |
-| Postgres | `just psql`             | confirming what a request actually wrote |
+The harness is `.qa/bin/qa-env.mjs`, not `scripts/`, on purpose: `checkout` moves the code
+to the commit under test, which may predate the harness. `checkout` starts the database from
+nothing every time (`--keep-data` to only migrate); every account in it is yours.
 
-**Name the environment and the commit in the report.** `git rev-parse --short HEAD` and the
-branch. A report that does not say what it tested cannot be re-run.
+From inside the worktree, `docker compose …` and `just psql` reach the QA stack on their
+own, because its `.env` names the project. `docker compose stop api` for the offline case stops **your**
+API, and nobody else's.
+
+| What     | Where                    | For                                      |
+| -------- | ------------------------ | ---------------------------------------- |
+| API      | `http://127.0.0.1:18080` | every request                            |
+| Web      | `http://127.0.0.1:15173` | the built client, rebuilt by `checkout`  |
+| App      | `exp://127.0.0.1:18081`  | `node .qa/bin/qa-env.mjs ios`            |
+| Mailpit  | `http://127.0.0.1:18025` | every email the stack sends              |
+| Smocker  | `http://127.0.0.1:18088` | every SMS it sends                       |
+| Postgres | `just psql`              | confirming what a request actually wrote |
+
+**Name the environment and the commit in the report.**
+`cd ~/Projects/soirely-qa && git rev-parse --short HEAD`, and the PR it came from. A report that does not say what it tested cannot be re-run. The
+environment is `QA stack (~/Projects/soirely-qa)`.
 
 **Accounts come from the script, never by hand and never a developer's own.** Addresses are
 `@soirely.test`, which can never be delivered to, and timestamped so two passes never
-collide. `node scripts/qa-account.mjs --json` is the machine-readable form.
+collide. `node .qa/bin/qa-env.mjs account --json` is the machine-readable form, pointed at
+the QA stack; `scripts/qa-account.mjs` on its own talks to the developer's.
 
 ## 5. The tools, by surface
 
@@ -135,9 +180,9 @@ Black box, over HTTP, as a client sees it. The suite in `services/api/tests` is 
 developer's check and proves something different: it can reach inside the application.
 
 ```sh
-curl -s -D- http://localhost:8080/api/health
-curl -s -X POST http://localhost:8080/api/auth/login \
-  -H 'Content-Type: application/json' -H 'Origin: http://localhost:5173' \
+curl -s -D- http://127.0.0.1:18080/api/health
+curl -s -X POST http://127.0.0.1:18080/api/auth/login \
+  -H 'Content-Type: application/json' -H 'Origin: http://127.0.0.1:15173' \
   -d '{"email":"…","password":"…"}' | python3 -m json.tool
 ```
 
@@ -149,12 +194,13 @@ Read the **status, the headers and the body**, and check each against the contra
 
 Prefer the **Playwright MCP**, which drives a real browser and gives you the accessibility
 tree rather than a screenshot to squint at. If its tools are not in this session, it is one
-command and a restart:
+command and a restart. Either way, the address is `http://127.0.0.1:15173` — `localhost:5173`
+is the developer's.
 
 ```sh
 claude mcp add playwright -- npx @playwright/mcp@latest --viewport-size 1440,900
-# or, to attach to a browser you can watch:
-just qa-chrome
+# or, to attach to a browser you can watch, already on the QA web client:
+node .qa/bin/qa-env.mjs chrome
 claude mcp add playwright -- npx @playwright/mcp@latest --cdp-endpoint http://localhost:9222
 ```
 
@@ -173,12 +219,17 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 ### The app — Maestro, on simulators
 
 ```sh
-just qa-ios                                    # the bundler, in Expo Go, on a phone
-just qa-ios "iPad Pro 13-inch (M5)"            # and on a tablet
-just qa-mobile sign-in EMAIL=… PASSWORD=…      # one flow
+node .qa/bin/qa-env.mjs ios                              # the bundler, in Expo Go, on the QA phone and iPad
+node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
+node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
 ```
 
-Flows live in `apps/mobile/.maestro`, one per outcome, and **target `testID`** rather than
+`ios` keeps running — start it in the background, and restart it after a `checkout`, or it
+serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
+developer's bundler and whichever simulator happens to be booted.
+
+Flows live in `~/Projects/soirely-qa/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
+and Mailpit as `${MAILPIT_URL}` (the harness passes both), and **target `testID`** rather than
 prose — a flow that taps `"Sign in"` taps whichever one it finds first and breaks in
 Spanish. A story that needs a new flow gets one committed beside the others; that is the
 part of a QA pass that survives it.
@@ -209,8 +260,8 @@ catch. No test caught that; no reading of the code caught it; a screenshot caugh
 
 ### Screenshots
 
-Into `.qa/`, which is gitignored. `xcrun simctl io booted screenshot .qa/<name>.png` for a
-simulator, the driver's own screenshot for a browser.
+Into `~/Projects/soirely-qa/.qa/`, which is gitignored. `xcrun simctl io "Soirely QA iPhone" screenshot .qa/<name>.png`
+for a simulator — never `booted`, which is whichever simulator answers first, the driver's own screenshot for a browser.
 
 - **Every failure, always.** A failure with no picture is an opinion.
 - **The main state of each surface that passed**, so the report shows what was looked at.
@@ -240,13 +291,13 @@ The house format, which is the one everybody here reads. Exactly these sections,
 order, and **nothing else**:
 
 ```markdown
-Tested on local (`just up`), branch `feature/sc-55/…` at `1a8b4cc`.
+Tested on the QA stack (`~/Projects/soirely-qa`), PR #36 (`feature/sc-55/…`) at `1a8b4cc`.
 
 Test URLs:
 
-http://localhost:5173/sign-in
-http://localhost:8080/api/auth/login
-app: Expo Go on iPhone 17 Pro and iPad Pro 13-inch (M5)
+http://127.0.0.1:15173/sign-in
+http://127.0.0.1:18080/api/auth/login
+app: Expo Go on Soirely QA iPhone and Soirely QA iPad
 
 Test description:
 
@@ -341,8 +392,9 @@ anything.
 - [ ] One non-English locale was looked at.
 - [ ] The environment and the commit are named at the top.
 - [ ] The story was moved, or you said why it could not be.
-- [ ] You changed no source file. `git status` is clean apart from `.qa/` and any new
-      Maestro flow.
+- [ ] You worked in `~/Projects/soirely-qa`, against the QA stack, and the report says so.
+- [ ] You changed no source file. `cd ~/Projects/soirely-qa && git status` is clean apart
+      from `.qa/` and any new Maestro flow, and nothing of yours is in `~/Projects/soirely`.
 
 Then tell the user, in two or three lines: pass or fail, the count, the one thing most
 worth their attention, and the story link.

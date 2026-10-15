@@ -117,9 +117,15 @@ attributed to whichever command printed next. That is not hypothetical: a stylel
 on this repository was read as an eslint failure, declared fixed, and reached CI, because
 `npm run lint:css | tail -3` exits 0 while stylelint exits 2.
 
-The API checks need the container (`just up`), and two agents sharing one stack will stop it
-under each other — if a check cannot run, say that it did not run rather than that it
-passed.
+The API checks need the container (`just up`). If a check cannot run, say that it did not
+run rather than that it passed.
+
+**The stack in this checkout is yours, and QA's is not.** QA works in `~/Projects/soirely-qa`
+(compose project `soirely-qa`, every port moved up by 10000), on the pushed head of your
+PR. So nothing you do here — a reset, a rebuild, a branch switch — reaches a pass in
+progress, and nothing QA does reaches you. Two consequences: **push before handing over**,
+because QA tests what is on the remote and never your working tree; and never `cd` into
+the QA worktree or run `docker compose -p soirely-qa`.
 
 Then **CI, on the real head**, and green before the handover:
 

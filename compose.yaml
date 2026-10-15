@@ -225,7 +225,11 @@ services:
       # Checks the file the entrypoint writes, not just that nginx answers.
       # nginx serving a stale or missing config.json is the failure worth
       # catching, and "the port is open" does not catch it.
-      test: ['CMD-SHELL', 'wget -qO- http://localhost/config.json | grep -q apiBaseUrl']
+      #
+      # 127.0.0.1, not localhost: busybox resolves localhost to ::1 first, nginx
+      # listens on IPv4 only, and the check failed forever against a container
+      # serving perfectly well.
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/config.json | grep -q apiBaseUrl']
       interval: 10s
       timeout: 3s
       retries: 5

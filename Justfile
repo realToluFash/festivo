@@ -198,6 +198,14 @@ prune-build-cache:
 #
 # The surfaces a QA pass drives, each with the one command that starts it. See
 # .claude/skills/soirely-qa-tester for what a pass does with them.
+#
+# These run against THIS checkout's stack. An agent in QA mode works in its own
+# stack instead — `just qa-env setup` makes it, at ../soirely-qa — so that it
+# and a developer never share a database, a port or a simulator.
+
+# The separate QA stack: `just qa-env setup`, then work from ../soirely-qa.
+qa-env *args:
+    node scripts/qa-env.mjs {{args}}
 
 # A throwaway account, registered through the API. `just qa-account --json` for JSON.
 qa-account *args:
@@ -223,7 +231,9 @@ qa-mobile flow *vars:
     rm -rf .qa/{{flow}}
     mkdir -p .qa/{{flow}}
     status=0
-    maestro test --debug-output .qa/{{flow}} $passed apps/mobile/.maestro/{{flow}}.yaml || status=$?
+    # The bundler's address first, so a flow can name it and a caller can still
+    # override it. The QA stack's bundler is on another port.
+    maestro test --debug-output .qa/{{flow}} -e METRO_URL=exp://127.0.0.1:8081 -e MAILPIT_URL=http://localhost:8025 $passed apps/mobile/.maestro/{{flow}}.yaml || status=$?
     # Collected to the top of the folder, because a report attaches these and
     # the run folder buries them six levels down.
     # -mindepth 2, because find's -path matches across slashes: excluding
