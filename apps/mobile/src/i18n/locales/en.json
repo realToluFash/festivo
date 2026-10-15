@@ -50,6 +50,11 @@
     "endedTitle": "You were signed out",
     "endedBody": "Sign in again to carry on.",
     "lockedTitle": "Too many tries",
-    "lockedBody": "Try again at {{time}}, or reset your password now and sign in straight after."
+    "lockedBody": "Try again at {{time}}, or reset your password now and sign in straight after.",
+    "or": "or",
+    "withGoogle": "Continue with {{provider}}",
+    "withApple": "Continue with {{provider}}",
+    "providerFailedTitle": "{{provider}} sign-in did not work",
+    "providerFailedBody": "Nothing was changed. Try {{provider}} again, or sign in with your email and password."
   }
 }

@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
+import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { useLayout } from '../src/layout/useLayout.ts';
@@ -38,6 +39,7 @@ type Status =
   | { kind: 'signingIn' }
   | { kind: 'refused' }
   | { kind: 'rateLimited'; retryAt: string }
+  | { kind: 'providerFailed'; provider: string }
   | { kind: 'sessionEnded' };
 
 export default function SignIn() {
@@ -167,6 +169,15 @@ function Credentials({ status, onSubmit }: { status: Status; onSubmit: () => voi
         />
       )}
 
+      {status.kind === 'providerFailed' && (
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          title={t('signIn.providerFailedTitle', { provider: status.provider })}
+          body={t('signIn.providerFailedBody', { provider: status.provider })}
+        />
+      )}
+
       <View style={styles.field}>
         <Text size={tokens.typeButton.size} weight="semibold">
           {t('signIn.email')}
@@ -260,6 +271,8 @@ function Credentials({ status, onSubmit }: { status: Status; onSubmit: () => voi
               : t('signIn.submit')}
         </Text>
       </Pressable>
+
+      <ProviderSignIn />
     </View>
   );
 }
@@ -271,21 +284,33 @@ function Notice({
   title,
   body,
 }: {
-  tone: 'quiet' | 'attention';
+  tone: 'quiet' | 'attention' | 'broken';
   mark: string;
   title: string;
   body: string;
 }) {
-  const attention = tone === 'attention';
+  const surface = {
+    quiet: styles.noticeQuiet,
+    attention: styles.noticeAttention,
+    broken: styles.noticeBroken,
+  }[tone];
+
+  const ring = {
+    quiet: styles.markInfo,
+    attention: styles.markAttention,
+    broken: styles.markBroken,
+  }[tone];
+
+  const ink = {
+    quiet: styles.infoText,
+    attention: styles.attentionText,
+    broken: styles.brokenText,
+  }[tone];
 
   return (
-    <View style={[styles.notice, attention ? styles.noticeAttention : styles.noticeQuiet]}>
-      <View style={[styles.mark, attention ? styles.markAttention : styles.markInfo]}>
-        <Text
-          size={tokens.typePill.size}
-          weight="bold"
-          style={attention ? styles.attentionText : styles.infoText}
-        >
+    <View style={[styles.notice, surface]}>
+      <View style={[styles.mark, ring]}>
+        <Text size={tokens.typePill.size} weight="bold" style={ink}>
           {mark}
         </Text>
       </View>
@@ -293,7 +318,7 @@ function Notice({
         <Text
           size={tokens.typeRowTitle.size}
           weight="bold"
-          style={attention ? styles.attentionText : undefined}
+          style={tone === 'quiet' ? undefined : ink}
         >
           {title}
         </Text>
@@ -402,6 +427,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAttentionTint,
     borderColor: tokens.colorAttentionBorder,
   },
+  noticeBroken: { backgroundColor: tokens.colorBrokenTint, borderColor: tokens.colorBroken },
   noticeBody: { flex: 1, gap: tokens.spaceHair },
 
   mark: {

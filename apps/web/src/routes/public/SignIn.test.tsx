@@ -49,6 +49,33 @@ describe('signing in', () => {
   });
 
   /**
+   * Both are drawn here and neither is wired: sc-58 and sc-59 own the
+   * endpoints. What the test holds is the wording and the order, because both
+   * owners publish requirements about them.
+   */
+  it('offers Google and Apple, in their own words', () => {
+    at('/sign-in');
+
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeDefined();
+  });
+
+  /** The mark is the brand's, and it is decoration beside the wording. */
+  it('keeps the brand marks out of the accessible name', () => {
+    at('/sign-in');
+
+    const google = screen.getByRole('button', { name: 'Continue with Google' });
+
+    expect(google.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('separates the password form from the providers with a divider', () => {
+    at('/sign-in');
+
+    expect(screen.getByText('or')).toBeDefined();
+  });
+
+  /**
    * Every way a session can fail to renew sends somebody here, and they all
    * say the same thing. Which one it was tells whoever holds a stolen token
    * something, and tells the owner of the account nothing they can act on.

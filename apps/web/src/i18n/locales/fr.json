@@ -76,7 +76,12 @@
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
     "lockedTitle": "Trop de tentatives",
-    "lockedBody": "Réessayez à {{time}}, ou réinitialisez votre mot de passe maintenant et connectez-vous juste après."
+    "lockedBody": "Réessayez à {{time}}, ou réinitialisez votre mot de passe maintenant et connectez-vous juste après.",
+    "or": "ou",
+    "withGoogle": "Continuer avec {{provider}}",
+    "withApple": "Continuer avec {{provider}}",
+    "providerFailedTitle": "La connexion avec {{provider}} n'a pas fonctionné",
+    "providerFailedBody": "Rien n'a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe."
   },
   "account": {
     "title": "Votre compte"

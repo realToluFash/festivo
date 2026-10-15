@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
+import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 
 /**
  * Sign in, drawn from `SignIn-*.dc.html` and NOT yet wired to the API.
@@ -22,6 +23,7 @@ type Status =
   | { kind: 'signingIn' }
   | { kind: 'refused' }
   | { kind: 'rateLimited'; retryAt: string }
+  | { kind: 'providerFailed'; provider: string }
   | { kind: 'sessionEnded' };
 
 export function SignIn() {
@@ -71,6 +73,20 @@ export function SignIn() {
               <div className="notice-body">
                 <p className="notice-title">{t('signIn.lockedTitle')}</p>
                 <p>{t('signIn.lockedBody', { time: status.retryAt })}</p>
+              </div>
+            </div>
+          )}
+
+          {status.kind === 'providerFailed' && (
+            <div className="notice notice-broken" role="alert">
+              <span className="mark mark-broken" aria-hidden="true">
+                ✕
+              </span>
+              <div className="notice-body">
+                <p className="notice-title">
+                  {t('signIn.providerFailedTitle', { provider: status.provider })}
+                </p>
+                <p>{t('signIn.providerFailedBody', { provider: status.provider })}</p>
               </div>
             </div>
           )}
@@ -142,6 +158,8 @@ export function SignIn() {
                   : t('signIn.submit')}
             </button>
           </form>
+
+          <ProviderSignIn />
         </section>
       </main>
     </div>

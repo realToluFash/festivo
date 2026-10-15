@@ -14,6 +14,7 @@
  */
 
 @import url('./tokens.css');
+@import url('./brand.css');
 
 :root {
   /* Light only. The design has no dark appearance, so declaring one would
@@ -855,4 +856,67 @@ h2 {
     border-radius: var(--radiusCardPhone);
     font: var(--typeBodyPhone);
   }
+}
+
+/* ── Signing in with somebody else's account ──────────────────────────────────
+ *
+ * Both buttons are drawn to their owner's published specification — colour,
+ * face, wording and mark — because both sets of guidelines require it and
+ * because a reader recognises them by sight rather than by reading them. The
+ * values are in brand.css, which says why they are not tokens.
+ */
+
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+}
+
+.auth-or span {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+/* A real element rather than ::before, because the same divider is built in
+   React Native, where there are no pseudo-elements. */
+.auth-or-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--colorBorder);
+}
+
+.button-google,
+.button-apple {
+  gap: var(--spaceMd);
+}
+
+.button-google {
+  background: var(--brandGoogleSurface);
+  border-color: var(--brandGoogleBorder);
+  color: var(--brandGoogleInk);
+  font-family: var(--brandGoogleFont);
+  font-weight: 500;
+}
+
+.button-google:hover {
+  background: var(--brandGoogleSurface);
+}
+
+.button-apple {
+  background: var(--brandAppleSurface);
+  border-color: var(--brandAppleSurface);
+  color: var(--brandAppleInk);
+  font-family: var(--brandAppleFont);
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.button-apple:hover {
+  background: var(--brandAppleSurface);
+}
+
+.button-google svg,
+.button-apple svg {
+  display: block;
+  flex: none;
 }
