@@ -13,6 +13,7 @@ enum ErrorCode: string
     case MethodNotAllowed = 'method_not_allowed';
     case NotFound = 'not_found';
     case Conflict = 'conflict';
+    case EmailTaken = 'email_taken';
     case UnsupportedMediaType = 'unsupported_media_type';
 
     case Unauthenticated = 'unauthenticated';
@@ -33,7 +34,7 @@ enum ErrorCode: string
             self::ValidationFailed => 422,
             self::MethodNotAllowed => 405,
             self::NotFound => 404,
-            self::Conflict => 409,
+            self::Conflict, self::EmailTaken => 409,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated => 401,
             self::Forbidden => 403,

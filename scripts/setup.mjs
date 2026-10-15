@@ -46,6 +46,35 @@ if (!existsSync('.env')) {
   skip('Local environment', '.env already exists');
 }
 
+/*
+ * The JWT signing keypair, which is gitignored on purpose: a key committed to a
+ * repository is a key every clone can sign tokens with. Each environment makes
+ * its own, so this has to run on a fresh clone and in CI.
+ *
+ * Needs the api container, so it is optional here — `npm run setup` is also the
+ * command somebody runs before the stack is up, and failing the whole setup for
+ * this would be the wrong trade. `just keypair` does it afterwards.
+ */
+if (existsSync('services/api/config/jwt/private.pem')) {
+  skip('JWT keypair', 'already generated');
+} else {
+  run(
+    'JWT keypair',
+    'docker',
+    [
+      'compose',
+      'exec',
+      '-T',
+      'api',
+      'php',
+      'bin/console',
+      'lexik:jwt:generate-keypair',
+      '--skip-if-exists',
+    ],
+    { optional: true },
+  );
+}
+
 console.log('\n──────────────────────────────────────────');
 for (const step of steps) {
   const mark = step.skipped ? '–' : step.ok ? '✓' : '✗';

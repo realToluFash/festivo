@@ -40,6 +40,15 @@ services:
     App\Audit\Auditor:
         public: true
 
+    # Same reason, and the same trap: this must be declared HERE and not under
+    # when@test, because a definition there replaces the autowired one and
+    # silently loses all six arguments.
+    App\Domain\User\UserRegistrar:
+        public: true
+
+    App\Domain\User\Password\PasswordResolver:
+        public: true
+
     App\Integrations\Nominatim\NominatimProvider:
         arguments:
             $endpoint: '%env(ADDRESS_ENDPOINT)%'
@@ -48,6 +57,10 @@ services:
     # One adapter behind the interface. Switching provider is this line plus a
     # class, and nothing above it learns which one is in use.
     App\Address\Interfaces\AddressProviderInterface: '@App\Integrations\Nominatim\NominatimProvider'
+
+    # One adapter behind the port. Have I Been Pwned is the only corpus worth
+    # querying and swapping it is this line plus a class.
+    App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
 
     # The assistant's adapter is chosen by ASSISTANT_PROVIDER rather than by a
     # line here, because a service id cannot be an environment variable and
@@ -62,6 +75,11 @@ when@test:
         # validation, the proxy, the record — runs here, and none of it is
         # billable or dependent on somebody having an account.
         App\AI\Interfaces\AssistantInterface: '@App\AI\ScriptedAssistant'
+
+        # No test reaches Have I Been Pwned. The stand-in's list is what makes
+        # "this password is in a breach" assertable at all: the real corpus is
+        # somebody else's data and could answer differently tomorrow.
+        App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Domain\User\Password\ScriptedBreachedPasswordChecker'
 
         # Re-declared in full, not merged: a `when@test` definition REPLACES the
         # autowired one, so every argument has to be named or it is lost. Pinned

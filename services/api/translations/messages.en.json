@@ -2,5 +2,10 @@
     "actor.agent": "Support agent",
     "actor.api_client": "API client",
     "actor.system": "System",
-    "actor.user": "Account holder"
+    "actor.user": "Account holder",
+    "validation.email_invalid": "Enter an email address.",
+    "validation.name_required": "Enter your name.",
+    "validation.password_breached": "This password has appeared in a known data breach. Choose another.",
+    "validation.password_too_long": "That is longer than {count} characters.",
+    "validation.password_too_short": "Use at least {count} characters."
 }

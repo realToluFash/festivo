@@ -1,0 +1,71 @@
+security:
+    password_hashers:
+        # Named explicitly rather than 'auto'. 'auto' picks bcrypt on a build
+        # without libsodium, and bcrypt silently truncates at 72 bytes — so a
+        # passphrase would be accepted, measured at its full length, and then
+        # hashed on its first 72 characters with nothing reporting it. NIST
+        # requires at least 64 characters to be honoured; this honours 4096.
+        App\Entity\User:
+            algorithm: sodium
+
+    providers:
+        # By id, which is what getUserIdentifier() answers. Not by address: a
+        # person may link several and change which is primary, so an address is
+        # not a stable name for an account.
+        users:
+            entity:
+                class: App\Entity\User
+                property: id
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+
+        # Stateless: no session, no cookie. A client sends the access token on
+        # every request. `lazy` so an unauthenticated public route does not pay
+        # for a user lookup it will not use.
+        api:
+            pattern: ^/api
+            stateless: true
+            lazy: true
+            provider: users
+            jwt: ~
+
+    access_control:
+        # Public, and each one named rather than covered by a prefix. A pattern
+        # like ^/api/auth would make the next endpoint added under it public by
+        # default, which is the wrong direction for a mistake to fall.
+        - { path: ^/api/auth/register$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/health$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/docs, roles: PUBLIC_ACCESS }
+        - { path: ^/api/\.well-known, roles: PUBLIC_ACCESS }
+        - { path: ^/api/errors, roles: PUBLIC_ACCESS }
+        - { path: ^/api/validation_errors, roles: PUBLIC_ACCESS }
+
+        # Everything the product has built so far, which predates accounts and
+        # is left reachable deliberately rather than by omission. sc-64 is the
+        # story that makes a route declare its own policy and refuses to
+        # register one that does not — at which point this block goes and the
+        # default below becomes the only answer.
+        - { path: ^/api/assistant, roles: PUBLIC_ACCESS }
+        - { path: ^/api/addresses, roles: PUBLIC_ACCESS }
+        - { path: ^/api$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/$, roles: PUBLIC_ACCESS }
+
+        # The default. Anything not named above needs an account.
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+
+when@test:
+    security:
+        password_hashers:
+            # Hashing is slow by design, and the suite registers accounts in
+            # dozens of tests. These are the lowest values libsodium accepts.
+            App\Entity\User:
+                algorithm: sodium
+                # 3 is libsodium's floor for opsLimit; anything lower throws
+                # "$opsLimit must be 3 or greater" at hash time rather than at
+                # configuration time, so it surfaces as a 500 on every
+                # registration in the suite.
+                time_cost: 3
+                memory_cost: 10240

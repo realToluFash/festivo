@@ -2,5 +2,10 @@
     "actor.agent": "Agente de soporte",
     "actor.api_client": "Cliente de la API",
     "actor.system": "Sistema",
-    "actor.user": "Titular de la cuenta"
+    "actor.user": "Titular de la cuenta",
+    "validation.email_invalid": "Introduzca una dirección de correo electrónico.",
+    "validation.name_required": "Introduzca su nombre.",
+    "validation.password_breached": "Esta contraseña ha aparecido en una filtración de datos conocida. Elija otra.",
+    "validation.password_too_long": "Eso supera los {count} caracteres.",
+    "validation.password_too_short": "Utilice al menos {count} caracteres."
 }

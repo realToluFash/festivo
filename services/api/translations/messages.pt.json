@@ -2,5 +2,10 @@
     "actor.agent": "Agente de suporte",
     "actor.api_client": "Cliente da API",
     "actor.system": "Sistema",
-    "actor.user": "Titular da conta"
+    "actor.user": "Titular da conta",
+    "validation.email_invalid": "Introduza um endereço de correio electrónico.",
+    "validation.name_required": "Introduza o seu nome.",
+    "validation.password_breached": "Esta palavra-passe apareceu numa fuga de dados conhecida. Escolha outra.",
+    "validation.password_too_long": "Isso excede os {count} caracteres.",
+    "validation.password_too_short": "Utilize pelo menos {count} caracteres."
 }

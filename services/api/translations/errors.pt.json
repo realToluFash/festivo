@@ -4,6 +4,7 @@
     "method_not_allowed": "Essa acção não está disponível aqui.",
     "not_found": "Não encontrámos aquilo que solicitou.",
     "conflict": "Isso entra em conflito com algo que já existe.",
+    "email_taken": "Esse endereço de correio electrónico já está registado.",
     "unsupported_media_type": "Esse formato não é suportado.",
     "unauthenticated": "Inicie sessão para continuar.",
     "forbidden": "Não tem permissão para fazer isso.",
