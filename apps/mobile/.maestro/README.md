@@ -28,6 +28,9 @@ Maestro needs a Java runtime. `java -version` failing means
   `.qa/<flow>/mobile-signed-in.png`, which is where a QA report collects its evidence.
 - **One flow, one outcome.** A flow that signs in and then changes a password reports one
   failure for two features.
+- **Reach the bundler through `${METRO_URL}`**, never a literal port: the QA stack's
+  bundler is on 18081, and both `just qa-mobile` and `qa-env.mjs maestro` pass it in.
+  Mailpit, the same, through `${MAILPIT_URL}`.
 - **Pass data in**, with `-e`: an account comes from `node scripts/qa-account.mjs`, so no
   flow holds credentials.
 - **Expo Go is the app**, so `appId` is `host.exp.Exponent` and the flow opens the project
