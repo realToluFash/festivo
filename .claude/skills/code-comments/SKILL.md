@@ -90,6 +90,19 @@ Strip the prose from a docblock; keep the types.
 | What the acceptance criteria were    | the Shortcut story       |
 | How the whole area works             | `docs/architecture/`     |
 
+## This is checked, not trusted
+
+`scripts/check-comments.mjs` reads the comment lines a change **adds**: at most three in a
+row, at most eight in a file. It runs on the staged change in the pre-commit hook
+(`npm run lint:comments`) and on the whole branch in CI, where `--no-verify` cannot reach
+it. Annotations a tool reads — `@param`, `@return`, `@extends`, `eslint-disable`,
+`@ts-expect-error`, `@mago-expect` — are never counted.
+
+The check exists because this rule was written down, agreed, and then broken on four
+consecutive branches. It measures volume, which is the part a machine can see; the two
+tests above are still the standard, and a three-line comment that fails them should not be
+there either.
+
 ## The existing codebase disagrees with this
 
 Much of what is already here carries long explanatory docblocks, written before this rule.

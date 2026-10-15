@@ -24,6 +24,11 @@ somebody's review comment, and the sweep that follows touches every file at once
 that added nine hundred lines of comment and kept a hundred and thirty is what skipping it
 costs.
 
+`npm run lint:comments` does the arithmetic part of this on the staged change, and the
+pre-commit hook runs it. It refuses a comment running past three lines and a file gaining
+more than eight. Passing it is not the standard — the two questions above are — but a
+change it fails has definitely not met them.
+
 ## The rule
 
 **One commit, one outcome.** An outcome is a thing that is now true for a user or for the
