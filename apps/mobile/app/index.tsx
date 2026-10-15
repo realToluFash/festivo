@@ -22,7 +22,7 @@ export default function Home() {
   const { t } = useTranslation();
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [account, setAccount] = useState<Account | 'unreachable' | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
 
   // The loading state belongs to the event that causes the reload, not to the
   // effect. Setting it in the effect body made every attempt two renders
@@ -42,7 +42,11 @@ export default function Home() {
         if (live) setAccount(signedIn);
       })
       .catch((error: unknown) => {
-        if (live) setAccount(error instanceof ApiUnreachableError ? 'unreachable' : null);
+        if (!live) return;
+
+        // Still signed in, so the answer is not sign-in.
+        if (error instanceof ApiUnreachableError) router.replace('/unreachable');
+        else setAccount(null);
       });
 
     return () => {
@@ -114,7 +118,7 @@ export default function Home() {
         </View>
       )}
 
-      {account === 'unreachable' ? null : account == null ? (
+      {account == null ? (
         <Link href="/sign-in" asChild>
           <Pressable style={styles.button} accessibilityRole="button" testID="home.openSignIn">
             <Text weight="medium">{t('home.openSignIn')}</Text>
