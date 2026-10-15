@@ -7,10 +7,32 @@
  */
 import { ApiError, toProblem } from './problem.ts';
 
+/**
+ * Where the refresh token lives.
+ *
+ * `cookie` is for browsers: the API returns it as an httpOnly cookie the page
+ * cannot read, so a cross-site script cannot carry the session away with it.
+ * `body` is for native clients, which keep it in the Keychain — better than any
+ * cookie, and with no cross-site request forgery to answer for.
+ *
+ * See docs/architecture/sessions.md.
+ */
+export type RefreshTokenDelivery = 'body' | 'cookie';
+
+/** Exactly what the API answers with. Generated types live in schema.d.ts. */
+export interface IssuedTokens {
+  accessToken: string;
+  /** Absent in cookie mode — that is the entire point of cookie mode. */
+  refreshToken?: string;
+  refreshExpiresAt: string;
+  sessionId: string;
+}
+
 export interface TokenStore {
   access(): string | null | Promise<string | null>;
+  /** Null in cookie mode: the browser holds it and the page cannot read it. */
   refresh(): string | null | Promise<string | null>;
-  save(tokens: { access: string; refresh: string }): void | Promise<void>;
+  save(tokens: IssuedTokens): void | Promise<void>;
   clear(): void | Promise<void>;
 }
 
@@ -18,6 +40,8 @@ export interface ClientOptions {
   /** Read lazily, so a client built at import time still honours runtime config. */
   baseUrl: () => string;
   tokens?: TokenStore;
+  /** Defaults to `body`. The web client passes `cookie`. */
+  refreshTokenIn?: RefreshTokenDelivery;
   /** The reader's language, for the API's own locale negotiation. */
   locale?: () => string | null;
   /** Called when refresh fails and the session is over. */
@@ -76,6 +100,37 @@ export class ApiClient {
     return this.request<T>(path, { ...init, method: 'DELETE' });
   }
 
+  /**
+   * The three calls that issue or end a session are the only ones that know
+   * where the refresh token is carried, so they live here rather than in a
+   * screen. A screen that built the request itself would have to remember to
+   * send `refreshTokenIn` and to let the cookie travel — and in cookie mode a
+   * forgotten `credentials: 'include'` fails by signing the person out one
+   * access token later, nowhere near the code that caused it.
+   */
+  async signIn(email: string, password: string): Promise<IssuedTokens> {
+    return this.adopt(await this.sendTokenRequest('/api/auth/login', { email, password }));
+  }
+
+  async register(email: string, name: string, password: string): Promise<IssuedTokens> {
+    return this.adopt(await this.sendTokenRequest('/api/auth/register', { email, name, password }));
+  }
+
+  /** Ends this one session. The other devices keep theirs. */
+  async signOut(): Promise<void> {
+    const body: Record<string, string> = { refreshTokenIn: this.delivery() };
+
+    if (this.delivery() === 'body') {
+      const token = await this.options.tokens?.refresh();
+      if (token != null && token !== '') body.refreshToken = token;
+    }
+
+    // Local state goes whatever the server said. A refusal here would leave
+    // somebody looking at a signed-in screen having pressed Sign out.
+    await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+    await this.options.tokens?.clear();
+  }
+
   private async send(path: string, init: RequestOptions): Promise<Response> {
     const doFetch = this.options.fetch ?? fetch;
     const headers: Record<string, string> = {
@@ -123,31 +178,72 @@ export class ApiClient {
     const store = this.options.tokens;
     if (store == null) return false;
 
-    const token = await store.refresh();
-    if (token == null || token === '') return false;
+    const body: Record<string, string> = { refreshTokenIn: this.delivery() };
 
-    const doFetch = this.options.fetch ?? fetch;
-    const response = await doFetch(this.url('/api/auth/refresh'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ refresh_token: token }),
-    }).catch(() => null);
+    if (this.delivery() === 'body') {
+      const token = await store.refresh();
+      if (token == null || token === '') return false;
+      body.refreshToken = token;
+    }
+
+    const response = await this.sendTokenRequest('/api/auth/refresh', body).catch(() => null);
 
     if (response == null || !response.ok) {
-      await store.clear();
-      this.options.onSignedOut?.();
+      await this.endSession();
       return false;
     }
 
-    const body = (await response.json()) as { data?: { access: string; refresh: string } };
-    if (body.data == null) {
-      await store.clear();
-      this.options.onSignedOut?.();
+    const issued = asIssuedTokens(await response.json().catch(() => null), this.delivery());
+
+    if (issued == null) {
+      await this.endSession();
       return false;
     }
 
-    await store.save(body.data);
+    await store.save(issued);
     return true;
+  }
+
+  private delivery(): RefreshTokenDelivery {
+    return this.options.refreshTokenIn ?? 'body';
+  }
+
+  /**
+   * `credentials: 'include'` only on these routes. The cookie is scoped to
+   * /api/auth, so including it everywhere would attach it to `me` and
+   * `sessions` as well — requests that are already authorised by the access
+   * token and have no business carrying the thing that renews it.
+   */
+  private sendTokenRequest(path: string, body: Record<string, string>): Promise<Response> {
+    const doFetch = this.options.fetch ?? fetch;
+
+    return doFetch(this.url(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...body, refreshTokenIn: this.delivery() }),
+      credentials: this.delivery() === 'cookie' ? 'include' : 'omit',
+    });
+  }
+
+  private async adopt(response: Response): Promise<IssuedTokens> {
+    if (!response.ok) throw new ApiError(await toProblem(response), response);
+
+    const issued = asIssuedTokens(await response.json(), this.delivery());
+
+    if (issued == null) {
+      throw new Error(
+        'The API answered without an access token. Check IssuedTokensResponse in services/api.',
+      );
+    }
+
+    await this.options.tokens?.save(issued);
+
+    return issued;
+  }
+
+  private async endSession(): Promise<void> {
+    await this.options.tokens?.clear();
+    this.options.onSignedOut?.();
   }
 
   private url(path: string, query?: RequestOptions['query']): string {
@@ -160,4 +256,32 @@ export class ApiClient {
 
     return url.toString();
   }
+}
+
+/**
+ * Checked rather than cast.
+ *
+ * The previous version of this file read `body.data.access` — a shape the API
+ * has never once sent. It passed its own tests because the tests asserted
+ * against the same invented payload, so nothing here knew the refresh path had
+ * never worked. A cast would have hidden it again; this reports it.
+ */
+function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTokens | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Partial<Record<keyof IssuedTokens, unknown>>;
+
+  if (typeof candidate.accessToken !== 'string' || candidate.accessToken === '') return null;
+
+  // In body mode there is nowhere else for it to be, so a response without one
+  // ends the session at the next expiry rather than at this line.
+  if (delivery === 'body' && typeof candidate.refreshToken !== 'string') return null;
+
+  return {
+    accessToken: candidate.accessToken,
+    ...(typeof candidate.refreshToken === 'string' ? { refreshToken: candidate.refreshToken } : {}),
+    refreshExpiresAt:
+      typeof candidate.refreshExpiresAt === 'string' ? candidate.refreshExpiresAt : '',
+    sessionId: typeof candidate.sessionId === 'string' ? candidate.sessionId : '',
+  };
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { ApiClient, type TokenStore } from './client.ts';
+import { ApiClient, type IssuedTokens, type TokenStore } from './client.ts';
 import { ApiError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
@@ -22,13 +22,33 @@ function store(access: string | null, refresh: string | null): TokenStore & { sa
     refresh: () => refresh,
     save(tokens) {
       this.saved = tokens;
-      access = tokens.access;
+      access = tokens.accessToken;
+      refresh = tokens.refreshToken ?? null;
     },
     clear() {
       access = null;
       refresh = null;
     },
   };
+}
+
+/**
+ * What services/api actually sends — see IssuedTokensResponse. Written here as
+ * one helper rather than inline per test, because the point of this file's
+ * refresh tests is that they agree with the server, and three hand-written
+ * copies of a payload is how they stopped agreeing last time.
+ */
+function issued(overrides: Record<string, unknown> = {}): Response {
+  return new Response(
+    JSON.stringify({
+      accessToken: 'fresh',
+      refreshToken: 'next',
+      refreshExpiresAt: '2026-11-14T00:00:00+00:00',
+      sessionId: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
+      ...overrides,
+    }),
+    { status: 200 },
+  );
 }
 
 describe('errors arrive as problem documents', () => {
@@ -107,11 +127,7 @@ describe('the session refreshes without signing anybody out', () => {
       tokens,
       fetch: async (input) => {
         const url = String(input);
-        if (url.includes('/auth/refresh')) {
-          return new Response(JSON.stringify({ data: { access: 'fresh', refresh: 'next' } }), {
-            status: 200,
-          });
-        }
+        if (url.includes('/auth/refresh')) return issued();
         call += 1;
         return call === 1
           ? problem(401, 'unauthenticated')
@@ -121,7 +137,7 @@ describe('the session refreshes without signing anybody out', () => {
 
     await expect(client.get('/api/auth/me')).resolves.toEqual({ ok: true });
     expect(call).toBe(2);
-    expect(tokens.saved).toEqual({ access: 'fresh', refresh: 'next' });
+    expect(tokens.saved).toMatchObject({ accessToken: 'fresh', refreshToken: 'next' });
   });
 
   /**
@@ -142,9 +158,7 @@ describe('the session refreshes without signing anybody out', () => {
         if (String(input).includes('/auth/refresh')) {
           refreshes += 1;
           await new Promise((r) => setTimeout(r, 10));
-          return new Response(JSON.stringify({ data: { access: 'fresh', refresh: 'next' } }), {
-            status: 200,
-          });
+          return issued();
         }
         served += 1;
         return served <= 4
@@ -263,5 +277,163 @@ describe('request building', () => {
     });
 
     await expect(client.delete('/api/guests/1')).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * The field names below are the wire, not a convention: `refreshTokenIn`,
+ * `refreshToken` and `accessToken` are what services/api reads and writes in
+ * TokenController and IssuedTokensResponse. Renaming one on either side has to
+ * fail here.
+ */
+describe('a browser never holds the refresh token', () => {
+  test('refreshing sends no token of its own and lets the cookie travel', async () => {
+    const tokens = store('expired', null);
+    let body: unknown = null;
+    let credentials: string | undefined;
+    let served = 0;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async (input, init) => {
+        if (String(input).includes('/auth/refresh')) {
+          body = JSON.parse(String(init?.body));
+          credentials = init?.credentials;
+          return issued({ refreshToken: undefined });
+        }
+        served += 1;
+        return served === 1
+          ? problem(401, 'unauthenticated')
+          : new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await expect(client.get('/api/auth/me')).resolves.toEqual({ ok: true });
+
+    expect(body).toEqual({ refreshTokenIn: 'cookie' });
+    expect(credentials).toBe('include');
+  });
+
+  test('a response with no refresh token is the expected one, not a failure', async () => {
+    const tokens = store('expired', null);
+    const onSignedOut = vi.fn();
+    let served = 0;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      onSignedOut,
+      fetch: async (input) => {
+        if (String(input).includes('/auth/refresh')) return issued({ refreshToken: undefined });
+        served += 1;
+        return served === 1
+          ? problem(401, 'unauthenticated')
+          : new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await client.get('/api/auth/me');
+
+    expect(onSignedOut).not.toHaveBeenCalled();
+    expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+    expect((tokens.saved as IssuedTokens).refreshToken).toBeUndefined();
+  });
+
+  /**
+   * The same response in body mode means the client has nothing left to renew
+   * with, so it has to end the session rather than carry on and discover that
+   * fifteen minutes later.
+   */
+  test('the same response in body mode ends the session', async () => {
+    const tokens = store('expired', 'present');
+    const onSignedOut = vi.fn();
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      onSignedOut,
+      fetch: async (input) =>
+        String(input).includes('/auth/refresh')
+          ? issued({ refreshToken: undefined })
+          : problem(401, 'unauthenticated'),
+    });
+
+    await client.get('/api/auth/me').catch(() => undefined);
+
+    expect(onSignedOut).toHaveBeenCalledTimes(1);
+  });
+
+  test('the cookie is not attached to ordinary requests', async () => {
+    const seen: (string | undefined)[] = [];
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      refreshTokenIn: 'cookie',
+      fetch: async (_input, init) => {
+        seen.push(init?.credentials);
+        return new Response('{}', { status: 200 });
+      },
+    });
+
+    await client.get('/api/guests');
+
+    expect(seen).toEqual([undefined]);
+  });
+
+  test('signing in saves what came back and says where it wants the token', async () => {
+    const tokens = store(null, null);
+    let body: unknown = null;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async (_input, init) => {
+        body = JSON.parse(String(init?.body));
+        return issued({ refreshToken: undefined });
+      },
+    });
+
+    const result = await client.signIn('ada@example.com', 'a decent passphrase');
+
+    expect(body).toMatchObject({ email: 'ada@example.com', refreshTokenIn: 'cookie' });
+    expect(result.accessToken).toBe('fresh');
+    expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+  });
+
+  test('a sign-in the API refuses rejects with the code and saves nothing', async () => {
+    const tokens = store(null, null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => problem(401, 'invalid_credentials'),
+    });
+
+    await expect(client.signIn('ada@example.com', 'wrong')).rejects.toThrow(ApiError);
+    expect(tokens.saved).toBeNull();
+  });
+
+  /** Having pressed Sign out, nobody should be looking at a signed-in screen. */
+  test('signing out clears the session even when the request fails', async () => {
+    const tokens = store('good', null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => {
+        throw new Error('offline');
+      },
+    });
+
+    await client.signOut();
+
+    expect(await tokens.access()).toBeNull();
   });
 });
