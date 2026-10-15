@@ -39,6 +39,22 @@ final class SignInTest extends ApiTestCase
         self::assertArrayHasKey('sessionId', $body);
     }
 
+    /** The gate is decided from this response, so it must not need a second request to /me. */
+    #[Test]
+    public function itReturnsTheAccountAsMeDoes(): void
+    {
+        $this->account('signin-account@example.com');
+
+        $body = $this->signIn('signin-account@example.com', self::PASSWORD);
+
+        $this->client->request('GET', '/api/auth/me', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . \Psl\Type\string()->assert($body['accessToken']),
+        ]);
+        $me = Json\decode((string) $this->client->getResponse()->getContent());
+
+        self::assertSame($me, $body['account']);
+    }
+
     #[Test]
     public function theAddressIsNormalisedTheSameWayRegistrationNormalisedIt(): void
     {

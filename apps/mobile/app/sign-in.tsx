@@ -41,9 +41,7 @@ export default function SignIn() {
     setStatus({ kind: 'signingIn' });
 
     try {
-      await api.signIn(email, password);
-
-      const account = await api.me();
+      const { account } = await api.signIn(email, password);
 
       router.replace(account.verified ? '/' : '/verify-email');
     } catch (error) {

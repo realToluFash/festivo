@@ -18,6 +18,11 @@ export interface IssuedTokens {
   sessionId: string;
 }
 
+export interface SignedIn {
+  tokens: IssuedTokens;
+  account: Account;
+}
+
 export interface Health {
   status: string;
   checks: Record<string, { status: string; error?: string }>;
@@ -129,12 +134,31 @@ export class ApiClient {
     return this.request<T>(path, { ...init, method: 'DELETE' });
   }
 
-  async signIn(email: string, password: string): Promise<IssuedTokens> {
-    return this.adopt(await this.sendTokenRequest('/api/auth/login', { email, password }));
+  async signIn(email: string, password: string): Promise<SignedIn> {
+    const { tokens, body } = await this.issued(
+      await this.sendTokenRequest('/api/auth/login', { email, password }),
+    );
+    const account = asAccount(body.account);
+
+    if (account == null) {
+      throw new Error(
+        'The API answered /api/auth/login without the account. Check SignInController in services/api.',
+      );
+    }
+
+    await this.options.tokens?.save(tokens);
+
+    return { tokens, account };
   }
 
   async register(email: string, name: string, password: string): Promise<IssuedTokens> {
-    return this.adopt(await this.sendTokenRequest('/api/auth/register', { email, name, password }));
+    const { tokens } = await this.issued(
+      await this.sendTokenRequest('/api/auth/register', { email, name, password }),
+    );
+
+    await this.options.tokens?.save(tokens);
+
+    return tokens;
   }
 
   async me(): Promise<Account> {
@@ -302,20 +326,21 @@ export class ApiClient {
     });
   }
 
-  private async adopt(response: Response): Promise<IssuedTokens> {
+  private async issued(
+    response: Response,
+  ): Promise<{ tokens: IssuedTokens; body: Record<string, unknown> }> {
     if (!response.ok) throw new ApiError(await toProblem(response), response);
 
-    const issued = asIssuedTokens(await response.json(), this.delivery());
+    const body: unknown = await response.json();
+    const tokens = asIssuedTokens(body, this.delivery());
 
-    if (issued == null) {
+    if (tokens == null) {
       throw new Error(
         'The API answered without an access token. Check IssuedTokensResponse in services/api.',
       );
     }
 
-    await this.options.tokens?.save(issued);
-
-    return issued;
+    return { tokens, body: body as Record<string, unknown> };
   }
 
   private async forgetSession(): Promise<void> {

@@ -178,9 +178,8 @@ afterEach(() => {
 
 describe('signing in, for real', () => {
   it('signs in and lands on the product', async () => {
-    answering({
-      'POST /api/auth/login': () => json(ISSUED),
-      'GET /api/auth/me': () => json(ACCOUNT),
+    const sent = answering({
+      'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
     });
 
     at('/sign-in');
@@ -188,12 +187,12 @@ describe('signing in, for real', () => {
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
     expect(screen.getByText('Signed in as Folake Ire')).toBeDefined();
+    expect(sent.map((request) => request.path)).toEqual(['/api/auth/login']);
   });
 
   it('sends an unverified account to the verification screen instead', async () => {
     answering({
-      'POST /api/auth/login': () => json(ISSUED),
-      'GET /api/auth/me': () => json({ ...ACCOUNT, verified: false }),
+      'POST /api/auth/login': () => json({ ...ISSUED, account: { ...ACCOUNT, verified: false } }),
     });
 
     at('/sign-in');
@@ -207,8 +206,7 @@ describe('signing in, for real', () => {
 
   it('posts the address and the password, and asks for the cookie', async () => {
     const sent = answering({
-      'POST /api/auth/login': () => json(ISSUED),
-      'GET /api/auth/me': () => json(ACCOUNT),
+      'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
     });
 
     at('/sign-in');

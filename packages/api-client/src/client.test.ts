@@ -377,15 +377,49 @@ describe('a browser never holds the refresh token', () => {
       refreshTokenIn: 'cookie',
       fetch: async (_input, init) => {
         body = JSON.parse(String(init?.body));
-        return issued({ refreshToken: undefined });
+        return issued({ refreshToken: undefined, account: ACCOUNT });
       },
     });
 
     const result = await client.signIn('ada@example.com', 'a decent passphrase');
 
     expect(body).toMatchObject({ email: 'ada@example.com', refreshTokenIn: 'cookie' });
-    expect(result.accessToken).toBe('fresh');
+    expect(result.tokens.accessToken).toBe('fresh');
     expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+  });
+
+  test('signing in answers with the account, in one request', async () => {
+    const paths: string[] = [];
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      fetch: async (input) => {
+        paths.push(new URL(String(input)).pathname);
+        return issued({ account: ACCOUNT });
+      },
+    });
+
+    const { account } = await client.signIn('ada@example.com', 'a decent passphrase');
+
+    expect(account.id).toBe(ACCOUNT.id);
+    expect(account.emailAddresses).toHaveLength(ACCOUNT.emailAddresses.length);
+    expect(paths).toEqual(['/api/auth/login']);
+  });
+
+  test('a sign-in answered without the account saves nothing', async () => {
+    const tokens = store(null, null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      fetch: async () => issued(),
+    });
+
+    await expect(client.signIn('ada@example.com', 'a decent passphrase')).rejects.toThrow(
+      /SignInController/,
+    );
+    expect(tokens.saved).toBeNull();
   });
 
   test('a sign-in the API refuses rejects with the code and saves nothing', async () => {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Controller;
 
 use App\Domain\User\EmailAddressNormaliser;
+use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\Http\IssuedTokensResponse;
 use App\Domain\User\UserAuthenticator;
 use App\Enum\ErrorCode;
@@ -38,12 +39,13 @@ final class SignInController
 
         $this->limit($request, $body['email']);
 
-        $tokens = $this->userAuthenticator->signIn($body['email'], $body['password'], $request);
+        $result = $this->userAuthenticator->signIn($body['email'], $body['password'], $request);
 
         return new IssuedTokensResponse(
-            $tokens,
+            $result->tokens,
             $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
             $request,
+            ['account' => AccountSerialiser::serialise($result->user)],
         );
     }
 

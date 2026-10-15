@@ -39,9 +39,10 @@ export function SignIn() {
     setStatus({ kind: 'signingIn' });
 
     try {
-      await api.signIn(String(form.get('email') ?? ''), String(form.get('password') ?? ''));
-
-      const account = await api.me();
+      const { account } = await api.signIn(
+        String(form.get('email') ?? ''),
+        String(form.get('password') ?? ''),
+      );
 
       adoptAccount(account);
 
