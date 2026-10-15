@@ -582,3 +582,50 @@ describe('the sessions an account has', () => {
     expect(seen).toEqual([`DELETE http://api.test/api/auth/sessions/${SESSION.id}`]);
   });
 });
+
+describe('verifying an address', () => {
+  function client(response: Response, sent: string[] = []) {
+    return {
+      api: new ApiClient({
+        baseUrl: () => 'http://api.test',
+        tokens: store('live', null),
+        fetch: async (url, init) => {
+          sent.push(`${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`);
+
+          return response;
+        },
+      }),
+      sent,
+    };
+  }
+
+  test('posts the code and reads the address back', async () => {
+    const { api, sent } = client(
+      json({ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }),
+    );
+
+    const address = await api.verifyEmail('123456');
+
+    expect(address.verified).toBe(true);
+    expect(address.address).toBe('folake@ire.events');
+    expect(sent).toEqual(['POST /api/auth/verify/email']);
+  });
+
+  test('refuses a shape it does not know, naming where to look', async () => {
+    await expect(client(json({ ok: true })).api.verifyEmail('123456')).rejects.toThrow(
+      /VerificationController/,
+    );
+  });
+
+  test('a resend answers with the seconds until the next one', async () => {
+    const { api } = client(json({ cooldownSeconds: 60 }));
+
+    expect(await api.resendVerification()).toBe(60);
+  });
+
+  test('a resend with nothing to say counts down from zero rather than from NaN', async () => {
+    const { api } = client(json({}));
+
+    expect(await api.resendVerification()).toBe(0);
+  });
+});

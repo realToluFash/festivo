@@ -149,6 +149,28 @@ export class ApiClient {
     return account;
   }
 
+  async verifyEmail(code: string): Promise<LinkedAddress> {
+    const address = asLinkedAddress(await this.post<unknown>('/api/auth/verify/email', { code }));
+
+    if (address == null) {
+      throw new Error(
+        'The API answered /api/auth/verify/email in a shape this client does not know. Check VerificationController in services/api.',
+      );
+    }
+
+    return address;
+  }
+
+  async resendVerification(): Promise<number> {
+    const answer = await this.post<unknown>('/api/auth/verify/resend');
+
+    if (typeof answer !== 'object' || answer == null) return 0;
+
+    const seconds = (answer as Record<string, unknown>).cooldownSeconds;
+
+    return typeof seconds === 'number' && Number.isFinite(seconds) ? seconds : 0;
+  }
+
   async sessions(): Promise<DeviceSession[]> {
     const sessions = asSessions(await this.get<unknown>('/api/auth/sessions'));
 
@@ -316,6 +338,21 @@ export class ApiClient {
 /** The primary address, which is the only one sign-in matches. */
 export function primaryEmailAddress(account: Account): string | null {
   return account.emailAddresses.find((address) => address.primary)?.address ?? null;
+}
+
+function asLinkedAddress(raw: unknown): LinkedAddress | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (typeof candidate.id !== 'string' || typeof candidate.address !== 'string') return null;
+
+  return {
+    id: candidate.id,
+    address: candidate.address,
+    verified: candidate.verified === true,
+    primary: candidate.primary === true,
+  };
 }
 
 function asAccount(raw: unknown): Account | null {
