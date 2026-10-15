@@ -7,6 +7,7 @@ import { Link, Navigate, useNavigate } from 'react-router';
 import { api } from '../../api.ts';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
 import { Pending } from '../../components/Pending.tsx';
+import { Unreachable } from '../../components/Unreachable.tsx';
 import { forgetSession, restoreSession, useSessionState } from '../../session.ts';
 
 type Status =
@@ -39,6 +40,7 @@ export function VerifyEmail() {
   }, [cooldown]);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
+  if (state.status === 'unreachable') return <Unreachable />;
   if (state.status !== 'signedIn') return <Pending />;
 
   const address = state.session.email;

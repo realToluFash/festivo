@@ -5,7 +5,7 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
-import { ApiError, toProblem } from './problem.ts';
+import { ApiError, ApiUnreachableError, toProblem } from './problem.ts';
 
 /** See docs/architecture/sessions.md. */
 export type RefreshTokenDelivery = 'body' | 'cookie';
@@ -262,7 +262,13 @@ export class ApiClient {
     if (init.body !== undefined) request.body = JSON.stringify(init.body);
     if (init.signal !== undefined) request.signal = init.signal;
 
-    return doFetch(this.url(path, init.query), request);
+    try {
+      return await doFetch(this.url(path, init.query), request);
+    } catch (error) {
+      if (init.signal?.aborted === true) throw error;
+
+      throw new ApiUnreachableError(error);
+    }
   }
 
   /**
@@ -292,9 +298,15 @@ export class ApiClient {
       body.refreshToken = token;
     }
 
-    const response = await this.sendTokenRequest('/api/auth/refresh', body).catch(() => null);
+    const response = await this.sendTokenRequest('/api/auth/refresh', body).catch(
+      (error: unknown) => {
+        throw new ApiUnreachableError(error);
+      },
+    );
 
-    if (response == null || !response.ok) {
+    if (response.status >= 500) throw new ApiUnreachableError();
+
+    if (!response.ok) {
       await this.forgetSession();
       return false;
     }

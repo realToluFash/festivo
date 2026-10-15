@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -98,6 +98,39 @@ describe('the application tree', () => {
     at('/app');
 
     await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/signed out/i));
+  });
+
+  it('keeps the session when a reload cannot reach the API, and comes back with it', async () => {
+    __setSessionState({ status: 'unknown' });
+    const fetch = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+
+    at('/app');
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/Soirely cannot be reached/),
+    );
+    expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/);
+    expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
+
+    fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 'acc_1',
+          name: 'Ada Okonkwo',
+          businessName: 'Okonkwo Events',
+          countryCode: 'NG',
+          locale: 'en',
+          verified: true,
+          complete: true,
+          emailAddresses: [{ id: 'a1', address: 'ada@example.com', verified: true, primary: true }],
+          phoneNumbers: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined());
   });
 
   it('waits rather than redirecting while the session is being checked', async () => {

@@ -282,6 +282,12 @@ h2 {
   color: var(--colorInkSecondary);
 }
 
+.unreachable {
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: var(--space5xl) var(--space3xl);
+}
+
 .pending-spinner {
   width: var(--spaceXl);
   height: var(--spaceXl);

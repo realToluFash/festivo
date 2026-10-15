@@ -1,4 +1,4 @@
-import { type Account, primaryEmailAddress } from '@soirely/api-client';
+import { type Account, ApiUnreachableError, primaryEmailAddress } from '@soirely/api-client';
 import { useSyncExternalStore } from 'react';
 
 import { SIGNED_OUT, api } from './api.ts';
@@ -21,6 +21,7 @@ export type SessionState =
   | { status: 'unknown' }
   | { status: 'checking' }
   | { status: 'signedIn'; session: Session }
+  | { status: 'unreachable' }
   | { status: 'signedOut'; ended: boolean };
 
 const STAND_IN_PERMISSIONS: readonly string[] = ['events.view', 'guests.view'];
@@ -55,9 +56,18 @@ export async function restoreSession(): Promise<void> {
 
   try {
     adoptAccount(await api.me());
-  } catch {
-    set({ status: 'signedOut', ended: false });
+  } catch (error) {
+    set(
+      error instanceof ApiUnreachableError
+        ? { status: 'unreachable' }
+        : { status: 'signedOut', ended: false },
+    );
   }
+}
+
+export function retrySession(): void {
+  set({ status: 'unknown' });
+  void restoreSession();
 }
 
 export function adoptAccount(account: Account): void {

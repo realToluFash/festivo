@@ -72,6 +72,14 @@ export class ApiError extends Error {
   }
 }
 
+/** No answer at all, or a gateway with nothing behind it. Not a refusal, so never a sign-out. */
+export class ApiUnreachableError extends Error {
+  constructor(cause?: unknown) {
+    super('The API could not be reached.', { cause });
+    this.name = 'ApiUnreachableError';
+  }
+}
+
 /**
  * Read a problem document out of a failed response.
  *

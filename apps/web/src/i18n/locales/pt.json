@@ -143,5 +143,9 @@
     "failedTitle": "Não funcionou",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "stepsLabel": "Antes de começar"
+  },
+  "session": {
+    "unreachableTitle": "Não é possível contactar o Soirely",
+    "unreachableBody": "A sua sessão continua iniciada. Verifique a ligação e tente novamente."
   }
 }
