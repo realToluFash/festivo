@@ -145,7 +145,8 @@
     "stepsLabel": "Before you start"
   },
   "session": {
-    "unreachableTitle": "Soirely cannot be reached",
-    "unreachableBody": "You are still signed in. Check your connection, then try again."
+    "unreachableTitle": "Cannot reach Soirely",
+    "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
+    "retrying": "Trying again…"
   }
 }

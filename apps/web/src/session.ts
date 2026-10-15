@@ -21,7 +21,7 @@ export type SessionState =
   | { status: 'unknown' }
   | { status: 'checking' }
   | { status: 'signedIn'; session: Session }
-  | { status: 'unreachable' }
+  | { status: 'unreachable'; retrying: boolean }
   | { status: 'signedOut'; ended: boolean };
 
 const STAND_IN_PERMISSIONS: readonly string[] = ['events.view', 'guests.view'];
@@ -53,21 +53,27 @@ export async function restoreSession(): Promise<void> {
   if (state.status !== 'unknown') return;
 
   set({ status: 'checking' });
+  await askForAccount();
+}
 
+/** Stays on the unreachable screen while asking, so the button can say it is trying. */
+export async function retrySession(): Promise<void> {
+  if (state.status !== 'unreachable' || state.retrying) return;
+
+  set({ status: 'unreachable', retrying: true });
+  await askForAccount();
+}
+
+async function askForAccount(): Promise<void> {
   try {
     adoptAccount(await api.me());
   } catch (error) {
     set(
       error instanceof ApiUnreachableError
-        ? { status: 'unreachable' }
+        ? { status: 'unreachable', retrying: false }
         : { status: 'signedOut', ended: false },
     );
   }
-}
-
-export function retrySession(): void {
-  set({ status: 'unknown' });
-  void restoreSession();
 }
 
 export function adoptAccount(account: Account): void {

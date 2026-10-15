@@ -146,6 +146,7 @@
   },
   "session": {
     "unreachableTitle": "Não é possível contactar o Soirely",
-    "unreachableBody": "A sua sessão continua iniciada. Verifique a ligação e tente novamente."
+    "unreachableBody": "A sua sessão continua iniciada. O Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação e tente novamente.",
+    "retrying": "A tentar novamente…"
   }
 }

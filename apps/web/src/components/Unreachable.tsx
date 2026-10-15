@@ -1,25 +1,44 @@
 import { useTranslation } from 'react-i18next';
 
-import { retrySession } from '../session.ts';
+import { retrySession, useSessionState } from '../session.ts';
+import { LanguageChoice } from './LanguageChoice.tsx';
 
-/** Stands where sign-in would, because sign-in would read as being signed out. */
+/** No sign-in heading or form: the person is still signed in, and those would say otherwise. */
 export function Unreachable() {
   const { t } = useTranslation();
+  const state = useSessionState();
+  const retrying = state.status === 'unreachable' && state.retrying;
 
   return (
-    <main id="content" className="unreachable">
-      <div className="notice notice-broken" role="alert">
-        <span className="mark mark-broken" aria-hidden="true">
-          ✕
-        </span>
-        <div className="notice-body">
-          <p className="notice-title">{t('session.unreachableTitle')}</p>
-          <p>{t('session.unreachableBody')}</p>
-        </div>
-        <button className="button" type="button" onClick={retrySession}>
-          {t('error.retry')}
-        </button>
-      </div>
-    </main>
+    <div className="auth">
+      <header className="auth-header">
+        <span className="brand">{t('app.name')}</span>
+        <LanguageChoice />
+      </header>
+
+      <main id="content" className="auth-main">
+        <section className="auth-card">
+          <div className="notice notice-quiet" role="status">
+            <span className="mark mark-info" aria-hidden="true">
+              i
+            </span>
+            <div className="notice-body">
+              <h1 className="notice-heading">{t('session.unreachableTitle')}</h1>
+              <p>{t('session.unreachableBody')}</p>
+            </div>
+          </div>
+
+          <button
+            className="button button-primary"
+            type="button"
+            disabled={retrying}
+            aria-busy={retrying}
+            onClick={() => void retrySession()}
+          >
+            {retrying ? t('session.retrying') : t('error.retry')}
+          </button>
+        </section>
+      </main>
+    </div>
   );
 }

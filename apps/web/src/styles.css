@@ -477,6 +477,13 @@ h2 {
   font: var(--typeRowTitle);
 }
 
+/* A notice that is the whole screen's message carries its heading. */
+.notice .notice-heading {
+  margin: 0;
+  font: var(--typeTitleDialog);
+  letter-spacing: var(--typeTitleDialogTracking);
+}
+
 .notice-quiet {
   background: var(--colorInset);
   border: var(--borderInset);
@@ -555,6 +562,13 @@ h2 {
   border-color: var(--colorBorder);
   color: var(--colorInkSecondary);
   cursor: default;
+}
+
+/* Busy is not refused: the button keeps its colour while its request is out. */
+.button-primary[aria-busy='true'] {
+  background: var(--colorAccentHover);
+  border-color: var(--colorAccentHover);
+  color: var(--colorInkOnDark);
 }
 
 /* ── Choosing a language, as a control rather than a menu ─────────────────── */
