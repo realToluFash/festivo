@@ -119,12 +119,27 @@ switch changes the code halfway through your report. So QA lives apart:
 - **Its own bundler (18081) and its own simulators**, `Soirely QA iPhone` and
   `Soirely QA iPad`.
 
-**Start the session in `~/Projects/soirely-qa`.** Check before anything else:
-`git rev-parse --show-toplevel` must print that path. If it prints `~/Projects/soirely`,
-you are in the developer's checkout — stop and say so. If the worktree does not exist,
-`just qa-env setup` from the main checkout makes it, once.
+**You are usually started in the developer's checkout, `~/Projects/soirely`. Work in the
+QA worktree anyway.** It is the main checkout's sibling, `../soirely-qa`. Your session's
+directory does not move, so you point every action at the worktree:
+
+- **Every shell command starts with `cd ~/Projects/soirely-qa &&`.** That includes `git`,
+  `docker compose`, `just`, `node .qa/bin/…`, `maestro` and `curl` writing to `.qa/`. A bare
+  `docker compose` in the main checkout reaches the developer's stack. A bare `git` reports
+  the developer's branch, not what you are testing.
+- **Every file you read, write or screenshot is under `~/Projects/soirely-qa/`**, as an
+  absolute path. Read the code, the docs and the Maestro flows there, because that is the
+  commit under test. The main checkout may be on another branch entirely.
+- **Write nothing in `~/Projects/soirely`.** It is somebody else's working tree. That
+  includes `.qa/` and new flows.
+
+Before anything else, check that the worktree exists:
+`test -f ~/Projects/soirely-qa/.qa/bin/qa-env.mjs`. If it doesn't, run `just qa-env setup`
+**once** from the main checkout to create it. That is the one command you run there. Then
+carry on from the worktree.
 
 ```sh
+cd ~/Projects/soirely-qa
 node .qa/bin/qa-env.mjs checkout 36          # the PR under test: fetch, check out, rebuild, fresh database
 node .qa/bin/qa-env.mjs checkout sc-55       # or by story, when one remote branch names it
 node .qa/bin/qa-env.mjs status               # what is checked out, and whether it answers
@@ -135,8 +150,8 @@ The harness is `.qa/bin/qa-env.mjs`, not `scripts/`, on purpose: `checkout` move
 to the commit under test, which may predate the harness. `checkout` starts the database from
 nothing every time (`--keep-data` to only migrate); every account in it is yours.
 
-Inside the worktree, `docker compose …` and `just psql` reach the QA stack on their own —
-its `.env` names the project. `docker compose stop api` for the offline case stops **your**
+From inside the worktree, `docker compose …` and `just psql` reach the QA stack on their
+own, because its `.env` names the project. `docker compose stop api` for the offline case stops **your**
 API, and nobody else's.
 
 | What     | Where                    | For                                      |
@@ -148,8 +163,8 @@ API, and nobody else's.
 | Smocker  | `http://127.0.0.1:18088` | every SMS it sends                       |
 | Postgres | `just psql`              | confirming what a request actually wrote |
 
-**Name the environment and the commit in the report.** `git rev-parse --short HEAD` and the
-PR it came from. A report that does not say what it tested cannot be re-run. The
+**Name the environment and the commit in the report.**
+`cd ~/Projects/soirely-qa && git rev-parse --short HEAD`, and the PR it came from. A report that does not say what it tested cannot be re-run. The
 environment is `QA stack (~/Projects/soirely-qa)`.
 
 **Accounts come from the script, never by hand and never a developer's own.** Addresses are
@@ -213,7 +228,7 @@ node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the t
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
 developer's bundler and whichever simulator happens to be booted.
 
-Flows live in `apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
+Flows live in `~/Projects/soirely-qa/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
 and Mailpit as `${MAILPIT_URL}` (the harness passes both), and **target `testID`** rather than
 prose — a flow that taps `"Sign in"` taps whichever one it finds first and breaks in
 Spanish. A story that needs a new flow gets one committed beside the others; that is the
@@ -245,7 +260,7 @@ catch. No test caught that; no reading of the code caught it; a screenshot caugh
 
 ### Screenshots
 
-Into `.qa/`, which is gitignored. `xcrun simctl io "Soirely QA iPhone" screenshot .qa/<name>.png`
+Into `~/Projects/soirely-qa/.qa/`, which is gitignored. `xcrun simctl io "Soirely QA iPhone" screenshot .qa/<name>.png`
 for a simulator — never `booted`, which is whichever simulator answers first, the driver's own screenshot for a browser.
 
 - **Every failure, always.** A failure with no picture is an opinion.
@@ -378,8 +393,8 @@ anything.
 - [ ] The environment and the commit are named at the top.
 - [ ] The story was moved, or you said why it could not be.
 - [ ] You worked in `~/Projects/soirely-qa`, against the QA stack, and the report says so.
-- [ ] You changed no source file. `git status` is clean apart from `.qa/` and any new
-      Maestro flow.
+- [ ] You changed no source file. `cd ~/Projects/soirely-qa && git status` is clean apart
+      from `.qa/` and any new Maestro flow, and nothing of yours is in `~/Projects/soirely`.
 
 Then tell the user, in two or three lines: pass or fail, the count, the one thing most
 worth their attention, and the story link.

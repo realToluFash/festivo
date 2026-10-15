@@ -44,14 +44,15 @@ just qa-chrome               # a browser with a debugging port, on its own profi
 ```
 
 None of these run in CI, deliberately: they need a simulator, a browser and a person — or
-an agent in QA mode.
+an agent in QA mode. `.claude/skills/soirely-qa-tester` is what a pass does with them, how
+the report is written, and where it is posted.
 
 An agent in QA mode does not use them here. `just qa-env setup` makes a second stack for
 it: a worktree at `../soirely-qa` on the pushed head of the pull request under test, its own
 containers and database, every port moved up by 10000, and its own simulators. A developer
 running the suite and a QA pass stopping the API to test the offline state then never meet.
-Start the QA session in `../soirely-qa`; `node .qa/bin/qa-env.mjs` from there does the rest. `.claude/skills/soirely-qa-tester` is what a pass does with them, how
-the report is written, and where it is posted.
+Run `/soirely-qa-tester` from the main checkout as usual; it does its work in
+`../soirely-qa`, through `node .qa/bin/qa-env.mjs`.
 
 ## The shape of the work
 
