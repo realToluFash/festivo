@@ -6,7 +6,9 @@
     "title": "Soirely",
     "subtitle": "A noite, a partir do seu bolso.",
     "openSignIn": "Iniciar sessão",
-    "openLayouts": "Demonstração de disposições"
+    "openLayouts": "Demonstração de disposições",
+    "signedInAs": "Sessão iniciada como {{name}}",
+    "signOut": "Encerrar sessão"
   },
   "status": {
     "title": "Estado do serviço",
@@ -55,6 +57,8 @@
     "withGoogle": "Continuar com {{provider}}",
     "withApple": "Continuar com {{provider}}",
     "providerFailedTitle": "O início de sessão com {{provider}} não funcionou",
-    "providerFailedBody": "Nada foi alterado. Tente novamente com {{provider}} ou inicie sessão com o seu e-mail e a sua palavra-passe."
+    "providerFailedBody": "Nada foi alterado. Tente novamente com {{provider}} ou inicie sessão com o seu e-mail e a sua palavra-passe.",
+    "failedTitle": "Não foi possível iniciar sessão",
+    "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento."
   }
 }

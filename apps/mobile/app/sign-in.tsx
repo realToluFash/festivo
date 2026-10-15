@@ -1,22 +1,26 @@
-import { useLocalSearchParams } from 'expo-router';
+import { ApiError } from '@soirely/api-client';
+import { formatTimeOfDay } from '@soirely/domain';
+import { router, useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { api } from '../src/api.ts';
 import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
 import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
+import { currentLocale } from '../src/i18n/index.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
 /**
  * Sign in, drawn from `SignIn-*.dc.html` and NOT yet wired to the API.
  *
- * Pressing the button moves this screen into its own waiting state and nothing
- * else: `api.signIn()` arrives in the next pass, with the Keychain store
- * behind it. Everything else is finished, including the copy in all four
- * languages.
+ * The form posts to `/api/auth/login`, which hands back an access token for
+ * memory and a refresh token for the Keychain — see `src/tokens.ts`. Both
+ * failures the endpoint distinguishes are shown as the design draws them, and
+ * a wrong address and a wrong password are deliberately one message.
  *
  * Three layouts, and they are different arrangements rather than one rescaled:
  * the phone puts the form on the page under the brand; tablet portrait centres
@@ -40,6 +44,7 @@ type Status =
   | { kind: 'refused' }
   | { kind: 'rateLimited'; retryAt: string }
   | { kind: 'providerFailed'; provider: string }
+  | { kind: 'failed' }
   | { kind: 'sessionEnded' };
 
 export default function SignIn() {
@@ -49,7 +54,18 @@ export default function SignIn() {
     signedOut == null ? { kind: 'ready' } : { kind: 'sessionEnded' },
   );
 
-  const form = <Credentials status={status} onSubmit={() => setStatus({ kind: 'signingIn' })} />;
+  async function signIn(email: string, password: string): Promise<void> {
+    setStatus({ kind: 'signingIn' });
+
+    try {
+      await api.signIn(email, password);
+      router.replace('/');
+    } catch (error) {
+      setStatus(refusalFrom(error));
+    }
+  }
+
+  const form = <Credentials status={status} onSubmit={signIn} />;
 
   if (kind === 'tabletLandscape') {
     return <Landscape>{form}</Landscape>;
@@ -141,10 +157,22 @@ function Landscape({ children }: { children: ReactNode }) {
   );
 }
 
-function Credentials({ status, onSubmit }: { status: Status; onSubmit: () => void }) {
+function Credentials({
+  status,
+  onSubmit,
+}: {
+  status: Status;
+  onSubmit: (email: string, password: string) => void;
+}) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
+  const [email, setEmail] = useState('');
+  const [secret, setSecret] = useState('');
   const password = useRef<TextInput>(null);
+
+  const submit = (): void => {
+    onSubmit(email.trim(), secret);
+  };
 
   const busy = status.kind === 'signingIn';
   const locked = status.kind === 'rateLimited';
@@ -157,6 +185,15 @@ function Credentials({ status, onSubmit }: { status: Status; onSubmit: () => voi
           mark={tokens.marks.info.glyph}
           title={t('signIn.endedTitle')}
           body={t('signIn.endedBody')}
+        />
+      )}
+
+      {status.kind === 'failed' && (
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          title={t('signIn.failedTitle')}
+          body={t('signIn.failedBody')}
         />
       )}
 
@@ -191,6 +228,8 @@ function Credentials({ status, onSubmit }: { status: Status; onSubmit: () => voi
           autoCapitalize="none"
           autoCorrect={false}
           spellCheck={false}
+          value={email}
+          onChangeText={setEmail}
           returnKeyType="next"
           onSubmitEditing={() => password.current?.focus()}
           placeholderTextColor={tokens.colorInkTertiary}
@@ -219,8 +258,10 @@ function Credentials({ status, onSubmit }: { status: Status; onSubmit: () => voi
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
+            value={secret}
+            onChangeText={setSecret}
             returnKeyType="go"
-            onSubmitEditing={onSubmit}
+            onSubmitEditing={submit}
             placeholderTextColor={tokens.colorInkTertiary}
             cursorColor={tokens.colorInk}
             selectionColor={tokens.colorInk}
@@ -254,7 +295,7 @@ function Credentials({ status, onSubmit }: { status: Status; onSubmit: () => voi
 
       <Pressable
         style={[styles.cta, (busy || locked) && styles.ctaOff]}
-        onPress={onSubmit}
+        onPress={submit}
         disabled={busy || locked}
         accessibilityRole="button"
         accessibilityState={{ disabled: busy || locked }}
@@ -278,6 +319,29 @@ function Credentials({ status, onSubmit }: { status: Status; onSubmit: () => voi
 }
 
 /** A shape and a word, never a colour on its own. */
+/**
+ * Which refusal this was, in the two cases the API distinguishes. Anything
+ * else is one message rather than a guess at the cause.
+ */
+function refusalFrom(error: unknown): Status {
+  if (!(error instanceof ApiError)) return { kind: 'failed' };
+
+  if (error.is('invalid_credentials')) return { kind: 'refused' };
+
+  if (error.is('too_many_attempts')) {
+    const seconds = Number(error.response?.headers.get('Retry-After'));
+
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return {
+        kind: 'rateLimited',
+        retryAt: formatTimeOfDay(new Date(Date.now() + seconds * 1000), currentLocale()),
+      };
+    }
+  }
+
+  return { kind: 'failed' };
+}
+
 function Notice({
   tone,
   mark,

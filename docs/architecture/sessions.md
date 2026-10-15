@@ -158,10 +158,25 @@ its session id and a Redis set lists the sessions revoked in the last fifteen mi
 `SISMEMBER` per request — and until it lands, "sign out this device" is honest about
 taking up to fifteen minutes. The wording for that is in sc-115 and sc-116.
 
+## Where a native client keeps its half
+
+`apps/mobile/src/tokens.ts`: the access token in memory, the refresh token in the
+platform keystore through `expo-secure-store` — Keychain on iOS, Keystore-backed storage on
+Android, written `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` so a session is not restored onto
+another device from a backup. That is better than the browser's cookie rather than a
+compromise with it: nothing else on the device can read it, and there is no cross-site
+request forgery to answer for.
+
+**The keystore is not everywhere.** `expo-secure-store` has no implementation on web, where
+this app also runs through React Native Web, and a device can refuse the keystore. Both
+fall back to memory for the launch, so the session ends when the app closes. The honest
+outcome: the alternative is writing a thirty-day credential somewhere readable.
+
 ## What is not built yet
 
-- **A secure store on mobile.** `apps/mobile` declares `refreshTokenIn: 'body'` and has no
-  token store wired, so nothing is persisted. The Keychain, through
-  `expo-secure-store`, is where it goes.
-- **The sign-in screens**, on both clients, and the session wiring that calls
-  `api.signIn()` and reacts to `onSignedOut`.
+- **Signing in with Google or Apple.** Both buttons are on the sign-in screens, drawn to
+  their owners' specifications and doing nothing, because there is no provider route in the
+  API — sc-58 and sc-59.
+- **An organisation.** `apps/web/src/session.ts` reads the account from `GET /api/auth/me`
+  and that part is real; the organisation and the permissions beside it are still a
+  stand-in, marked as one, because epic 28 is where organisations get a record.

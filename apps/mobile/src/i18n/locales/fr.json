@@ -6,7 +6,9 @@
     "title": "Soirely",
     "subtitle": "La soirée, depuis votre poche.",
     "openSignIn": "Se connecter",
-    "openLayouts": "Démonstration des mises en page"
+    "openLayouts": "Démonstration des mises en page",
+    "signedInAs": "Connecté en tant que {{name}}",
+    "signOut": "Se déconnecter"
   },
   "status": {
     "title": "État du service",
@@ -55,6 +57,8 @@
     "withGoogle": "Continuer avec {{provider}}",
     "withApple": "Continuer avec {{provider}}",
     "providerFailedTitle": "La connexion avec {{provider}} n'a pas fonctionné",
-    "providerFailedBody": "Rien n'a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe."
+    "providerFailedBody": "Rien n'a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe.",
+    "failedTitle": "La connexion n'a pas abouti",
+    "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant."
   }
 }

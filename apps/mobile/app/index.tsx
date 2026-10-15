@@ -1,5 +1,5 @@
-import { type Health } from '@soirely/api-client';
-import { Link } from 'expo-router';
+import { type Account, type Health } from '@soirely/api-client';
+import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,7 @@ export default function Home() {
   const { t } = useTranslation();
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [account, setAccount] = useState<Account | null>(null);
 
   // The loading state belongs to the event that causes the reload, not to the
   // effect. Setting it in the effect body made every attempt two renders
@@ -30,6 +31,26 @@ export default function Home() {
   const retry = useCallback(() => {
     setState({ kind: 'loading' });
     setAttempt((n) => n + 1);
+  }, []);
+
+  // Who is signed in, if anybody. A launch with no stored refresh token asks
+  // once, is refused, and stays on this screen — the client only reports a
+  // session as over when a token it HAD stopped working.
+  useEffect(() => {
+    let live = true;
+
+    api
+      .me()
+      .then((signedIn) => {
+        if (live) setAccount(signedIn);
+      })
+      .catch(() => {
+        if (live) setAccount(null);
+      });
+
+    return () => {
+      live = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -96,11 +117,29 @@ export default function Home() {
         </View>
       )}
 
-      <Link href="/sign-in" asChild>
-        <Pressable style={styles.button} accessibilityRole="button">
-          <Text weight="medium">{t('home.openSignIn')}</Text>
-        </Pressable>
-      </Link>
+      {account == null ? (
+        <Link href="/sign-in" asChild>
+          <Pressable style={styles.button} accessibilityRole="button">
+            <Text weight="medium">{t('home.openSignIn')}</Text>
+          </Pressable>
+        </Link>
+      ) : (
+        <View style={styles.panel}>
+          <Text weight="medium">{t('home.signedInAs', { name: account.name })}</Text>
+          <Pressable
+            style={styles.button}
+            accessibilityRole="button"
+            onPress={() => {
+              void api.signOut().then(() => {
+                setAccount(null);
+                router.replace('/sign-in');
+              });
+            }}
+          >
+            <Text weight="medium">{t('home.signOut')}</Text>
+          </Pressable>
+        </View>
+      )}
 
       <Link href="/layouts" asChild>
         <Pressable style={styles.button} accessibilityRole="button">

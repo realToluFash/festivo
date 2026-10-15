@@ -6,7 +6,9 @@
     "title": "Soirely",
     "subtitle": "La noche, desde su bolsillo.",
     "openSignIn": "Iniciar sesión",
-    "openLayouts": "Demostración de diseños"
+    "openLayouts": "Demostración de diseños",
+    "signedInAs": "Sesión iniciada como {{name}}",
+    "signOut": "Cerrar sesión"
   },
   "status": {
     "title": "Estado del servicio",
@@ -55,6 +57,8 @@
     "withGoogle": "Continuar con {{provider}}",
     "withApple": "Continuar con {{provider}}",
     "providerFailedTitle": "El inicio de sesión con {{provider}} no ha funcionado",
-    "providerFailedBody": "No se ha cambiado nada. Vuelva a intentarlo con {{provider}} o inicie sesión con su correo electrónico y su contraseña."
+    "providerFailedBody": "No se ha cambiado nada. Vuelva a intentarlo con {{provider}} o inicie sesión con su correo electrónico y su contraseña.",
+    "failedTitle": "No se ha podido iniciar sesión",
+    "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento."
   }
 }
