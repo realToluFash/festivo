@@ -8,6 +8,7 @@ import { routes } from './index.tsx';
 const ADA: Session = {
   name: 'Ada Okonkwo',
   email: 'ada@example.com',
+  verified: true,
   organisation: { id: 'org_1', name: 'Okonkwo Events' },
   organisations: [{ id: 'org_1', name: 'Okonkwo Events' }],
   permissions: ['events.view', 'guests.view'],

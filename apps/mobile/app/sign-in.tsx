@@ -42,7 +42,10 @@ export default function SignIn() {
 
     try {
       await api.signIn(email, password);
-      router.replace('/');
+
+      const account = await api.me();
+
+      router.replace(account.verified ? '/' : '/verify-email');
     } catch (error) {
       setStatus(refusalFrom(error));
     }

@@ -190,6 +190,21 @@ describe('signing in, for real', () => {
     expect(screen.getByText('Signed in as Folake Ire')).toBeDefined();
   });
 
+  it('sends an unverified account to the verification screen instead', async () => {
+    answering({
+      'POST /api/auth/login': () => json(ISSUED),
+      'GET /api/auth/me': () => json({ ...ACCOUNT, verified: false }),
+    });
+
+    at('/sign-in');
+    fillIn();
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined(),
+    );
+    expect(screen.queryByRole('link', { name: 'Events' })).toBeNull();
+  });
+
   it('posts the address and the password, and asks for the cookie', async () => {
     const sent = answering({
       'POST /api/auth/login': () => json(ISSUED),
