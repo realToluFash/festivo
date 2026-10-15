@@ -1,3 +1,4 @@
+import { type Health } from '@soirely/api-client';
 import { Link } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -15,11 +16,6 @@ import { config } from '../src/config.ts';
  * production: the shared client package resolves and runs on this platform, the
  * configured base URL is reachable, and CORS permits it from web.
  */
-interface Health {
-  status: string;
-  checks: Record<string, { status: string }>;
-}
-
 type State = { kind: 'loading' } | { kind: 'ok'; health: Health } | { kind: 'failed' };
 
 export default function Home() {
@@ -40,7 +36,7 @@ export default function Home() {
     let live = true;
 
     api
-      .get<Health>('/api/health')
+      .health()
       .then((health) => {
         if (live) setState({ kind: 'ok', health });
       })

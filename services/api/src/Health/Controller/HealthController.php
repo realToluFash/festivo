@@ -26,14 +26,16 @@ final class HealthController extends AbstractController
             ? JsonResponse::HTTP_OK
             : JsonResponse::HTTP_SERVICE_UNAVAILABLE;
 
+        // No envelope. Every other response in this API is the object itself —
+        // the auth endpoints, API Platform's resources, which cannot envelope
+        // at all — and a failure is a problem document. A `success` field
+        // beside a status code is a second copy of the same fact, and the two
+        // clients read the object they were documented to read.
         return new JsonResponse([
-            'success' => 'ok' === $result['status'],
-            'data' => [
-                'application' => 'soirely-api',
-                'environment' => $this->appEnv,
-                'status' => $result['status'],
-                'checks' => $result['checks'],
-            ],
+            'application' => 'soirely-api',
+            'environment' => $this->appEnv,
+            'status' => $result['status'],
+            'checks' => $result['checks'],
         ], $status);
     }
 }

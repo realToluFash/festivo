@@ -146,6 +146,31 @@ describe('the status page', () => {
     expect(String(fetchSpy.mock.calls[0]?.[0])).toBe('http://api.test/api/health');
   });
 
+  /**
+   * A 503 from this endpoint is the answer, not a failure: it names the
+   * dependency that is down. Reporting it as unreachable would hide the one
+   * piece of information the page exists to show.
+   */
+  it('shows a degraded API as degraded rather than as unreachable', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'degraded',
+          checks: { postgres: { status: 'ok' }, redis: { status: 'error' } },
+        }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    at('/status');
+
+    await waitFor(() =>
+      expect(screen.getByText('Some services are not responding.')).toBeDefined(),
+    );
+    expect(screen.getByText('redis')).toBeDefined();
+    expect(screen.queryByText('The API could not be reached.')).toBeNull();
+  });
+
   it('says so when the API cannot be reached, and offers a retry', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('network down'));
 

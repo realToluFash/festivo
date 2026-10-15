@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 final class HealthEndpointTest extends ApiTestCase
 {
     #[Test]
-    public function itAnswersInTheEnvelope(): void
+    public function itAnswersWithTheObjectItself(): void
     {
         $this->client->request('GET', '/api/health');
 
@@ -19,11 +19,33 @@ final class HealthEndpointTest extends ApiTestCase
 
         $body = \json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
-        self::assertArrayHasKey('success', $body);
-        self::assertArrayHasKey('data', $body);
-        self::assertSame('soirely-api', $body['data']['application']);
-        self::assertArrayHasKey('postgres', $body['data']['checks']);
-        self::assertArrayHasKey('redis', $body['data']['checks']);
+        self::assertSame('soirely-api', $body['application']);
+        self::assertSame('ok', $body['status']);
+        self::assertArrayHasKey('postgres', $body['checks']);
+        self::assertArrayHasKey('redis', $body['checks']);
+    }
+
+    /**
+     * The envelope this endpoint used to answer in cost both clients a crash:
+     * each read `status` and `checks` where the documented contract says they
+     * are, got `undefined`, and every test passed because every test asserted
+     * against the payload the client had invented. So the shape is held here,
+     * where the server is, rather than only in two mocks.
+     */
+    #[Test]
+    public function itDoesNotWrapTheObjectInAnything(): void
+    {
+        $this->client->request('GET', '/api/health');
+
+        $body = \json_decode(
+            (string) $this->client->getResponse()->getContent(),
+            true,
+            512,
+            \JSON_THROW_ON_ERROR,
+        );
+
+        self::assertArrayNotHasKey('success', $body);
+        self::assertArrayNotHasKey('data', $body);
     }
 
     /**

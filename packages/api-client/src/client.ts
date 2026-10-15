@@ -28,6 +28,19 @@ export interface IssuedTokens {
   sessionId: string;
 }
 
+/**
+ * What `GET /api/health` answers, flat, like every other response in this API.
+ *
+ * It was read wrongly for as long as both clients existed: the endpoint used
+ * to wrap this in `{success, data}`, nothing read `data`, and both clients'
+ * tests agreed with the client rather than with the server. Hence `asHealth`
+ * below, and a test here that refuses that envelope by name.
+ */
+export interface Health {
+  status: string;
+  checks: Record<string, { status: string; error?: string }>;
+}
+
 export interface TokenStore {
   access(): string | null | Promise<string | null>;
   /** Null in cookie mode: the browser holds it and the page cannot read it. */
@@ -129,6 +142,27 @@ export class ApiClient {
     // somebody looking at a signed-in screen having pressed Sign out.
     await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
     await this.options.tokens?.clear();
+  }
+
+  /**
+   * The one call that must not throw on the status.
+   *
+   * The API answers 503 when a dependency is down, and that response is the
+   * answer rather than a failure — it names which dependency. Letting
+   * `request()` reject it is how a status page reports "the API could not be
+   * reached" about an API that just told it exactly what was wrong.
+   */
+  async health(): Promise<Health> {
+    const response = await this.send('/api/health', { method: 'GET', anonymous: true });
+    const health = asHealth(await response.json().catch(() => null));
+
+    if (health == null) {
+      throw new Error(
+        'The API answered /api/health in a shape this client does not know. Check HealthController in services/api.',
+      );
+    }
+
+    return health;
   }
 
   private async send(path: string, init: RequestOptions): Promise<Response> {
@@ -266,6 +300,38 @@ export class ApiClient {
  * against the same invented payload, so nothing here knew the refresh path had
  * never worked. A cast would have hidden it again; this reports it.
  */
+/**
+ * Checked rather than cast, for the same reason as the tokens below: the shape
+ * came back different once already, and a cast turns that into
+ * `Object.entries(undefined)` inside a component rather than a sentence naming
+ * the file to look in.
+ */
+function asHealth(raw: unknown): Health | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (typeof candidate.status !== 'string' || candidate.status === '') return null;
+  if (typeof candidate.checks !== 'object' || candidate.checks == null) return null;
+
+  const checks: Health['checks'] = {};
+
+  for (const [name, value] of Object.entries(candidate.checks)) {
+    if (typeof value !== 'object' || value == null) return null;
+
+    const check = value as Record<string, unknown>;
+
+    if (typeof check.status !== 'string') return null;
+
+    checks[name] = {
+      status: check.status,
+      ...(typeof check.error === 'string' ? { error: check.error } : {}),
+    };
+  }
+
+  return { status: candidate.status, checks };
+}
+
 function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTokens | null {
   if (typeof raw !== 'object' || raw == null) return null;
 

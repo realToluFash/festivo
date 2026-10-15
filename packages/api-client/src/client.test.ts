@@ -437,3 +437,75 @@ describe('a browser never holds the refresh token', () => {
     expect(await tokens.access()).toBeNull();
   });
 });
+
+/**
+ * What services/api answers from HealthController. The shape is asserted
+ * against the server in HealthEndpointTest as well, because this file agreeing
+ * with itself is exactly how the mismatch survived.
+ */
+function health(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+describe('the health endpoint', () => {
+  function client(response: Response) {
+    return new ApiClient({ baseUrl: () => 'http://api.test', fetch: async () => response });
+  }
+
+  test('reads the object the API sends', async () => {
+    const answered = await client(
+      health({
+        application: 'soirely-api',
+        environment: 'dev',
+        status: 'ok',
+        checks: { postgres: { status: 'ok' }, redis: { status: 'ok' } },
+      }),
+    ).health();
+
+    expect(answered.status).toBe('ok');
+    expect(Object.keys(answered.checks)).toEqual(['postgres', 'redis']);
+  });
+
+  /**
+   * A 503 here is the answer, not a failure: it names the dependency that is
+   * down. Rejecting it is how a status page says "could not be reached" about
+   * an API that just said precisely what was wrong.
+   */
+  test('a degraded API answering 503 is an answer rather than a failure', async () => {
+    const answered = await client(
+      health(
+        {
+          status: 'degraded',
+          checks: {
+            postgres: { status: 'ok' },
+            redis: { status: 'error', error: 'connection refused' },
+          },
+        },
+        503,
+      ),
+    ).health();
+
+    expect(answered.status).toBe('degraded');
+    expect(answered.checks.redis).toEqual({ status: 'error', error: 'connection refused' });
+  });
+
+  /**
+   * The shape this endpoint used to answer in. Both clients read `status` and
+   * `checks` at the top level, got undefined, and crashed in a component —
+   * while every test passed. This is that regression, refused by name.
+   */
+  test('refuses the envelope it used to answer in, naming where to look', async () => {
+    await expect(
+      client(health({ success: true, data: { status: 'ok', checks: {} } })).health(),
+    ).rejects.toThrow(/HealthController/);
+  });
+
+  test('refuses a check that carries no status', async () => {
+    await expect(
+      client(health({ status: 'ok', checks: { postgres: { state: 'ok' } } })).health(),
+    ).rejects.toThrow(/shape this client does not know/);
+  });
+});

@@ -1,3 +1,4 @@
+import { type Health } from '@soirely/api-client';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,11 +13,6 @@ import { Pending } from '../../components/Pending.tsx';
  * configuration produced a reachable base URL, and CORS is right. Each of those
  * fails silently in a skeleton with no API call in it.
  */
-interface Health {
-  status: string;
-  checks: Record<string, { status: string; error?: string }>;
-}
-
 type State = { kind: 'loading' } | { kind: 'ok'; health: Health } | { kind: 'failed' };
 
 export function Status() {
@@ -28,7 +24,7 @@ export function Status() {
     let live = true;
 
     api
-      .get<Health>('/api/health')
+      .health()
       .then((health) => {
         if (live) setState({ kind: 'ok', health });
       })
