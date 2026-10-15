@@ -10,6 +10,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Uid\UuidV7;
 
 /**
  * A session. Opaque and stored hashed rather than a second JWT, because nothing
@@ -21,6 +22,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'refresh_tokens')]
 #[ORM\UniqueConstraint(name: 'uniq_refresh_token_hash', columns: ['token_hash'])]
 #[ORM\Index(name: 'idx_refresh_token_user', columns: ['user_id'])]
+#[ORM\Index(name: 'idx_refresh_token_chain', columns: ['chain_id'])]
 class RefreshToken
 {
     use Timestampable;
@@ -38,6 +40,10 @@ class RefreshToken
     #[ORM\Column(type: Types::STRING, length: 64)]
     private string $tokenHash;
 
+    /** Shared by every token descended from one sign-in. */
+    #[ORM\Column(type: 'uuid')]
+    private Uuid $chainId;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $expiresAt;
 
@@ -53,11 +59,13 @@ class RefreshToken
     public function __construct(
         User $user,
         string $tokenHash,
+        ?Uuid $chainId = null,
         ?string $userAgent = null,
         ?string $ipAddress = null,
     ) {
         $this->id = Uuid::v7();
         $this->user = $user;
+        $this->chainId = $chainId ?? $this->id;
         $this->tokenHash = $tokenHash;
         $this->expiresAt = new DateTimeImmutable()->add(new DateInterval(self::LIFETIME));
         $this->userAgent = $userAgent;
@@ -72,6 +80,28 @@ class RefreshToken
     public function getUser(): User
     {
         return $this->user;
+    }
+
+    public function getChainId(): Uuid
+    {
+        return $this->chainId;
+    }
+
+    /**
+     * When the sign-in happened, not when this token was issued. Rotation makes
+     * a new row every refresh, so this row's createdAt is minutes old however
+     * long the person has been signed in.
+     *
+     * Read off the chain id, which is the first token's id and so a time-ordered
+     * UUID v7. No column and no second query.
+     */
+    public function getChainStartedAt(): DateTimeImmutable
+    {
+        if ($this->chainId instanceof UuidV7) {
+            return DateTimeImmutable::createFromInterface($this->chainId->getDateTime());
+        }
+
+        return $this->getCreatedAt();
     }
 
     public function getExpiresAt(): DateTimeImmutable

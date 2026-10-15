@@ -25,3 +25,21 @@ framework:
             policy: sliding_window
             limit: 10
             interval: '1 hour'
+
+        sign_in_ip:
+            # Per IP, and generous, because one network is a whole office. It is
+            # the per-account budget below that stops a password being guessed;
+            # this one stops a script walking a list of addresses.
+            policy: sliding_window
+            limit: 30
+            interval: '15 minutes'
+
+        sign_in_account:
+            # Per address, and tight, because this is the one that matters: a
+            # password is guessed by trying many against one account, not one
+            # against many. Keyed on the address rather than the account, so a
+            # miss on an address nobody has registered costs the same as a hit
+            # and the endpoint cannot be used to tell them apart.
+            policy: sliding_window
+            limit: 5
+            interval: '15 minutes'

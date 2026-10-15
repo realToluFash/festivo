@@ -17,8 +17,11 @@ enum ErrorCode: string
     case UnsupportedMediaType = 'unsupported_media_type';
 
     case Unauthenticated = 'unauthenticated';
+    case InvalidCredentials = 'invalid_credentials';
+    case InvalidRefreshToken = 'invalid_refresh_token';
     case Forbidden = 'forbidden';
     case TooManyRequests = 'too_many_requests';
+    case TooManyAttempts = 'too_many_attempts';
 
     case InternalError = 'internal_error';
     case ServiceUnavailable = 'service_unavailable';
@@ -36,9 +39,9 @@ enum ErrorCode: string
             self::NotFound => 404,
             self::Conflict, self::EmailTaken => 409,
             self::UnsupportedMediaType => 415,
-            self::Unauthenticated => 401,
+            self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken => 401,
             self::Forbidden => 403,
-            self::TooManyRequests => 429,
+            self::TooManyRequests, self::TooManyAttempts => 429,
             self::InternalError => 500,
             self::ServiceUnavailable => 503,
             self::AssistantUnavailable, self::AssistantBusy => 503,

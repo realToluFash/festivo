@@ -2,3 +2,11 @@ lexik_jwt_authentication:
     secret_key: '%env(resolve:JWT_SECRET_KEY)%'
     public_key: '%env(resolve:JWT_PUBLIC_KEY)%'
     pass_phrase: '%env(JWT_PASSPHRASE)%'
+
+    # 15 minutes. Nothing consults a server to use an access token, so ending a
+    # session cannot take effect until the one in hand expires — this is that
+    # window, and it is the reason the number is small. Lexik's default is 3600,
+    # which would leave an ended device working for an hour.
+    #
+    # The refresh token's own lifetime is RefreshToken::LIFETIME, 30 days.
+    token_ttl: '%env(int:JWT_TOKEN_TTL)%'
