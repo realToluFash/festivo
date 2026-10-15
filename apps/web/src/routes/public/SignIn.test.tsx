@@ -5,13 +5,6 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
-/**
- * Sign in, at the address somebody actually opens.
- *
- * Rendered through the real route tree because the arrival state is read from
- * the query string, and mounting the component directly would prove only that
- * the component renders.
- */
 function at(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
@@ -33,10 +26,6 @@ describe('signing in', () => {
     expect(screen.getByLabelText('Password').getAttribute('autocomplete')).toBe('current-password');
   });
 
-  /**
-   * A password field with no way to read it back is where a typo on a phone
-   * keyboard turns into "my password stopped working".
-   */
   it('hides the password and reveals it on request', () => {
     at('/sign-in');
 
@@ -49,11 +38,6 @@ describe('signing in', () => {
     expect(screen.getByRole('button', { name: 'Hide' }).getAttribute('aria-pressed')).toBe('true');
   });
 
-  /**
-   * Both are drawn here and neither is wired: sc-58 and sc-59 own the
-   * endpoints. What the test holds is the wording and the order, because both
-   * owners publish requirements about them.
-   */
   it('offers Google and Apple, in their own words', () => {
     at('/sign-in');
 
@@ -61,7 +45,6 @@ describe('signing in', () => {
     expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeDefined();
   });
 
-  /** The mark is the brand's, and it is decoration beside the wording. */
   it('keeps the brand marks out of the accessible name', () => {
     at('/sign-in');
 
@@ -76,11 +59,6 @@ describe('signing in', () => {
     expect(screen.getByText('or')).toBeDefined();
   });
 
-  /**
-   * Every way a session can fail to renew sends somebody here, and they all
-   * say the same thing. Which one it was tells whoever holds a stolen token
-   * something, and tells the owner of the account nothing they can act on.
-   */
   it('says so when the person was signed out, and what to do about it', () => {
     at('/sign-in?signed-out');
 
@@ -95,11 +73,6 @@ describe('signing in', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
-  /**
-   * On the one page that has to work for everybody: somebody who cannot read
-   * this page cannot sign in, and cannot reach the switcher inside the product
-   * either.
-   */
   it('offers all four languages, each in its own language', () => {
     at('/sign-in');
 
@@ -122,13 +95,6 @@ function buttonsIn(element: HTMLElement): HTMLElement[] {
   return [...element.querySelectorAll('button')];
 }
 
-/**
- * The form, against what the endpoint actually answers.
- *
- * `POST /api/auth/login` hands out a session and not a profile — no account in
- * the body — so who it belongs to is a second call, and these tests hold that
- * order because the shell is written against the second one.
- */
 const ACCOUNT = {
   id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
   name: 'Folake Ire',
@@ -224,11 +190,6 @@ describe('signing in, for real', () => {
     expect(screen.getByText('Signed in as Folake Ire')).toBeDefined();
   });
 
-  /**
-   * The refresh token comes back as a cookie, and a cookie only arrives if the
-   * request asked for one. A forgotten `credentials` fails by signing somebody
-   * out fifteen minutes later, nowhere near the code that caused it.
-   */
   it('posts the address and the password, and asks for the cookie', async () => {
     const sent = answering({
       'POST /api/auth/login': () => json(ISSUED),
@@ -251,7 +212,6 @@ describe('signing in, for real', () => {
     expect(login?.credentials).toBe('include');
   });
 
-  /** One message for both, because two messages answer "is this registered". */
   it('shows one message for a wrong address and a wrong password', async () => {
     answering({ 'POST /api/auth/login': () => problem(401, 'invalid_credentials') });
 
@@ -275,11 +235,6 @@ describe('signing in, for real', () => {
     expect(screen.getByRole('button', { name: /Try again at/ })).toBeDefined();
   });
 
-  /**
-   * The server also writes the time into the problem's detail, in its own
-   * wording. Parsing a sentence back into a time is how a locale change breaks
-   * a lock screen, so without the header this is the ordinary failure.
-   */
   it('falls back to the plain failure when the header is missing', async () => {
     answering({ 'POST /api/auth/login': () => problem(429, 'too_many_attempts') });
 

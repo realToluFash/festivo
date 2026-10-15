@@ -1,25 +1,14 @@
 /*
- * Somebody else's brand, and therefore not a token.
- *
- * Google and Apple publish the exact colour, typeface and wording their
- * sign-in buttons must use, and neither is a decision this product gets to
- * make. Putting them in docs/design/tokens.mjs would file them as Soirely's
- * design language, where somebody would later harmonise them with the palette
- * — which is precisely what their guidelines forbid.
- *
- * So they live here, in the same camelCase vocabulary as the tokens, named for
- * whose they are. stylelint has an override for this file alone, with that
- * reason beside it. Change a value here only because Google or Apple changed
- * it.
+ * Google's and Apple's published button values. They are requirements from
+ * outside this product, not design tokens: tokenising them invites somebody to
+ * harmonise them with the palette, which both sets of guidelines forbid.
+ * stylelint has one override for this file alone.
  */
 :root {
-  /* Google: a white button with a grey outline, Roboto Medium, ink near-black. */
   --brandGoogleSurface: #ffffff;
   --brandGoogleBorder: #747775;
   --brandGoogleInk: #1f1f1f;
   --brandGoogleFont: 'Roboto', sans-serif;
-
-  /* Apple: black, white text, the platform's own face. */
   --brandAppleSurface: #000000;
   --brandAppleInk: #ffffff;
   --brandAppleFont: -apple-system, blinkmacsystemfont, 'Helvetica Neue', sans-serif;

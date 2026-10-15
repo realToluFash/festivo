@@ -2,11 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import { readableAgent } from './userAgent.ts';
 
-/**
- * Real strings, from the clients this product actually has. Every Chromium
- * browser claims to be Chrome and Safari, and Chrome claims to be Safari, so
- * the order of the tests below is the thing being protected.
- */
 describe('reading a user agent', () => {
   const cases: [string, string, string, string][] = [
     [
@@ -53,11 +48,6 @@ describe('reading a user agent', () => {
     });
   }
 
-  /**
-   * The design's rule: a string this cannot read is shown as it came, because
-   * a session nobody can identify is the one most worth looking at. Null says
-   * "nothing to read", and the screen shows the raw string instead.
-   */
   it('gives up on a string it cannot read, rather than guessing', () => {
     expect(readableAgent('Soirely/1.0 (+https://soirely.com)')).toBeNull();
     expect(readableAgent('curl/8.7.1')).toBeNull();

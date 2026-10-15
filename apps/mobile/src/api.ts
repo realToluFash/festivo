@@ -16,14 +16,8 @@ export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
   locale: () => currentLocale(),
   tokens,
-  // Stated rather than left to the default, because the web client states the
-  // opposite and the difference is deliberate: a cookie is the best a browser
-  // can do, and the Keychain is better than a cookie. See
-  // docs/architecture/sessions.md.
+  // Stated rather than defaulted: the web client states the opposite deliberately.
   refreshTokenIn: 'body',
-  // The session is over and nothing below this screen can be read, so the
-  // whole stack goes rather than the current screen. `replace`, so Back does
-  // not return to a screen that has no session behind it.
   onSignedOut: () => {
     router.replace('/sign-in?signedOut=1');
   },

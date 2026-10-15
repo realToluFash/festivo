@@ -17,12 +17,6 @@ describe('the access token is held in memory and nowhere else', () => {
     expect(await tokens.access()).toBeNull();
   });
 
-  /**
-   * Which row in the devices list is this one. Not a secret — the list returns
-   * every id for the account — and the only way to mark a row as this device,
-   * because the list carries no flag and an access token says nothing about
-   * which row issued it.
-   */
   test('it remembers which session this page is, and forgets that too', async () => {
     tokens.save({
       accessToken: 'an-access-token',
@@ -37,7 +31,6 @@ describe('the access token is held in memory and nowhere else', () => {
     expect(currentSessionId()).toBeNull();
   });
 
-  /** A refresh rotates the row, so the id has to move with it. */
   test('it follows the newest session after a refresh', () => {
     tokens.save({
       accessToken: 'first',
@@ -53,12 +46,7 @@ describe('the access token is held in memory and nowhere else', () => {
     expect(currentSessionId()).toBe('018f3a4c-0002-7c3d-9e1f-2a3b4c5d6e7f');
   });
 
-  /**
-   * The guard. Persisting the access token is the obvious-looking fix for
-   * losing it on reload, and it would undo the reason it is held here: browser
-   * storage is readable by any script that reaches this page, and the token
-   * stays valid for fifteen minutes wherever it is taken.
-   */
+  /** The guard: persisting the access token is the obvious-looking fix for losing it on reload. */
   test('nothing reaches browser storage', async () => {
     localStorage.clear();
     sessionStorage.clear();

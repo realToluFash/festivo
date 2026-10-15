@@ -26,10 +26,6 @@ import { Status } from './public/Status.tsx';
  * `/app/events` and the rest resolve to the dashboard for now. The screens
  * belong to the scopes that own them; what belongs here is that the navigation
  * does not lead anywhere blank.
- *
- * `/sign-in` is public and outside the shell, because the shell is the
- * signed-in product and this is the page somebody reaches when they are not in
- * it yet.
  */
 export const routes = [
   { path: '/', element: <Home /> },
@@ -42,9 +38,6 @@ export const routes = [
       { index: true, element: <Dashboard /> },
       { path: 'events', element: <Dashboard /> },
       { path: 'guests', element: <Dashboard /> },
-      // Personal rather than organisational, so it carries no organisation
-      // permission: somebody who can do nothing in this organisation still has
-      // to be able to end a session they do not recognise.
       { path: 'account/security', element: <Security /> },
       // Gated on a permission the stand-in session does not carry, so the
       // refused page is reachable by clicking rather than only in a test.

@@ -38,8 +38,21 @@ One or two lines. If it needs a paragraph, it is design rationale, and design ra
 goes in the pull request where it can be discussed and where it stops being read once it is
 no longer the current decision.
 
+**The sentence that survives the cut answers "what will break if you touch this".** The one
+that gets cut answers "why did you do it this way". Both feel worth writing; only the first
+one is read by somebody who is about to make a mistake.
+
 ## What does not
 
+- **A header on a new file.** The path and the exports say what it is. A file opening with
+  three paragraphs on why it exists is the single most common way this rule is broken, and
+  it is design rationale — the pull request.
+- **The reason the code is shaped the way it is.** "Held in a closure rather than in
+  state, because…" is an argument for the approach. It belongs where it can be argued
+  with.
+- **The history of the file.** "The previous version read `body.data.access`", "this is
+  the second time", "found while building the devices card". The commit message is the
+  record of the work.
 - Restating the code. `// loop over the guests` above a loop over the guests.
 - Narrating the change. "Now also handles the dormant case." That is the commit.
 - Design rationale at length, or an argument for the approach. That is the pull request.

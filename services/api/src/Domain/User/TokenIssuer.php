@@ -45,10 +45,7 @@ final readonly class TokenIssuer
         return $this->issue($used->getUser(), $used->getChainId(), $request);
     }
 
-    /**
-     * All of them, not the replayed row alone: revoking one would leave the
-     * thief holding the newest token and sign out only the victim.
-     */
+    /** All of them: revoking one would leave the thief holding the newest token. */
     public function revokeChain(#[SensitiveParameter] RefreshToken $token): void
     {
         $now = new DateTimeImmutable();

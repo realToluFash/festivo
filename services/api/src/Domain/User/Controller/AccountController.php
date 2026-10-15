@@ -27,7 +27,6 @@ final class AccountController
     ) {
     }
 
-    /** Ungated: it is how a client finds out which gate it is behind. */
     #[Route('/api/auth/me', name: 'auth_me', methods: ['GET'])]
     public function me(): JsonResponse
     {

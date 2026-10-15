@@ -14,28 +14,10 @@ import { currentLocale } from '../src/i18n/index.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
-/**
- * Sign in, drawn from `SignIn-*.dc.html` and NOT yet wired to the API.
- *
- * The form posts to `/api/auth/login`, which hands back an access token for
- * memory and a refresh token for the Keychain — see `src/tokens.ts`. Both
- * failures the endpoint distinguishes are shown as the design draws them, and
- * a wrong address and a wrong password are deliberately one message.
- *
- * Three layouts, and they are different arrangements rather than one rescaled:
- * the phone puts the form on the page under the brand; tablet portrait centres
- * a card; tablet landscape splits the window, saying what this is on the left
- * and asking for it on the right.
- */
-/** Two widths the artboards set, and the token scale has no name for. */
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
 
-/**
- * The size of anything typed or pressed here. It is the smallest size iOS
- * will not zoom into on focus, and a form that zooms when the keyboard appears
- * has lost its layout.
- */
+/** 16 is the smallest size iOS Safari will not zoom into on focus. */
 const CONTROL_TEXT_SIZE = 16;
 
 type Status =
@@ -78,7 +60,6 @@ export default function SignIn() {
   return <Phone>{form}</Phone>;
 }
 
-/** One column, the brand above it, the language at the bottom of the reach. */
 function Phone({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
 
@@ -99,7 +80,6 @@ function Phone({ children }: { children: ReactNode }) {
   );
 }
 
-/** A card in the middle of the window, with the language under it. */
 function Portrait({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
 
@@ -125,10 +105,6 @@ function Portrait({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * The structure portrait cannot have: what this is stays on the left while the
- * form is worked on the right, so neither has to move for the other.
- */
 function Landscape({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
 
@@ -168,18 +144,7 @@ function Credentials({
   const [revealed, setRevealed] = useState(false);
   const password = useRef<TextInput>(null);
 
-  /**
-   * Held in refs, not in state, and the fields are uncontrolled.
-   *
-   * A `value` prop re-renders on every keystroke, and on a fast typist or a
-   * password manager the field is reset to the previous render's value between
-   * strokes — so characters go missing. A simulator typing an address at
-   * machine speed lost two thirds of the password, and nothing about the
-   * screen said so.
-   *
-   * Nothing here needs to read what has been typed until it is submitted, so
-   * nothing needs to re-render while it is.
-   */
+  // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
   const typed = useRef({ email: '', password: '' });
 
   const submit = (): void => {
@@ -336,11 +301,6 @@ function Credentials({
   );
 }
 
-/** A shape and a word, never a colour on its own. */
-/**
- * Which refusal this was, in the two cases the API distinguishes. Anything
- * else is one message rather than a guess at the cause.
- */
 function refusalFrom(error: unknown): Status {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
 

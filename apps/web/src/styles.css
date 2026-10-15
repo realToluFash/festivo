@@ -340,14 +340,7 @@ h2 {
   }
 }
 
-/* ── Sign in, and the states it can be in ─────────────────────────────────────
- *
- * The one screen in this application that exists at every width including a
- * phone, because signing in is the exception to the rule above: it is the
- * handoff itself, so it cannot be behind the handoff. The narrow rules at the
- * end of this file are the phone design the artboards draw, not the desktop
- * one squeezed.
- */
+/* ── Sign in ──────────────────────────────────────────────────────────────── */
 
 .auth {
   display: flex;
@@ -422,9 +415,6 @@ h2 {
   background: var(--colorCard);
   color: var(--colorInk);
   font: var(--typeBodyPhone);
-
-  /* The platform default caret is blue, which on this palette reads as a
-     rendering fault rather than as a cursor. */
   caret-color: var(--colorInk);
 }
 
@@ -436,8 +426,6 @@ h2 {
   border-color: var(--colorBroken);
 }
 
-/* The reveal control sits inside the field, so the password and the thing that
-   shows it are one object rather than two. */
 .field-reveal {
   position: relative;
 }
@@ -506,7 +494,6 @@ h2 {
   color: var(--colorBrokenText);
 }
 
-/* A circle carrying a character, so the meaning survives black and white. */
 .mark {
   display: flex;
   flex: none;
@@ -541,7 +528,6 @@ h2 {
   color: var(--markDoneInk);
 }
 
-/* The one-line version, under the field it belongs to. */
 .field-error {
   display: flex;
   align-items: flex-start;
@@ -702,7 +688,6 @@ h2 {
   color: var(--colorInkSecondary);
 }
 
-/* Green dot AND the words, because colour alone is not a state. */
 .pill-here {
   display: inline-flex;
   align-items: center;
@@ -728,13 +713,7 @@ h2 {
   gap: var(--spaceSm);
 }
 
-/* ── Sign in at phone width ───────────────────────────────────────────────────
- *
- * The artboards draw a different screen here rather than a narrower one: no
- * card, the brand above the form, larger controls, and the language as chips
- * instead of a segmented track. Everything else in this application at this
- * width is the handoff to the app; this screen is how somebody gets there.
- */
+/* ── Sign in at phone width: a different screen, not a narrower one ───────── */
 
 @media (width <= 40rem) {
   .auth-header {
@@ -772,8 +751,6 @@ h2 {
     box-shadow: none;
   }
 
-  /* The form sits on the page. A card inside a 390px window is a border
-     drawn 16px from another border. */
   .auth-card {
     gap: var(--spaceXl);
     max-width: none;
@@ -785,8 +762,6 @@ h2 {
     font: var(--typeBodyPhone);
   }
 
-  /* With no card behind it, the inset grey of a quiet notice would be grey on
-     grey. The artboards switch it to white at this width for that reason. */
   .auth-card .notice-quiet {
     background: var(--colorCard);
     border: var(--borderCard);
@@ -807,8 +782,7 @@ h2 {
     font-size: 1rem;
   }
 
-  /* 16px is the smallest size iOS Safari will not zoom into on focus, and a
-     page that zooms when the keyboard appears has lost its layout. */
+  /* 16px is the smallest size iOS Safari will not zoom into on focus. */
   .auth-card .input {
     font-size: 1rem;
   }
@@ -820,8 +794,6 @@ h2 {
   gap: var(--spaceXl);
 }
 
-/* The consequential confirm: dark rather than green, because green is the
-   primary action and ending somebody else's session is not one. */
 .button-dark {
   background: var(--colorDark);
   border-color: var(--colorDark);
@@ -833,13 +805,7 @@ h2 {
   border-color: var(--colorDarkInset);
 }
 
-/* ── Your account at phone width ──────────────────────────────────────────────
- *
- * One of the few surfaces in this application that is responsive this far
- * down: an account is read and changed on whatever is to hand. The cards grow
- * their phone radius and their larger body size, as the artboards draw them;
- * the navigation is the shell's own collapse, which already owns that chrome.
- */
+/* ── Your account at phone width ──────────────────────────────────────────── */
 
 @media (width <= 40rem) {
   .account {
@@ -858,13 +824,7 @@ h2 {
   }
 }
 
-/* ── Signing in with somebody else's account ──────────────────────────────────
- *
- * Both buttons are drawn to their owner's published specification — colour,
- * face, wording and mark — because both sets of guidelines require it and
- * because a reader recognises them by sight rather than by reading them. The
- * values are in brand.css, which says why they are not tokens.
- */
+/* ── Continue with Google, or Apple. Values in brand.css ──────────────────── */
 
 .auth-or {
   display: flex;
@@ -877,8 +837,7 @@ h2 {
   color: var(--colorInkSecondary);
 }
 
-/* A real element rather than ::before, because the same divider is built in
-   React Native, where there are no pseudo-elements. */
+/* A real element: the same divider is built in React Native, which has no pseudo-elements. */
 .auth-or-rule {
   flex: 1;
   height: 1px;

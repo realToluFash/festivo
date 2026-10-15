@@ -25,13 +25,7 @@ final class HealthEndpointTest extends ApiTestCase
         self::assertArrayHasKey('redis', $body['checks']);
     }
 
-    /**
-     * The envelope this endpoint used to answer in cost both clients a crash:
-     * each read `status` and `checks` where the documented contract says they
-     * are, got `undefined`, and every test passed because every test asserted
-     * against the payload the client had invented. So the shape is held here,
-     * where the server is, rather than only in two mocks.
-     */
+    /** The shape is held here, where the server is, and not only in the clients' mocks. */
     #[Test]
     public function itDoesNotWrapTheObjectInAnything(): void
     {

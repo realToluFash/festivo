@@ -87,14 +87,7 @@ class RefreshToken
         return $this->chainId;
     }
 
-    /**
-     * When the sign-in happened, not when this token was issued. Rotation makes
-     * a new row every refresh, so this row's createdAt is minutes old however
-     * long the person has been signed in.
-     *
-     * Read off the chain id, which is the first token's id and so a time-ordered
-     * UUID v7. No column and no second query.
-     */
+    /** Read off the chain id, a time-ordered UUID v7: the sign-in, not this row's issue. */
     public function getChainStartedAt(): DateTimeImmutable
     {
         if ($this->chainId instanceof UuidV7) {

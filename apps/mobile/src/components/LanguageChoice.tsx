@@ -6,15 +6,6 @@ import { currentLocale, setLanguage } from '../i18n/index.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 
-/**
- * Four languages as four chips, which is the design's answer on every screen
- * somebody reaches before signing in.
- *
- * On the page rather than behind a menu, because a reader who cannot read this
- * screen cannot find a menu called "Language" on it either. Each is named in
- * its own language: somebody looking for Português is not helped by a list
- * that says "Portuguese".
- */
 export function LanguageChoice() {
   const { t } = useTranslation();
   const current = currentLocale();

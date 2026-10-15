@@ -32,7 +32,6 @@ final readonly class UserAuthenticator
         $user = $this->userRepository->findOneByPrimaryEmailAddress($email);
 
         if (null === $user) {
-            // Verifies anyway, so a miss costs what a hit costs.
             $this->passwordResolver->verifyAgainstNothing($password);
 
             throw $this->refuse();
@@ -44,7 +43,6 @@ final readonly class UserAuthenticator
 
         $tokens = $this->tokenIssuer->issueFor($user, $request);
 
-        // TokenIssuer persists and leaves the flush to its caller.
         $this->entityManager->flush();
 
         return $tokens;

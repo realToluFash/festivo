@@ -52,7 +52,6 @@ final class SessionTest extends ApiTestCase
         );
     }
 
-    /** Revoking only the replayed row leaves the thief with the newest token. */
     #[Test]
     public function replayingAUsedTokenRevokesTheWholeChain(): void
     {

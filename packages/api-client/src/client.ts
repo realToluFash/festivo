@@ -7,41 +7,22 @@
  */
 import { ApiError, toProblem } from './problem.ts';
 
-/**
- * Where the refresh token lives.
- *
- * `cookie` is for browsers: the API returns it as an httpOnly cookie the page
- * cannot read, so a cross-site script cannot carry the session away with it.
- * `body` is for native clients, which keep it in the Keychain — better than any
- * cookie, and with no cross-site request forgery to answer for.
- *
- * See docs/architecture/sessions.md.
- */
+/** See docs/architecture/sessions.md. */
 export type RefreshTokenDelivery = 'body' | 'cookie';
 
-/** Exactly what the API answers with. Generated types live in schema.d.ts. */
 export interface IssuedTokens {
   accessToken: string;
-  /** Absent in cookie mode — that is the entire point of cookie mode. */
+  /** Absent in cookie mode. */
   refreshToken?: string;
   refreshExpiresAt: string;
   sessionId: string;
 }
 
-/**
- * What `GET /api/health` answers, flat, like every other response in this API.
- *
- * It was read wrongly for as long as both clients existed: the endpoint used
- * to wrap this in `{success, data}`, nothing read `data`, and both clients'
- * tests agreed with the client rather than with the server. Hence `asHealth`
- * below, and a test here that refuses that envelope by name.
- */
 export interface Health {
   status: string;
   checks: Record<string, { status: string; error?: string }>;
 }
 
-/** A linked address or number, as `GET /api/auth/me` reports it. */
 export interface LinkedAddress {
   id: string;
   address: string;
@@ -56,7 +37,6 @@ export interface LinkedPhone {
   primary: boolean;
 }
 
-/** The signed-in account. `AccountController::me` is the shape. */
 export interface Account {
   id: string;
   name: string;
@@ -69,26 +49,18 @@ export interface Account {
   phoneNumbers: LinkedPhone[];
 }
 
-/**
- * One signed-in session, as `GET /api/auth/sessions` reports it.
- *
- * `userAgent` and `ipAddress` are what the client CLAIMED when it signed in.
- * Nothing verifies either, and no screen may imply otherwise.
- */
+/** `userAgent` and `ipAddress` are what the client claimed; nothing verifies either. */
 export interface DeviceSession {
   id: string;
   userAgent: string | null;
   ipAddress: string | null;
-  /** When this chain of tokens began — the sign-in itself. */
   startedAt: string;
-  /** When it was last renewed, which lags real use by the access lifetime. */
   renewedAt: string;
   expiresAt: string;
 }
 
 export interface TokenStore {
   access(): string | null | Promise<string | null>;
-  /** Null in cookie mode: the browser holds it and the page cannot read it. */
   refresh(): string | null | Promise<string | null>;
   save(tokens: IssuedTokens): void | Promise<void>;
   clear(): void | Promise<void>;
@@ -98,7 +70,6 @@ export interface ClientOptions {
   /** Read lazily, so a client built at import time still honours runtime config. */
   baseUrl: () => string;
   tokens?: TokenStore;
-  /** Defaults to `body`. The web client passes `cookie`. */
   refreshTokenIn?: RefreshTokenDelivery;
   /** The reader's language, for the API's own locale negotiation. */
   locale?: () => string | null;
@@ -158,14 +129,6 @@ export class ApiClient {
     return this.request<T>(path, { ...init, method: 'DELETE' });
   }
 
-  /**
-   * The three calls that issue or end a session are the only ones that know
-   * where the refresh token is carried, so they live here rather than in a
-   * screen. A screen that built the request itself would have to remember to
-   * send `refreshTokenIn` and to let the cookie travel — and in cookie mode a
-   * forgotten `credentials: 'include'` fails by signing the person out one
-   * access token later, nowhere near the code that caused it.
-   */
   async signIn(email: string, password: string): Promise<IssuedTokens> {
     return this.adopt(await this.sendTokenRequest('/api/auth/login', { email, password }));
   }
@@ -174,7 +137,6 @@ export class ApiClient {
     return this.adopt(await this.sendTokenRequest('/api/auth/register', { email, name, password }));
   }
 
-  /** Who is signed in. Works while unverified: it is how a client finds out. */
   async me(): Promise<Account> {
     const account = asAccount(await this.get<unknown>('/api/auth/me'));
 
@@ -187,7 +149,6 @@ export class ApiClient {
     return account;
   }
 
-  /** Every session still usable for this account, newest chain included. */
   async sessions(): Promise<DeviceSession[]> {
     const sessions = asSessions(await this.get<unknown>('/api/auth/sessions'));
 
@@ -200,17 +161,10 @@ export class ApiClient {
     return sessions;
   }
 
-  /**
-   * Ends one named session, which may be this one.
-   *
-   * A session that is already gone answers `not_found` — deliberately, since
-   * saying "forbidden" would confirm that somebody else's session exists.
-   */
   async endSession(id: string): Promise<void> {
     await this.delete(`/api/auth/sessions/${encodeURIComponent(id)}`);
   }
 
-  /** Ends this one session. The other devices keep theirs. */
   async signOut(): Promise<void> {
     const body: Record<string, string> = { refreshTokenIn: this.delivery() };
 
@@ -219,20 +173,11 @@ export class ApiClient {
       if (token != null && token !== '') body.refreshToken = token;
     }
 
-    // Local state goes whatever the server said. A refusal here would leave
-    // somebody looking at a signed-in screen having pressed Sign out.
     await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
     await this.options.tokens?.clear();
   }
 
-  /**
-   * The one call that must not throw on the status.
-   *
-   * The API answers 503 when a dependency is down, and that response is the
-   * answer rather than a failure — it names which dependency. Letting
-   * `request()` reject it is how a status page reports "the API could not be
-   * reached" about an API that just told it exactly what was wrong.
-   */
+  /** A 503 is an answer here — it names the dependency that is down — so it is not thrown. */
   async health(): Promise<Health> {
     const response = await this.send('/api/health', { method: 'GET', anonymous: true });
     const health = asHealth(await response.json().catch(() => null));
@@ -323,12 +268,7 @@ export class ApiClient {
     return this.options.refreshTokenIn ?? 'body';
   }
 
-  /**
-   * `credentials: 'include'` only on these routes. The cookie is scoped to
-   * /api/auth, so including it everywhere would attach it to `me` and
-   * `sessions` as well — requests that are already authorised by the access
-   * token and have no business carrying the thing that renews it.
-   */
+  /** `credentials: 'include'` only here: the cookie is scoped to /api/auth. */
   private sendTokenRequest(path: string, body: Record<string, string>): Promise<Response> {
     const doFetch = this.options.fetch ?? fetch;
 
@@ -356,7 +296,6 @@ export class ApiClient {
     return issued;
   }
 
-  /** Local state goes, and whoever is listening is told the session is over. */
   private async forgetSession(): Promise<void> {
     await this.options.tokens?.clear();
     this.options.onSignedOut?.();
@@ -374,15 +313,7 @@ export class ApiClient {
   }
 }
 
-/**
- * Checked rather than cast.
- *
- * The previous version of this file read `body.data.access` — a shape the API
- * has never once sent. It passed its own tests because the tests asserted
- * against the same invented payload, so nothing here knew the refresh path had
- * never worked. A cast would have hidden it again; this reports it.
- */
-/** The address sign-in matches. An alternative reaches somebody; this one is them. */
+/** The primary address, which is the only one sign-in matches. */
 export function primaryEmailAddress(account: Account): string | null {
   return account.emailAddresses.find((address) => address.primary)?.address ?? null;
 }
@@ -469,12 +400,6 @@ function asSessions(raw: unknown): DeviceSession[] | null {
   return sessions;
 }
 
-/**
- * Checked rather than cast, for the same reason as the tokens below: the shape
- * came back different once already, and a cast turns that into
- * `Object.entries(undefined)` inside a component rather than a sentence naming
- * the file to look in.
- */
 function asHealth(raw: unknown): Health | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
@@ -508,8 +433,6 @@ function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTok
 
   if (typeof candidate.accessToken !== 'string' || candidate.accessToken === '') return null;
 
-  // In body mode there is nowhere else for it to be, so a response without one
-  // ends the session at the next expiry rather than at this line.
   if (delivery === 'body' && typeof candidate.refreshToken !== 'string') return null;
 
   return {

@@ -32,12 +32,6 @@ function store(access: string | null, refresh: string | null): TokenStore & { sa
   };
 }
 
-/**
- * What services/api actually sends — see IssuedTokensResponse. Written here as
- * one helper rather than inline per test, because the point of this file's
- * refresh tests is that they agree with the server, and three hand-written
- * copies of a payload is how they stopped agreeing last time.
- */
 function issued(overrides: Record<string, unknown> = {}): Response {
   return new Response(
     JSON.stringify({
@@ -280,12 +274,6 @@ describe('request building', () => {
   });
 });
 
-/**
- * The field names below are the wire, not a convention: `refreshTokenIn`,
- * `refreshToken` and `accessToken` are what services/api reads and writes in
- * TokenController and IssuedTokensResponse. Renaming one on either side has to
- * fail here.
- */
 describe('a browser never holds the refresh token', () => {
   test('refreshing sends no token of its own and lets the cookie travel', async () => {
     const tokens = store('expired', null);
@@ -342,11 +330,6 @@ describe('a browser never holds the refresh token', () => {
     expect((tokens.saved as IssuedTokens).refreshToken).toBeUndefined();
   });
 
-  /**
-   * The same response in body mode means the client has nothing left to renew
-   * with, so it has to end the session rather than carry on and discover that
-   * fifteen minutes later.
-   */
   test('the same response in body mode ends the session', async () => {
     const tokens = store('expired', 'present');
     const onSignedOut = vi.fn();
@@ -419,7 +402,6 @@ describe('a browser never holds the refresh token', () => {
     expect(tokens.saved).toBeNull();
   });
 
-  /** Having pressed Sign out, nobody should be looking at a signed-in screen. */
   test('signing out clears the session even when the request fails', async () => {
     const tokens = store('good', null);
 
@@ -438,11 +420,6 @@ describe('a browser never holds the refresh token', () => {
   });
 });
 
-/**
- * What services/api answers from HealthController. The shape is asserted
- * against the server in HealthEndpointTest as well, because this file agreeing
- * with itself is exactly how the mismatch survived.
- */
 function health(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -469,11 +446,6 @@ describe('the health endpoint', () => {
     expect(Object.keys(answered.checks)).toEqual(['postgres', 'redis']);
   });
 
-  /**
-   * A 503 here is the answer, not a failure: it names the dependency that is
-   * down. Rejecting it is how a status page says "could not be reached" about
-   * an API that just said precisely what was wrong.
-   */
   test('a degraded API answering 503 is an answer rather than a failure', async () => {
     const answered = await client(
       health(
@@ -492,11 +464,6 @@ describe('the health endpoint', () => {
     expect(answered.checks.redis).toEqual({ status: 'error', error: 'connection refused' });
   });
 
-  /**
-   * The shape this endpoint used to answer in. Both clients read `status` and
-   * `checks` at the top level, got undefined, and crashed in a component —
-   * while every test passed. This is that regression, refused by name.
-   */
   test('refuses the envelope it used to answer in, naming where to look', async () => {
     await expect(
       client(health({ success: true, data: { status: 'ok', checks: {} } })).health(),
@@ -553,7 +520,6 @@ describe('who is signed in', () => {
     expect(account.emailAddresses).toHaveLength(2);
   });
 
-  /** Sign-in matches the primary address only, so a screen must not pick the first. */
   test('the primary address is the one identified by its flag', () => {
     const reversed = [...ACCOUNT.emailAddresses].reverse();
 

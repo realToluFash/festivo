@@ -1,25 +1,11 @@
-#!/usr/bin/env node
 /*
- * A throwaway account, for QA.
- *
- * Every QA pass needs somebody to be, and the three ways of getting one by
- * hand are all worse than this: reusing a developer's own account mixes test
- * data into it, hand-rolling curl per run produces a different account shape
- * each time, and seeding straight into Postgres skips the very code the pass
- * is meant to exercise.
- *
- * So it registers through the API, exactly as a person would, and prints what
- * the next step needs. Addresses are `@soirely.test` — a reserved TLD that can
- * never be delivered to — and timestamped, so two runs never collide and
- * nothing here can reach a real inbox.
+ * A throwaway account for QA, registered through the API as a person would be.
+ * Addresses are `@soirely.test`, which can never be delivered to.
  *
  *   node scripts/qa-account.mjs                      register a new account
  *   node scripts/qa-account.mjs --json               the same, as JSON
  *   node scripts/qa-account.mjs --sign-in <address>  sign an existing one in
  *   node scripts/qa-account.mjs --mail <address>     what was emailed to it
- *
- * The stack has to be up (`just up`). To clear everything these have created,
- * `just reset-database-dev`.
  */
 const API = process.env.SOIRELY_API_URL ?? 'http://localhost:8080';
 const MAILPIT = process.env.MAILPIT_URL ?? 'http://localhost:8025';
@@ -78,14 +64,7 @@ async function session(email, password) {
   };
 }
 
-/**
- * Whatever is sitting in Mailpit for an address.
- *
- * Nothing in this API sends mail yet — the verification challenge is sc-56 —
- * so this answers with nothing today. It is here because the moment something
- * does send, a QA pass needs to read it, and reading it out of the inbox the
- * stack already runs beats adding a second way to see it.
- */
+/** Nothing in this API sends mail yet — sc-56 — so this answers with nothing today. */
 async function mail(address) {
   const response = await fetch(
     `${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${address}`)}`,
@@ -116,7 +95,6 @@ async function call(path, payload) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // Named, so a session this creates is recognisable in the devices list.
       'User-Agent': 'Soirely-QA/1.0 (scripts/qa-account.mjs)',
     },
     body: JSON.stringify(payload),
@@ -133,7 +111,7 @@ async function call(path, payload) {
   return body;
 }
 
-/** Deterministic from the address, so an account can be signed into again. */
+/** Deterministic, so an account can be signed into again. */
 function passwordFor(email) {
   return `qa-${email.split('@')[0]}-password`;
 }

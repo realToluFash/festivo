@@ -8,11 +8,6 @@ use App\Tests\ApiTestCase;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Str;
 
-/**
- * The refresh token rides in a cookie, and a cross-origin request does not
- * carry one unless the API says so by name. That makes this configuration part
- * of how a session is held rather than a convenience for the front end.
- */
 final class CrossOriginTest extends ApiTestCase
 {
     private const string ALLOWED = 'https://app.soirely.test';
@@ -36,10 +31,6 @@ final class CrossOriginTest extends ApiTestCase
         self::assertNull($this->client->getResponse()->headers->get('Access-Control-Allow-Origin'));
     }
 
-    /**
-     * The failure an exact list exists to prevent. Every widened pattern in the
-     * wild has been an unanchored regex, and this is the string it lets in.
-     */
     #[Test]
     public function anOriginThatMerelyStartsWithOursIsNotOurs(): void
     {
@@ -58,11 +49,6 @@ final class CrossOriginTest extends ApiTestCase
         }
     }
 
-    /**
-     * A wildcard with credentials is refused by every browser, so shipping one
-     * would not be a hole — it would be a web client that simply stops working,
-     * and the error names CORS rather than the configuration.
-     */
     #[Test]
     public function itNeverAnswersWithAWildcard(): void
     {
@@ -91,11 +77,6 @@ final class CrossOriginTest extends ApiTestCase
         );
     }
 
-    /**
-     * A header the browser cannot read is a header the client does not have.
-     * Retry-After is the whole content of "try again at 14:32", and without it
-     * the sign-in screen can only say that something went wrong.
-     */
     #[Test]
     public function theClientCanReadTheHeadersItBranchesOn(): void
     {
@@ -107,7 +88,6 @@ final class CrossOriginTest extends ApiTestCase
         self::assertStringContainsString('link', $exposed);
     }
 
-    /** Being allowed to ask is not being allowed in. */
     #[Test]
     public function anAllowedOriginStillHasToBeSignedIn(): void
     {

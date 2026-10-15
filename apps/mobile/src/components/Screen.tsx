@@ -56,9 +56,7 @@ export function Screen({
           // dismissing the keyboard, which otherwise makes every button in a
           // form need pressing twice.
           keyboardShouldPersistTaps="handled"
-          // iOS does not move the window for the keyboard, so a field low on a
-          // form sits under it. Android pans the window already, and this prop
-          // is ignored there, so there is no second lift to double-count.
+          // iOS does not move the window for the keyboard; Android pans already and ignores this.
           automaticallyAdjustKeyboardInsets
         >
           {children}

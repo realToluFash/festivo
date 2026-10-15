@@ -52,10 +52,7 @@ final class SignInController
         return Math\maxva(1, $moment->getTimestamp() - new DateTimeImmutable()->getTimestamp());
     }
 
-    /**
-     * Keyed on the address as given, not on an account. Limiting only known
-     * accounts answers "is this registered" through the rate limit.
-     */
+    /** Keyed on the address as given: limiting only known accounts answers "is this registered". */
     private function limit(Request $request, string $email): void
     {
         $byAddress = $this->signInAccountLimiter

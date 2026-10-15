@@ -6,16 +6,6 @@ import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 
-/**
- * Continue with Google, or with Apple. Drawn, and not yet wired.
- *
- * There is no provider endpoint in the API — sc-58 and sc-59 own that — so
- * neither button has an action. They are here because they are part of this
- * screen's design, and a sign-in screen that grows them later moves
- * everything else on it.
- *
- * The marks are copied from their owners rather than redrawn.
- */
 export function ProviderSignIn() {
   const { t } = useTranslation();
 
@@ -54,7 +44,6 @@ export function ProviderSignIn() {
   );
 }
 
-/** Google's own mark, four paths, unaltered. */
 function GoogleMark() {
   return (
     <Svg width={18} height={18} viewBox="0 0 48 48">
@@ -78,7 +67,6 @@ function GoogleMark() {
   );
 }
 
-/** Apple's own mark, in white on the black button. */
 function AppleMark() {
   return (
     <Svg width={17} height={17} viewBox="0 0 24 24">
@@ -94,8 +82,6 @@ const styles = StyleSheet.create({
   group: { gap: tokens.spaceXl },
 
   or: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
-  // A real view rather than a pseudo-element, which is what the web client
-  // uses too so the two stay the same shape.
   rule: { flex: 1, height: 1, backgroundColor: tokens.colorBorder },
   orText: { color: tokens.colorInkSecondary },
 

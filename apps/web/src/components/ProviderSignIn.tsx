@@ -1,18 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-/**
- * Continue with Google, or with Apple. Drawn, and not yet wired.
- *
- * There is no provider endpoint in the API — sc-58 and sc-59 own that — so
- * neither button has a handler. They are here because they are part of this
- * screen's design and because a sign-in screen that grows them later moves
- * everything else on it.
- *
- * Both are built to their owner's published specification: the colour, the
- * face, the wording and the mark. Those are requirements from outside this
- * product, which is why the values are in brand.css rather than among the
- * design tokens, and why the two paths below are copied rather than redrawn.
- */
+/** Both are built to their owners' published specification; the marks are copied, not redrawn. */
 export function ProviderSignIn() {
   const { t } = useTranslation();
 
@@ -37,7 +25,6 @@ export function ProviderSignIn() {
   );
 }
 
-/** Google's own mark, four paths, unaltered. */
 function GoogleMark() {
   return (
     <svg aria-hidden="true" width="18" height="18" viewBox="0 0 48 48">
@@ -61,7 +48,6 @@ function GoogleMark() {
   );
 }
 
-/** Apple's own mark, in white on the black button. */
 function AppleMark() {
   return (
     <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24">

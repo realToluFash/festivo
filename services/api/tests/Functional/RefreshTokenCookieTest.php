@@ -70,11 +70,6 @@ final class RefreshTokenCookieTest extends ApiTestCase
         self::assertNull($cookie->getDomain(), 'host-only, so no sibling subdomain receives it');
     }
 
-    /**
-     * Secure is derived from the host rather than configured, so the rule needs
-     * a test at both ends of it — otherwise "it works locally" and "it is
-     * secure in production" are two claims and only one of them is checked.
-     */
     #[Test]
     public function itIsSecureEverywhereButLoopback(): void
     {
@@ -167,7 +162,6 @@ final class RefreshTokenCookieTest extends ApiTestCase
         self::assertNotNull($this->find($plain)?->getRevokedAt());
     }
 
-    /** Signing out when you are already signed out is not a failure. */
     #[Test]
     public function signingOutWithNoCookieSucceeds(): void
     {
@@ -178,12 +172,6 @@ final class RefreshTokenCookieTest extends ApiTestCase
         self::assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
-    /**
-     * The barrier behind SameSite=Strict. A cookie client sends no token of its
-     * own, so what stops another site's page from spending the cookie is that
-     * the request has to be JSON with no unknown fields — which an HTML form
-     * cannot be made to produce. The token must survive the attempt unspent.
-     */
     #[Test]
     public function aFormPostCarryingTheCookieIsRefusedAndCostsNothing(): void
     {

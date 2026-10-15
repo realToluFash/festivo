@@ -28,8 +28,7 @@ function at(path: string) {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  // The session is a module-level store, so one test's session is the next
-  // test's starting point unless it is put back.
+  // A module-level store: one test's session is the next test's unless it is put back.
   __setSessionState({ status: 'unknown' });
 });
 
@@ -81,11 +80,6 @@ describe('the application tree', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined();
   });
 
-  /**
-   * The gate, from both sides. Everything under /app reads the session without
-   * checking for one, which is only safe because nothing under here renders
-   * until there is one.
-   */
   it('sends somebody with no session to sign in, saying nothing about being signed out', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
 
@@ -105,11 +99,6 @@ describe('the application tree', () => {
     await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/signed out/i));
   });
 
-  /**
-   * A reload has no access token until the refresh cookie has been spent, so
-   * the answer arrives a request later. Redirecting in the meantime would show
-   * a sign-in screen to somebody who is signed in.
-   */
   it('waits rather than redirecting while the session is being checked', async () => {
     __setSessionState({ status: 'unknown' });
     vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
@@ -201,11 +190,6 @@ describe('the status page', () => {
     expect(String(fetchSpy.mock.calls[0]?.[0])).toBe('http://api.test/api/health');
   });
 
-  /**
-   * A 503 from this endpoint is the answer, not a failure: it names the
-   * dependency that is down. Reporting it as unreachable would hide the one
-   * piece of information the page exists to show.
-   */
   it('shows a degraded API as degraded rather than as unreachable', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(

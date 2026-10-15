@@ -11,13 +11,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/**
- * One place decides what a client is handed after it is signed in.
- *
- * Written per endpoint, the rule that a cookie client is NOT also given the
- * token in the body would hold in two of the three and be forgotten in the
- * third, where nothing would fail.
- */
 final class IssuedTokensResponse extends JsonResponse
 {
     /** @param array<string, mixed> $alongside */

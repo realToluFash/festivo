@@ -11,20 +11,6 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { forgetSession, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
-/**
- * The devices signed in to this account, from `GET /api/auth/sessions`.
- *
- * A card on this page rather than a screen of its own. One row per session,
- * never more than a handful, and idle rows expire — and somebody who finds a
- * stranger in this list wants to change their password and turn on two-factor
- * in the same minute. Both of those are cards on this page, which is why this
- * is too.
- *
- * Every value in a row is what the client CLAIMED when it signed in. The card
- * says so, because nothing here can check a user-agent string or tell where an
- * address is, and a row that implied otherwise would be the most convincing
- * false statement in the product.
- */
 type Devices =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
 
@@ -39,11 +25,7 @@ export function Security() {
   const [ended, setEnded] = useState<string | null>(null);
   const [endFailed, setEndFailed] = useState(false);
 
-  /**
-   * The loading state belongs to the event that asks for a reload, not to the
-   * effect: setting it in the effect's own body renders twice and, on mount,
-   * sets the state it already had.
-   */
+  // The loading state belongs to the event that asks for a reload, not to the effect.
   useEffect(() => {
     let live = true;
 
@@ -61,10 +43,6 @@ export function Security() {
     };
   }, [attempt]);
 
-  /**
-   * The row goes without reloading the list: the server answered 204, so it
-   * is gone, and asking again would blank the card somebody is reading.
-   */
   async function end(device: DeviceSession): Promise<void> {
     setEndFailed(false);
 
@@ -86,7 +64,6 @@ export function Security() {
     );
   }
 
-  /** Your own: no check, and it lands on sign-in, because that is what happens. */
   async function endHere(): Promise<void> {
     await api.signOut();
     forgetSession();
@@ -290,16 +267,9 @@ function Check({
   );
 }
 
-/**
- * Two words where the string can be read, and the string itself where it
- * cannot — which is the design's rule, and the right way round: a session
- * nobody can identify is the one most worth looking at.
- */
 function nameOf(device: DeviceSession, t: TFunction): string {
   const parts = readableAgent(device.userAgent);
 
-  // Spelled out rather than spread: i18next's options type is an index
-  // signature, which a named interface does not satisfy.
   if (parts != null) {
     return t('devices.agent', { browser: parts.browser, platform: parts.platform });
   }
@@ -307,7 +277,6 @@ function nameOf(device: DeviceSession, t: TFunction): string {
   return device.userAgent ?? t('devices.unknownDevice');
 }
 
-/** The day and the time, joined by whichever word this language joins them with. */
 function moment(iso: string, locale: string, t: TFunction): string {
   return t('devices.dayAtTime', {
     day: formatDay(iso, locale),

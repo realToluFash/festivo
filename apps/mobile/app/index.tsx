@@ -33,9 +33,6 @@ export default function Home() {
     setAttempt((n) => n + 1);
   }, []);
 
-  // Who is signed in, if anybody. A launch with no stored refresh token asks
-  // once, is refused, and stays on this screen — the client only reports a
-  // session as over when a token it HAD stopped working.
   useEffect(() => {
     let live = true;
 

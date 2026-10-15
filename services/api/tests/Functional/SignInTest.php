@@ -49,7 +49,6 @@ final class SignInTest extends ApiTestCase
         self::assertSame(200, $this->client->getResponse()->getStatusCode());
     }
 
-    /** Byte for byte: two responses sharing a status can still differ in their detail. */
     #[Test]
     public function anUnknownAddressAndAWrongPasswordAreIndistinguishable(): void
     {
@@ -85,7 +84,6 @@ final class SignInTest extends ApiTestCase
         self::assertSame(ErrorCode::InvalidCredentials->type(), $body['type']);
     }
 
-    /** At the factory: framework.test resets the array-backed budget after every request. */
     #[Test]
     public function theAddressBudgetIsTighterThanTheNetworkBudget(): void
     {
@@ -100,7 +98,6 @@ final class SignInTest extends ApiTestCase
         );
     }
 
-    /** A controller that forgot a limiter passes every other test in this file. */
     #[Test]
     public function theEndpointRefusesWhenEitherBudgetIsGone(): void
     {
@@ -152,7 +149,6 @@ final class SignInTest extends ApiTestCase
 
         return [
             'status' => $this->client->getResponse()->getStatusCode(),
-            // correlationId differs per request by design.
             'body' => Regex\replace(
                 (string) $this->client->getResponse()->getContent(),
                 '/"correlationId":"[^"]*"/',

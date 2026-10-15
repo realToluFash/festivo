@@ -30,12 +30,8 @@ export default {
   },
   overrides: [
     {
-      // Google's and Apple's published button values. They are requirements
-      // from outside this product rather than choices inside it, so they are
-      // not tokens and they are not negotiable — see the file's own header.
-      // Written literally in one place that says whose they are, instead of
-      // being tokenised where somebody would later harmonise them with the
-      // palette and break both guidelines.
+      // Google's and Apple's published button values: requirements from
+      // outside this product, so not tokens. See the file's own header.
       files: ['apps/web/src/brand.css'],
       rules: {
         'color-no-hex': null,

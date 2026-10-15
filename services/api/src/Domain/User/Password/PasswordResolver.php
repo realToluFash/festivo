@@ -14,11 +14,7 @@ use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
  */
 final readonly class PasswordResolver
 {
-    /**
-     * Must be a genuine argon2id hash. An invented string fails to parse,
-     * verification returns immediately, and the timing oracle below is back
-     * with nothing failing to say so. DummyHashTest guards it.
-     */
+    /** Must be a genuine argon2id hash, or verification returns early. DummyHashTest guards it. */
     public const string DUMMY_HASH = '$argon2id$v=19$m=65536,t=2,p=1$8GuLm8bSFsJFhwRIDGGzWg$ZrTd1yGyZzWhWHRxcxUGmNUBDab8kWSSjSQ72tA4OEk';
 
     public function __construct(private PasswordHasherFactoryInterface $passwordHasherFactory)
@@ -32,10 +28,7 @@ final readonly class PasswordResolver
             ->hash(PasswordPolicy::normalise($plain));
     }
 
-    /**
-     * Not dead code. Sign-in calls this on an unknown address so a miss costs
-     * what a hit costs; without it the miss is measurably faster.
-     */
+    /** Not dead code: a miss must cost what a hit costs. */
     public function verifyAgainstNothing(#[SensitiveParameter] string $plain): void
     {
         $this->passwordHasherFactory

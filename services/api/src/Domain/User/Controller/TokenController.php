@@ -41,7 +41,6 @@ final class TokenController
 
         $token = $this->find($this->presented($request, $body, $delivery) ?? throw $this->refuse());
 
-        // Already exchanged, so two parties hold it. The whole chain goes.
         if (null !== $token->getRevokedAt()) {
             $this->tokenIssuer->revokeChain($token);
             $this->entityManager->flush();
@@ -64,7 +63,6 @@ final class TokenController
         return new IssuedTokensResponse($tokens, $delivery, $request);
     }
 
-    /** One token, not the chain: signing out of a device is not reporting a theft. */
     #[Route('/api/auth/logout', name: 'auth_logout', methods: ['POST'])]
     public function signOut(Request $request): JsonResponse
     {
@@ -78,9 +76,6 @@ final class TokenController
             RefreshTokenCookies::clearOn($response, $request);
         }
 
-        // No cookie to send is the same situation as already signed out, and
-        // refusing it would leave a browser unable to finish the one action
-        // that has no other way through.
         if (null === $plain) {
             return $response;
         }
@@ -105,12 +100,6 @@ final class TokenController
     }
 
     /**
-     * The JSON body is load-bearing, not decoration. A cookie client sends no
-     * token of its own, so the request carries nothing an attacker's page could
-     * not also produce — except that the shape is JSON with no unknown fields,
-     * which an HTML form cannot be made to send. SameSite=Strict is the first
-     * answer to that; this is the second.
-     *
      * @param array{refreshToken?: string, refreshTokenIn?: RefreshTokenDelivery} $body
      */
     private function presented(Request $request, array $body, RefreshTokenDelivery $delivery): ?string
@@ -131,7 +120,6 @@ final class TokenController
         return $this->refreshTokenRepository->findOneByHash(TokenIssuer::hash($plain)) ?? throw $this->refuse();
     }
 
-    /** One answer for unknown, expired, revoked and replayed alike. */
     private function refuse(): ApiException
     {
         return new ApiException(ErrorCode::InvalidRefreshToken, 'Your session has ended. Please sign in again.');

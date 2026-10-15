@@ -9,10 +9,6 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
-/**
- * Replacing the constant with a placeholder restores the timing oracle and
- * breaks nothing else. This is the only test that notices.
- */
 final class DummyHashTest extends TestCase
 {
     #[Test]
@@ -22,7 +18,6 @@ final class DummyHashTest extends TestCase
 
         self::assertStringStartsWith('$argon2id$v=19$', $hash);
 
-        // True for a string that does not parse, and for other parameters.
         self::assertFalse(
             \sodium_crypto_pwhash_str_needs_rehash(
                 $hash,
@@ -41,7 +36,6 @@ final class DummyHashTest extends TestCase
         self::assertFalse(\sodium_crypto_pwhash_str_verify(self::dummyHash(), ''));
     }
 
-    /** The guard itself. */
     #[Test]
     public function theGuardRejectsAStringThatIsNotAHash(): void
     {

@@ -16,11 +16,6 @@ final class TokenLifetimeTest extends FunctionalTestCase
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
-    /**
-     * Ending a session cannot take effect until the access token in hand
-     * expires, because nothing consults a server to use one. This number is
-     * that window. Lexik's default of 3600 would make it an hour.
-     */
     private const int MAXIMUM_REVOCATION_WINDOW = 900;
 
     #[Test]
@@ -45,11 +40,6 @@ final class TokenLifetimeTest extends FunctionalTestCase
         self::assertGreaterThan($ttl * 100, 30 * 24 * 60 * 60);
     }
 
-    /**
-     * startedAt said when this token was issued, which rotation changes every
-     * few minutes — so a session signed in last Monday reported itself as
-     * minutes old.
-     */
     #[Test]
     public function aSessionReportsWhenItBeganRatherThanWhenItLastRenewed(): void
     {
@@ -77,7 +67,6 @@ final class TokenLifetimeTest extends FunctionalTestCase
         );
     }
 
-    /** The guard itself: a token that starts its own chain reports its own time. */
     #[Test]
     public function aFreshChainBeginsWithItself(): void
     {

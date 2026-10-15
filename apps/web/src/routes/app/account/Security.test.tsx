@@ -7,14 +7,6 @@ import { __setSessionState, type Session } from '../../../session.ts';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
-/**
- * The devices card, against what `GET /api/auth/sessions` actually sends.
- *
- * The payload below is the controller's shape — `AccountController::sessions`
- * — and the user-agent strings are real ones. Both matter: the readable name
- * is derived from that string by this client, and a mock written from memory
- * is how a client ends up agreeing with itself and with nothing else.
- */
 const HERE = '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f';
 const ELSEWHERE = '018f3a4c-0002-7c3d-9e1f-2a3b4c5d6e7f';
 
@@ -88,8 +80,6 @@ function openSecurity() {
 
 beforeEach(() => {
   __setSessionState({ status: 'signedIn', session: FOLAKE });
-  // The id this page holds is how a row is known to be this device: the list
-  // carries no flag saying so.
   tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: HERE });
 });
 
@@ -115,7 +105,6 @@ describe('the devices signed in to an account', () => {
 
     openSecurity();
 
-    // Under the page's own heading: the shell's sidebar shows the address too.
     await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeDefined());
 
     const heading = screen.getByRole('heading', { level: 1 }).closest('.account-heading');
@@ -123,10 +112,6 @@ describe('the devices signed in to an account', () => {
     expect(heading?.textContent).toMatch(/folake@ire\.events/);
   });
 
-  /**
-   * Both values are what the client claimed and neither can be checked, so the
-   * card says so rather than letting a row imply more than it knows.
-   */
   it('says plainly that neither the name nor the address can be checked', async () => {
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
 
@@ -153,14 +138,12 @@ describe('the devices signed in to an account', () => {
 
     await waitFor(() => expect(screen.getByText(/Last used/)).toBeDefined());
 
-    // Both rows carry an expiry, so this is the one in that row.
     const row = screen.getByText('Chrome on Windows').closest('li');
 
     expect(row?.textContent).toMatch(/if not used again/);
     expect(row?.textContent).toMatch(/197\.210\.78\.3/);
   });
 
-  /** A string this client cannot read is shown as it came, not hidden. */
   it('shows an unreadable user agent exactly as it arrived', async () => {
     answering({
       'GET /api/auth/sessions': () =>
@@ -186,10 +169,6 @@ describe('the devices signed in to an account', () => {
     expect(screen.getByText(/an address it did not give/)).toBeDefined();
   });
 
-  /**
-   * Another device you cannot see: the row is only what it claimed, so it may
-   * be the wrong one, and if it is mid-event ending it interrupts service.
-   */
   it('asks before ending another device, naming it and what follows', async () => {
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
 
@@ -254,7 +233,6 @@ describe('the devices signed in to an account', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/Nothing has changed/);
   });
 
-  /** Your own is reversible on the spot, so it is a sign-out rather than a question. */
   it('signs this device out without asking, and lands on sign-in', async () => {
     const calls = answering({
       'GET /api/auth/sessions': () => json(SESSIONS),
@@ -295,11 +273,6 @@ describe('the devices signed in to an account', () => {
     await waitFor(() => expect(screen.getByText('Chrome on macOS')).toBeDefined());
   });
 
-  /**
-   * The one word the design forbids here until sc-117 lands: nothing takes
-   * effect sooner than the access token in hand expires, and saying otherwise
-   * is a promise the product cannot keep.
-   */
   it('never claims that any of this is immediate', async () => {
     answering({
       'GET /api/auth/sessions': () => json(SESSIONS),
@@ -317,7 +290,6 @@ describe('the devices signed in to an account', () => {
   });
 });
 
-/** The sign-out control in the row for a named device. */
 function endOf(name: string): HTMLElement {
   const row = screen.getByText(name).closest('li');
   const button = row?.querySelector('button');
