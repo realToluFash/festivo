@@ -15,6 +15,20 @@
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
+
+        <!--
+            Forced here rather than set in .env.test, because compose passes
+            these into the container for the development stack and a real
+            environment variable always wins over a .env file. Without this the
+            cross-origin tests assert against whatever the developer's own
+            stack happens to allow — which is exactly how they passed locally
+            and failed in CI, where .env.example supplies a different value.
+
+            The second is empty on purpose: an unused origin slot has to allow
+            nothing.
+        -->
+        <env name="CORS_WEB_ORIGIN" value="https://app.soirely.test" force="true" />
+        <env name="CORS_EXPO_WEB_ORIGIN" value="" force="true" />
     </php>
 
     <testsuites>

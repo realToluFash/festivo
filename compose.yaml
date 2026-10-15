@@ -88,6 +88,8 @@ services:
       STORAGE_REGION: ${STORAGE_REGION}
       APP_SECRET: ${APP_SECRET:-dev-secret-change-me}
       DATABASE_URL: ${DATABASE_URL}
+      CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
+      CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis
       REDIS_PORT_INTERNAL: 6379
       MERCURE_PUBLISH_URL: ${MERCURE_PUBLISH_URL}
