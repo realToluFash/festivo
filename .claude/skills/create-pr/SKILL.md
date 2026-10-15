@@ -75,6 +75,42 @@ forgot.
 # Next Steps
 ```
 
+### The body describes the work, not the week
+
+**A pull request says what the branch is for, what it does, and what a reviewer should push
+back on. It is not a record of how it was built.** Every line below was asked for after a
+body read as a development diary.
+
+Cut, every time:
+
+- what was tried first, and why it did not work
+- a defect introduced and fixed inside this branch, unless it changes how the result should
+  be reviewed
+- a measurement taken to settle a question nobody asked
+- "my first attempt", "it turned out that", "this is the second time"
+- how long something took, or how many goes it needed
+
+Keep, because a reviewer acts on them:
+
+- the decision taken and the one rejected, a sentence each, where the choice is contestable
+- a defect that **survives** into main — that is a risk — or one this branch fixes for
+  somebody else, which is scope worth declaring
+- the verification, as results rather than as a narrative
+
+The test for a sentence: would somebody deciding whether this code is correct still want to
+read it in six months? If it is only interesting because it happened to you, it goes in the
+commit message, where the history of the work belongs.
+
+### Do not wrap the body
+
+**One line per paragraph and per bullet, however long.** GitHub renders a single newline in
+a pull request body as a line break rather than joining it into the paragraph, so markdown
+wrapped at eighty columns — which is right everywhere else in this repository — arrives as
+ragged broken lines.
+
+This is the one file where the usual wrapping is wrong. Commit messages still wrap at
+seventy-two; `docs/` still wraps; the PR body does not.
+
 ### Description
 
 What changed and why, in prose. Lead with the why — the diff shows the what. Name the
@@ -106,7 +142,9 @@ A risk you name is a risk a reviewer can check; one you omit becomes an incident
 
 ### Evidence of work
 
-How you verified it, concretely enough to repeat.
+How you verified it, concretely enough to repeat — **results, not the route to them**. The
+commands and their numbers, what each new suite holds, what was checked by hand. Not the
+order you discovered things in.
 
 - The exact commands you ran and their results — `vendor/bin/phpunit --testsuite Feature`,
   `npx jest <path>`, `npx tsc --noEmit`, with the numbers
@@ -170,3 +208,6 @@ every commit on the branch. The work reads as the developer's own.
 - If the diff does something the AC does not describe, say so in the Description. Silent
   scope creep is what PR review exists to catch.
 - Do not pad. A three-line Description on a three-line diff is correct.
+- The history of how the work went belongs in the commit messages, which are written for
+  somebody reading `git log` later. The PR body is written for somebody deciding whether to
+  merge.
