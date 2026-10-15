@@ -8,5 +8,5 @@ lexik_jwt_authentication:
     # window, and it is the reason the number is small. Lexik's default is 3600,
     # which would leave an ended device working for an hour.
     #
-    # The refresh token's own lifetime is RefreshToken::LIFETIME, 30 days.
+    # The refresh token's own lifetime is REFRESH_TOKEN_TTL, 30 days.
     token_ttl: '%env(int:JWT_TOKEN_TTL)%'

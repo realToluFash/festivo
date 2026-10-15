@@ -1,17 +1,18 @@
 import { ApiError } from '@soirely/api-client';
-import { formatTimeOfDay } from '@soirely/domain';
+import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
-import { Notice } from '../src/components/Notice.tsx';
+import { Notice, type NoticeSurface } from '../src/components/Notice.tsx';
 import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
+import { isTablet } from '../src/layout/classify.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -25,7 +26,7 @@ type Status =
   | { kind: 'ready' }
   | { kind: 'signingIn' }
   | { kind: 'refused' }
-  | { kind: 'rateLimited'; retryAt: string }
+  | { kind: 'rateLimited'; retryAt: string; liftsAt: number }
   | { kind: 'providerFailed'; provider: string }
   | { kind: 'failed' }
   | { kind: 'sessionEnded' };
@@ -41,9 +42,7 @@ export default function SignIn() {
     setStatus({ kind: 'signingIn' });
 
     try {
-      await api.signIn(email, password);
-
-      const account = await api.me();
+      const { account } = await api.signIn(email, password);
 
       router.replace(account.verified ? '/' : '/verify-email');
     } catch (error) {
@@ -51,7 +50,16 @@ export default function SignIn() {
     }
   }
 
-  const form = <Credentials status={status} onSubmit={signIn} />;
+  const liftLock = useCallback(() => setStatus({ kind: 'ready' }), []);
+
+  const form = (
+    <Credentials
+      status={status}
+      on={isTablet(kind) ? 'card' : 'page'}
+      onSubmit={signIn}
+      onLockLifted={liftLock}
+    />
+  );
 
   if (kind === 'tabletLandscape') {
     return <Landscape>{form}</Landscape>;
@@ -139,10 +147,14 @@ function Landscape({ children }: { children: ReactNode }) {
 
 function Credentials({
   status,
+  on,
   onSubmit,
+  onLockLifted,
 }: {
   status: Status;
+  on: NoticeSurface;
   onSubmit: (email: string, password: string) => void;
+  onLockLifted: () => void;
 }) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
@@ -157,12 +169,29 @@ function Credentials({
 
   const busy = status.kind === 'signingIn';
   const locked = status.kind === 'rateLimited';
+  const liftsAt = status.kind === 'rateLimited' ? status.liftsAt : null;
+
+  useEffect(() => {
+    if (liftsAt == null) return;
+
+    const lift = setTimeout(
+      () => {
+        password.current?.clear();
+        typed.current.password = '';
+        onLockLifted();
+      },
+      Math.max(0, liftsAt - Date.now()),
+    );
+
+    return () => clearTimeout(lift);
+  }, [liftsAt, onLockLifted]);
 
   return (
     <View style={styles.form}>
       {status.kind === 'sessionEnded' && (
         <Notice
           tone="quiet"
+          on={on}
           mark={tokens.marks.info.glyph}
           title={t('signIn.endedTitle')}
           body={t('signIn.endedBody')}
@@ -311,12 +340,13 @@ function refusalFrom(error: unknown): Status {
   if (error.is('invalid_credentials')) return { kind: 'refused' };
 
   if (error.is('too_many_attempts')) {
-    const seconds = Number(error.response?.headers.get('Retry-After'));
+    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
 
-    if (Number.isFinite(seconds) && seconds > 0) {
+    if (liftsAt != null) {
       return {
         kind: 'rateLimited',
-        retryAt: formatTimeOfDay(new Date(Date.now() + seconds * 1000), currentLocale()),
+        retryAt: formatTimeOfDay(liftsAt, currentLocale()),
+        liftsAt: liftsAt.getTime(),
       };
     }
   }

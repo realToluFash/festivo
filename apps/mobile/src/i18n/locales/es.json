@@ -52,7 +52,7 @@
     "endedTitle": "Se ha cerrado su sesión",
     "endedBody": "Inicie sesión de nuevo para continuar.",
     "lockedTitle": "Demasiados intentos",
-    "lockedBody": "Inténtelo de nuevo a las {{time}} o restablezca su contraseña ahora e inicie sesión justo después.",
+    "lockedBody": "Inténtelo de nuevo a las {{time}}.",
     "or": "o",
     "withGoogle": "Continuar con {{provider}}",
     "withApple": "Continuar con {{provider}}",

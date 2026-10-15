@@ -52,7 +52,7 @@
     "endedTitle": "A sua sessão foi encerrada",
     "endedBody": "Inicie sessão novamente para continuar.",
     "lockedTitle": "Demasiadas tentativas",
-    "lockedBody": "Tente novamente às {{time}} ou redefina a sua palavra-passe agora e inicie sessão imediatamente depois.",
+    "lockedBody": "Tente novamente às {{time}}.",
     "or": "ou",
     "withGoogle": "Continuar com {{provider}}",
     "withApple": "Continuar com {{provider}}",

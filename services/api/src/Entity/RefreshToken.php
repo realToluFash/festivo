@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
-use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -26,8 +25,6 @@ use Symfony\Component\Uid\UuidV7;
 class RefreshToken
 {
     use Timestampable;
-
-    public const string LIFETIME = 'P30D';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -59,6 +56,7 @@ class RefreshToken
     public function __construct(
         User $user,
         string $tokenHash,
+        DateTimeImmutable $expiresAt,
         ?Uuid $chainId = null,
         ?string $userAgent = null,
         ?string $ipAddress = null,
@@ -67,7 +65,7 @@ class RefreshToken
         $this->user = $user;
         $this->chainId = $chainId ?? $this->id;
         $this->tokenHash = $tokenHash;
-        $this->expiresAt = new DateTimeImmutable()->add(new DateInterval(self::LIFETIME));
+        $this->expiresAt = $expiresAt;
         $this->userAgent = $userAgent;
         $this->ipAddress = $ipAddress;
     }

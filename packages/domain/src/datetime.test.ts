@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatCountdown, formatDay, formatTimeOfDay, secondsUntil } from './datetime.ts';
+import {
+  formatCountdown,
+  formatDay,
+  formatTimeOfDay,
+  lockLiftsAt,
+  secondsUntil,
+} from './datetime.ts';
 
 const MOMENT = '2026-10-15T08:40:00+00:00';
 
@@ -67,5 +73,22 @@ describe('a countdown', () => {
 
   it('rounds a fraction down, so it never shows a second that has passed', () => {
     expect(formatCountdown(41.9)).toBe('0:41');
+  });
+});
+
+describe('when a lock lifts', () => {
+  const now = new Date(2026, 9, 15, 14, 33, 20);
+
+  it('is on the minute after the stated seconds, never before them', () => {
+    expect(lockLiftsAt(80, now)).toEqual(new Date(2026, 9, 15, 14, 35, 0));
+  });
+
+  it('stays on a minute the seconds already land on', () => {
+    expect(lockLiftsAt(40, now)).toEqual(new Date(2026, 9, 15, 14, 34, 0));
+  });
+
+  it('answers with nothing for a Retry-After that is missing or nonsense', () => {
+    expect(lockLiftsAt(Number.NaN, now)).toBeNull();
+    expect(lockLiftsAt(0, now)).toBeNull();
   });
 });

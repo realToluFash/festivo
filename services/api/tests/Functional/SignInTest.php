@@ -14,11 +14,18 @@ use App\Http\Exception\ApiException;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Async;
+use Psl\DateTime\Duration;
 use Psl\Json;
+use Psl\Math;
 use Psl\Regex;
+use Psl\Type;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
+use Symfony\Component\Yaml\Yaml;
 
 final class SignInTest extends ApiTestCase
 {
@@ -37,6 +44,22 @@ final class SignInTest extends ApiTestCase
         self::assertNotSame('', $body['refreshToken']);
         self::assertArrayHasKey('refreshExpiresAt', $body);
         self::assertArrayHasKey('sessionId', $body);
+    }
+
+    /** The gate is decided from this response, so it must not need a second request to /me. */
+    #[Test]
+    public function itReturnsTheAccountAsMeDoes(): void
+    {
+        $this->account('signin-account@example.com');
+
+        $body = $this->signIn('signin-account@example.com', self::PASSWORD);
+
+        $this->client->request('GET', '/api/auth/me', server: [
+            'HTTP_AUTHORIZATION' => 'Bearer ' . Type\string()->assert($body['accessToken']),
+        ]);
+        $me = Json\decode((string) $this->client->getResponse()->getContent());
+
+        self::assertSame($me, $body['account']);
     }
 
     #[Test]
@@ -120,6 +143,103 @@ final class SignInTest extends ApiTestCase
                 self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', $e->getMessage());
             }
         }
+    }
+
+    #[Test]
+    public function aSuccessSpendsNoneOfTheBudget(): void
+    {
+        $this->account('often@example.com');
+        $controller = self::controllerWithBudget(1, '15 minutes');
+
+        for ($i = 0; $i < 3; ++$i) {
+            self::assertSame(200, $controller->signIn(self::request('often@example.com', self::PASSWORD))->getStatusCode());
+        }
+    }
+
+    #[Test]
+    public function aRefusedPasswordSpendsIt(): void
+    {
+        $this->account('guessed@example.com');
+        $controller = self::controllerWithBudget(1, '15 minutes');
+
+        self::assertSame(ErrorCode::InvalidCredentials, self::refusal($controller, 'guessed@example.com', 'a wrong guess')->errorCode);
+        self::assertSame(ErrorCode::TooManyAttempts, self::refusal($controller, 'guessed@example.com', self::PASSWORD)->errorCode);
+    }
+
+    /** The regression QA found: told a time, refused after it, and told a later one each time. */
+    #[Test]
+    public function theStatedTimeHoldsStillAndIsHonoured(): void
+    {
+        $this->account('patient@example.com');
+        $controller = self::controllerWithBudget(1, '3 seconds');
+
+        self::refusal($controller, 'patient@example.com', 'a wrong guess');
+        $first = self::statedMoment(self::refusal($controller, 'patient@example.com', self::PASSWORD));
+
+        Async\sleep(Duration::milliseconds(1_100));
+        $second = self::statedMoment(self::refusal($controller, 'patient@example.com', self::PASSWORD));
+        self::assertEqualsWithDelta($first, $second, 1, 'the time moved while nobody was spending the budget');
+
+        Async\sleep(Duration::milliseconds((int) Math\maxva(0, ($second - \microtime(true)) * 1_000)));
+        self::assertSame(200, $controller->signIn(self::request('patient@example.com', self::PASSWORD))->getStatusCode());
+    }
+
+    /** The tests above build fixed windows; this holds the configured ones to the same policy. */
+    #[Test]
+    public function theConfiguredBudgetsAreFixedWindows(): void
+    {
+        $file = Type\string()->assert(self::getContainer()->getParameter('kernel.project_dir'))
+            . '/config/packages/rate_limiter.yaml';
+
+        $limiters = Type\shape([
+            'framework' => Type\shape([
+                'rate_limiter' => Type\dict(Type\string(), Type\shape(['policy' => Type\string()], true)),
+            ], true),
+        ], true)->coerce(Yaml::parseFile($file));
+
+        foreach (['sign_in_account', 'sign_in_ip'] as $name) {
+            self::assertSame(
+                'fixed_window',
+                $limiters['framework']['rate_limiter'][$name]['policy'],
+                $name . ': a sliding window states a time that drifts and is not honoured when it arrives',
+            );
+        }
+    }
+
+    private static function controllerWithBudget(int $limit, string $interval): SignInController
+    {
+        $factory = static fn (string $id): RateLimiterFactory => new RateLimiterFactory(
+            ['id' => $id, 'policy' => 'fixed_window', 'limit' => $limit, 'interval' => $interval],
+            new InMemoryStorage(),
+        );
+
+        return new SignInController(self::service(UserAuthenticator::class), $factory('ip'), $factory('account'));
+    }
+
+    private static function refusal(SignInController $controller, string $email, #[SensitiveParameter] string $password): ApiException
+    {
+        try {
+            $controller->signIn(self::request($email, $password));
+        } catch (ApiException $e) {
+            return $e;
+        }
+
+        self::fail('the sign-in was accepted');
+    }
+
+    private static function statedMoment(ApiException $refusal): float
+    {
+        self::assertSame(ErrorCode::TooManyAttempts, $refusal->errorCode);
+
+        return \microtime(true) + (int) $refusal->headers['Retry-After'];
+    }
+
+    private static function request(string $email, #[SensitiveParameter] string $password): Request
+    {
+        return Request::create('/api/auth/login', 'POST', content: Json\encode([
+            'email' => $email,
+            'password' => $password,
+        ]));
     }
 
     private static function countAccepted(string $id, string $key): int

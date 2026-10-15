@@ -18,6 +18,13 @@ framework:
         #pools:
         #my.dedicated.cache: null
 
+        pools:
+            # Every API container has to count against one budget, or "five per
+            # address" is five per address per container.
+            cache.rate_limiter:
+                adapter: cache.adapter.redis
+                provider: Redis
+
 when@test:
     framework:
         cache:
@@ -36,3 +43,4 @@ when@test:
                 # AssistantTest.
                 cache.rate_limiter:
                     adapter: cache.adapter.array
+                    provider: ~

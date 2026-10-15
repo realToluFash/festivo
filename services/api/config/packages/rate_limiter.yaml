@@ -30,7 +30,11 @@ framework:
             # Per IP, and generous, because one network is a whole office. It is
             # the per-account budget below that stops a password being guessed;
             # this one stops a script walking a list of addresses.
-            policy: sliding_window
+            #
+            # Fixed windows, spent only by a refused password: the refusal states
+            # a time, and a fixed window's is exact and holds still while nobody
+            # tries, where a sliding window's estimate drifts later.
+            policy: fixed_window
             limit: 30
             interval: '15 minutes'
 
@@ -40,7 +44,7 @@ framework:
             # against many. Keyed on the address rather than the account, so a
             # miss on an address nobody has registered costs the same as a hit
             # and the endpoint cannot be used to tell them apart.
-            policy: sliding_window
+            policy: fixed_window
             limit: 5
             interval: '15 minutes'
 

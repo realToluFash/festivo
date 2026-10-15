@@ -8,6 +8,7 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Listener\CorrelationIdListener;
 use App\Http\Listener\JsonExceptionListener;
+use App\Http\ProblemRenderer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -130,6 +131,6 @@ final class JsonExceptionListenerTest extends TestCase
             static fn (string $id): string => 'translated:' . $id,
         );
 
-        return new JsonExceptionListener(new NullLogger(), $translator);
+        return new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator));
     }
 }

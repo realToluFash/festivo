@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\Http\AccountSerialiser;
 use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -30,29 +31,7 @@ final class AccountController
     #[Route('/api/auth/me', name: 'auth_me', methods: ['GET'])]
     public function me(): JsonResponse
     {
-        $user = $this->user();
-
-        return new JsonResponse([
-            'id' => $user->getId()->toRfc4122(),
-            'name' => $user->getName(),
-            'businessName' => $user->getBusinessName(),
-            'countryCode' => $user->getCountryCode(),
-            'locale' => $user->getLocale(),
-            'verified' => $user->isVerified(),
-            'complete' => $user->isComplete(),
-            'emailAddresses' => Vec\map($user->getEmailAddresses(), static fn ($address): array => [
-                'id' => $address->getId()->toRfc4122(),
-                'address' => $address->getAddress(),
-                'verified' => $address->isVerified(),
-                'primary' => $address->isPrimary(),
-            ]),
-            'phoneNumbers' => Vec\map($user->getPhoneNumbers(), static fn ($phone): array => [
-                'id' => $phone->getId()->toRfc4122(),
-                'number' => $phone->getNumber(),
-                'verified' => $phone->isVerified(),
-                'primary' => $phone->isPrimary(),
-            ]),
-        ]);
+        return new JsonResponse(AccountSerialiser::serialise($this->user()));
     }
 
     #[Route('/api/auth/sessions', name: 'auth_sessions', methods: ['GET'])]

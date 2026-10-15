@@ -5,7 +5,7 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
-import { ApiError, toProblem } from './problem.ts';
+import { ApiError, ApiUnreachableError, toProblem } from './problem.ts';
 
 /** See docs/architecture/sessions.md. */
 export type RefreshTokenDelivery = 'body' | 'cookie';
@@ -16,6 +16,11 @@ export interface IssuedTokens {
   refreshToken?: string;
   refreshExpiresAt: string;
   sessionId: string;
+}
+
+export interface SignedIn {
+  tokens: IssuedTokens;
+  account: Account;
 }
 
 export interface Health {
@@ -129,12 +134,31 @@ export class ApiClient {
     return this.request<T>(path, { ...init, method: 'DELETE' });
   }
 
-  async signIn(email: string, password: string): Promise<IssuedTokens> {
-    return this.adopt(await this.sendTokenRequest('/api/auth/login', { email, password }));
+  async signIn(email: string, password: string): Promise<SignedIn> {
+    const { tokens, body } = await this.issued(
+      await this.sendTokenRequest('/api/auth/login', { email, password }),
+    );
+    const account = asAccount(body.account);
+
+    if (account == null) {
+      throw new Error(
+        'The API answered /api/auth/login without the account. Check SignInController in services/api.',
+      );
+    }
+
+    await this.options.tokens?.save(tokens);
+
+    return { tokens, account };
   }
 
   async register(email: string, name: string, password: string): Promise<IssuedTokens> {
-    return this.adopt(await this.sendTokenRequest('/api/auth/register', { email, name, password }));
+    const { tokens } = await this.issued(
+      await this.sendTokenRequest('/api/auth/register', { email, name, password }),
+    );
+
+    await this.options.tokens?.save(tokens);
+
+    return tokens;
   }
 
   async me(): Promise<Account> {
@@ -238,7 +262,13 @@ export class ApiClient {
     if (init.body !== undefined) request.body = JSON.stringify(init.body);
     if (init.signal !== undefined) request.signal = init.signal;
 
-    return doFetch(this.url(path, init.query), request);
+    try {
+      return await doFetch(this.url(path, init.query), request);
+    } catch (error) {
+      if (init.signal?.aborted === true) throw error;
+
+      throw new ApiUnreachableError(error);
+    }
   }
 
   /**
@@ -268,9 +298,15 @@ export class ApiClient {
       body.refreshToken = token;
     }
 
-    const response = await this.sendTokenRequest('/api/auth/refresh', body).catch(() => null);
+    const response = await this.sendTokenRequest('/api/auth/refresh', body).catch(
+      (error: unknown) => {
+        throw new ApiUnreachableError(error);
+      },
+    );
 
-    if (response == null || !response.ok) {
+    if (response.status >= 500) throw new ApiUnreachableError();
+
+    if (!response.ok) {
       await this.forgetSession();
       return false;
     }
@@ -302,20 +338,21 @@ export class ApiClient {
     });
   }
 
-  private async adopt(response: Response): Promise<IssuedTokens> {
+  private async issued(
+    response: Response,
+  ): Promise<{ tokens: IssuedTokens; body: Record<string, unknown> }> {
     if (!response.ok) throw new ApiError(await toProblem(response), response);
 
-    const issued = asIssuedTokens(await response.json(), this.delivery());
+    const body: unknown = await response.json();
+    const tokens = asIssuedTokens(body, this.delivery());
 
-    if (issued == null) {
+    if (tokens == null) {
       throw new Error(
         'The API answered without an access token. Check IssuedTokensResponse in services/api.',
       );
     }
 
-    await this.options.tokens?.save(issued);
-
-    return issued;
+    return { tokens, body: body as Record<string, unknown> };
   }
 
   private async forgetSession(): Promise<void> {

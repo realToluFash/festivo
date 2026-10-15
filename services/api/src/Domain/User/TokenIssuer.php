@@ -8,12 +8,14 @@ use App\Domain\User\Model\IssuedTokens;
 use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Repository\RefreshTokenRepository;
+use DateInterval;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psl\SecureRandom;
 use Psl\Str;
 use SensitiveParameter;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Uid\Uuid;
 
@@ -28,6 +30,8 @@ final readonly class TokenIssuer
         private JWTTokenManagerInterface $jwtTokenManager,
         private EntityManagerInterface $entityManager,
         private RefreshTokenRepository $refreshTokenRepository,
+        #[Autowire(param: 'app.refresh_token_ttl')]
+        private int $refreshTokenTtl,
     ) {
     }
 
@@ -70,6 +74,7 @@ final readonly class TokenIssuer
         $token = new RefreshToken(
             $user,
             self::hash($plain),
+            new DateTimeImmutable()->add(new DateInterval(Str\format('PT%dS', $this->refreshTokenTtl))),
             $chainId,
             self::truncate($request?->headers->get('User-Agent')),
             $request?->getClientIp(),

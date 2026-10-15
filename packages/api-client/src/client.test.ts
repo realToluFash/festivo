@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 
 import { ApiClient, type IssuedTokens, type TokenStore, primaryEmailAddress } from './client.ts';
-import { ApiError } from './problem.ts';
+import { ApiError, ApiUnreachableError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
   return new Response(
@@ -187,6 +187,55 @@ describe('the session refreshes without signing anybody out', () => {
 
     await expect(client.get('/api/auth/me')).rejects.toThrow(ApiError);
     expect(onSignedOut).toHaveBeenCalledTimes(1);
+  });
+
+  test('a refresh that cannot reach the API keeps the session', async () => {
+    const tokens = store('expired', 'good-refresh');
+    const onSignedOut = vi.fn();
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      onSignedOut,
+      fetch: async (input) => {
+        if (String(input).includes('/auth/refresh')) throw new TypeError('Failed to fetch');
+        return problem(401, 'unauthenticated');
+      },
+    });
+
+    await expect(client.get('/api/auth/me')).rejects.toThrow(ApiUnreachableError);
+    expect(onSignedOut).not.toHaveBeenCalled();
+    expect(tokens.refresh()).toBe('good-refresh');
+  });
+
+  test('a refresh answered by a gateway with nothing behind it keeps the session', async () => {
+    const tokens = store('expired', 'good-refresh');
+    const onSignedOut = vi.fn();
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      onSignedOut,
+      fetch: async (input) =>
+        String(input).includes('/auth/refresh')
+          ? new Response('Bad Gateway', { status: 502 })
+          : problem(401, 'unauthenticated'),
+    });
+
+    await expect(client.get('/api/auth/me')).rejects.toThrow(ApiUnreachableError);
+    expect(onSignedOut).not.toHaveBeenCalled();
+    expect(tokens.refresh()).toBe('good-refresh');
+  });
+
+  test('a request that never arrives says the API is unreachable', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    await expect(client.get('/api/events')).rejects.toThrow(ApiUnreachableError);
   });
 
   test('an anonymous request never sends a token and is never retried', async () => {
@@ -377,15 +426,49 @@ describe('a browser never holds the refresh token', () => {
       refreshTokenIn: 'cookie',
       fetch: async (_input, init) => {
         body = JSON.parse(String(init?.body));
-        return issued({ refreshToken: undefined });
+        return issued({ refreshToken: undefined, account: ACCOUNT });
       },
     });
 
     const result = await client.signIn('ada@example.com', 'a decent passphrase');
 
     expect(body).toMatchObject({ email: 'ada@example.com', refreshTokenIn: 'cookie' });
-    expect(result.accessToken).toBe('fresh');
+    expect(result.tokens.accessToken).toBe('fresh');
     expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+  });
+
+  test('signing in answers with the account, in one request', async () => {
+    const paths: string[] = [];
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      fetch: async (input) => {
+        paths.push(new URL(String(input)).pathname);
+        return issued({ account: ACCOUNT });
+      },
+    });
+
+    const { account } = await client.signIn('ada@example.com', 'a decent passphrase');
+
+    expect(account.id).toBe(ACCOUNT.id);
+    expect(account.emailAddresses).toHaveLength(ACCOUNT.emailAddresses.length);
+    expect(paths).toEqual(['/api/auth/login']);
+  });
+
+  test('a sign-in answered without the account saves nothing', async () => {
+    const tokens = store(null, null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      fetch: async () => issued(),
+    });
+
+    await expect(client.signIn('ada@example.com', 'a decent passphrase')).rejects.toThrow(
+      /SignInController/,
+    );
+    expect(tokens.saved).toBeNull();
   });
 
   test('a sign-in the API refuses rejects with the code and saves nothing', async () => {

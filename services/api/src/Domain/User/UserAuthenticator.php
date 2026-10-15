@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
-use App\Domain\User\Model\IssuedTokens;
+use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\PasswordResolver;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
@@ -28,7 +28,7 @@ final readonly class UserAuthenticator
         #[SensitiveParameter]
         string $password,
         ?Request $request = null,
-    ): IssuedTokens {
+    ): SignInResult {
         $user = $this->userRepository->findOneByPrimaryEmailAddress($email);
 
         if (null === $user) {
@@ -45,7 +45,7 @@ final readonly class UserAuthenticator
 
         $this->entityManager->flush();
 
-        return $tokens;
+        return new SignInResult($user, $tokens);
     }
 
     private function refuse(): ApiException

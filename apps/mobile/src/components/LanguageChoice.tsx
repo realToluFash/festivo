@@ -25,7 +25,8 @@ export function LanguageChoice() {
             onPress={() => void setLanguage(locale.code)}
             accessibilityRole="button"
             accessibilityState={{ selected: chosen }}
-            accessibilityLabel={locale.name}
+            accessibilityLabel={locale.nativeName}
+            accessibilityLanguage={locale.code}
           >
             <Text size={tokens.typeButton.size} weight="semibold" style={styles.chipText}>
               {locale.nativeName}

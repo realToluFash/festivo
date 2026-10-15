@@ -1,5 +1,5 @@
 import { type DeviceSession } from '@soirely/api-client';
-import { formatDay, formatTimeOfDay, readableAgent } from '@soirely/domain';
+import { formatDay, formatTimeOfDay, readableAgent, thisDeviceFirst } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -143,7 +143,7 @@ export function Security() {
 
             {devices.kind === 'ready' && (
               <ul className="device-list" aria-label={t('devices.listLabel')}>
-                {devices.sessions.map((device) => (
+                {thisDeviceFirst(devices.sessions, currentSessionId()).map((device) => (
                   <Row
                     key={device.id}
                     device={device}

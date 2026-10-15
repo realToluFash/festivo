@@ -5,6 +5,7 @@ import { NavLink, Navigate, Outlet } from 'react-router';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { Pending } from '../../components/Pending.tsx';
+import { Unreachable } from '../../components/Unreachable.tsx';
 import { restoreSession, useSession, useSessionState } from '../../session.ts';
 
 /**
@@ -29,6 +30,8 @@ export function AppLayout() {
   if (state.status === 'signedOut') {
     return <Navigate to={state.ended ? '/sign-in?signed-out' : '/sign-in'} replace />;
   }
+
+  if (state.status === 'unreachable') return <Unreachable />;
 
   if (state.status !== 'signedIn') return <Pending />;
 

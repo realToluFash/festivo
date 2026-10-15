@@ -76,7 +76,7 @@
     "endedTitle": "You were signed out",
     "endedBody": "Sign in again to carry on.",
     "lockedTitle": "Too many tries",
-    "lockedBody": "Try again at {{time}}, or reset your password now and sign in straight after.",
+    "lockedBody": "Try again at {{time}}.",
     "or": "or",
     "withGoogle": "Continue with {{provider}}",
     "withApple": "Continue with {{provider}}",
@@ -143,5 +143,9 @@
     "failedTitle": "That did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "stepsLabel": "Before you start"
+  },
+  "session": {
+    "unreachableTitle": "Soirely cannot be reached",
+    "unreachableBody": "You are still signed in. Check your connection, then try again."
   }
 }

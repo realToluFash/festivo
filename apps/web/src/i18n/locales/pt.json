@@ -76,7 +76,7 @@
     "endedTitle": "A sua sessão foi encerrada",
     "endedBody": "Inicie sessão novamente para continuar.",
     "lockedTitle": "Demasiadas tentativas",
-    "lockedBody": "Tente novamente às {{time}} ou redefina a sua palavra-passe agora e inicie sessão imediatamente depois.",
+    "lockedBody": "Tente novamente às {{time}}.",
     "or": "ou",
     "withGoogle": "Continuar com {{provider}}",
     "withApple": "Continuar com {{provider}}",
@@ -143,5 +143,9 @@
     "failedTitle": "Não funcionou",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "stepsLabel": "Antes de começar"
+  },
+  "session": {
+    "unreachableTitle": "Não é possível contactar o Soirely",
+    "unreachableBody": "A sua sessão continua iniciada. Verifique a ligação e tente novamente."
   }
 }

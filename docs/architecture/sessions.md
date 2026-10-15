@@ -149,6 +149,34 @@ the first request after a reload goes out unauthenticated, comes back `401`, and
 `ApiClient` renews from the cookie and retries it. One wasted request per page load and no
 sign-in screen, which is the right way round.
 
+## Lifetimes
+
+Both are configuration in `services/api/.env`, in seconds:
+
+| Variable            | Default   | What it bounds                                                          |
+| ------------------- | --------- | ----------------------------------------------------------------------- |
+| `JWT_TOKEN_TTL`     | `900`     | how long an ended session keeps working; see the next section           |
+| `REFRESH_TOKEN_TTL` | `2592000` | how long a device may go unused before it has to sign in again, 30 days |
+
+A refresh issues a new token with the full lifetime, so a device in use never expires.
+Lowering `REFRESH_TOKEN_TTL` applies to tokens issued from then on; rows already stored
+keep the expiry they were issued with.
+
+## The sign-in limit
+
+Two fixed windows of fifteen minutes, in `config/packages/rate_limiter.yaml`: **5 refused
+passwords per address** and **30 per network address**. Only a refused password spends
+either. A correct one spends nothing, so somebody signing in on several devices is never
+locked out by it.
+
+Past either, `POST /api/auth/login` answers `429 too_many_attempts` with `Retry-After`, and
+does not check the password at all. The time is the window's end, so it does not move while
+nobody is trying, and the right password at that time signs in. The clients round it up to
+the minute they show and lift the lock themselves when it arrives.
+
+The budgets live in Redis (`cache.rate_limiter`), so every API container counts against the
+same one. In the test environment they are in memory; `cache.yaml` says why.
+
 ## The access token's fifteen minutes
 
 Ending a session cannot take effect sooner than the access token in hand expires, because

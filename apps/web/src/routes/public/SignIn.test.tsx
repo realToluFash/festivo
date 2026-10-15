@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -178,9 +178,8 @@ afterEach(() => {
 
 describe('signing in, for real', () => {
   it('signs in and lands on the product', async () => {
-    answering({
-      'POST /api/auth/login': () => json(ISSUED),
-      'GET /api/auth/me': () => json(ACCOUNT),
+    const sent = answering({
+      'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
     });
 
     at('/sign-in');
@@ -188,12 +187,12 @@ describe('signing in, for real', () => {
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
     expect(screen.getByText('Signed in as Folake Ire')).toBeDefined();
+    expect(sent.map((request) => request.path)).toEqual(['/api/auth/login']);
   });
 
   it('sends an unverified account to the verification screen instead', async () => {
     answering({
-      'POST /api/auth/login': () => json(ISSUED),
-      'GET /api/auth/me': () => json({ ...ACCOUNT, verified: false }),
+      'POST /api/auth/login': () => json({ ...ISSUED, account: { ...ACCOUNT, verified: false } }),
     });
 
     at('/sign-in');
@@ -207,8 +206,7 @@ describe('signing in, for real', () => {
 
   it('posts the address and the password, and asks for the cookie', async () => {
     const sent = answering({
-      'POST /api/auth/login': () => json(ISSUED),
-      'GET /api/auth/me': () => json(ACCOUNT),
+      'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
     });
 
     at('/sign-in');
@@ -248,6 +246,40 @@ describe('signing in, for real', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/Too many tries/));
     expect(screen.getByRole('alert').textContent).toMatch(/\d{2}:\d{2}/);
     expect(screen.getByRole('button', { name: /Try again at/ })).toBeDefined();
+  });
+
+  it('lifts the lock on the minute it named, keeping the address and clearing the password', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 14, 33, 20));
+
+    answering({
+      'POST /api/auth/login': () => problem(429, 'too_many_attempts', { 'Retry-After': '80' }),
+    });
+
+    at('/sign-in');
+    fillIn();
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(
+        /Too many tries\s*Try again at 14:35\.$/,
+      ),
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(99_000);
+    });
+    expect(screen.getByRole('button', { name: /Try again at 14:35/ })).toBeDefined();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDefined();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('');
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    vi.useRealTimers();
   });
 
   it('falls back to the plain failure when the header is missing', async () => {

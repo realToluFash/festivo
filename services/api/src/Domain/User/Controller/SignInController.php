@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Controller;
 
 use App\Domain\User\EmailAddressNormaliser;
+use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\Http\IssuedTokensResponse;
 use App\Domain\User\UserAuthenticator;
 use App\Enum\ErrorCode;
@@ -15,6 +16,7 @@ use DateTimeImmutable;
 use Psl\Math;
 use Psl\Type;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\RateLimiter\RateLimit;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -36,41 +38,57 @@ final class SignInController
             'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
         ]));
 
-        $this->limit($request, $body['email']);
+        // Keyed on the address as given: limiting only known accounts answers "is this registered".
+        $limits = [
+            $this->signInAccountLimiter->create(EmailAddressNormaliser::normalise($body['email'])),
+            $this->signInIpLimiter->create($request->getClientIp()),
+        ];
 
-        $tokens = $this->userAuthenticator->signIn($body['email'], $body['password'], $request);
+        foreach ($limits as $limit) {
+            self::refuseIfSpent($limit->consume(0));
+        }
+
+        try {
+            $result = $this->userAuthenticator->signIn($body['email'], $body['password'], $request);
+        } catch (ApiException $e) {
+            if (ErrorCode::InvalidCredentials === $e->errorCode) {
+                foreach ($limits as $limit) {
+                    $limit->consume();
+                }
+            }
+
+            throw $e;
+        }
 
         return new IssuedTokensResponse(
-            $tokens,
+            $result->tokens,
             $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
             $request,
+            ['account' => AccountSerialiser::serialise($result->user)],
         );
     }
 
-    private static function secondsUntil(DateTimeImmutable $moment): int
+    /** A peek, not a spend: only a refused password costs anything, so a success spends nothing. */
+    private static function refuseIfSpent(RateLimit $peek): void
     {
-        return Math\maxva(1, $moment->getTimestamp() - new DateTimeImmutable()->getTimestamp());
+        if ($peek->getRemainingTokens() > 0) {
+            return;
+        }
+
+        $retryAfter = $peek->getRetryAfter();
+
+        throw new ApiException(
+            ErrorCode::TooManyAttempts,
+            'Too many sign-in attempts. Try again at ' . $retryAfter->format('H:i') . '.',
+            [],
+            null,
+            ['Retry-After' => (string) self::secondsUntil($retryAfter)],
+        );
     }
 
-    /** Keyed on the address as given: limiting only known accounts answers "is this registered". */
-    private function limit(Request $request, string $email): void
+    /** One past the window's end: a fixed window still counts its hits at the end second itself. */
+    private static function secondsUntil(DateTimeImmutable $moment): int
     {
-        $byAddress = $this->signInAccountLimiter
-            ->create(EmailAddressNormaliser::normalise($email))
-            ->consume();
-
-        $byIp = $this->signInIpLimiter->create($request->getClientIp())->consume();
-
-        foreach ([$byAddress, $byIp] as $limit) {
-            if (!$limit->isAccepted()) {
-                throw new ApiException(
-                    ErrorCode::TooManyAttempts,
-                    'Too many sign-in attempts. Try again at ' . $limit->getRetryAfter()->format('H:i') . '.',
-                    [],
-                    null,
-                    ['Retry-After' => (string) self::secondsUntil($limit->getRetryAfter())],
-                );
-            }
-        }
+        return Math\maxva(1, $moment->getTimestamp() - new DateTimeImmutable()->getTimestamp() + 1);
     }
 }

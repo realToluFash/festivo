@@ -31,6 +31,15 @@ export function secondsUntil(moment: string | Date, now: Date = new Date()): num
   return Math.max(0, Math.round((date.getTime() - now.getTime()) / 1000));
 }
 
+/** Rounded up to the minute: a lock read as 14:35 that lifts at 14:35:40 refuses whoever believes it. */
+export function lockLiftsAt(retryAfterSeconds: number, now: Date = new Date()): Date | null {
+  if (!Number.isFinite(retryAfterSeconds) || retryAfterSeconds <= 0) return null;
+
+  const minute = 60_000;
+
+  return new Date(Math.ceil((now.getTime() + retryAfterSeconds * 1000) / minute) * minute);
+}
+
 function asDate(moment: string | Date): Date | null {
   const date = typeof moment === 'string' ? new Date(moment) : moment;
 
