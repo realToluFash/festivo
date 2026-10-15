@@ -56,6 +56,8 @@ export function Screen({
           // dismissing the keyboard, which otherwise makes every button in a
           // form need pressing twice.
           keyboardShouldPersistTaps="handled"
+          // iOS does not move the window for the keyboard; Android pans already and ignores this.
+          automaticallyAdjustKeyboardInsets
         >
           {children}
         </ScrollView>

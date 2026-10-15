@@ -5,7 +5,10 @@
   "home": {
     "title": "Soirely",
     "subtitle": "La soirée, depuis votre poche.",
-    "openLayouts": "Démonstration des mises en page"
+    "openSignIn": "Se connecter",
+    "openLayouts": "Démonstration des mises en page",
+    "signedInAs": "Connecté en tant que {{name}}",
+    "signOut": "Se déconnecter"
   },
   "status": {
     "title": "État du service",
@@ -34,5 +37,28 @@
     "detailPane": "Détail",
     "itemCount_one": "{{count}} élément",
     "itemCount_other": "{{count}} éléments"
+  },
+  "signIn": {
+    "title": "Se connecter",
+    "landscapeIntro": "Avec votre adresse e-mail et votre mot de passe. Votre langue vous suit sur tous vos appareils.",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "reveal": "Afficher",
+    "conceal": "Masquer",
+    "submit": "Se connecter",
+    "submitting": "Connexion…",
+    "lockedUntil": "Réessayez à {{time}}",
+    "refused": "Cette adresse e-mail et ce mot de passe ne correspondent pas. Vérifiez les deux, ou réinitialisez votre mot de passe.",
+    "endedTitle": "Votre session a été fermée",
+    "endedBody": "Reconnectez-vous pour continuer.",
+    "lockedTitle": "Trop de tentatives",
+    "lockedBody": "Réessayez à {{time}}, ou réinitialisez votre mot de passe maintenant et connectez-vous juste après.",
+    "or": "ou",
+    "withGoogle": "Continuer avec {{provider}}",
+    "withApple": "Continuer avec {{provider}}",
+    "providerFailedTitle": "La connexion avec {{provider}} n'a pas fonctionné",
+    "providerFailedBody": "Rien n'a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe.",
+    "failedTitle": "La connexion n'a pas abouti",
+    "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant."
   }
 }

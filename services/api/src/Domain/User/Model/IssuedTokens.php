@@ -6,13 +6,8 @@ namespace App\Domain\User\Model;
 
 use DateTimeImmutable;
 use SensitiveParameter;
+use Symfony\Component\Uid\Uuid;
 
-/**
- * The pair handed back on registration and sign-in.
- *
- * The refresh value is the only place the plain token exists. It is written
- * into the response and never stored, because the row holds its hash.
- */
 final readonly class IssuedTokens
 {
     public function __construct(
@@ -21,6 +16,7 @@ final readonly class IssuedTokens
         #[SensitiveParameter]
         public string $refreshToken,
         public DateTimeImmutable $refreshExpiresAt,
+        public Uuid $sessionId,
     ) {
     }
 }

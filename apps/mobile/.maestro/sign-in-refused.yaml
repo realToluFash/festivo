@@ -1,0 +1,47 @@
+# A wrong password says one thing, and says it in the form. sc-55.
+#
+# The edge case worth a flow of its own: the message must not say whether the
+# address is registered, and the field itself must be marked rather than only a
+# banner shown.
+#
+#   just qa-mobile sign-in-refused EMAIL=…
+appId: host.exp.Exponent
+---
+# Stopped and relaunched, because `openLink` reaches a route without remounting
+# the screen: a flow that does not do this inherits whatever the last run left
+# on it, which is how two runs of the same flow disagree.
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+# Erased before each field is typed into, because `openLink` reaches the route
+# without remounting the screen: a field keeps what the last run left in it.
+- openLink: exp://127.0.0.1:8081/--/sign-in
+- extendedWaitUntil:
+    visible: 'Email'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.email'
+# 120 rather than the default 50: an address is longer than that, and a partial
+# erase leaves a fragment that the new text is typed on top of.
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+# 120 rather than the default 50: an address is longer than that, and a partial
+# erase leaves a fragment that the new text is typed on top of.
+- eraseText: 120
+- inputText: 'not-the-password'
+- tapOn:
+    id: 'signIn.submit'
+# iOS offers to save the password, over the top of whatever follows. It is the
+# system's dialog rather than the app's, and a flow that does not dismiss it
+# reports every screen behind it as missing.
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- extendedWaitUntil:
+    visible: 'That email and password do not match. Check both, or reset your password.'
+    timeout: 30000
+- takeScreenshot: mobile-sign-in-refused

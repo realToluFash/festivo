@@ -193,3 +193,50 @@ console *args:
 # Delete the BuildKit build cache.
 prune-build-cache:
     docker builder prune -af
+
+# ── QA ───────────────────────────────────────────────────────────────────────
+#
+# The surfaces a QA pass drives, each with the one command that starts it. See
+# .claude/skills/soirely-qa-tester for what a pass does with them.
+
+# A throwaway account, registered through the API. `just qa-account --json` for JSON.
+qa-account *args:
+    node scripts/qa-account.mjs {{args}}
+
+# The app in Expo Go on a booted simulator, for Maestro to drive. Leave it running.
+qa-ios device="iPhone 17 Pro":
+    #!/usr/bin/env sh
+    xcrun simctl boot "{{device}}" 2>/dev/null || true
+    open -a Simulator
+    npm run ios --workspace @soirely/mobile
+
+# One Maestro flow: `just qa-mobile sign-in EMAIL=a@b.test PASSWORD=x`
+qa-mobile flow *vars:
+    #!/usr/bin/env sh
+    set -e
+    command -v maestro >/dev/null || { echo "maestro is not on PATH. brew install --cask temurin@21, then https://maestro.dev"; exit 1; }
+    java -version >/dev/null 2>&1 || { echo "Maestro needs a Java runtime: brew install --cask temurin@21"; exit 1; }
+    passed=""
+    for pair in {{vars}}; do passed="$passed -e $pair"; done
+    # Maestro will not write a screenshot outside its own run folder, so the
+    # run folder is the place the evidence is collected from.
+    rm -rf .qa/{{flow}}
+    mkdir -p .qa/{{flow}}
+    status=0
+    maestro test --debug-output .qa/{{flow}} $passed apps/mobile/.maestro/{{flow}}.yaml || status=$?
+    # Collected to the top of the folder, because a report attaches these and
+    # the run folder buries them six levels down.
+    # -mindepth 2, because find's -path matches across slashes: excluding
+    # ".qa/<flow>/*.png" excluded every nested one as well, which is how the
+    # first version of this line quietly collected nothing.
+    find .qa/{{flow}} -mindepth 2 -name '*.png' -exec cp {} .qa/{{flow}}/ \;
+    echo ""
+    echo "Evidence in .qa/{{flow}}:"
+    ls .qa/{{flow}}/*.png 2>/dev/null || echo "  (no screenshots)"
+    exit $status
+
+# Its own profile, so nothing touches the browser you read your email in.
+#
+# Chrome with a debugging port, for a browser driver to attach to.
+qa-chrome:
+    open -na "Google Chrome" --args --remote-debugging-port=9222 --user-data-dir=/tmp/soirely-qa-chrome --no-first-run --no-default-browser-check http://localhost:5173

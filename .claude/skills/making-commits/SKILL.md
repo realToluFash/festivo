@@ -14,6 +14,16 @@ commits a reviewer can read one at a time.
 
 `$note` is an optional hint. Ignore it if the diff tells you more.
 
+## Read your own comments before you stage
+
+`git diff` the work and look at every comment line it adds, against **code-comments**. Two
+questions each: would a reader break something without it, and is it still true next year.
+
+This takes a minute and it is the last cheap moment — once it is committed the choice is
+somebody's review comment, and the sweep that follows touches every file at once. A branch
+that added nine hundred lines of comment and kept a hundred and thirty is what skipping it
+costs.
+
 ## The rule
 
 **One commit, one outcome.** An outcome is a thing that is now true for a user or for the

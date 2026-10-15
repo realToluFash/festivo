@@ -5,7 +5,10 @@
   "home": {
     "title": "Soirely",
     "subtitle": "The night, from your pocket.",
-    "openLayouts": "Layout demonstration"
+    "openSignIn": "Sign in",
+    "openLayouts": "Layout demonstration",
+    "signedInAs": "Signed in as {{name}}",
+    "signOut": "Sign out"
   },
   "status": {
     "title": "Service status",
@@ -34,5 +37,28 @@
     "detailPane": "Detail",
     "itemCount_one": "{{count}} item",
     "itemCount_other": "{{count}} items"
+  },
+  "signIn": {
+    "title": "Sign in",
+    "landscapeIntro": "With your email and password. Your language follows you to every device.",
+    "email": "Email",
+    "password": "Password",
+    "reveal": "Show",
+    "conceal": "Hide",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "lockedUntil": "Try again at {{time}}",
+    "refused": "That email and password do not match. Check both, or reset your password.",
+    "endedTitle": "You were signed out",
+    "endedBody": "Sign in again to carry on.",
+    "lockedTitle": "Too many tries",
+    "lockedBody": "Try again at {{time}}, or reset your password now and sign in straight after.",
+    "or": "or",
+    "withGoogle": "Continue with {{provider}}",
+    "withApple": "Continue with {{provider}}",
+    "providerFailedTitle": "{{provider}} sign-in did not work",
+    "providerFailedBody": "Nothing was changed. Try {{provider}} again, or sign in with your email and password.",
+    "failedTitle": "Signing in did not work",
+    "failedBody": "Something went wrong on the way. Try again in a moment."
   }
 }

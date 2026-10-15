@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Navigate, Outlet } from 'react-router';
 
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
-import { useSession } from '../../session.ts';
+import { Pending } from '../../components/Pending.tsx';
+import { restoreSession, useSession, useSessionState } from '../../session.ts';
 
 /**
  * The signed-in shell, built for a desk.
@@ -18,6 +20,22 @@ import { useSession } from '../../session.ts';
  * the way out of a broken screen is the navigation.
  */
 export function AppLayout() {
+  const state = useSessionState();
+
+  useEffect(() => {
+    void restoreSession();
+  }, []);
+
+  if (state.status === 'signedOut') {
+    return <Navigate to={state.ended ? '/sign-in?signed-out' : '/sign-in'} replace />;
+  }
+
+  if (state.status !== 'signedIn') return <Pending />;
+
+  return <Shell />;
+}
+
+function Shell() {
   const { t } = useTranslation();
   const session = useSession();
 
@@ -48,6 +66,7 @@ export function AppLayout() {
           <NavLink to="/app/events">{t('nav.events')}</NavLink>
           <NavLink to="/app/guests">{t('nav.guests')}</NavLink>
           <NavLink to="/app/settings">{t('nav.settings')}</NavLink>
+          <NavLink to="/app/account/security">{t('nav.account')}</NavLink>
         </nav>
 
         <div className="shell-account">

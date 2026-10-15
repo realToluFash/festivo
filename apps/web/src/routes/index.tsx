@@ -1,12 +1,14 @@
 import { createBrowserRouter } from 'react-router';
 
 import { RequirePermission } from '../components/RequirePermission.tsx';
+import { Security } from './app/account/Security.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { Home } from './public/Home.tsx';
 import { NotFound } from './public/NotFound.tsx';
+import { SignIn } from './public/SignIn.tsx';
 import { Status } from './public/Status.tsx';
 
 /**
@@ -27,6 +29,7 @@ import { Status } from './public/Status.tsx';
  */
 export const routes = [
   { path: '/', element: <Home /> },
+  { path: '/sign-in', element: <SignIn /> },
   { path: '/status', element: <Status /> },
   {
     path: '/app',
@@ -35,6 +38,7 @@ export const routes = [
       { index: true, element: <Dashboard /> },
       { path: 'events', element: <Dashboard /> },
       { path: 'guests', element: <Dashboard /> },
+      { path: 'account/security', element: <Security /> },
       // Gated on a permission the stand-in session does not carry, so the
       // refused page is reachable by clicking rather than only in a test.
       {

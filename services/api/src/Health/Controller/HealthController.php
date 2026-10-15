@@ -27,13 +27,10 @@ final class HealthController extends AbstractController
             : JsonResponse::HTTP_SERVICE_UNAVAILABLE;
 
         return new JsonResponse([
-            'success' => 'ok' === $result['status'],
-            'data' => [
-                'application' => 'soirely-api',
-                'environment' => $this->appEnv,
-                'status' => $result['status'],
-                'checks' => $result['checks'],
-            ],
+            'application' => 'soirely-api',
+            'environment' => $this->appEnv,
+            'status' => $result['status'],
+            'checks' => $result['checks'],
         ], $status);
     }
 }

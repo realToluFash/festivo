@@ -110,6 +110,11 @@ export default [
       // replaced, so Vite falls back to a full reload and loses the state you
       // were looking at.
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+
+      // style-src has no 'unsafe-inline', and it governs style attributes too:
+      // a style prop renders nothing in a deployed build and works in vite dev.
+      'react/forbid-dom-props': ['error', { forbid: ['style'] }],
+      'react/forbid-component-props': ['error', { forbid: ['style'] }],
     },
   },
 

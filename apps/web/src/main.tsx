@@ -3,9 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
-import { load } from './config.ts';
+import { config, load } from './config.ts';
 import { initI18n } from './i18n/index.ts';
 import { router } from './routes/index.tsx';
+import { requireSameSiteApi } from './sameSite.ts';
 import './styles.css';
 
 /**
@@ -25,6 +26,7 @@ async function start(): Promise<void> {
 
   try {
     await load();
+    requireSameSiteApi(window.location.origin, config().apiBaseUrl);
     await initI18n();
   } catch (error) {
     // Rendered as plain text, in English, deliberately: this is the one failure

@@ -5,7 +5,10 @@
   "home": {
     "title": "Soirely",
     "subtitle": "La noche, desde su bolsillo.",
-    "openLayouts": "Demostración de diseños"
+    "openSignIn": "Iniciar sesión",
+    "openLayouts": "Demostración de diseños",
+    "signedInAs": "Sesión iniciada como {{name}}",
+    "signOut": "Cerrar sesión"
   },
   "status": {
     "title": "Estado del servicio",
@@ -34,5 +37,28 @@
     "detailPane": "Detalle",
     "itemCount_one": "{{count}} elemento",
     "itemCount_other": "{{count}} elementos"
+  },
+  "signIn": {
+    "title": "Iniciar sesión",
+    "landscapeIntro": "Con su correo electrónico y su contraseña. Su idioma le sigue en todos los dispositivos.",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "reveal": "Mostrar",
+    "conceal": "Ocultar",
+    "submit": "Iniciar sesión",
+    "submitting": "Iniciando sesión…",
+    "lockedUntil": "Inténtelo de nuevo a las {{time}}",
+    "refused": "Ese correo electrónico y esa contraseña no coinciden. Compruebe ambos o restablezca su contraseña.",
+    "endedTitle": "Se ha cerrado su sesión",
+    "endedBody": "Inicie sesión de nuevo para continuar.",
+    "lockedTitle": "Demasiados intentos",
+    "lockedBody": "Inténtelo de nuevo a las {{time}} o restablezca su contraseña ahora e inicie sesión justo después.",
+    "or": "o",
+    "withGoogle": "Continuar con {{provider}}",
+    "withApple": "Continuar con {{provider}}",
+    "providerFailedTitle": "El inicio de sesión con {{provider}} no ha funcionado",
+    "providerFailedBody": "No se ha cambiado nada. Vuelva a intentarlo con {{provider}} o inicie sesión con su correo electrónico y su contraseña.",
+    "failedTitle": "No se ha podido iniciar sesión",
+    "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento."
   }
 }

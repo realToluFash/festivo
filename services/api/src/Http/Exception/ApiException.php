@@ -10,12 +10,17 @@ use Throwable;
 
 class ApiException extends RuntimeException
 {
-    /** @param list<array{propertyPath: string, message: string, code: string}> $violations */
+    /**
+     * @param list<array{propertyPath: string, message: string, code: string}> $violations
+     * @param array<string, string>                                            $headers    Retry-After on a 429,
+     *                                                                                     and little else
+     */
     public function __construct(
         public readonly ErrorCode $errorCode,
         string $message = '',
         public readonly array $violations = [],
         ?Throwable $previous = null,
+        public readonly array $headers = [],
     ) {
         parent::__construct($message, $errorCode->status(), $previous);
     }

@@ -30,6 +30,15 @@ export default {
   },
   overrides: [
     {
+      // Google's and Apple's published button values: requirements from
+      // outside this product, so not tokens. See the file's own header.
+      files: ['apps/web/src/brand.css'],
+      rules: {
+        'color-no-hex': null,
+        'color-hex-length': null,
+      },
+    },
+    {
       // The generated file. It is where the colours live, and it is the only
       // place they may be written literally.
       files: ['apps/web/src/tokens.css'],

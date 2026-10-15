@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\Http\IssuedTokensResponse;
 use App\Domain\User\UserRegistrar;
 use App\Enum\ErrorCode;
+use App\Enum\RefreshTokenDelivery;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -24,7 +25,7 @@ final class RegisterController
     }
 
     #[Route('/api/auth/register', name: 'auth_register', methods: ['POST'])]
-    public function register(Request $request): JsonResponse
+    public function register(Request $request): IssuedTokensResponse
     {
         $this->limit($request);
 
@@ -32,6 +33,7 @@ final class RegisterController
             'email' => Type\string(),
             'name' => Type\string(),
             'password' => Type\string(),
+            'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
         ]));
 
         $result = $this->registration->register(
@@ -41,18 +43,21 @@ final class RegisterController
             $request,
         );
 
-        return new JsonResponse([
-            'user' => [
-                'id' => $result->user->getId()->toRfc4122(),
-                'email' => $result->user->getPrimaryEmailAddress()?->getAddress(),
-                'name' => $result->user->getName(),
-                'emailVerified' => $result->user->getPrimaryEmailAddress()?->isVerified() ?? false,
-                'profileComplete' => $result->user->isComplete(),
+        return new IssuedTokensResponse(
+            $result->tokens,
+            $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
+            $request,
+            [
+                'user' => [
+                    'id' => $result->user->getId()->toRfc4122(),
+                    'email' => $result->user->getPrimaryEmailAddress()?->getAddress(),
+                    'name' => $result->user->getName(),
+                    'emailVerified' => $result->user->getPrimaryEmailAddress()?->isVerified() ?? false,
+                    'profileComplete' => $result->user->isComplete(),
+                ],
             ],
-            'accessToken' => $result->tokens->accessToken,
-            'refreshToken' => $result->tokens->refreshToken,
-            'refreshExpiresAt' => $result->tokens->refreshExpiresAt->format(\DATE_ATOM),
-        ], Response::HTTP_CREATED);
+            Response::HTTP_CREATED,
+        );
     }
 
     private function limit(Request $request): void

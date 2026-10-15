@@ -10,8 +10,17 @@ import { ApiClient } from '@soirely/api-client';
 
 import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
+import { tokens } from './tokens.ts';
+
+/** An event rather than a call, because the session store reads this module. */
+export const SIGNED_OUT = 'soirely:signed-out';
 
 export const api = new ApiClient({
   baseUrl: () => config().apiBaseUrl,
   locale: () => currentLocale(),
+  tokens,
+  refreshTokenIn: 'cookie',
+  onSignedOut: () => {
+    window.dispatchEvent(new Event(SIGNED_OUT));
+  },
 });

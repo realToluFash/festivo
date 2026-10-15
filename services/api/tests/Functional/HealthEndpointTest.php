@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 final class HealthEndpointTest extends ApiTestCase
 {
     #[Test]
-    public function itAnswersInTheEnvelope(): void
+    public function itAnswersWithTheObjectItself(): void
     {
         $this->client->request('GET', '/api/health');
 
@@ -19,11 +19,27 @@ final class HealthEndpointTest extends ApiTestCase
 
         $body = \json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
-        self::assertArrayHasKey('success', $body);
-        self::assertArrayHasKey('data', $body);
-        self::assertSame('soirely-api', $body['data']['application']);
-        self::assertArrayHasKey('postgres', $body['data']['checks']);
-        self::assertArrayHasKey('redis', $body['data']['checks']);
+        self::assertSame('soirely-api', $body['application']);
+        self::assertSame('ok', $body['status']);
+        self::assertArrayHasKey('postgres', $body['checks']);
+        self::assertArrayHasKey('redis', $body['checks']);
+    }
+
+    /** The shape is held here, where the server is, and not only in the clients' mocks. */
+    #[Test]
+    public function itDoesNotWrapTheObjectInAnything(): void
+    {
+        $this->client->request('GET', '/api/health');
+
+        $body = \json_decode(
+            (string) $this->client->getResponse()->getContent(),
+            true,
+            512,
+            \JSON_THROW_ON_ERROR,
+        );
+
+        self::assertArrayNotHasKey('success', $body);
+        self::assertArrayNotHasKey('data', $body);
     }
 
     /**

@@ -22,6 +22,7 @@
         "doctrine/orm": "^3.7",
         "elao/enum": "^3.0",
         "lexik/jwt-authentication-bundle": "^3.2",
+        "nelmio/cors-bundle": "^2.5",
         "nyholm/psr7": "^1.8",
         "php-standard-library/php-standard-library": "^6.3",
         "symfony/clock": "7.4.*",

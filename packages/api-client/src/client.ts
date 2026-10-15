@@ -7,10 +7,62 @@
  */
 import { ApiError, toProblem } from './problem.ts';
 
+/** See docs/architecture/sessions.md. */
+export type RefreshTokenDelivery = 'body' | 'cookie';
+
+export interface IssuedTokens {
+  accessToken: string;
+  /** Absent in cookie mode. */
+  refreshToken?: string;
+  refreshExpiresAt: string;
+  sessionId: string;
+}
+
+export interface Health {
+  status: string;
+  checks: Record<string, { status: string; error?: string }>;
+}
+
+export interface LinkedAddress {
+  id: string;
+  address: string;
+  verified: boolean;
+  primary: boolean;
+}
+
+export interface LinkedPhone {
+  id: string;
+  number: string;
+  verified: boolean;
+  primary: boolean;
+}
+
+export interface Account {
+  id: string;
+  name: string;
+  businessName: string | null;
+  countryCode: string | null;
+  locale: string | null;
+  verified: boolean;
+  complete: boolean;
+  emailAddresses: LinkedAddress[];
+  phoneNumbers: LinkedPhone[];
+}
+
+/** `userAgent` and `ipAddress` are what the client claimed; nothing verifies either. */
+export interface DeviceSession {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  startedAt: string;
+  renewedAt: string;
+  expiresAt: string;
+}
+
 export interface TokenStore {
   access(): string | null | Promise<string | null>;
   refresh(): string | null | Promise<string | null>;
-  save(tokens: { access: string; refresh: string }): void | Promise<void>;
+  save(tokens: IssuedTokens): void | Promise<void>;
   clear(): void | Promise<void>;
 }
 
@@ -18,6 +70,7 @@ export interface ClientOptions {
   /** Read lazily, so a client built at import time still honours runtime config. */
   baseUrl: () => string;
   tokens?: TokenStore;
+  refreshTokenIn?: RefreshTokenDelivery;
   /** The reader's language, for the API's own locale negotiation. */
   locale?: () => string | null;
   /** Called when refresh fails and the session is over. */
@@ -76,6 +129,68 @@ export class ApiClient {
     return this.request<T>(path, { ...init, method: 'DELETE' });
   }
 
+  async signIn(email: string, password: string): Promise<IssuedTokens> {
+    return this.adopt(await this.sendTokenRequest('/api/auth/login', { email, password }));
+  }
+
+  async register(email: string, name: string, password: string): Promise<IssuedTokens> {
+    return this.adopt(await this.sendTokenRequest('/api/auth/register', { email, name, password }));
+  }
+
+  async me(): Promise<Account> {
+    const account = asAccount(await this.get<unknown>('/api/auth/me'));
+
+    if (account == null) {
+      throw new Error(
+        'The API answered /api/auth/me in a shape this client does not know. Check AccountController in services/api.',
+      );
+    }
+
+    return account;
+  }
+
+  async sessions(): Promise<DeviceSession[]> {
+    const sessions = asSessions(await this.get<unknown>('/api/auth/sessions'));
+
+    if (sessions == null) {
+      throw new Error(
+        'The API answered /api/auth/sessions in a shape this client does not know. Check AccountController in services/api.',
+      );
+    }
+
+    return sessions;
+  }
+
+  async endSession(id: string): Promise<void> {
+    await this.delete(`/api/auth/sessions/${encodeURIComponent(id)}`);
+  }
+
+  async signOut(): Promise<void> {
+    const body: Record<string, string> = { refreshTokenIn: this.delivery() };
+
+    if (this.delivery() === 'body') {
+      const token = await this.options.tokens?.refresh();
+      if (token != null && token !== '') body.refreshToken = token;
+    }
+
+    await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+    await this.options.tokens?.clear();
+  }
+
+  /** A 503 is an answer here — it names the dependency that is down — so it is not thrown. */
+  async health(): Promise<Health> {
+    const response = await this.send('/api/health', { method: 'GET', anonymous: true });
+    const health = asHealth(await response.json().catch(() => null));
+
+    if (health == null) {
+      throw new Error(
+        'The API answered /api/health in a shape this client does not know. Check HealthController in services/api.',
+      );
+    }
+
+    return health;
+  }
+
   private async send(path: string, init: RequestOptions): Promise<Response> {
     const doFetch = this.options.fetch ?? fetch;
     const headers: Record<string, string> = {
@@ -123,31 +238,67 @@ export class ApiClient {
     const store = this.options.tokens;
     if (store == null) return false;
 
-    const token = await store.refresh();
-    if (token == null || token === '') return false;
+    const body: Record<string, string> = { refreshTokenIn: this.delivery() };
 
-    const doFetch = this.options.fetch ?? fetch;
-    const response = await doFetch(this.url('/api/auth/refresh'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ refresh_token: token }),
-    }).catch(() => null);
+    if (this.delivery() === 'body') {
+      const token = await store.refresh();
+      if (token == null || token === '') return false;
+      body.refreshToken = token;
+    }
+
+    const response = await this.sendTokenRequest('/api/auth/refresh', body).catch(() => null);
 
     if (response == null || !response.ok) {
-      await store.clear();
-      this.options.onSignedOut?.();
+      await this.forgetSession();
       return false;
     }
 
-    const body = (await response.json()) as { data?: { access: string; refresh: string } };
-    if (body.data == null) {
-      await store.clear();
-      this.options.onSignedOut?.();
+    const issued = asIssuedTokens(await response.json().catch(() => null), this.delivery());
+
+    if (issued == null) {
+      await this.forgetSession();
       return false;
     }
 
-    await store.save(body.data);
+    await store.save(issued);
     return true;
+  }
+
+  private delivery(): RefreshTokenDelivery {
+    return this.options.refreshTokenIn ?? 'body';
+  }
+
+  /** `credentials: 'include'` only here: the cookie is scoped to /api/auth. */
+  private sendTokenRequest(path: string, body: Record<string, string>): Promise<Response> {
+    const doFetch = this.options.fetch ?? fetch;
+
+    return doFetch(this.url(path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...body, refreshTokenIn: this.delivery() }),
+      credentials: this.delivery() === 'cookie' ? 'include' : 'omit',
+    });
+  }
+
+  private async adopt(response: Response): Promise<IssuedTokens> {
+    if (!response.ok) throw new ApiError(await toProblem(response), response);
+
+    const issued = asIssuedTokens(await response.json(), this.delivery());
+
+    if (issued == null) {
+      throw new Error(
+        'The API answered without an access token. Check IssuedTokensResponse in services/api.',
+      );
+    }
+
+    await this.options.tokens?.save(issued);
+
+    return issued;
+  }
+
+  private async forgetSession(): Promise<void> {
+    await this.options.tokens?.clear();
+    this.options.onSignedOut?.();
   }
 
   private url(path: string, query?: RequestOptions['query']): string {
@@ -160,4 +311,135 @@ export class ApiClient {
 
     return url.toString();
   }
+}
+
+/** The primary address, which is the only one sign-in matches. */
+export function primaryEmailAddress(account: Account): string | null {
+  return account.emailAddresses.find((address) => address.primary)?.address ?? null;
+}
+
+function asAccount(raw: unknown): Account | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (typeof candidate.id !== 'string' || candidate.id === '') return null;
+  if (typeof candidate.name !== 'string') return null;
+  if (!Array.isArray(candidate.emailAddresses) || !Array.isArray(candidate.phoneNumbers)) {
+    return null;
+  }
+
+  const emailAddresses: LinkedAddress[] = [];
+
+  for (const value of candidate.emailAddresses) {
+    const address = value as Record<string, unknown>;
+
+    if (typeof address?.address !== 'string' || typeof address.id !== 'string') return null;
+
+    emailAddresses.push({
+      id: address.id,
+      address: address.address,
+      verified: address.verified === true,
+      primary: address.primary === true,
+    });
+  }
+
+  const phoneNumbers: LinkedPhone[] = [];
+
+  for (const value of candidate.phoneNumbers) {
+    const phone = value as Record<string, unknown>;
+
+    if (typeof phone?.number !== 'string' || typeof phone.id !== 'string') return null;
+
+    phoneNumbers.push({
+      id: phone.id,
+      number: phone.number,
+      verified: phone.verified === true,
+      primary: phone.primary === true,
+    });
+  }
+
+  return {
+    id: candidate.id,
+    name: candidate.name,
+    businessName: typeof candidate.businessName === 'string' ? candidate.businessName : null,
+    countryCode: typeof candidate.countryCode === 'string' ? candidate.countryCode : null,
+    locale: typeof candidate.locale === 'string' ? candidate.locale : null,
+    verified: candidate.verified === true,
+    complete: candidate.complete === true,
+    emailAddresses,
+    phoneNumbers,
+  };
+}
+
+function asSessions(raw: unknown): DeviceSession[] | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const listed = (raw as Record<string, unknown>).sessions;
+
+  if (!Array.isArray(listed)) return null;
+
+  const sessions: DeviceSession[] = [];
+
+  for (const value of listed) {
+    const session = value as Record<string, unknown>;
+
+    if (typeof session?.id !== 'string' || session.id === '') return null;
+    if (typeof session.startedAt !== 'string' || typeof session.expiresAt !== 'string') return null;
+
+    sessions.push({
+      id: session.id,
+      userAgent: typeof session.userAgent === 'string' ? session.userAgent : null,
+      ipAddress: typeof session.ipAddress === 'string' ? session.ipAddress : null,
+      startedAt: session.startedAt,
+      renewedAt: typeof session.renewedAt === 'string' ? session.renewedAt : session.startedAt,
+      expiresAt: session.expiresAt,
+    });
+  }
+
+  return sessions;
+}
+
+function asHealth(raw: unknown): Health | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (typeof candidate.status !== 'string' || candidate.status === '') return null;
+  if (typeof candidate.checks !== 'object' || candidate.checks == null) return null;
+
+  const checks: Health['checks'] = {};
+
+  for (const [name, value] of Object.entries(candidate.checks)) {
+    if (typeof value !== 'object' || value == null) return null;
+
+    const check = value as Record<string, unknown>;
+
+    if (typeof check.status !== 'string') return null;
+
+    checks[name] = {
+      status: check.status,
+      ...(typeof check.error === 'string' ? { error: check.error } : {}),
+    };
+  }
+
+  return { status: candidate.status, checks };
+}
+
+function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTokens | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Partial<Record<keyof IssuedTokens, unknown>>;
+
+  if (typeof candidate.accessToken !== 'string' || candidate.accessToken === '') return null;
+
+  if (delivery === 'body' && typeof candidate.refreshToken !== 'string') return null;
+
+  return {
+    accessToken: candidate.accessToken,
+    ...(typeof candidate.refreshToken === 'string' ? { refreshToken: candidate.refreshToken } : {}),
+    refreshExpiresAt:
+      typeof candidate.refreshExpiresAt === 'string' ? candidate.refreshExpiresAt : '',
+    sessionId: typeof candidate.sessionId === 'string' ? candidate.sessionId : '',
+  };
 }

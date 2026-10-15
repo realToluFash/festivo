@@ -37,6 +37,13 @@ security:
         # like ^/api/auth would make the next endpoint added under it public by
         # default, which is the wrong direction for a mistake to fall.
         - { path: ^/api/auth/register$, roles: PUBLIC_ACCESS }
+        # Sign-in and refresh are how somebody gets a token, so they cannot
+        # require one. Logout is public too: it takes the refresh token in the
+        # body, and refusing it on an expired access token would leave a
+        # session nobody can end.
+        - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/refresh$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/logout$, roles: PUBLIC_ACCESS }
         - { path: ^/api/health$, roles: PUBLIC_ACCESS }
         - { path: ^/api/docs, roles: PUBLIC_ACCESS }
         - { path: ^/api/\.well-known, roles: PUBLIC_ACCESS }

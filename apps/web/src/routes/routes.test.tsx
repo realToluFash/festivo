@@ -1,8 +1,17 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
+
+const ADA: Session = {
+  name: 'Ada Okonkwo',
+  email: 'ada@example.com',
+  organisation: { id: 'org_1', name: 'Okonkwo Events' },
+  organisations: [{ id: 'org_1', name: 'Okonkwo Events' }],
+  permissions: ['events.view', 'guests.view'],
+};
 
 /**
  * The shell, through the router, at the addresses people actually open.
@@ -19,6 +28,8 @@ function at(path: string) {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  // A module-level store: one test's session is the next test's unless it is put back.
+  __setSessionState({ status: 'unknown' });
 });
 
 describe('the public tree', () => {
@@ -43,6 +54,10 @@ describe('the public tree', () => {
 });
 
 describe('the application tree', () => {
+  beforeEach(() => {
+    __setSessionState({ status: 'signedIn', session: ADA });
+  });
+
   it('renders the shell with navigation and the organisation', () => {
     at('/app');
 
@@ -65,6 +80,35 @@ describe('the application tree', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined();
   });
 
+  it('sends somebody with no session to sign in, saying nothing about being signed out', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+
+    at('/app');
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+    );
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('says they were signed out when a session was lost on the way', async () => {
+    __setSessionState({ status: 'signedOut', ended: true });
+
+    at('/app');
+
+    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/signed out/i));
+  });
+
+  it('waits rather than redirecting while the session is being checked', async () => {
+    __setSessionState({ status: 'unknown' });
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+
+    at('/app');
+
+    await waitFor(() => expect(screen.getByText('Loading…')).toBeDefined());
+    expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
+  });
+
   it('keeps the shell usable when a screen throws', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -76,7 +120,7 @@ describe('the application tree', () => {
       [
         {
           path: '/app',
-          element: routes[2]!.element,
+          element: routes.find((route) => route.path === '/app')!.element,
           children: [{ index: true, element: <Boom /> }],
         },
       ],
@@ -144,6 +188,26 @@ describe('the status page', () => {
 
     await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
     expect(String(fetchSpy.mock.calls[0]?.[0])).toBe('http://api.test/api/health');
+  });
+
+  it('shows a degraded API as degraded rather than as unreachable', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 'degraded',
+          checks: { postgres: { status: 'ok' }, redis: { status: 'error' } },
+        }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+
+    at('/status');
+
+    await waitFor(() =>
+      expect(screen.getByText('Some services are not responding.')).toBeDefined(),
+    );
+    expect(screen.getByText('redis')).toBeDefined();
+    expect(screen.queryByText('The API could not be reached.')).toBeNull();
   });
 
   it('says so when the API cannot be reached, and offers a retry', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { ApiClient, type TokenStore } from './client.ts';
+import { ApiClient, type IssuedTokens, type TokenStore, primaryEmailAddress } from './client.ts';
 import { ApiError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
@@ -22,13 +22,27 @@ function store(access: string | null, refresh: string | null): TokenStore & { sa
     refresh: () => refresh,
     save(tokens) {
       this.saved = tokens;
-      access = tokens.access;
+      access = tokens.accessToken;
+      refresh = tokens.refreshToken ?? null;
     },
     clear() {
       access = null;
       refresh = null;
     },
   };
+}
+
+function issued(overrides: Record<string, unknown> = {}): Response {
+  return new Response(
+    JSON.stringify({
+      accessToken: 'fresh',
+      refreshToken: 'next',
+      refreshExpiresAt: '2026-11-14T00:00:00+00:00',
+      sessionId: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
+      ...overrides,
+    }),
+    { status: 200 },
+  );
 }
 
 describe('errors arrive as problem documents', () => {
@@ -107,11 +121,7 @@ describe('the session refreshes without signing anybody out', () => {
       tokens,
       fetch: async (input) => {
         const url = String(input);
-        if (url.includes('/auth/refresh')) {
-          return new Response(JSON.stringify({ data: { access: 'fresh', refresh: 'next' } }), {
-            status: 200,
-          });
-        }
+        if (url.includes('/auth/refresh')) return issued();
         call += 1;
         return call === 1
           ? problem(401, 'unauthenticated')
@@ -121,7 +131,7 @@ describe('the session refreshes without signing anybody out', () => {
 
     await expect(client.get('/api/auth/me')).resolves.toEqual({ ok: true });
     expect(call).toBe(2);
-    expect(tokens.saved).toEqual({ access: 'fresh', refresh: 'next' });
+    expect(tokens.saved).toMatchObject({ accessToken: 'fresh', refreshToken: 'next' });
   });
 
   /**
@@ -142,9 +152,7 @@ describe('the session refreshes without signing anybody out', () => {
         if (String(input).includes('/auth/refresh')) {
           refreshes += 1;
           await new Promise((r) => setTimeout(r, 10));
-          return new Response(JSON.stringify({ data: { access: 'fresh', refresh: 'next' } }), {
-            status: 200,
-          });
+          return issued();
         }
         served += 1;
         return served <= 4
@@ -263,5 +271,314 @@ describe('request building', () => {
     });
 
     await expect(client.delete('/api/guests/1')).resolves.toBeUndefined();
+  });
+});
+
+describe('a browser never holds the refresh token', () => {
+  test('refreshing sends no token of its own and lets the cookie travel', async () => {
+    const tokens = store('expired', null);
+    let body: unknown = null;
+    let credentials: string | undefined;
+    let served = 0;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async (input, init) => {
+        if (String(input).includes('/auth/refresh')) {
+          body = JSON.parse(String(init?.body));
+          credentials = init?.credentials;
+          return issued({ refreshToken: undefined });
+        }
+        served += 1;
+        return served === 1
+          ? problem(401, 'unauthenticated')
+          : new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await expect(client.get('/api/auth/me')).resolves.toEqual({ ok: true });
+
+    expect(body).toEqual({ refreshTokenIn: 'cookie' });
+    expect(credentials).toBe('include');
+  });
+
+  test('a response with no refresh token is the expected one, not a failure', async () => {
+    const tokens = store('expired', null);
+    const onSignedOut = vi.fn();
+    let served = 0;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      onSignedOut,
+      fetch: async (input) => {
+        if (String(input).includes('/auth/refresh')) return issued({ refreshToken: undefined });
+        served += 1;
+        return served === 1
+          ? problem(401, 'unauthenticated')
+          : new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    });
+
+    await client.get('/api/auth/me');
+
+    expect(onSignedOut).not.toHaveBeenCalled();
+    expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+    expect((tokens.saved as IssuedTokens).refreshToken).toBeUndefined();
+  });
+
+  test('the same response in body mode ends the session', async () => {
+    const tokens = store('expired', 'present');
+    const onSignedOut = vi.fn();
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      onSignedOut,
+      fetch: async (input) =>
+        String(input).includes('/auth/refresh')
+          ? issued({ refreshToken: undefined })
+          : problem(401, 'unauthenticated'),
+    });
+
+    await client.get('/api/auth/me').catch(() => undefined);
+
+    expect(onSignedOut).toHaveBeenCalledTimes(1);
+  });
+
+  test('the cookie is not attached to ordinary requests', async () => {
+    const seen: (string | undefined)[] = [];
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      refreshTokenIn: 'cookie',
+      fetch: async (_input, init) => {
+        seen.push(init?.credentials);
+        return new Response('{}', { status: 200 });
+      },
+    });
+
+    await client.get('/api/guests');
+
+    expect(seen).toEqual([undefined]);
+  });
+
+  test('signing in saves what came back and says where it wants the token', async () => {
+    const tokens = store(null, null);
+    let body: unknown = null;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async (_input, init) => {
+        body = JSON.parse(String(init?.body));
+        return issued({ refreshToken: undefined });
+      },
+    });
+
+    const result = await client.signIn('ada@example.com', 'a decent passphrase');
+
+    expect(body).toMatchObject({ email: 'ada@example.com', refreshTokenIn: 'cookie' });
+    expect(result.accessToken).toBe('fresh');
+    expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+  });
+
+  test('a sign-in the API refuses rejects with the code and saves nothing', async () => {
+    const tokens = store(null, null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => problem(401, 'invalid_credentials'),
+    });
+
+    await expect(client.signIn('ada@example.com', 'wrong')).rejects.toThrow(ApiError);
+    expect(tokens.saved).toBeNull();
+  });
+
+  test('signing out clears the session even when the request fails', async () => {
+    const tokens = store('good', null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => {
+        throw new Error('offline');
+      },
+    });
+
+    await client.signOut();
+
+    expect(await tokens.access()).toBeNull();
+  });
+});
+
+function health(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+describe('the health endpoint', () => {
+  function client(response: Response) {
+    return new ApiClient({ baseUrl: () => 'http://api.test', fetch: async () => response });
+  }
+
+  test('reads the object the API sends', async () => {
+    const answered = await client(
+      health({
+        application: 'soirely-api',
+        environment: 'dev',
+        status: 'ok',
+        checks: { postgres: { status: 'ok' }, redis: { status: 'ok' } },
+      }),
+    ).health();
+
+    expect(answered.status).toBe('ok');
+    expect(Object.keys(answered.checks)).toEqual(['postgres', 'redis']);
+  });
+
+  test('a degraded API answering 503 is an answer rather than a failure', async () => {
+    const answered = await client(
+      health(
+        {
+          status: 'degraded',
+          checks: {
+            postgres: { status: 'ok' },
+            redis: { status: 'error', error: 'connection refused' },
+          },
+        },
+        503,
+      ),
+    ).health();
+
+    expect(answered.status).toBe('degraded');
+    expect(answered.checks.redis).toEqual({ status: 'error', error: 'connection refused' });
+  });
+
+  test('refuses the envelope it used to answer in, naming where to look', async () => {
+    await expect(
+      client(health({ success: true, data: { status: 'ok', checks: {} } })).health(),
+    ).rejects.toThrow(/HealthController/);
+  });
+
+  test('refuses a check that carries no status', async () => {
+    await expect(
+      client(health({ status: 'ok', checks: { postgres: { state: 'ok' } } })).health(),
+    ).rejects.toThrow(/shape this client does not know/);
+  });
+});
+
+/**
+ * What AccountController sends. Written from the controller rather than from
+ * memory, which is the whole lesson of the two shape mismatches above.
+ */
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+const ACCOUNT = {
+  id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
+  name: 'Folake Ire',
+  businessName: 'Ire Events',
+  countryCode: 'NG',
+  locale: 'en',
+  verified: true,
+  complete: true,
+  emailAddresses: [
+    { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
+    { id: 'a2', address: 'folake@example.com', verified: false, primary: false },
+  ],
+  phoneNumbers: [],
+};
+
+describe('who is signed in', () => {
+  function client(response: Response) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      fetch: async () => response,
+    });
+  }
+
+  test('reads the account the API sends', async () => {
+    const account = await client(json(ACCOUNT)).me();
+
+    expect(account.name).toBe('Folake Ire');
+    expect(account.businessName).toBe('Ire Events');
+    expect(account.emailAddresses).toHaveLength(2);
+  });
+
+  test('the primary address is the one identified by its flag', () => {
+    const reversed = [...ACCOUNT.emailAddresses].reverse();
+
+    expect(primaryEmailAddress({ ...ACCOUNT, emailAddresses: reversed })).toBe('folake@ire.events');
+  });
+
+  test('refuses a shape it does not know, naming where to look', async () => {
+    await expect(client(json({ data: ACCOUNT })).me()).rejects.toThrow(/AccountController/);
+  });
+});
+
+describe('the sessions an account has', () => {
+  const SESSION = {
+    id: '018f3a4c-0000-7c3d-9e1f-2a3b4c5d6e7f',
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/141.0.0.0 Safari/537.36',
+    ipAddress: '102.89.33.14',
+    startedAt: '2026-10-15T08:40:00+00:00',
+    renewedAt: '2026-10-15T08:40:00+00:00',
+    expiresAt: '2026-11-14T08:40:00+00:00',
+  };
+
+  function client(response: Response, seen: string[] = []) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      fetch: async (url, init) => {
+        seen.push(`${init?.method ?? 'GET'} ${String(url)}`);
+
+        return response;
+      },
+    });
+  }
+
+  test('reads the list out of the object it arrives in', async () => {
+    const sessions = await client(json({ sessions: [SESSION] })).sessions();
+
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.ipAddress).toBe('102.89.33.14');
+  });
+
+  /** A client that named itself nothing is a row that says so, not a crash. */
+  test('keeps an absent user agent as nothing rather than inventing one', async () => {
+    const sessions = await client(
+      json({ sessions: [{ ...SESSION, userAgent: null, ipAddress: null }] }),
+    ).sessions();
+
+    expect(sessions[0]?.userAgent).toBeNull();
+    expect(sessions[0]?.ipAddress).toBeNull();
+  });
+
+  test('refuses a bare array, which is not what the endpoint sends', async () => {
+    await expect(client(json([SESSION])).sessions()).rejects.toThrow(/AccountController/);
+  });
+
+  test('ends one by id, with the id in the path', async () => {
+    const seen: string[] = [];
+
+    await client(new Response(null, { status: 204 }), seen).endSession(SESSION.id);
+
+    expect(seen).toEqual([`DELETE http://api.test/api/auth/sessions/${SESSION.id}`]);
   });
 });

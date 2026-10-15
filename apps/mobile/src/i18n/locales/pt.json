@@ -5,7 +5,10 @@
   "home": {
     "title": "Soirely",
     "subtitle": "A noite, a partir do seu bolso.",
-    "openLayouts": "Demonstração de disposições"
+    "openSignIn": "Iniciar sessão",
+    "openLayouts": "Demonstração de disposições",
+    "signedInAs": "Sessão iniciada como {{name}}",
+    "signOut": "Encerrar sessão"
   },
   "status": {
     "title": "Estado do serviço",
@@ -34,5 +37,28 @@
     "detailPane": "Detalhe",
     "itemCount_one": "{{count}} item",
     "itemCount_other": "{{count}} itens"
+  },
+  "signIn": {
+    "title": "Iniciar sessão",
+    "landscapeIntro": "Com o seu e-mail e a sua palavra-passe. O seu idioma acompanha-o em todos os dispositivos.",
+    "email": "Endereço de e-mail",
+    "password": "Palavra-passe",
+    "reveal": "Mostrar",
+    "conceal": "Ocultar",
+    "submit": "Iniciar sessão",
+    "submitting": "A iniciar sessão…",
+    "lockedUntil": "Tente novamente às {{time}}",
+    "refused": "Esse e-mail e essa palavra-passe não correspondem. Verifique ambos ou redefina a sua palavra-passe.",
+    "endedTitle": "A sua sessão foi encerrada",
+    "endedBody": "Inicie sessão novamente para continuar.",
+    "lockedTitle": "Demasiadas tentativas",
+    "lockedBody": "Tente novamente às {{time}} ou redefina a sua palavra-passe agora e inicie sessão imediatamente depois.",
+    "or": "ou",
+    "withGoogle": "Continuar com {{provider}}",
+    "withApple": "Continuar com {{provider}}",
+    "providerFailedTitle": "O início de sessão com {{provider}} não funcionou",
+    "providerFailedBody": "Nada foi alterado. Tente novamente com {{provider}} ou inicie sessão com o seu e-mail e a sua palavra-passe.",
+    "failedTitle": "Não foi possível iniciar sessão",
+    "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento."
   }
 }

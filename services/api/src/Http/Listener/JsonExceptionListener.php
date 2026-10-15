@@ -69,6 +69,12 @@ final readonly class JsonExceptionListener
 
         $response = new JsonResponse($problem, $code->status());
         $response->headers->set('Content-Type', 'application/problem+json');
+
+        if ($e instanceof ApiException) {
+            foreach ($e->headers as $name => $value) {
+                $response->headers->set($name, $value);
+            }
+        }
         $event->setResponse($response);
     }
 
