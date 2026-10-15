@@ -112,8 +112,48 @@ data:
   produces a diff that recreates tables that already exist. Run `just migrate-database-dev`
   first, then diff.
 
-`just diff-database` shows what a migration would contain without writing one. Read that,
-then `just new-migration` and write the file.
+`just diff-database` prints the SQL the mapping implies and writes nothing — it is
+`doctrine:schema:update --dump-sql`. Read that first.
+
+`just new-migration` is `doctrine:migrations:diff`, and it **writes a file**. There is no
+flag that makes it print instead, which is worth knowing before you run it to "have a look":
+you now have a migration on disk whether or not you wanted one. What it writes is a starting
+point — one `addSql` per statement, the whole `CREATE TABLE` on one line, an empty
+`getDescription()` and a comment telling you to modify it. Rewrite the SQL into a nowdoc,
+write the description, and check the diff is not a drop-and-create standing in for a
+rename.
+
+## A partial index has to be declared on the entity too
+
+PostgreSQL's partial unique index is the right tool for "exactly one primary address per
+user": it constrains the rows where the flag is true and says nothing about the others.
+
+```sql
+CREATE UNIQUE INDEX uniq_primary_email_per_user
+    ON email_addresses (user_id)
+    WHERE is_primary
+```
+
+**But a migration is not the only place it has to exist.** Doctrine compares the mapping
+against the database, so an index the mapping does not know about is an index
+`doctrine:schema:validate` reports as something to drop — on every run, forever, which
+trains everybody to ignore a check that is supposed to mean something.
+
+Declare it on the entity, through `options`:
+
+```php
+#[ORM\UniqueConstraint(
+    name: 'uniq_primary_email_per_user',
+    columns: ['user_id'],
+    options: ['where' => 'is_primary'],
+)]
+```
+
+**Write the expression exactly as PostgreSQL stores it, with no brackets.** Declaring
+`'(is_primary)'` leaves the comparator emitting a drop and a create of the same index with
+the same definition, because it compares the string rather than the predicate. `just
+diff-database` shows that immediately: an identical `DROP INDEX` / `CREATE INDEX` pair is
+this, not a real difference.
 
 ## Editing a migration that has already run
 

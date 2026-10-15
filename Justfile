@@ -59,6 +59,14 @@ rebuild-api:
 shell:
     {{COMPOSE}} exec api sh
 
+# Gitignored, so each environment signs with its own. Safe to re-run: it skips
+# an existing pair rather than replacing it, which would invalidate every token
+# already issued.
+#
+# Generate the JWT signing keypair.
+keypair:
+    {{CONSOLE}} lexik:jwt:generate-keypair --skip-if-exists
+
 # A psql prompt on the development database.
 psql:
     {{COMPOSE}} exec postgres psql -U soirely -d soirely
@@ -91,13 +99,15 @@ prepare-database-test:
 # Read this before generating a migration: a diff cannot tell a rename from a
 # drop and a create, and emits the destructive pair.
 #
-# Show what a migration would contain, without writing one.
+# Print the SQL the mapping implies, writing nothing.
 diff-database:
-    {{CONSOLE}} doctrine:migrations:diff --no-interaction
+    {{CONSOLE}} doctrine:schema:update --dump-sql
 
-# Generate an empty migration to write by hand.
+# Generate a migration from the mapping. It WRITES a file — read it, rewrite the
+# SQL into a nowdoc, and check it is not a drop-and-create standing in for a
+# rename. See the writing-migrations skill.
 new-migration:
-    {{CONSOLE}} make:migration --no-interaction
+    {{CONSOLE}} doctrine:migrations:diff --no-interaction
 
 # Does the mapping agree with the schema the migrations produced?
 validate-database:
