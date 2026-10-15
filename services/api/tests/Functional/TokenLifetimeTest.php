@@ -36,8 +36,23 @@ final class TokenLifetimeTest extends FunctionalTestCase
     {
         $ttl = (int) self::getContainer()->getParameter('lexik_jwt_authentication.token_ttl');
 
-        self::assertSame('P30D', RefreshToken::LIFETIME);
-        self::assertGreaterThan($ttl * 100, 30 * 24 * 60 * 60);
+        self::assertGreaterThan($ttl * 100, self::refreshTokenTtl());
+    }
+
+    #[Test]
+    public function aSessionExpiresWhenTheConfiguredLifetimeSays(): void
+    {
+        $before = \time();
+        self::service(UserRegistrar::class)->register('configured@example.com', 'Configured', self::PASSWORD);
+        self::em()->flush();
+
+        $token = self::service(RefreshTokenRepository::class)->findAll()[0];
+
+        self::assertEqualsWithDelta(
+            $before + self::refreshTokenTtl(),
+            $token->getExpiresAt()->getTimestamp(),
+            5,
+        );
     }
 
     #[Test]
@@ -55,6 +70,7 @@ final class TokenLifetimeTest extends FunctionalTestCase
         $next = new RefreshToken(
             $first->getUser(),
             TokenIssuer::hash('a later token in the same chain'),
+            $first->getExpiresAt(),
             $first->getChainId(),
         );
         self::em()->persist($next);
@@ -80,5 +96,13 @@ final class TokenLifetimeTest extends FunctionalTestCase
             $token->getCreatedAt()->format('Y-m-d H:i'),
             $token->getChainStartedAt()->format('Y-m-d H:i'),
         );
+    }
+
+    private static function refreshTokenTtl(): int
+    {
+        $ttl = self::getContainer()->getParameter('app.refresh_token_ttl');
+        self::assertIsInt($ttl);
+
+        return $ttl;
     }
 }

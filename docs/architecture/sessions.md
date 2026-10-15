@@ -149,6 +149,19 @@ the first request after a reload goes out unauthenticated, comes back `401`, and
 `ApiClient` renews from the cookie and retries it. One wasted request per page load and no
 sign-in screen, which is the right way round.
 
+## Lifetimes
+
+Both are configuration in `services/api/.env`, in seconds:
+
+| Variable            | Default   | What it bounds                                                          |
+| ------------------- | --------- | ----------------------------------------------------------------------- |
+| `JWT_TOKEN_TTL`     | `900`     | how long an ended session keeps working; see the next section           |
+| `REFRESH_TOKEN_TTL` | `2592000` | how long a device may go unused before it has to sign in again, 30 days |
+
+A refresh issues a new token with the full lifetime, so a device in use never expires.
+Lowering `REFRESH_TOKEN_TTL` applies to tokens issued from then on; rows already stored
+keep the expiry they were issued with.
+
 ## The access token's fifteen minutes
 
 Ending a session cannot take effect sooner than the access token in hand expires, because
