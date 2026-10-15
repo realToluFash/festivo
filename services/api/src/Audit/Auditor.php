@@ -14,8 +14,8 @@ use Symfony\Component\Uid\Uuid;
 final readonly class Auditor
 {
     public function __construct(
-        private EntityManagerInterface $em,
-        private RequestStack $requests,
+        private EntityManagerInterface $entityManager,
+        private RequestStack $requestStack,
     ) {
     }
 
@@ -29,7 +29,7 @@ final readonly class Auditor
         ?string $actorLabel = null,
         array $changes = [],
     ): AuditEntry {
-        $request = $this->requests->getCurrentRequest();
+        $request = $this->requestStack->getCurrentRequest();
 
         $entry = new AuditEntry(
             $actorType,
@@ -43,7 +43,7 @@ final readonly class Auditor
             $this->correlationId($request),
         );
 
-        $this->em->persist($entry);
+        $this->entityManager->persist($entry);
 
         return $entry;
     }

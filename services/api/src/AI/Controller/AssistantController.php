@@ -8,7 +8,7 @@ use App\AI\Availability;
 use App\AI\Exception\AssistantFailed;
 use App\AI\Exception\AssistantRefused;
 use App\AI\Exception\AssistantUnavailable;
-use App\AI\Interactions;
+use App\AI\InteractionRecorder;
 use App\AI\Interfaces\AssistantInterface;
 use App\AI\Model\Ask;
 use App\AI\Model\ToolDefinition;
@@ -40,8 +40,8 @@ final class AssistantController
         private readonly AssistantInterface $assistant,
         private readonly Availability $availability,
         private readonly SystemPrompt $systemPrompt,
-        private readonly Interactions $interactions,
-        private readonly EntityManagerInterface $em,
+        private readonly InteractionRecorder $interactions,
+        private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
         private readonly RateLimiterFactoryInterface $assistantChatLimiter,
     ) {
@@ -72,14 +72,14 @@ final class AssistantController
             throw $this->recordAndRethrow(
                 $ask,
                 $prompt,
-                Interactions::UNAVAILABLE,
+                InteractionRecorder::UNAVAILABLE,
                 new ApiException(ErrorCode::AssistantBusy, 'The assistant is busy. Please try again.', [], $e),
             );
         } catch (AssistantRefused $e) {
             throw $this->recordAndRethrow(
                 $ask,
                 $prompt,
-                Interactions::REFUSED,
+                InteractionRecorder::REFUSED,
                 new ApiException(ErrorCode::AssistantRefused, 'The assistant would not answer that.', [], $e),
             );
         } catch (AssistantFailed $e) {
@@ -88,13 +88,13 @@ final class AssistantController
             throw $this->recordAndRethrow(
                 $ask,
                 $prompt,
-                Interactions::FAILED,
+                InteractionRecorder::FAILED,
                 new ApiException(ErrorCode::InternalError, 'The assistant could not answer.', [], $e),
             );
         }
 
-        $this->interactions->record($ask, $this->assistant, $prompt, Interactions::outcomeOf($answer), $answer);
-        $this->em->flush();
+        $this->interactions->record($ask, $this->assistant, $prompt, InteractionRecorder::outcomeOf($answer), $answer);
+        $this->entityManager->flush();
 
         return new JsonResponse([
             'success' => true,
@@ -248,7 +248,7 @@ final class AssistantController
     private function recordAndRethrow(Ask $ask, array $prompt, string $outcome, ApiException $e): ApiException
     {
         $this->interactions->record($ask, $this->assistant, $prompt, $outcome);
-        $this->em->flush();
+        $this->entityManager->flush();
 
         return $e;
     }

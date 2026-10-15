@@ -15,14 +15,14 @@ final class LoggingTranslator implements TranslatorInterface, LocaleAwareInterfa
     private array $reported = [];
 
     public function __construct(
-        private readonly TranslatorInterface $inner,
+        private readonly TranslatorInterface $innerTranslator,
         private readonly LoggerInterface $logger,
     ) {
     }
 
     public function trans(string $id, array $parameters = [], ?string $domain = null, ?string $locale = null): string
     {
-        $translated = $this->inner->trans($id, $parameters, $domain, $locale);
+        $translated = $this->innerTranslator->trans($id, $parameters, $domain, $locale);
 
         if ($translated === $id && '' !== $id) {
             $this->report($id, $domain, $locale ?? $this->getLocale());
@@ -33,15 +33,15 @@ final class LoggingTranslator implements TranslatorInterface, LocaleAwareInterfa
 
     public function getLocale(): string
     {
-        return $this->inner instanceof LocaleAwareInterface
-            ? $this->inner->getLocale()
+        return $this->innerTranslator instanceof LocaleAwareInterface
+            ? $this->innerTranslator->getLocale()
             : Locale::getDefault();
     }
 
     public function setLocale(string $locale): void
     {
-        if ($this->inner instanceof LocaleAwareInterface) {
-            $this->inner->setLocale($locale);
+        if ($this->innerTranslator instanceof LocaleAwareInterface) {
+            $this->innerTranslator->setLocale($locale);
         }
     }
 

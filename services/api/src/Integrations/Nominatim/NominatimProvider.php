@@ -20,7 +20,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 final readonly class NominatimProvider implements AddressProviderInterface
 {
     public function __construct(
-        private HttpClientInterface $http,
+        private HttpClientInterface $httpClient,
         private LoggerInterface $logger,
         private string $endpoint = 'https://nominatim.openstreetmap.org',
         // Identifying yourself is in OpenStreetMap's usage policy. Not decoration.
@@ -129,7 +129,7 @@ final readonly class NominatimProvider implements AddressProviderInterface
     private function call(string $path, array $params): array
     {
         try {
-            $response = $this->http->request('GET', $this->endpoint . $path, [
+            $response = $this->httpClient->request('GET', $this->endpoint . $path, [
                 'query' => $params,
                 'headers' => ['User-Agent' => $this->userAgent, 'Accept' => 'application/json'],
                 'timeout' => 5,

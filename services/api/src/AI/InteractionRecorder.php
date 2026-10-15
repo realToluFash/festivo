@@ -14,7 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 use Psl\Vec;
 
-final readonly class Interactions
+final readonly class InteractionRecorder
 {
     public const ANSWERED = 'answered';
     public const TOOL_CALL = 'tool_call';
@@ -24,7 +24,7 @@ final readonly class Interactions
 
     private const RESPONSE_LIMIT = 2000;
 
-    public function __construct(private EntityManagerInterface $em)
+    public function __construct(private EntityManagerInterface $entityManager)
     {
     }
 
@@ -47,7 +47,7 @@ final readonly class Interactions
             model: $assistant->model(),
             locale: $ask->locale,
             outcome: $outcome,
-            systemPrompt: \implode("\n\n", [...$prompt['cacheable'], ...$prompt['perRequest']]),
+            systemPrompt: Str\join([...$prompt['cacheable'], ...$prompt['perRequest']], "\n\n"),
             userPrompt: $ask->lastUserMessage(),
             resourceContext: $ask->resourceContext,
             toolsOffered: Vec\map($ask->tools, static fn (ToolDefinition $t): string => $t->name),
@@ -57,7 +57,7 @@ final readonly class Interactions
             outputTokens: $answer?->outputTokens ?? 0,
         );
 
-        $this->em->persist($interaction);
+        $this->entityManager->persist($interaction);
 
         return $interaction;
     }

@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class HealthController extends AbstractController
 {
     public function __construct(
-        private readonly HealthChecker $health,
+        private readonly HealthChecker $healthChecker,
         private readonly string $appEnv,
     ) {
     }
@@ -20,7 +20,7 @@ final class HealthController extends AbstractController
     #[Route('/api/health', name: 'health', methods: ['GET'])]
     public function __invoke(): JsonResponse
     {
-        $result = $this->health->check();
+        $result = $this->healthChecker->check();
 
         $status = 'ok' === $result['status']
             ? JsonResponse::HTTP_OK

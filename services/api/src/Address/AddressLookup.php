@@ -17,7 +17,7 @@ final readonly class AddressLookup
     public const MIN_QUERY_LENGTH = 3;
 
     public function __construct(
-        private AddressProviderInterface $provider,
+        private AddressProviderInterface $addressProvider,
         private CacheInterface $cache,
         private int $suggestTtlSeconds = 3600,
         private int $resolveTtlSeconds = 86400,
@@ -38,7 +38,7 @@ final readonly class AddressLookup
             function (ItemInterface $item) use ($trimmed, $countryCode): array {
                 $item->expiresAfter($this->suggestTtlSeconds);
 
-                return $this->provider->suggest($trimmed, $countryCode);
+                return $this->addressProvider->suggest($trimmed, $countryCode);
             },
         );
     }
@@ -51,7 +51,7 @@ final readonly class AddressLookup
             function (ItemInterface $item) use ($id): Address {
                 $item->expiresAfter($this->resolveTtlSeconds);
 
-                return $this->provider->resolve($id);
+                return $this->addressProvider->resolve($id);
             },
         );
     }

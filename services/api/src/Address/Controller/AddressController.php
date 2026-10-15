@@ -20,7 +20,7 @@ use Throwable;
 final class AddressController
 {
     public function __construct(
-        private readonly AddressLookup $lookup,
+        private readonly AddressLookup $addressLookup,
         private readonly RateLimiterFactoryInterface $addressLookupLimiter,
     ) {
     }
@@ -36,7 +36,7 @@ final class AddressController
         ]));
 
         try {
-            $suggestions = $this->lookup->suggest($input['q'] ?? '', $input['country'] ?? null);
+            $suggestions = $this->addressLookup->suggest($input['q'] ?? '', $input['country'] ?? null);
         } catch (ProviderUnavailable $e) {
             throw $this->unavailable($e);
         }
@@ -53,7 +53,7 @@ final class AddressController
         $this->limit($request);
 
         try {
-            $address = $this->lookup->resolve($id);
+            $address = $this->addressLookup->resolve($id);
         } catch (AddressNotFound $e) {
             throw new ApiException(ErrorCode::NotFound, 'No address with that id.', [], $e);
         } catch (ProviderUnavailable $e) {
