@@ -81,7 +81,9 @@
     "withGoogle": "Continuar con {{provider}}",
     "withApple": "Continuar con {{provider}}",
     "providerFailedTitle": "El inicio de sesión con {{provider}} no ha funcionado",
-    "providerFailedBody": "No se ha cambiado nada. Vuelva a intentarlo con {{provider}} o inicie sesión con su correo electrónico y su contraseña."
+    "providerFailedBody": "No se ha cambiado nada. Vuelva a intentarlo con {{provider}} o inicie sesión con su correo electrónico y su contraseña.",
+    "failedTitle": "No se ha podido iniciar sesión",
+    "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento."
   },
   "account": {
     "title": "Su cuenta"
@@ -105,6 +107,14 @@
     "end": "Cerrar su sesión",
     "keep": "Mantener la sesión",
     "ended": "{{name}} ha quedado sin sesión.",
-    "delay": "Puede seguir funcionando hasta 15 minutos mientras esto le llega; después tendrá que iniciar sesión de nuevo."
+    "delay": "Puede seguir funcionando hasta 15 minutos mientras esto le llega; después tendrá que iniciar sesión de nuevo.",
+    "agent": "{{browser}} en {{platform}}",
+    "dayAtTime": "{{day}} a las {{time}}",
+    "unknownDevice": "Un dispositivo que no se identificó",
+    "unknownAddress": "una dirección que no indicó",
+    "failedTitle": "No se han podido listar los dispositivos",
+    "failedBody": "Se trata del acceso a la API y no de su cuenta. No ha cambiado nada.",
+    "endFailedTitle": "No se ha cerrado la sesión de ese dispositivo",
+    "endFailedBody": "No ha cambiado nada. Inténtelo de nuevo y revise la lista después."
   }
 }

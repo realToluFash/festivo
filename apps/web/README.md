@@ -96,7 +96,12 @@ to.
 ## What is deliberately not here
 
 Every domain feature. This is the shell; guests, seating, menus and the rest
-arrive with the scopes that own them. `src/session.ts` is a stand-in for
-sign-in and is marked as one — Accounts & sign-in replaces its body and must
-not change its shape, because the navigation and the permission guard are
-written against it.
+arrive with the scopes that own them.
+
+`src/session.ts` is **half real**. Who is signed in comes from `GET
+/api/auth/me`, asked once per page load from the gate in `AppLayout` — and
+because the access token lives in memory, that first request after a reload is
+the one the refresh cookie pays for. The organisation beside it is still a
+stand-in and says so in the file: it is named after the business the person
+registered, there is exactly one, and the permissions are the pair the shell
+was built against. Organisations get a record in epic 28.

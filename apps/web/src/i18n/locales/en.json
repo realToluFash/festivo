@@ -81,7 +81,9 @@
     "withGoogle": "Continue with {{provider}}",
     "withApple": "Continue with {{provider}}",
     "providerFailedTitle": "{{provider}} sign-in did not work",
-    "providerFailedBody": "Nothing was changed. Try {{provider}} again, or sign in with your email and password."
+    "providerFailedBody": "Nothing was changed. Try {{provider}} again, or sign in with your email and password.",
+    "failedTitle": "Signing in did not work",
+    "failedBody": "Something went wrong on the way. Try again in a moment."
   },
   "account": {
     "title": "Your account"
@@ -105,6 +107,14 @@
     "end": "Sign it out",
     "keep": "Keep it signed in",
     "ended": "{{name}} is signed out.",
-    "delay": "It may keep working for up to 15 minutes while that reaches it, then it has to sign in again."
+    "delay": "It may keep working for up to 15 minutes while that reaches it, then it has to sign in again.",
+    "agent": "{{browser}} on {{platform}}",
+    "dayAtTime": "{{day}} at {{time}}",
+    "unknownDevice": "A device that did not name itself",
+    "unknownAddress": "an address it did not give",
+    "failedTitle": "The devices could not be listed",
+    "failedBody": "This is about reaching the API rather than about your account. Nothing has changed.",
+    "endFailedTitle": "That device was not signed out",
+    "endFailedBody": "Nothing has changed. Try again, and check the list afterwards."
   }
 }

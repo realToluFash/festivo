@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Navigate, Outlet } from 'react-router';
 
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
-import { useSession } from '../../session.ts';
+import { Pending } from '../../components/Pending.tsx';
+import { restoreSession, useSession, useSessionState } from '../../session.ts';
 
 /**
  * The signed-in shell, built for a desk.
@@ -16,8 +18,33 @@ import { useSession } from '../../session.ts';
  * The error boundary wraps the OUTLET, not the shell: a screen that throws
  * should leave the navigation and the organisation switcher usable, because
  * the way out of a broken screen is the navigation.
+ *
+ * It is also the gate. Everything under /app reads the session without
+ * checking for one, which is only safe because nothing under here renders
+ * until there is one — and the asking happens here, once, rather than in each
+ * screen.
  */
 export function AppLayout() {
+  const state = useSessionState();
+
+  useEffect(() => {
+    void restoreSession();
+  }, []);
+
+  if (state.status === 'signedOut') {
+    // `?signed-out` only when a session was lost. Somebody who simply opened
+    // /app without one is not being told they were signed out of anything.
+    return <Navigate to={state.ended ? '/sign-in?signed-out' : '/sign-in'} replace />;
+  }
+
+  // A reload has no access token until the cookie has been spent, so this is
+  // the one wasted request per page load that keeps a session across reloads.
+  if (state.status !== 'signedIn') return <Pending />;
+
+  return <Shell />;
+}
+
+function Shell() {
   const { t } = useTranslation();
   const session = useSession();
 

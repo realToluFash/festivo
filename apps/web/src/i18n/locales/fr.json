@@ -81,7 +81,9 @@
     "withGoogle": "Continuer avec {{provider}}",
     "withApple": "Continuer avec {{provider}}",
     "providerFailedTitle": "La connexion avec {{provider}} n'a pas fonctionné",
-    "providerFailedBody": "Rien n'a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe."
+    "providerFailedBody": "Rien n'a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe.",
+    "failedTitle": "La connexion n'a pas abouti",
+    "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant."
   },
   "account": {
     "title": "Votre compte"
@@ -105,6 +107,14 @@
     "end": "Le déconnecter",
     "keep": "Le laisser connecté",
     "ended": "{{name}} est déconnecté.",
-    "delay": "Il peut continuer à fonctionner pendant 15 minutes au maximum, le temps que cela lui parvienne, puis il devra se reconnecter."
+    "delay": "Il peut continuer à fonctionner pendant 15 minutes au maximum, le temps que cela lui parvienne, puis il devra se reconnecter.",
+    "agent": "{{browser}} sur {{platform}}",
+    "dayAtTime": "{{day}} à {{time}}",
+    "unknownDevice": "Un appareil qui ne s'est pas nommé",
+    "unknownAddress": "une adresse qu'il n'a pas donnée",
+    "failedTitle": "Les appareils n'ont pas pu être listés",
+    "failedBody": "Cela concerne l'accès à l'API et non votre compte. Rien n'a été modifié.",
+    "endFailedTitle": "Cet appareil n'a pas été déconnecté",
+    "endFailedBody": "Rien n'a été modifié. Réessayez, puis vérifiez la liste."
   }
 }

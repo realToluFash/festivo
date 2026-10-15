@@ -18,6 +18,7 @@
 import type { TokenStore } from '@soirely/api-client';
 
 let accessToken: string | null = null;
+let sessionId: string | null = null;
 
 export const tokens: TokenStore = {
   access: () => accessToken,
@@ -28,9 +29,22 @@ export const tokens: TokenStore = {
 
   save: (issued) => {
     accessToken = issued.accessToken;
+    sessionId = issued.sessionId;
   },
 
   clear: () => {
     accessToken = null;
+    sessionId = null;
   },
 };
+
+/**
+ * Which of the listed sessions this page is.
+ *
+ * Not a secret — the list returns every id for the account — and it is the
+ * only way to mark a row as this device, because the list carries no flag
+ * saying so and an access token says nothing about which row issued it.
+ */
+export function currentSessionId(): string | null {
+  return sessionId;
+}

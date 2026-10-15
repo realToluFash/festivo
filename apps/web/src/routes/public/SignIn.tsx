@@ -1,17 +1,24 @@
-import { useState } from 'react';
+import { formatTimeOfDay } from '@soirely/domain';
+import { ApiError } from '@soirely/api-client';
+import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 
+import { api } from '../../api.ts';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
+import { currentLocale } from '../../i18n/index.ts';
+import { adoptAccount } from '../../session.ts';
 
 /**
- * Sign in, drawn from `SignIn-*.dc.html` and NOT yet wired to the API.
+ * Sign in, drawn from `SignIn-*.dc.html`.
  *
- * Pressing the button moves this screen into its own waiting state and nothing
- * else: `api.signIn()` and the token store arrive in the next pass. Everything
- * else here is finished — the four layouts, the states, and the copy in all
- * four languages.
+ * The form posts to `/api/auth/login`, which answers with an access token for
+ * memory and a refresh cookie this page cannot read, and then `GET
+ * /api/auth/me` says who that is. Both failures the endpoint distinguishes are
+ * shown as the design draws them, and no third one is invented: a wrong
+ * address and a wrong password are one message, deliberately, because two
+ * messages answer "is this address registered".
  *
  * Four sizes, one design. The desktop arrangement is the base and the phone one
  * is the media query in styles.css, because signing in is the one screen that
@@ -24,10 +31,12 @@ type Status =
   | { kind: 'refused' }
   | { kind: 'rateLimited'; retryAt: string }
   | { kind: 'providerFailed'; provider: string }
+  | { kind: 'failed' }
   | { kind: 'sessionEnded' };
 
 export function SignIn() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [params] = useSearchParams();
   // The one state that arrives rather than happens. Everything that fails to
   // renew a session sends somebody here with this, and the banner says the
@@ -41,6 +50,25 @@ export function SignIn() {
 
   const busy = status.kind === 'signingIn';
   const locked = status.kind === 'rateLimited';
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+
+    const form = new FormData(event.currentTarget);
+
+    setStatus({ kind: 'signingIn' });
+
+    try {
+      await api.signIn(String(form.get('email') ?? ''), String(form.get('password') ?? ''));
+      // Sign-in answers with tokens and not with an account — the endpoint
+      // hands out a session, not a profile — so who it belongs to is a second
+      // call, and the shell is written against its answer.
+      adoptAccount(await api.me());
+      navigate('/app', { replace: true });
+    } catch (error) {
+      setStatus(refusalFrom(error));
+    }
+  }
 
   return (
     <div className="auth">
@@ -61,6 +89,18 @@ export function SignIn() {
               <div className="notice-body">
                 <p className="notice-title">{t('signIn.endedTitle')}</p>
                 <p>{t('signIn.endedBody')}</p>
+              </div>
+            </div>
+          )}
+
+          {status.kind === 'failed' && (
+            <div className="notice notice-broken" role="alert">
+              <span className="mark mark-broken" aria-hidden="true">
+                ✕
+              </span>
+              <div className="notice-body">
+                <p className="notice-title">{t('signIn.failedTitle')}</p>
+                <p>{t('signIn.failedBody')}</p>
               </div>
             </div>
           )}
@@ -91,13 +131,7 @@ export function SignIn() {
             </div>
           )}
 
-          <form
-            className="auth-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              setStatus({ kind: 'signingIn' });
-            }}
-          >
+          <form className="auth-form" onSubmit={(event) => void submit(event)}>
             <div className="field">
               <label htmlFor="email">{t('signIn.email')}</label>
               <input
@@ -164,4 +198,33 @@ export function SignIn() {
       </main>
     </div>
   );
+}
+
+/**
+ * Which refusal this was, in the two cases the API distinguishes.
+ *
+ * Anything else is one message rather than a guess at the cause: a network
+ * that dropped, a proxy answering HTML, a 500. None of those is something the
+ * person can act on differently.
+ */
+function refusalFrom(error: unknown): Status {
+  if (!(error instanceof ApiError)) return { kind: 'failed' };
+
+  if (error.is('invalid_credentials')) return { kind: 'refused' };
+
+  if (error.is('too_many_attempts')) {
+    const seconds = Number(error.response?.headers.get('Retry-After'));
+
+    // The time comes from the header or not at all. The server also writes it
+    // into the problem's detail, in its own wording, and parsing a sentence
+    // back into a time is how a locale change breaks a lock screen.
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return {
+        kind: 'rateLimited',
+        retryAt: formatTimeOfDay(new Date(Date.now() + seconds * 1000), currentLocale()),
+      };
+    }
+  }
+
+  return { kind: 'failed' };
 }

@@ -1,16 +1,83 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { __setSessionState, type Session } from '../../../session.ts';
+import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
 /**
- * The devices card, at its address inside the shell.
+ * The devices card, against what `GET /api/auth/sessions` actually sends.
  *
- * The rows are still the design's sample values, so these assertions are about
- * what a row SAYS and what ending one asks first — the two things that must
- * survive the wiring unchanged.
+ * The payload below is the controller's shape — `AccountController::sessions`
+ * — and the user-agent strings are real ones. Both matter: the readable name
+ * is derived from that string by this client, and a mock written from memory
+ * is how a client ends up agreeing with itself and with nothing else.
  */
+const HERE = '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f';
+const ELSEWHERE = '018f3a4c-0002-7c3d-9e1f-2a3b4c5d6e7f';
+
+const SESSIONS = {
+  sessions: [
+    {
+      id: HERE,
+      userAgent:
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+      ipAddress: '102.89.33.14',
+      startedAt: '2026-10-15T08:40:00+00:00',
+      renewedAt: '2026-10-15T08:40:00+00:00',
+      expiresAt: '2026-11-14T08:40:00+00:00',
+    },
+    {
+      id: ELSEWHERE,
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+      ipAddress: '197.210.78.3',
+      startedAt: '2026-10-05T11:22:00+00:00',
+      renewedAt: '2026-10-07T18:30:00+00:00',
+      expiresAt: '2026-11-06T11:22:00+00:00',
+    },
+  ],
+};
+
+const FOLAKE: Session = {
+  name: 'Folake Ire',
+  email: 'folake@ire.events',
+  organisation: { id: 'acc_1', name: 'Ire Events' },
+  organisations: [{ id: 'acc_1', name: 'Ire Events' }],
+  permissions: ['events.view'],
+};
+
+interface Call {
+  method: string;
+  path: string;
+}
+
+function answering(answers: Record<string, () => Response>, calls: Call[] = []) {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const { pathname } = new URL(String(input));
+    const method = init?.method ?? 'GET';
+
+    calls.push({ method, path: pathname });
+
+    const answer = answers[`${method} ${pathname}`];
+
+    if (answer == null) throw new Error(`Nothing stubbed for ${method} ${pathname}`);
+
+    return answer();
+  });
+
+  return calls;
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 function openSecurity() {
   return render(
     <RouterProvider
@@ -19,68 +86,116 @@ function openSecurity() {
   );
 }
 
+beforeEach(() => {
+  __setSessionState({ status: 'signedIn', session: FOLAKE });
+  // The id this page holds is how a row is known to be this device: the list
+  // carries no flag saying so.
+  tokens.save({ accessToken: 'live', refreshExpiresAt: '', sessionId: HERE });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  __setSessionState({ status: 'unknown' });
+  tokens.clear();
+});
+
 describe('the devices signed in to an account', () => {
-  it('lists one row per session, with its own description of itself', () => {
+  it('lists one row per session, named from the string each client sent', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
     openSecurity();
 
-    expect(screen.getByRole('heading', { name: 'Signed in on' })).toBeDefined();
-    expect(screen.getByText('3 devices')).toBeDefined();
-    expect(screen.getByText('Chrome on macOS')).toBeDefined();
-    expect(screen.getByText('Safari on iPhone')).toBeDefined();
+    await waitFor(() => expect(screen.getByText('Chrome on macOS')).toBeDefined());
     expect(screen.getByText('Chrome on Windows')).toBeDefined();
+    expect(screen.getByText('2 devices')).toBeDefined();
+  });
+
+  it('shows the signed-in address from the session rather than a sample', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
+    openSecurity();
+
+    // Under the page's own heading: the shell's sidebar shows the address too.
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 })).toBeDefined());
+
+    const heading = screen.getByRole('heading', { level: 1 }).closest('.account-heading');
+
+    expect(heading?.textContent).toMatch(/folake@ire\.events/);
   });
 
   /**
    * Both values are what the client claimed and neither can be checked, so the
    * card says so rather than letting a row imply more than it knows.
    */
-  it('says plainly that neither the name nor the address can be checked', () => {
+  it('says plainly that neither the name nor the address can be checked', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
     openSecurity();
 
-    const card = screen.getByRole('heading', { name: 'Signed in on' }).closest('section');
-
-    expect(card?.textContent).toMatch(/Soirely cannot check either, or tell where a device is/);
+    await waitFor(() =>
+      expect(document.body.textContent).toMatch(/cannot check either, or tell where a device is/),
+    );
   });
 
-  it('marks this device with words and not only with a dot', () => {
+  it('marks this device with words and not only with a dot, and says it is in use', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
     openSecurity();
 
-    expect(screen.getByText('This device')).toBeDefined();
-  });
-
-  it('says a row is in use now rather than giving it a last-used time', () => {
-    openSecurity();
-
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
     expect(screen.getByText(/In use now/)).toBeDefined();
   });
 
-  it('tells another device when it was last used and when it expires', () => {
+  it('tells another device when it was last used and when it expires', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
     openSecurity();
 
-    expect(screen.getByText(/Last used Wednesday, Oct 7 at 18:30/)).toBeDefined();
-    expect(screen.getByText(/expires Friday, Nov 6 if not used again/)).toBeDefined();
+    await waitFor(() => expect(screen.getByText(/Last used/)).toBeDefined());
+
+    // Both rows carry an expiry, so this is the one in that row.
+    const row = screen.getByText('Chrome on Windows').closest('li');
+
+    expect(row?.textContent).toMatch(/if not used again/);
+    expect(row?.textContent).toMatch(/197\.210\.78\.3/);
   });
 
-  /**
-   * Your own session is reversible on the spot and a stray tap costs one
-   * sign-in, so it is a link rather than a question.
-   */
-  it('signs this device out without asking, and lands on sign-in', () => {
+  /** A string this client cannot read is shown as it came, not hidden. */
+  it('shows an unreadable user agent exactly as it arrived', async () => {
+    answering({
+      'GET /api/auth/sessions': () =>
+        json({ sessions: [{ ...SESSIONS.sessions[0], userAgent: 'okhttp/4.12.0' }] }),
+    });
+
     openSecurity();
 
-    const here = screen.getByText('This device').closest('li');
-    const signOut = [...(here?.querySelectorAll('a') ?? [])];
+    await waitFor(() => expect(screen.getByText('okhttp/4.12.0')).toBeDefined());
+  });
 
-    expect(signOut.map((link) => link.getAttribute('href'))).toEqual(['/sign-in?signed-out']);
+  it('says so when a client gave no name and no address', async () => {
+    answering({
+      'GET /api/auth/sessions': () =>
+        json({ sessions: [{ ...SESSIONS.sessions[0], userAgent: null, ipAddress: null }] }),
+    });
+
+    openSecurity();
+
+    await waitFor(() =>
+      expect(screen.getByText('A device that did not name itself')).toBeDefined(),
+    );
+    expect(screen.getByText(/an address it did not give/)).toBeDefined();
   });
 
   /**
    * Another device you cannot see: the row is only what it claimed, so it may
    * be the wrong one, and if it is mid-event ending it interrupts service.
    */
-  it('asks before ending another device, naming it and what follows', () => {
+  it('asks before ending another device, naming it and what follows', async () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
     openSecurity();
 
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
     fireEvent.click(endOf('Chrome on Windows'));
 
     expect(screen.getByRole('heading', { name: 'Sign out Chrome on Windows?' })).toBeDefined();
@@ -89,38 +204,115 @@ describe('the devices signed in to an account', () => {
     expect(document.body.textContent).toMatch(/change your password as well/);
   });
 
-  it('leaves the list untouched when the check is declined', () => {
+  it('leaves the list untouched when the check is declined', async () => {
+    const calls = answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
     openSecurity();
 
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
     fireEvent.click(endOf('Chrome on Windows'));
     fireEvent.click(screen.getByRole('button', { name: 'Keep it signed in' }));
 
-    expect(screen.getByRole('heading', { name: 'Signed in on' })).toBeDefined();
     expect(screen.getByText('Chrome on Windows')).toBeDefined();
+    expect(calls.filter((call) => call.method === 'DELETE')).toEqual([]);
   });
 
-  it('confirms afterwards, and says the device may keep working for a while', () => {
+  it('ends the named session, drops its row, and says the device may keep working', async () => {
+    const calls = answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () => new Response(null, { status: 204 }),
+    });
+
     openSecurity();
 
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
     fireEvent.click(endOf('Chrome on Windows'));
     fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
 
-    const done = screen.getByRole('status');
-    expect(done.textContent).toMatch(/Chrome on Windows is signed out/);
-    expect(done.textContent).toMatch(/up to 15 minutes/);
+    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/is signed out/));
+    expect(screen.getByRole('status').textContent).toMatch(/up to 15 minutes/);
+    expect(screen.queryByText('Chrome on Windows')).toBeNull();
+    expect(calls).toContainEqual({ method: 'DELETE', path: `/api/auth/sessions/${ELSEWHERE}` });
+  });
+
+  it('says nothing was changed when ending one fails', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () =>
+        json({ type: 'https://soirely.com/errors/not_found', title: 'Gone.', status: 404 }, 404),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/was not signed out/),
+    );
+    expect(screen.getByRole('alert').textContent).toMatch(/Nothing has changed/);
+  });
+
+  /** Your own is reversible on the spot, so it is a sign-out rather than a question. */
+  it('signs this device out without asking, and lands on sign-in', async () => {
+    const calls = answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => new Response(null, { status: 204 }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+    );
+    expect(calls).toContainEqual({ method: 'POST', path: '/api/auth/logout' });
+  });
+
+  it('offers a retry when the list cannot be loaded, and says what it is about', async () => {
+    let attempts = 0;
+
+    answering({
+      'GET /api/auth/sessions': () => {
+        attempts += 1;
+
+        return attempts === 1
+          ? json({ type: 'x', title: 'No.', status: 500 }, 500)
+          : json(SESSIONS);
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/could not be/));
+    expect(screen.getByRole('alert').textContent).toMatch(/rather than about your account/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(screen.getByText('Chrome on macOS')).toBeDefined());
   });
 
   /**
-   * The one word the design forbids on this page until sc-117 lands: nothing
-   * takes effect immediately while an access token is good for fifteen
-   * minutes, and saying so is a promise the product cannot keep.
+   * The one word the design forbids here until sc-117 lands: nothing takes
+   * effect sooner than the access token in hand expires, and saying otherwise
+   * is a promise the product cannot keep.
    */
-  it('never claims that any of this is immediate', () => {
+  it('never claims that any of this is immediate', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () => new Response(null, { status: 204 }),
+    });
+
     openSecurity();
 
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
     fireEvent.click(endOf('Chrome on Windows'));
     fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
 
+    await waitFor(() => expect(screen.getByRole('status')).toBeDefined());
     expect(document.body.textContent).not.toMatch(/immediate/i);
   });
 });
@@ -132,5 +324,5 @@ function endOf(name: string): HTMLElement {
 
   if (button == null) throw new Error(`No sign-out control in the row for ${name}.`);
 
-  return button as HTMLElement;
+  return button;
 }

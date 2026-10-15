@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { tokens } from './tokens.ts';
+import { currentSessionId, tokens } from './tokens.ts';
 
 describe('the access token is held in memory and nowhere else', () => {
   test('it is given back, and forgotten on sign-out', async () => {
@@ -15,6 +15,42 @@ describe('the access token is held in memory and nowhere else', () => {
     await tokens.clear();
 
     expect(await tokens.access()).toBeNull();
+  });
+
+  /**
+   * Which row in the devices list is this one. Not a secret — the list returns
+   * every id for the account — and the only way to mark a row as this device,
+   * because the list carries no flag and an access token says nothing about
+   * which row issued it.
+   */
+  test('it remembers which session this page is, and forgets that too', async () => {
+    tokens.save({
+      accessToken: 'an-access-token',
+      refreshExpiresAt: '2026-11-14T00:00:00+00:00',
+      sessionId: '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f',
+    });
+
+    expect(currentSessionId()).toBe('018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f');
+
+    await tokens.clear();
+
+    expect(currentSessionId()).toBeNull();
+  });
+
+  /** A refresh rotates the row, so the id has to move with it. */
+  test('it follows the newest session after a refresh', () => {
+    tokens.save({
+      accessToken: 'first',
+      refreshExpiresAt: '2026-11-14T00:00:00+00:00',
+      sessionId: '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f',
+    });
+    tokens.save({
+      accessToken: 'second',
+      refreshExpiresAt: '2026-11-14T00:05:00+00:00',
+      sessionId: '018f3a4c-0002-7c3d-9e1f-2a3b4c5d6e7f',
+    });
+
+    expect(currentSessionId()).toBe('018f3a4c-0002-7c3d-9e1f-2a3b4c5d6e7f');
   });
 
   /**
