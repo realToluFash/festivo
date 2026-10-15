@@ -8,3 +8,5 @@
  */
 export * from './locales.ts';
 export * from './guestName.ts';
+export * from './userAgent.ts';
+export * from './datetime.ts';
