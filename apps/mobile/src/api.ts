@@ -13,4 +13,9 @@ import { currentLocale } from './i18n/index.ts';
 export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
   locale: () => currentLocale(),
+  // Stated rather than left to the default, because the web client states the
+  // opposite and the difference is deliberate: a cookie is the best a browser
+  // can do, and the Keychain is better than a cookie. See
+  // docs/architecture/sessions.md.
+  refreshTokenIn: 'body',
 });
