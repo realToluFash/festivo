@@ -65,6 +65,13 @@ fails `ErrorCodeCatalogueTest`** — a guard worth having because the failure is
 invisible: no exception, no log line, just `not_found` rendered as a title on a guest's
 screen.
 
+## Authentication
+
+A bearer access token on every request, renewed from a refresh token the client keeps.
+Where each of those lives differs between the browser and a native client, and that is the
+one decision here that cannot be changed quietly later — see
+[sessions.md](sessions.md), which also covers who may call this API from a browser.
+
 ## Pagination
 
 API Platform's, not a hand-rolled one. Fifty per page by default, two hundred maximum, and
