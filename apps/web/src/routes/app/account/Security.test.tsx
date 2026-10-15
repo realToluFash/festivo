@@ -132,6 +132,22 @@ describe('the devices signed in to an account', () => {
     expect(screen.getByText(/In use now/)).toBeDefined();
   });
 
+  it('lists this device first, even when another signed in after it', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json({ sessions: [...SESSIONS.sessions].reverse() }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+
+    const [first] = screen
+      .getByRole('list', { name: 'Devices signed in to this account' })
+      .querySelectorAll('li');
+
+    expect(first?.textContent).toMatch(/This device/);
+  });
+
   it('tells another device when it was last used and when it expires', async () => {
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
 
