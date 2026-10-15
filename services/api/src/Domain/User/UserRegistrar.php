@@ -8,6 +8,8 @@ use App\Domain\User\Interfaces\BreachedPasswordCheckerInterface;
 use App\Domain\User\Model\RegistrationResult;
 use App\Domain\User\Password\PasswordPolicy;
 use App\Domain\User\Password\PasswordResolver;
+use App\Domain\User\Verification\VerificationCodeIssuer;
+use App\Domain\User\Verification\VerificationCodeMailer;
 use App\Entity\EmailAddress;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -30,6 +32,8 @@ final readonly class UserRegistrar
         private PasswordResolver $passwordResolver,
         private BreachedPasswordCheckerInterface $breachedPasswordChecker,
         private TokenIssuer $tokenIssuer,
+        private VerificationCodeIssuer $verificationCodeIssuer,
+        private VerificationCodeMailer $verificationCodeMailer,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
     ) {
@@ -133,6 +137,11 @@ final readonly class UserRegistrar
         $this->entityManager->persist($user);
         $tokens = $this->tokenIssuer->issueFor($user, $request);
 
+        $address = $user->getPrimaryEmailAddress();
+        $code = null !== $address && !$address->isVerified()
+            ? $this->verificationCodeIssuer->issueFor($address)
+            : null;
+
         try {
             $this->entityManager->flush();
         } catch (UniqueConstraintViolationException $e) {
@@ -145,6 +154,10 @@ final readonly class UserRegistrar
                 [],
                 $e,
             );
+        }
+
+        if (null !== $address && null !== $code) {
+            $this->verificationCodeMailer->send($address, $code->code);
         }
 
         return new RegistrationResult($user, $tokens);

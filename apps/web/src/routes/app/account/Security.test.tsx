@@ -36,6 +36,7 @@ const SESSIONS = {
 const FOLAKE: Session = {
   name: 'Folake Ire',
   email: 'folake@ire.events',
+  verified: true,
   organisation: { id: 'acc_1', name: 'Ire Events' },
   organisations: [{ id: 'acc_1', name: 'Ire Events' }],
   permissions: ['events.view'],

@@ -12,6 +12,7 @@
     "lint:css": "stylelint \"apps/web/src/**/*.css\"",
     "lint:php": "node scripts/php-tool.mjs php-cs-fixer check",
     "lint:actions": "node scripts/lint-actions.mjs",
+    "lint:comments": "node scripts/check-comments.mjs",
     "lint:api": "docker compose exec -T api php vendor/bin/mago lint",
     "analyse:api": "docker compose exec -T api php vendor/bin/mago analyze",
     "guard:api": "docker compose exec -T api php vendor/bin/mago guard",

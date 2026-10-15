@@ -24,6 +24,11 @@ somebody's review comment, and the sweep that follows touches every file at once
 that added nine hundred lines of comment and kept a hundred and thirty is what skipping it
 costs.
 
+`npm run lint:comments` does the arithmetic part of this on the staged change, and the
+pre-commit hook runs it. It refuses a comment running past three lines and a file gaining
+more than eight. Passing it is not the standard — the two questions above are — but a
+change it fails has definitely not met them.
+
 ## The rule
 
 **One commit, one outcome.** An outcome is a thing that is now true for a user or for the
@@ -112,6 +117,22 @@ git reset --soft <base>   # the whole branch's work, staged, in one place
 Rebuilding from a soft reset is usually simpler than a chain of `fixup!` commits and an
 interactive rebase, because the working tree is already the final state — the only question
 left is how to group it.
+
+**And it avoids a trap in the fixup route.** A `fixup!` is a patch made against the final
+state; applying it to an earlier commit conflicts wherever a later commit touched the same
+lines, and resolving that conflict in favour of the earlier commit **silently drops the fix
+from the final tree** — the later commit simply re-adds what it always added. That is how a
+comment deleted in a sweep came back: the fixup landed on the commit before the one that
+re-introduced the line.
+
+Whichever route you take, prove the rebuild changed no content:
+
+```bash
+git diff ORIG_HEAD HEAD   # must be empty — same tree, different history
+```
+
+Empty means you regrouped the work. Anything else means you changed it, and you now have to
+read what changed and decide whether you meant it.
 
 ### The exception, and it is the important half
 

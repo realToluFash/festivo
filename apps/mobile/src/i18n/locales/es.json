@@ -60,5 +60,32 @@
     "providerFailedBody": "No se ha cambiado nada. Vuelva a intentarlo con {{provider}} o inicie sesión con su correo electrónico y su contraseña.",
     "failedTitle": "No se ha podido iniciar sesión",
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento."
+  },
+  "verifyEmail": {
+    "step1": "Verifique su correo electrónico",
+    "step1Done": "Correo verificado · hecho",
+    "step2": "Sus datos",
+    "title": "Revise su correo",
+    "intro": "Hemos enviado un código a {{address}}. Introdúzcalo aquí para demostrar que la dirección es suya.",
+    "codeLabel": "Código del correo",
+    "submit": "Verificar correo",
+    "submitting": "Verificando…",
+    "wrong": "Ese código no coincide. Revise el correo más reciente de Soirely e inténtelo de nuevo.",
+    "resend": "Enviar un código nuevo",
+    "resendIn": "Enviar un código nuevo en {{time}}",
+    "resendNote": "Un código nuevo sustituye al anterior.",
+    "expiredTitle": "Ese código ha caducado",
+    "expiredBody": "Los códigos solo funcionan durante un tiempo. Envíe uno nuevo y use el código del correo más reciente.",
+    "exhaustedTitle": "Demasiados intentos fallidos",
+    "exhaustedBody": "Ese código ya no funciona. Envíe uno nuevo para continuar.",
+    "wrongAddress": "¿No es su dirección?",
+    "wrongAddressBody": "Por ahora, la única forma de cambiarla es cerrar sesión y registrarse de nuevo.",
+    "signOut": "Cerrar sesión",
+    "doneTitle": "Correo verificado",
+    "doneBody": "{{address}} está confirmado. A continuación, unos datos para que su equipo sepa quién es quién.",
+    "continue": "Continuar",
+    "failedTitle": "No ha funcionado",
+    "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
+    "stepsLabel": "Antes de empezar"
   }
 }

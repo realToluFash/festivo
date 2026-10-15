@@ -103,6 +103,28 @@ jobs:
       - name: CI change filter
         run: npm run test:scripts
 
+  # ── Comments, because the hook that checks them can be skipped ──────────────
+  #
+  # The pre-commit hook runs the same script, and `--no-verify` turns it off.
+  # This is the copy that cannot be bypassed.
+  comments:
+    name: Comments
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Both sides of the comparison have to exist locally.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Comments added by this change
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        # No commit to compare against means nothing to say, and the script
+        # reports that rather than passing silently.
+        run: node scripts/check-comments.mjs --against "$BASE"
+
   # ── The API, in the same container a developer runs ─────────────────────────
   #
   # Through docker compose rather than a PHP installed on the runner. It is
@@ -325,7 +347,7 @@ jobs:
   required:
     name: All checks
     if: always()
-    needs: [changes, lint, api, web, mobile, packages, locales]
+    needs: [changes, lint, comments, api, web, mobile, packages, locales]
     runs-on: ubuntu-latest
     steps:
       - name: Fail if any check that ran did not pass

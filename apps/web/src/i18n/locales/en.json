@@ -116,5 +116,32 @@
     "failedBody": "This is about reaching the API rather than about your account. Nothing has changed.",
     "endFailedTitle": "That device was not signed out",
     "endFailedBody": "Nothing has changed. Try again, and check the list afterwards."
+  },
+  "verifyEmail": {
+    "step1": "Verify your email",
+    "step1Done": "Email verified · done",
+    "step2": "Your details",
+    "title": "Check your email",
+    "intro": "We sent a code to {{address}}. Enter it here to show the address is yours.",
+    "codeLabel": "Code from the email",
+    "submit": "Verify email",
+    "submitting": "Verifying…",
+    "wrong": "That code does not match. Check the newest email from Soirely and try again.",
+    "resend": "Send a new code",
+    "resendIn": "Send a new code in {{time}}",
+    "resendNote": "A new code replaces the last one.",
+    "expiredTitle": "That code has expired",
+    "expiredBody": "Codes only work for a while. Send a new one and use the code in the newest email.",
+    "exhaustedTitle": "Too many wrong tries",
+    "exhaustedBody": "That code no longer works. Send a new one to carry on.",
+    "wrongAddress": "Not your address?",
+    "wrongAddressBody": "Signing out and registering again is the only way to change it for now.",
+    "signOut": "Sign out",
+    "doneTitle": "Email verified",
+    "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",
+    "continue": "Continue",
+    "failedTitle": "That did not work",
+    "failedBody": "Something went wrong on the way. Try again in a moment.",
+    "stepsLabel": "Before you start"
   }
 }

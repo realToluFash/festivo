@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
+import { Notice } from '../src/components/Notice.tsx';
 import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -41,7 +42,10 @@ export default function SignIn() {
 
     try {
       await api.signIn(email, password);
-      router.replace('/');
+
+      const account = await api.me();
+
+      router.replace(account.verified ? '/' : '/verify-email');
     } catch (error) {
       setStatus(refusalFrom(error));
     }
@@ -263,7 +267,7 @@ function Credentials({
 
         {status.kind === 'refused' && (
           <View style={styles.fieldError}>
-            <View style={[styles.mark, styles.markSmall, styles.markBroken]}>
+            <View style={styles.mark}>
               <Text size={tokens.typePill.size} weight="bold" style={styles.brokenText}>
                 ✕
               </Text>
@@ -318,56 +322,6 @@ function refusalFrom(error: unknown): Status {
   }
 
   return { kind: 'failed' };
-}
-
-function Notice({
-  tone,
-  mark,
-  title,
-  body,
-}: {
-  tone: 'quiet' | 'attention' | 'broken';
-  mark: string;
-  title: string;
-  body: string;
-}) {
-  const surface = {
-    quiet: styles.noticeQuiet,
-    attention: styles.noticeAttention,
-    broken: styles.noticeBroken,
-  }[tone];
-
-  const ring = {
-    quiet: styles.markInfo,
-    attention: styles.markAttention,
-    broken: styles.markBroken,
-  }[tone];
-
-  const ink = {
-    quiet: styles.infoText,
-    attention: styles.attentionText,
-    broken: styles.brokenText,
-  }[tone];
-
-  return (
-    <View style={[styles.notice, surface]}>
-      <View style={[styles.mark, ring]}>
-        <Text size={tokens.typePill.size} weight="bold" style={ink}>
-          {mark}
-        </Text>
-      </View>
-      <View style={styles.noticeBody}>
-        <Text
-          size={tokens.typeRowTitle.size}
-          weight="bold"
-          style={tone === 'quiet' ? undefined : ink}
-        >
-          {title}
-        </Text>
-        <Text size={tokens.typeBodyPhone.size}>{body}</Text>
-      </View>
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({
@@ -456,38 +410,17 @@ const styles = StyleSheet.create({
   ctaText: { color: tokens.colorInkOnDark },
   ctaOffText: { color: tokens.colorInkSecondary },
 
-  notice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: tokens.spaceMd,
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusInset,
-    borderWidth: 1,
-  },
-  noticeQuiet: { backgroundColor: tokens.colorCard, borderColor: tokens.colorBorder },
-  noticeAttention: {
-    backgroundColor: tokens.colorAttentionTint,
-    borderColor: tokens.colorAttentionBorder,
-  },
-  noticeBroken: { backgroundColor: tokens.colorBrokenTint, borderColor: tokens.colorBroken },
-  noticeBody: { flex: 1, gap: tokens.spaceHair },
-
-  mark: {
-    width: tokens.sizePill,
-    height: tokens.sizePill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.sizePill / 2,
-    borderWidth: 1.5,
-  },
-  markSmall: { width: tokens.sizeMark, height: tokens.sizeMark, borderRadius: tokens.sizeMark / 2 },
-  markInfo: { borderColor: tokens.marks.info.ring },
-  markAttention: { borderColor: tokens.colorAttentionText },
-  markBroken: { borderColor: tokens.marks.broken.ring, backgroundColor: tokens.marks.broken.fill },
-
-  infoText: { color: tokens.marks.info.ink },
-  attentionText: { color: tokens.colorAttentionText },
   brokenText: { color: tokens.colorBrokenText },
 
+  mark: {
+    width: tokens.sizeMark,
+    height: tokens.sizeMark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: tokens.sizeMark / 2,
+    borderWidth: 1.5,
+    borderColor: tokens.marks.broken.ring,
+    backgroundColor: tokens.marks.broken.fill,
+  },
   fieldError: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
 });

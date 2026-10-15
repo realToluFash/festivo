@@ -59,6 +59,12 @@ pre-commit:
         && npm run analyse:api
         && npm run guard:api
       stage_fixed: true
+    comments:
+      glob: '*.{ts,tsx,js,jsx,mjs,php,css}'
+      # The rule in .claude/skills/code-comments, enforced rather than agreed:
+      # it was broken on four consecutive branches after being written down.
+      run: node scripts/check-comments.mjs
+
     actions:
       glob: '.github/workflows/*.{yml,yaml}'
       # A CI script is shell that nobody reviews as carefully as the code it

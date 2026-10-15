@@ -1,6 +1,6 @@
 ---
 name: soirely-qa-tester
-description: QA mode. Tests a story against its own acceptance criteria on the API, the web client and the app on simulators, hunts the edge cases the criteria imply, and reports back into Shortcut — a comment in the house format, screenshots attached, and the story moved to Passed QA or Failed QA. Use when asked to QA, verify or test a story end to end, or when invoked as /soirely-qa-tester.
+description: QA mode. Takes whatever is sitting in Shortcut's Ready For QA state, or a story you name, and tests it against its own acceptance criteria on the API, the web client and the app on simulators, hunts the edge cases the criteria imply, and reports back into Shortcut — a comment in the house format, screenshots attached, and the story moved to Passed QA or Failed QA. Use when asked to QA, verify or test a story end to end, to check whether anything is waiting for QA, or when invoked as /soirely-qa-tester.
 user-invocable: true
 ---
 
@@ -16,7 +16,8 @@ almost everything below follows from it.
   was tested — and the report becomes a description of something that no longer exists.
   A fix you can see goes in the report as a sentence, and somebody else decides.
 - **Do not touch the acceptance criteria.** A criterion that is wrong, impossible or
-  missing is a finding, not an edit. Say so under **Outstanding items**.
+  missing is a finding, not an edit. Say so under **Outstanding items**, and ask `[pm]`
+  in a tagged comment (`role-comments`).
 
 Two more, narrower:
 
@@ -27,12 +28,29 @@ Two more, narrower:
 
 ## 2. Pick the story, and read all of it
 
-`/soirely-qa-tester sc-55` tests that story. With no argument:
+**Start with your inbox**: the `role-comments` routine, for comments tagged `[qa]` and
+replies to the ones you asked. Resolve those, then pick the work below.
 
-1. `stories-search` with `label: "needs qa"` — that label is the queue.
-2. Failing that, read the current branch name: `feature/sc-55/…` names its story.
-3. Failing that, ask. Do not guess from the diff; a diff is where the work is, not where
+`/soirely-qa-tester sc-55` tests that story. With no argument, **the queue is the
+`Ready For QA` state** — a developer puts a story there when the work is finished, and that
+is the handover:
+
+1. `stories-search` with `state: "Ready For QA"`. That is the queue.
+   - **One story waiting** — take it and say which one you took.
+   - **Several** — take the one that has been waiting longest (`updated` ascending), name
+     the rest in your first line, and offer to work through them. Do not silently test one
+     and leave the others looking untested.
+   - **None** — say so plainly and stop. "Nothing is waiting for QA" is a complete answer
+     and takes one line; do not go looking for work to do instead.
+2. Failing that, `label: "needs qa"`, which predates the state and may still be on a story.
+3. Failing that, read the current branch name: `feature/sc-55/…` names its story.
+4. Failing that, ask. Do not guess from the diff; a diff is where the work is, not where
    the specification is.
+
+**A story in `Ready For QA` is a claim, not a certainty.** It means somebody thinks the work
+is finished. Check that the pull request exists and that its checks are green before
+testing: a red branch is a finding for the author, not an afternoon of QA against code that
+is about to change.
 
 Then read, in this order, before testing anything:
 
@@ -272,12 +290,27 @@ In this order, because a comment that names a screenshot nobody uploaded is a de
 
 1. **Upload the evidence** — `stories-upload-file` per screenshot, to the story.
 2. **Post the comment** — `stories-create-comment`, the report verbatim.
-3. **Move the story** — `stories-update` with the `workflow_state_id` of **Passed QA** or
-   **Failed QA**.
+3. **Tag what needs another role** — one comment per Outstanding item that someone else
+   has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a missing state on
+   an artboard, `[dev]` for a question about the build. See `role-comments`.
+4. **Move the story** — `stories-update` with the `workflow_state_id` of **Passed QA** or
+   **Failed QA**. A story tested out of `Ready For QA` always leaves it, whichever way the
+   pass went; leaving it there means the next run picks it up again.
 
-**Resolve those two states by name**, with `workflows-list`, at the time of posting. They
-may not exist: today the Standard workflow is Backlog · To Do · In Progress · In Review ·
-Done, and a workflow state cannot be created through the API. When one is missing:
+The Standard workflow (`500000005`) today:
+
+| State            | Id          | Who moves it there                           |
+| ---------------- | ----------- | -------------------------------------------- |
+| In Progress      | `500000008` | the branch, when work starts                 |
+| In Review        | `500000009` | —                                            |
+| **Ready For QA** | `500000087` | **the developer, when the work is finished** |
+| **Passsed QA**   | `500000084` | **you** (three s's — Shortcut's spelling)    |
+| **Failed QA**    | `500000083` | **you**                                      |
+| Done             | `500000010` | the user, after a merge. Never you.          |
+
+**Resolve them by name anyway**, with `workflows-list`, at the time of posting — an id in a
+skill file is a cache, and the typo above is the reason to read rather than retype. If a
+state has gone missing:
 
 - leave the story in the state it is in,
 - label it `qa passed` or `qa failed` with `stories-update` — both labels exist already, so

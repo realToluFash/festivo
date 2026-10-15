@@ -11,6 +11,7 @@ export interface Organisation {
 export interface Session {
   name: string;
   email: string;
+  verified: boolean;
   organisation: Organisation;
   organisations: readonly Organisation[];
   permissions: readonly string[];
@@ -81,6 +82,7 @@ function sessionFrom(account: Account): Session {
   return {
     name: account.name,
     email: primaryEmailAddress(account) ?? '',
+    verified: account.verified,
     organisation,
     organisations: [organisation],
     permissions: STAND_IN_PERMISSIONS,

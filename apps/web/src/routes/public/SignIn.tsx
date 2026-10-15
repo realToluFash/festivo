@@ -40,8 +40,12 @@ export function SignIn() {
 
     try {
       await api.signIn(String(form.get('email') ?? ''), String(form.get('password') ?? ''));
-      adoptAccount(await api.me());
-      navigate('/app', { replace: true });
+
+      const account = await api.me();
+
+      adoptAccount(account);
+
+      navigate(account.verified ? '/app' : '/verify-email', { replace: true });
     } catch (error) {
       setStatus(refusalFrom(error));
     }

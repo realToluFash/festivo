@@ -879,3 +879,144 @@ h2 {
   display: block;
   flex: none;
 }
+
+/* ── Before you start: the two gates, as a strip ──────────────────────────── */
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm) var(--spaceXxl);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  font: var(--typeButton);
+}
+
+.step-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space3xl);
+  height: var(--space3xl);
+  border-radius: var(--radiusPill);
+  font: var(--typePill);
+  font-family: var(--fontFamilyMono);
+}
+
+.step-now .step-mark {
+  background: var(--colorDark);
+  color: var(--colorInkOnDark);
+}
+
+.step-done .step-mark {
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+  font-family: var(--fontFamily);
+}
+
+.step-done {
+  color: var(--colorAccentText);
+}
+
+.step-later .step-mark {
+  border: var(--borderMark) var(--colorMarkEmpty);
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+}
+
+.step-later {
+  color: var(--colorInkSecondary);
+}
+
+/* ── A code from an email ─────────────────────────────────────────────────── */
+
+.code-input {
+  width: 100%;
+  min-height: var(--sizeHitPhoneHero);
+  padding: 0 var(--spaceLg);
+  border: var(--borderControl);
+  border-radius: var(--radiusInset);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeTitleDialog);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3em;
+  text-align: center;
+  caret-color: var(--colorInk);
+}
+
+.code-input.input-wrong {
+  border-color: var(--colorBroken);
+}
+
+.resend {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+}
+
+.resend .button {
+  font-variant-numeric: tabular-nums;
+}
+
+.resend p {
+  margin: 0;
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.button:disabled {
+  background: var(--colorInset);
+  border-color: var(--colorBorder);
+  color: var(--colorInkSecondary);
+  cursor: default;
+}
+
+/* ── Done ─────────────────────────────────────────────────────────────────── */
+
+.verified-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeHitPhoneHero);
+  height: var(--sizeHitPhoneHero);
+  border-radius: var(--radiusPill);
+  background: var(--colorAccent);
+  color: var(--colorInkOnDark);
+  font: var(--typeTitlePage);
+}
+
+.auth-footnote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs);
+  padding-top: var(--spaceLg);
+  border-top: var(--borderInset);
+  font: var(--typeBody);
+  color: var(--colorInkSecondary);
+}
+
+.auth-footnote p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.link-button {
+  min-height: var(--sizeHit);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--colorAccentText);
+  font: var(--typeButton);
+  cursor: pointer;
+}

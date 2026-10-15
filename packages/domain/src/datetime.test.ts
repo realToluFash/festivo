@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDay, formatTimeOfDay, secondsUntil } from './datetime.ts';
+import { formatCountdown, formatDay, formatTimeOfDay, secondsUntil } from './datetime.ts';
 
 const MOMENT = '2026-10-15T08:40:00+00:00';
 
@@ -50,5 +50,22 @@ describe('how long until a moment', () => {
     const now = new Date('2026-10-15T14:40:00Z');
 
     expect(secondsUntil('2026-10-15T14:35:00Z', now)).toBe(0);
+  });
+});
+
+describe('a countdown', () => {
+  it('reads as minutes and seconds, with the seconds padded', () => {
+    expect(formatCountdown(42)).toBe('0:42');
+    expect(formatCountdown(60)).toBe('1:00');
+    expect(formatCountdown(125)).toBe('2:05');
+  });
+
+  it('stops at zero rather than going negative', () => {
+    expect(formatCountdown(0)).toBe('0:00');
+    expect(formatCountdown(-5)).toBe('0:00');
+  });
+
+  it('rounds a fraction down, so it never shows a second that has passed', () => {
+    expect(formatCountdown(41.9)).toBe('0:41');
   });
 });

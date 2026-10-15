@@ -1,0 +1,7 @@
+{
+    "verification.subject": "Confirmez votre adresse e-mail",
+    "verification.heading": "Confirmez votre adresse e-mail",
+    "verification.body": "Saisissez ce code dans Soirely pour prouver que l'adresse est la vôtre.",
+    "verification.expiry": "Il est valable {minutes} minutes, et une seule fois.",
+    "verification.ignore": "Si vous n'avez pas créé de compte Soirely, vous pouvez ignorer ce message."
+}

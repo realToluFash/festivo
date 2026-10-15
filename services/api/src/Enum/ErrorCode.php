@@ -23,6 +23,10 @@ enum ErrorCode: string
     case TooManyRequests = 'too_many_requests';
     case TooManyAttempts = 'too_many_attempts';
 
+    case VerificationCodeInvalid = 'verification_code_invalid';
+    case VerificationCodeExpired = 'verification_code_expired';
+    case VerificationCodeExhausted = 'verification_code_exhausted';
+
     case InternalError = 'internal_error';
     case ServiceUnavailable = 'service_unavailable';
 
@@ -42,6 +46,8 @@ enum ErrorCode: string
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken => 401,
             self::Forbidden => 403,
             self::TooManyRequests, self::TooManyAttempts => 429,
+            self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
+            self::VerificationCodeExhausted => 422,
             self::InternalError => 500,
             self::ServiceUnavailable => 503,
             self::AssistantUnavailable, self::AssistantBusy => 503,

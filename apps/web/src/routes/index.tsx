@@ -9,6 +9,7 @@ import { Invitation } from './guest/Invitation.tsx';
 import { Home } from './public/Home.tsx';
 import { NotFound } from './public/NotFound.tsx';
 import { SignIn } from './public/SignIn.tsx';
+import { VerifyEmail } from './public/VerifyEmail.tsx';
 import { Status } from './public/Status.tsx';
 
 /**
@@ -30,6 +31,7 @@ import { Status } from './public/Status.tsx';
 export const routes = [
   { path: '/', element: <Home /> },
   { path: '/sign-in', element: <SignIn /> },
+  { path: '/verify-email', element: <VerifyEmail /> },
   { path: '/status', element: <Status /> },
   {
     path: '/app',
