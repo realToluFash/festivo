@@ -13,6 +13,7 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Async;
 use Psl\DateTime\Duration;
@@ -141,6 +142,37 @@ final class SignInTest extends ApiTestCase
                 self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode);
                 self::assertArrayHasKey('Retry-After', $e->headers);
                 self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', $e->getMessage());
+            }
+        }
+    }
+
+    #[Test]
+    public function theStatedMinuteIsOneTheBudgetIsBackBy(): void
+    {
+        $authenticator = self::service(UserAuthenticator::class);
+        $open = self::serviceById('limiter.sign_in_ip', RateLimiterFactoryInterface::class);
+
+        foreach ([
+            '22:45:10' => '22:46',
+            '22:45:58' => '22:46',
+            '22:45:59' => '22:46',
+            '22:46:00' => '22:47',
+        ] as $windowEnd => $stated) {
+            $controller = new SignInController(
+                $authenticator,
+                $open,
+                new RefusingRateLimiterFactory(new DateTimeImmutable('2026-10-15 ' . $windowEnd)),
+            );
+
+            try {
+                $controller->signIn(self::request('anybody@example.com', 'does not matter'));
+                self::fail('the endpoint accepted a request with no budget left');
+            } catch (ApiException $e) {
+                self::assertStringEndsWith(
+                    'Try again at ' . $stated . '.',
+                    $e->getMessage(),
+                    'a window ending at ' . $windowEnd . ' must not name a minute the budget is still spent in',
+                );
             }
         }
     }
