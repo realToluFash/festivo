@@ -185,7 +185,19 @@ shell quoting intact.
 
 Title: a conventional-commit prefix matching the branch's commits, naming the outcome.
 
-## Step 6: Report
+## Step 6: Hand it to QA
+
+**Move the story to `Ready For QA`** — `stories-update` with that state's id, resolved by
+name with `workflows-list`. That state is the handover: it is how the QA agent finds work,
+and a finished story left in `In Progress` is a story nobody tests.
+
+Move it when the work is actually finished — the pull request open and **its checks green**,
+not merely pushed. A story handed over on a red branch wastes somebody's pass on code that
+is about to change.
+
+Never move a story to **Done**. That is the user's, after a merge.
+
+## Step 7: Report
 
 Give the PR number and URL, the base branch, the commit count, and say plainly it is a
 **draft** awaiting review. Remind them it stays a draft until they mark it ready, from the
@@ -193,6 +205,8 @@ PR page or with `gh pr ready <number>`.
 
 Suggest `/fix-pr-checks <number>` once CI has started. Note that some workflows skip draft
 PRs; if no checks appear, that is why.
+
+Say which state the story is in now, so the handover is visible rather than assumed.
 
 ## Attribution
 

@@ -145,7 +145,9 @@ Workspace **soirely**. Fixed — do not ask:
 | Workflow | Standard — `500000005`                                           |
 
 Workflow states: Backlog `500000006` · To Do `500000007` · In Progress `500000008` ·
-In Review `500000009` · Done `500000010`.
+In Review `500000009` · Ready For QA `500000087` · Failed QA `500000083` · Passsed QA
+`500000084` (three s's, Shortcut's spelling) · Done `500000010`. A new story is Backlog or
+To Do; the three QA states belong to work already built — see **soirely-qa-tester**.
 
 **Ask for the epic.** Never guess it — a story under the wrong epic is invisible to
 whoever is working that scope. List the open epics and present them, offering "no epic"
