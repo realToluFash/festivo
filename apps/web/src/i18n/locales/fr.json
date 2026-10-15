@@ -76,7 +76,7 @@
     "endedTitle": "Votre session a été fermée",
     "endedBody": "Reconnectez-vous pour continuer.",
     "lockedTitle": "Trop de tentatives",
-    "lockedBody": "Réessayez à {{time}}, ou réinitialisez votre mot de passe maintenant et connectez-vous juste après.",
+    "lockedBody": "Réessayez à {{time}}.",
     "or": "ou",
     "withGoogle": "Continuer avec {{provider}}",
     "withApple": "Continuer avec {{provider}}",

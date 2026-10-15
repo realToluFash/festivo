@@ -162,6 +162,20 @@ A refresh issues a new token with the full lifetime, so a device in use never ex
 Lowering `REFRESH_TOKEN_TTL` applies to tokens issued from then on; rows already stored
 keep the expiry they were issued with.
 
+## The sign-in limit
+
+Two fixed windows of fifteen minutes, in `config/packages/rate_limiter.yaml`: **5 refused
+passwords per address** and **30 per network address**. Only a refused password spends
+either. A correct one spends nothing, so somebody signing in on several devices is never
+locked out by it.
+
+Past either, `POST /api/auth/login` answers `429 too_many_attempts` with `Retry-After`, and
+does not check the password at all. The time is the window's end, so it does not move while
+nobody is trying, and the right password at that time signs in. The clients round it up to
+the minute they show and lift the lock themselves when it arrives.
+
+The budgets live in the `cache.rate_limiter` pool.
+
 ## The access token's fifteen minutes
 
 Ending a session cannot take effect sooner than the access token in hand expires, because

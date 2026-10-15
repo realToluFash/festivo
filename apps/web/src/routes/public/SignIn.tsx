@@ -1,6 +1,6 @@
-import { formatTimeOfDay } from '@soirely/domain';
+import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { ApiError } from '@soirely/api-client';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
 
@@ -14,7 +14,7 @@ type Status =
   | { kind: 'ready' }
   | { kind: 'signingIn' }
   | { kind: 'refused' }
-  | { kind: 'rateLimited'; retryAt: string }
+  | { kind: 'rateLimited'; retryAt: string; liftsAt: number }
   | { kind: 'providerFailed'; provider: string }
   | { kind: 'failed' }
   | { kind: 'sessionEnded' };
@@ -27,21 +27,39 @@ export function SignIn() {
     params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' },
   );
   const [revealed, setRevealed] = useState(false);
+  const form = useRef<HTMLFormElement>(null);
 
   const busy = status.kind === 'signingIn';
   const locked = status.kind === 'rateLimited';
+  const liftsAt = status.kind === 'rateLimited' ? status.liftsAt : null;
+
+  useEffect(() => {
+    if (liftsAt == null) return;
+
+    const lift = window.setTimeout(
+      () => {
+        const password = form.current?.elements.namedItem('password');
+        if (password instanceof HTMLInputElement) password.value = '';
+
+        setStatus({ kind: 'ready' });
+      },
+      Math.max(0, liftsAt - Date.now()),
+    );
+
+    return () => window.clearTimeout(lift);
+  }, [liftsAt]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    const form = new FormData(event.currentTarget);
+    const typed = new FormData(event.currentTarget);
 
     setStatus({ kind: 'signingIn' });
 
     try {
       const { account } = await api.signIn(
-        String(form.get('email') ?? ''),
-        String(form.get('password') ?? ''),
+        String(typed.get('email') ?? ''),
+        String(typed.get('password') ?? ''),
       );
 
       adoptAccount(account);
@@ -113,7 +131,7 @@ export function SignIn() {
             </div>
           )}
 
-          <form className="auth-form" onSubmit={(event) => void submit(event)}>
+          <form ref={form} className="auth-form" onSubmit={(event) => void submit(event)}>
             <div className="field">
               <label htmlFor="email">{t('signIn.email')}</label>
               <input
@@ -188,12 +206,13 @@ function refusalFrom(error: unknown): Status {
   if (error.is('invalid_credentials')) return { kind: 'refused' };
 
   if (error.is('too_many_attempts')) {
-    const seconds = Number(error.response?.headers.get('Retry-After'));
+    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
 
-    if (Number.isFinite(seconds) && seconds > 0) {
+    if (liftsAt != null) {
       return {
         kind: 'rateLimited',
-        retryAt: formatTimeOfDay(new Date(Date.now() + seconds * 1000), currentLocale()),
+        retryAt: formatTimeOfDay(liftsAt, currentLocale()),
+        liftsAt: liftsAt.getTime(),
       };
     }
   }
