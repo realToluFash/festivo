@@ -6,15 +6,13 @@ namespace App\Http\Listener;
 
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
-use App\Locale\Listener\RequestLocaleListener;
+use App\Http\ProblemRenderer;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
-use Symfony\Contracts\Translation\TranslatorInterface;
 use Throwable;
 
 #[AsEventListener(event: KernelEvents::EXCEPTION, priority: -64)]
@@ -22,7 +20,7 @@ final readonly class JsonExceptionListener
 {
     public function __construct(
         private LoggerInterface $logger,
-        private TranslatorInterface $translator,
+        private ProblemRenderer $problemRenderer,
     ) {
     }
 
@@ -41,40 +39,14 @@ final readonly class JsonExceptionListener
             $this->logger->error($e->getMessage(), ['exception' => $e]);
         }
 
-        $locale = $request->attributes->get(RequestLocaleListener::ATTRIBUTE);
+        $response = $this->problemRenderer->render(
+            $request,
+            $code,
+            $e->getMessage(),
+            $violations,
+            $e instanceof ApiException ? $e->headers : [],
+        );
 
-        $problem = [
-            'type' => $code->type(),
-            'title' => $this->translator->trans(
-                $code->translationKey(),
-                [],
-                ErrorCode::DOMAIN,
-                \is_string($locale) ? $locale : null,
-            ),
-            'status' => $code->status(),
-        ];
-
-        if ($code->status() < 500 && '' !== $e->getMessage()) {
-            $problem['detail'] = $e->getMessage();
-        }
-
-        if ([] !== $violations) {
-            $problem['violations'] = $violations;
-        }
-
-        $correlationId = $request->attributes->get(CorrelationIdListener::ATTRIBUTE);
-        if (\is_string($correlationId)) {
-            $problem['correlationId'] = $correlationId;
-        }
-
-        $response = new JsonResponse($problem, $code->status());
-        $response->headers->set('Content-Type', 'application/problem+json');
-
-        if ($e instanceof ApiException) {
-            foreach ($e->headers as $name => $value) {
-                $response->headers->set($name, $value);
-            }
-        }
         $event->setResponse($response);
     }
 
