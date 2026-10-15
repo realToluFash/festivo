@@ -60,5 +60,32 @@
     "providerFailedBody": "Rien n'a été modifié. Réessayez avec {{provider}}, ou connectez-vous avec votre adresse e-mail et votre mot de passe.",
     "failedTitle": "La connexion n'a pas abouti",
     "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant."
+  },
+  "verifyEmail": {
+    "step1": "Vérifiez votre adresse e-mail",
+    "step1Done": "Adresse vérifiée · terminé",
+    "step2": "Vos informations",
+    "title": "Consultez votre boîte mail",
+    "intro": "Nous avons envoyé un code à {{address}}. Saisissez-le ici pour prouver que l'adresse est la vôtre.",
+    "codeLabel": "Code reçu par e-mail",
+    "submit": "Vérifier l'adresse",
+    "submitting": "Vérification…",
+    "wrong": "Ce code ne correspond pas. Vérifiez le dernier e-mail de Soirely et réessayez.",
+    "resend": "Envoyer un nouveau code",
+    "resendIn": "Envoyer un nouveau code dans {{time}}",
+    "resendNote": "Un nouveau code remplace le précédent.",
+    "expiredTitle": "Ce code a expiré",
+    "expiredBody": "Les codes ne sont valables qu'un temps. Envoyez-en un nouveau et utilisez celui du dernier e-mail.",
+    "exhaustedTitle": "Trop de tentatives incorrectes",
+    "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
+    "wrongAddress": "Ce n'est pas votre adresse ?",
+    "wrongAddressBody": "Pour l'instant, la seule façon d'en changer est de se déconnecter et de s'inscrire à nouveau.",
+    "signOut": "Se déconnecter",
+    "doneTitle": "Adresse vérifiée",
+    "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
+    "continue": "Continuer",
+    "failedTitle": "Cela n'a pas fonctionné",
+    "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant.",
+    "stepsLabel": "Avant de commencer"
   }
 }
