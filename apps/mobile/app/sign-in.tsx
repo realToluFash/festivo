@@ -7,11 +7,12 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
-import { Notice } from '../src/components/Notice.tsx';
+import { Notice, type NoticeSurface } from '../src/components/Notice.tsx';
 import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
+import { isTablet } from '../src/layout/classify.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -51,7 +52,14 @@ export default function SignIn() {
 
   const liftLock = useCallback(() => setStatus({ kind: 'ready' }), []);
 
-  const form = <Credentials status={status} onSubmit={signIn} onLockLifted={liftLock} />;
+  const form = (
+    <Credentials
+      status={status}
+      on={isTablet(kind) ? 'card' : 'page'}
+      onSubmit={signIn}
+      onLockLifted={liftLock}
+    />
+  );
 
   if (kind === 'tabletLandscape') {
     return <Landscape>{form}</Landscape>;
@@ -139,10 +147,12 @@ function Landscape({ children }: { children: ReactNode }) {
 
 function Credentials({
   status,
+  on,
   onSubmit,
   onLockLifted,
 }: {
   status: Status;
+  on: NoticeSurface;
   onSubmit: (email: string, password: string) => void;
   onLockLifted: () => void;
 }) {
@@ -181,6 +191,7 @@ function Credentials({
       {status.kind === 'sessionEnded' && (
         <Notice
           tone="quiet"
+          on={on}
           mark={tokens.marks.info.glyph}
           title={t('signIn.endedTitle')}
           body={t('signIn.endedBody')}
