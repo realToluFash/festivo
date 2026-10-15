@@ -34,6 +34,19 @@ That is why there is no third definition of any routine, and why `just check` pa
 the same thing as a green pull request. `just` itself is not installed in CI, so the npm
 scripts remain the contract.
 
+### Testing a story by hand
+
+```bash
+just qa-account              # a throwaway account, registered through the API
+just qa-ios                  # the app in Expo Go on a simulator
+just qa-mobile sign-in       # one Maestro flow from apps/mobile/.maestro
+just qa-chrome               # a browser with a debugging port, on its own profile
+```
+
+None of these run in CI, deliberately: they need a simulator, a browser and a person — or
+an agent in QA mode. `.claude/skills/soirely-qa-tester` is what a pass does with them, how
+the report is written, and where it is posted.
+
 ## The shape of the work
 
 **An epic is a scope of work, not a stack.** "Auth" is one epic covering the Symfony

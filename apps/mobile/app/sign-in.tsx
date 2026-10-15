@@ -236,6 +236,7 @@ function Credentials({
           cursorColor={tokens.colorInk}
           selectionColor={tokens.colorInk}
           accessibilityLabel={t('signIn.email')}
+          testID="signIn.email"
         />
       </View>
 
@@ -266,11 +267,13 @@ function Credentials({
             cursorColor={tokens.colorInk}
             selectionColor={tokens.colorInk}
             accessibilityLabel={t('signIn.password')}
+            testID="signIn.password"
           />
           <Pressable
             style={styles.reveal}
             onPress={() => setRevealed((shown) => !shown)}
             accessibilityRole="button"
+            testID="signIn.reveal"
             accessibilityState={{ selected: revealed }}
           >
             <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
@@ -298,6 +301,7 @@ function Credentials({
         onPress={submit}
         disabled={busy || locked}
         accessibilityRole="button"
+        testID="signIn.submit"
         accessibilityState={{ disabled: busy || locked }}
       >
         <Text

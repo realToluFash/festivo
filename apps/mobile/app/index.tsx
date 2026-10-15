@@ -119,7 +119,7 @@ export default function Home() {
 
       {account == null ? (
         <Link href="/sign-in" asChild>
-          <Pressable style={styles.button} accessibilityRole="button">
+          <Pressable style={styles.button} accessibilityRole="button" testID="home.openSignIn">
             <Text weight="medium">{t('home.openSignIn')}</Text>
           </Pressable>
         </Link>
@@ -129,6 +129,7 @@ export default function Home() {
           <Pressable
             style={styles.button}
             accessibilityRole="button"
+            testID="home.signOut"
             onPress={() => {
               void api.signOut().then(() => {
                 setAccount(null);

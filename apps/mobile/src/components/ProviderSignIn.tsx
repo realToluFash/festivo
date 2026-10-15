@@ -29,14 +29,22 @@ export function ProviderSignIn() {
         <View style={styles.rule} />
       </View>
 
-      <Pressable style={[styles.button, styles.google]} accessibilityRole="button">
+      <Pressable
+        style={[styles.button, styles.google]}
+        accessibilityRole="button"
+        testID="signIn.google"
+      >
         <GoogleMark />
         <Text size={tokens.typeButton.size} weight="medium" style={styles.googleText}>
           {t('signIn.withGoogle', { provider: 'Google' })}
         </Text>
       </Pressable>
 
-      <Pressable style={[styles.button, styles.apple]} accessibilityRole="button">
+      <Pressable
+        style={[styles.button, styles.apple]}
+        accessibilityRole="button"
+        testID="signIn.apple"
+      >
         <AppleMark />
         <Text size={tokens.typeButton.size} weight="medium" style={styles.appleText}>
           {t('signIn.withApple', { provider: 'Apple' })}

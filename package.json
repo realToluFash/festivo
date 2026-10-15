@@ -18,6 +18,7 @@
     "test": "npm run test:scripts && npm run test:api && npm run test:packages",
     "test:scripts": "vitest run --dir scripts",
     "test:db": "node scripts/test-db.mjs",
+    "qa:account": "node scripts/qa-account.mjs",
     "test:api": "docker compose exec -T api sh -c \"APP_ENV=test vendor/bin/phpunit\"",
     "test:packages": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",

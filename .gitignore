@@ -13,6 +13,9 @@ public/bundles/
 
 # local state
 .data/
+# Screenshots and logs from a QA pass. Evidence for a Shortcut comment, which
+# is where it belongs — not in the repository.
+.qa/
 # Anchored. Unanchored, it matched at every level — including
 # services/api/.env, which Symfony reads and which holds only non-secret
 # defaults (secrets go in .env.local, ignored by that package's own rules).

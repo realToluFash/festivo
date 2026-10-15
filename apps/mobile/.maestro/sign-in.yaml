@@ -1,0 +1,57 @@
+# Signing in, on a phone. sc-55.
+#
+#   just qa-account                            for an account
+#   just qa-mobile sign-in EMAIL=… PASSWORD=…
+#
+# No `env:` block. Declaring a default there shadowed the value passed with -e
+# in Maestro 2.8, and the flow typed two empty strings into the form and
+# reported the refusal that followed as a product failure.
+appId: host.exp.Exponent
+---
+# Stopped and relaunched, because `openLink` reaches a route without remounting
+# the screen: a flow that does not do this inherits whatever the last run left
+# on it, which is how two runs of the same flow disagree.
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+# Erased before each field is typed into, because `openLink` reaches the route
+# without remounting the screen: a field keeps what the last run left in it.
+- openLink: exp://127.0.0.1:8081/--/sign-in
+- extendedWaitUntil:
+    visible: 'Email'
+    timeout: 60000
+- takeScreenshot: mobile-sign-in
+- tapOn:
+    id: 'signIn.email'
+# 120 rather than the default 50: an address is longer than that, and a partial
+# erase leaves a fragment that the new text is typed on top of.
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+# 120 rather than the default 50: an address is longer than that, and a partial
+# erase leaves a fragment that the new text is typed on top of.
+- eraseText: 120
+- inputText: ${PASSWORD}
+# The reveal control, which is the only way to see a typo on a phone keyboard.
+- tapOn:
+    id: 'signIn.reveal'
+- assertVisible: ${PASSWORD}
+- takeScreenshot: mobile-sign-in-filled
+- tapOn:
+    id: 'signIn.submit'
+# iOS offers to save the password, over the top of whatever follows. It is the
+# system's dialog rather than the app's, and a flow that does not dismiss it
+# reports every screen behind it as missing.
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+# `.*` because Maestro matches text as a WHOLE regex: 'Signed in as' does not
+# match "Signed in as QA Tester", and the flow reported a screen it was looking
+# straight at as missing.
+- extendedWaitUntil:
+    visible: 'Signed in as.*'
+    timeout: 30000
+- takeScreenshot: mobile-signed-in
