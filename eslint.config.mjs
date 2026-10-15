@@ -110,6 +110,14 @@ export default [
       // replaced, so Vite falls back to a full reload and loses the state you
       // were looking at.
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+
+      // The content security policy nginx serves has no 'unsafe-inline' in
+      // style-src, and that directive governs inline style attributes as well
+      // as <style> elements. A style prop therefore renders nothing in a
+      // deployed build while working perfectly in `vite dev`, where no policy
+      // is served — the worst shape a defect can have. Put it in a stylesheet.
+      'react/forbid-dom-props': ['error', { forbid: ['style'] }],
+      'react/forbid-component-props': ['error', { forbid: ['style'] }],
     },
   },
 
