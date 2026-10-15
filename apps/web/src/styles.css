@@ -569,6 +569,7 @@ h2 {
 }
 
 .language-choice button {
+  position: relative;
   flex: none;
   min-height: var(--sizeSegmentInner);
   padding: 0 var(--spaceLg);
@@ -578,6 +579,13 @@ h2 {
   color: var(--colorInkSecondary);
   font: var(--typeButton);
   cursor: pointer;
+}
+
+/* Drawn at the segment's height; the target reaches the 44px floor beyond it. */
+.language-choice button::after {
+  position: absolute;
+  inset: calc((var(--sizeSegmentInner) - var(--sizeHit)) / 2) 0;
+  content: '';
 }
 
 .language-choice button[aria-pressed='true'] {
