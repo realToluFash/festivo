@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { ApiClient, type IssuedTokens, type TokenStore } from './client.ts';
+import { ApiClient, type IssuedTokens, type TokenStore, primaryEmailAddress } from './client.ts';
 import { ApiError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
@@ -507,5 +507,112 @@ describe('the health endpoint', () => {
     await expect(
       client(health({ status: 'ok', checks: { postgres: { state: 'ok' } } })).health(),
     ).rejects.toThrow(/shape this client does not know/);
+  });
+});
+
+/**
+ * What AccountController sends. Written from the controller rather than from
+ * memory, which is the whole lesson of the two shape mismatches above.
+ */
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+const ACCOUNT = {
+  id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
+  name: 'Folake Ire',
+  businessName: 'Ire Events',
+  countryCode: 'NG',
+  locale: 'en',
+  verified: true,
+  complete: true,
+  emailAddresses: [
+    { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
+    { id: 'a2', address: 'folake@example.com', verified: false, primary: false },
+  ],
+  phoneNumbers: [],
+};
+
+describe('who is signed in', () => {
+  function client(response: Response) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      fetch: async () => response,
+    });
+  }
+
+  test('reads the account the API sends', async () => {
+    const account = await client(json(ACCOUNT)).me();
+
+    expect(account.name).toBe('Folake Ire');
+    expect(account.businessName).toBe('Ire Events');
+    expect(account.emailAddresses).toHaveLength(2);
+  });
+
+  /** Sign-in matches the primary address only, so a screen must not pick the first. */
+  test('the primary address is the one identified by its flag', () => {
+    const reversed = [...ACCOUNT.emailAddresses].reverse();
+
+    expect(primaryEmailAddress({ ...ACCOUNT, emailAddresses: reversed })).toBe('folake@ire.events');
+  });
+
+  test('refuses a shape it does not know, naming where to look', async () => {
+    await expect(client(json({ data: ACCOUNT })).me()).rejects.toThrow(/AccountController/);
+  });
+});
+
+describe('the sessions an account has', () => {
+  const SESSION = {
+    id: '018f3a4c-0000-7c3d-9e1f-2a3b4c5d6e7f',
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/141.0.0.0 Safari/537.36',
+    ipAddress: '102.89.33.14',
+    startedAt: '2026-10-15T08:40:00+00:00',
+    renewedAt: '2026-10-15T08:40:00+00:00',
+    expiresAt: '2026-11-14T08:40:00+00:00',
+  };
+
+  function client(response: Response, seen: string[] = []) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      fetch: async (url, init) => {
+        seen.push(`${init?.method ?? 'GET'} ${String(url)}`);
+
+        return response;
+      },
+    });
+  }
+
+  test('reads the list out of the object it arrives in', async () => {
+    const sessions = await client(json({ sessions: [SESSION] })).sessions();
+
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]?.ipAddress).toBe('102.89.33.14');
+  });
+
+  /** A client that named itself nothing is a row that says so, not a crash. */
+  test('keeps an absent user agent as nothing rather than inventing one', async () => {
+    const sessions = await client(
+      json({ sessions: [{ ...SESSION, userAgent: null, ipAddress: null }] }),
+    ).sessions();
+
+    expect(sessions[0]?.userAgent).toBeNull();
+    expect(sessions[0]?.ipAddress).toBeNull();
+  });
+
+  test('refuses a bare array, which is not what the endpoint sends', async () => {
+    await expect(client(json([SESSION])).sessions()).rejects.toThrow(/AccountController/);
+  });
+
+  test('ends one by id, with the id in the path', async () => {
+    const seen: string[] = [];
+
+    await client(new Response(null, { status: 204 }), seen).endSession(SESSION.id);
+
+    expect(seen).toEqual([`DELETE http://api.test/api/auth/sessions/${SESSION.id}`]);
   });
 });

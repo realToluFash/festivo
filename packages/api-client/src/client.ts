@@ -41,6 +41,51 @@ export interface Health {
   checks: Record<string, { status: string; error?: string }>;
 }
 
+/** A linked address or number, as `GET /api/auth/me` reports it. */
+export interface LinkedAddress {
+  id: string;
+  address: string;
+  verified: boolean;
+  primary: boolean;
+}
+
+export interface LinkedPhone {
+  id: string;
+  number: string;
+  verified: boolean;
+  primary: boolean;
+}
+
+/** The signed-in account. `AccountController::me` is the shape. */
+export interface Account {
+  id: string;
+  name: string;
+  businessName: string | null;
+  countryCode: string | null;
+  locale: string | null;
+  verified: boolean;
+  complete: boolean;
+  emailAddresses: LinkedAddress[];
+  phoneNumbers: LinkedPhone[];
+}
+
+/**
+ * One signed-in session, as `GET /api/auth/sessions` reports it.
+ *
+ * `userAgent` and `ipAddress` are what the client CLAIMED when it signed in.
+ * Nothing verifies either, and no screen may imply otherwise.
+ */
+export interface DeviceSession {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  /** When this chain of tokens began — the sign-in itself. */
+  startedAt: string;
+  /** When it was last renewed, which lags real use by the access lifetime. */
+  renewedAt: string;
+  expiresAt: string;
+}
+
 export interface TokenStore {
   access(): string | null | Promise<string | null>;
   /** Null in cookie mode: the browser holds it and the page cannot read it. */
@@ -127,6 +172,42 @@ export class ApiClient {
 
   async register(email: string, name: string, password: string): Promise<IssuedTokens> {
     return this.adopt(await this.sendTokenRequest('/api/auth/register', { email, name, password }));
+  }
+
+  /** Who is signed in. Works while unverified: it is how a client finds out. */
+  async me(): Promise<Account> {
+    const account = asAccount(await this.get<unknown>('/api/auth/me'));
+
+    if (account == null) {
+      throw new Error(
+        'The API answered /api/auth/me in a shape this client does not know. Check AccountController in services/api.',
+      );
+    }
+
+    return account;
+  }
+
+  /** Every session still usable for this account, newest chain included. */
+  async sessions(): Promise<DeviceSession[]> {
+    const sessions = asSessions(await this.get<unknown>('/api/auth/sessions'));
+
+    if (sessions == null) {
+      throw new Error(
+        'The API answered /api/auth/sessions in a shape this client does not know. Check AccountController in services/api.',
+      );
+    }
+
+    return sessions;
+  }
+
+  /**
+   * Ends one named session, which may be this one.
+   *
+   * A session that is already gone answers `not_found` — deliberately, since
+   * saying "forbidden" would confirm that somebody else's session exists.
+   */
+  async endSession(id: string): Promise<void> {
+    await this.delete(`/api/auth/sessions/${encodeURIComponent(id)}`);
   }
 
   /** Ends this one session. The other devices keep theirs. */
@@ -223,14 +304,14 @@ export class ApiClient {
     const response = await this.sendTokenRequest('/api/auth/refresh', body).catch(() => null);
 
     if (response == null || !response.ok) {
-      await this.endSession();
+      await this.forgetSession();
       return false;
     }
 
     const issued = asIssuedTokens(await response.json().catch(() => null), this.delivery());
 
     if (issued == null) {
-      await this.endSession();
+      await this.forgetSession();
       return false;
     }
 
@@ -275,7 +356,8 @@ export class ApiClient {
     return issued;
   }
 
-  private async endSession(): Promise<void> {
+  /** Local state goes, and whoever is listening is told the session is over. */
+  private async forgetSession(): Promise<void> {
     await this.options.tokens?.clear();
     this.options.onSignedOut?.();
   }
@@ -300,6 +382,93 @@ export class ApiClient {
  * against the same invented payload, so nothing here knew the refresh path had
  * never worked. A cast would have hidden it again; this reports it.
  */
+/** The address sign-in matches. An alternative reaches somebody; this one is them. */
+export function primaryEmailAddress(account: Account): string | null {
+  return account.emailAddresses.find((address) => address.primary)?.address ?? null;
+}
+
+function asAccount(raw: unknown): Account | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (typeof candidate.id !== 'string' || candidate.id === '') return null;
+  if (typeof candidate.name !== 'string') return null;
+  if (!Array.isArray(candidate.emailAddresses) || !Array.isArray(candidate.phoneNumbers)) {
+    return null;
+  }
+
+  const emailAddresses: LinkedAddress[] = [];
+
+  for (const value of candidate.emailAddresses) {
+    const address = value as Record<string, unknown>;
+
+    if (typeof address?.address !== 'string' || typeof address.id !== 'string') return null;
+
+    emailAddresses.push({
+      id: address.id,
+      address: address.address,
+      verified: address.verified === true,
+      primary: address.primary === true,
+    });
+  }
+
+  const phoneNumbers: LinkedPhone[] = [];
+
+  for (const value of candidate.phoneNumbers) {
+    const phone = value as Record<string, unknown>;
+
+    if (typeof phone?.number !== 'string' || typeof phone.id !== 'string') return null;
+
+    phoneNumbers.push({
+      id: phone.id,
+      number: phone.number,
+      verified: phone.verified === true,
+      primary: phone.primary === true,
+    });
+  }
+
+  return {
+    id: candidate.id,
+    name: candidate.name,
+    businessName: typeof candidate.businessName === 'string' ? candidate.businessName : null,
+    countryCode: typeof candidate.countryCode === 'string' ? candidate.countryCode : null,
+    locale: typeof candidate.locale === 'string' ? candidate.locale : null,
+    verified: candidate.verified === true,
+    complete: candidate.complete === true,
+    emailAddresses,
+    phoneNumbers,
+  };
+}
+
+function asSessions(raw: unknown): DeviceSession[] | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const listed = (raw as Record<string, unknown>).sessions;
+
+  if (!Array.isArray(listed)) return null;
+
+  const sessions: DeviceSession[] = [];
+
+  for (const value of listed) {
+    const session = value as Record<string, unknown>;
+
+    if (typeof session?.id !== 'string' || session.id === '') return null;
+    if (typeof session.startedAt !== 'string' || typeof session.expiresAt !== 'string') return null;
+
+    sessions.push({
+      id: session.id,
+      userAgent: typeof session.userAgent === 'string' ? session.userAgent : null,
+      ipAddress: typeof session.ipAddress === 'string' ? session.ipAddress : null,
+      startedAt: session.startedAt,
+      renewedAt: typeof session.renewedAt === 'string' ? session.renewedAt : session.startedAt,
+      expiresAt: session.expiresAt,
+    });
+  }
+
+  return sessions;
+}
+
 /**
  * Checked rather than cast, for the same reason as the tokens below: the shape
  * came back different once already, and a cast turns that into
