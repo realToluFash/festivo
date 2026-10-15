@@ -776,11 +776,6 @@ h2 {
     font: var(--typeBodyPhone);
   }
 
-  .auth-card .notice-quiet {
-    background: var(--colorCard);
-    border: var(--borderCard);
-  }
-
   .auth-card h1 {
     font: var(--typeTitlePhone);
     letter-spacing: var(--typeTitlePhoneTracking);

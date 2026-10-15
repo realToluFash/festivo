@@ -5,24 +5,18 @@ import { Text } from './Text.tsx';
 
 export type NoticeTone = 'quiet' | 'attention' | 'broken';
 
-/** What the notice sits on. A quiet one is drawn inset on a card and as a card on the page. */
-export type NoticeSurface = 'card' | 'page';
-
 export function Notice({
   tone,
   mark,
   title,
   body,
-  on = 'card',
 }: {
   tone: NoticeTone;
   mark: string;
   title: string;
   body: string;
-  on?: NoticeSurface;
 }) {
-  const quiet = on === 'page' ? styles.quietOnPage : styles.quiet;
-  const surface = { quiet, attention: styles.attention, broken: styles.broken }[tone];
+  const surface = { quiet: styles.quiet, attention: styles.attention, broken: styles.broken }[tone];
   const ring = {
     quiet: styles.ringInfo,
     attention: styles.ringAttention,
@@ -63,7 +57,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   quiet: { backgroundColor: tokens.colorInset, borderColor: tokens.colorInsetBorder },
-  quietOnPage: { backgroundColor: tokens.colorCard, borderColor: tokens.colorBorder },
   attention: {
     backgroundColor: tokens.colorAttentionTint,
     borderColor: tokens.colorAttentionBorder,
