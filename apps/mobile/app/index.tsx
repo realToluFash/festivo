@@ -100,6 +100,12 @@ export default function Home() {
         </View>
       )}
 
+      <Link href="/sign-in" asChild>
+        <Pressable style={styles.button} accessibilityRole="button">
+          <Text weight="medium">{t('home.openSignIn')}</Text>
+        </Pressable>
+      </Link>
+
       <Link href="/layouts" asChild>
         <Pressable style={styles.button} accessibilityRole="button">
           <Text weight="medium">{t('home.openLayouts')}</Text>

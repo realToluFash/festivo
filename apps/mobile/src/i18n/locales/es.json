@@ -5,6 +5,7 @@
   "home": {
     "title": "Soirely",
     "subtitle": "La noche, desde su bolsillo.",
+    "openSignIn": "Iniciar sesión",
     "openLayouts": "Demostración de diseños"
   },
   "status": {
@@ -34,5 +35,21 @@
     "detailPane": "Detalle",
     "itemCount_one": "{{count}} elemento",
     "itemCount_other": "{{count}} elementos"
+  },
+  "signIn": {
+    "title": "Iniciar sesión",
+    "landscapeIntro": "Con su correo electrónico y su contraseña. Su idioma le sigue en todos los dispositivos.",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "reveal": "Mostrar",
+    "conceal": "Ocultar",
+    "submit": "Iniciar sesión",
+    "submitting": "Iniciando sesión…",
+    "lockedUntil": "Inténtelo de nuevo a las {{time}}",
+    "refused": "Ese correo electrónico y esa contraseña no coinciden. Compruebe ambos o restablezca su contraseña.",
+    "endedTitle": "Se ha cerrado su sesión",
+    "endedBody": "Inicie sesión de nuevo para continuar.",
+    "lockedTitle": "Demasiados intentos",
+    "lockedBody": "Inténtelo de nuevo a las {{time}} o restablezca su contraseña ahora e inicie sesión justo después."
   }
 }

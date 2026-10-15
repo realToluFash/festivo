@@ -5,6 +5,7 @@
   "home": {
     "title": "Soirely",
     "subtitle": "La soirée, depuis votre poche.",
+    "openSignIn": "Se connecter",
     "openLayouts": "Démonstration des mises en page"
   },
   "status": {
@@ -34,5 +35,21 @@
     "detailPane": "Détail",
     "itemCount_one": "{{count}} élément",
     "itemCount_other": "{{count}} éléments"
+  },
+  "signIn": {
+    "title": "Se connecter",
+    "landscapeIntro": "Avec votre adresse e-mail et votre mot de passe. Votre langue vous suit sur tous vos appareils.",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "reveal": "Afficher",
+    "conceal": "Masquer",
+    "submit": "Se connecter",
+    "submitting": "Connexion…",
+    "lockedUntil": "Réessayez à {{time}}",
+    "refused": "Cette adresse e-mail et ce mot de passe ne correspondent pas. Vérifiez les deux, ou réinitialisez votre mot de passe.",
+    "endedTitle": "Votre session a été fermée",
+    "endedBody": "Reconnectez-vous pour continuer.",
+    "lockedTitle": "Trop de tentatives",
+    "lockedBody": "Réessayez à {{time}}, ou réinitialisez votre mot de passe maintenant et connectez-vous juste après."
   }
 }
