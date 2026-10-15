@@ -84,6 +84,52 @@ git checkout <branch>
 Run the narrowest suites that actually cover the change rather than everything, and say
 which ones you ran.
 
+## Resolving review comments: fold, do not append
+
+**A review fix belongs in the commit that introduced the thing being fixed.** Not in a new
+`fix review comments` commit at the end — that is not an outcome, it is a record of a
+conversation, and it leaves the commit it refers to wrong in the history forever.
+
+So after a round of review, the branch is **rebuilt**, not extended. Each fix is squashed
+into its commit, and `git log` reads as though the code had been right the first time —
+because that is what the reviewer approved and what a bisect will check out.
+
+```bash
+git reset --soft <base>   # the whole branch's work, staged, in one place
+# then re-commit it in the groups it should have been in
+```
+
+Rebuilding from a soft reset is usually simpler than a chain of `fixup!` commits and an
+interactive rebase, because the working tree is already the final state — the only question
+left is how to group it.
+
+### The exception, and it is the important half
+
+**A comment that sends you outside the pull request gets its own commit.** If the reviewer
+says "while you are here, this other thing is also wrong", that other thing is a separate
+outcome with a separate reason, and folding it into a feature commit hides it.
+
+Sorting one from the other, on a real example:
+
+| The comment                                        | Where it goes                                     |
+| -------------------------------------------------- | ------------------------------------------------- |
+| rename this class you just added                   | the commit that added it                          |
+| remove this comment you just wrote                 | the commit that wrote it                          |
+| this method you added should be a setter           | the commit that added it                          |
+| **also fix the nine other places you named badly** | **its own commit** — none of them are in this PR  |
+| **write the rule down in a skill**                 | **its own commit** — a standard is its own change |
+
+The test: **would this change make sense on `main` without the rest of the pull request?**
+If yes, it is its own commit. If it only makes sense as part of the thing being reviewed, it
+belongs in that thing's commit.
+
+### What this costs
+
+The branch is force-pushed, so use `--force-with-lease` and never `--force`. Say in the
+report that you rebuilt and what the new shape is, because a reviewer who had read the old
+commits needs to know their anchors moved. Inline review comments survive a force-push when
+their line still exists; GitHub marks them outdated when it does not.
+
 ## Step 4: Verify the split changed nothing
 
 After re-splitting an existing commit the tree must be byte-identical:

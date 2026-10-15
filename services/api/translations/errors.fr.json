@@ -4,6 +4,7 @@
     "method_not_allowed": "Cette action n'est pas disponible ici.",
     "not_found": "Nous n'avons pas trouvé ce que vous avez demandé.",
     "conflict": "Cela entre en conflit avec un élément existant.",
+    "email_taken": "Cette adresse e-mail est déjà enregistrée.",
     "unsupported_media_type": "Ce format n'est pas pris en charge.",
     "unauthenticated": "Veuillez vous connecter pour continuer.",
     "forbidden": "Vous n'avez pas l'autorisation de faire cela.",

@@ -91,6 +91,45 @@ cannot be checked:
 a 422 naming the path rather than deep inside a service with a `TypeError`. A closed shape
 _drops_ undeclared fields; `allowUnknownFields: true` keeps them. Know which you want.
 
+## An entity is a data layer, and nothing else
+
+**The only methods on an entity are `getX`, `setX` and `isX`.** If you are about to write
+any other name on an entity, it belongs in the caller or in a service.
+
+That rules out four things it is natural to reach for:
+
+- **No static factories.** `User::register(...)`, `Order::fromBasket(...)` — these put the
+  decision about how a thing comes into existence inside the thing. Call the constructor,
+  and let the service that knows _why_ decide what to pass it.
+- **No verbs.** `completeProfile()`, `verifyEmail()`, `changePhone()`, `revoke()`,
+  `softDelete()`. Each is a rule wearing a mutator's clothes: `changePhone()` also cleared
+  `phoneVerifiedAt`, which is a policy decision, not a write. Name it `setPhone()` and let
+  whoever changes the phone decide what else that means, or give that decision a service.
+- **No normalisation.** `User::normaliseEmail()` moved to `App\Domain\User\EmailAddress`.
+  One definition of what "the same address" means, called by every writer — and the
+  entity is not the one place every writer goes through, the service is.
+- **No `hasX`.** `hasPassword()` is `null !== $user->getPassword()` at the call site.
+
+**Exempt:** methods a framework names. `getUserIdentifier()`, `getRoles()` and
+`eraseCredentials()` are Symfony's interface; `#[ORM\PrePersist]` and `#[ORM\PreUpdate]`
+callbacks are Doctrine's. You do not get to rename those, and they are the mechanism, not
+domain logic.
+
+**`isX` is allowed to compute**, which is the one place judgement stays. `isVerified()` and
+`isComplete()` read several columns and apply a rule to them. They are still answers about
+this row's own data, they cannot write, and the alternative — a service injected everywhere
+just to ask whether a row is complete — is worse.
+
+### Why
+
+An entity is loaded by Doctrine in contexts you did not write: a fixture, a migration
+backfill's `getRepository()`, a hydration during a query, a proxy. Every method on it is
+reachable from all of those. A rule placed there is a rule that runs in places that have no
+business running it, and a rule placed in a service runs exactly where it was called.
+
+It also keeps `getX`/`setX` honest. Once one method on an entity does something more than
+read or write a field, the next reader has to check all of them.
+
 ## What an entity may expose
 
 - **Never a Doctrine `Collection`.** Return a plain array: `return $this->agents->getValues();`
@@ -105,9 +144,26 @@ _drops_ undeclared fields; `allowUnknownFields: true` keeps them. Know which you
   meaning deletion, which requires `orphanRemoval: true` on the collection or the row
   silently survives. The reference project's `owning-child-constructors` skill documents it
   in full; read it before converting a pair.
-- **Normalisation happens in the entity**, not in a controller or a form. A second writer
-  is a second idea of what the same value means, and a uniqueness constraint only holds if
-  every writer agrees.
+- **A timestamp Doctrine can maintain is maintained by Doctrine.** `createdAt` and
+  `updatedAt` come from `App\Doctrine\Traits\Timestampable`, which carries the columns,
+  `#[ORM\PrePersist]` to initialise them and `#[ORM\PreUpdate]` to move `updatedAt`. The
+  alternative is a private `touch()` that every mutator has to remember to call — `User` had
+  seven of them, and the eighth mutator anybody adds is the one nobody notices is missing:
+  the row stops reporting when it last changed and no test fails.
+  - **The entity must carry `#[ORM\HasLifecycleCallbacks]`.** Without it Doctrine never
+    looks for the callbacks, so the trait is inert and there is no error of any kind.
+    `TimestampableTest` enforces it for every entity using the trait, because nothing else
+    can.
+  - A `PreUpdate` callback fires only when a **mapped field** is dirty. A change to a
+    collection alone does not make the owning entity dirty, so a parent whose only change is
+    an added child does not get a new `updatedAt`. If that matters, the parent needs a field
+    that changes too.
+  - The reference project does this across 25 entities with the same trait-and-attribute
+    pair, which is where the shape comes from.
+- **Normalisation has exactly one definition, and it is not on the entity.** A second
+  writer is a second idea of what the same value means, and a uniqueness constraint only
+  holds if every writer agrees — so put it in one function in the scope's namespace
+  (`App\Domain\User\EmailAddress::normalise()`) and have every writer call that.
 
 ## A repository reads. It does not write
 
@@ -148,6 +204,89 @@ final class UserRepository extends ServiceEntityRepository
 A query that does not fit `findBy` goes here as a named method — `findOneByEmail`,
 `countActiveSince` — rather than a `QueryBuilder` assembled at the call site. That is the
 job.
+
+## A class that acts is named for the actor, not for the thing it acts on
+
+**If the name is a noun for a thing, that thing has to be able to perform every method on
+it.** `EmailAddress::normalise()` fails the test: an email address is a value, and a value
+does not normalise anything. The class was a function wearing a value object's name.
+
+```php
+// No. None of these can do what they are being asked to do.
+EmailAddress::normalise($email)          // an address does not normalise
+$tokens->issueFor($user)                 // tokens do not issue themselves
+$breachedPasswords->isBreached($plain)   // a set of passwords does not check one
+$interactions->record($ask)              // interactions do not record themselves
+
+// Yes. Each name is the thing doing the work.
+EmailAddressNormaliser::normalise($email)
+$tokenIssuer->issueFor($user)
+$breachedPasswordChecker->isBreached($plain)
+$interactionRecorder->record($ask)
+```
+
+The agent noun is usually the verb plus `-er` or `-or`: Normaliser, Issuer, Checker,
+Recorder, Resolver, Calculator, Extractor, Builder. `code-structure` has the vocabulary the
+reference project uses and how often, which is the place to look before inventing one.
+
+**A plural noun is the most common form of this mistake**, because it reads as a collection
+and is nearly always a service: `Tokens`, `Interactions`, `BreachedPasswords`, `Passwords`.
+Every one of those was wrong here for the same reason.
+
+**What stays a noun.** A class that genuinely _is_ the thing, and whose methods are
+questions about itself or things it contains:
+
+- `IssuedTokens`, `RegistrationResult`, `Address`, `Suggestion` — values, no behaviour
+- `PasswordPolicy::check()` — a policy is a thing you consult, and consulting it is asking
+  it about itself
+- `SupportedLocales::supports()` — a set answering a question about its own membership
+- `AddressLookup`, `ObjectStore`, `Availability` — the capability _is_ the named thing, and
+  the methods are what you ask it for
+
+**A past participle is not a noun.** `Registered` was holding a user and a token pair; it is
+`RegistrationResult`. If the name reads as an adjective, it is describing something that is
+missing from the name.
+
+### The test
+
+Say the call out loud with the subject first. _"The email address normalises the email"_ is
+wrong, so the name is wrong. _"The policy checks the password"_ is fine, so it stays.
+
+## A property is named after what it holds
+
+**`$userRepository`, not `$users`. `$passwordHasherFactory`, not `$hashers`.**
+
+A constructor property's name says what the thing _is_, which for an injected dependency
+means its type. `$users` reads as a collection of users; it was a `UserRepository`.
+`$breached` reads as a boolean; it was a `BreachedPasswordsInterface`.
+
+```php
+// No.
+public function __construct(
+    private UserRepository $users,
+    private PasswordHasherFactoryInterface $hashers,
+    private BreachedPasswordsInterface $breached,
+    private EntityManagerInterface $em,
+    private JWTTokenManagerInterface $jwt,
+) {}
+
+// Yes.
+public function __construct(
+    private UserRepository $userRepository,
+    private PasswordHasherFactoryInterface $passwordHasherFactory,
+    private BreachedPasswordsInterface $breachedPasswords,
+    private EntityManagerInterface $entityManager,
+    private JWTTokenManagerInterface $jwtTokenManager,
+) {}
+```
+
+Drop the `Interface` suffix and nothing else. The abbreviation saves four characters at the
+declaration and costs a guess at every one of the twenty call sites below it — and
+`name-things` already says the same thing from the other direction: a name read in fifty
+places earns its letters.
+
+This applies to dependencies. A **local** variable in a three-line scope can be short, and
+a genuine collection is still `$users`.
 
 ## Types
 

@@ -26,6 +26,56 @@ you have and how fast you are growing, and makes one tenant's ids guessable from
 A v4 scatters inserts across the index. v7 is time-ordered, so it indexes like a sequence
 and tells an outsider nothing.
 
+## A person's addresses are rows, not columns
+
+**Sign-up and sign-in deal with one email address and one phone number.** Later, from
+account settings, a person may add alternatives — **capped at two of each** — so neither is
+a column on `users`. `email_addresses` and `phone_numbers` each hold the address, when it
+was verified, and whether it is the primary one.
+
+### Primary identifies. An alternative only reaches.
+
+This is the distinction the whole shape rests on:
+
+|                             | Primary | Alternative |
+| --------------------------- | ------- | ----------- |
+| Signs you in                | yes     | **no**      |
+| Receives account mail       | yes     | no          |
+| Read by `isVerified()`      | yes     | no          |
+| Reachable for notifications | yes     | yes         |
+| Counts as claimed           | yes     | yes         |
+
+An alternative address is a way to reach somebody, not a second way to _be_ them. Letting
+one sign in would mean adding an address to your account quietly mints a second set of
+credentials for it — so `UserRepository::findOneByPrimaryEmailAddress()` filters on the
+flag, and that is the only query sign-in may use.
+
+**"Is this address already taken" is a different question** and spans every address:
+`EmailAddressRepository::findOneByAddress()`. Registration asks that one, so registering
+with an address that is already somebody else's alternative is refused with the same clean
+409 rather than reaching the unique constraint. Collapsing the two queries is what would
+turn an alternative into credentials.
+
+### What is enforced, and where
+
+- **An address is globally unique**, not unique per user — a unique index. Two accounts
+  claiming one address is how a password reset reaches the wrong person.
+- **Exactly one primary each**, through a partial unique index over the rows where the flag
+  is true. `writing-migrations` has the Doctrine side, which is easy to get subtly wrong.
+- **At most two of each per user**, enforced by the service that adds one, because a row
+  count per user is not something an index can say. sc-113 owns it.
+- **`getUserIdentifier()` is the user's id**, not an address. The primary flag can move and
+  an address can be replaced, so an address is not a stable name for an account — and the
+  identifier is what the access token carries.
+
+The alternative shape — `email_verified_at` and `phone_verified_at` on `users` — is what
+Laravel, Rails' devise and Auth0 do, and it is correct for them because one identifier is
+all they promise. django-allauth and Clerk use rows for the same reason we do. The deciding
+question is only ever whether a person can have more than one.
+
+The verification _challenge_ — the code, its expiry, the attempt count, the resend cooldown
+— is separate again, and belongs to whichever story builds verification rather than here.
+
 ## Every migration states what happens to existing rows
 
 Not in a comment — in the story's acceptance criteria and the pull request's **Risks**.

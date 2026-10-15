@@ -132,6 +132,7 @@ external = [
     "AsyncAws\\**",
     "Doctrine\\**",
     "Elao\\**",
+    "Lexik\\**",
     "PHPUnit\\**",
     "Psl\\**",
     "Psr\\**",
@@ -141,6 +142,10 @@ external = [
 # The vocabulary every module reads. Entities are the persisted shape and enums
 # are the closed sets; both are shared on purpose.
 shared = ["App\\Entity\\**", "App\\Enum\\**", "App\\Http\\**"]
+
+# Product scopes. docs/architecture/scopes.md owns the list; each is its own
+# layer so one reaching into another has to be declared rather than happen.
+domain_user = ["App\\Domain\\User\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -191,9 +196,27 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:storage"]
 namespace = "App\\Translation\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:translation", "@layer:locale"]
 
+# A repository answers questions about one scope's data, so it may use that
+# scope's vocabulary — UserRepository asks EmailAddressNormaliser what "the same address"
+# means rather than keeping a second copy of the rule. The edge is one way:
+# nothing in Domain reaches back into Repository except through its own
+# constructor injection.
 [[guard.perimeter.rules]]
 namespace = "App\\Repository\\"
-permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repository"]
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repository", "@layer:domain_user"]
+
+# ── Product scopes ──────────────────────────────────────────────────────────────
+
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\User\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
+]
 
 # ── Integrations ────────────────────────────────────────────────────────────────
 #
@@ -204,6 +227,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repositor
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Anthropic\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:ai"]
+
+# The breach corpus. It sees the port it implements and nothing else of ours.
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\Hibp\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Nominatim\\"

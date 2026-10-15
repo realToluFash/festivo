@@ -16,16 +16,16 @@ final readonly class AssistantFactory
     public function __construct(
         #[Autowire('%env(ASSISTANT_PROVIDER)%')]
         private string $provider,
-        private AnthropicAssistant $anthropic,
-        private ScriptedAssistant $scripted,
+        private AnthropicAssistant $anthropicAssistant,
+        private ScriptedAssistant $scriptedAssistant,
     ) {
     }
 
     public function create(): AssistantInterface
     {
         return match ($this->provider) {
-            'anthropic' => $this->anthropic,
-            Availability::STAND_IN => $this->scripted,
+            'anthropic' => $this->anthropicAssistant,
+            Availability::STAND_IN => $this->scriptedAssistant,
 
             default => throw new InvalidArgumentException(\sprintf(
                 'Unknown ASSISTANT_PROVIDER "%s". Known providers: anthropic, %s.',
