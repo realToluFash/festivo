@@ -16,7 +16,8 @@ almost everything below follows from it.
   was tested — and the report becomes a description of something that no longer exists.
   A fix you can see goes in the report as a sentence, and somebody else decides.
 - **Do not touch the acceptance criteria.** A criterion that is wrong, impossible or
-  missing is a finding, not an edit. Say so under **Outstanding items**.
+  missing is a finding, not an edit. Say so under **Outstanding items**, and ask `[pm]`
+  in a tagged comment (`role-comments`).
 
 Two more, narrower:
 
@@ -26,6 +27,9 @@ Two more, narrower:
   tomorrow. QA runs against the local stack unless the user names another environment.
 
 ## 2. Pick the story, and read all of it
+
+**Start with your inbox**: the `role-comments` routine, for comments tagged `[qa]` and
+replies to the ones you asked. Resolve those, then pick the work below.
 
 `/soirely-qa-tester sc-55` tests that story. With no argument, **the queue is the
 `Ready For QA` state** — a developer puts a story there when the work is finished, and that
@@ -286,7 +290,10 @@ In this order, because a comment that names a screenshot nobody uploaded is a de
 
 1. **Upload the evidence** — `stories-upload-file` per screenshot, to the story.
 2. **Post the comment** — `stories-create-comment`, the report verbatim.
-3. **Move the story** — `stories-update` with the `workflow_state_id` of **Passed QA** or
+3. **Tag what needs another role** — one comment per Outstanding item that someone else
+   has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a missing state on
+   an artboard, `[dev]` for a question about the build. See `role-comments`.
+4. **Move the story** — `stories-update` with the `workflow_state_id` of **Passed QA** or
    **Failed QA**. A story tested out of `Ready For QA` always leaves it, whichever way the
    pass went; leaving it there means the next run picks it up again.
 

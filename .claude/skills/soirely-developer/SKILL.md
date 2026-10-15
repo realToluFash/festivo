@@ -21,10 +21,14 @@ what to pick up, in what order, and what has to be true before you hand it on.
   checks in section 6 are the standard here; driving the product is the QA agent's pass and
   it exists so that the person who built a thing is not the person who signs it off.
 - **Do not edit the acceptance criteria.** An AC that is wrong, impossible or missing is a
-  question, not an edit — raise it and carry on with the rest. AC belongs to
-  `/soirely-product-manager`, artboards to `/soirely-designer`.
+  question, not an edit — raise it as a `[pm]` comment (`role-comments`) and carry on with
+  the rest. AC belongs to `/soirely-product-manager`, artboards to `/soirely-designer`
+  (`[ux]`).
 
 ## 2. Pick the work
+
+**Start with your inbox**: the `role-comments` routine, for comments tagged `[dev]` and
+replies to the ones you asked. Resolve those, then pick the work below.
 
 `/soirely-developer sc-56` builds that story. With no argument, in this order:
 
@@ -63,8 +67,8 @@ report's own order and say, per finding, which of these it was:
 | The finding                                 | What you do                                                                                                                        |
 | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | The code is wrong                           | Fix it at the root. Not a second computation that happens to agree today — see **rebuild, don't increment** below.                 |
-| The code is right and the AC says otherwise | A question for the PM, not an edit. State which bullet, and what you believe is correct.                                           |
-| The AC and the artboards disagree           | The AC wins. Say so in the reply and leave the artboard to the designer.                                                           |
+| The code is right and the AC says otherwise | A `[pm]` comment, not an edit. State which bullet, and what you believe is correct.                                                |
+| The AC and the artboards disagree           | The AC wins. Say so in the reply, and tag `[ux]` so the designer fixes the artboard.                                               |
 | It is outside this story                    | Its own commit if it is one line and in the way; otherwise its own story. Never folded into a feature commit, where it disappears. |
 | The test harness was wrong, not the product | Say so with the evidence. A failing flow is not a failing product until the screenshot says so, and QA's own skill says the same.  |
 

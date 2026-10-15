@@ -35,6 +35,9 @@ copies of it.
 
 ## 2. Pick the work
 
+**Start with your inbox**: the `role-comments` routine, for comments tagged `[ux]` and
+replies to the ones you asked. Resolve those, then pick the work below.
+
 `/soirely-designer sc-56` draws what that story needs. `/soirely-designer 27` takes an
 epic. With no argument:
 
@@ -139,8 +142,8 @@ three ways. "Where they disagree" is where the AC wins — say so, and leave the
 
 - **No code.** Not a screen, not a token file, not "while I was in there". The artboards and
   the story's Design section are the deliverable.
-- **No AC.** A criterion that is wrong or missing is a question for
-  `/soirely-product-manager`.
+- **No AC.** A criterion that is wrong or missing is a `[pm]` comment on the story, per
+  `role-comments`. A field you cannot find the source of is a `[dev]` one.
 - **No state changes.** A story does not move because it has been drawn; it moves when the
   work is built. Say in your report that the artboards need the user's review.
 - **Do not delete an artboard somebody signed off.** Supersede it, and say what changed and

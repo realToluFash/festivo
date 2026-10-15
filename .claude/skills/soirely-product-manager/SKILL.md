@@ -14,9 +14,13 @@ the one that unblocks people.
 
 ## 1. Pick the work
 
+**Start with your inbox**: the `role-comments` routine, for comments tagged `[pm]` and
+replies to the ones you asked. Resolve those, then pick the work below.
+
 `/soirely-product-manager sc-56` works on that story. With no argument, in this order:
 
-1. **Open questions aimed at you.** They are already written down, in three places:
+1. **Open questions aimed at you that nobody tagged.** Most arrive as `[pm]` comments, but
+   some are still only written down in three places:
    - a QA report's **Outstanding items** — the lines that name an undecided thing
      ("whether the app owes one is undecided", "no design covers this state")
    - a pull request's **Risks** section, where the author says which reading to push back on
@@ -55,8 +59,9 @@ So:
    Quote the sentence you are overturning. A reversal that does not say what it reverses
    leaves two readings live, and somebody will build the old one.
 
-4. **Say who it unblocks** — the story and the role. An answer nobody is told about is an
-   answer nobody has.
+4. **Say who it unblocks** — reply in the question's thread, addressed to the asker, as
+   `role-comments` describes. A question you found untagged gets a tagged comment to the
+   role it blocks. An answer nobody is told about is an answer nobody has.
 
 **A decision that changes an AC bullet changes the AC.** Edit the bullet, and say in your
 report that you did: QA tests against the AC, so a decision recorded only in prose is a
@@ -101,6 +106,8 @@ Half of this job is refusing to answer in the wrong place.
 
 ## 5. What this mode must not do
 
+- **Need something from another role?** Ask it with a tagged comment — `[ux]` for a screen,
+  `[dev]` for what was built, `[qa]` for what was tested — per `role-comments`.
 - **No code, no artboards.** A story is the deliverable. If the fix is one line, it is still
   `/soirely-developer`'s line.
 - **Never move a story to Done.** That is the user's, after a merge. `Ready For QA` is the
