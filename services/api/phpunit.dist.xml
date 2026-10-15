@@ -27,6 +27,10 @@
             The second is empty on purpose: an unused origin slot has to allow
             nothing.
         -->
+        <!-- Forced for the same reason as the origins below: the container sets
+             a real transport, and a real environment variable beats .env.test.
+             null:// keeps every assertion about mail in the test transport. -->
+        <env name="MAILER_DSN" value="null://null" force="true" />
         <env name="CORS_WEB_ORIGIN" value="https://app.soirely.test" force="true" />
         <env name="CORS_EXPO_WEB_ORIGIN" value="" force="true" />
     </php>
