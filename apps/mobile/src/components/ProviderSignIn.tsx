@@ -11,14 +11,30 @@ export function ProviderSignIn() {
 
   return (
     <View style={styles.group}>
-      <View style={styles.or}>
-        <View style={styles.rule} />
-        <Text size={tokens.typeSmall.size} style={styles.orText}>
-          {t('signIn.or')}
-        </Text>
-        <View style={styles.rule} />
-      </View>
+      <OrRule label={t('signIn.or')} />
+      <ProviderButtons />
+    </View>
+  );
+}
 
+export function OrRule({ label }: { label: string }) {
+  return (
+    <View style={styles.or}>
+      <View style={styles.rule} />
+      <Text size={tokens.typeSmall.size} style={styles.orText}>
+        {label}
+      </Text>
+      <View style={styles.rule} />
+    </View>
+  );
+}
+
+/** Built to each owner's published specification; the marks are copied, not redrawn. */
+export function ProviderButtons() {
+  const { t } = useTranslation();
+
+  return (
+    <View style={styles.group}>
       <Pressable
         style={[styles.button, styles.google]}
         accessibilityRole="button"
