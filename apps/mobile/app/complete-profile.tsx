@@ -11,6 +11,7 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { CountryPicker } from '../src/components/CountryPicker.tsx';
 import { Field, TextField } from '../src/components/Field.tsx';
+import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
@@ -56,15 +57,26 @@ export default function CompleteProfile() {
 
   if (account == null) return null;
 
+  const byGoogle = account.providers.includes('google');
+  const primaryEmail = account.emailAddresses.find((address) => address.primary)?.address ?? '';
+
   return (
     <AuthFrame
       saying={
         <>
-          <OnboardingSteps at="details" />
+          <OnboardingSteps at="details" confirmedBy={byGoogle ? 'Google' : undefined} />
           <AuthHeading title={t('completeProfile.title')} intro={t('completeProfile.intro')} />
         </>
       }
     >
+      <LinkedNotice />
+      {byGoogle && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('completeProfile.providerConfirmed', { provider: 'Google', email: primaryEmail })}
+        />
+      )}
       <Details account={account} />
       <SignedInAs
         email={account.emailAddresses.find((address) => address.primary)?.address ?? ''}

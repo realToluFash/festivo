@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
+import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { config } from '../src/config.ts';
@@ -80,6 +81,7 @@ export default function Home() {
 
   return (
     <Screen>
+      <LinkedNotice />
       <Text size={28} weight="bold">
         {t('home.title')}
       </Text>

@@ -15,15 +15,25 @@ import Constants from 'expo-constants';
 interface Extra {
   apiUrl?: string;
   environment?: string;
+  googleAuthorizeUrl?: string;
+  googleTokenUrl?: string;
+  googleClientId?: string;
 }
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
 
 const DEVELOPMENT_FALLBACK = 'http://localhost:8080';
+/** The local sign-in sandbox (compose service `oidc`), reached from a simulator as the API is. */
+const SANDBOX = 'http://localhost:8089/google';
 
 export const config = {
   apiBaseUrl: (extra.apiUrl ?? DEVELOPMENT_FALLBACK).replace(/\/$/, ''),
   environment: extra.environment ?? 'development',
   /** True when nothing configured the URL, so a screen can say so out loud. */
   usingFallbackApiUrl: extra.apiUrl == null || extra.apiUrl === '',
+  google: {
+    authorizeUrl: extra.googleAuthorizeUrl ?? `${SANDBOX}/authorize`,
+    tokenUrl: extra.googleTokenUrl ?? `${SANDBOX}/token`,
+    clientId: extra.googleClientId ?? 'soirely-app',
+  },
 } as const;

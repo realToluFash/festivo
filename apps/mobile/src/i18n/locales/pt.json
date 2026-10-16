@@ -119,7 +119,8 @@
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "stepsLabel": "Antes de começar",
     "codeBlank": "Introduza o código de 6 dígitos do e-mail.",
-    "codeShort": "O código tem 6 dígitos."
+    "codeShort": "O código tem 6 dígitos.",
+    "step1Google": "E-mail confirmado pelo {{provider}} · concluído"
   },
   "verifyPhone": {
     "title": "Veja as suas mensagens",
@@ -186,10 +187,15 @@
     "signedInAs": "Sessão iniciada como {{email}}.",
     "signOut": "Terminar sessão",
     "optional": "Opcional",
-    "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar."
+    "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar.",
+    "providerConfirmed": "Sessão iniciada com o {{provider}}. O {{provider}} já confirmou {{email}}, por isso não há nenhum código a introduzir."
   },
   "forms": {
     "emailBlank": "Introduza o seu endereço de e-mail.",
     "emailShape": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio."
+  },
+  "oauth": {
+    "linked": "O {{provider}} está agora associado à sua conta. Pode iniciar sessão com qualquer um dos dois.",
+    "dismiss": "Fechar"
   }
 }

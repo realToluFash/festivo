@@ -1,20 +1,30 @@
+import { ProviderCancelled, awaiting } from '@soirely/api-client';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
+import { signInWithGoogle } from '../googleSignIn.ts';
+import { landingFor } from '../landing.ts';
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 
-export function ProviderSignIn() {
+export function ProviderSignIn({ onFailed }: { onFailed?: (provider: string) => void }) {
   const { t } = useTranslation();
 
   return (
     <View style={styles.group}>
       <OrRule label={t('signIn.or')} />
-      <ProviderButtons />
+      <ProviderButtons onFailed={onFailed} />
     </View>
   );
+}
+
+/** Away from sign-in, a failure is said there; on it, the screen says it itself. */
+function failedElsewhere(provider: string): void {
+  router.replace(`/sign-in?providerFailed=${provider}`);
 }
 
 export function OrRule({ label }: { label: string }) {
@@ -30,14 +40,36 @@ export function OrRule({ label }: { label: string }) {
 }
 
 /** Built to each owner's published specification; the marks are copied, not redrawn. */
-export function ProviderButtons() {
+export function ProviderButtons({
+  onFailed = failedElsewhere,
+}: {
+  onFailed?: ((provider: string) => void) | undefined;
+}) {
   const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+
+  async function google(): Promise<void> {
+    setBusy(true);
+
+    try {
+      const { account } = await signInWithGoogle();
+      router.replace(landingFor(awaiting(account)));
+    } catch (error) {
+      // Closing Google is not a failure, so it says nothing; anything else says Google did not work.
+      if (!(error instanceof ProviderCancelled)) onFailed('Google');
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <View style={styles.group}>
       <Pressable
         style={[styles.button, styles.google]}
+        onPress={() => void google()}
+        disabled={busy}
         accessibilityRole="button"
+        accessibilityState={{ busy, disabled: busy }}
         testID="signIn.google"
       >
         <GoogleMark />
