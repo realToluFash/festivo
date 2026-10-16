@@ -15,3 +15,4 @@ export * from './password.ts';
 export * from './regions.ts';
 export * from './initials.ts';
 export * from './phone.ts';
+export * from './forms.ts';
