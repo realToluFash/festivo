@@ -71,7 +71,7 @@ export function Register() {
         password,
       );
 
-      adoptAccount(account);
+      await adoptAccount(account);
 
       navigate(account.verified ? '/app' : '/verify-email', { replace: true });
     } catch (error) {

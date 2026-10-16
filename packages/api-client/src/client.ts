@@ -54,6 +54,28 @@ export interface Account {
   phoneNumbers: LinkedPhone[];
 }
 
+export interface Organisation {
+  id: string;
+  name: string;
+  countryCode: string;
+  currency: string;
+  timezone: string;
+  contactAddress: string;
+}
+
+/** A seeded role is named by `seededAs`, which each client words itself; a custom one by `name`. */
+export interface MemberRole {
+  id: string;
+  seededAs: string | null;
+  name: string | null;
+}
+
+export interface Membership extends Organisation {
+  role: MemberRole;
+}
+
+export type OrganisationChanges = Partial<Omit<Organisation, 'id'>>;
+
 /** `userAgent` and `ipAddress` are what the client claimed; nothing verifies either. */
 export interface DeviceSession {
   id: string;
@@ -186,6 +208,37 @@ export class ApiClient {
     }
 
     return sessions;
+  }
+
+  async organisations(): Promise<Membership[]> {
+    const raw = await this.get<unknown>('/api/orgs');
+    const listed =
+      typeof raw === 'object' && raw != null
+        ? (raw as Record<string, unknown>).organisations
+        : null;
+    const memberships = Array.isArray(listed) ? listed.map(asMembership) : null;
+
+    if (memberships == null || memberships.some((membership) => membership == null)) {
+      throw new Error(
+        'The API answered /api/orgs in a shape this client does not know. Check OrganisationController in services/api.',
+      );
+    }
+
+    return memberships as Membership[];
+  }
+
+  async updateOrganisation(id: string, changes: OrganisationChanges): Promise<Organisation> {
+    const organisation = asOrganisation(
+      await this.patch<unknown>(`/api/orgs/${encodeURIComponent(id)}`, changes),
+    );
+
+    if (organisation == null) {
+      throw new Error(
+        'The API answered PATCH /api/orgs/{id} in a shape this client does not know. Check OrganisationController in services/api.',
+      );
+    }
+
+    return organisation;
   }
 
   async endSession(id: string): Promise<void> {
@@ -443,6 +496,40 @@ function asAccount(raw: unknown): Account | null {
     complete: candidate.complete === true,
     emailAddresses,
     phoneNumbers,
+  };
+}
+
+function asOrganisation(raw: unknown): Organisation | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+  const fields = ['id', 'name', 'countryCode', 'currency', 'timezone', 'contactAddress'] as const;
+
+  if (fields.some((field) => typeof candidate[field] !== 'string')) return null;
+
+  return {
+    id: candidate.id as string,
+    name: candidate.name as string,
+    countryCode: candidate.countryCode as string,
+    currency: candidate.currency as string,
+    timezone: candidate.timezone as string,
+    contactAddress: candidate.contactAddress as string,
+  };
+}
+
+function asMembership(raw: unknown): Membership | null {
+  const organisation = asOrganisation(raw);
+  const role = (raw as Record<string, unknown> | null)?.role as Record<string, unknown> | undefined;
+
+  if (organisation == null || typeof role?.id !== 'string') return null;
+
+  return {
+    ...organisation,
+    role: {
+      id: role.id,
+      seededAs: typeof role.seededAs === 'string' ? role.seededAs : null,
+      name: typeof role.name === 'string' ? role.name : null,
+    },
   };
 }
 

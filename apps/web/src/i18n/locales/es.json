@@ -173,5 +173,47 @@
     "unreachableTitle": "No se puede conectar con Soirely",
     "unreachableBody": "Su sesión sigue abierta. Soirely no responde, así que todavía no se puede cargar nada. Compruebe su conexión y vuelva a intentarlo.",
     "retrying": "Intentándolo de nuevo…"
+  },
+  "switcher": {
+    "yourRole": "Su función · {{role}}",
+    "heading": "Sus organizaciones",
+    "current": "Actual",
+    "remembered": "Soirely recuerda su elección en este dispositivo.",
+    "switched": "Ahora trabaja en {{name}}.",
+    "label": "Organización: {{name}}, su función {{role}}",
+    "labelSwitch": "Organización: {{name}}, su función {{role}}. Cambiar de organización"
+  },
+  "roles": {
+    "owner": "Propietario",
+    "administrator": "Administrador",
+    "event_manager": "Gestor de eventos",
+    "coordinator": "Coordinador",
+    "read_only": "Solo lectura"
+  },
+  "noOrganisation": {
+    "title": "No pertenece a ninguna organización",
+    "body": "Los eventos, los equipos y los planes pertenecen a una organización, y ahora mismo no forma parte de ninguna. Su cuenta sigue siendo suya y no ha desaparecido nada.",
+    "wayOn": "Pida a quien gestiona la suya que vuelva a invitar a {{email}}.",
+    "signedInAs": "Sesión iniciada como {{email}}.",
+    "account": "Su cuenta"
+  },
+  "orgGeneral": {
+    "title": "General",
+    "intro": "El nombre que ven su equipo y sus invitados, y los valores con los que empieza cada evento nuevo.",
+    "section": "Organización",
+    "name": "Nombre",
+    "country": "País",
+    "contact": "Dirección de contacto",
+    "currency": "Moneda",
+    "timezone": "Zona horaria",
+    "defaultsNote": "Moneda y zona horaria: los eventos nuevos empiezan con estas. Los eventos que ya tiene conservan las suyas.",
+    "save": "Guardar cambios",
+    "saving": "Guardando…",
+    "saved": "Guardado. Todos en {{name}} verán los nuevos datos en su próxima pantalla.",
+    "nameBlank": "Indique el nombre de la organización.",
+    "contactBlank": "Indique un correo electrónico de contacto.",
+    "contactInvalid": "Eso no parece un correo electrónico. Compruebe que tiene una @ y un dominio.",
+    "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
+    "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento."
   }
 }

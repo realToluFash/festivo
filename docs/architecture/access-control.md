@@ -91,6 +91,9 @@ The listener asks two interfaces:
   including ones added later.
 - `EventDirectoryInterface::organisationOf($eventId)`: the event's organisation, or null.
 
-Until organisations exist (sc-65), `NoMemberships` answers that nobody is a member of
-anything. Until events exist, `NoEvents` answers that no event exists. Both refuse, which
-is the direction a gap should fail in.
+`App\Domain\Organisation\MembershipDirectory` answers the first from the `memberships`
+table: only an `active` membership counts. Until sc-66 gives roles their permissions,
+Owner is the only role, and it holds everything.
+
+Until events exist, `NoEvents` answers that no event exists, so every event route refuses,
+which is the direction a gap should fail in.

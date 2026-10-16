@@ -12,3 +12,5 @@ export * from './userAgent.ts';
 export * from './datetime.ts';
 export * from './devices.ts';
 export * from './password.ts';
+export * from './regions.ts';
+export * from './initials.ts';

@@ -3,9 +3,16 @@
     "actor.api_client": "Client API",
     "actor.system": "Système",
     "actor.user": "Titulaire du compte",
+    "validation.contact_address_invalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine.",
+    "validation.contact_address_required": "Indiquez une adresse e-mail de contact.",
+    "validation.country_invalid": "Choisissez un pays.",
+    "validation.currency_invalid": "Choisissez une devise.",
     "validation.email_invalid": "Veuillez saisir une adresse e-mail.",
     "validation.name_required": "Veuillez saisir votre nom.",
+    "validation.organisation_name_required": "Indiquez le nom de l'organisation.",
+    "validation.organisation_name_too_long": "Cela dépasse {count} caractères.",
     "validation.password_breached": "Ce mot de passe est apparu dans une fuite de données connue. Veuillez en choisir un autre.",
     "validation.password_too_long": "Cela dépasse {count} caractères.",
-    "validation.password_too_short": "Veuillez utiliser au moins {count} caractères."
+    "validation.password_too_short": "Veuillez utiliser au moins {count} caractères.",
+    "validation.timezone_invalid": "Choisissez un fuseau horaire."
 }

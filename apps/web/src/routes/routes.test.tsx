@@ -4,14 +4,16 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../session.ts';
 import { routes } from './index.tsx';
+import { membership } from '../test-memberships.ts';
+
+const MEMBERSHIP = membership({ id: 'org_1', name: 'Okonkwo Events' });
 
 const ADA: Session = {
   name: 'Ada Okonkwo',
   email: 'ada@example.com',
   verified: true,
-  organisation: { id: 'org_1', name: 'Okonkwo Events' },
-  organisations: [{ id: 'org_1', name: 'Okonkwo Events' }],
-  permissions: ['events.view', 'guests.view'],
+  organisation: MEMBERSHIP,
+  organisations: [MEMBERSHIP],
 };
 
 /**
@@ -62,22 +64,20 @@ describe('the application tree', () => {
   it('renders the shell with navigation and the organisation', () => {
     at('/app');
 
-    expect(screen.getByLabelText('Switch organisation')).toBeDefined();
+    expect(screen.getByLabelText('Organisation: Okonkwo Events, your role Owner')).toBeDefined();
     expect(screen.getByRole('link', { name: 'Events' })).toBeDefined();
     expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
   });
 
-  /**
-   * A real page, not a redirect and not a blank area. A redirect on a shared
-   * link produces a loop nobody can read; a blank area looks like a failed
-   * load.
-   */
-  it('shows a real page for a route the account lacks permission for', () => {
+  it('shows an account in no organisation where it stands, and keeps the navigation', () => {
+    __setSessionState({
+      status: 'signedIn',
+      session: { ...ADA, organisation: null, organisations: [] },
+    });
+
     at('/app/settings');
 
-    expect(screen.getByRole('heading', { name: 'You do not have access to this' })).toBeDefined();
-    // And the navigation survives, because the way out of a refused page is
-    // the navigation.
+    expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeDefined();
   });
 
@@ -114,7 +114,12 @@ describe('the application tree', () => {
     expect(screen.queryByLabelText('Email')).toBeNull();
 
     let answer: (response: Response) => void = () => {};
-    fetch.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const account = new Promise<Response>((resolve) => (answer = resolve));
+    fetch.mockImplementation(async (input) =>
+      new URL(String(input)).pathname === '/api/orgs'
+        ? new Response(JSON.stringify({ organisations: [MEMBERSHIP] }), { status: 200 })
+        : account,
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     const trying = await screen.findByRole('button', { name: 'Trying again…' });

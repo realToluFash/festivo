@@ -173,5 +173,47 @@
     "unreachableTitle": "Não é possível contactar o Soirely",
     "unreachableBody": "A sua sessão continua iniciada. O Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação e tente novamente.",
     "retrying": "A tentar novamente…"
+  },
+  "switcher": {
+    "yourRole": "A sua função · {{role}}",
+    "heading": "As suas organizações",
+    "current": "Atual",
+    "remembered": "O Soirely lembra a sua escolha neste dispositivo.",
+    "switched": "Agora a trabalhar em {{name}}.",
+    "label": "Organização: {{name}}, a sua função {{role}}",
+    "labelSwitch": "Organização: {{name}}, a sua função {{role}}. Mudar de organização"
+  },
+  "roles": {
+    "owner": "Proprietário",
+    "administrator": "Administrador",
+    "event_manager": "Gestor de eventos",
+    "coordinator": "Coordenador",
+    "read_only": "Só leitura"
+  },
+  "noOrganisation": {
+    "title": "Não está em nenhuma organização",
+    "body": "Eventos, equipas e planos pertencem a uma organização, e neste momento não faz parte de nenhuma. A sua conta continua a ser sua e nada desapareceu.",
+    "wayOn": "Peça a quem gere a sua que volte a convidar {{email}}.",
+    "signedInAs": "Sessão iniciada como {{email}}.",
+    "account": "A sua conta"
+  },
+  "orgGeneral": {
+    "title": "Geral",
+    "intro": "O nome que a sua equipa e os seus convidados veem, e os valores com que cada novo evento começa.",
+    "section": "Organização",
+    "name": "Nome",
+    "country": "País",
+    "contact": "Endereço de contacto",
+    "currency": "Moeda",
+    "timezone": "Fuso horário",
+    "defaultsNote": "Moeda e fuso horário: os novos eventos começam com estes. Os eventos que já tem mantêm os seus.",
+    "save": "Guardar alterações",
+    "saving": "A guardar…",
+    "saved": "Guardado. Todos em {{name}} veem os novos dados no próximo ecrã.",
+    "nameBlank": "Indique o nome da organização.",
+    "contactBlank": "Indique um e-mail de contacto.",
+    "contactInvalid": "Isso não parece um endereço de e-mail. Verifique se tem um @ e um domínio.",
+    "readOnly": "A sua função, {{role}}, pode ver estes dados mas não alterá-los. Os proprietários podem.",
+    "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento."
   }
 }

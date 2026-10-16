@@ -1,12 +1,14 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, Navigate, Outlet } from 'react-router';
+import { NavLink, Navigate, Outlet, useLocation } from 'react-router';
 
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
+import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
-import { restoreSession, useSession, useSessionState } from '../../session.ts';
+import { restoreSession, switchOrganisation, useSession, useSessionState } from '../../session.ts';
+import { NoOrganisation } from './NoOrganisation.tsx';
 
 /**
  * The signed-in shell, built for a desk.
@@ -41,6 +43,9 @@ export function AppLayout() {
 function Shell() {
   const { t } = useTranslation();
   const session = useSession();
+  const { pathname } = useLocation();
+  const [switched, setSwitched] = useState<{ name: string; at: string } | null>(null);
+  const organisation = session.organisation;
 
   return (
     <div className="shell">
@@ -51,16 +56,16 @@ function Shell() {
       <aside className="shell-sidebar">
         <div className="brand">{t('app.name')}</div>
 
-        <label className="org-switcher">
-          <span className="visually-hidden">{t('nav.switchOrganisation')}</span>
-          <select defaultValue={session.organisation.id} aria-label={t('nav.switchOrganisation')}>
-            {session.organisations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {organisation != null && (
+          <OrganisationSwitcher
+            current={organisation}
+            organisations={session.organisations}
+            onSwitch={(next) => {
+              switchOrganisation(next.id);
+              setSwitched({ name: next.name, at: pathname });
+            }}
+          />
+        )}
 
         <nav className="shell-nav">
           <NavLink to="/app" end>
@@ -80,8 +85,22 @@ function Shell() {
       </aside>
 
       <main id="content" className="shell-content">
+        {/* Said on the page it happened on, and gone once the person moves on. */}
+        {switched != null && switched.at === pathname && (
+          <div className="notice notice-done" role="status">
+            <span className="mark mark-done" aria-hidden="true">
+              ✓
+            </span>
+            <p className="notice-title">{t('switcher.switched', { name: switched.name })}</p>
+          </div>
+        )}
+
         <ErrorBoundary>
-          <Outlet />
+          {organisation == null && !pathname.startsWith('/app/account') ? (
+            <NoOrganisation />
+          ) : (
+            <Outlet />
+          )}
         </ErrorBoundary>
       </main>
     </div>

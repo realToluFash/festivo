@@ -157,7 +157,6 @@ h2 {
   letter-spacing: -0.01em;
 }
 
-.org-switcher select,
 .language-picker select {
   width: 100%;
   min-height: var(--sizeHit);
@@ -1139,4 +1138,236 @@ h2 {
     font: var(--typeTitlePhone);
     letter-spacing: var(--typeTitlePhoneTracking);
   }
+}
+
+/* ── Which organisation, and your role in it ──────────────────────────────── */
+
+.org-switcher {
+  position: relative;
+}
+
+.org-switcher-button,
+.org-switcher-single {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  width: 100%;
+  min-height: var(--sizeHitPhonePrimary);
+  padding: var(--spaceXxs) var(--spaceMd) var(--spaceXxs) var(--spaceXs);
+  border: var(--borderControl);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  text-align: left;
+}
+
+.org-switcher-button {
+  cursor: pointer;
+}
+
+.org-switcher-single {
+  border: var(--borderInset);
+  background: var(--colorInset);
+}
+
+.org-tile {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space6xl);
+  height: var(--space6xl);
+  border-radius: var(--radiusNav);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+  font: var(--typeButton);
+}
+
+.org-naming {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  min-width: 0;
+}
+
+.org-name,
+.org-role {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.org-name {
+  font: var(--typeButton);
+}
+
+.org-role {
+  font: var(--typeMeta);
+  color: var(--colorInkSecondary);
+}
+
+.org-switcher-chevron {
+  flex: none;
+  fill: none;
+  stroke: var(--colorInkSecondary);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.org-switcher-menu {
+  position: absolute;
+  top: calc(100% + var(--spaceSm));
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  width: max(100%, 22rem);
+  padding: var(--spaceSm) 0;
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusCardDesktop);
+  box-shadow: var(--shadowPopover);
+}
+
+.org-switcher-menu ul {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.org-switcher-heading {
+  margin: 0;
+  padding: var(--spaceMd) var(--spaceXl) var(--spaceXs);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+  color: var(--colorInkSecondary);
+}
+
+.org-switcher-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  width: 100%;
+  min-height: var(--sizeHitPhonePrimary);
+  padding: var(--spaceXs) var(--spaceXl);
+  border: 0;
+  background: var(--colorCard);
+  color: var(--colorInk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.org-switcher-option:hover,
+.org-switcher-option-current {
+  background: var(--colorInset);
+}
+
+.org-switcher-current {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceXs);
+  font: var(--typeButton);
+  color: var(--colorAccentText);
+}
+
+.org-switcher-note {
+  margin: 0;
+  padding: var(--spaceSm) var(--spaceXl) var(--spaceXs);
+  border-top: var(--borderInset);
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.notice-done {
+  margin-bottom: var(--spaceXl);
+  background: var(--colorAccentTint);
+  border: 1px solid var(--colorAccentTintBorder);
+  color: var(--colorAccentText);
+}
+
+.notice-done p {
+  margin: 0;
+}
+
+/* ── Settings > General ───────────────────────────────────────────────────── */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxl);
+  max-width: 47.5rem;
+}
+
+.settings-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.settings-heading h1,
+.settings-heading p,
+.settings-card h2 {
+  margin: 0;
+}
+
+.settings-heading p {
+  color: var(--colorInkSecondary);
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.settings-form .notice-done {
+  margin-bottom: 0;
+}
+
+/* Two columns that wrap to one, with flex rather than grid so the same idea builds in the app. */
+.settings-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXl) var(--space3xl);
+}
+
+.settings-fields .field {
+  flex: 1 1 18rem;
+}
+
+.settings-read-only {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+}
+
+.settings-read-only div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXxs) var(--spaceXl);
+}
+
+.settings-read-only dt {
+  flex: 0 0 10rem;
+  color: var(--colorInkSecondary);
+}
+
+.settings-read-only dd {
+  margin: 0;
+}
+
+.no-organisation {
+  max-width: 40rem;
+}
+
+.no-organisation h1,
+.no-organisation p {
+  margin: 0;
 }

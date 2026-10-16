@@ -1,20 +1,20 @@
-import { type Account, ApiUnreachableError, primaryEmailAddress } from '@soirely/api-client';
+import {
+  type Account,
+  ApiUnreachableError,
+  type Membership,
+  primaryEmailAddress,
+} from '@soirely/api-client';
 import { useSyncExternalStore } from 'react';
 
 import { SIGNED_OUT, api } from './api.ts';
-
-export interface Organisation {
-  id: string;
-  name: string;
-}
 
 export interface Session {
   name: string;
   email: string;
   verified: boolean;
-  organisation: Organisation;
-  organisations: readonly Organisation[];
-  permissions: readonly string[];
+  /** The one this device is working in; null for an account in no organisation. */
+  organisation: Membership | null;
+  organisations: readonly Membership[];
 }
 
 export type SessionState =
@@ -24,7 +24,8 @@ export type SessionState =
   | { status: 'unreachable'; retrying: boolean }
   | { status: 'signedOut'; ended: boolean };
 
-const STAND_IN_PERMISSIONS: readonly string[] = ['events.view', 'guests.view'];
+/** Per device, as the switcher promises: "Soirely remembers your choice on this device". */
+const ACTIVE_ORGANISATION = 'soirely.organisation';
 
 let state: SessionState = { status: 'unknown' };
 const listeners = new Set<() => void>();
@@ -45,8 +46,9 @@ export function useSession(): Session {
   return current.session;
 }
 
+/** Owner holds every permission; until sc-66 gives other roles theirs, nobody else holds any. */
 export function can(session: Session, permission: string): boolean {
-  return session.permissions.includes(permission);
+  return permission !== '' && session.organisation?.role.seededAs === 'owner';
 }
 
 export async function restoreSession(): Promise<void> {
@@ -66,7 +68,7 @@ export async function retrySession(): Promise<void> {
 
 async function askForAccount(): Promise<void> {
   try {
-    adoptAccount(await api.me());
+    await adoptAccount(await api.me());
   } catch (error) {
     set(
       error instanceof ApiUnreachableError
@@ -76,8 +78,37 @@ async function askForAccount(): Promise<void> {
   }
 }
 
-export function adoptAccount(account: Account): void {
-  set({ status: 'signedIn', session: sessionFrom(account) });
+/** The account, with its organisations; an unverified one is behind the gate and is not asked for them. */
+export async function adoptAccount(account: Account): Promise<void> {
+  const organisations = account.verified ? await api.organisations() : [];
+
+  set({ status: 'signedIn', session: sessionFrom(account, organisations) });
+}
+
+/** Remembered on this device, so the next visit opens where this one left off. */
+export function switchOrganisation(id: string): void {
+  if (state.status !== 'signedIn') return;
+
+  const organisation = state.session.organisations.find((membership) => membership.id === id);
+
+  if (organisation == null) return;
+
+  remember(id);
+  set({ status: 'signedIn', session: { ...state.session, organisation } });
+}
+
+/** After an edit, so the switcher and every page read the new name at once. */
+export function replaceOrganisation(next: Membership): void {
+  if (state.status !== 'signedIn') return;
+
+  const current = state.session;
+  const organisations = current.organisations.map((membership) =>
+    membership.id === next.id ? next : membership,
+  );
+  const organisation =
+    organisations.find((membership) => membership.id === current.organisation?.id) ?? null;
+
+  set({ status: 'signedIn', session: { ...current, organisations, organisation } });
 }
 
 export function forgetSession(ended = false): void {
@@ -88,21 +119,33 @@ export function __setSessionState(next: SessionState): void {
   set(next);
 }
 
-function sessionFrom(account: Account): Session {
-  // A stand-in until epic 28: one organisation, named after the registered business.
-  const organisation: Organisation = {
-    id: account.id,
-    name: account.businessName ?? account.name,
-  };
+function sessionFrom(account: Account, organisations: readonly Membership[]): Session {
+  const remembered = recalled();
 
   return {
     name: account.name,
     email: primaryEmailAddress(account) ?? '',
     verified: account.verified,
-    organisation,
-    organisations: [organisation],
-    permissions: STAND_IN_PERMISSIONS,
+    organisations,
+    organisation:
+      organisations.find((membership) => membership.id === remembered) ?? organisations[0] ?? null,
   };
+}
+
+function recalled(): string | null {
+  try {
+    return window.localStorage.getItem(ACTIVE_ORGANISATION);
+  } catch {
+    return null;
+  }
+}
+
+function remember(id: string): void {
+  try {
+    window.localStorage.setItem(ACTIVE_ORGANISATION, id);
+  } catch {
+    // Private windows refuse storage; the choice then lasts as long as the page.
+  }
 }
 
 function set(next: SessionState): void {

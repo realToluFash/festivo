@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\SoftDeletable;
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\AccountOrigin;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -41,6 +42,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
     private ?string $locale = null;
 
+    /** Set once, at creation: it is what tells an account that founds an organisation from one that joins. */
+    #[ORM\Column(type: Types::STRING, length: 20, enumType: AccountOrigin::class)]
+    private AccountOrigin $origin;
+
     /** @var Collection<int, EmailAddress> */
     #[ORM\OneToMany(targetEntity: EmailAddress::class, mappedBy: 'user', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $emailAddresses;
@@ -49,9 +54,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(targetEntity: PhoneNumber::class, mappedBy: 'user', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $phoneNumbers;
 
-    public function __construct(string $name, ?string $passwordHash = null)
-    {
+    public function __construct(
+        string $name,
+        ?string $passwordHash = null,
+        AccountOrigin $origin = AccountOrigin::SelfRegistered,
+    ) {
         $this->id = Uuid::v7();
+        $this->origin = $origin;
         $this->name = $name;
         $this->passwordHash = $passwordHash;
         $this->emailAddresses = new ArrayCollection();
@@ -61,6 +70,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getId(): Uuid
     {
         return $this->id;
+    }
+
+    public function getOrigin(): AccountOrigin
+    {
+        return $this->origin;
     }
 
     public function getName(): string
