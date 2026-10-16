@@ -51,6 +51,10 @@ services:
     App\Domain\User\Password\PasswordResolver:
         public: true
 
+    # sc-57's details screen is its first caller; until then only tests do.
+    App\Domain\Organisation\OrganisationFounder:
+        public: true
+
     App\Integrations\Nominatim\NominatimProvider:
         arguments:
             $endpoint: '%env(ADDRESS_ENDPOINT)%'
@@ -70,9 +74,9 @@ services:
     App\AI\Interfaces\AssistantInterface:
         factory: ['@App\AI\Factory\AssistantFactory', 'create']
 
-    # Until organisations (sc-65) and events exist, nobody is a member and no
-    # event resolves, so every organisation and event route refuses.
-    App\Http\Access\Interfaces\MembershipDirectoryInterface: '@App\Http\Access\Directory\NoMemberships'
+    App\Http\Access\Interfaces\MembershipDirectoryInterface: '@App\Domain\Organisation\MembershipDirectory'
+
+    # Until events exist no event resolves, so every event route is not found.
     App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Http\Access\Directory\NoEvents'
 
 when@test:

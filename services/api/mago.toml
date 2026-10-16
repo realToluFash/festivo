@@ -146,6 +146,7 @@ shared = ["App\\Entity\\**", "App\\Enum\\**", "App\\Http\\**"]
 # Product scopes. docs/architecture/scopes.md owns the list; each is its own
 # layer so one reaching into another has to be declared rather than happen.
 domain_user = ["App\\Domain\\User\\**"]
+domain_organisation = ["App\\Domain\\Organisation\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -216,6 +217,19 @@ permit = [
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
+]
+
+# Organisations read the user scope's vocabulary (EmailAddressNormaliser for a
+# contact address); the user scope does not reach back.
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Organisation\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_organisation",
+    "@layer:domain_user",
+    "@layer:repository",
 ]
 
 # ── Integrations ────────────────────────────────────────────────────────────────

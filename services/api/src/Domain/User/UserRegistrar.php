@@ -13,6 +13,7 @@ use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeMailer;
 use App\Entity\EmailAddress;
 use App\Entity\User;
+use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
 use App\Enum\PasswordFailure;
 use App\Http\Exception\ApiException;
@@ -48,7 +49,7 @@ final readonly class UserRegistrar
         string $password,
         ?Request $request = null,
     ): RegistrationResult {
-        $user = $this->build($email, $name, $password);
+        $user = $this->build($email, $name, $password, AccountOrigin::SelfRegistered);
 
         return $this->persist($user, $request);
     }
@@ -65,19 +66,24 @@ final readonly class UserRegistrar
         string $password,
         ?Request $request = null,
     ): RegistrationResult {
-        $user = $this->build($email, $name, $password);
+        $user = $this->build($email, $name, $password, AccountOrigin::Invitation);
         $user->getPrimaryEmailAddress()?->setVerifiedAt(new DateTimeImmutable());
 
         return $this->persist($user, $request);
     }
 
-    private function build(string $email, string $name, #[SensitiveParameter] string $password): User
-    {
+    private function build(
+        string $email,
+        string $name,
+        #[SensitiveParameter]
+        string $password,
+        AccountOrigin $origin,
+    ): User {
         $normalised = EmailAddressNormaliser::normalise($email);
 
         $this->validate($normalised, $name, $password);
 
-        $user = new User(Str\trim($name), $this->passwordResolver->hash($password));
+        $user = new User(Str\trim($name), $this->passwordResolver->hash($password), $origin);
 
         // Registering with an address makes it the primary one. The constructor
         // registers itself with the user, so nothing else has to remember to.

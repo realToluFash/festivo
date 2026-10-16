@@ -3,9 +3,16 @@
     "actor.api_client": "API client",
     "actor.system": "System",
     "actor.user": "Account holder",
+    "validation.contact_address_invalid": "That doesn't look like an email address. Check it has an @ and a domain.",
+    "validation.contact_address_required": "Enter a contact email address.",
+    "validation.country_invalid": "Choose a country.",
+    "validation.currency_invalid": "Choose a currency.",
     "validation.email_invalid": "Enter an email address.",
     "validation.name_required": "Enter your name.",
+    "validation.organisation_name_required": "Enter the organisation's name.",
+    "validation.organisation_name_too_long": "That is longer than {count} characters.",
     "validation.password_breached": "This password has appeared in a known data breach. Choose another.",
     "validation.password_too_long": "That is longer than {count} characters.",
-    "validation.password_too_short": "Use at least {count} characters."
+    "validation.password_too_short": "Use at least {count} characters.",
+    "validation.timezone_invalid": "Choose a time zone."
 }
