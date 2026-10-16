@@ -1,4 +1,4 @@
-import { ApiUnreachableError } from '@soirely/api-client';
+import { ApiUnreachableError, awaiting } from '@soirely/api-client';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -9,6 +9,7 @@ import { Notice } from '../src/components/Notice.tsx';
 import { SignInFrame } from '../src/components/SignInFrame.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { tokens } from '../src/theme/tokens.ts';
+import { landingFor } from '../src/landing.ts';
 
 /** No sign-in heading or form: the person is still signed in, and those would say otherwise. */
 export default function Unreachable() {
@@ -21,7 +22,7 @@ export default function Unreachable() {
     try {
       const account = await api.me();
 
-      router.replace(account.verified ? '/' : '/verify-email');
+      router.replace(landingFor(awaiting(account)));
     } catch (error) {
       if (error instanceof ApiUnreachableError) setRetrying(false);
       else router.replace('/sign-in');

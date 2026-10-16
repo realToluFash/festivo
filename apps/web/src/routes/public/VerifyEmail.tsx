@@ -2,13 +2,13 @@ import { ApiError } from '@soirely/api-client';
 import { formatCountdown } from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, Navigate, useNavigate } from 'react-router';
+import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
-import { forgetSession, restoreSession, useSessionState } from '../../session.ts';
+import { forgetSession, refreshAccount, restoreSession, useSessionState } from '../../session.ts';
 
 type Status =
   | { kind: 'entering' }
@@ -99,6 +99,12 @@ export function VerifyEmail() {
     }
   }
 
+  /** The account is read again, so the next gate, or the product, opens rather than this screen. */
+  async function carryOn(): Promise<void> {
+    await refreshAccount();
+    navigate('/app');
+  }
+
   async function signOut(): Promise<void> {
     await api.signOut();
     forgetSession();
@@ -141,9 +147,13 @@ export function VerifyEmail() {
                 <h1>{t('verifyEmail.doneTitle')}</h1>
                 <p className="muted">{t('verifyEmail.doneBody', { address })}</p>
               </div>
-              <Link className="button button-primary" to="/app">
+              <button
+                className="button button-primary"
+                type="button"
+                onClick={() => void carryOn()}
+              >
                 {t('verifyEmail.continue')}
-              </Link>
+              </button>
             </>
           ) : (
             <>

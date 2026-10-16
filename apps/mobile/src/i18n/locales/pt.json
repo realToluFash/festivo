@@ -164,5 +164,23 @@
   "countryPicker": {
     "search": "Pesquisar países",
     "close": "Concluído"
+  },
+  "completeProfile": {
+    "title": "Alguns dados",
+    "intro": "Para que as pessoas com quem trabalha saibam quem é quem.",
+    "name": "Nome completo",
+    "nameBlank": "Adicione o seu nome para continuar.",
+    "organisation": "Nome da organização",
+    "organisationHelp": "Os seus eventos pertencem-lhe. Pode mudar-lhe o nome mais tarde.",
+    "organisationBlank": "Adicione o nome da sua organização para continuar.",
+    "country": "País",
+    "save": "Guardar e continuar",
+    "saving": "A guardar…",
+    "failedTitle": "Não foi possível guardar",
+    "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
+    "signedInAs": "Sessão iniciada como {{email}}.",
+    "signOut": "Terminar sessão",
+    "optional": "Opcional",
+    "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar."
   }
 }

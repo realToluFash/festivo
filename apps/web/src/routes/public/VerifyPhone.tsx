@@ -116,6 +116,16 @@ export function VerifyPhone() {
     navigate('/app');
   }
 
+  // Saving the details with no number removes the phone, so the gate rests on the email again.
+  async function withoutPhone(name: string): Promise<void> {
+    try {
+      await api.completeProfile({ name });
+      await carryOn();
+    } catch {
+      setStatus({ kind: 'failed' });
+    }
+  }
+
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
   const fieldError = codeError ?? (status.kind === 'wrong' ? t('verifyPhone.wrong') : null);
 
@@ -263,9 +273,13 @@ export function VerifyPhone() {
               {onboarding && (
                 <div className="auth-footnote">
                   <span>{t('verifyPhone.cantGetTexts')}</span>
-                  <Link className="link-button" to="/complete-profile">
+                  <button
+                    className="link-button"
+                    type="button"
+                    onClick={() => void withoutPhone(account.name)}
+                  >
                     {t('verifyPhone.carryOnWithout')}
-                  </Link>
+                  </button>
                 </div>
               )}
             </>

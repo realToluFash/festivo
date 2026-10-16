@@ -255,5 +255,23 @@
     "contactInvalid": "That doesn't look like an email address. Check it has an @ and a domain.",
     "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
     "failed": "Saving did not work. Nothing was changed. Try again in a moment."
+  },
+  "completeProfile": {
+    "title": "A few details",
+    "intro": "So the people you work with know who is who.",
+    "name": "Full name",
+    "nameBlank": "Add your name to carry on.",
+    "organisation": "Organisation name",
+    "organisationHelp": "Your events belong to it. You can rename it later.",
+    "organisationBlank": "Add your organisation's name to carry on.",
+    "country": "Country",
+    "save": "Save and continue",
+    "saving": "Saving…",
+    "failedTitle": "Saving did not work",
+    "failedBody": "Something went wrong on the way. Try again in a moment.",
+    "signedInAs": "Signed in as {{email}}.",
+    "signOut": "Sign out",
+    "optional": "Optional",
+    "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it."
   }
 }

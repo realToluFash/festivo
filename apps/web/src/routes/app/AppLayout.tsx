@@ -7,7 +7,13 @@ import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
-import { restoreSession, switchOrganisation, useSession, useSessionState } from '../../session.ts';
+import {
+  landingFor,
+  restoreSession,
+  switchOrganisation,
+  useSession,
+  useSessionState,
+} from '../../session.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 
 /**
@@ -36,6 +42,10 @@ export function AppLayout() {
   if (state.status === 'unreachable') return <Unreachable />;
 
   if (state.status !== 'signedIn') return <Pending />;
+
+  // The product is behind the onboarding gate: verified, then complete.
+  const landing = landingFor(state.session.awaiting);
+  if (landing !== '/app') return <Navigate to={landing} replace />;
 
   return <Shell />;
 }

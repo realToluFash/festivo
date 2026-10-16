@@ -113,6 +113,16 @@ export default function VerifyPhone() {
     }
   }
 
+  // Saving the details with no number removes the phone, so the gate rests on the email again.
+  async function withoutPhone(name: string): Promise<void> {
+    try {
+      await api.completeProfile({ name });
+      router.replace('/');
+    } catch {
+      setStatus({ kind: 'failed' });
+    }
+  }
+
   const asking = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
   const fieldError = codeError ?? (status.kind === 'wrong' ? t('verifyPhone.wrong') : null);
   const changeHref = onboarding ? '/phone?from=onboarding' : '/phone';
@@ -284,6 +294,15 @@ export default function VerifyPhone() {
             onPress={() => router.push(changeHref)}
             testID="verifyPhone.change"
           />
+
+          {onboarding && (
+            <Footnote
+              question={t('verifyPhone.cantGetTexts')}
+              action={t('verifyPhone.carryOnWithout')}
+              onPress={() => void withoutPhone(account.name)}
+              testID="verifyPhone.carryOn"
+            />
+          )}
         </View>
       )}
     </AuthFrame>

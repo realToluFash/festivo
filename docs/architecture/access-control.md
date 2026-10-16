@@ -97,3 +97,23 @@ Owner is the only role, and it holds everything.
 
 Until events exist, `NoEvents` answers that no event exists, so every event route refuses,
 which is the direction a gap should fail in.
+
+## The onboarding gate
+
+Every route with an account policy (`#[Authenticated]`, `#[InOrganisation]`,
+`#[InEvent]`) is also behind the onboarding gate, checked as part of "is there an
+account". An account that is not **verified** gets `403 account_unverified`; one that is
+verified but not **complete** gets `403 profile_incomplete`. Verification is asked first.
+
+- **Verified** is the primary email address confirmed, and the primary phone confirmed
+  if there is one. An account with no phone passes on its email alone.
+- **Complete** is a non-blank name, the details screen saved once, and, for an account
+  that registered on its own, membership of an organisation. `AccountCompleteness`
+  answers it.
+
+The exempt routes are one list, `OnboardingGate::EXEMPT`: `me`, email verification and
+its resend and cooldown, the details screen, and setting and verifying a phone with its
+resend and cooldown, since the details screen can lead there. Logout and refresh are public, so
+they never reach it. A route added without being named there is gated, so an unprotected
+one takes a deliberate act. `OnboardingGateTest` checks every name on the list is a real
+route.

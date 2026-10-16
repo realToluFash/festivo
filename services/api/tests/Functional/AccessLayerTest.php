@@ -17,7 +17,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\Access\FixtureDirectories;
 use App\Tests\Fixtures\Access\FixtureTable;
 use App\Tests\Fixtures\Access\FixtureTableRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Tests\Traits\OnboardsAccounts;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
@@ -31,6 +31,8 @@ use Symfony\Component\Uid\Uuid;
 
 final class AccessLayerTest extends ApiTestCase
 {
+    use OnboardsAccounts;
+
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
@@ -49,7 +51,7 @@ final class AccessLayerTest extends ApiTestCase
         $this->otherEvent = Uuid::v7();
 
         $user = self::service(UserRegistrar::class)->register('member@example.com', 'Member', self::PASSWORD)->user;
-        self::service(EntityManagerInterface::class)->flush();
+        self::onboard($user);
 
         $this->client->setServerParameter(
             'HTTP_AUTHORIZATION',

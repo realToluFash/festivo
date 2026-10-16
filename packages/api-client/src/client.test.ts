@@ -1,6 +1,12 @@
 import { describe, expect, test, vi } from 'vitest';
 
-import { ApiClient, type IssuedTokens, type TokenStore, primaryEmailAddress } from './client.ts';
+import {
+  ApiClient,
+  type IssuedTokens,
+  type TokenStore,
+  awaiting,
+  primaryEmailAddress,
+} from './client.ts';
 import { ApiError, ApiUnreachableError } from './problem.ts';
 
 function problem(status: number, code: string, extra: Record<string, unknown> = {}): Response {
@@ -642,6 +648,69 @@ describe('a browser never holds the refresh token', () => {
     expect(result.cooldownSeconds).toBe(60);
   });
 
+  test('a refusal from the onboarding gate names the gate, and still rejects', async () => {
+    const gates: string[] = [];
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      onGate: (gate) => gates.push(gate),
+      fetch: async () => problem(403, 'profile_incomplete'),
+    });
+
+    await expect(client.organisations()).rejects.toThrow(ApiError);
+    expect(gates).toEqual(['profile_incomplete']);
+  });
+
+  test('an ordinary refusal is not taken for a gate', async () => {
+    const gates: string[] = [];
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      onGate: (gate) => gates.push(gate),
+      fetch: async () => problem(403, 'permission_required'),
+    });
+
+    await expect(client.organisations()).rejects.toThrow(ApiError);
+    expect(gates).toEqual([]);
+  });
+
+  test('saving the details answers with the account and whether a phone still needs verifying', async () => {
+    let sent: unknown = null;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async (_input, init) => {
+        sent = JSON.parse(String(init?.body));
+
+        return new Response(
+          JSON.stringify({ account: { ...ACCOUNT, complete: true }, verificationNeeded: false }),
+          {
+            status: 200,
+          },
+        );
+      },
+    });
+
+    const saved = await client.completeProfile({
+      name: 'Ada',
+      organisationName: 'Ìrè Events',
+      countryCode: 'NG',
+      timezone: 'Africa/Lagos',
+    });
+
+    expect(sent).toEqual({
+      name: 'Ada',
+      organisationName: 'Ìrè Events',
+      countryCode: 'NG',
+      timezone: 'Africa/Lagos',
+    });
+    expect(saved.account.complete).toBe(true);
+    expect(saved.verificationNeeded).toBe(false);
+  });
+
   test('signing out clears the session even when the request fails', async () => {
     const tokens = store('good', null);
 
@@ -666,6 +735,34 @@ function health(body: unknown, status = 200): Response {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+describe('which gate an account is behind', () => {
+  const email = (verified: boolean) => [
+    { id: 'a1', address: 'folake@ire.events', verified, primary: true },
+  ];
+
+  test('the email first, then a phone it has, then the details, then nothing', () => {
+    expect(awaiting({ verified: false, complete: false, emailAddresses: email(false) })).toBe(
+      'email',
+    );
+    expect(awaiting({ verified: false, complete: true, emailAddresses: email(true) })).toBe(
+      'phone',
+    );
+    expect(awaiting({ verified: true, complete: false, emailAddresses: email(true) })).toBe(
+      'details',
+    );
+    expect(awaiting({ verified: true, complete: true, emailAddresses: email(true) })).toBeNull();
+  });
+
+  test('a verified alternative address does not count for the primary', () => {
+    const addresses = [
+      { id: 'a1', address: 'folake@ire.events', verified: false, primary: true },
+      { id: 'a2', address: 'folake@example.com', verified: true, primary: false },
+    ];
+
+    expect(awaiting({ verified: false, complete: false, emailAddresses: addresses })).toBe('email');
+  });
+});
 
 describe('the health endpoint', () => {
   function client(response: Response) {
@@ -736,6 +833,7 @@ const ACCOUNT = {
   locale: 'en',
   verified: true,
   complete: true,
+  needsOrganisation: false,
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
     { id: 'a2', address: 'folake@example.com', verified: false, primary: false },

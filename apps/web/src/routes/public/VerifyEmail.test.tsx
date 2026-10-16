@@ -12,6 +12,9 @@ const FOLAKE: Session = {
   name: 'Folake Ire',
   email: 'folake@ire.events',
   verified: false,
+  complete: false,
+  awaiting: 'email' as const,
+  needsOrganisation: false,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
 };
@@ -111,7 +114,7 @@ describe('verifying an email address', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Email verified' })).toBeDefined(),
     );
-    expect(screen.getByRole('link', { name: 'Continue' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDefined();
     expect(seen).toContain('POST /api/auth/verify/email');
   });
 

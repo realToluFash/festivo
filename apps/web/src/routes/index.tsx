@@ -7,6 +7,7 @@ import { General } from './app/settings/General.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
+import { CompleteProfile } from './public/CompleteProfile.tsx';
 import { Home } from './public/Home.tsx';
 import { NotFound } from './public/NotFound.tsx';
 import { Register } from './public/Register.tsx';
@@ -38,6 +39,7 @@ export const routes = [
   { path: '/verify-email', element: <VerifyEmail /> },
   { path: '/verify-phone', element: <VerifyPhone /> },
   { path: '/phone', element: <ChangePhone /> },
+  { path: '/complete-profile', element: <CompleteProfile /> },
   { path: '/status', element: <Status /> },
   {
     path: '/app',

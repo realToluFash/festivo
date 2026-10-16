@@ -15,6 +15,8 @@ import { tokens } from './tokens.ts';
 /** An event rather than a call, because the session store reads this module. */
 export const SIGNED_OUT = 'soirely:signed-out';
 
+export const GATED = 'soirely:gated';
+
 export const api = new ApiClient({
   baseUrl: () => config().apiBaseUrl,
   locale: () => currentLocale(),
@@ -22,5 +24,8 @@ export const api = new ApiClient({
   refreshTokenIn: 'cookie',
   onSignedOut: () => {
     window.dispatchEvent(new Event(SIGNED_OUT));
+  },
+  onGate: () => {
+    window.dispatchEvent(new Event(GATED));
   },
 });

@@ -12,6 +12,9 @@ const ADA: Session = {
   name: 'Ada Okonkwo',
   email: 'ada@example.com',
   verified: true,
+  complete: true,
+  awaiting: null,
+  needsOrganisation: false,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
 };
@@ -136,6 +139,7 @@ describe('the application tree', () => {
           locale: 'en',
           verified: true,
           complete: true,
+          needsOrganisation: false,
           emailAddresses: [{ id: 'a1', address: 'ada@example.com', verified: true, primary: true }],
           phoneNumbers: [],
         }),

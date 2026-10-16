@@ -10,6 +10,7 @@ use App\Entity\RefreshToken;
 use App\Enum\ErrorCode;
 use App\Repository\RefreshTokenRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -19,6 +20,8 @@ use SensitiveParameter;
 
 final class SessionTest extends ApiTestCase
 {
+    use OnboardsAccounts;
+
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
@@ -166,7 +169,9 @@ final class SessionTest extends ApiTestCase
     #[Test]
     public function meAnswersWhileUnverifiedAndIncomplete(): void
     {
-        ['accessToken' => $access] = $this->signIn('gate@example.com');
+        self::service(UserRegistrar::class)->register('gate@example.com', 'Session', self::PASSWORD);
+        self::em()->flush();
+        ['accessToken' => $access] = $this->signInExisting('gate@example.com');
 
         $body = $this->get('/api/auth/me', $access);
 
@@ -261,8 +266,7 @@ final class SessionTest extends ApiTestCase
 
     private function account(string $address): void
     {
-        self::service(UserRegistrar::class)->register($address, 'Session', self::PASSWORD);
-        self::em()->flush();
+        self::onboard(self::service(UserRegistrar::class)->register($address, 'Session', self::PASSWORD)->user);
     }
 
     /** @return array<string, mixed> */

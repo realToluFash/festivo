@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Http;
 
+use App\Domain\User\Onboarding\AccountCompleteness;
 use App\Entity\EmailAddress;
 use App\Entity\PhoneNumber;
 use App\Entity\User;
@@ -11,8 +12,13 @@ use Psl\Vec;
 
 final readonly class AccountSerialiser
 {
+    public function __construct(
+        private AccountCompleteness $accountCompleteness,
+    ) {
+    }
+
     /** @return array<string, mixed> */
-    public static function serialise(User $user): array
+    public function serialise(User $user): array
     {
         return [
             'id' => $user->getId()->toRfc4122(),
@@ -21,7 +27,8 @@ final readonly class AccountSerialiser
             'countryCode' => $user->getCountryCode(),
             'locale' => $user->getLocale(),
             'verified' => $user->isVerified(),
-            'complete' => $user->isComplete(),
+            'complete' => $this->accountCompleteness->isComplete($user),
+            'needsOrganisation' => $this->accountCompleteness->needsOrganisation($user),
             'emailAddresses' => Vec\map($user->getEmailAddresses(), static fn (EmailAddress $address): array => [
                 'id' => $address->getId()->toRfc4122(),
                 'address' => $address->getAddress(),

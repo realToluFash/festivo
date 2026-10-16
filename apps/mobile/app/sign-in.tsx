@@ -1,4 +1,4 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, awaiting } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -12,6 +12,7 @@ import { SignInFrame } from '../src/components/SignInFrame.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { landingFor } from '../src/landing.ts';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
 const CONTROL_TEXT_SIZE = 16;
@@ -38,7 +39,7 @@ export default function SignIn() {
     try {
       const { account } = await api.signIn(email, password);
 
-      router.replace(account.verified ? '/' : '/verify-email');
+      router.replace(landingFor(awaiting(account)));
     } catch (error) {
       setStatus(refusalFrom(error));
     }

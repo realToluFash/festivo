@@ -1,19 +1,14 @@
 import { type Account, ApiError } from '@soirely/api-client';
-import {
-  callingCode,
-  countryChoices,
-  deviceCountry,
-  formatPhone,
-  phoneLengthProblem,
-} from '@soirely/domain';
-import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { deviceCountry, formatPhone, phoneLengthProblem } from '@soirely/domain';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
+import { phoneProblemMessage } from '../../phoneProblem.ts';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
 import { Pending } from '../../components/Pending.tsx';
-import { currentLocale } from '../../i18n/index.ts';
+import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 
 /** "Change your mobile number", which is also where a first number is entered. */
 export function ChangePhone() {
@@ -100,31 +95,18 @@ function NumberForm({
   onTexted: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
-  const countries = useMemo(
-    () => countryChoices(locale).filter(({ code }) => callingCode(code) != null),
-    [locale],
-  );
   const [country, setCountry] = useState(initialCountry);
   const [number, setNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
-  const countryName = countries.find(({ code }) => code === country)?.name ?? country;
-
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    const problem = phoneLengthProblem(number, country);
+    const problem = phoneProblemMessage(phoneLengthProblem(number, country), country, t);
 
     if (problem != null) {
-      setError(
-        problem === 'blank'
-          ? t('verifyPhone.numberBlank')
-          : t(problem === 'tooShort' ? 'verifyPhone.tooShort' : 'verifyPhone.tooLong', {
-              country: countryName,
-            }),
-      );
+      setError(problem);
       return;
     }
 
@@ -148,58 +130,22 @@ function NumberForm({
 
   return (
     <form className="auth-form" noValidate onSubmit={(event) => void send(event)}>
-      <div className="phone-entry">
-        <div className="field phone-country">
-          <label htmlFor="phone-country">{t('verifyPhone.countryLabel')}</label>
-          <select
-            className="input"
-            id="phone-country"
-            value={country}
-            disabled={sending}
-            onChange={(event) => {
-              setCountry(event.target.value);
-              setError(null);
-            }}
-          >
-            {countries.map(({ code, name }) => (
-              <option key={code} value={code}>
-                {`${callingCode(code) ?? ''} ${name}`}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="field phone-number">
-          <label htmlFor="phone-number">{t('verifyPhone.numberLabel')}</label>
-          <input
-            className={error == null ? 'input' : 'input input-wrong'}
-            id="phone-number"
-            type="tel"
-            autoComplete="tel-national"
-            value={number}
-            disabled={sending}
-            aria-invalid={error != null}
-            aria-describedby={error == null ? 'phone-help' : 'phone-error phone-help'}
-            onChange={(event) => {
-              setNumber(event.target.value);
-              setError(null);
-            }}
-          />
-        </div>
-      </div>
-
-      {error != null && (
-        <div className="field-error" id="phone-error" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <p>{error}</p>
-        </div>
-      )}
-
-      <p className="field-help" id="phone-help">
-        {t('verifyPhone.numberHelp')}
-      </p>
+      <PhoneEntry
+        label={t('verifyPhone.numberLabel')}
+        country={country}
+        number={number}
+        error={error}
+        disabled={sending}
+        help={t('verifyPhone.numberHelp')}
+        onCountry={(code) => {
+          setCountry(code);
+          setError(null);
+        }}
+        onNumber={(typed) => {
+          setNumber(typed);
+          setError(null);
+        }}
+      />
 
       <button className="button button-primary" type="submit" aria-busy={sending}>
         {sending ? t('verifyPhone.sending') : t('verifyPhone.send')}

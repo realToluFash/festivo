@@ -12,6 +12,8 @@
     "invalid_refresh_token": "Su sesión ha finalizado. Inicie sesión de nuevo.",
     "forbidden": "No tiene permiso para hacer eso.",
     "permission_required": "Su función no incluye el permiso que esto necesita.",
+    "account_unverified": "Verifique su correo electrónico para continuar.",
+    "profile_incomplete": "Añada algunos datos para continuar.",
     "too_many_requests": "Demasiados intentos. Espere e inténtelo de nuevo.",
     "too_many_attempts": "Demasiados intentos. Espere e inténtelo de nuevo.",
     "verification_code_invalid": "Ese código no coincide.",

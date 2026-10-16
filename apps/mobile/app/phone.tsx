@@ -1,5 +1,5 @@
 import { type Account, ApiError } from '@soirely/api-client';
-import { countryChoices, deviceCountry, formatPhone, phoneLengthProblem } from '@soirely/domain';
+import { deviceCountry, formatPhone, phoneLengthProblem } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -12,8 +12,8 @@ import { CountryPicker } from '../src/components/CountryPicker.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { Text } from '../src/components/Text.tsx';
-import { currentLocale } from '../src/i18n/index.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
+import { phoneProblemMessage } from '../src/phoneProblem.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
 const CONTROL_TEXT_SIZE = 16;
@@ -109,19 +109,10 @@ function NumberForm({
   const [sending, setSending] = useState(false);
 
   async function send(): Promise<void> {
-    const problem = phoneLengthProblem(number, country);
+    const problem = phoneProblemMessage(phoneLengthProblem(number, country), country, t);
 
     if (problem != null) {
-      const name =
-        countryChoices(currentLocale()).find(({ code }) => code === country)?.name ?? country;
-
-      setError(
-        problem === 'blank'
-          ? t('verifyPhone.numberBlank')
-          : t(problem === 'tooShort' ? 'verifyPhone.tooShort' : 'verifyPhone.tooLong', {
-              country: name,
-            }),
-      );
+      setError(problem);
 
       return;
     }

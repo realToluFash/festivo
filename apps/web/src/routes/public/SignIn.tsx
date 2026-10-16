@@ -1,5 +1,5 @@
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
-import { ApiError } from '@soirely/api-client';
+import { ApiError, awaiting } from '@soirely/api-client';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -8,7 +8,7 @@ import { api } from '../../api.ts';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
-import { adoptAccount } from '../../session.ts';
+import { adoptAccount, landingFor } from '../../session.ts';
 
 type Status =
   | { kind: 'ready' }
@@ -64,7 +64,7 @@ export function SignIn() {
 
       await adoptAccount(account);
 
-      navigate(account.verified ? '/app' : '/verify-email', { replace: true });
+      navigate(landingFor(awaiting(account)), { replace: true });
     } catch (error) {
       setStatus(refusalFrom(error));
     }
