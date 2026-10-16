@@ -13,6 +13,7 @@ import { Notice } from '../src/components/Notice.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
+import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { landingFor } from '../src/landing.ts';
 
@@ -67,12 +68,21 @@ function Credentials({
   onLockLifted: () => void;
 }) {
   const { t } = useTranslation();
+  const email = useRef<TextInput>(null);
   const password = useRef<TextInput>(null);
 
   // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
   const typed = useRef({ email: '', password: '' });
+  const checks = useFormChecks(
+    ['email', 'password'] as const,
+    (field, value) =>
+      field === 'email' ? emailMessage(value, t) : value === '' ? t('signIn.passwordBlank') : null,
+    (field) => (field === 'email' ? email : password).current?.focus(),
+  );
 
   const submit = (): void => {
+    if (!checks.passes(typed.current)) return;
+
     onSubmit(typed.current.email.trim(), typed.current.password);
   };
 
@@ -133,8 +143,10 @@ function Credentials({
         />
       )}
 
-      <Field label={t('signIn.email')}>
+      <Field label={t('signIn.email')} error={checks.errors.email}>
         <TextField
+          ref={email}
+          wrong={checks.errors.email != null}
           editable={!busy}
           keyboardType="email-address"
           autoComplete="email"
@@ -142,7 +154,9 @@ function Credentials({
           autoCapitalize="none"
           onChangeText={(text) => {
             typed.current.email = text;
+            checks.edited('email', text);
           }}
+          onBlur={() => checks.left('email', typed.current.email)}
           returnKeyType="next"
           submitBehavior="submit"
           onSubmitEditing={() => password.current?.focus()}
@@ -153,18 +167,20 @@ function Credentials({
 
       <Field
         label={t('signIn.password')}
-        error={status.kind === 'refused' ? t('signIn.refused') : null}
+        error={checks.errors.password ?? (status.kind === 'refused' ? t('signIn.refused') : null)}
       >
         <PasswordField
           ref={password}
-          wrong={status.kind === 'refused'}
+          wrong={status.kind === 'refused' || checks.errors.password != null}
           submitting={busy}
           editable={!busy}
           autoComplete="current-password"
           textContentType="password"
           onChangeText={(text) => {
             typed.current.password = text;
+            checks.edited('password', text);
           }}
+          onBlur={() => checks.left('password', typed.current.password)}
           returnKeyType="go"
           onSubmitEditing={submit}
           accessibilityLabel={t('signIn.password')}

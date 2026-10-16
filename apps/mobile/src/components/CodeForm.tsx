@@ -1,6 +1,6 @@
 import { formatCountdown } from '@soirely/domain';
-import { type ReactNode, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type ReactNode, type Ref, useRef } from 'react';
+import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { type CodeStatus, asksForCode } from '../kit/code.ts';
@@ -17,17 +17,21 @@ export function CodeForm({
   cooldown,
   error,
   onTyped,
+  onLeft,
   onVerify,
   onResend,
+  inputRef,
   children,
 }: {
   copy: 'verifyEmail' | 'verifyPhone';
   status: CodeStatus;
   cooldown: number;
   error: string | null;
-  onTyped: () => void;
+  onTyped: (code: string) => void;
+  onLeft: (code: string) => void;
   onVerify: (code: string) => void;
   onResend: () => void;
+  inputRef?: Ref<TextInput> | undefined;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -71,13 +75,15 @@ export function CodeForm({
         <>
           <Field label={t(`${copy}.codeLabel`)} error={error}>
             <CodeField
+              ref={inputRef}
               wrong={error != null}
               editable={!verifying}
               returnKeyType="done"
               onChangeText={(text) => {
                 typed.current = text;
-                onTyped();
+                onTyped(text);
               }}
+              onBlur={() => onLeft(typed.current)}
               onSubmitEditing={() => onVerify(typed.current)}
               accessibilityLabel={t(`${copy}.codeLabel`)}
               testID={`${copy}.code`}

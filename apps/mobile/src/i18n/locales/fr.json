@@ -61,7 +61,8 @@
     "failedTitle": "La connexion n'a pas abouti",
     "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant.",
     "newHere": "Nouveau sur Soirely ?",
-    "createAccount": "Créer un compte"
+    "createAccount": "Créer un compte",
+    "passwordBlank": "Saisissez votre mot de passe."
   },
   "register": {
     "title": "Créez votre compte",
@@ -87,7 +88,9 @@
     "haveAccount": "Vous avez déjà un compte ?",
     "back": "Retour à la connexion",
     "failedTitle": "La création du compte n'a pas abouti",
-    "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant."
+    "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant.",
+    "nameBlank": "Saisissez votre nom complet.",
+    "passwordBlank": "Saisissez un mot de passe."
   },
   "verifyEmail": {
     "step1": "Vérifiez votre adresse e-mail",
@@ -114,7 +117,9 @@
     "continue": "Continuer",
     "failedTitle": "Cela n'a pas fonctionné",
     "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant.",
-    "stepsLabel": "Avant de commencer"
+    "stepsLabel": "Avant de commencer",
+    "codeBlank": "Saisissez le code à 6 chiffres de l'e-mail.",
+    "codeShort": "Le code compte 6 chiffres."
   },
   "verifyPhone": {
     "title": "Consultez vos messages",
@@ -182,5 +187,9 @@
     "signOut": "Se déconnecter",
     "optional": "Facultatif",
     "mobileHelp": "C'est ainsi qu'on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier."
+  },
+  "forms": {
+    "emailBlank": "Saisissez votre adresse e-mail.",
+    "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine."
   }
 }

@@ -143,6 +143,7 @@ export default function VerifyPhone() {
           cooldown={cooldown}
           error={fieldError}
           onTyped={() => setCodeError(null)}
+          onLeft={() => {}}
           onVerify={(code) => void verify(code)}
           onResend={() => void resend()}
         >
