@@ -46,7 +46,7 @@ final readonly class ProfileController
             'phoneNumber' => Type\optional(Type\nullable(Type\string())),
         ]));
 
-        $this->detailsSaver->save(
+        $texted = $this->detailsSaver->save(
             $user,
             $body['name'],
             $body['organisationName'] ?? null,
@@ -58,7 +58,8 @@ final readonly class ProfileController
 
         return new JsonResponse([
             'account' => $this->accountSerialiser->serialise($user),
-            'verificationNeeded' => !$user->isVerified(),
+            // A changed number waits for its code even while the account still counts as verified.
+            'verificationNeeded' => null !== $texted || !$user->isVerified(),
         ]);
     }
 }

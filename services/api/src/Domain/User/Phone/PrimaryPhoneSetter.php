@@ -24,18 +24,26 @@ final readonly class PrimaryPhoneSetter
     ) {
     }
 
-    /** Null removes it. Answers the phone that now needs a code, which has been sent one, or null. */
+    /** Null removes the phone. A new number waits beside the primary until it is verified. Answers the phone texted, or null. */
     public function set(User $user, ?ParsedPhone $phone): ?PhoneNumber
     {
         $current = $user->getPrimaryPhoneNumber();
+        $pending = $user->getPendingPhoneNumber();
 
         if (null === $phone) {
+            $this->remove($pending);
             $this->remove($current);
 
             return null;
         }
 
         if (null !== $current && $current->getNumber() === $phone->number) {
+            $this->remove($pending);
+
+            return null;
+        }
+
+        if (null !== $pending && $pending->getNumber() === $phone->number) {
             return null;
         }
 
@@ -48,26 +56,55 @@ final readonly class PrimaryPhoneSetter
 
             // Never proved by whoever typed it there, so it does not keep the number from its owner.
             $this->remove($held);
+            $held = null;
         }
 
-        $next = null !== $held && $held->getUser() === $user
-            ? $held
-            : new PhoneNumber($user, $phone->number, false, $phone->countryCode);
+        $next = $held ?? new PhoneNumber($user, $phone->number, false, $phone->countryCode);
 
-        $this->remove($current);
-        $next->setPrimary(true);
-        $this->entityManager->persist($next);
-        $this->entityManager->flush();
-
+        // Already proved, so the change is complete at once.
         if ($next->isVerified()) {
+            $this->remove($pending);
+            $this->promote($next, $current);
+
             return null;
         }
+
+        $this->remove($pending);
+
+        if (null === $current) {
+            $next->setPrimary(true);
+        } else {
+            $next->setPending(true);
+        }
+
+        $this->entityManager->persist($next);
+        $this->entityManager->flush();
 
         $issued = $this->verificationCodeIssuer->issueFor($next);
         $this->entityManager->flush();
         $this->verificationCodeSender->send($next, $issued->code);
 
         return $next;
+    }
+
+    /** After its code: a replacement takes the primary's place, and the old number goes. */
+    public function verified(PhoneNumber $phone): void
+    {
+        if ($phone->isPending()) {
+            $this->promote($phone, $phone->getUser()->getPrimaryPhoneNumber());
+        }
+    }
+
+    private function promote(PhoneNumber $next, ?PhoneNumber $current): void
+    {
+        if ($current !== $next) {
+            $this->remove($current);
+        }
+
+        $next->setPending(false);
+        $next->setPrimary(true);
+        $this->entityManager->persist($next);
+        $this->entityManager->flush();
     }
 
     /** Flushed on its own: the new primary needs the old one gone first, by the one-primary index. */

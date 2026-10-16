@@ -50,11 +50,11 @@ final readonly class PhoneController
 
         $phone = $this->phoneNumberParser->parse($body['number'], $body['countryCode']);
         $texted = $this->primaryPhoneSetter->set($user, $phone);
-        $primary = $user->getPrimaryPhoneNumber();
+        $awaiting = $user->getPhoneNumberAwaitingCode();
 
         return new JsonResponse([
-            'phone' => null === $primary ? null : self::serialised($primary),
-            'verificationNeeded' => null !== $primary && !$primary->isVerified(),
+            'phone' => null === $awaiting ? null : self::serialised($awaiting),
+            'verificationNeeded' => null !== $awaiting && !$awaiting->isVerified(),
             'cooldownSeconds' => null === $texted ? 0 : VerificationChallenge::RESEND_COOLDOWN_SECONDS,
         ]);
     }
@@ -70,6 +70,8 @@ final readonly class PhoneController
         if (null !== $refusal) {
             throw $refusal;
         }
+
+        $this->primaryPhoneSetter->verified($phone);
 
         return new JsonResponse(self::serialised($phone));
     }
@@ -114,12 +116,13 @@ final readonly class PhoneController
             'countryCode' => $phone->getCountryCode(),
             'verified' => $phone->isVerified(),
             'primary' => $phone->isPrimary(),
+            'pending' => $phone->isPending(),
         ];
     }
 
     private function phone(): PhoneNumber
     {
-        return $this->user()->getPrimaryPhoneNumber()
+        return $this->user()->getPhoneNumberAwaitingCode()
             ?? throw ApiException::notFound('This account has no phone number.');
     }
 

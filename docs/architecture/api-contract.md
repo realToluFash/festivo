@@ -110,9 +110,12 @@ table's, from the same code** (`ContactVerifier`, `VerificationCodeResender`,
 - A number already verified on another account is `409 phone_taken`, and the current
   number is untouched. One that another account never verified is released to whoever
   sets it.
-- A changed number is a new row, unverified, and the old row goes at once. A number that
-  is already one of the account's alternatives is promoted and keeps its verification. The
-  same number again changes nothing and sends nothing.
+- A changed number waits beside the primary as a `pending` row and is texted the code; the
+  primary, verified or not, is untouched until that code is entered, and only then goes.
+  Verification, resend and the cooldown act on the pending number while there is one. A
+  second change replaces the pending row, and going back to the primary drops it. A number
+  already verified as one of the account's alternatives is promoted at once. The same
+  number again changes nothing and sends nothing.
 - A number refused for its shape is `422` against `number`, naming the country: required,
   too short, too long, or not a number there.
 

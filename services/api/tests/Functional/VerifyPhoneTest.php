@@ -100,26 +100,55 @@ final class VerifyPhoneTest extends ApiTestCase
         self::assertSame($first, $this->user->getPrimaryPhoneNumber());
     }
 
-    /** The verification described the old number, so a changed one is a new row, unverified, with a fresh code. */
+    /** A contact point is replaced only once its replacement is proved (sc-62, Decided 16 Oct). */
     #[Test]
-    public function aChangedNumberReplacesTheRowAndNeedsItsOwnCode(): void
+    public function aChangedNumberWaitsBesideTheCurrentOneUntilItIsVerified(): void
     {
         $this->set('NG', '0803 555 0142');
         $this->call('POST', '/api/auth/verify/phone', ['code' => $this->codeTo('+2348035550142')]);
-        $old = $this->user->getPrimaryPhoneNumber()?->getId();
 
         $body = $this->set('GH', '024 412 3456');
 
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         self::assertTrue($body['verificationNeeded']);
-        self::service(EntityManagerInterface::class)->clear();
-        $now = self::service(PhoneNumberRepository::class)->findOneByNumber('+233244123456');
-        self::assertNotNull($now);
-        self::assertTrue($now->isPrimary());
-        self::assertFalse($now->isVerified());
-        self::assertNotEquals($old, $now->getId());
-        self::assertNull(self::service(PhoneNumberRepository::class)->findOneByNumber('+2348035550142'), 'the old number is gone at once');
         self::assertSame('+233244123456', $this->texts()[1]['to']);
+        self::assertSame(['+2348035550142' => 'primary, verified', '+233244123456' => 'pending'], $this->phones());
+        self::assertTrue($this->call('GET', '/api/auth/me')['verified'], 'the current number still counts');
+
+        $this->call('POST', '/api/auth/verify/phone', ['code' => $this->codeTo('+233244123456')]);
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame(['+233244123456' => 'primary, verified'], $this->phones(), 'the old number goes once the new one is proved');
+    }
+
+    #[Test]
+    public function aRefusedChangeLeavesTheCurrentNumberAsItWas(): void
+    {
+        $this->set('NG', '0803 555 0142');
+        $this->call('POST', '/api/auth/verify/phone', ['code' => $this->codeTo('+2348035550142')]);
+        $theirs = new PhoneNumber($this->account('owner@example.com'), '+233244123456', true, 'GH');
+        $theirs->setVerifiedAt(new DateTimeImmutable());
+        self::service(EntityManagerInterface::class)->flush();
+
+        $this->set('GH', '024 412 3456');
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame(['+2348035550142' => 'primary, verified'], $this->phones());
+    }
+
+    #[Test]
+    public function aSecondChangeReplacesTheFirstAndGoingBackDropsIt(): void
+    {
+        $this->set('NG', '0803 555 0142');
+        $this->call('POST', '/api/auth/verify/phone', ['code' => $this->codeTo('+2348035550142')]);
+
+        $this->set('GH', '024 412 3456');
+        $this->set('KE', '0712 345678');
+        self::assertSame(['+2348035550142' => 'primary, verified', '+254712345678' => 'pending'], $this->phones());
+
+        $this->set('NG', '0803 555 0142');
+        self::assertSame(['+2348035550142' => 'primary, verified'], $this->phones());
+        self::assertCount(3, $this->texts(), 'going back to the current number sends nothing');
     }
 
     #[Test]
@@ -257,6 +286,22 @@ final class VerifyPhoneTest extends ApiTestCase
     private function set(string $country, string $number): array
     {
         return $this->call('PUT', '/api/auth/phone', ['countryCode' => $country, 'number' => $number]);
+    }
+
+    /** @return array<string, string> each number the account holds, and what it is */
+    private function phones(): array
+    {
+        self::service(EntityManagerInterface::class)->clear();
+        $rows = self::service(PhoneNumberRepository::class)->findBy(['user' => $this->user->getId()]);
+        $described = [];
+
+        foreach ($rows as $row) {
+            $described[$row->getNumber()] = $row->isPending()
+                ? 'pending'
+                : Str\format('%s, %s', $row->isPrimary() ? 'primary' : 'alternative', $row->isVerified() ? 'verified' : 'unverified');
+        }
+
+        return $described;
     }
 
     /** @return list<array{to: string, body: string}> */
