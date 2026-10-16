@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
-use App\Domain\User\Model\IssuedVerificationCode;
 use App\Domain\User\Verification\EmailAddressVerifier;
 use App\Domain\User\Verification\ResendCooldown;
-use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeMailer;
+use App\Domain\User\Verification\VerificationCodeResender;
 use App\Entity\EmailAddress;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
@@ -16,8 +15,6 @@ use App\Enum\ErrorCode;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
-use Doctrine\DBAL\LockMode;
-use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -30,10 +27,9 @@ final class VerificationController
     public function __construct(
         private readonly Security $security,
         private readonly EmailAddressVerifier $emailAddressVerifier,
-        private readonly VerificationCodeIssuer $verificationCodeIssuer,
+        private readonly VerificationCodeResender $verificationCodeResender,
         private readonly VerificationCodeMailer $verificationCodeMailer,
         private readonly ResendCooldown $resendCooldown,
-        private readonly EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -44,19 +40,7 @@ final class VerificationController
 
         $address = $this->address();
 
-        // The same lock as a resend, so codes sent at once are checked one at a time against one count.
-        $refusal = $this->entityManager->wrapInTransaction(function () use ($address, $body): ?ApiException {
-            $this->entityManager->lock($address, LockMode::PESSIMISTIC_WRITE);
-
-            try {
-                $this->emailAddressVerifier->verify($address, $body['code']);
-                $this->entityManager->flush();
-            } catch (ApiException $e) {
-                return $e;
-            }
-
-            return null;
-        });
+        $refusal = $this->emailAddressVerifier->attempt($address, $body['code']);
 
         if (null !== $refusal) {
             throw $refusal;
@@ -82,25 +66,11 @@ final class VerificationController
     {
         $address = $this->address();
 
-        if ($address->isVerified()) {
+        $issued = $this->verificationCodeResender->resend($address);
+
+        if (0 === $issued) {
             return new JsonResponse(['cooldownSeconds' => 0]);
         }
-
-        // Locked, so resends sent at once queue here: the first issues a code, the rest find its cooldown.
-        $issued = $this->entityManager->wrapInTransaction(function () use ($address): IssuedVerificationCode|int {
-            $this->entityManager->lock($address, LockMode::PESSIMISTIC_WRITE);
-
-            $left = $this->resendCooldown->secondsLeftFor($address);
-
-            if ($left > 0) {
-                return $left;
-            }
-
-            $issued = $this->verificationCodeIssuer->issueFor($address);
-            $this->entityManager->flush();
-
-            return $issued;
-        });
 
         if (\is_int($issued)) {
             throw new ApiException(

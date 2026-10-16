@@ -10,13 +10,33 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\VerificationChallengeRepository;
 use DateTimeImmutable;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 
 final readonly class EmailAddressVerifier
 {
     public function __construct(
         private VerificationChallengeRepository $verificationChallengeRepository,
+        private EntityManagerInterface $entityManager,
     ) {
+    }
+
+    /** The refusal, or null. Re-read under the row lock, so a waiting request sees what the first committed. */
+    public function attempt(EmailAddress $address, string $code): ?ApiException
+    {
+        return $this->entityManager->wrapInTransaction(function () use ($address, $code): ?ApiException {
+            $this->entityManager->refresh($address, LockMode::PESSIMISTIC_WRITE);
+
+            try {
+                $this->verify($address, $code);
+                $this->entityManager->flush();
+            } catch (ApiException $e) {
+                return $e;
+            }
+
+            return null;
+        });
     }
 
     public function verify(EmailAddress $address, string $code): void
