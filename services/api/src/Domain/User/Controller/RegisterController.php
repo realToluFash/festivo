@@ -6,7 +6,6 @@ namespace App\Domain\User\Controller;
 
 use App\Domain\User\Http\IssuedTokensResponse;
 use App\Domain\User\UserRegistrar;
-use App\Enum\ErrorCode;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
@@ -62,11 +61,10 @@ final class RegisterController
 
     private function limit(Request $request): void
     {
-        if (!$this->registrationLimiter->create($request->getClientIp())->consume()->isAccepted()) {
-            throw new ApiException(
-                ErrorCode::TooManyRequests,
-                'Too many sign-ups from this network. Wait a while, then try again.',
-            );
+        $limit = $this->registrationLimiter->create($request->getClientIp())->consume();
+
+        if (!$limit->isAccepted()) {
+            throw ApiException::tooManyAttempts('Too many sign-ups from this network.', $limit->getRetryAfter());
         }
     }
 }

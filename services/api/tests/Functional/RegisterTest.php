@@ -341,8 +341,10 @@ final class RegisterTest extends ApiTestCase
             $controller->register(Request::create('/api/auth/register', 'POST', content: '{}'));
             self::fail('the endpoint accepted a request with no budget left');
         } catch (ApiException $e) {
-            self::assertSame(ErrorCode::TooManyRequests, $e->errorCode);
+            self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode);
             self::assertSame(429, $e->errorCode->status());
+            self::assertMatchesRegularExpression('/^Too many sign-ups from this network\. Try again at \d\d:\d\d\.$/', $e->getMessage());
+            self::assertGreaterThan(0, (int) ($e->headers['Retry-After'] ?? 0));
         }
     }
 

@@ -65,6 +65,18 @@ fails `ErrorCodeCatalogueTest`** — a guard worth having because the failure is
 invisible: no exception, no log line, just `not_found` rendered as a title on a guest's
 screen.
 
+## Rate limits a person can hit
+
+Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in seconds
+and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. A client
+shows the time from `Retry-After`, in the reader's timezone, never a figure of its own.
+
+| Endpoint                       | Budget                                                    | Spent by           |
+| ------------------------------ | --------------------------------------------------------- | ------------------ |
+| `POST /api/auth/register`      | 10 per IP per hour, fixed window                          | every attempt      |
+| `POST /api/auth/login`         | 5 per address and 30 per IP per 15 minutes, fixed windows | a refused password |
+| `POST /api/auth/verify/resend` | one per 60 seconds per address                            | every code sent    |
+
 ## Verifying an address
 
 `POST /api/auth/verify/email` takes a code, and `GET`/`POST /api/auth/verify/resend` read
