@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\User\Verification\EmailAddressVerifier;
 use App\Domain\User\Verification\VerificationCodeIssuer;
+use App\Domain\User\Verification\VerificationCodeResender;
 use App\Entity\EmailAddress;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
@@ -176,6 +177,37 @@ final class VerifyEmailTest extends ApiTestCase
         } catch (ApiException $e) {
             self::assertSame(ErrorCode::VerificationCodeExhausted, $e->errorCode);
         }
+    }
+
+    /** The second of two right codes sent at once holds the address as it was before the first one landed. */
+    #[Test]
+    public function aRightCodeArrivingAfterAnotherFindsTheAddressVerified(): void
+    {
+        $this->register('twice-at-once@example.com');
+        $code = $this->codeFor('twice-at-once@example.com');
+        $stale = $this->addressFor('twice-at-once@example.com');
+
+        $this->landedElsewhere($stale, 'UPDATE email_addresses SET verified_at = NOW() WHERE id = :address');
+        $this->landedElsewhere($stale, 'UPDATE verification_challenges SET revoked_at = NOW() WHERE email_address_id = :address');
+
+        $refusal = self::serviceById(EmailAddressVerifier::class, EmailAddressVerifier::class)->attempt($stale, $code);
+
+        self::assertNull($refusal, 'a second device was told its right code was wrong');
+        self::assertTrue($stale->isVerified());
+    }
+
+    #[Test]
+    public function aResendAfterAVerificationThatJustLandedSendsNothing(): void
+    {
+        $this->register('verified-meanwhile@example.com');
+        $this->endCooldownFor('verified-meanwhile@example.com');
+        $stale = $this->addressFor('verified-meanwhile@example.com');
+
+        $this->landedElsewhere($stale, 'UPDATE email_addresses SET verified_at = NOW() WHERE id = :address');
+
+        $outcome = self::serviceById(VerificationCodeResender::class, VerificationCodeResender::class)->resend($stale);
+
+        self::assertSame(0, $outcome, 'a code was issued for an address already verified');
     }
 
     #[Test]
@@ -393,6 +425,12 @@ final class VerifyEmailTest extends ApiTestCase
             ],
         );
         $this->entityManager()->clear();
+    }
+
+    /** Another request's commit, made behind the back of the entity this test holds. */
+    private function landedElsewhere(EmailAddress $address, string $sql): void
+    {
+        $this->entityManager()->getConnection()->executeStatement($sql, ['address' => $address->getId()->toRfc4122()]);
     }
 
     private function challengeFor(string $address): ?VerificationChallenge
