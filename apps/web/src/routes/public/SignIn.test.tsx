@@ -95,6 +95,16 @@ function buttonsIn(element: HTMLElement): HTMLElement[] {
   return [...element.querySelectorAll('button')];
 }
 
+const ORGANISATION = {
+  id: 'org_1',
+  name: 'Ire Events',
+  countryCode: 'NG',
+  currency: 'NGN',
+  timezone: 'Africa/Lagos',
+  contactAddress: 'hello@ire.events',
+  role: { id: 'role_1', seededAs: 'owner', name: null },
+};
+
 const ACCOUNT = {
   id: '018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f',
   name: 'Folake Ire',
@@ -180,6 +190,7 @@ describe('signing in, for real', () => {
   it('signs in and lands on the product', async () => {
     const sent = answering({
       'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
+      'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),
     });
 
     at('/sign-in');
@@ -187,7 +198,7 @@ describe('signing in, for real', () => {
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
     expect(screen.getByText('Signed in as Folake Ire')).toBeDefined();
-    expect(sent.map((request) => request.path)).toEqual(['/api/auth/login']);
+    expect(sent.map((request) => request.path)).toEqual(['/api/auth/login', '/api/orgs']);
   });
 
   it('sends an unverified account to the verification screen instead', async () => {
@@ -207,6 +218,7 @@ describe('signing in, for real', () => {
   it('posts the address and the password, and asks for the cookie', async () => {
     const sent = answering({
       'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
+      'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),
     });
 
     at('/sign-in');

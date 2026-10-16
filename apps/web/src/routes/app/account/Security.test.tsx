@@ -6,6 +6,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
+import { membership } from '../../../test-memberships.ts';
 
 const HERE = '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f';
 const ELSEWHERE = '018f3a4c-0002-7c3d-9e1f-2a3b4c5d6e7f';
@@ -33,13 +34,14 @@ const SESSIONS = {
   ],
 };
 
+const MEMBERSHIP = membership({ id: 'acc_1', name: 'Ire Events' });
+
 const FOLAKE: Session = {
   name: 'Folake Ire',
   email: 'folake@ire.events',
   verified: true,
-  organisation: { id: 'acc_1', name: 'Ire Events' },
-  organisations: [{ id: 'acc_1', name: 'Ire Events' }],
-  permissions: ['events.view'],
+  organisation: MEMBERSHIP,
+  organisations: [MEMBERSHIP],
 };
 
 interface Call {

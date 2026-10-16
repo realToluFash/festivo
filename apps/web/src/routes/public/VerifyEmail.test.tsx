@@ -4,14 +4,16 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../session.ts';
 import { routes } from '../index.tsx';
+import { membership } from '../../test-memberships.ts';
+
+const MEMBERSHIP = membership({ id: 'acc_1', name: 'Ire Events' });
 
 const FOLAKE: Session = {
   name: 'Folake Ire',
   email: 'folake@ire.events',
   verified: false,
-  organisation: { id: 'acc_1', name: 'Ire Events' },
-  organisations: [{ id: 'acc_1', name: 'Ire Events' }],
-  permissions: ['events.view'],
+  organisation: MEMBERSHIP,
+  organisations: [MEMBERSHIP],
 };
 
 function answering(answers: Record<string, () => Response>, seen: string[] = []) {

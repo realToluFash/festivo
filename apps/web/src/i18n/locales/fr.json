@@ -173,5 +173,47 @@
     "unreachableTitle": "Impossible de joindre Soirely",
     "unreachableBody": "Votre session est toujours ouverte. Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
     "retrying": "Nouvelle tentative…"
+  },
+  "switcher": {
+    "yourRole": "Votre rôle · {{role}}",
+    "heading": "Vos organisations",
+    "current": "Actuelle",
+    "remembered": "Soirely retient votre choix sur cet appareil.",
+    "switched": "Vous travaillez maintenant dans {{name}}.",
+    "label": "Organisation : {{name}}, votre rôle {{role}}",
+    "labelSwitch": "Organisation : {{name}}, votre rôle {{role}}. Changer d'organisation"
+  },
+  "roles": {
+    "owner": "Propriétaire",
+    "administrator": "Administrateur",
+    "event_manager": "Responsable d'événements",
+    "coordinator": "Coordinateur",
+    "read_only": "Lecture seule"
+  },
+  "noOrganisation": {
+    "title": "Vous n'êtes dans aucune organisation",
+    "body": "Les événements, les équipes et les forfaits appartiennent tous à une organisation, et vous n'en faites partie d'aucune pour le moment. Votre compte vous appartient toujours et rien n'a disparu.",
+    "wayOn": "Demandez à la personne qui gère la vôtre d'inviter de nouveau {{email}}.",
+    "signedInAs": "Connecté en tant que {{email}}.",
+    "account": "Votre compte"
+  },
+  "orgGeneral": {
+    "title": "Général",
+    "intro": "Le nom que voient votre équipe et vos invités, et les réglages avec lesquels chaque nouvel événement commence.",
+    "section": "Organisation",
+    "name": "Nom",
+    "country": "Pays",
+    "contact": "Adresse de contact",
+    "currency": "Devise",
+    "timezone": "Fuseau horaire",
+    "defaultsNote": "Devise et fuseau horaire : les nouveaux événements commencent avec ceux-ci. Les événements existants gardent les leurs.",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré. Tout le monde dans {{name}} verra les nouvelles informations à son prochain écran.",
+    "nameBlank": "Indiquez le nom de l'organisation.",
+    "contactBlank": "Indiquez une adresse e-mail de contact.",
+    "contactInvalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine.",
+    "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les propriétaires le peuvent.",
+    "failed": "L'enregistrement n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant."
   }
 }

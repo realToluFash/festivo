@@ -173,5 +173,47 @@
     "unreachableTitle": "Cannot reach Soirely",
     "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
     "retrying": "Trying again…"
+  },
+  "switcher": {
+    "yourRole": "Your role · {{role}}",
+    "heading": "Your organisations",
+    "current": "Current",
+    "remembered": "Soirely remembers your choice on this device.",
+    "switched": "Now working in {{name}}.",
+    "label": "Organisation: {{name}}, your role {{role}}",
+    "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation"
+  },
+  "roles": {
+    "owner": "Owner",
+    "administrator": "Administrator",
+    "event_manager": "Event manager",
+    "coordinator": "Coordinator",
+    "read_only": "Read-only"
+  },
+  "noOrganisation": {
+    "title": "You are not in an organisation",
+    "body": "Events, teams and plans all belong to an organisation, and you are not part of one right now. Your account is still yours, and nothing in it has gone.",
+    "wayOn": "Ask whoever runs yours to invite {{email}} again.",
+    "signedInAs": "Signed in as {{email}}.",
+    "account": "Your account"
+  },
+  "orgGeneral": {
+    "title": "General",
+    "intro": "The name your team and guests see, and the defaults every new event starts with.",
+    "section": "Organisation",
+    "name": "Name",
+    "country": "Country",
+    "contact": "Contact address",
+    "currency": "Currency",
+    "timezone": "Time zone",
+    "defaultsNote": "Currency and time zone: new events start with these. Events you already have keep theirs.",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "Saved. Everyone in {{name}} sees the new details on their next screen.",
+    "nameBlank": "Enter the organisation's name.",
+    "contactBlank": "Enter a contact email address.",
+    "contactInvalid": "That doesn't look like an email address. Check it has an @ and a domain.",
+    "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
+    "failed": "Saving did not work. Nothing was changed. Try again in a moment."
   }
 }
