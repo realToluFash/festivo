@@ -97,7 +97,7 @@ final class VerifyEmailTest extends ApiTestCase
     }
 
     #[Test]
-    public function tooManyWrongCodesKillTheChallengeEntirely(): void
+    public function anExhaustedCodeSaysSoOnEveryLaterTryUntilANewOneIsSent(): void
     {
         $token = $this->register('exhausted@example.com');
         $code = $this->codeFor('exhausted@example.com');
@@ -111,10 +111,34 @@ final class VerifyEmailTest extends ApiTestCase
             $this->body()['type'],
         );
 
-        $this->verify($token, $code);
+        foreach (['000000', $code] as $later) {
+            $this->verify($token, $later);
+
+            self::assertSame(
+                'https://soirely.com/errors/verification_code_exhausted',
+                $this->body()['type'],
+                'a spent code must keep saying it is spent, the right one included',
+            );
+        }
+
+        self::assertNull($this->addressFor('exhausted@example.com')->getVerifiedAt());
+
+        $this->endCooldownFor('exhausted@example.com');
+        $this->client->request('POST', '/api/auth/verify/resend', server: $this->authenticated($token));
+        $this->verify($token, $this->codeFor('exhausted@example.com'));
+
+        self::assertSame(200, $this->client->getResponse()->getStatusCode(), 'the code in the newest email did not work');
+    }
+
+    #[Test]
+    public function anEmptyCodeCostsNoAttempt(): void
+    {
+        $token = $this->register('empty@example.com');
+
+        $this->verify($token, '  ');
 
         self::assertSame(422, $this->client->getResponse()->getStatusCode());
-        self::assertNull($this->addressFor('exhausted@example.com')->getVerifiedAt());
+        self::assertSame(0, $this->challengeFor('empty@example.com')?->getAttempts());
     }
 
     #[Test]

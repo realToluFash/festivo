@@ -120,11 +120,9 @@ class VerificationChallenge
         $this->revokedAt = $revokedAt;
     }
 
-    public function isUsable(): bool
+    public function isExhausted(): bool
     {
-        return null === $this->revokedAt
-            && $this->expiresAt > new DateTimeImmutable()
-            && $this->attempts < self::MAXIMUM_ATTEMPTS;
+        return $this->attempts >= self::MAXIMUM_ATTEMPTS;
     }
 
     public function isExpired(): bool
