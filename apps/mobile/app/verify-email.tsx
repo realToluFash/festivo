@@ -37,8 +37,21 @@ export default function VerifyEmail() {
 
     api
       .me()
-      .then((account) => {
-        if (live) setAddress(account.emailAddresses.find((one) => one.primary)?.address ?? '');
+      .then(async (account) => {
+        if (!live) return;
+
+        setAddress(account.emailAddresses.find((one) => one.primary)?.address ?? '');
+
+        if (account.verified) {
+          setStatus({ kind: 'verified' });
+
+          return;
+        }
+
+        // Started by whichever send came last, the registration email included.
+        const seconds = await api.verificationCooldown();
+
+        if (live) setCooldown(seconds);
       })
       .catch(() => {
         if (live) setAddress('');
@@ -146,8 +159,10 @@ function Phone({
       </View>
       <Steps status={status} />
       <Heading status={status} address={address} size={tokens.typeTitlePhone.size} />
+      {/* Done, the way on sits at the foot; before that, the form sits under the heading. */}
+      {status.kind === 'verified' && <View style={styles.spacer} />}
       {children}
-      <View style={styles.spacer} />
+      {status.kind !== 'verified' && <View style={styles.spacer} />}
       <LanguageChoice />
     </Screen>
   );
@@ -256,14 +271,23 @@ function Heading({ status, address, size }: { status: Status; address: string; s
   const done = status.kind === 'verified';
 
   return (
-    <View style={styles.heading}>
-      <Text size={size} weight="bold" style={styles.title}>
-        {done ? t('verifyEmail.doneTitle') : t('verifyEmail.title')}
-      </Text>
-      <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-        {done ? t('verifyEmail.doneBody', { address }) : t('verifyEmail.intro', { address })}
-      </Text>
-    </View>
+    <>
+      {done && (
+        <View style={styles.verifiedMark}>
+          <Text size={tokens.typeTitlePage.size} weight="bold" style={styles.onAccent}>
+            ✓
+          </Text>
+        </View>
+      )}
+      <View style={styles.heading}>
+        <Text size={size} weight="bold" style={styles.title}>
+          {done ? t('verifyEmail.doneTitle') : t('verifyEmail.title')}
+        </Text>
+        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+          {done ? t('verifyEmail.doneBody', { address }) : t('verifyEmail.intro', { address })}
+        </Text>
+      </View>
+    </>
   );
 }
 
@@ -287,11 +311,6 @@ function Body({
   if (status.kind === 'verified') {
     return (
       <View style={styles.form}>
-        <View style={styles.verifiedMark}>
-          <Text size={tokens.typeTitlePage.size} weight="bold" style={styles.onAccent}>
-            ✓
-          </Text>
-        </View>
         <Pressable
           style={styles.cta}
           onPress={() => router.replace('/')}
@@ -412,7 +431,11 @@ function Body({
               accessibilityRole="button"
               testID="verifyEmail.resend"
             >
-              <Text size={tokens.typeButton.size} weight="semibold" style={styles.secondaryInk}>
+              <Text
+                size={tokens.typeButton.size}
+                weight="semibold"
+                style={cooldown > 0 ? styles.secondary : styles.secondaryInk}
+              >
                 {cooldown > 0
                   ? t('verifyEmail.resendIn', { time: formatCountdown(cooldown) })
                   : t('verifyEmail.resend')}
@@ -429,12 +452,17 @@ function Body({
         <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
           {t('verifyEmail.wrongAddress')}
         </Text>
-        <Pressable onPress={onSignOut} accessibilityRole="button" testID="verifyEmail.signOut">
+        <Pressable
+          style={styles.footnoteAction}
+          onPress={onSignOut}
+          accessibilityRole="button"
+          testID="verifyEmail.signOut"
+        >
           <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accentInk}>
             {t('verifyEmail.signOut')}
           </Text>
         </Pressable>
-        <Text size={tokens.typeSmall.size} style={styles.secondary}>
+        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
           {t('verifyEmail.wrongAddressBody')}
         </Text>
       </View>
@@ -582,9 +610,13 @@ const styles = StyleSheet.create({
   fieldError: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
 
   footnote: {
-    gap: tokens.spaceXs,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: tokens.spaceXs,
     paddingTop: tokens.spaceLg,
     borderTopWidth: 1,
     borderTopColor: tokens.colorInsetBorder,
   },
+  footnoteAction: { minHeight: tokens.sizeHit, justifyContent: 'center' },
 });

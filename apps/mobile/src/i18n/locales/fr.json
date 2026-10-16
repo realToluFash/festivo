@@ -79,7 +79,7 @@
     "exhaustedTitle": "Trop de tentatives incorrectes",
     "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
     "wrongAddress": "Ce n'est pas votre adresse ?",
-    "wrongAddressBody": "Pour l'instant, la seule façon d'en changer est de se déconnecter et de s'inscrire à nouveau.",
+    "wrongAddressBody": "et recréer votre compte avec la bonne adresse.",
     "signOut": "Se déconnecter",
     "doneTitle": "Adresse vérifiée",
     "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
