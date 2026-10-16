@@ -1,4 +1,4 @@
-import { type Account, ApiUnreachableError, type Health } from '@soirely/api-client';
+import { type Account, ApiUnreachableError, type Health, awaiting } from '@soirely/api-client';
 import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -8,6 +8,7 @@ import { api } from '../src/api.ts';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { config } from '../src/config.ts';
+import { landingFor } from '../src/landing.ts';
 
 /**
  * The health endpoint, rendered.
@@ -39,7 +40,12 @@ export default function Home() {
     api
       .me()
       .then((signedIn) => {
-        if (live) setAccount(signedIn);
+        if (!live) return;
+
+        // Behind the onboarding gate, the gate's screen opens rather than the app.
+        const landing = landingFor(awaiting(signedIn));
+        if (landing !== '/') router.replace(landing);
+        else setAccount(signedIn);
       })
       .catch((error: unknown) => {
         if (!live) return;

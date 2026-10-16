@@ -12,6 +12,7 @@ import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
@@ -157,7 +158,7 @@ function Phone({
           {t('app.name')}
         </Text>
       </View>
-      <Steps status={status} />
+      <OnboardingSteps at={status.kind === 'verified' ? 'verified' : 'verifying'} />
       <Heading status={status} address={address} size={tokens.typeTitlePhone.size} />
       {/* Done, the way on sits at the foot; before that, the form sits under the heading. */}
       {status.kind === 'verified' && <View style={styles.spacer} />}
@@ -188,7 +189,7 @@ function Portrait({
       </View>
       <View style={styles.centred}>
         <View style={styles.card}>
-          <Steps status={status} />
+          <OnboardingSteps at={status.kind === 'verified' ? 'verified' : 'verifying'} />
           <Heading status={status} address={address} size={tokens.typeTitlePage.size} />
           {children}
         </View>
@@ -220,7 +221,7 @@ function Landscape({
           </Text>
         </View>
         <View style={styles.landscapeSaying}>
-          <Steps status={status} />
+          <OnboardingSteps at={status.kind === 'verified' ? 'verified' : 'verifying'} />
           <Heading status={status} address={address} size={tokens.typeTitlePage.size} />
         </View>
         <LanguageChoice />
@@ -229,40 +230,6 @@ function Landscape({
         <View style={[styles.card, styles.cardFill]}>{children}</View>
       </View>
     </Screen>
-  );
-}
-
-function Steps({ status }: { status: Status }) {
-  const { t } = useTranslation();
-  const done = status.kind === 'verified';
-
-  return (
-    <View style={styles.steps} accessibilityLabel={t('verifyEmail.stepsLabel')}>
-      <View style={styles.step}>
-        <View style={[styles.stepMark, done ? styles.stepDone : styles.stepNow]}>
-          <Text size={tokens.typePill.size} weight="bold" style={styles.stepMarkInk}>
-            {done ? '✓' : '1'}
-          </Text>
-        </View>
-        <Text
-          size={tokens.typeButton.size}
-          weight="semibold"
-          style={done ? styles.doneInk : undefined}
-        >
-          {done ? t('verifyEmail.step1Done') : t('verifyEmail.step1')}
-        </Text>
-      </View>
-      <View style={styles.step}>
-        <View style={[styles.stepMark, styles.stepLater]}>
-          <Text size={tokens.typePill.size} weight="bold" style={styles.secondary}>
-            2
-          </Text>
-        </View>
-        <Text size={tokens.typeButton.size} weight="semibold" style={styles.secondary}>
-          {t('verifyEmail.step2')}
-        </Text>
-      </View>
-    </View>
   );
 }
 
@@ -525,24 +492,6 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusCardPhone,
   },
   cardFill: { width: '100%' },
-
-  steps: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceXl },
-  step: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
-  stepMark: {
-    width: tokens.space3xl,
-    height: tokens.space3xl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.space3xl / 2,
-  },
-  stepNow: { backgroundColor: tokens.colorDark },
-  stepDone: { backgroundColor: tokens.colorAccent },
-  stepLater: {
-    borderWidth: 1.5,
-    borderColor: tokens.colorMarkEmpty,
-    backgroundColor: tokens.colorCard,
-  },
-  stepMarkInk: { color: tokens.colorInkOnDark },
 
   form: { gap: tokens.spaceXl },
   field: { gap: tokens.spaceXs },

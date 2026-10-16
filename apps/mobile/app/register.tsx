@@ -1,3 +1,4 @@
+import { awaiting } from '@soirely/api-client';
 import { meetsPasswordLength, PASSWORD_MINIMUM_LENGTH } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
@@ -19,6 +20,7 @@ import {
   registrationRefusal,
 } from '../src/registration.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { landingFor } from '../src/landing.ts';
 
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
@@ -46,7 +48,7 @@ export default function Register() {
     try {
       const { account } = await api.register(email, name, password);
 
-      router.replace(account.verified ? '/' : '/verify-email');
+      router.replace(landingFor(awaiting(account)));
     } catch (error) {
       setStatus(registrationRefusal(error, currentLocale()));
     }
