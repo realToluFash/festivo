@@ -2,7 +2,7 @@ import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { ApiError } from '@soirely/api-client';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
@@ -194,6 +194,13 @@ export function SignIn() {
           </form>
 
           <ProviderSignIn />
+
+          <div className="auth-footnote">
+            <span>{t('signIn.newHere')}</span>
+            <Link className="link-button" to="/register">
+              {t('signIn.createAccount')}
+            </Link>
+          </div>
         </section>
       </main>
     </div>

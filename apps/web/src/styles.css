@@ -1038,3 +1038,105 @@ h2 {
   font: var(--typeButton);
   cursor: pointer;
 }
+
+/* ── Create your account ──────────────────────────────────────────────────── */
+
+.auth-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.auth-heading h1,
+.auth-heading p {
+  margin: 0;
+}
+
+.auth-heading p {
+  color: var(--colorInkSecondary);
+}
+
+/* The rule is stated with a mark and a word, never by colour alone. */
+.rule-inset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg) var(--spaceXl);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.rule-inset p {
+  margin: 0;
+}
+
+.rule-heading {
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+  color: var(--colorInkSecondary);
+}
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: var(--space3xl);
+}
+
+.rule-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+  border: var(--borderMark) var(--colorMarkEmpty);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  font: var(--typePill);
+}
+
+.rule-mark-met {
+  border-color: var(--markDoneRing);
+  background: var(--markDoneFill);
+  color: var(--markDoneInk);
+}
+
+.rule-text {
+  flex: 1;
+}
+
+.rule-state {
+  font: var(--typeButton);
+  color: var(--colorInkSecondary);
+}
+
+.rule-state-met {
+  color: var(--colorAccentText);
+}
+
+.rule-note {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.field-error-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+}
+
+.field-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceXl);
+}
+
+@media (width <= 40rem) {
+  .auth-heading h1 {
+    font: var(--typeTitlePhone);
+    letter-spacing: var(--typeTitlePhoneTracking);
+  }
+}
