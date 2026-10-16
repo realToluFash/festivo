@@ -177,6 +177,20 @@ the minute they show and lift the lock themselves when it arrives.
 The budgets live in Redis (`cache.rate_limiter`), so every API container counts against the
 same one. In the test environment they are in memory; `cache.yaml` says why.
 
+## Pruning spent sessions
+
+`bin/console app:prune-refresh-tokens` deletes every `refresh_tokens` row whose `expires_at`
+has passed, revoked or not, in batches of 1,000 (`RefreshTokenPruner::BATCH_SIZE`).
+`--dry-run` counts them and deletes nothing. Two runs at once are safe: each batch skips
+rows the other has locked.
+
+It never deletes a row that is revoked but not expired. That row is how a replayed token is
+told apart from an unknown one: delete it and a replay no longer revokes the chain, so the
+thief keeps the newest token, and the response looks exactly the same.
+
+**Nothing schedules it yet.** Where it runs (host cron, a scheduled container, or
+Messenger's scheduler) is an open decision on sc-114.
+
 ## The access token's fifteen minutes
 
 Ending a session cannot take effect sooner than the access token in hand expires, because
