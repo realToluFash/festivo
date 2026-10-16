@@ -11,7 +11,7 @@
     "invalid_refresh_token": "Your session has ended. Please sign in again.",
     "forbidden": "You do not have permission to do that.",
     "too_many_requests": "Too many attempts. Please wait and try again.",
-    "too_many_attempts": "Too many sign-in attempts. Please wait and try again.",
+    "too_many_attempts": "Too many attempts. Please wait and try again.",
     "verification_code_invalid": "That code does not match.",
     "verification_code_expired": "That code has expired.",
     "verification_code_exhausted": "That code no longer works. Send a new one to carry on.",

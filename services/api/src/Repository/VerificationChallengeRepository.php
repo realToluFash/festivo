@@ -23,6 +23,12 @@ final class VerificationChallengeRepository extends ServiceEntityRepository
         return $this->findOneBy(['emailAddress' => $address, 'revokedAt' => null]);
     }
 
+    /** By id rather than `created_at`: a v7 id orders two challenges issued in the same second. */
+    public function findNewestFor(EmailAddress $address): ?VerificationChallenge
+    {
+        return $this->findOneBy(['emailAddress' => $address], ['id' => 'DESC']);
+    }
+
     /** @return list<VerificationChallenge> */
     public function findUnrevokedFor(EmailAddress $address): array
     {

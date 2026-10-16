@@ -65,6 +65,22 @@ fails `ErrorCodeCatalogueTest`** — a guard worth having because the failure is
 invisible: no exception, no log line, just `not_found` rendered as a title on a guest's
 screen.
 
+## Verifying an address
+
+`POST /api/auth/verify/email` takes a code, and `GET`/`POST /api/auth/verify/resend` read
+and spend the resend cooldown. The limits are constants on `VerificationChallenge`, and
+this table is their contract:
+
+| Limit           | Value      | What happens at it                                                                                                                                                                        |
+| --------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Code            | 6 digits   | Any other value is a wrong attempt, `verification_code_invalid`; an empty code costs none                                                                                                 |
+| Lifetime        | 15 minutes | `verification_code_expired`, on every try until a new code is sent                                                                                                                        |
+| Wrong attempts  | 5 per code | The fifth wrong code, and every try on that code after it (the right one included), is `verification_code_exhausted`. The code in the newest email then works                             |
+| Resend cooldown | 60 seconds | Counted from the newest code sent, the registration email included. `GET` answers `cooldownSeconds` without spending it; a `POST` inside it is `429 too_many_attempts` with `Retry-After` |
+
+A client counts down from `cooldownSeconds` or `Retry-After` and never from a number of its
+own.
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.

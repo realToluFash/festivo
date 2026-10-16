@@ -11,6 +11,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\VerificationChallengeRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Str;
 
 final readonly class EmailAddressVerifier
 {
@@ -28,12 +29,17 @@ final readonly class EmailAddressVerifier
 
         $challenge = $this->verificationChallengeRepository->findLiveFor($address);
 
-        if (null === $challenge) {
+        if (null === $challenge || '' === Str\trim($code)) {
             throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
         }
 
         if ($challenge->isExpired()) {
             throw new ApiException(ErrorCode::VerificationCodeExpired, 'That code has expired.');
+        }
+
+        // Stays the live challenge once spent, so every later try hears why, until a resend replaces it.
+        if ($challenge->isExhausted()) {
+            throw new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.');
         }
 
         if (!\hash_equals($challenge->getCodeHash(), VerificationCodeIssuer::hash($code))) {
@@ -49,15 +55,9 @@ final readonly class EmailAddressVerifier
     {
         $challenge->setAttempts($challenge->getAttempts() + 1);
 
-        $exhausted = $challenge->getAttempts() >= VerificationChallenge::MAXIMUM_ATTEMPTS;
-
-        if ($exhausted) {
-            $challenge->setRevokedAt(new DateTimeImmutable());
-        }
-
         $this->entityManager->flush();
 
-        throw $exhausted
+        throw $challenge->isExhausted()
             ? new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.')
             : new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
     }

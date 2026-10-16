@@ -5,21 +5,20 @@ declare(strict_types=1);
 namespace App\Domain\User\Controller;
 
 use App\Domain\User\Verification\EmailAddressVerifier;
+use App\Domain\User\Verification\ResendCooldown;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeMailer;
 use App\Entity\EmailAddress;
 use App\Entity\User;
+use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
-use Psl\Math;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 final class VerificationController
@@ -29,7 +28,7 @@ final class VerificationController
         private readonly EmailAddressVerifier $emailAddressVerifier,
         private readonly VerificationCodeIssuer $verificationCodeIssuer,
         private readonly VerificationCodeMailer $verificationCodeMailer,
-        private readonly RateLimiterFactoryInterface $verificationResendLimiter,
+        private readonly ResendCooldown $resendCooldown,
         private readonly EntityManagerInterface $entityManager,
     ) {
     }
@@ -52,6 +51,13 @@ final class VerificationController
         ]);
     }
 
+    /** Read when the screen opens, so a cooldown started elsewhere is already counting down. */
+    #[Route('/api/auth/verify/resend', name: 'auth_verify_resend_cooldown', methods: ['GET'])]
+    public function cooldown(): JsonResponse
+    {
+        return new JsonResponse(['cooldownSeconds' => $this->resendCooldown->secondsLeftFor($this->address())]);
+    }
+
     #[Route('/api/auth/verify/resend', name: 'auth_verify_resend', methods: ['POST'])]
     public function resend(): JsonResponse
     {
@@ -61,15 +67,15 @@ final class VerificationController
             return new JsonResponse(['cooldownSeconds' => 0]);
         }
 
-        $limit = $this->verificationResendLimiter->create($address->getAddress())->consume();
+        $left = $this->resendCooldown->secondsLeftFor($address);
 
-        if (!$limit->isAccepted()) {
+        if ($left > 0) {
             throw new ApiException(
                 ErrorCode::TooManyAttempts,
                 'Wait before asking for another code.',
                 [],
                 null,
-                ['Retry-After' => (string) self::secondsUntil($limit->getRetryAfter())],
+                ['Retry-After' => (string) $left],
             );
         }
 
@@ -78,7 +84,7 @@ final class VerificationController
 
         $this->verificationCodeMailer->send($address, $issued->code);
 
-        return new JsonResponse(['cooldownSeconds' => self::secondsUntil($limit->getRetryAfter())]);
+        return new JsonResponse(['cooldownSeconds' => VerificationChallenge::RESEND_COOLDOWN_SECONDS]);
     }
 
     private function address(): EmailAddress
@@ -96,10 +102,5 @@ final class VerificationController
         }
 
         return $address;
-    }
-
-    private static function secondsUntil(DateTimeImmutable $moment): int
-    {
-        return Math\maxva(0, $moment->getTimestamp() - new DateTimeImmutable()->getTimestamp());
     }
 }

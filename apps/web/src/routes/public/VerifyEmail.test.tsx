@@ -8,7 +8,7 @@ import { routes } from '../index.tsx';
 const FOLAKE: Session = {
   name: 'Folake Ire',
   email: 'folake@ire.events',
-  verified: true,
+  verified: false,
   organisation: { id: 'acc_1', name: 'Ire Events' },
   organisations: [{ id: 'acc_1', name: 'Ire Events' }],
   permissions: ['events.view'],
@@ -137,6 +137,7 @@ describe('verifying an email address', () => {
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/does not match/));
     expect(screen.getByLabelText('Code from the email').className).toMatch(/input-wrong/);
+    expect(screen.getByLabelText('Code from the email').getAttribute('aria-invalid')).toBe('true');
   });
 
   it('offers a new code when this one has expired', async () => {
@@ -193,8 +194,32 @@ describe('verifying an email address', () => {
     open();
 
     expect(screen.getByText(/Not your address\?/)).toBeDefined();
-    expect(screen.getByText(/Signing out and registering again/)).toBeDefined();
+    expect(screen.getByText('and create your account again with the right one.')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
+  });
+
+  it('opens already counting down from a send it did not make, such as the registration email', async () => {
+    const seen = answering({ 'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 57 }) });
+
+    open();
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Send a new code in 0:57' })).toBeDefined(),
+    );
+    expect(
+      screen.getByRole('button', { name: 'Send a new code in 0:57' }).hasAttribute('disabled'),
+    ).toBe(true);
+    expect(seen).not.toContain('POST /api/auth/verify/resend');
+  });
+
+  it('shows a verified account that it is verified, not a code to enter', () => {
+    __setSessionState({ status: 'signedIn', session: { ...FOLAKE, verified: true } });
+    answering({});
+
+    open();
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Email verified' })).toBeDefined();
+    expect(screen.queryByLabelText('Code from the email')).toBeNull();
   });
 
   it('sends somebody with no session to sign in', async () => {

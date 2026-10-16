@@ -11,7 +11,7 @@
     "invalid_refresh_token": "A sua sessão terminou. Inicie sessão novamente.",
     "forbidden": "Não tem permissão para fazer isso.",
     "too_many_requests": "Demasiadas tentativas. Aguarde e tente novamente.",
-    "too_many_attempts": "Demasiadas tentativas de início de sessão. Aguarde e tente novamente.",
+    "too_many_attempts": "Demasiadas tentativas. Aguarde e tente novamente.",
     "verification_code_invalid": "Esse código não corresponde.",
     "verification_code_expired": "Esse código caducou.",
     "verification_code_exhausted": "Esse código já não funciona. Envie um novo para continuar.",
