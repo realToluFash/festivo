@@ -2,20 +2,19 @@ import { ApiError, awaiting } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
+import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
+import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
+import { Field, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { PasswordField } from '../src/components/PasswordField.tsx';
 import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
-import { SignInFrame } from '../src/components/SignInFrame.tsx';
-import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { landingFor } from '../src/landing.ts';
-
-/** 16 is the smallest size iOS Safari will not zoom into on focus. */
-const CONTROL_TEXT_SIZE = 16;
 
 type Status =
   | { kind: 'ready' }
@@ -48,9 +47,13 @@ export default function SignIn() {
   const liftLock = useCallback(() => setStatus({ kind: 'ready' }), []);
 
   return (
-    <SignInFrame title={t('signIn.title')} intro={t('signIn.landscapeIntro')}>
+    <AuthFrame
+      saying={
+        <AuthHeading title={t('signIn.title')} intro={t('signIn.landscapeIntro')} introBeside />
+      }
+    >
       <Credentials status={status} onSubmit={signIn} onLockLifted={liftLock} />
-    </SignInFrame>
+    </AuthFrame>
   );
 }
 
@@ -64,7 +67,6 @@ function Credentials({
   onLockLifted: () => void;
 }) {
   const { t } = useTranslation();
-  const [revealed, setRevealed] = useState(false);
   const password = useRef<TextInput>(null);
 
   // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
@@ -131,127 +133,68 @@ function Credentials({
         />
       )}
 
-      <View style={styles.field}>
-        <Text size={tokens.typeButton.size} weight="semibold">
-          {t('signIn.email')}
-        </Text>
-        <TextInput
-          style={styles.input}
+      <Field label={t('signIn.email')}>
+        <TextField
           editable={!busy}
           keyboardType="email-address"
           autoComplete="email"
           textContentType="emailAddress"
           autoCapitalize="none"
-          autoCorrect={false}
-          spellCheck={false}
           onChangeText={(text) => {
             typed.current.email = text;
           }}
           returnKeyType="next"
+          submitBehavior="submit"
           onSubmitEditing={() => password.current?.focus()}
-          placeholderTextColor={tokens.colorInkTertiary}
-          cursorColor={tokens.colorInk}
-          selectionColor={tokens.colorInk}
           accessibilityLabel={t('signIn.email')}
           testID="signIn.email"
         />
-      </View>
+      </Field>
 
-      <View style={styles.field}>
-        <Text size={tokens.typeButton.size} weight="semibold">
-          {t('signIn.password')}
-        </Text>
-        <View style={styles.revealWrap}>
-          <TextInput
-            ref={password}
-            style={[
-              styles.input,
-              styles.inputWithReveal,
-              status.kind === 'refused' && styles.inputWrong,
-            ]}
-            editable={!busy}
-            secureTextEntry={!revealed}
-            autoComplete="current-password"
-            textContentType="password"
-            autoCapitalize="none"
-            autoCorrect={false}
-            spellCheck={false}
-            onChangeText={(text) => {
-              typed.current.password = text;
-            }}
-            returnKeyType="go"
-            onSubmitEditing={submit}
-            placeholderTextColor={tokens.colorInkTertiary}
-            cursorColor={tokens.colorInk}
-            selectionColor={tokens.colorInk}
-            accessibilityLabel={t('signIn.password')}
-            testID="signIn.password"
-          />
-          <Pressable
-            style={styles.reveal}
-            onPress={() => setRevealed((shown) => !shown)}
-            accessibilityRole="button"
-            testID="signIn.reveal"
-            accessibilityState={{ selected: revealed }}
-          >
-            <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
-              {revealed ? t('signIn.conceal') : t('signIn.reveal')}
-            </Text>
-          </Pressable>
-        </View>
-
-        {status.kind === 'refused' && (
-          <View style={styles.fieldError}>
-            <View style={styles.mark}>
-              <Text size={tokens.typePill.size} weight="bold" style={styles.brokenText}>
-                ✕
-              </Text>
-            </View>
-            <Text size={tokens.typeBodyPhone.size} style={styles.brokenText}>
-              {t('signIn.refused')}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      <Pressable
-        style={[styles.cta, (busy || locked) && styles.ctaOff]}
-        onPress={submit}
-        disabled={busy || locked}
-        accessibilityRole="button"
-        testID="signIn.submit"
-        accessibilityState={{ disabled: busy || locked }}
+      <Field
+        label={t('signIn.password')}
+        error={status.kind === 'refused' ? t('signIn.refused') : null}
       >
-        <Text
-          size={CONTROL_TEXT_SIZE}
-          weight="semibold"
-          style={busy || locked ? styles.ctaOffText : styles.ctaText}
-        >
-          {locked
+        <PasswordField
+          ref={password}
+          wrong={status.kind === 'refused'}
+          submitting={busy}
+          editable={!busy}
+          autoComplete="current-password"
+          textContentType="password"
+          onChangeText={(text) => {
+            typed.current.password = text;
+          }}
+          returnKeyType="go"
+          onSubmitEditing={submit}
+          accessibilityLabel={t('signIn.password')}
+          testID="signIn.password"
+        />
+      </Field>
+
+      <PrimaryButton
+        label={
+          locked
             ? t('signIn.lockedUntil', { time: status.retryAt })
             : busy
               ? t('signIn.submitting')
-              : t('signIn.submit')}
-        </Text>
-      </Pressable>
+              : t('signIn.submit')
+        }
+        onPress={submit}
+        busy={busy}
+        off={locked}
+        testID="signIn.submit"
+      />
 
       <ProviderSignIn />
 
-      <View style={styles.footnote}>
-        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('signIn.newHere')}
-        </Text>
-        <Pressable
-          style={styles.footnoteAction}
-          onPress={() => router.push('/register')}
-          accessibilityRole="link"
-          testID="signIn.register"
-        >
-          <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accentText}>
-            {t('signIn.createAccount')}
-          </Text>
-        </Pressable>
-      </View>
+      <Footnote
+        question={t('signIn.newHere')}
+        action={t('signIn.createAccount')}
+        onPress={() => router.push('/register')}
+        role="link"
+        testID="signIn.register"
+      />
     </View>
   );
 }
@@ -278,67 +221,4 @@ function refusalFrom(error: unknown): Status {
 
 const styles = StyleSheet.create({
   form: { gap: tokens.spaceXl },
-  field: { gap: tokens.spaceXs },
-
-  input: {
-    height: tokens.sizeHitPhonePrimary,
-    paddingHorizontal: tokens.spaceLg,
-    borderWidth: 1,
-    borderColor: tokens.colorControlBorder,
-    borderRadius: tokens.radiusField,
-    backgroundColor: tokens.colorCard,
-    color: tokens.colorInk,
-    fontSize: CONTROL_TEXT_SIZE,
-  },
-  inputWithReveal: { paddingRight: 72 },
-  inputWrong: { borderColor: tokens.colorBroken },
-
-  revealWrap: { position: 'relative' },
-  reveal: {
-    position: 'absolute',
-    top: 0,
-    right: tokens.spaceHair,
-    bottom: 0,
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceLg,
-  },
-  accentText: { color: tokens.colorAccentText },
-
-  cta: {
-    height: tokens.sizeHitPhonePrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceXxl,
-    borderRadius: tokens.sizeHitPhonePrimary / 2,
-    backgroundColor: tokens.colorAccent,
-  },
-  ctaOff: { backgroundColor: tokens.colorBorder },
-  ctaText: { color: tokens.colorInkOnDark },
-  ctaOffText: { color: tokens.colorInkSecondary },
-
-  brokenText: { color: tokens.colorBrokenText },
-
-  mark: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.sizeMark / 2,
-    borderWidth: 1.5,
-    borderColor: tokens.marks.broken.ring,
-    backgroundColor: tokens.marks.broken.fill,
-  },
-  fieldError: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
-
-  secondary: { color: tokens.colorInkSecondary },
-  footnote: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    columnGap: tokens.spaceXs,
-    paddingTop: tokens.spaceLg,
-    borderTopWidth: 1,
-    borderTopColor: tokens.colorInsetBorder,
-  },
-  footnoteAction: { minHeight: tokens.sizeHit, justifyContent: 'center' },
 });
