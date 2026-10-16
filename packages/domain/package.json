@@ -13,8 +13,11 @@
     "test": "vitest run"
   },
   "devDependencies": {
+    "@types/node": "^22.18.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.11",
-    "@types/node": "^22.18.0"
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
+    "libphonenumber-js": "1.13.14"
   }
 }
