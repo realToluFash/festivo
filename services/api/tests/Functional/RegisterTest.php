@@ -19,6 +19,7 @@ use App\Tests\Double\RefusingRateLimiterFactory;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Type;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -43,11 +44,22 @@ final class RegisterTest extends ApiTestCase
 
         // Stored as the entity normalises it, and returned the same way, so the
         // client is not holding a different string from the database.
-        self::assertSame('new.person@example.com', $body['user']['email']);
-        self::assertSame('Ada Lovelace', $body['user']['name']);
+        // The same account sign-in answers with, so a client reads one shape.
+        $account = Type\shape([
+            'name' => Type\string(),
+            'verified' => Type\bool(),
+            'complete' => Type\bool(),
+            'businessName' => Type\null(),
+            'emailAddresses' => Type\vec(Type\shape(['address' => Type\string()], true)),
+            'phoneNumbers' => Type\vec(Type\mixed()),
+        ], true)->coerce($body['account']);
 
-        self::assertFalse($body['user']['emailVerified'], 'an ordinary registration proves nothing yet');
-        self::assertFalse($body['user']['profileComplete'], 'and carries no profile fields');
+        self::assertSame('new.person@example.com', $account['emailAddresses'][0]['address']);
+        self::assertSame('Ada Lovelace', $account['name']);
+
+        self::assertFalse($account['verified'], 'an ordinary registration proves nothing yet');
+        self::assertFalse($account['complete'], 'and carries no profile fields');
+        self::assertSame([], $account['phoneNumbers']);
 
         self::assertNotSame('', $body['accessToken']);
         self::assertNotSame('', $body['refreshToken']);
