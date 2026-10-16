@@ -32,10 +32,3 @@ export function retryAfter(error: unknown): number | null {
 
   return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
 }
-
-/** Checked before sending: a code is there, and it is six digits. */
-export function codeProblem(code: string): 'blank' | 'short' | null {
-  if (code.trim() === '') return 'blank';
-
-  return /^\d{6}$/u.test(code.trim()) ? null : 'short';
-}

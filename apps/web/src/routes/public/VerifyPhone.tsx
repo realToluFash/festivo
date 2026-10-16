@@ -1,5 +1,5 @@
 import { type Account, ApiError } from '@soirely/api-client';
-import { formatCountdown, formatPhone } from '@soirely/domain';
+import { cleanCode, codeProblem, formatCountdown, formatPhone } from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -18,8 +18,6 @@ type Status =
   | { kind: 'exhausted' }
   | { kind: 'failed' }
   | { kind: 'verified' };
-
-const CODE_LENGTH = 6;
 
 /** "Check your messages": the code texted to the primary phone, under email's rules and with its parts. */
 export function VerifyPhone() {
@@ -77,11 +75,15 @@ export function VerifyPhone() {
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    const code = String(new FormData(event.currentTarget).get('code') ?? '').trim();
+    const typed = String(new FormData(event.currentTarget).get('code') ?? '');
+    const problem = codeProblem(typed);
 
-    // Checked before sending: present, and six digits.
-    if (code === '') return setCodeError(t('verifyPhone.codeBlank'));
-    if (!/^\d{6}$/u.test(code)) return setCodeError(t('verifyPhone.codeShort'));
+    if (problem != null) {
+      setCodeError(t(problem === 'blank' ? 'verifyPhone.codeBlank' : 'verifyPhone.codeShort'));
+      return;
+    }
+
+    const code = cleanCode(typed);
 
     setCodeError(null);
     setStatus({ kind: 'verifying' });
@@ -212,7 +214,6 @@ export function VerifyPhone() {
                   autoComplete="one-time-code"
                   autoCorrect="off"
                   spellCheck={false}
-                  maxLength={CODE_LENGTH}
                   aria-invalid={fieldError != null}
                   aria-describedby={fieldError == null ? undefined : 'code-error'}
                   onChange={() => setCodeError(null)}

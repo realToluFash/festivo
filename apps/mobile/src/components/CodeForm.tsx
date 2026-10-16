@@ -10,8 +10,6 @@ import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
-const CODE_LENGTH = 6;
-
 /** The code screens' form, an email's and a phone's: `copy` names whose words it speaks in. */
 export function CodeForm({
   copy,
@@ -75,13 +73,12 @@ export function CodeForm({
             <CodeField
               wrong={error != null}
               editable={!verifying}
-              maxLength={CODE_LENGTH}
               returnKeyType="done"
               onChangeText={(text) => {
                 typed.current = text;
                 onTyped();
               }}
-              onSubmitEditing={() => onVerify(typed.current.trim())}
+              onSubmitEditing={() => onVerify(typed.current)}
               accessibilityLabel={t(`${copy}.codeLabel`)}
               testID={`${copy}.code`}
             />
@@ -89,7 +86,7 @@ export function CodeForm({
 
           <PrimaryButton
             label={verifying ? t(`${copy}.submitting`) : t(`${copy}.submit`)}
-            onPress={() => onVerify(typed.current.trim())}
+            onPress={() => onVerify(typed.current)}
             busy={verifying}
             testID={`${copy}.submit`}
           />

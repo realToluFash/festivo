@@ -1,7 +1,7 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { asksForCode, codeProblem, codeRefusal, retryAfter } from './code.ts';
+import { asksForCode, codeRefusal, retryAfter } from './code.ts';
 
 function refused(code: string): ApiError {
   const problem = { type: `https://soirely.com/errors/${code}`, title: 'No.', status: 422 };
@@ -44,14 +44,5 @@ describe('a resend refused for now', () => {
     expect(retryAfter(waiting)).toBe(42);
     expect(retryAfter(refused('validation_failed'))).toBeNull();
     expect(retryAfter(new TypeError('offline'))).toBeNull();
-  });
-});
-
-describe('a code checked before it is sent', () => {
-  it('is there, and six digits', () => {
-    expect(codeProblem('  ')).toBe('blank');
-    expect(codeProblem('1234')).toBe('short');
-    expect(codeProblem('12345a')).toBe('short');
-    expect(codeProblem(' 184231 ')).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import type { Account } from '@soirely/api-client';
-import { formatPhone } from '@soirely/domain';
+import { cleanCode, codeProblem, formatPhone } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,7 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
-import { type CodeStatus, codeProblem, codeRefusal, retryAfter } from '../src/kit/code.ts';
+import { type CodeStatus, codeRefusal, retryAfter } from '../src/kit/code.ts';
 
 type Status = CodeStatus | { kind: 'verified' };
 
@@ -63,8 +63,9 @@ export default function VerifyPhone() {
   const number = formatPhone(phone.number);
   const verified = status.kind === 'verified' || phone.verified;
 
-  async function verify(code: string): Promise<void> {
-    const problem = codeProblem(code);
+  async function verify(typed: string): Promise<void> {
+    const problem = codeProblem(typed);
+    const code = cleanCode(typed);
 
     if (problem != null) {
       setCodeError(t(problem === 'blank' ? 'verifyPhone.codeBlank' : 'verifyPhone.codeShort'));
