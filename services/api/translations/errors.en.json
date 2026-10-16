@@ -10,6 +10,7 @@
     "invalid_credentials": "That email and password do not match.",
     "invalid_refresh_token": "Your session has ended. Please sign in again.",
     "forbidden": "You do not have permission to do that.",
+    "permission_required": "Your role does not include the permission this needs.",
     "too_many_requests": "Too many attempts. Please wait and try again.",
     "too_many_attempts": "Too many attempts. Please wait and try again.",
     "verification_code_invalid": "That code does not match.",

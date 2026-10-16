@@ -21,6 +21,7 @@ final readonly class ProblemRenderer
     /**
      * @param list<array{propertyPath: string, message: string, code: string}> $violations
      * @param array<string, string>                                            $headers
+     * @param array<string, string>                                            $members
      */
     public function render(
         Request $request,
@@ -28,6 +29,7 @@ final readonly class ProblemRenderer
         string $detail = '',
         array $violations = [],
         array $headers = [],
+        array $members = [],
     ): JsonResponse {
         $locale = $request->attributes->get(RequestLocaleListener::ATTRIBUTE);
 
@@ -49,6 +51,8 @@ final readonly class ProblemRenderer
         if ([] !== $violations) {
             $problem['violations'] = $violations;
         }
+
+        $problem += $members;
 
         $correlationId = $request->attributes->get(CorrelationIdListener::ATTRIBUTE);
         if (\is_string($correlationId)) {
