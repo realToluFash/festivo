@@ -84,6 +84,7 @@ describe('switching organisation', () => {
       verified: true,
       complete: true,
       needsOrganisation: false,
+      providers: [],
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
       phoneNumbers: [],
     });

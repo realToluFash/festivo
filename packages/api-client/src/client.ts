@@ -21,7 +21,11 @@ export interface IssuedTokens {
 export interface SignedIn {
   tokens: IssuedTokens;
   account: Account;
+  /** A provider was linked to this existing account just now, which the person is told once. */
+  linked: boolean;
 }
+
+export type Provider = 'google';
 
 export interface Health {
   status: string;
@@ -57,6 +61,8 @@ export interface Account {
   complete: boolean;
   /** The details screen asks for an organisation: a self-registered account in none. */
   needsOrganisation: boolean;
+  /** The providers that vouch for this account, such as Google. */
+  providers: string[];
   emailAddresses: LinkedAddress[];
   phoneNumbers: LinkedPhone[];
 }
@@ -191,6 +197,15 @@ export class ApiClient {
 
   async signIn(email: string, password: string): Promise<SignedIn> {
     return this.signedIn('/api/auth/login', { email, password }, 'SignInController');
+  }
+
+  /** The ID token a provider issued, and the nonce whose hash went to the provider with the request. */
+  async signInWithProvider(provider: Provider, idToken: string, nonce: string): Promise<SignedIn> {
+    return this.signedIn(
+      `/api/auth/oauth/${provider}`,
+      { idToken, nonce },
+      'ProviderSignInController',
+    );
   }
 
   /** Signed in as sign-in is: the same tokens, the same account. */
@@ -490,7 +505,7 @@ export class ApiClient {
 
     await this.options.tokens?.save(tokens);
 
-    return { tokens, account };
+    return { tokens, account, linked: body.linked === true };
   }
 
   private async forgetSession(): Promise<void> {
@@ -599,6 +614,9 @@ function asAccount(raw: unknown): Account | null {
     verified: candidate.verified === true,
     complete: candidate.complete === true,
     needsOrganisation: candidate.needsOrganisation === true,
+    providers: Array.isArray(candidate.providers)
+      ? candidate.providers.filter((provider): provider is string => typeof provider === 'string')
+      : [],
     emailAddresses,
     phoneNumbers,
   };

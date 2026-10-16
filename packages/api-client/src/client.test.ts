@@ -855,6 +855,7 @@ const ACCOUNT = {
   verified: true,
   complete: true,
   needsOrganisation: false,
+  providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
     { id: 'a2', address: 'folake@example.com', verified: false, primary: false },
