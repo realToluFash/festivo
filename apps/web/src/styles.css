@@ -1393,3 +1393,22 @@ h2 {
 .phone-number {
   flex: 1 1 12rem;
 }
+
+/* ── A label with a pill beside it ─────────────────────────────────────────── */
+
+.label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.pill-quiet {
+  display: inline-flex;
+  align-items: center;
+  height: var(--sizePill);
+  padding: 0 var(--spaceMd);
+  border-radius: var(--radiusPill);
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+  font: var(--typePill);
+}

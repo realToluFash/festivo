@@ -13,6 +13,9 @@ function signedIn(organisation = IRE): void {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
     verified: true,
+    complete: true,
+    awaiting: null,
+    needsOrganisation: false,
     organisation,
     organisations: [organisation],
   };

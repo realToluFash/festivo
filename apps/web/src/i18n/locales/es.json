@@ -255,5 +255,23 @@
     "contactInvalid": "Eso no parece un correo electrónico. Compruebe que tiene una @ y un dominio.",
     "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
     "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento."
+  },
+  "completeProfile": {
+    "title": "Unos datos",
+    "intro": "Para que las personas con las que trabaja sepan quién es quién.",
+    "name": "Nombre completo",
+    "nameBlank": "Añada su nombre para continuar.",
+    "organisation": "Nombre de la organización",
+    "organisationHelp": "Sus eventos le pertenecen. Puede cambiarle el nombre más adelante.",
+    "organisationBlank": "Añada el nombre de su organización para continuar.",
+    "country": "País",
+    "save": "Guardar y continuar",
+    "saving": "Guardando…",
+    "failedTitle": "No se ha podido guardar",
+    "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
+    "signedInAs": "Sesión iniciada como {{email}}.",
+    "signOut": "Cerrar sesión",
+    "optional": "Opcional",
+    "mobileHelp": "Así le localizamos la noche del evento si algo sale mal. Si añade uno, le enviamos un código por SMS para comprobarlo."
   }
 }

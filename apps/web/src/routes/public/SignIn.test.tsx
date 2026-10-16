@@ -203,7 +203,15 @@ describe('signing in, for real', () => {
 
   it('sends an unverified account to the verification screen instead', async () => {
     answering({
-      'POST /api/auth/login': () => json({ ...ISSUED, account: { ...ACCOUNT, verified: false } }),
+      'POST /api/auth/login': () =>
+        json({
+          ...ISSUED,
+          account: {
+            ...ACCOUNT,
+            verified: false,
+            emailAddresses: [{ ...ACCOUNT.emailAddresses[0], verified: false }],
+          },
+        }),
     });
 
     at('/sign-in');

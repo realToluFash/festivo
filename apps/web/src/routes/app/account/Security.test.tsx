@@ -40,6 +40,9 @@ const FOLAKE: Session = {
   name: 'Folake Ire',
   email: 'folake@ire.events',
   verified: true,
+  complete: true,
+  awaiting: null,
+  needsOrganisation: false,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
 };

@@ -1,17 +1,24 @@
 import {
   type Account,
   ApiUnreachableError,
+  type Awaiting,
   type Membership,
+  awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
 import { useSyncExternalStore } from 'react';
 
-import { SIGNED_OUT, api } from './api.ts';
+import { GATED, SIGNED_OUT, api } from './api.ts';
 
 export interface Session {
   name: string;
   email: string;
   verified: boolean;
+  /** Through the details screen; the product stays behind the gate until it is. */
+  complete: boolean;
+  /** The gate it is behind, or null once it is through both. */
+  awaiting: Awaiting | null;
+  needsOrganisation: boolean;
   /** The one this device is working in; null for an account in no organisation. */
   organisation: Membership | null;
   organisations: readonly Membership[];
@@ -78,16 +85,24 @@ async function askForAccount(): Promise<void> {
   }
 }
 
-/** The account, with its organisations; an unverified one is behind the gate and is not asked for them. */
+/** The account, with its organisations; one behind the onboarding gate is not asked for them. */
 export async function adoptAccount(account: Account): Promise<void> {
-  const organisations = account.verified ? await api.organisations() : [];
+  const organisations = account.verified && account.complete ? await api.organisations() : [];
 
   set({ status: 'signedIn', session: sessionFrom(account, organisations) });
 }
 
-/** After a gate has been passed: the account read afresh. */
+/** After a gate has been passed, or the API says one has closed: the account read afresh. */
 export async function refreshAccount(): Promise<void> {
   await askForAccount();
+}
+
+/** Where a signed-in account belongs: the gate it is behind, or the product. */
+export function landingFor(gate: Awaiting | null): string {
+  if (gate === 'email') return '/verify-email';
+  if (gate === 'phone') return '/verify-phone?from=onboarding';
+
+  return gate === 'details' ? '/complete-profile' : '/app';
 }
 
 /** Remembered on this device, so the next visit opens where this one left off. */
@@ -131,6 +146,9 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     name: account.name,
     email: primaryEmailAddress(account) ?? '',
     verified: account.verified,
+    complete: account.complete,
+    awaiting: awaiting(account),
+    needsOrganisation: account.needsOrganisation,
     organisations,
     organisation:
       organisations.find((membership) => membership.id === remembered) ?? organisations[0] ?? null,
@@ -170,5 +188,10 @@ function subscribe(listener: () => void): () => void {
 if (typeof window !== 'undefined') {
   window.addEventListener(SIGNED_OUT, () => {
     forgetSession(true);
+  });
+
+  // The API said the account is behind a gate this session did not know about, so read it again.
+  window.addEventListener(GATED, () => {
+    if (state.status === 'signedIn') void refreshAccount();
   });
 }

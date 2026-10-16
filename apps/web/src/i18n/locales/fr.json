@@ -255,5 +255,23 @@
     "contactInvalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine.",
     "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les propriétaires le peuvent.",
     "failed": "L'enregistrement n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant."
+  },
+  "completeProfile": {
+    "title": "Quelques informations",
+    "intro": "Pour que les personnes avec qui vous travaillez sachent qui est qui.",
+    "name": "Nom complet",
+    "nameBlank": "Ajoutez votre nom pour continuer.",
+    "organisation": "Nom de l'organisation",
+    "organisationHelp": "Vos événements lui appartiennent. Vous pourrez la renommer plus tard.",
+    "organisationBlank": "Ajoutez le nom de votre organisation pour continuer.",
+    "country": "Pays",
+    "save": "Enregistrer et continuer",
+    "saving": "Enregistrement…",
+    "failedTitle": "L'enregistrement n'a pas abouti",
+    "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant.",
+    "signedInAs": "Connecté en tant que {{email}}.",
+    "signOut": "Se déconnecter",
+    "optional": "Facultatif",
+    "mobileHelp": "C'est ainsi qu'on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier."
   }
 }

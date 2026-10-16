@@ -143,6 +143,32 @@ describe('check your messages', () => {
     expect(screen.getAllByRole('button', { name: 'Send a new code' }).length).toBeGreaterThan(0);
   });
 
+  it('carries on without the phone by saving the details with none', async () => {
+    let removed = false;
+    const sent = answering({
+      'GET /api/auth/me': () =>
+        json(
+          removed
+            ? { ...account([]), verified: true, complete: true, needsOrganisation: false }
+            : { ...account(), complete: true, needsOrganisation: false },
+        ),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+      'PATCH /api/auth/complete-profile': () => {
+        removed = true;
+        return json({ account: account([]), verificationNeeded: false });
+      },
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    at('/verify-phone?from=onboarding');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Carry on without it' }));
+
+    await waitFor(() => expect(removed).toBe(true));
+    expect(sent.find((request) => request.method === 'PATCH')?.body).toEqual({
+      name: 'Folake Adeyemi',
+    });
+  });
+
   it('asks for a number first when there is none', async () => {
     answering({
       'GET /api/auth/me': () => json(account([])),

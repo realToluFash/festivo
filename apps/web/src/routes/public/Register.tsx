@@ -1,4 +1,4 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, awaiting } from '@soirely/api-client';
 import {
   formatTimeOfDay,
   lockLiftsAt,
@@ -13,7 +13,7 @@ import { api } from '../../api.ts';
 import { LanguageChoice } from '../../components/LanguageChoice.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
-import { adoptAccount } from '../../session.ts';
+import { adoptAccount, landingFor } from '../../session.ts';
 
 type Status =
   | { kind: 'ready' }
@@ -73,7 +73,7 @@ export function Register() {
 
       await adoptAccount(account);
 
-      navigate(account.verified ? '/app' : '/verify-email', { replace: true });
+      navigate(landingFor(awaiting(account)), { replace: true });
     } catch (error) {
       setStatus(refusalFrom(error));
     }
