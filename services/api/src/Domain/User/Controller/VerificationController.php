@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\Model\IssuedVerificationCode;
 use App\Domain\User\Verification\EmailAddressVerifier;
 use App\Domain\User\Verification\ResendCooldown;
 use App\Domain\User\Verification\VerificationCodeIssuer;
@@ -14,6 +15,7 @@ use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -40,8 +42,23 @@ final class VerificationController
 
         $address = $this->address();
 
-        $this->emailAddressVerifier->verify($address, $body['code']);
-        $this->entityManager->flush();
+        // The same lock as a resend, so codes sent at once are checked one at a time against one count.
+        $refusal = $this->entityManager->wrapInTransaction(function () use ($address, $body): ?ApiException {
+            $this->entityManager->lock($address, LockMode::PESSIMISTIC_WRITE);
+
+            try {
+                $this->emailAddressVerifier->verify($address, $body['code']);
+                $this->entityManager->flush();
+            } catch (ApiException $e) {
+                return $e;
+            }
+
+            return null;
+        });
+
+        if (null !== $refusal) {
+            throw $refusal;
+        }
 
         return new JsonResponse([
             'id' => $address->getId()->toRfc4122(),
@@ -67,20 +84,31 @@ final class VerificationController
             return new JsonResponse(['cooldownSeconds' => 0]);
         }
 
-        $left = $this->resendCooldown->secondsLeftFor($address);
+        // Locked, so resends sent at once queue here: the first issues a code, the rest find its cooldown.
+        $issued = $this->entityManager->wrapInTransaction(function () use ($address): IssuedVerificationCode|int {
+            $this->entityManager->lock($address, LockMode::PESSIMISTIC_WRITE);
 
-        if ($left > 0) {
+            $left = $this->resendCooldown->secondsLeftFor($address);
+
+            if ($left > 0) {
+                return $left;
+            }
+
+            $issued = $this->verificationCodeIssuer->issueFor($address);
+            $this->entityManager->flush();
+
+            return $issued;
+        });
+
+        if (\is_int($issued)) {
             throw new ApiException(
                 ErrorCode::TooManyAttempts,
                 'Wait before asking for another code.',
                 [],
                 null,
-                ['Retry-After' => (string) $left],
+                ['Retry-After' => (string) $issued],
             );
         }
-
-        $issued = $this->verificationCodeIssuer->issueFor($address);
-        $this->entityManager->flush();
 
         $this->verificationCodeMailer->send($address, $issued->code);
 

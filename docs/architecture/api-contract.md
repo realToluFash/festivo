@@ -93,6 +93,11 @@ this table is their contract:
 A client counts down from `cooldownSeconds` or `Retry-After` and never from a number of its
 own.
 
+At most one code is live per address, by a partial unique index on unrevoked challenges, and
+resends and tries for one address take its row lock, so requests sent at once are answered
+in turn: one resend sends a code and the rest get its cooldown, and the fifth wrong try is
+the fifth however many arrive together.
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.

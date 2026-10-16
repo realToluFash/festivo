@@ -16,6 +16,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'verification_challenges')]
 #[ORM\Index(name: 'idx_verification_challenge_email', columns: ['email_address_id'])]
 #[ORM\Index(name: 'idx_verification_challenge_phone', columns: ['phone_number_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_live_challenge_per_email', columns: ['email_address_id'], options: ['where' => '(revoked_at IS NULL)'])]
+#[ORM\UniqueConstraint(name: 'uniq_live_challenge_per_phone', columns: ['phone_number_id'], options: ['where' => '(revoked_at IS NULL)'])]
 class VerificationChallenge
 {
     use Timestampable;
@@ -103,11 +105,6 @@ class VerificationChallenge
     public function getAttempts(): int
     {
         return $this->attempts;
-    }
-
-    public function setAttempts(int $attempts): void
-    {
-        $this->attempts = $attempts;
     }
 
     public function getRevokedAt(): ?DateTimeImmutable
