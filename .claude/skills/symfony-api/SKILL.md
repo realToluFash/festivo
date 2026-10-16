@@ -20,8 +20,8 @@ Three things follow:
   resource is not configured.
 - **Commands are different and stay controllers.** "Mark this plate served", "chase this
   ticket" — these are not resource operations and should not be contorted into them.
-- **`security` is optional in API Platform and mandatory here.** Every operation declares
-  one, and a check walks the resource metadata to enforce it. See the access rule below.
+- **A policy is optional in API Platform and mandatory here.** The resource class declares
+  one, and a resource without one stops the router loading. See the access rule below.
 
 Errors are RFC 7807 problem documents. See `docs/architecture/api-contract.md`.
 
@@ -113,9 +113,16 @@ forgot its check behaved perfectly for everyone allowed in, so nothing caught it
 test, not review, not use. The only reliable defence is making the check structural, so a
 route without one cannot be registered at all.
 
+It is built: `docs/architecture/access-control.md`. Every controller, or every API Platform
+resource class, carries one of `#[PublicAccess]`, `#[Authenticated]`,
+`#[InOrganisation(Permission::…)]` or `#[InEvent(Permission::…)]`, and a route without one
+stops the router loading, naming the route. There is no `access_control` in
+`security.yaml`, and there must not be one again.
+
 Two rules follow from it:
 
-- A sub-resource id is scoped to its parent before it is used. Loading a table by its bare
+- A sub-resource id is scoped to its parent before it is used: mark the argument
+  `#[InThisEvent('tableId')]` and give its repository `findOneInEvent()`. Loading a table by its bare
   id and then checking the event is backwards — a table id from another event will have
   been read before anybody asks whether it should have been.
 - An organisation-level check runs before any fast path that would skip it.

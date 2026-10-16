@@ -70,8 +70,20 @@ services:
     App\AI\Interfaces\AssistantInterface:
         factory: ['@App\AI\Factory\AssistantFactory', 'create']
 
+    # Until organisations (sc-65) and events exist, nobody is a member and no
+    # event resolves, so every organisation and event route refuses.
+    App\Http\Access\Interfaces\MembershipDirectoryInterface: '@App\Http\Access\Directory\NoMemberships'
+    App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Http\Access\Directory\NoEvents'
+
 when@test:
     services:
+        # Routes that exist only in the suite, to prove the access layer before
+        # any real organisation or event route uses it.
+        App\Tests\Fixtures\Access\:
+            resource: '../tests/Fixtures/Access/'
+            autowire: true
+            autoconfigure: true
+
         # The suite can never reach a real provider, whatever ASSISTANT_PROVIDER
         # happens to say on this machine. Every assisted path — the gate, the
         # validation, the proxy, the record — runs here, and none of it is

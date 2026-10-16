@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Health\Controller;
 
 use App\Health\HealthChecker;
+use App\Http\Access\Policy\PublicAccess;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[PublicAccess]
 final class HealthController extends AbstractController
 {
     public function __construct(

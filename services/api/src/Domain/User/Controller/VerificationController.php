@@ -13,6 +13,7 @@ use App\Entity\EmailAddress;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
+use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Doctrine\DBAL\LockMode;
@@ -23,6 +24,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[Authenticated]
 final class VerificationController
 {
     public function __construct(
