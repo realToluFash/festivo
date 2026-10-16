@@ -186,13 +186,12 @@ export class ApiClient {
   }
 
   async resendVerification(): Promise<number> {
-    const answer = await this.post<unknown>('/api/auth/verify/resend');
+    return cooldownFrom(await this.post<unknown>('/api/auth/verify/resend'));
+  }
 
-    if (typeof answer !== 'object' || answer == null) return 0;
-
-    const seconds = (answer as Record<string, unknown>).cooldownSeconds;
-
-    return typeof seconds === 'number' && Number.isFinite(seconds) ? seconds : 0;
+  /** Reads the cooldown without spending it, so a screen opens already counting down. */
+  async verificationCooldown(): Promise<number> {
+    return cooldownFrom(await this.get<unknown>('/api/auth/verify/resend'));
   }
 
   async sessions(): Promise<DeviceSession[]> {
@@ -516,4 +515,12 @@ function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTok
       typeof candidate.refreshExpiresAt === 'string' ? candidate.refreshExpiresAt : '',
     sessionId: typeof candidate.sessionId === 'string' ? candidate.sessionId : '',
   };
+}
+
+function cooldownFrom(answer: unknown): number {
+  if (typeof answer !== 'object' || answer == null) return 0;
+
+  const seconds = (answer as Record<string, unknown>).cooldownSeconds;
+
+  return typeof seconds === 'number' && Number.isFinite(seconds) ? seconds : 0;
 }

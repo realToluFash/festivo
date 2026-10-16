@@ -711,4 +711,11 @@ describe('verifying an address', () => {
 
     expect(await api.resendVerification()).toBe(0);
   });
+
+  test('the cooldown is read with a GET, which spends nothing', async () => {
+    const { api, sent } = client(json({ cooldownSeconds: 42 }));
+
+    expect(await api.verificationCooldown()).toBe(42);
+    expect(sent).toEqual(['GET /api/auth/verify/resend']);
+  });
 });
