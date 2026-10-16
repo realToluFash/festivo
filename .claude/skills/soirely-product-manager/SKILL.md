@@ -132,6 +132,11 @@ Half of this job is refusing to answer in the wrong place.
   `/soirely-developer`'s line.
 - **Never move a story to Done.** That is the user's, after a merge. `Ready For QA` is the
   developer's move and `Passsed QA` / `Failed QA` are the QA agent's.
+- **Backlog to `To Do` is yours.** Move a story there once the designer says its design is
+  ready, or that it needs none, and no product question on it is open. The owner delegated
+  this on 16 Oct: their sign-off of the screens is not a condition for it. Say in the
+  designer's thread that you moved it. A story that waits on the owner for a decision only
+  they can make, such as a money or policy call, stays in Backlog until they make it.
 - **Do not weaken an AC to make a build pass.** A criterion the build fails is either a
   defect or a decision to reverse deliberately, in writing, with the reason. Quietly
   deleting it is how a product ships something nobody chose.
