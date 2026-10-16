@@ -23,6 +23,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class SignInController
 {
     public function __construct(
+        private readonly AccountSerialiser $accountSerialiser,
         private readonly UserAuthenticator $userAuthenticator,
         private readonly RateLimiterFactoryInterface $signInIpLimiter,
         private readonly RateLimiterFactoryInterface $signInAccountLimiter,
@@ -64,7 +65,7 @@ final class SignInController
             $result->tokens,
             $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
             $request,
-            ['account' => AccountSerialiser::serialise($result->user)],
+            ['account' => $this->accountSerialiser->serialise($result->user)],
         );
     }
 

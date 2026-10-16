@@ -209,6 +209,8 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repositor
 
 # ── Product scopes ──────────────────────────────────────────────────────────────
 
+# The details screen founds the account's organisation (sc-57), through the
+# organisation scope's own step rather than by writing its tables.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\User\\"
 permit = [
@@ -216,6 +218,7 @@ permit = [
     "@layer:external",
     "@layer:shared",
     "@layer:domain_user",
+    "@layer:domain_organisation",
     "@layer:repository",
     "@layer:audit",
 ]

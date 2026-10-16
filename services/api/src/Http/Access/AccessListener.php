@@ -9,6 +9,7 @@ use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Http\Access\Interfaces\EventDirectoryInterface;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
+use App\Http\Access\Interfaces\OnboardingGateInterface;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\InOrganisation;
@@ -32,6 +33,7 @@ final readonly class AccessListener
 
     public function __construct(
         private Security $security,
+        private OnboardingGateInterface $onboardingGate,
         private MembershipDirectoryInterface $membershipDirectory,
         private EventDirectoryInterface $eventDirectory,
     ) {
@@ -50,25 +52,25 @@ final readonly class AccessListener
 
         match (true) {
             $policy instanceof PublicAccess => null,
-            $policy instanceof Authenticated => $this->account(),
-            $policy instanceof InOrganisation => $this->inOrganisation($request, $policy),
-            $policy instanceof InEvent => $this->inEvent($request, $policy),
+            $policy instanceof Authenticated => $this->account($route),
+            $policy instanceof InOrganisation => $this->inOrganisation($request, $route, $policy),
+            $policy instanceof InEvent => $this->inEvent($request, $route, $policy),
             default => throw new LogicException(Str\format('Route "%s" has a policy nothing enforces.', $route)),
         };
     }
 
-    private function inOrganisation(Request $request, InOrganisation $policy): void
+    private function inOrganisation(Request $request, string $route, InOrganisation $policy): void
     {
         $organisationId = self::uuid($request, $policy->parameter);
 
-        $this->require($this->account(), $organisationId, $policy->permission);
+        $this->require($this->account($route), $organisationId, $policy->permission);
     }
 
     /** The event is found first, and its organisation's membership checked before any permission. */
-    private function inEvent(Request $request, InEvent $policy): void
+    private function inEvent(Request $request, string $route, InEvent $policy): void
     {
         $eventId = self::uuid($request, $policy->parameter);
-        $user = $this->account();
+        $user = $this->account($route);
         $organisationId = $this->eventDirectory->organisationOf($eventId) ?? throw self::notFound();
 
         $this->require($user, $organisationId, $policy->permission);
@@ -93,7 +95,8 @@ final readonly class AccessListener
         }
     }
 
-    private function account(): User
+    /** Signed in, and through the onboarding gate unless the route is on its exempt list. */
+    private function account(string $route): User
     {
         $user = $this->security->getUser();
 
@@ -101,6 +104,14 @@ final readonly class AccessListener
             throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.', [], null, [
                 'WWW-Authenticate' => 'Bearer',
             ]);
+        }
+
+        $refusal = $this->onboardingGate->refusalFor($user, $route);
+
+        if (null !== $refusal) {
+            throw new ApiException($refusal, ErrorCode::AccountUnverified === $refusal
+                ? 'Verify your email address to carry on.'
+                : 'Add a few details to carry on.');
         }
 
         return $user;

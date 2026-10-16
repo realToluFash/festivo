@@ -11,6 +11,7 @@ use App\Domain\User\UserRegistrar;
 use App\Entity\AssistantInteraction;
 use App\Enum\ErrorCode;
 use App\Tests\ApiTestCase;
+use App\Tests\Traits\OnboardsAccounts;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use LogicException;
@@ -28,6 +29,8 @@ use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
  */
 final class AssistantTest extends ApiTestCase
 {
+    use OnboardsAccounts;
+
     private EntityManagerInterface $em;
 
     /** @mago-expect lint:no-literal-password */
@@ -40,7 +43,7 @@ final class AssistantTest extends ApiTestCase
         $this->em = self::service(EntityManagerInterface::class);
 
         $user = self::service(UserRegistrar::class)->register('assistant@example.com', 'Asks', self::PASSWORD)->user;
-        $this->em->flush();
+        self::onboard($user);
 
         $this->client->setServerParameter(
             'HTTP_AUTHORIZATION',

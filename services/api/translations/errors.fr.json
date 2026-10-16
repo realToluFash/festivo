@@ -12,6 +12,8 @@
     "invalid_refresh_token": "Votre session a expiré. Veuillez vous reconnecter.",
     "forbidden": "Vous n'avez pas l'autorisation de faire cela.",
     "permission_required": "Votre rôle n'inclut pas l'autorisation nécessaire.",
+    "account_unverified": "Vérifiez votre adresse e-mail pour continuer.",
+    "profile_incomplete": "Ajoutez quelques informations pour continuer.",
     "too_many_requests": "Trop de tentatives. Veuillez patienter et réessayer.",
     "too_many_attempts": "Trop de tentatives. Veuillez patienter et réessayer.",
     "verification_code_invalid": "Ce code ne correspond pas.",

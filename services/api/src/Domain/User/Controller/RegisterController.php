@@ -21,6 +21,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class RegisterController
 {
     public function __construct(
+        private readonly AccountSerialiser $accountSerialiser,
         private readonly UserRegistrar $registration,
         private readonly RateLimiterFactoryInterface $registrationLimiter,
     ) {
@@ -49,7 +50,7 @@ final class RegisterController
             $result->tokens,
             $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
             $request,
-            ['account' => AccountSerialiser::serialise($result->user)],
+            ['account' => $this->accountSerialiser->serialise($result->user)],
             Response::HTTP_CREATED,
         );
     }

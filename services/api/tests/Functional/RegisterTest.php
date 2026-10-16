@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\User\Controller\RegisterController;
+use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\Password\PasswordPolicy;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\Password\ScriptedBreachedPasswordChecker;
@@ -388,6 +389,7 @@ final class RegisterTest extends ApiTestCase
     public function theEndpointRefusesWhenTheBudgetIsGone(): void
     {
         $controller = new RegisterController(
+            self::service(AccountSerialiser::class),
             self::service(UserRegistrar::class),
             new RefusingRateLimiterFactory(),
         );

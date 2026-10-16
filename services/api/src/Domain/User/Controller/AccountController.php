@@ -24,6 +24,7 @@ use Symfony\Component\Uid\Uuid;
 final class AccountController
 {
     public function __construct(
+        private readonly AccountSerialiser $accountSerialiser,
         private readonly Security $security,
         private readonly RefreshTokenRepository $refreshTokenRepository,
         private readonly EntityManagerInterface $entityManager,
@@ -33,7 +34,7 @@ final class AccountController
     #[Route('/api/auth/me', name: 'auth_me', methods: ['GET'])]
     public function me(): JsonResponse
     {
-        return new JsonResponse(AccountSerialiser::serialise($this->user()));
+        return new JsonResponse($this->accountSerialiser->serialise($this->user()));
     }
 
     #[Route('/api/auth/sessions', name: 'auth_sessions', methods: ['GET'])]

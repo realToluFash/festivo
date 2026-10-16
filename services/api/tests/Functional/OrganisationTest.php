@@ -17,6 +17,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\Access\FixtureDirectories;
 use App\Tests\Fixtures\Access\FixtureTable;
 use App\Tests\Fixtures\Access\FixtureTableRepository;
+use App\Tests\Traits\OnboardsAccounts;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -27,6 +28,8 @@ use Symfony\Component\Uid\Uuid;
 
 final class OrganisationTest extends ApiTestCase
 {
+    use OnboardsAccounts;
+
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
@@ -72,6 +75,7 @@ final class OrganisationTest extends ApiTestCase
         $invited = self::service(UserRegistrar::class)
             ->registerFromInvitation('invited@example.com', 'Invited', self::PASSWORD)
             ->user;
+        self::onboard($invited);
         $selfRegistered = $this->account('own@example.com');
 
         self::assertSame(AccountOrigin::Invitation, $invited->getOrigin());
@@ -153,7 +157,9 @@ final class OrganisationTest extends ApiTestCase
     public function somebodyOutsideTheOrganisationCannotEditIt(): void
     {
         $organisation = $this->found($this->account('owns-it@example.com'), 'Ìrè Events', 'NG', 'Africa/Lagos');
-        $this->signIn($this->account('outsider@example.com'));
+        $outsider = $this->account('outsider@example.com');
+        $this->found($outsider, 'Elsewhere', 'NG', 'Africa/Lagos');
+        $this->signIn($outsider);
 
         $this->patch($organisation, ['name' => 'Taken over']);
 
@@ -187,10 +193,11 @@ final class OrganisationTest extends ApiTestCase
         self::assertResponseStatusCodeSame(404);
     }
 
+    /** Through the gate but in no organisation, so each test founds the ones it means. */
     private function account(string $address): User
     {
         $user = self::service(UserRegistrar::class)->register($address, 'Person', self::PASSWORD)->user;
-        self::service(EntityManagerInterface::class)->flush();
+        self::onboard($user, withOrganisation: false);
 
         return $user;
     }

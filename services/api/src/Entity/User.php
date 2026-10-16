@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Doctrine\Traits\SoftDeletable;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\AccountOrigin;
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -45,6 +46,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /** Set once, at creation: it is what tells an account that founds an organisation from one that joins. */
     #[ORM\Column(type: Types::STRING, length: 20, enumType: AccountOrigin::class)]
     private AccountOrigin $origin;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $detailsSavedAt = null;
 
     /** @var Collection<int, EmailAddress> */
     #[ORM\OneToMany(targetEntity: EmailAddress::class, mappedBy: 'user', cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -210,13 +214,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return null === $phone || $phone->isVerified();
     }
 
-    public function isComplete(): bool
+    /** Set the first time the details screen is saved; "complete" needs it once (sc-57). */
+    public function hasSavedDetails(): bool
     {
-        return null !== $this->businessName
-            && '' !== $this->businessName
-            && null !== $this->getPrimaryPhoneNumber()
-            && null !== $this->countryCode
-            && '' !== $this->countryCode;
+        return null !== $this->detailsSavedAt;
+    }
+
+    public function markDetailsSaved(): void
+    {
+        $this->detailsSavedAt ??= new DateTimeImmutable();
     }
 
     /**

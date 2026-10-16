@@ -12,6 +12,8 @@
     "invalid_refresh_token": "Your session has ended. Please sign in again.",
     "forbidden": "You do not have permission to do that.",
     "permission_required": "Your role does not include the permission this needs.",
+    "account_unverified": "Verify your email address to carry on.",
+    "profile_incomplete": "Add a few details to carry on.",
     "too_many_requests": "Too many attempts. Please wait and try again.",
     "too_many_attempts": "Too many attempts. Please wait and try again.",
     "verification_code_invalid": "That code does not match.",

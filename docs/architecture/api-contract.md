@@ -116,6 +116,11 @@ table's, from the same code** (`ContactVerifier`, `VerificationCodeResender`,
 - A number refused for its shape is `422` against `number`, naming the country: required,
   too short, too long, or not a number there.
 
+The details screen (`PATCH /api/auth/complete-profile`) takes the same number as
+optional `phoneCountryCode` and `phoneNumber`, under the same rules. An empty number means
+no phone and removes the primary one. Its shape refusals are against `phoneNumber`,
+alongside the screen's other fields, and nothing is saved or texted until all of them pass.
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.
