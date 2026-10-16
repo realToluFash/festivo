@@ -251,11 +251,14 @@ export const COUNTRY_CODES: readonly string[] = [
   'ZW',
 ];
 
-/** Each code with its name in the reader's language, sorted as that language sorts. */
+/** Each code with its name in the reader's language, sorted as that language sorts; the code where the engine cannot name it. */
 export function countryChoices(locale: string): { code: string; name: string }[] {
-  const names = new Intl.DisplayNames([locale], { type: 'region' });
+  const names =
+    typeof Intl.DisplayNames === 'function'
+      ? new Intl.DisplayNames([locale], { type: 'region' })
+      : null;
 
-  return COUNTRY_CODES.map((code) => ({ code, name: names.of(code) ?? code })).sort((a, b) =>
+  return COUNTRY_CODES.map((code) => ({ code, name: names?.of(code) ?? code })).sort((a, b) =>
     a.name.localeCompare(b.name, locale),
   );
 }
@@ -272,4 +275,27 @@ export function currencyLabel(code: string, locale: string): string {
   const name = new Intl.DisplayNames([locale], { type: 'currency' }).of(code);
 
   return name == null || name === code ? code : `${name} · ${code}`;
+}
+
+/** The device's country, for a form that starts on it: the first language that names one, else its likeliest. */
+export function deviceCountry(languages: readonly string[]): string | null {
+  for (const tag of languages) {
+    const region = safeLocale(tag)?.region;
+    if (region != null && COUNTRY_CODES.includes(region)) return region;
+  }
+
+  for (const tag of languages) {
+    const region = safeLocale(tag)?.maximize().region;
+    if (region != null && COUNTRY_CODES.includes(region)) return region;
+  }
+
+  return null;
+}
+
+function safeLocale(tag: string): Intl.Locale | null {
+  try {
+    return new Intl.Locale(tag);
+  } catch {
+    return null;
+  }
 }

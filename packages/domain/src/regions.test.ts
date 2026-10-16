@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { COUNTRY_CODES, countryChoices, currencyLabel, timezoneLabel } from './regions.ts';
+import {
+  COUNTRY_CODES,
+  countryChoices,
+  currencyLabel,
+  deviceCountry,
+  timezoneLabel,
+} from './regions.ts';
 
 describe('regions', () => {
   it('lists every ISO country once', () => {
@@ -26,5 +32,13 @@ describe('regions', () => {
 
   it('labels a currency by its name, then its code', () => {
     expect(currencyLabel('NGN', 'en')).toBe('Nigerian Naira · NGN');
+  });
+
+  it('starts on the country the device names, else the likeliest for its language', () => {
+    expect(deviceCountry(['en-NG', 'en-GB'])).toBe('NG');
+    expect(deviceCountry(['fr', 'pt-PT'])).toBe('PT');
+    expect(deviceCountry(['pt'])).toBe('BR');
+    expect(deviceCountry(['not a tag'])).toBeNull();
+    expect(deviceCountry([])).toBeNull();
   });
 });
