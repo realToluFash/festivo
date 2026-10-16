@@ -485,6 +485,44 @@ describe('a browser never holds the refresh token', () => {
     expect(tokens.saved).toBeNull();
   });
 
+  test('registering answers with the account and saves the tokens', async () => {
+    const tokens = store(null, null);
+    let sent: unknown = null;
+    const paths: string[] = [];
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      fetch: async (input, init) => {
+        paths.push(new URL(String(input)).pathname);
+        sent = JSON.parse(String(init?.body));
+        return issued({ account: ACCOUNT });
+      },
+    });
+
+    const { account } = await client.register('ada@example.com', 'Ada', 'a decent passphrase');
+
+    expect(sent).toMatchObject({ email: 'ada@example.com', name: 'Ada' });
+    expect(account.id).toBe(ACCOUNT.id);
+    expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+    expect(paths).toEqual(['/api/auth/register']);
+  });
+
+  test('a registration the API refuses rejects with the code and saves nothing', async () => {
+    const tokens = store(null, null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      fetch: async () => problem(409, 'email_taken'),
+    });
+
+    await expect(client.register('ada@example.com', 'Ada', 'a decent passphrase')).rejects.toThrow(
+      ApiError,
+    );
+    expect(tokens.saved).toBeNull();
+  });
+
   test('signing out clears the session even when the request fails', async () => {
     const tokens = store('good', null);
 
