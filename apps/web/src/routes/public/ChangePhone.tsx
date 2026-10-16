@@ -6,7 +6,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
-import { LanguageChoice } from '../../components/LanguageChoice.tsx';
+import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 
@@ -41,49 +41,38 @@ export function ChangePhone() {
   const current = account.phoneNumbers.find((phone) => phone.primary) ?? null;
 
   return (
-    <div className="auth">
-      <header className="auth-header">
-        <span className="brand">{t('app.name')}</span>
-        <LanguageChoice />
-      </header>
+    <AuthPage>
+      <div className="auth-heading">
+        <h1>{t('verifyPhone.changeTitle')}</h1>
+        {current != null && (
+          <p>
+            {t(current.verified ? 'verifyPhone.nowVerified' : 'verifyPhone.nowUnverified', {
+              number: formatPhone(current.number),
+            })}
+          </p>
+        )}
+      </div>
 
-      <main id="content" className="auth-main">
-        <section className="auth-card">
-          <div className="auth-heading">
-            <h1>{t('verifyPhone.changeTitle')}</h1>
-            {current != null && (
-              <p>
-                {t(current.verified ? 'verifyPhone.nowVerified' : 'verifyPhone.nowUnverified', {
-                  number: formatPhone(current.number),
-                })}
-              </p>
-            )}
-          </div>
+      {current != null && (
+        <div className="notice notice-quiet">
+          <span className="mark mark-info" aria-hidden="true">
+            i
+          </span>
+          <p>{t('verifyPhone.changeNotice')}</p>
+        </div>
+      )}
 
-          {current != null && (
-            <div className="notice notice-quiet">
-              <span className="mark mark-info" aria-hidden="true">
-                i
-              </span>
-              <p>{t('verifyPhone.changeNotice')}</p>
-            </div>
-          )}
+      <NumberForm
+        initialCountry={current?.countryCode ?? deviceCountry(navigator.languages) ?? 'NG'}
+        onTexted={() => navigate(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')}
+      />
 
-          <NumberForm
-            initialCountry={current?.countryCode ?? deviceCountry(navigator.languages) ?? 'NG'}
-            onTexted={() =>
-              navigate(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')
-            }
-          />
-
-          {current != null && (
-            <button className="link-button" type="button" onClick={() => navigate(-1)}>
-              {t('verifyPhone.keep')}
-            </button>
-          )}
-        </section>
-      </main>
-    </div>
+      {current != null && (
+        <button className="link-button" type="button" onClick={() => navigate(-1)}>
+          {t('verifyPhone.keep')}
+        </button>
+      )}
+    </AuthPage>
   );
 }
 

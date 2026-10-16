@@ -3,6 +3,7 @@ import { type ReactNode, type RefObject, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { currentLocale } from '../i18n/index.ts';
+import { FieldError } from './FieldError.tsx';
 
 /** The code and the number side by side, as Verify phone draws them; only countries that can be dialled. */
 export function PhoneEntry({
@@ -70,14 +71,7 @@ export function PhoneEntry({
         </div>
       </div>
 
-      {error != null && (
-        <div className="field-error" id="phone-error" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <p>{error}</p>
-        </div>
-      )}
+      {error != null && <FieldError id="phone-error" message={error} />}
 
       <p className="field-help" id="phone-help">
         {help}

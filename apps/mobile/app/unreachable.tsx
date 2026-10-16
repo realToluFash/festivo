@@ -1,13 +1,13 @@
 import { ApiUnreachableError, awaiting } from '@soirely/api-client';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
+import { AuthFrame } from '../src/components/AuthFrame.tsx';
+import { PrimaryButton } from '../src/components/Buttons.tsx';
 import { Notice } from '../src/components/Notice.tsx';
-import { SignInFrame } from '../src/components/SignInFrame.tsx';
-import { Text } from '../src/components/Text.tsx';
 import { tokens } from '../src/theme/tokens.ts';
 import { landingFor } from '../src/landing.ts';
 
@@ -30,7 +30,7 @@ export default function Unreachable() {
   }
 
   return (
-    <SignInFrame>
+    <AuthFrame>
       <View style={styles.state}>
         <Notice
           tone="quiet"
@@ -39,34 +39,17 @@ export default function Unreachable() {
           title={t('session.unreachableTitle')}
           body={t('session.unreachableBody')}
         />
-        <Pressable
-          style={[styles.cta, retrying && styles.ctaBusy]}
+        <PrimaryButton
+          label={retrying ? t('session.retrying') : t('status.retry')}
           onPress={() => void retry()}
-          disabled={retrying}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: retrying, busy: retrying }}
+          busy={retrying}
           testID="unreachable.retry"
-        >
-          <Text size={16} weight="semibold" style={styles.ctaText}>
-            {retrying ? t('session.retrying') : t('status.retry')}
-          </Text>
-        </Pressable>
+        />
       </View>
-    </SignInFrame>
+    </AuthFrame>
   );
 }
 
 const styles = StyleSheet.create({
   state: { gap: tokens.spaceXl },
-
-  cta: {
-    height: tokens.sizeHitPhonePrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: tokens.spaceXxl,
-    borderRadius: tokens.sizeHitPhonePrimary / 2,
-    backgroundColor: tokens.colorAccent,
-  },
-  ctaBusy: { backgroundColor: tokens.colorAccentHover },
-  ctaText: { color: tokens.colorInkOnDark },
 });

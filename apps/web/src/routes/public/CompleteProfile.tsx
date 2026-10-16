@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
-import { LanguageChoice } from '../../components/LanguageChoice.tsx';
+import { FieldError } from '../../components/FieldError.tsx';
+import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
@@ -48,53 +49,44 @@ export function CompleteProfile() {
   }
 
   return (
-    <div className="auth">
-      <header className="auth-header">
-        <span className="brand">{t('app.name')}</span>
-        <LanguageChoice />
-      </header>
+    <AuthPage>
+      <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
+        <li className="step step-done">
+          <span className="step-mark" aria-hidden="true">
+            ✓
+          </span>
+          {t('verifyEmail.step1Done')}
+        </li>
+        <li className="step step-now">
+          <span className="step-mark" aria-hidden="true">
+            2
+          </span>
+          {t('verifyEmail.step2')}
+        </li>
+      </ol>
 
-      <main id="content" className="auth-main">
-        <section className="auth-card">
-          <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
-            <li className="step step-done">
-              <span className="step-mark" aria-hidden="true">
-                ✓
-              </span>
-              {t('verifyEmail.step1Done')}
-            </li>
-            <li className="step step-now">
-              <span className="step-mark" aria-hidden="true">
-                2
-              </span>
-              {t('verifyEmail.step2')}
-            </li>
-          </ol>
+      <div className="auth-heading">
+        <h1>{t('completeProfile.title')}</h1>
+        <p>{t('completeProfile.intro')}</p>
+      </div>
 
-          <div className="auth-heading">
-            <h1>{t('completeProfile.title')}</h1>
-            <p>{t('completeProfile.intro')}</p>
-          </div>
+      <Details
+        name={state.session.name}
+        needsOrganisation={state.session.needsOrganisation}
+        onSaved={(verificationNeeded) =>
+          navigate(verificationNeeded ? '/verify-phone?from=onboarding' : '/app', {
+            replace: true,
+          })
+        }
+      />
 
-          <Details
-            name={state.session.name}
-            needsOrganisation={state.session.needsOrganisation}
-            onSaved={(verificationNeeded) =>
-              navigate(verificationNeeded ? '/verify-phone?from=onboarding' : '/app', {
-                replace: true,
-              })
-            }
-          />
-
-          <div className="auth-footnote">
-            <span>{t('completeProfile.signedInAs', { email: state.session.email })}</span>
-            <button className="link-button" type="button" onClick={() => void signOut()}>
-              {t('completeProfile.signOut')}
-            </button>
-          </div>
-        </section>
-      </main>
-    </div>
+      <div className="auth-footnote">
+        <span>{t('completeProfile.signedInAs', { email: state.session.email })}</span>
+        <button className="link-button" type="button" onClick={() => void signOut()}>
+          {t('completeProfile.signOut')}
+        </button>
+      </div>
+    </AuthPage>
   );
 }
 
@@ -318,16 +310,5 @@ function Details({
         {saving ? t('completeProfile.saving') : t('completeProfile.save')}
       </button>
     </form>
-  );
-}
-
-function FieldError({ id, message }: { id: string; message: string }) {
-  return (
-    <div className="field-error" id={id} role="alert">
-      <span className="mark mark-broken" aria-hidden="true">
-        ✕
-      </span>
-      <p>{message}</p>
-    </div>
   );
 }

@@ -1,6 +1,18 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { keyboardLift } from '../kit/keyboard.ts';
+import { tokens } from '../theme/tokens.ts';
+
+const LIFT = keyboardLift(Platform.OS);
 
 /**
  * The documented way to build a screen. Use this, not a bare View.
@@ -46,30 +58,37 @@ export function Screen({
     paddingRight: edges.includes('right') ? insets.right : 0,
   };
 
+  const body = scroll ? (
+    <ScrollView
+      style={styles.fill}
+      contentContainerStyle={[styles.content, contentStyle]}
+      // So the first tap after typing hits the control rather than only
+      // dismissing the keyboard, which otherwise makes every button in a
+      // form need pressing twice.
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+    >
+      {children}
+    </ScrollView>
+  ) : (
+    <View style={[styles.fill, styles.content, contentStyle]}>{children}</View>
+  );
+
   return (
     <View style={[styles.root, padding, style]}>
-      {scroll ? (
-        <ScrollView
-          style={styles.fill}
-          contentContainerStyle={[styles.content, contentStyle]}
-          // So the first tap after typing hits the control rather than only
-          // dismissing the keyboard, which otherwise makes every button in a
-          // form need pressing twice.
-          keyboardShouldPersistTaps="handled"
-          // iOS does not move the window for the keyboard; Android pans already and ignores this.
-          automaticallyAdjustKeyboardInsets
-        >
-          {children}
-        </ScrollView>
+      {LIFT.avoid == null ? (
+        body
       ) : (
-        <View style={[styles.fill, styles.content, contentStyle]}>{children}</View>
+        <KeyboardAvoidingView style={styles.fill} behavior={LIFT.avoid}>
+          {body}
+        </KeyboardAvoidingView>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F6F5FA' },
+  root: { flex: 1, backgroundColor: tokens.colorPage },
   fill: { flex: 1 },
-  content: { padding: 20, gap: 16 },
+  content: { padding: tokens.spaceXxl, gap: tokens.spaceXl },
 });

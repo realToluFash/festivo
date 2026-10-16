@@ -5,10 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
-import { LanguageChoice } from '../../components/LanguageChoice.tsx';
+import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { forgetSession, refreshAccount, restoreSession, useSessionState } from '../../session.ts';
+import { FieldError } from '../../components/FieldError.tsx';
 
 type Status =
   | { kind: 'entering' }
@@ -115,148 +116,130 @@ export function VerifyEmail() {
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
 
   return (
-    <div className="auth">
-      <header className="auth-header">
-        <span className="brand">{t('app.name')}</span>
-        <LanguageChoice />
-      </header>
+    <AuthPage>
+      <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
+        <li className={verified ? 'step step-done' : 'step step-now'}>
+          <span className="step-mark" aria-hidden="true">
+            {verified ? '✓' : '1'}
+          </span>
+          {verified ? t('verifyEmail.step1Done') : t('verifyEmail.step1')}
+        </li>
+        <li className="step step-later">
+          <span className="step-mark" aria-hidden="true">
+            2
+          </span>
+          {t('verifyEmail.step2')}
+        </li>
+      </ol>
 
-      <main id="content" className="auth-main">
-        <section className="auth-card">
-          <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
-            <li className={verified ? 'step step-done' : 'step step-now'}>
-              <span className="step-mark" aria-hidden="true">
-                {verified ? '✓' : '1'}
-              </span>
-              {verified ? t('verifyEmail.step1Done') : t('verifyEmail.step1')}
-            </li>
-            <li className="step step-later">
-              <span className="step-mark" aria-hidden="true">
-                2
-              </span>
-              {t('verifyEmail.step2')}
-            </li>
-          </ol>
+      {verified ? (
+        <>
+          <span className="verified-mark" aria-hidden="true">
+            ✓
+          </span>
+          <div>
+            <h1>{t('verifyEmail.doneTitle')}</h1>
+            <p className="muted">{t('verifyEmail.doneBody', { address })}</p>
+          </div>
+          <button className="button button-primary" type="button" onClick={() => void carryOn()}>
+            {t('verifyEmail.continue')}
+          </button>
+        </>
+      ) : (
+        <>
+          <div>
+            <h1>{t('verifyEmail.title')}</h1>
+            <p className="muted">{t('verifyEmail.intro', { address })}</p>
+          </div>
 
-          {verified ? (
-            <>
-              <span className="verified-mark" aria-hidden="true">
-                ✓
+          {status.kind === 'expired' && (
+            <Banner
+              title={t('verifyEmail.expiredTitle')}
+              body={t('verifyEmail.expiredBody')}
+              action={t('verifyEmail.resend')}
+              onAction={() => void resend()}
+            />
+          )}
+
+          {status.kind === 'exhausted' && (
+            <Banner
+              title={t('verifyEmail.exhaustedTitle')}
+              body={t('verifyEmail.exhaustedBody')}
+              action={t('verifyEmail.resend')}
+              onAction={() => void resend()}
+            />
+          )}
+
+          {status.kind === 'failed' && (
+            <div className="notice notice-broken" role="alert">
+              <span className="mark mark-broken" aria-hidden="true">
+                ✕
               </span>
-              <div>
-                <h1>{t('verifyEmail.doneTitle')}</h1>
-                <p className="muted">{t('verifyEmail.doneBody', { address })}</p>
+              <div className="notice-body">
+                <p className="notice-title">{t('verifyEmail.failedTitle')}</p>
+                <p>{t('verifyEmail.failedBody')}</p>
               </div>
+            </div>
+          )}
+
+          {entering && (
+            <form className="auth-form" onSubmit={(event) => void submit(event)}>
+              <div className="field">
+                <label htmlFor="code">{t('verifyEmail.codeLabel')}</label>
+                <input
+                  className={status.kind === 'wrong' ? 'code-input input-wrong' : 'code-input'}
+                  id="code"
+                  name="code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  required
+                  aria-invalid={status.kind === 'wrong'}
+                  aria-describedby={status.kind === 'wrong' ? 'code-error' : undefined}
+                />
+                {status.kind === 'wrong' && (
+                  <FieldError id="code-error" message={t('verifyEmail.wrong')} />
+                )}
+              </div>
+
               <button
                 className="button button-primary"
-                type="button"
-                onClick={() => void carryOn()}
+                type="submit"
+                disabled={status.kind === 'verifying'}
               >
-                {t('verifyEmail.continue')}
+                {status.kind === 'verifying'
+                  ? t('verifyEmail.submitting')
+                  : t('verifyEmail.submit')}
               </button>
-            </>
-          ) : (
-            <>
-              <div>
-                <h1>{t('verifyEmail.title')}</h1>
-                <p className="muted">{t('verifyEmail.intro', { address })}</p>
-              </div>
 
-              {status.kind === 'expired' && (
-                <Banner
-                  title={t('verifyEmail.expiredTitle')}
-                  body={t('verifyEmail.expiredBody')}
-                  action={t('verifyEmail.resend')}
-                  onAction={() => void resend()}
-                />
-              )}
-
-              {status.kind === 'exhausted' && (
-                <Banner
-                  title={t('verifyEmail.exhaustedTitle')}
-                  body={t('verifyEmail.exhaustedBody')}
-                  action={t('verifyEmail.resend')}
-                  onAction={() => void resend()}
-                />
-              )}
-
-              {status.kind === 'failed' && (
-                <div className="notice notice-broken" role="alert">
-                  <span className="mark mark-broken" aria-hidden="true">
-                    ✕
-                  </span>
-                  <div className="notice-body">
-                    <p className="notice-title">{t('verifyEmail.failedTitle')}</p>
-                    <p>{t('verifyEmail.failedBody')}</p>
-                  </div>
-                </div>
-              )}
-
-              {entering && (
-                <form className="auth-form" onSubmit={(event) => void submit(event)}>
-                  <div className="field">
-                    <label htmlFor="code">{t('verifyEmail.codeLabel')}</label>
-                    <input
-                      className={status.kind === 'wrong' ? 'code-input input-wrong' : 'code-input'}
-                      id="code"
-                      name="code"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      required
-                      aria-invalid={status.kind === 'wrong'}
-                      aria-describedby={status.kind === 'wrong' ? 'code-error' : undefined}
-                    />
-                    {status.kind === 'wrong' && (
-                      <div className="field-error" id="code-error" role="alert">
-                        <span className="mark mark-broken" aria-hidden="true">
-                          ✕
-                        </span>
-                        <p>{t('verifyEmail.wrong')}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    className="button button-primary"
-                    type="submit"
-                    disabled={status.kind === 'verifying'}
-                  >
-                    {status.kind === 'verifying'
-                      ? t('verifyEmail.submitting')
-                      : t('verifyEmail.submit')}
-                  </button>
-
-                  <div className="resend">
-                    <button
-                      className="button"
-                      type="button"
-                      disabled={cooldown > 0}
-                      onClick={() => void resend()}
-                    >
-                      {cooldown > 0
-                        ? t('verifyEmail.resendIn', { time: formatCountdown(cooldown) })
-                        : t('verifyEmail.resend')}
-                    </button>
-                    <p>{t('verifyEmail.resendNote')}</p>
-                  </div>
-                </form>
-              )}
-
-              <div className="auth-footnote">
-                <span>{t('verifyEmail.wrongAddress')}</span>
-                <button className="link-button" type="button" onClick={() => void signOut()}>
-                  {t('verifyEmail.signOut')}
+              <div className="resend">
+                <button
+                  className="button"
+                  type="button"
+                  disabled={cooldown > 0}
+                  onClick={() => void resend()}
+                >
+                  {cooldown > 0
+                    ? t('verifyEmail.resendIn', { time: formatCountdown(cooldown) })
+                    : t('verifyEmail.resend')}
                 </button>
-                <span>{t('verifyEmail.wrongAddressBody')}</span>
+                <p>{t('verifyEmail.resendNote')}</p>
               </div>
-            </>
+            </form>
           )}
-        </section>
-      </main>
-    </div>
+
+          <div className="auth-footnote">
+            <span>{t('verifyEmail.wrongAddress')}</span>
+            <button className="link-button" type="button" onClick={() => void signOut()}>
+              {t('verifyEmail.signOut')}
+            </button>
+            <span>{t('verifyEmail.wrongAddressBody')}</span>
+          </div>
+        </>
+      )}
+    </AuthPage>
   );
 }
 
