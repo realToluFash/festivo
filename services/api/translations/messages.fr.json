@@ -14,5 +14,9 @@
     "validation.password_breached": "Ce mot de passe est apparu dans une fuite de données connue. Veuillez en choisir un autre.",
     "validation.password_too_long": "Cela dépasse {count} caractères.",
     "validation.password_too_short": "Veuillez utiliser au moins {count} caractères.",
+    "validation.phone_invalid": "Ce n'est pas un numéro de portable pour {country}. Vérifiez-le et réessayez.",
+    "validation.phone_required": "Indiquez votre numéro de portable.",
+    "validation.phone_too_long": "Ce numéro semble trop long pour {country}. Vérifiez-le et réessayez.",
+    "validation.phone_too_short": "Ce numéro semble trop court pour {country}. Vérifiez-le et réessayez.",
     "validation.timezone_invalid": "Choisissez un fuseau horaire."
 }

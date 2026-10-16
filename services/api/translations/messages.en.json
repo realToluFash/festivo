@@ -14,5 +14,9 @@
     "validation.password_breached": "This password has appeared in a known data breach. Choose another.",
     "validation.password_too_long": "That is longer than {count} characters.",
     "validation.password_too_short": "Use at least {count} characters.",
+    "validation.phone_invalid": "That is not a mobile number for {country}. Check it and try again.",
+    "validation.phone_required": "Enter your mobile number.",
+    "validation.phone_too_long": "That number looks too long for {country}. Check it and try again.",
+    "validation.phone_too_short": "That number looks too short for {country}. Check it and try again.",
     "validation.timezone_invalid": "Choose a time zone."
 }

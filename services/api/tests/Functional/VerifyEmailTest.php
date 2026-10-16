@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Domain\User\Verification\EmailAddressVerifier;
+use App\Domain\User\Verification\ContactVerifier;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeResender;
 use App\Entity\EmailAddress;
@@ -172,7 +172,7 @@ final class VerifyEmailTest extends ApiTestCase
         );
 
         try {
-            self::serviceById(EmailAddressVerifier::class, EmailAddressVerifier::class)->verify($address, '000000');
+            self::serviceById(ContactVerifier::class, ContactVerifier::class)->verify($address, '000000');
             self::fail('a wrong code was accepted');
         } catch (ApiException $e) {
             self::assertSame(ErrorCode::VerificationCodeExhausted, $e->errorCode);
@@ -190,7 +190,7 @@ final class VerifyEmailTest extends ApiTestCase
         $this->landedElsewhere($stale, 'UPDATE email_addresses SET verified_at = NOW() WHERE id = :address');
         $this->landedElsewhere($stale, 'UPDATE verification_challenges SET revoked_at = NOW() WHERE email_address_id = :address');
 
-        $refusal = self::serviceById(EmailAddressVerifier::class, EmailAddressVerifier::class)->attempt($stale, $code);
+        $refusal = self::serviceById(ContactVerifier::class, ContactVerifier::class)->attempt($stale, $code);
 
         self::assertNull($refusal, 'a second device was told its right code was wrong');
         self::assertTrue($stale->isVerified());

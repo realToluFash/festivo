@@ -5,6 +5,7 @@
     "not_found": "Não encontrámos aquilo que solicitou.",
     "conflict": "Isso entra em conflito com algo que já existe.",
     "email_taken": "Esse endereço de correio electrónico já está registado.",
+    "phone_taken": "Este número já está verificado noutra conta Soirely.",
     "unsupported_media_type": "Esse formato não é suportado.",
     "unauthenticated": "Inicie sessão para continuar.",
     "invalid_credentials": "Esse endereço de correio electrónico e essa palavra-passe não correspondem.",

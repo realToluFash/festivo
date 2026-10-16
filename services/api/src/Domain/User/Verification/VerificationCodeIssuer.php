@@ -6,6 +6,7 @@ namespace App\Domain\User\Verification;
 
 use App\Domain\User\Model\IssuedVerificationCode;
 use App\Entity\EmailAddress;
+use App\Entity\PhoneNumber;
 use App\Entity\VerificationChallenge;
 use App\Repository\VerificationChallengeRepository;
 use DateTimeImmutable;
@@ -21,15 +22,15 @@ final readonly class VerificationCodeIssuer
     ) {
     }
 
-    public function issueFor(EmailAddress $address): IssuedVerificationCode
+    public function issueFor(EmailAddress|PhoneNumber $contact): IssuedVerificationCode
     {
         // A statement, not a changed entity: Doctrine inserts before it updates, and one live code is an index.
-        $this->verificationChallengeRepository->revokeLiveFor($address);
+        $this->verificationChallengeRepository->revokeLiveFor($contact);
 
         $code = self::generate();
 
         $challenge = new VerificationChallenge(
-            $address,
+            $contact,
             self::hash($code),
             new DateTimeImmutable(Str\format('+%d minutes', VerificationChallenge::LIFETIME_MINUTES)),
         );

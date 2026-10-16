@@ -133,6 +133,7 @@ external = [
     "Doctrine\\**",
     "Elao\\**",
     "Lexik\\**",
+    "libphonenumber\\**",
     "PHPUnit\\**",
     "Psl\\**",
     "Psr\\**",
@@ -245,6 +246,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:ai"]
 # The breach corpus. It sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Hibp\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+
+# The SMS provider. It sees the port it implements and nothing else of ours.
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\Twilio\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
 [[guard.perimeter.rules]]

@@ -19,7 +19,7 @@ use Symfony\Component\Uid\Uuid;
 // `options` key is how Doctrine carries a PostgreSQL WHERE clause; without it
 // schema:validate reports the index as something to drop on every run.
 #[ORM\UniqueConstraint(name: 'uniq_primary_email_per_user', columns: ['user_id'], options: ['where' => 'is_primary'])]
-class EmailAddress
+class EmailAddress implements VerifiableContact
 {
     use Timestampable;
 
