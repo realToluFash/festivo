@@ -11,3 +11,4 @@ export * from './guestName.ts';
 export * from './userAgent.ts';
 export * from './datetime.ts';
 export * from './devices.ts';
+export * from './password.ts';

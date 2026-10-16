@@ -56,6 +56,14 @@ with an address that is already somebody else's alternative is refused with the 
 409 rather than reaching the unique constraint. Collapsing the two queries is what would
 turn an alternative into credentials.
 
+**Taken means taken by an account that proved itself.** An address held only by an account
+that never verified any address is released: the new registration deletes that account and
+takes it. Such an account owns nothing, and refusing would let a typo keep somebody else's
+address hostage. Only an account with at least one verified address gets the 409 — for any
+of its addresses, verified or not. Accounts that stay unverified are deleted a week after
+registering by `bin/console app:prune-unverified-accounts` (`--dry-run` counts them); like
+the refresh-token prune, nothing schedules it yet.
+
 ### What is enforced, and where
 
 - **An address is globally unique**, not unique per user — a unique index. Two accounts

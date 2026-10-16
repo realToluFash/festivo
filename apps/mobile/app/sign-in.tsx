@@ -235,6 +235,22 @@ function Credentials({
       </Pressable>
 
       <ProviderSignIn />
+
+      <View style={styles.footnote}>
+        <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+          {t('signIn.newHere')}
+        </Text>
+        <Pressable
+          style={styles.footnoteAction}
+          onPress={() => router.push('/register')}
+          accessibilityRole="link"
+          testID="signIn.register"
+        >
+          <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accentText}>
+            {t('signIn.createAccount')}
+          </Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -312,4 +328,16 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.marks.broken.fill,
   },
   fieldError: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceSm },
+
+  secondary: { color: tokens.colorInkSecondary },
+  footnote: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: tokens.spaceXs,
+    paddingTop: tokens.spaceLg,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorInsetBorder,
+  },
+  footnoteAction: { minHeight: tokens.sizeHit, justifyContent: 'center' },
 });

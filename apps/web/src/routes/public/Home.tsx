@@ -16,7 +16,7 @@ export function Home() {
         <h1>{t('public.tagline')}</h1>
         <p>{t('public.body')}</p>
         <nav className="public-actions">
-          <Link className="button button-primary" to="/app">
+          <Link className="button button-primary" to="/register">
             {t('public.getStarted')}
           </Link>
           <Link className="button" to="/status">

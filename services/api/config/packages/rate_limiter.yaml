@@ -20,9 +20,9 @@ framework:
         registration:
             # Per IP, which is the only thing available: the endpoint exists
             # because there is no account yet. Low, because a person registers
-            # once and a script registers in bulk. Sliding window rather than a
-            # bucket so a burst cannot be saved up and spent at once.
-            policy: sliding_window
+            # once and a script registers in bulk. A fixed window, as sign-in's,
+            # because the refusal states a time and a fixed window's holds still.
+            policy: fixed_window
             limit: 10
             interval: '1 hour'
 

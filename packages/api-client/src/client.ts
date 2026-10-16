@@ -135,30 +135,12 @@ export class ApiClient {
   }
 
   async signIn(email: string, password: string): Promise<SignedIn> {
-    const { tokens, body } = await this.issued(
-      await this.sendTokenRequest('/api/auth/login', { email, password }),
-    );
-    const account = asAccount(body.account);
-
-    if (account == null) {
-      throw new Error(
-        'The API answered /api/auth/login without the account. Check SignInController in services/api.',
-      );
-    }
-
-    await this.options.tokens?.save(tokens);
-
-    return { tokens, account };
+    return this.signedIn('/api/auth/login', { email, password }, 'SignInController');
   }
 
-  async register(email: string, name: string, password: string): Promise<IssuedTokens> {
-    const { tokens } = await this.issued(
-      await this.sendTokenRequest('/api/auth/register', { email, name, password }),
-    );
-
-    await this.options.tokens?.save(tokens);
-
-    return tokens;
+  /** Signed in as sign-in is: the same tokens, the same account. */
+  async register(email: string, name: string, password: string): Promise<SignedIn> {
+    return this.signedIn('/api/auth/register', { email, name, password }, 'RegisterController');
   }
 
   async me(): Promise<Account> {
@@ -352,6 +334,25 @@ export class ApiClient {
     }
 
     return { tokens, body: body as Record<string, unknown> };
+  }
+
+  private async signedIn(
+    path: string,
+    credentials: Record<string, string>,
+    controller: string,
+  ): Promise<SignedIn> {
+    const { tokens, body } = await this.issued(await this.sendTokenRequest(path, credentials));
+    const account = asAccount(body.account);
+
+    if (account == null) {
+      throw new Error(
+        `The API answered ${path} without the account. Check ${controller} in services/api.`,
+      );
+    }
+
+    await this.options.tokens?.save(tokens);
+
+    return { tokens, account };
   }
 
   private async forgetSession(): Promise<void> {

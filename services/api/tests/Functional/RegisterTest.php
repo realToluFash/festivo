@@ -10,15 +10,19 @@ use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\Password\ScriptedBreachedPasswordChecker;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\UserRegistrar;
+use App\Entity\EmailAddress;
 use App\Entity\RefreshToken;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Repository\EmailAddressRepository;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Type;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -43,11 +47,22 @@ final class RegisterTest extends ApiTestCase
 
         // Stored as the entity normalises it, and returned the same way, so the
         // client is not holding a different string from the database.
-        self::assertSame('new.person@example.com', $body['user']['email']);
-        self::assertSame('Ada Lovelace', $body['user']['name']);
+        // The same account sign-in answers with, so a client reads one shape.
+        $account = Type\shape([
+            'name' => Type\string(),
+            'verified' => Type\bool(),
+            'complete' => Type\bool(),
+            'businessName' => Type\null(),
+            'emailAddresses' => Type\vec(Type\shape(['address' => Type\string()], true)),
+            'phoneNumbers' => Type\vec(Type\mixed()),
+        ], true)->coerce($body['account']);
 
-        self::assertFalse($body['user']['emailVerified'], 'an ordinary registration proves nothing yet');
-        self::assertFalse($body['user']['profileComplete'], 'and carries no profile fields');
+        self::assertSame('new.person@example.com', $account['emailAddresses'][0]['address']);
+        self::assertSame('Ada Lovelace', $account['name']);
+
+        self::assertFalse($account['verified'], 'an ordinary registration proves nothing yet');
+        self::assertFalse($account['complete'], 'and carries no profile fields');
+        self::assertSame([], $account['phoneNumbers']);
 
         self::assertNotSame('', $body['accessToken']);
         self::assertNotSame('', $body['refreshToken']);
@@ -120,9 +135,10 @@ final class RegisterTest extends ApiTestCase
     }
 
     #[Test]
-    public function aSecondRegistrationWithTheSameAddressIsRefused(): void
+    public function anAddressHeldByAVerifiedAccountIsRefused(): void
     {
         $this->register('taken@example.com', 'First', self::GOOD_PASSWORD);
+        $this->verify('taken@example.com');
         $body = $this->register('taken@example.com', 'Second', self::GOOD_PASSWORD);
 
         self::assertSame(409, $this->client->getResponse()->getStatusCode());
@@ -138,7 +154,46 @@ final class RegisterTest extends ApiTestCase
     public function theDuplicateCheckNormalisesTheAddress(): void
     {
         $this->register('normalise@example.com', 'First', self::GOOD_PASSWORD);
+        $this->verify('normalise@example.com');
         $body = $this->register('  NORMALISE@Example.com ', 'Second', self::GOOD_PASSWORD);
+
+        self::assertSame(409, $this->client->getResponse()->getStatusCode());
+        self::assertSame(ErrorCode::EmailTaken->type(), $body['type']);
+    }
+
+    /** How a mistyped address is fixed: whoever really owns it can still sign up. */
+    #[Test]
+    public function anAddressHeldByAnUnverifiedAccountIsReleasedAndThatAccountDeleted(): void
+    {
+        $first = $this->register('released@example.com', 'Mistyped', self::GOOD_PASSWORD);
+        $firstId = Type\shape(['id' => Type\string()], true)->coerce($first['account'])['id'];
+
+        $second = $this->register('released@example.com', 'Real owner', self::GOOD_PASSWORD);
+
+        self::assertSame(201, $this->client->getResponse()->getStatusCode());
+        self::assertSame('Real owner', Type\shape(['name' => Type\string()], true)->coerce($second['account'])['name']);
+
+        self::em()->clear();
+        self::assertNull(self::service(UserRepository::class)->find($firstId), 'the unverified holder is deleted');
+        self::assertSame(
+            'Real owner',
+            self::service(UserRepository::class)->findOneByPrimaryEmailAddress('released@example.com')?->getName(),
+        );
+    }
+
+    /** An alternative nobody verified still belongs to an account that proved it is real. */
+    #[Test]
+    public function anUnverifiedAddressOfAVerifiedAccountIsStillRefused(): void
+    {
+        $this->register('owner@example.com', 'Owner', self::GOOD_PASSWORD);
+        $this->verify('owner@example.com');
+
+        $owner = self::service(UserRepository::class)->findOneByPrimaryEmailAddress('owner@example.com');
+        self::assertNotNull($owner);
+        new EmailAddress($owner, 'owners-alternative@example.com');
+        self::em()->flush();
+
+        $body = $this->register('owners-alternative@example.com', 'Someone else', self::GOOD_PASSWORD);
 
         self::assertSame(409, $this->client->getResponse()->getStatusCode());
         self::assertSame(ErrorCode::EmailTaken->type(), $body['type']);
@@ -341,9 +396,19 @@ final class RegisterTest extends ApiTestCase
             $controller->register(Request::create('/api/auth/register', 'POST', content: '{}'));
             self::fail('the endpoint accepted a request with no budget left');
         } catch (ApiException $e) {
-            self::assertSame(ErrorCode::TooManyRequests, $e->errorCode);
+            self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode);
             self::assertSame(429, $e->errorCode->status());
+            self::assertMatchesRegularExpression('/^Too many sign-ups from this network\. Try again at \d\d:\d\d\.$/', $e->getMessage());
+            self::assertGreaterThan(0, (int) ($e->headers['Retry-After'] ?? 0));
         }
+    }
+
+    private function verify(string $address): void
+    {
+        $held = self::service(EmailAddressRepository::class)->findOneByAddress($address);
+        self::assertNotNull($held);
+        $held->setVerifiedAt(new DateTimeImmutable());
+        self::em()->flush();
     }
 
     /** @param array<int, array<string, string>> $violations */

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\Http\IssuedTokensResponse;
 use App\Domain\User\UserRegistrar;
-use App\Enum\ErrorCode;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
@@ -47,26 +47,17 @@ final class RegisterController
             $result->tokens,
             $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
             $request,
-            [
-                'user' => [
-                    'id' => $result->user->getId()->toRfc4122(),
-                    'email' => $result->user->getPrimaryEmailAddress()?->getAddress(),
-                    'name' => $result->user->getName(),
-                    'emailVerified' => $result->user->getPrimaryEmailAddress()?->isVerified() ?? false,
-                    'profileComplete' => $result->user->isComplete(),
-                ],
-            ],
+            ['account' => AccountSerialiser::serialise($result->user)],
             Response::HTTP_CREATED,
         );
     }
 
     private function limit(Request $request): void
     {
-        if (!$this->registrationLimiter->create($request->getClientIp())->consume()->isAccepted()) {
-            throw new ApiException(
-                ErrorCode::TooManyRequests,
-                'Too many sign-ups from this network. Wait a while, then try again.',
-            );
+        $limit = $this->registrationLimiter->create($request->getClientIp())->consume();
+
+        if (!$limit->isAccepted()) {
+            throw ApiException::tooManyAttempts('Too many sign-ups from this network.', $limit->getRetryAfter());
         }
     }
 }
