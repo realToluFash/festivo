@@ -132,6 +132,7 @@ external = [
     "AsyncAws\\**",
     "Doctrine\\**",
     "Elao\\**",
+    "Lcobucci\\**",
     "Lexik\\**",
     "libphonenumber\\**",
     "PHPUnit\\**",
@@ -162,6 +163,7 @@ translation = ["App\\Translation\\**"]
 repository = ["App\\Repository\\**"]
 
 integrations = ["App\\Integrations\\**"]
+oidc = ["App\\Integrations\\OpenIdConnect\\**"]
 tests = ["App\\Tests\\**"]
 
 # ── Capabilities ────────────────────────────────────────────────────────────────
@@ -255,6 +257,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Twilio\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+
+# The OpenID providers. It sees the port it implements and nothing else of ours.
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\OpenIdConnect\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user", "@layer:oidc"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\Nominatim\\"

@@ -10,6 +10,7 @@
     "unauthenticated": "Veuillez vous connecter pour continuer.",
     "invalid_credentials": "Cette adresse e-mail et ce mot de passe ne correspondent pas.",
     "invalid_refresh_token": "Votre session a expiré. Veuillez vous reconnecter.",
+    "oauth_token_invalid": "Cette connexion n'a pas pu être vérifiée, donc rien n'a changé. Réessayez, ou connectez-vous avec votre adresse e-mail et votre mot de passe.",
     "forbidden": "Vous n'avez pas l'autorisation de faire cela.",
     "permission_required": "Votre rôle n'inclut pas l'autorisation nécessaire.",
     "account_unverified": "Vérifiez votre adresse e-mail pour continuer.",

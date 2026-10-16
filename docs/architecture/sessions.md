@@ -214,11 +214,32 @@ this app also runs through React Native Web, and a device can refuse the keystor
 fall back to memory for the launch, so the session ends when the app closes. The honest
 outcome: the alternative is writing a thirty-day credential somewhere readable.
 
+## Signing in with Google
+
+`POST /api/auth/oauth/google` takes an ID token and the raw nonce, and answers as password
+sign-in does. The client runs the provider's authorization-code flow with PKCE, sending the
+provider the nonce's SHA-256 (hex) and keeping the nonce itself, which it gives the API.
+
+- **The token is checked in full** (`OpenIdTokenVerifier`): RS256 only, the signature
+  against the provider's published keys, the issuer, an audience that is one of our client
+  ids, and the expiry, with a minute's leeway. Any failure is `401 oauth_token_invalid`.
+- **The nonce binds the token to the client that asked for it.** A token whose `nonce`
+  claim does not equal the hash of the nonce sent with it is refused, so a captured token
+  replays nowhere. **A token with no `nonce` claim is accepted**, because a sandbox or a
+  test may issue one; Google always includes it when the client asked.
+- **Keys are cached for an hour and fetched again once** when a key id is unknown or a
+  signature fails. The local sandbox rotates its key under the same id on restart, and a
+  verifier that trusted its cache would refuse every token after that.
+- **Who it is.** A `provider_identities` row (provider, `sub`) seen before signs that
+  account in. Otherwise a **verified** address matching an account's **primary** address
+  links to it, and only when that account verified the address itself; an account that
+  never did is released, as registration releases it, so a password typed by somebody else
+  cannot stay in. Otherwise a new account, with the address already verified and no
+  password. A token whose address the provider did not verify is refused.
+
 ## What is not built yet
 
-- **Signing in with Google or Apple.** Both buttons are on the sign-in screens, drawn to
-  their owners' specifications and doing nothing, because there is no provider route in the
-  API — sc-58 and sc-59.
+- **Signing in with Apple.** The button is drawn and does nothing until sc-59.
 - **An organisation.** `apps/web/src/session.ts` reads the account from `GET /api/auth/me`
   and that part is real; the organisation and the permissions beside it are still a
   stand-in, marked as one, because epic 28 is where organisations get a record.

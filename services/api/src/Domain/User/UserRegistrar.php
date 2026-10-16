@@ -72,6 +72,24 @@ final readonly class UserRegistrar
         return $this->persist($user, $request);
     }
 
+    /** No password and no code: the provider vouched for the address, and the name is theirs if they gave one. */
+    public function registerFromProvider(string $email, ?string $name, ?Request $request = null): RegistrationResult
+    {
+        $normalised = EmailAddressNormaliser::normalise($email);
+
+        if (!\filter_var($normalised, \FILTER_VALIDATE_EMAIL)) {
+            throw ApiException::validation([
+                $this->violation('email', 'validation.email_invalid', ErrorCode::ValidationFailed->value),
+            ]);
+        }
+
+        $user = new User(Str\trim($name ?? ''), null, AccountOrigin::SelfRegistered);
+        $address = new EmailAddress($user, Type\non_empty_string()->assert($normalised), isPrimary: true);
+        $address->setVerifiedAt(new DateTimeImmutable());
+
+        return $this->persist($user, $request);
+    }
+
     private function build(
         string $email,
         string $name,

@@ -77,6 +77,18 @@ services:
             $from: '%env(SMS_FROM)%'
     App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Integrations\Twilio\TwilioTextMessageSender'
 
+    # Google today, Apple with sc-59. Issuers and client ids are lists: Google signs as two issuers,
+    # and every client (web, iOS, Android) has its own id as the token's audience.
+    App\Integrations\OpenIdConnect\HttpSigningKeys:
+        arguments:
+            $googleJwksUri: '%env(OAUTH_GOOGLE_JWKS_URI)%'
+    App\Integrations\OpenIdConnect\OpenIdTokenVerifier:
+        arguments:
+            $googleIssuers: '%env(OAUTH_GOOGLE_ISSUERS)%'
+            $googleClientIds: '%env(OAUTH_GOOGLE_CLIENT_IDS)%'
+    App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Integrations\OpenIdConnect\HttpSigningKeys'
+    App\Domain\User\Interfaces\IdTokenVerifierInterface: '@App\Integrations\OpenIdConnect\OpenIdTokenVerifier'
+
     # The assistant's adapter is chosen by ASSISTANT_PROVIDER rather than by a
     # line here, because a service id cannot be an environment variable and
     # pointing this at the local stand-in should not be a code change.
@@ -108,6 +120,11 @@ when@test:
         # "this password is in a breach" assertable at all: the real corpus is
         # somebody else's data and could answer differently tomorrow.
         App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Domain\User\Password\ScriptedBreachedPasswordChecker'
+
+        # No test reaches a provider; the suite signs its own tokens and can rotate the key.
+        App\Tests\Fixtures\OpenIdConnect\TestSigningKeys:
+            public: true
+        App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Tests\Fixtures\OpenIdConnect\TestSigningKeys'
 
         # No test sends a text; what would have been sent is kept for the test to read.
         App\Domain\User\Verification\RecordingTextMessageSender:

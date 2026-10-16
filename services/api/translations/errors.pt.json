@@ -10,6 +10,7 @@
     "unauthenticated": "Inicie sessão para continuar.",
     "invalid_credentials": "Esse endereço de correio electrónico e essa palavra-passe não correspondem.",
     "invalid_refresh_token": "A sua sessão terminou. Inicie sessão novamente.",
+    "oauth_token_invalid": "Não foi possível confirmar esse início de sessão, por isso nada foi alterado. Tente de novo ou inicie sessão com o seu endereço de e-mail e a sua palavra-passe.",
     "forbidden": "Não tem permissão para fazer isso.",
     "permission_required": "A sua função não inclui a permissão necessária para isto.",
     "account_unverified": "Verifique o seu e-mail para continuar.",
