@@ -5,9 +5,10 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
-import { LanguageChoice } from '../../components/LanguageChoice.tsx';
+import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
+import { FieldError } from '../../components/FieldError.tsx';
 
 type Status =
   | { kind: 'entering' }
@@ -130,163 +131,143 @@ export function VerifyPhone() {
   const fieldError = codeError ?? (status.kind === 'wrong' ? t('verifyPhone.wrong') : null);
 
   return (
-    <div className="auth">
-      <header className="auth-header">
-        <span className="brand">{t('app.name')}</span>
-        <LanguageChoice />
-      </header>
+    <AuthPage>
+      {onboarding && (
+        <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
+          <li className="step step-done">
+            <span className="step-mark" aria-hidden="true">
+              ✓
+            </span>
+            {t('verifyEmail.step1Done')}
+          </li>
+          <li className="step step-now">
+            <span className="step-mark" aria-hidden="true">
+              2
+            </span>
+            {t('verifyEmail.step2')}
+          </li>
+        </ol>
+      )}
 
-      <main id="content" className="auth-main">
-        <section className="auth-card">
-          {onboarding && (
-            <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
-              <li className="step step-done">
-                <span className="step-mark" aria-hidden="true">
-                  ✓
-                </span>
-                {t('verifyEmail.step1Done')}
-              </li>
-              <li className="step step-now">
-                <span className="step-mark" aria-hidden="true">
-                  2
-                </span>
-                {t('verifyEmail.step2')}
-              </li>
-            </ol>
+      {verified ? (
+        <>
+          <span className="verified-mark" aria-hidden="true">
+            ✓
+          </span>
+          <div className="auth-heading">
+            <h1>{t('verifyPhone.doneTitle')}</h1>
+            <p>{t('verifyPhone.doneBody', { number })}</p>
+          </div>
+          <button className="button button-primary" type="button" onClick={() => void carryOn()}>
+            {t('verifyPhone.continue')}
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="auth-heading">
+            <h1>{t('verifyPhone.title')}</h1>
+            <p>{t('verifyPhone.intro', { number })}</p>
+          </div>
+
+          {status.kind === 'expired' && (
+            <Banner
+              title={t('verifyPhone.expiredTitle')}
+              body={t('verifyPhone.expiredBody')}
+              action={t('verifyPhone.resend')}
+              onAction={() => void resend()}
+            />
           )}
 
-          {verified ? (
-            <>
-              <span className="verified-mark" aria-hidden="true">
-                ✓
+          {status.kind === 'exhausted' && (
+            <Banner
+              title={t('verifyPhone.exhaustedTitle')}
+              body={t('verifyPhone.exhaustedBody')}
+              action={t('verifyPhone.resend')}
+              onAction={() => void resend()}
+            />
+          )}
+
+          {status.kind === 'failed' && (
+            <div className="notice notice-broken" role="alert">
+              <span className="mark mark-broken" aria-hidden="true">
+                ✕
               </span>
-              <div className="auth-heading">
-                <h1>{t('verifyPhone.doneTitle')}</h1>
-                <p>{t('verifyPhone.doneBody', { number })}</p>
+              <div className="notice-body">
+                <p className="notice-title">{t('verifyPhone.failedTitle')}</p>
+                <p>{t('verifyPhone.failedBody')}</p>
               </div>
+            </div>
+          )}
+
+          {entering && (
+            <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+              <div className="field">
+                <label htmlFor="code">{t('verifyPhone.codeLabel')}</label>
+                <input
+                  className={fieldError == null ? 'code-input' : 'code-input input-wrong'}
+                  id="code"
+                  name="code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  maxLength={CODE_LENGTH}
+                  aria-invalid={fieldError != null}
+                  aria-describedby={fieldError == null ? undefined : 'code-error'}
+                  onChange={() => setCodeError(null)}
+                />
+                {fieldError != null && <FieldError id="code-error" message={fieldError} />}
+              </div>
+
               <button
                 className="button button-primary"
-                type="button"
-                onClick={() => void carryOn()}
+                type="submit"
+                aria-busy={status.kind === 'verifying'}
               >
-                {t('verifyPhone.continue')}
+                {status.kind === 'verifying'
+                  ? t('verifyPhone.submitting')
+                  : t('verifyPhone.submit')}
               </button>
-            </>
-          ) : (
-            <>
-              <div className="auth-heading">
-                <h1>{t('verifyPhone.title')}</h1>
-                <p>{t('verifyPhone.intro', { number })}</p>
+
+              <div className="resend">
+                <button
+                  className="button"
+                  type="button"
+                  disabled={cooldown > 0}
+                  onClick={() => void resend()}
+                >
+                  {cooldown > 0
+                    ? t('verifyPhone.resendIn', { time: formatCountdown(cooldown) })
+                    : t('verifyPhone.resend')}
+                </button>
+                <p>{t('verifyPhone.resendNote')}</p>
               </div>
-
-              {status.kind === 'expired' && (
-                <Banner
-                  title={t('verifyPhone.expiredTitle')}
-                  body={t('verifyPhone.expiredBody')}
-                  action={t('verifyPhone.resend')}
-                  onAction={() => void resend()}
-                />
-              )}
-
-              {status.kind === 'exhausted' && (
-                <Banner
-                  title={t('verifyPhone.exhaustedTitle')}
-                  body={t('verifyPhone.exhaustedBody')}
-                  action={t('verifyPhone.resend')}
-                  onAction={() => void resend()}
-                />
-              )}
-
-              {status.kind === 'failed' && (
-                <div className="notice notice-broken" role="alert">
-                  <span className="mark mark-broken" aria-hidden="true">
-                    ✕
-                  </span>
-                  <div className="notice-body">
-                    <p className="notice-title">{t('verifyPhone.failedTitle')}</p>
-                    <p>{t('verifyPhone.failedBody')}</p>
-                  </div>
-                </div>
-              )}
-
-              {entering && (
-                <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
-                  <div className="field">
-                    <label htmlFor="code">{t('verifyPhone.codeLabel')}</label>
-                    <input
-                      className={fieldError == null ? 'code-input' : 'code-input input-wrong'}
-                      id="code"
-                      name="code"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      maxLength={CODE_LENGTH}
-                      aria-invalid={fieldError != null}
-                      aria-describedby={fieldError == null ? undefined : 'code-error'}
-                      onChange={() => setCodeError(null)}
-                    />
-                    {fieldError != null && (
-                      <div className="field-error" id="code-error" role="alert">
-                        <span className="mark mark-broken" aria-hidden="true">
-                          ✕
-                        </span>
-                        <p>{fieldError}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    className="button button-primary"
-                    type="submit"
-                    aria-busy={status.kind === 'verifying'}
-                  >
-                    {status.kind === 'verifying'
-                      ? t('verifyPhone.submitting')
-                      : t('verifyPhone.submit')}
-                  </button>
-
-                  <div className="resend">
-                    <button
-                      className="button"
-                      type="button"
-                      disabled={cooldown > 0}
-                      onClick={() => void resend()}
-                    >
-                      {cooldown > 0
-                        ? t('verifyPhone.resendIn', { time: formatCountdown(cooldown) })
-                        : t('verifyPhone.resend')}
-                    </button>
-                    <p>{t('verifyPhone.resendNote')}</p>
-                  </div>
-                </form>
-              )}
-
-              <div className="auth-footnote">
-                <span>{t('verifyPhone.wrongNumber')}</span>
-                <Link className="link-button" to={onboarding ? '/phone?from=onboarding' : '/phone'}>
-                  {t('verifyPhone.changeIt')}
-                </Link>
-              </div>
-
-              {onboarding && (
-                <div className="auth-footnote">
-                  <span>{t('verifyPhone.cantGetTexts')}</span>
-                  <button
-                    className="link-button"
-                    type="button"
-                    onClick={() => void withoutPhone(account.name)}
-                  >
-                    {t('verifyPhone.carryOnWithout')}
-                  </button>
-                </div>
-              )}
-            </>
+            </form>
           )}
-        </section>
-      </main>
-    </div>
+
+          <div className="auth-footnote">
+            <span>{t('verifyPhone.wrongNumber')}</span>
+            <Link className="link-button" to={onboarding ? '/phone?from=onboarding' : '/phone'}>
+              {t('verifyPhone.changeIt')}
+            </Link>
+          </div>
+
+          {onboarding && (
+            <div className="auth-footnote">
+              <span>{t('verifyPhone.cantGetTexts')}</span>
+              <button
+                className="link-button"
+                type="button"
+                onClick={() => void withoutPhone(account.name)}
+              >
+                {t('verifyPhone.carryOnWithout')}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </AuthPage>
   );
 }
 

@@ -5,10 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
-import { LanguageChoice } from '../../components/LanguageChoice.tsx';
+import { AuthPage } from '../../components/AuthPage.tsx';
+import { PasswordField } from '../../components/PasswordField.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
 import { adoptAccount, landingFor } from '../../session.ts';
+import { FieldError } from '../../components/FieldError.tsx';
 
 type Status =
   | { kind: 'ready' }
@@ -26,7 +28,6 @@ export function SignIn() {
   const [status, setStatus] = useState<Status>(
     params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' },
   );
-  const [revealed, setRevealed] = useState(false);
   const form = useRef<HTMLFormElement>(null);
 
   const busy = status.kind === 'signingIn';
@@ -71,139 +72,113 @@ export function SignIn() {
   }
 
   return (
-    <div className="auth">
-      <header className="auth-header">
-        <span className="brand">{t('app.name')}</span>
-        <LanguageChoice />
-      </header>
+    <AuthPage>
+      <h1>{t('signIn.title')}</h1>
 
-      <main id="content" className="auth-main">
-        <section className="auth-card">
-          <h1>{t('signIn.title')}</h1>
-
-          {status.kind === 'sessionEnded' && (
-            <div className="notice notice-quiet" role="status">
-              <span className="mark mark-info" aria-hidden="true">
-                i
-              </span>
-              <div className="notice-body">
-                <p className="notice-title">{t('signIn.endedTitle')}</p>
-                <p>{t('signIn.endedBody')}</p>
-              </div>
-            </div>
-          )}
-
-          {status.kind === 'failed' && (
-            <div className="notice notice-broken" role="alert">
-              <span className="mark mark-broken" aria-hidden="true">
-                ✕
-              </span>
-              <div className="notice-body">
-                <p className="notice-title">{t('signIn.failedTitle')}</p>
-                <p>{t('signIn.failedBody')}</p>
-              </div>
-            </div>
-          )}
-
-          {status.kind === 'rateLimited' && (
-            <div className="notice notice-attention" role="alert">
-              <span className="mark mark-attention" aria-hidden="true">
-                !
-              </span>
-              <div className="notice-body">
-                <p className="notice-title">{t('signIn.lockedTitle')}</p>
-                <p>{t('signIn.lockedBody', { time: status.retryAt })}</p>
-              </div>
-            </div>
-          )}
-
-          {status.kind === 'providerFailed' && (
-            <div className="notice notice-broken" role="alert">
-              <span className="mark mark-broken" aria-hidden="true">
-                ✕
-              </span>
-              <div className="notice-body">
-                <p className="notice-title">
-                  {t('signIn.providerFailedTitle', { provider: status.provider })}
-                </p>
-                <p>{t('signIn.providerFailedBody', { provider: status.provider })}</p>
-              </div>
-            </div>
-          )}
-
-          <form ref={form} className="auth-form" onSubmit={(event) => void submit(event)}>
-            <div className="field">
-              <label htmlFor="email">{t('signIn.email')}</label>
-              <input
-                className="input"
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                autoCorrect="off"
-                spellCheck={false}
-                disabled={busy}
-                required
-              />
-            </div>
-
-            <div className="field">
-              <div className="field-heading">
-                <label htmlFor="password">{t('signIn.password')}</label>
-              </div>
-              <div className="field-reveal">
-                <input
-                  className={status.kind === 'refused' ? 'input input-wrong' : 'input'}
-                  id="password"
-                  name="password"
-                  type={revealed ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  disabled={busy}
-                  required
-                  aria-describedby={status.kind === 'refused' ? 'password-error' : undefined}
-                />
-                <button
-                  type="button"
-                  aria-pressed={revealed}
-                  aria-controls="password"
-                  onClick={() => setRevealed((shown) => !shown)}
-                >
-                  {revealed ? t('signIn.conceal') : t('signIn.reveal')}
-                </button>
-              </div>
-
-              {/* One message for a wrong address and a wrong password, because
-                  two messages answer "is this address registered". */}
-              {status.kind === 'refused' && (
-                <div className="field-error" id="password-error" role="alert">
-                  <span className="mark mark-broken" aria-hidden="true">
-                    ✕
-                  </span>
-                  <p>{t('signIn.refused')}</p>
-                </div>
-              )}
-            </div>
-
-            <button className="button button-primary" type="submit" disabled={busy || locked}>
-              {locked
-                ? t('signIn.lockedUntil', { time: status.retryAt })
-                : busy
-                  ? t('signIn.submitting')
-                  : t('signIn.submit')}
-            </button>
-          </form>
-
-          <ProviderSignIn />
-
-          <div className="auth-footnote">
-            <span>{t('signIn.newHere')}</span>
-            <Link className="link-button" to="/register">
-              {t('signIn.createAccount')}
-            </Link>
+      {status.kind === 'sessionEnded' && (
+        <div className="notice notice-quiet" role="status">
+          <span className="mark mark-info" aria-hidden="true">
+            i
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('signIn.endedTitle')}</p>
+            <p>{t('signIn.endedBody')}</p>
           </div>
-        </section>
-      </main>
-    </div>
+        </div>
+      )}
+
+      {status.kind === 'failed' && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('signIn.failedTitle')}</p>
+            <p>{t('signIn.failedBody')}</p>
+          </div>
+        </div>
+      )}
+
+      {status.kind === 'rateLimited' && (
+        <div className="notice notice-attention" role="alert">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('signIn.lockedTitle')}</p>
+            <p>{t('signIn.lockedBody', { time: status.retryAt })}</p>
+          </div>
+        </div>
+      )}
+
+      {status.kind === 'providerFailed' && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">
+              {t('signIn.providerFailedTitle', { provider: status.provider })}
+            </p>
+            <p>{t('signIn.providerFailedBody', { provider: status.provider })}</p>
+          </div>
+        </div>
+      )}
+
+      <form ref={form} className="auth-form" onSubmit={(event) => void submit(event)}>
+        <div className="field">
+          <label htmlFor="email">{t('signIn.email')}</label>
+          <input
+            className="input"
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            autoCorrect="off"
+            spellCheck={false}
+            disabled={busy}
+            required
+          />
+        </div>
+
+        <div className="field">
+          <div className="field-heading">
+            <label htmlFor="password">{t('signIn.password')}</label>
+          </div>
+          <PasswordField
+            id="password"
+            autoComplete="current-password"
+            wrong={status.kind === 'refused'}
+            disabled={busy}
+            submitting={busy}
+            describedBy={status.kind === 'refused' ? 'password-error' : undefined}
+          />
+
+          {/* One message for a wrong address and a wrong password, because
+                  two messages answer "is this address registered". */}
+          {status.kind === 'refused' && (
+            <FieldError id="password-error" message={t('signIn.refused')} />
+          )}
+        </div>
+
+        <button className="button button-primary" type="submit" disabled={busy || locked}>
+          {locked
+            ? t('signIn.lockedUntil', { time: status.retryAt })
+            : busy
+              ? t('signIn.submitting')
+              : t('signIn.submit')}
+        </button>
+      </form>
+
+      <ProviderSignIn />
+
+      <div className="auth-footnote">
+        <span>{t('signIn.newHere')}</span>
+        <Link className="link-button" to="/register">
+          {t('signIn.createAccount')}
+        </Link>
+      </div>
+    </AuthPage>
   );
 }
 
