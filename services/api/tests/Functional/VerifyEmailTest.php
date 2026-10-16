@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Verification\EmailAddressVerifier;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Entity\EmailAddress;
 use App\Entity\VerificationChallenge;
+use App\Enum\ErrorCode;
+use App\Http\Exception\ApiException;
 use App\Repository\EmailAddressRepository;
 use App\Repository\VerificationChallengeRepository;
 use App\Tests\ApiTestCase;
 use DateTimeImmutable;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -20,6 +24,7 @@ use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
 use Symfony\Component\Mime\Email;
+use Symfony\Component\Uid\Uuid;
 
 final class VerifyEmailTest extends ApiTestCase
 {
@@ -128,6 +133,49 @@ final class VerifyEmailTest extends ApiTestCase
         $this->verify($token, $this->codeFor('exhausted@example.com'));
 
         self::assertSame(200, $this->client->getResponse()->getStatusCode(), 'the code in the newest email did not work');
+    }
+
+    /** Resends sent at once each left a live code, and wrong tries spread across them past the limit. */
+    #[Test]
+    public function theDatabaseHoldsAtMostOneLiveCodePerAddress(): void
+    {
+        $this->register('one-live@example.com');
+
+        $this->expectException(UniqueConstraintViolationException::class);
+
+        $this->entityManager()->getConnection()->executeStatement(
+            <<<'SQL'
+                INSERT INTO verification_challenges
+                    (id, channel, email_address_id, code_hash, expires_at, attempts, created_at, updated_at)
+                VALUES (:id, 'email', :address, :hash, NOW(), 0, NOW(), NOW())
+                SQL,
+            [
+                'id' => Uuid::v7()->toRfc4122(),
+                'address' => $this->addressFor('one-live@example.com')->getId()->toRfc4122(),
+                'hash' => VerificationCodeIssuer::hash('123456'),
+            ],
+        );
+    }
+
+    /** Two wrong codes at once each read the same count; the database adds, so neither is lost. */
+    #[Test]
+    public function aWrongCodeCountsAgainstTheStoredAttemptsNotAStaleCopy(): void
+    {
+        $this->register('stale@example.com');
+        $address = $this->addressFor('stale@example.com');
+        self::assertNotNull($this->challengeFor('stale@example.com'));
+
+        $this->entityManager()->getConnection()->executeStatement(
+            'UPDATE verification_challenges SET attempts = :spent WHERE email_address_id = :address',
+            ['spent' => VerificationChallenge::MAXIMUM_ATTEMPTS - 1, 'address' => $address->getId()->toRfc4122()],
+        );
+
+        try {
+            self::serviceById(EmailAddressVerifier::class, EmailAddressVerifier::class)->verify($address, '000000');
+            self::fail('a wrong code was accepted');
+        } catch (ApiException $e) {
+            self::assertSame(ErrorCode::VerificationCodeExhausted, $e->errorCode);
+        }
     }
 
     #[Test]

@@ -10,14 +10,12 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\VerificationChallengeRepository;
 use DateTimeImmutable;
-use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 
 final readonly class EmailAddressVerifier
 {
     public function __construct(
         private VerificationChallengeRepository $verificationChallengeRepository,
-        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -50,12 +48,10 @@ final readonly class EmailAddressVerifier
         $challenge->setRevokedAt(new DateTimeImmutable());
     }
 
-    /** Flushed here: the throw below skips the caller's flush, and the attempt must survive it. */
+    /** Written at once: the throw below skips the caller's flush, and the attempt must survive it. */
     private function refuse(VerificationChallenge $challenge): never
     {
-        $challenge->setAttempts($challenge->getAttempts() + 1);
-
-        $this->entityManager->flush();
+        $this->verificationChallengeRepository->recordWrongAttempt($challenge);
 
         throw $challenge->isExhausted()
             ? new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.')

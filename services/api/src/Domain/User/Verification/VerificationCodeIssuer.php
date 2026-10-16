@@ -23,9 +23,8 @@ final readonly class VerificationCodeIssuer
 
     public function issueFor(EmailAddress $address): IssuedVerificationCode
     {
-        foreach ($this->verificationChallengeRepository->findUnrevokedFor($address) as $live) {
-            $live->setRevokedAt(new DateTimeImmutable());
-        }
+        // A statement, not a changed entity: Doctrine inserts before it updates, and one live code is an index.
+        $this->verificationChallengeRepository->revokeLiveFor($address);
 
         $code = self::generate();
 
