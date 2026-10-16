@@ -28,9 +28,16 @@ type Status =
 
 export default function SignIn() {
   const { t } = useTranslation();
-  const { signedOut } = useLocalSearchParams<{ signedOut?: string }>();
+  const { signedOut, providerFailed } = useLocalSearchParams<{
+    signedOut?: string;
+    providerFailed?: string;
+  }>();
   const [status, setStatus] = useState<Status>(
-    signedOut == null ? { kind: 'ready' } : { kind: 'sessionEnded' },
+    providerFailed != null
+      ? { kind: 'providerFailed', provider: providerFailed }
+      : signedOut == null
+        ? { kind: 'ready' }
+        : { kind: 'sessionEnded' },
   );
 
   async function signIn(email: string, password: string): Promise<void> {
@@ -53,7 +60,12 @@ export default function SignIn() {
         <AuthHeading title={t('signIn.title')} intro={t('signIn.landscapeIntro')} introBeside />
       }
     >
-      <Credentials status={status} onSubmit={signIn} onLockLifted={liftLock} />
+      <Credentials
+        status={status}
+        onSubmit={signIn}
+        onLockLifted={liftLock}
+        onProviderFailed={(provider) => setStatus({ kind: 'providerFailed', provider })}
+      />
     </AuthFrame>
   );
 }
@@ -62,10 +74,12 @@ function Credentials({
   status,
   onSubmit,
   onLockLifted,
+  onProviderFailed,
 }: {
   status: Status;
   onSubmit: (email: string, password: string) => void;
   onLockLifted: () => void;
+  onProviderFailed: (provider: string) => void;
 }) {
   const { t } = useTranslation();
   const email = useRef<TextInput>(null);
@@ -202,7 +216,7 @@ function Credentials({
         testID="signIn.submit"
       />
 
-      <ProviderSignIn />
+      <ProviderSignIn onFailed={onProviderFailed} />
 
       <Footnote
         question={t('signIn.newHere')}

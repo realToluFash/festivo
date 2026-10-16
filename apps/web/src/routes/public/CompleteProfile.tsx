@@ -6,6 +6,7 @@ import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
@@ -40,6 +41,7 @@ export function CompleteProfile() {
 
   // Only the gate it is behind: an unverified account verifies first, a complete one is let in.
   const landing = landingFor(state.session.awaiting);
+  const byGoogle = state.session.providers.includes('google');
   if (landing !== '/complete-profile') return <Navigate to={landing} replace />;
 
   async function signOut(): Promise<void> {
@@ -55,7 +57,9 @@ export function CompleteProfile() {
           <span className="step-mark" aria-hidden="true">
             ✓
           </span>
-          {t('verifyEmail.step1Done')}
+          {byGoogle
+            ? t('verifyEmail.step1Google', { provider: 'Google' })
+            : t('verifyEmail.step1Done')}
         </li>
         <li className="step step-now">
           <span className="step-mark" aria-hidden="true">
@@ -65,10 +69,26 @@ export function CompleteProfile() {
         </li>
       </ol>
 
+      <LinkedNotice />
+
       <div className="auth-heading">
         <h1>{t('completeProfile.title')}</h1>
         <p>{t('completeProfile.intro')}</p>
       </div>
+
+      {byGoogle && (
+        <div className="notice notice-quiet" role="status">
+          <span className="mark mark-info" aria-hidden="true">
+            i
+          </span>
+          <p>
+            {t('completeProfile.providerConfirmed', {
+              provider: 'Google',
+              email: state.session.email,
+            })}
+          </p>
+        </div>
+      )}
 
       <Details
         name={state.session.name}

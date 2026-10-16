@@ -172,7 +172,8 @@
     "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant.",
     "stepsLabel": "Avant de commencer",
     "codeBlank": "Saisissez le code à 6 chiffres de l'e-mail.",
-    "codeShort": "Le code compte 6 chiffres."
+    "codeShort": "Le code compte 6 chiffres.",
+    "step1Google": "E-mail confirmé par {{provider}} · fait"
   },
   "verifyPhone": {
     "title": "Consultez vos messages",
@@ -277,10 +278,15 @@
     "signedInAs": "Connecté en tant que {{email}}.",
     "signOut": "Se déconnecter",
     "optional": "Facultatif",
-    "mobileHelp": "C'est ainsi qu'on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier."
+    "mobileHelp": "C'est ainsi qu'on vous joint le soir même si quelque chose tourne mal. Si vous en ajoutez un, nous vous envoyons un code par SMS pour le vérifier.",
+    "providerConfirmed": "Connecté avec {{provider}}. {{provider}} a déjà confirmé {{email}}, il n'y a donc aucun code à saisir."
   },
   "forms": {
     "emailBlank": "Saisissez votre adresse e-mail.",
     "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine."
+  },
+  "oauth": {
+    "linked": "{{provider}} est désormais associé à votre compte. Vous pouvez vous connecter avec l'un ou l'autre.",
+    "dismiss": "Fermer"
   }
 }

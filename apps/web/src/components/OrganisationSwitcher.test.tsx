@@ -22,6 +22,7 @@ function inTwo(): void {
       verified: true,
       complete: true,
       awaiting: null,
+      providers: [],
       needsOrganisation: false,
       organisation: IRE,
       organisations: [IRE, OKAFOR],
@@ -84,6 +85,7 @@ describe('switching organisation', () => {
       verified: true,
       complete: true,
       needsOrganisation: false,
+      providers: [],
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
       phoneNumbers: [],
     });
@@ -101,6 +103,7 @@ describe('switching organisation', () => {
         verified: true,
         complete: true,
         awaiting: null,
+        providers: [],
         needsOrganisation: false,
         organisation: IRE,
         organisations: [IRE],

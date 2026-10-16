@@ -1,8 +1,12 @@
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router';
+
+import { startGoogleSignIn } from '../googleSignIn.ts';
 
 /** Both are built to their owners' published specification; the marks are copied, not redrawn. */
 export function ProviderSignIn() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
     <>
@@ -12,7 +16,13 @@ export function ProviderSignIn() {
         <span className="auth-or-rule" />
       </div>
 
-      <button className="button button-google" type="button">
+      <button
+        className="button button-google"
+        type="button"
+        onClick={() => {
+          startGoogleSignIn().catch(() => navigate('/sign-in?provider-failed=Google'));
+        }}
+      >
         <GoogleMark />
         <span>{t('signIn.withGoogle', { provider: 'Google' })}</span>
       </button>

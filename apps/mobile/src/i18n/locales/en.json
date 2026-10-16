@@ -119,7 +119,8 @@
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "stepsLabel": "Before you start",
     "codeBlank": "Enter the 6-digit code from the email.",
-    "codeShort": "The code is 6 digits."
+    "codeShort": "The code is 6 digits.",
+    "step1Google": "Email confirmed by {{provider}} · done"
   },
   "verifyPhone": {
     "title": "Check your messages",
@@ -186,10 +187,15 @@
     "signedInAs": "Signed in as {{email}}.",
     "signOut": "Sign out",
     "optional": "Optional",
-    "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it."
+    "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it.",
+    "providerConfirmed": "Signed in with {{provider}}. {{provider}} has already confirmed {{email}}, so there is no email code to enter."
   },
   "forms": {
     "emailBlank": "Enter your email address.",
     "emailShape": "That doesn't look like an email address. Check it has an @ and a domain."
+  },
+  "oauth": {
+    "linked": "{{provider}} is now linked to your account. You can sign in with either.",
+    "dismiss": "Dismiss"
   }
 }

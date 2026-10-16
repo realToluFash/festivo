@@ -7,6 +7,7 @@ import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
+import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import {
   landingFor,
   restoreSession,
@@ -95,6 +96,7 @@ function Shell() {
       </aside>
 
       <main id="content" className="shell-content">
+        <LinkedNotice />
         {/* Said on the page it happened on, and gone once the person moves on. */}
         {switched != null && switched.at === pathname && (
           <div className="notice notice-done" role="status">

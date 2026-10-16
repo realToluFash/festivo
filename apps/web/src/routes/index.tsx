@@ -10,6 +10,7 @@ import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
 import { Home } from './public/Home.tsx';
 import { NotFound } from './public/NotFound.tsx';
+import { OAuthCallback } from './public/OAuthCallback.tsx';
 import { Register } from './public/Register.tsx';
 import { SignIn } from './public/SignIn.tsx';
 import { VerifyEmail } from './public/VerifyEmail.tsx';
@@ -36,6 +37,7 @@ export const routes = [
   { path: '/', element: <Home /> },
   { path: '/sign-in', element: <SignIn /> },
   { path: '/register', element: <Register /> },
+  { path: '/oauth/google', element: <OAuthCallback /> },
   { path: '/verify-email', element: <VerifyEmail /> },
   { path: '/verify-phone', element: <VerifyPhone /> },
   { path: '/phone', element: <ChangePhone /> },

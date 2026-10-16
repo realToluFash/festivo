@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 
-export type NoticeTone = 'quiet' | 'attention' | 'broken';
+export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
 
 export function Notice({
   tone,
@@ -19,15 +19,24 @@ export function Notice({
   /** The notice is the screen's message, so its title is the screen's heading. */
   heading?: boolean;
 }) {
-  const surface = { quiet: styles.quiet, attention: styles.attention, broken: styles.broken }[tone];
+  const surface = {
+    quiet: styles.quiet,
+    attention: styles.attention,
+    broken: styles.broken,
+    done: styles.done,
+  }[tone];
   const ring = {
     quiet: styles.ringInfo,
     attention: styles.ringAttention,
     broken: styles.ringBroken,
+    done: styles.ringDone,
   }[tone];
-  const ink = { quiet: styles.inkInfo, attention: styles.inkAttention, broken: styles.inkBroken }[
-    tone
-  ];
+  const ink = {
+    quiet: styles.inkInfo,
+    attention: styles.inkAttention,
+    broken: styles.inkBroken,
+    done: styles.inkDone,
+  }[tone];
 
   return (
     <View style={[styles.notice, surface]}>
@@ -68,6 +77,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAttentionBorder,
   },
   broken: { backgroundColor: tokens.colorBrokenTint, borderColor: tokens.colorBroken },
+  done: { backgroundColor: tokens.colorAccentTint, borderColor: tokens.colorAccentTintBorder },
   body: { flex: 1, gap: tokens.spaceHair },
 
   mark: {
@@ -81,8 +91,10 @@ const styles = StyleSheet.create({
   ringInfo: { borderColor: tokens.marks.info.ring },
   ringAttention: { borderColor: tokens.colorAttentionText },
   ringBroken: { borderColor: tokens.marks.broken.ring, backgroundColor: tokens.marks.broken.fill },
+  ringDone: { borderColor: tokens.marks.done.ring, backgroundColor: tokens.marks.done.fill },
 
   inkInfo: { color: tokens.marks.info.ink },
   inkAttention: { color: tokens.colorAttentionText },
   inkBroken: { color: tokens.colorBrokenText },
+  inkDone: { color: tokens.marks.done.ink },
 });

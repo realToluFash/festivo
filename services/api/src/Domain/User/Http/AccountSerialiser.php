@@ -7,13 +7,16 @@ namespace App\Domain\User\Http;
 use App\Domain\User\Onboarding\AccountCompleteness;
 use App\Entity\EmailAddress;
 use App\Entity\PhoneNumber;
+use App\Entity\ProviderIdentity;
 use App\Entity\User;
+use App\Repository\ProviderIdentityRepository;
 use Psl\Vec;
 
 final readonly class AccountSerialiser
 {
     public function __construct(
         private AccountCompleteness $accountCompleteness,
+        private ProviderIdentityRepository $providerIdentityRepository,
     ) {
     }
 
@@ -43,6 +46,11 @@ final readonly class AccountSerialiser
                 'primary' => $phone->isPrimary(),
                 'pending' => $phone->isPending(),
             ]),
+            // Which providers vouch for this account, so a screen can say "Google has already confirmed it".
+            'providers' => Vec\map(
+                $this->providerIdentityRepository->findBy(['user' => $user]),
+                static fn (ProviderIdentity $identity): string => $identity->getProvider()->value,
+            ),
         ];
     }
 }

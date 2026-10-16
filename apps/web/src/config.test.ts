@@ -75,4 +75,25 @@ describe('runtime configuration', () => {
     expect(config().mercureUrl).toBe('');
     expect(config().environment).toBe('unknown');
   });
+
+  it("reads Google's endpoints, and treats a half-filled set as none", async () => {
+    const google = {
+      authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+      tokenUrl: 'https://oauth2.googleapis.com/token',
+      clientId: 'soirely-web',
+    };
+
+    const full = await load(
+      async () => new Response(JSON.stringify({ apiBaseUrl: 'http://a', google })),
+    );
+    expect(full.google).toEqual(google);
+
+    const half = await load(
+      async () =>
+        new Response(
+          JSON.stringify({ apiBaseUrl: 'http://a', google: { ...google, clientId: '' } }),
+        ),
+    );
+    expect(half.google).toBeNull();
+  });
 });
