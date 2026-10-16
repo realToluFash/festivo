@@ -1029,11 +1029,6 @@ h2 {
   color: var(--colorInkSecondary);
 }
 
-.auth-footnote p {
-  flex-basis: 100%;
-  margin: 0;
-}
-
 .link-button {
   min-height: var(--sizeHit);
   padding: 0;

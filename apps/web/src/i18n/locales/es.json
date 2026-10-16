@@ -135,7 +135,7 @@
     "exhaustedTitle": "Demasiados intentos fallidos",
     "exhaustedBody": "Ese código ya no funciona. Envíe uno nuevo para continuar.",
     "wrongAddress": "¿No es su dirección?",
-    "wrongAddressBody": "Por ahora, la única forma de cambiarla es cerrar sesión y registrarse de nuevo.",
+    "wrongAddressBody": "y volver a crear su cuenta con la dirección correcta.",
     "signOut": "Cerrar sesión",
     "doneTitle": "Correo verificado",
     "doneBody": "{{address}} está confirmado. A continuación, unos datos para que su equipo sepa quién es quién.",

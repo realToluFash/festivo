@@ -31,6 +31,26 @@ export function VerifyEmail() {
     void restoreSession();
   }, []);
 
+  const unverified = state.status === 'signedIn' && !state.session.verified;
+
+  useEffect(() => {
+    if (!unverified) return;
+
+    let live = true;
+
+    // A failed read leaves the button enabled; a press then learns the time from the 429.
+    api
+      .verificationCooldown()
+      .then((seconds) => {
+        if (live) setCooldown(seconds);
+      })
+      .catch(() => {});
+
+    return () => {
+      live = false;
+    };
+  }, [unverified]);
+
   useEffect(() => {
     if (cooldown <= 0) return;
 
@@ -85,7 +105,7 @@ export function VerifyEmail() {
     navigate('/sign-in');
   }
 
-  const verified = status.kind === 'verified';
+  const verified = status.kind === 'verified' || state.session.verified;
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
 
   return (
@@ -176,6 +196,7 @@ export function VerifyEmail() {
                       autoCorrect="off"
                       spellCheck={false}
                       required
+                      aria-invalid={status.kind === 'wrong'}
                       aria-describedby={status.kind === 'wrong' ? 'code-error' : undefined}
                     />
                     {status.kind === 'wrong' && (
@@ -219,7 +240,7 @@ export function VerifyEmail() {
                 <button className="link-button" type="button" onClick={() => void signOut()}>
                   {t('verifyEmail.signOut')}
                 </button>
-                <p>{t('verifyEmail.wrongAddressBody')}</p>
+                <span>{t('verifyEmail.wrongAddressBody')}</span>
               </div>
             </>
           )}
