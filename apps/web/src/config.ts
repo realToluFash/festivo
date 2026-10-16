@@ -20,6 +20,8 @@ export interface Config {
   mercureUrl: string;
   /** Named so a support conversation can establish which deployment. */
   environment: string;
+  /** Google's authorization and token endpoints and this client's id; the local sandbox in development. */
+  google: { authorizeUrl: string; tokenUrl: string; clientId: string } | null;
 }
 
 const CONFIG_URL = '/config.json';
@@ -82,5 +84,25 @@ function parse(raw: unknown): Config {
     apiBaseUrl: apiBaseUrl.replace(/\/$/, ''),
     mercureUrl: typeof candidate.mercureUrl === 'string' ? candidate.mercureUrl : '',
     environment: typeof candidate.environment === 'string' ? candidate.environment : 'unknown',
+    google: providerFrom(candidate.google),
   };
+}
+
+/** Absent or half-filled is null: the button then says sign-in did not work, rather than guessing a host. */
+function providerFrom(raw: unknown): Config['google'] {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { authorizeUrl, tokenUrl, clientId } = raw as Record<string, unknown>;
+
+  if (
+    typeof authorizeUrl !== 'string' ||
+    typeof tokenUrl !== 'string' ||
+    typeof clientId !== 'string'
+  ) {
+    return null;
+  }
+
+  return authorizeUrl === '' || tokenUrl === '' || clientId === ''
+    ? null
+    : { authorizeUrl, tokenUrl, clientId };
 }

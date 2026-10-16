@@ -13,6 +13,7 @@ const UNVERIFIED: Session = {
   verified: false,
   complete: false,
   awaiting: 'email' as const,
+  providers: [],
   needsOrganisation: false,
   organisation: membership(),
   organisations: [membership()],

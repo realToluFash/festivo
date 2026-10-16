@@ -14,6 +14,7 @@ const FOLAKE: Session = {
   verified: false,
   complete: false,
   awaiting: 'email' as const,
+  providers: [],
   needsOrganisation: false,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],

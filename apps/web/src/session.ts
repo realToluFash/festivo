@@ -18,6 +18,8 @@ export interface Session {
   complete: boolean;
   /** The gate it is behind, or null once it is through both. */
   awaiting: Awaiting | null;
+  /** The providers that vouch for this account, such as Google. */
+  providers: readonly string[];
   needsOrganisation: boolean;
   /** The one this device is working in; null for an account in no organisation. */
   organisation: Membership | null;
@@ -148,6 +150,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     verified: account.verified,
     complete: account.complete,
     awaiting: awaiting(account),
+    providers: account.providers,
     needsOrganisation: account.needsOrganisation,
     organisations,
     organisation:

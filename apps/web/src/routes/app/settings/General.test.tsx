@@ -15,6 +15,7 @@ function signedIn(organisation = IRE): void {
     verified: true,
     complete: true,
     awaiting: null,
+    providers: [],
     needsOrganisation: false,
     organisation,
     organisations: [organisation],

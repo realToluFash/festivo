@@ -26,9 +26,13 @@ export function SignIn() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const [status, setStatus] = useState<Status>(
-    params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' },
-  );
+  const [status, setStatus] = useState<Status>(() => {
+    const provider = params.get('provider-failed');
+
+    if (provider != null) return { kind: 'providerFailed', provider };
+
+    return params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' };
+  });
   const form = useRef<HTMLFormElement>(null);
   const checks = useFormChecks(
     ['email', 'password'] as const,

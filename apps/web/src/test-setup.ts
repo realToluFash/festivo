@@ -15,6 +15,11 @@ __setConfig({
   apiBaseUrl: 'http://api.test',
   mercureUrl: '',
   environment: 'test',
+  google: {
+    authorizeUrl: 'http://sandbox.test/google/authorize',
+    tokenUrl: 'http://sandbox.test/google/token',
+    clientId: 'soirely-web.test',
+  },
 });
 
 await initI18n();
