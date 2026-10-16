@@ -169,6 +169,28 @@ describe('check your messages', () => {
     });
   });
 
+  it('asks for the code sent to a replacement, not the number it will replace', async () => {
+    const current = { ...PHONE, verified: true };
+    const replacement = {
+      id: 'p2',
+      number: '+233244123456',
+      countryCode: 'GH',
+      verified: false,
+      primary: false,
+      pending: true,
+    };
+    answering({
+      'GET /api/auth/me': () => json(account([current, replacement])),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 60 }),
+    });
+    at('/verify-phone');
+
+    await waitFor(() =>
+      expect(screen.getByText('We texted a code to +233 24 412 3456.')).toBeDefined(),
+    );
+    expect(screen.getByLabelText('Code from the text')).toBeDefined();
+  });
+
   it('asks for a number first when there is none', async () => {
     answering({
       'GET /api/auth/me': () => json(account([])),
@@ -185,16 +207,14 @@ describe('check your messages', () => {
 });
 
 describe('change your mobile number', () => {
-  it('shows the current number, says it stops working, and starts on its country', async () => {
+  it('shows the current number, says it keeps working until the new one is verified, and starts on its country', async () => {
     answering({ 'GET /api/auth/me': () => json(account([{ ...PHONE, verified: true }])) });
     at('/phone');
 
     await waitFor(() =>
       expect(screen.getByText('Now: +234 803 555 0142 · verified')).toBeDefined(),
     );
-    expect(
-      screen.getByText(/stops working for Soirely as soon as we text the new one/),
-    ).toBeDefined();
+    expect(screen.getByText(/keeps working until the new one is verified/)).toBeDefined();
     expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('NG');
     expect(screen.getByRole('button', { name: 'Keep my current number' })).toBeDefined();
   });
@@ -259,9 +279,7 @@ describe('change your mobile number', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(
-          /already verified on another Soirely account\. Use a different number, or keep your current one\./,
-        ),
+        screen.getByText(/already linked to another account\. Your current number is unchanged\./),
       ).toBeDefined(),
     );
     expect(screen.getByLabelText('Mobile number').getAttribute('aria-invalid')).toBe('true');

@@ -41,6 +41,7 @@ final readonly class AccountSerialiser
                 'countryCode' => $phone->getCountryCode(),
                 'verified' => $phone->isVerified(),
                 'primary' => $phone->isPrimary(),
+                'pending' => $phone->isPending(),
             ]),
         ];
     }

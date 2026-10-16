@@ -7,6 +7,7 @@ namespace App\Domain\User\Onboarding;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Domain\User\Phone\PrimaryPhoneSetter;
+use App\Entity\PhoneNumber;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
@@ -37,7 +38,7 @@ final readonly class DetailsSaver
         ?string $timezone,
         ?string $phoneCountryCode = null,
         ?string $phoneNumber = null,
-    ): void {
+    ): ?PhoneNumber {
         $violations = [];
         $trimmed = Str\trim($name);
         $phone = null;
@@ -70,10 +71,12 @@ final readonly class DetailsSaver
             throw ApiException::validation($violations);
         }
 
-        $this->primaryPhoneSetter->set($user, $phone);
+        $texted = $this->primaryPhoneSetter->set($user, $phone);
         $user->setName($trimmed);
         $user->markDetailsSaved();
         $this->entityManager->flush();
+
+        return $texted;
     }
 
     /**

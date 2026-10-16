@@ -16,6 +16,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\UniqueConstraint(name: 'uniq_phone_number', columns: ['number'])]
 #[ORM\Index(name: 'idx_phone_number_user', columns: ['user_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_primary_phone_per_user', columns: ['user_id'], options: ['where' => 'is_primary'])]
+#[ORM\UniqueConstraint(name: 'uniq_pending_phone_per_user', columns: ['user_id'], options: ['where' => 'is_pending'])]
 class PhoneNumber implements VerifiableContact
 {
     use Timestampable;
@@ -41,6 +42,10 @@ class PhoneNumber implements VerifiableContact
 
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $isPrimary;
+
+    /** Texted to replace the primary, which it does only once it is verified. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isPending = false;
 
     public function __construct(User $user, string $number, bool $isPrimary = false, ?string $countryCode = null)
     {
@@ -91,6 +96,16 @@ class PhoneNumber implements VerifiableContact
     public function setPrimary(bool $isPrimary): void
     {
         $this->isPrimary = $isPrimary;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->isPending;
+    }
+
+    public function setPending(bool $isPending): void
+    {
+        $this->isPending = $isPending;
     }
 
     public function isVerified(): bool

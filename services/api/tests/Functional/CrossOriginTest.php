@@ -7,6 +7,8 @@ namespace App\Tests\Functional;
 use App\Tests\ApiTestCase;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Str;
+use Psl\Vec;
+use Symfony\Component\Routing\RouterInterface;
 
 final class CrossOriginTest extends ApiTestCase
 {
@@ -75,6 +77,33 @@ final class CrossOriginTest extends ApiTestCase
             'content-type',
             Str\lowercase((string) $headers->get('Access-Control-Allow-Headers')),
         );
+    }
+
+    /** A method the browser is not allowed is a route no web screen can reach, however well it is tested. */
+    #[Test]
+    public function aPreflightAllowsEveryMethodTheApiRoutesUse(): void
+    {
+        $methods = [];
+
+        foreach (self::service(RouterInterface::class)->getRouteCollection() as $route) {
+            if (Str\starts_with($route->getPath(), '/api/')) {
+                $methods = [...$methods, ...$route->getMethods()];
+            }
+        }
+
+        // HEAD is safelisted, so a browser never asks before sending it.
+        foreach (Vec\filter(Vec\unique($methods), static fn (string $method): bool => 'HEAD' !== $method) as $method) {
+            $this->client->request('OPTIONS', '/api/auth/phone', server: [
+                'HTTP_ORIGIN' => self::ALLOWED,
+                'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => $method,
+            ]);
+
+            self::assertStringContainsString(
+                $method,
+                (string) $this->client->getResponse()->headers->get('Access-Control-Allow-Methods'),
+                Str\format('%s is used by a route and refused to a browser', $method),
+            );
+        }
     }
 
     #[Test]

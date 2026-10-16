@@ -291,8 +291,9 @@ final class OnboardingGateTest extends ApiTestCase
         self::assertSame(200, $this->client->getResponse()->getStatusCode());
     }
 
+    /** The verified number keeps counting until its replacement is proved, so the gate stays open. */
     #[Test]
-    public function aChangedPhoneReopensTheGate(): void
+    public function aChangedPhoneWaitsForItsCodeAndTheGateStaysOpen(): void
     {
         $this->client->disableReboot();
         $user = $this->registered('changed@example.com');
@@ -303,9 +304,10 @@ final class OnboardingGateTest extends ApiTestCase
 
         $body = $this->call('PATCH', '/api/auth/complete-profile', ['name' => 'Person', 'phoneCountryCode' => 'GH', 'phoneNumber' => '024 412 3456']);
 
-        self::assertTrue($body['verificationNeeded']);
+        self::assertTrue($body['verificationNeeded'], 'the new number is texted a code');
         self::assertSame('+233244123456', $this->texts()[0]['to'] ?? null);
-        self::assertSame(ErrorCode::AccountUnverified->type(), $this->call('GET', '/api/orgs')['type']);
+        $this->call('GET', '/api/orgs');
+        self::assertSame(200, $this->client->getResponse()->getStatusCode());
     }
 
     #[Test]

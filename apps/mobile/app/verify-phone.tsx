@@ -1,4 +1,4 @@
-import type { Account } from '@soirely/api-client';
+import { type Account, phoneAwaitingCode } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatPhone } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -57,7 +57,7 @@ export default function VerifyPhone() {
   if (account === 'none') return <Redirect href="/sign-in" />;
   if (account == null) return null;
 
-  const phone = account.phoneNumbers.find((candidate) => candidate.primary);
+  const phone = phoneAwaitingCode(account);
   if (phone == null) return <Redirect href={onboarding ? '/phone?from=onboarding' : '/phone'} />;
 
   const number = formatPhone(phone.number);

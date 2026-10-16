@@ -5,6 +5,7 @@ import {
   type IssuedTokens,
   type TokenStore,
   awaiting,
+  phoneAwaitingCode,
   primaryEmailAddress,
 } from './client.ts';
 import { ApiError, ApiUnreachableError } from './problem.ts';
@@ -735,6 +736,26 @@ function health(body: unknown, status = 200): Response {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+describe('the number a code is waiting on', () => {
+  const phone = (number: string, primary: boolean, pending: boolean) => ({
+    id: number,
+    number,
+    countryCode: 'NG',
+    verified: primary,
+    primary,
+    pending,
+  });
+
+  test('is the replacement while one is texted, else the primary, else none', () => {
+    const current = phone('+2348035550142', true, false);
+    const replacement = phone('+233244123456', false, true);
+
+    expect(phoneAwaitingCode({ phoneNumbers: [current, replacement] })).toBe(replacement);
+    expect(phoneAwaitingCode({ phoneNumbers: [current] })).toBe(current);
+    expect(phoneAwaitingCode({ phoneNumbers: [] })).toBeNull();
+  });
+});
 
 describe('which gate an account is behind', () => {
   const email = (verified: boolean) => [

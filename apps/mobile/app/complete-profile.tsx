@@ -139,7 +139,12 @@ function Details({ account }: { account: Account }) {
         phoneNumber: phoneNumber.trim(),
       });
 
-      router.replace(landingFor(awaiting(saved.account)));
+      // A changed number is texted even while the account still counts as verified.
+      router.replace(
+        saved.verificationNeeded
+          ? '/verify-phone?from=onboarding'
+          : landingFor(awaiting(saved.account)),
+      );
     } catch (error) {
       setSaving(false);
 

@@ -184,6 +184,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return null;
     }
 
+    public function getPendingPhoneNumber(): ?PhoneNumber
+    {
+        foreach ($this->phoneNumbers as $phoneNumber) {
+            if ($phoneNumber->isPending()) {
+                return $phoneNumber;
+            }
+        }
+
+        return null;
+    }
+
+    /** The number a code is waiting on: a replacement texted, else the primary. */
+    public function getPhoneNumberAwaitingCode(): ?PhoneNumber
+    {
+        return $this->getPendingPhoneNumber() ?? $this->getPrimaryPhoneNumber();
+    }
+
     /** Whether this account ever proved it owns an address: one that never did can be released and deleted. */
     public function hasVerifiedEmailAddress(): bool
     {
