@@ -15,6 +15,7 @@ import { PasswordField } from '../src/components/PasswordField.tsx';
 import { OrRule, ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
+import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
 import {
   type RegistrationFieldError,
@@ -136,6 +137,7 @@ function Form({
 }) {
   const { t } = useTranslation();
   const [lengthMet, setLengthMet] = useState(false);
+  const name = useRef<TextInput>(null);
   const email = useRef<TextInput>(null);
   const password = useRef<TextInput>(null);
 
@@ -145,9 +147,20 @@ function Form({
   const busy = status.kind === 'submitting';
   const locked = status.kind === 'rateLimited';
   const fields = status.kind === 'refused' ? status.fields : {};
+  const checks = useFormChecks(
+    ['name', 'email', 'password'] as const,
+    (field, value) => {
+      if (field === 'email') return emailMessage(value, t);
+      if (value.trim() !== '') return null;
+
+      return field === 'name' ? t('register.nameBlank') : t('register.passwordBlank');
+    },
+    (field) => ({ name, email, password })[field].current?.focus(),
+  );
 
   const submit = (): void => {
     if (busy || locked) return;
+    if (!checks.passes(typed.current)) return;
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(typed.current.password)) {
@@ -180,16 +193,19 @@ function Form({
         />
       )}
 
-      <Field label={t('register.name')} error={refusalWords(fields.name, t)}>
+      <Field label={t('register.name')} error={checks.errors.name ?? refusalWords(fields.name, t)}>
         <TextField
-          wrong={fields.name != null}
+          ref={name}
+          wrong={checks.errors.name != null || fields.name != null}
           editable={!busy}
           autoComplete="name"
           textContentType="name"
           autoCapitalize="words"
           onChangeText={(text) => {
             typed.current.name = text;
+            checks.edited('name', text);
           }}
+          onBlur={() => checks.left('name', typed.current.name)}
           returnKeyType="next"
           submitBehavior="submit"
           onSubmitEditing={() => email.current?.focus()}
@@ -200,9 +216,9 @@ function Form({
 
       <Field
         label={t('register.email')}
-        error={refusalWords(fields.email, t)}
+        error={checks.errors.email ?? refusalWords(fields.email, t)}
         errorActions={
-          fields.email === 'taken'
+          checks.errors.email == null && fields.email === 'taken'
             ? [
                 { label: t('register.signIn'), onPress: toSignIn, testID: 'register.taken.signIn' },
                 // Recovery is sc-61; until it exists, both ways out start at sign-in.
@@ -217,7 +233,7 @@ function Form({
       >
         <TextField
           ref={email}
-          wrong={fields.email != null}
+          wrong={checks.errors.email != null || fields.email != null}
           editable={!busy}
           keyboardType="email-address"
           autoComplete="email"
@@ -225,7 +241,9 @@ function Form({
           autoCapitalize="none"
           onChangeText={(text) => {
             typed.current.email = text;
+            checks.edited('email', text);
           }}
+          onBlur={() => checks.left('email', typed.current.email)}
           returnKeyType="next"
           submitBehavior="submit"
           onSubmitEditing={() => password.current?.focus()}
@@ -234,10 +252,13 @@ function Form({
         />
       </Field>
 
-      <Field label={t('register.password')} error={refusalWords(fields.password, t)}>
+      <Field
+        label={t('register.password')}
+        error={checks.errors.password ?? refusalWords(fields.password, t)}
+      >
         <PasswordField
           ref={password}
-          wrong={fields.password != null}
+          wrong={checks.errors.password != null || fields.password != null}
           submitting={busy}
           editable={!busy}
           autoComplete="new-password"
@@ -245,7 +266,9 @@ function Form({
           onChangeText={(text) => {
             typed.current.password = text;
             setLengthMet(meetsPasswordLength(text));
+            checks.edited('password', text);
           }}
+          onBlur={() => checks.left('password', typed.current.password)}
           returnKeyType="done"
           onSubmitEditing={submit}
           accessibilityLabel={t('register.password')}

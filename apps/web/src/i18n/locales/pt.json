@@ -85,7 +85,8 @@
     "failedTitle": "Não foi possível iniciar sessão",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "newHere": "É novo por aqui?",
-    "createAccount": "Criar uma conta"
+    "createAccount": "Criar uma conta",
+    "passwordBlank": "Introduza a sua palavra-passe."
   },
   "register": {
     "title": "Crie a sua conta",
@@ -108,7 +109,9 @@
     "limitedBody": "Tente novamente às {{time}}.",
     "haveAccount": "Já tem uma conta?",
     "failedTitle": "Não foi possível criar a sua conta",
-    "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento."
+    "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
+    "nameBlank": "Introduza o seu nome completo.",
+    "passwordBlank": "Introduza uma palavra-passe."
   },
   "account": {
     "title": "A sua conta"
@@ -167,7 +170,9 @@
     "continue": "Continuar",
     "failedTitle": "Não funcionou",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
-    "stepsLabel": "Antes de começar"
+    "stepsLabel": "Antes de começar",
+    "codeBlank": "Introduza o código de 6 dígitos do e-mail.",
+    "codeShort": "O código tem 6 dígitos."
   },
   "verifyPhone": {
     "title": "Veja as suas mensagens",
@@ -273,5 +278,9 @@
     "signOut": "Terminar sessão",
     "optional": "Opcional",
     "mobileHelp": "É assim que o contactamos na noite do evento se algo correr mal. Se indicar um, enviamos-lhe um código por SMS para o confirmar."
+  },
+  "forms": {
+    "emailBlank": "Introduza o seu endereço de e-mail.",
+    "emailShape": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio."
   }
 }

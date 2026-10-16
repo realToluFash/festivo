@@ -1,6 +1,6 @@
 import { formatCountdown } from '@soirely/domain';
-import { type ReactNode, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type ReactNode, type Ref, useRef } from 'react';
+import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { type CodeStatus, asksForCode } from '../kit/code.ts';
@@ -10,8 +10,6 @@ import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
-const CODE_LENGTH = 6;
-
 /** The code screens' form, an email's and a phone's: `copy` names whose words it speaks in. */
 export function CodeForm({
   copy,
@@ -19,17 +17,21 @@ export function CodeForm({
   cooldown,
   error,
   onTyped,
+  onLeft,
   onVerify,
   onResend,
+  inputRef,
   children,
 }: {
   copy: 'verifyEmail' | 'verifyPhone';
   status: CodeStatus;
   cooldown: number;
   error: string | null;
-  onTyped: () => void;
+  onTyped: (code: string) => void;
+  onLeft: (code: string) => void;
   onVerify: (code: string) => void;
   onResend: () => void;
+  inputRef?: Ref<TextInput> | undefined;
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -73,15 +75,16 @@ export function CodeForm({
         <>
           <Field label={t(`${copy}.codeLabel`)} error={error}>
             <CodeField
+              ref={inputRef}
               wrong={error != null}
               editable={!verifying}
-              maxLength={CODE_LENGTH}
               returnKeyType="done"
               onChangeText={(text) => {
                 typed.current = text;
-                onTyped();
+                onTyped(text);
               }}
-              onSubmitEditing={() => onVerify(typed.current.trim())}
+              onBlur={() => onLeft(typed.current)}
+              onSubmitEditing={() => onVerify(typed.current)}
               accessibilityLabel={t(`${copy}.codeLabel`)}
               testID={`${copy}.code`}
             />
@@ -89,7 +92,7 @@ export function CodeForm({
 
           <PrimaryButton
             label={verifying ? t(`${copy}.submitting`) : t(`${copy}.submit`)}
-            onPress={() => onVerify(typed.current.trim())}
+            onPress={() => onVerify(typed.current)}
             busy={verifying}
             testID={`${copy}.submit`}
           />

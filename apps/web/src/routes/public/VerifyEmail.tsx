@@ -1,5 +1,5 @@
 import { ApiError } from '@soirely/api-client';
-import { formatCountdown } from '@soirely/domain';
+import { cleanCode, codeProblem, formatCountdown } from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
@@ -10,6 +10,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { forgetSession, refreshAccount, restoreSession, useSessionState } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { useFormChecks } from '../../formChecks.ts';
 
 type Status =
   | { kind: 'entering' }
@@ -27,6 +28,17 @@ export function VerifyEmail() {
 
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
+  const checks = useFormChecks(
+    ['code'] as const,
+    (_field, value) => {
+      const problem = codeProblem(value);
+
+      if (problem == null) return null;
+
+      return problem === 'blank' ? t('verifyEmail.codeBlank') : t('verifyEmail.codeShort');
+    },
+    () => document.getElementById('code')?.focus(),
+  );
 
   useEffect(() => {
     void restoreSession();
@@ -69,7 +81,12 @@ export function VerifyEmail() {
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    const code = String(new FormData(event.currentTarget).get('code') ?? '').trim();
+    const typed = String(new FormData(event.currentTarget).get('code') ?? '');
+
+    // Neither an empty code nor a short one is sent, so neither costs an attempt.
+    if (!checks.passes({ code: typed })) return;
+
+    const code = cleanCode(typed);
 
     setStatus({ kind: 'verifying' });
 
@@ -114,6 +131,8 @@ export function VerifyEmail() {
 
   const verified = status.kind === 'verified' || state.session.verified;
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
+
+  const codeError = checks.errors.code ?? (status.kind === 'wrong' ? t('verifyEmail.wrong') : null);
 
   return (
     <AuthPage>
@@ -183,11 +202,11 @@ export function VerifyEmail() {
           )}
 
           {entering && (
-            <form className="auth-form" onSubmit={(event) => void submit(event)}>
+            <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
               <div className="field">
                 <label htmlFor="code">{t('verifyEmail.codeLabel')}</label>
                 <input
-                  className={status.kind === 'wrong' ? 'code-input input-wrong' : 'code-input'}
+                  className={codeError == null ? 'code-input' : 'code-input input-wrong'}
                   id="code"
                   name="code"
                   type="text"
@@ -196,12 +215,12 @@ export function VerifyEmail() {
                   autoCorrect="off"
                   spellCheck={false}
                   required
-                  aria-invalid={status.kind === 'wrong'}
-                  aria-describedby={status.kind === 'wrong' ? 'code-error' : undefined}
+                  aria-invalid={codeError != null}
+                  aria-describedby={codeError == null ? undefined : 'code-error'}
+                  onBlur={(event) => checks.left('code', event.target.value)}
+                  onChange={(event) => checks.edited('code', event.target.value)}
                 />
-                {status.kind === 'wrong' && (
-                  <FieldError id="code-error" message={t('verifyEmail.wrong')} />
-                )}
+                {codeError != null && <FieldError id="code-error" message={codeError} />}
               </div>
 
               <button
