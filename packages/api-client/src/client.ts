@@ -43,6 +43,8 @@ export interface LinkedPhone {
   countryCode: string | null;
   verified: boolean;
   primary: boolean;
+  /** Texted to replace the primary, which it does only once it is verified. */
+  pending: boolean;
 }
 
 export interface Account {
@@ -513,6 +515,15 @@ export function primaryEmailAddress(account: Account): string | null {
   return account.emailAddresses.find((address) => address.primary)?.address ?? null;
 }
 
+/** The number a code is waiting on: a replacement texted, else the primary. */
+export function phoneAwaitingCode(account: Pick<Account, 'phoneNumbers'>): LinkedPhone | null {
+  return (
+    account.phoneNumbers.find((phone) => phone.pending) ??
+    account.phoneNumbers.find((phone) => phone.primary) ??
+    null
+  );
+}
+
 export type Awaiting = 'email' | 'phone' | 'details';
 
 /** The gate an account is behind, in the API's order: the email, then a phone it has, then the details. */
@@ -572,17 +583,11 @@ function asAccount(raw: unknown): Account | null {
   const phoneNumbers: LinkedPhone[] = [];
 
   for (const value of candidate.phoneNumbers) {
-    const phone = value as Record<string, unknown>;
+    const phone = asLinkedPhone(value);
 
-    if (typeof phone?.number !== 'string' || typeof phone.id !== 'string') return null;
+    if (phone == null) return null;
 
-    phoneNumbers.push({
-      id: phone.id,
-      number: phone.number,
-      countryCode: typeof phone.countryCode === 'string' ? phone.countryCode : null,
-      verified: phone.verified === true,
-      primary: phone.primary === true,
-    });
+    phoneNumbers.push(phone);
   }
 
   return {
@@ -646,6 +651,7 @@ function asLinkedPhone(raw: unknown): LinkedPhone | null {
     countryCode: typeof phone.countryCode === 'string' ? phone.countryCode : null,
     verified: phone.verified === true,
     primary: phone.primary === true,
+    pending: phone.pending === true,
   };
 }
 

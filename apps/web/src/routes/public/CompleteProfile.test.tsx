@@ -191,7 +191,7 @@ describe('a few details', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
 
     await waitFor(() =>
-      expect(screen.getByText(/already verified on another Soirely account/)).toBeDefined(),
+      expect(screen.getByText(/already linked to another account/)).toBeDefined(),
     );
     expect(screen.getByLabelText(/Mobile number/).getAttribute('aria-invalid')).toBe('true');
   });

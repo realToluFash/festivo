@@ -1,4 +1,4 @@
-import { type Account, ApiError } from '@soirely/api-client';
+import { type Account, ApiError, phoneAwaitingCode } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown, formatPhone } from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -65,7 +65,7 @@ export function VerifyPhone() {
   if (account === 'none') return <Navigate to="/sign-in" replace />;
   if (account == null) return <Pending />;
 
-  const phone = account.phoneNumbers.find((candidate) => candidate.primary);
+  const phone = phoneAwaitingCode(account);
   if (phone == null)
     return <Navigate to={onboarding ? '/phone?from=onboarding' : '/phone'} replace />;
 
