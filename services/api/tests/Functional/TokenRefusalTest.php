@@ -15,6 +15,8 @@ use Psl\Type;
 
 final class TokenRefusalTest extends ApiTestCase
 {
+    private ?string $expiredToken = null;
+
     /** @return iterable<string, array{string}> */
     public static function refusals(): iterable
     {
@@ -48,13 +50,30 @@ final class TokenRefusalTest extends ApiTestCase
         self::assertSame('Veuillez vous connecter pour continuer.', $this->decode()['title']);
     }
 
+    /** A worker serves request after request from one kernel, so nothing may carry a language across. */
+    #[Test]
+    public function oneKernelAnswersEachRefusalInItsOwnReadersLanguage(): void
+    {
+        $this->client->disableReboot();
+
+        $expected = ['en' => 'Please sign in to continue.', 'fr' => 'Veuillez vous connecter pour continuer.'];
+
+        foreach (['none', 'malformed', 'expired', 'none', 'malformed', 'expired'] as $kind) {
+            foreach ($expected as $locale => $title) {
+                $this->requestMe($kind, $locale);
+
+                self::assertSame($title, $this->decode()['title'], $kind . ' in ' . $locale);
+            }
+        }
+    }
+
     private function requestMe(string $kind, string $locale): void
     {
         $server = ['HTTP_ACCEPT_LANGUAGE' => $locale];
 
         $token = match ($kind) {
             'malformed' => 'not-a-token',
-            'expired' => $this->expiredToken(),
+            'expired' => $this->expiredToken ??= $this->expiredToken(),
             default => null,
         };
 

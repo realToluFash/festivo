@@ -1,23 +1,17 @@
 import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
-import { LanguageChoice } from '../src/components/LanguageChoice.tsx';
-import { Notice, type NoticeSurface } from '../src/components/Notice.tsx';
+import { Notice } from '../src/components/Notice.tsx';
 import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
-import { Screen } from '../src/components/Screen.tsx';
+import { SignInFrame } from '../src/components/SignInFrame.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
-import { isTablet } from '../src/layout/classify.ts';
-import { useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
-
-const CARD_WIDTH = 520;
-const FORM_COLUMN_WIDTH = 600;
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
 const CONTROL_TEXT_SIZE = 16;
@@ -32,7 +26,7 @@ type Status =
   | { kind: 'sessionEnded' };
 
 export default function SignIn() {
-  const { kind } = useLayout();
+  const { t } = useTranslation();
   const { signedOut } = useLocalSearchParams<{ signedOut?: string }>();
   const [status, setStatus] = useState<Status>(
     signedOut == null ? { kind: 'ready' } : { kind: 'sessionEnded' },
@@ -52,107 +46,19 @@ export default function SignIn() {
 
   const liftLock = useCallback(() => setStatus({ kind: 'ready' }), []);
 
-  const form = (
-    <Credentials
-      status={status}
-      on={isTablet(kind) ? 'card' : 'page'}
-      onSubmit={signIn}
-      onLockLifted={liftLock}
-    />
-  );
-
-  if (kind === 'tabletLandscape') {
-    return <Landscape>{form}</Landscape>;
-  }
-
-  if (kind === 'tabletPortrait') {
-    return <Portrait>{form}</Portrait>;
-  }
-
-  return <Phone>{form}</Phone>;
-}
-
-function Phone({ children }: { children: ReactNode }) {
-  const { t } = useTranslation();
-
   return (
-    <Screen style={styles.page} contentStyle={styles.phoneContent}>
-      <View style={styles.brandRow}>
-        <Text size={tokens.typeTitleDialog.size} weight="bold" style={styles.brand}>
-          {t('app.name')}
-        </Text>
-      </View>
-      <Text size={tokens.typeTitlePhone.size} weight="bold" style={styles.title}>
-        {t('signIn.title')}
-      </Text>
-      {children}
-      <View style={styles.spacer} />
-      <LanguageChoice />
-    </Screen>
-  );
-}
-
-function Portrait({ children }: { children: ReactNode }) {
-  const { t } = useTranslation();
-
-  return (
-    <Screen style={styles.page} contentStyle={styles.portraitContent}>
-      <View style={styles.brandRow}>
-        <Text size={tokens.typeTitleDialog.size} weight="bold" style={styles.brand}>
-          {t('app.name')}
-        </Text>
-      </View>
-      <View style={styles.centred}>
-        <View style={styles.card}>
-          <Text size={tokens.typeTitlePage.size} weight="bold" style={styles.title}>
-            {t('signIn.title')}
-          </Text>
-          {children}
-        </View>
-        <View style={styles.tabletLanguage}>
-          <LanguageChoice />
-        </View>
-      </View>
-    </Screen>
-  );
-}
-
-function Landscape({ children }: { children: ReactNode }) {
-  const { t } = useTranslation();
-
-  return (
-    <Screen style={styles.page} contentStyle={styles.landscapeContent}>
-      <View style={styles.landscapeLeft}>
-        <View style={styles.brandRow}>
-          <Text size={tokens.typeTitleDialog.size} weight="bold" style={styles.brand}>
-            {t('app.name')}
-          </Text>
-        </View>
-        <View style={styles.landscapeSaying}>
-          <Text size={tokens.typeTitlePage.size} weight="bold" style={styles.title}>
-            {t('signIn.title')}
-          </Text>
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-            {t('signIn.landscapeIntro')}
-          </Text>
-        </View>
-        <LanguageChoice />
-      </View>
-      <View style={styles.landscapeRight}>
-        <View style={[styles.card, styles.cardFill]}>{children}</View>
-      </View>
-    </Screen>
+    <SignInFrame title={t('signIn.title')} intro={t('signIn.landscapeIntro')}>
+      <Credentials status={status} onSubmit={signIn} onLockLifted={liftLock} />
+    </SignInFrame>
   );
 }
 
 function Credentials({
   status,
-  on,
   onSubmit,
   onLockLifted,
 }: {
   status: Status;
-  on: NoticeSurface;
   onSubmit: (email: string, password: string) => void;
   onLockLifted: () => void;
 }) {
@@ -191,7 +97,6 @@ function Credentials({
       {status.kind === 'sessionEnded' && (
         <Notice
           tone="quiet"
-          on={on}
           mark={tokens.marks.info.glyph}
           title={t('signIn.endedTitle')}
           body={t('signIn.endedBody')}
@@ -355,52 +260,6 @@ function refusalFrom(error: unknown): Status {
 }
 
 const styles = StyleSheet.create({
-  page: { backgroundColor: tokens.colorPage },
-
-  phoneContent: {
-    flexGrow: 1,
-    gap: tokens.spaceXl,
-    paddingTop: tokens.spaceSm,
-    paddingHorizontal: tokens.space3xl,
-    paddingBottom: tokens.space5xl,
-  },
-  portraitContent: {
-    flexGrow: 1,
-    gap: tokens.space3xl,
-    padding: tokens.space6xl,
-  },
-  landscapeContent: {
-    flexGrow: 1,
-    flexDirection: 'row',
-    gap: tokens.space5xl,
-    padding: tokens.space6xl,
-  },
-
-  brandRow: { height: tokens.sizeHit, justifyContent: 'center' },
-  brand: { letterSpacing: -0.4 },
-  title: { letterSpacing: -0.5 },
-  secondary: { color: tokens.colorInkSecondary },
-  spacer: { flex: 1 },
-
-  centred: { alignItems: 'center', gap: tokens.space3xl },
-  tabletLanguage: { width: CARD_WIDTH, maxWidth: '100%' },
-
-  landscapeLeft: { flex: 1, gap: tokens.space3xl },
-  landscapeSaying: { flex: 1, justifyContent: 'center', gap: tokens.spaceLg, maxWidth: 460 },
-  landscapeRight: { width: FORM_COLUMN_WIDTH, maxWidth: '50%' },
-
-  card: {
-    width: CARD_WIDTH,
-    maxWidth: '100%',
-    gap: tokens.spaceXl,
-    padding: tokens.space4xl,
-    backgroundColor: tokens.colorCard,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    borderRadius: tokens.radiusCardPhone,
-  },
-  cardFill: { width: '100%' },
-
   form: { gap: tokens.spaceXl },
   field: { gap: tokens.spaceXs },
 

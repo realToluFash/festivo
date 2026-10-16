@@ -79,11 +79,19 @@ final class SignInController
 
         throw new ApiException(
             ErrorCode::TooManyAttempts,
-            'Too many sign-in attempts. Try again at ' . $retryAfter->format('H:i') . '.',
+            'Too many sign-in attempts. Try again at ' . self::statedMinute($retryAfter)->format('H:i') . '.',
             [],
             null,
             ['Retry-After' => (string) self::secondsUntil($retryAfter)],
         );
+    }
+
+    /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. */
+    private static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
+    {
+        $lifts = $windowEnd->getTimestamp() + 1;
+
+        return $windowEnd->setTimestamp(Math\div($lifts + 59, 60) * 60);
     }
 
     /** One past the window's end: a fixed window still counts its hits at the end second itself. */

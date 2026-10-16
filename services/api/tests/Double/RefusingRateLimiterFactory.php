@@ -22,12 +22,23 @@ use Symfony\Component\RateLimiter\Reservation;
  */
 final readonly class RefusingRateLimiterFactory implements RateLimiterFactoryInterface
 {
+    /** @param ?DateTimeImmutable $retryAfter when the window ends; an hour from the refusal when null */
+    public function __construct(
+        private ?DateTimeImmutable $retryAfter = null,
+    ) {
+    }
+
     public function create(?string $key = null): LimiterInterface
     {
-        return new class implements LimiterInterface {
+        return new readonly class($this->retryAfter) implements LimiterInterface {
+            public function __construct(
+                private ?DateTimeImmutable $retryAfter,
+            ) {
+            }
+
             public function consume(int $tokens = 1): RateLimit
             {
-                return new RateLimit(0, new DateTimeImmutable('+1 hour'), false, 10);
+                return new RateLimit(0, $this->retryAfter ?? new DateTimeImmutable('+1 hour'), false, 10);
             }
 
             public function reserve(int $tokens = 1, ?float $maxTime = null): Reservation

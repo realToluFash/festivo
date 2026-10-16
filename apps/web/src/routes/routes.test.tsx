@@ -107,12 +107,21 @@ describe('the application tree', () => {
     at('/app');
 
     await waitFor(() =>
-      expect(screen.getByRole('alert').textContent).toMatch(/Soirely cannot be reached/),
+      expect(screen.getByRole('heading', { level: 1, name: 'Cannot reach Soirely' })).toBeDefined(),
     );
-    expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/);
+    expect(screen.getByRole('status').textContent).toMatch(/You are still signed in/);
     expect(screen.queryByRole('heading', { level: 1, name: 'Sign in' })).toBeNull();
+    expect(screen.queryByLabelText('Email')).toBeNull();
 
-    fetch.mockResolvedValue(
+    let answer: (response: Response) => void = () => {};
+    fetch.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const trying = await screen.findByRole('button', { name: 'Trying again…' });
+    expect(trying.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('heading', { level: 1, name: 'Cannot reach Soirely' })).toBeDefined();
+
+    answer(
       new Response(
         JSON.stringify({
           id: 'acc_1',
@@ -128,7 +137,6 @@ describe('the application tree', () => {
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
 
     await waitFor(() => expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined());
   });
