@@ -523,6 +523,83 @@ describe('a browser never holds the refresh token', () => {
     expect(tokens.saved).toBeNull();
   });
 
+  test("lists the caller's organisations with their role in each", async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            organisations: [
+              {
+                id: 'org_1',
+                name: 'Ìrè Events',
+                countryCode: 'NG',
+                currency: 'NGN',
+                timezone: 'Africa/Lagos',
+                contactAddress: 'hello@ire.events',
+                role: { id: 'role_1', seededAs: 'owner', name: null },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    });
+
+    const [first] = await client.organisations();
+
+    expect(first?.name).toBe('Ìrè Events');
+    expect(first?.role.seededAs).toBe('owner');
+  });
+
+  test('an organisation list in a shape it does not know is an error, not an empty list', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        new Response(JSON.stringify({ organisations: [{ id: 'org_1' }] }), { status: 200 }),
+    });
+
+    await expect(client.organisations()).rejects.toThrow(/OrganisationController/);
+  });
+
+  test('an organisation is edited with only the fields that changed', async () => {
+    let sent: { method: string | undefined; path: string; body: unknown } | null = null;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async (input, init) => {
+        sent = {
+          method: init?.method,
+          path: new URL(String(input)).pathname,
+          body: JSON.parse(String(init?.body)),
+        };
+
+        return new Response(
+          JSON.stringify({
+            id: 'org_1',
+            name: 'Ìrè Events Ltd',
+            countryCode: 'NG',
+            currency: 'NGN',
+            timezone: 'Africa/Lagos',
+            contactAddress: 'hello@ire.events',
+          }),
+          { status: 200 },
+        );
+      },
+    });
+
+    const saved = await client.updateOrganisation('org_1', { name: 'Ìrè Events Ltd' });
+
+    expect(sent).toEqual({
+      method: 'PATCH',
+      path: '/api/orgs/org_1',
+      body: { name: 'Ìrè Events Ltd' },
+    });
+    expect(saved.name).toBe('Ìrè Events Ltd');
+  });
+
   test('signing out clears the session even when the request fails', async () => {
     const tokens = store('good', null);
 
