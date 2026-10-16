@@ -20,6 +20,7 @@ enum ErrorCode: string
     case InvalidCredentials = 'invalid_credentials';
     case InvalidRefreshToken = 'invalid_refresh_token';
     case Forbidden = 'forbidden';
+    case PermissionRequired = 'permission_required';
     case TooManyRequests = 'too_many_requests';
     case TooManyAttempts = 'too_many_attempts';
 
@@ -44,7 +45,7 @@ enum ErrorCode: string
             self::Conflict, self::EmailTaken => 409,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken => 401,
-            self::Forbidden => 403,
+            self::Forbidden, self::PermissionRequired => 403,
             self::TooManyRequests, self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
             self::VerificationCodeExhausted => 422,

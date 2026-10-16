@@ -8,6 +8,7 @@ use App\Domain\User\Http\AccountSerialiser;
 use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
 use App\Repository\RefreshTokenRepository;
 use DateTimeImmutable;
@@ -19,6 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
+#[Authenticated]
 final class AccountController
 {
     public function __construct(

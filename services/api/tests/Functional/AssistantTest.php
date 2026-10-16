@@ -7,10 +7,12 @@ namespace App\Tests\Functional;
 use App\AI\Interfaces\AssistantInterface;
 use App\AI\Model\Answer;
 use App\AI\Model\Ask;
+use App\Domain\User\UserRegistrar;
 use App\Entity\AssistantInteraction;
 use App\Enum\ErrorCode;
 use App\Tests\ApiTestCase;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -28,10 +30,32 @@ final class AssistantTest extends ApiTestCase
 {
     private EntityManagerInterface $em;
 
+    /** @mago-expect lint:no-literal-password */
+    private const string PASSWORD = 'a decent passphrase';
+
+    /** The assistant needs an account, so every request here carries one. */
     protected function setUp(): void
     {
         parent::setUp();
         $this->em = self::service(EntityManagerInterface::class);
+
+        $user = self::service(UserRegistrar::class)->register('assistant@example.com', 'Asks', self::PASSWORD)->user;
+        $this->em->flush();
+
+        $this->client->setServerParameter(
+            'HTTP_AUTHORIZATION',
+            'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($user),
+        );
+    }
+
+    #[Test]
+    public function itNeedsAnAccount(): void
+    {
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $this->chat(['context' => 'organiser', 'messages' => [['role' => 'user', 'content' => 'Hello']]]);
+
+        self::assertResponseStatusCodeSame(401);
+        self::assertSame(0, $this->interactionCount(), 'nothing reached the assistant');
     }
 
     #[Test]

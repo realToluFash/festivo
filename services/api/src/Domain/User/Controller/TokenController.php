@@ -9,6 +9,7 @@ use App\Domain\User\TokenIssuer;
 use App\Entity\RefreshToken;
 use App\Enum\ErrorCode;
 use App\Enum\RefreshTokenDelivery;
+use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Http\RefreshTokenCookies;
@@ -23,6 +24,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[PublicAccess]
 final class TokenController
 {
     public function __construct(

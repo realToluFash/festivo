@@ -45,6 +45,7 @@ final readonly class JsonExceptionListener
             $e->getMessage(),
             $violations,
             $e instanceof ApiException ? $e->headers : [],
+            $e instanceof ApiException ? $e->members : [],
         );
 
         $event->setResponse($response);

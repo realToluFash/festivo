@@ -32,36 +32,8 @@ security:
             provider: users
             jwt: ~
 
-    access_control:
-        # Public, and each one named rather than covered by a prefix. A pattern
-        # like ^/api/auth would make the next endpoint added under it public by
-        # default, which is the wrong direction for a mistake to fall.
-        - { path: ^/api/auth/register$, roles: PUBLIC_ACCESS }
-        # Sign-in and refresh are how somebody gets a token, so they cannot
-        # require one. Logout is public too: it takes the refresh token in the
-        # body, and refusing it on an expired access token would leave a
-        # session nobody can end.
-        - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth/refresh$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth/logout$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/health$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/docs, roles: PUBLIC_ACCESS }
-        - { path: ^/api/\.well-known, roles: PUBLIC_ACCESS }
-        - { path: ^/api/errors, roles: PUBLIC_ACCESS }
-        - { path: ^/api/validation_errors, roles: PUBLIC_ACCESS }
-
-        # Everything the product has built so far, which predates accounts and
-        # is left reachable deliberately rather than by omission. sc-64 is the
-        # story that makes a route declare its own policy and refuses to
-        # register one that does not — at which point this block goes and the
-        # default below becomes the only answer.
-        - { path: ^/api/assistant, roles: PUBLIC_ACCESS }
-        - { path: ^/api/addresses, roles: PUBLIC_ACCESS }
-        - { path: ^/api$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/$, roles: PUBLIC_ACCESS }
-
-        # The default. Anything not named above needs an account.
-        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+    # No access_control: every route declares its own policy on its controller,
+    # and a route without one does not load. See docs/architecture/access-control.md.
 
 when@test:
     security:

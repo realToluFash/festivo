@@ -10,6 +10,7 @@ use App\Domain\User\Http\IssuedTokensResponse;
 use App\Domain\User\UserAuthenticator;
 use App\Enum\ErrorCode;
 use App\Enum\RefreshTokenDelivery;
+use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
@@ -18,6 +19,7 @@ use Symfony\Component\RateLimiter\RateLimit;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[PublicAccess]
 final class SignInController
 {
     public function __construct(

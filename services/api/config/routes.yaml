@@ -9,3 +9,8 @@
 
 controllers:
     resource: routing.controllers
+
+when@test:
+    access_fixtures:
+        resource: ../tests/Fixtures/Access/
+        type: attribute

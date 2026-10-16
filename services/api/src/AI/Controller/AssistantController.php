@@ -16,6 +16,7 @@ use App\AI\Model\Turn;
 use App\AI\SystemPrompt;
 use App\Enum\AssistantContext;
 use App\Enum\ErrorCode;
+use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,6 +29,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[Authenticated]
 final class AssistantController
 {
     private const FORBIDDEN = ['system', 'systemPrompt', 'system_prompt', 'instructions'];

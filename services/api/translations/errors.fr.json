@@ -10,6 +10,7 @@
     "invalid_credentials": "Cette adresse e-mail et ce mot de passe ne correspondent pas.",
     "invalid_refresh_token": "Votre session a expiré. Veuillez vous reconnecter.",
     "forbidden": "Vous n'avez pas l'autorisation de faire cela.",
+    "permission_required": "Votre rôle n'inclut pas l'autorisation nécessaire.",
     "too_many_requests": "Trop de tentatives. Veuillez patienter et réessayer.",
     "too_many_attempts": "Trop de tentatives. Veuillez patienter et réessayer.",
     "verification_code_invalid": "Ce code ne correspond pas.",
