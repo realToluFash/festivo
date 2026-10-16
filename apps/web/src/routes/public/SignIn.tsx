@@ -11,6 +11,7 @@ import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
 import { adoptAccount, landingFor } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { emailMessage, useFormChecks } from '../../formChecks.ts';
 
 type Status =
   | { kind: 'ready' }
@@ -29,6 +30,12 @@ export function SignIn() {
     params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' },
   );
   const form = useRef<HTMLFormElement>(null);
+  const checks = useFormChecks(
+    ['email', 'password'] as const,
+    (field, value) =>
+      field === 'email' ? emailMessage(value, t) : value === '' ? t('signIn.passwordBlank') : null,
+    (field) => document.getElementById(field)?.focus(),
+  );
 
   const busy = status.kind === 'signingIn';
   const locked = status.kind === 'rateLimited';
@@ -54,14 +61,17 @@ export function SignIn() {
     event.preventDefault();
 
     const typed = new FormData(event.currentTarget);
+    const values = {
+      email: String(typed.get('email') ?? '').trim(),
+      password: String(typed.get('password') ?? ''),
+    };
+
+    if (!checks.passes(values)) return;
 
     setStatus({ kind: 'signingIn' });
 
     try {
-      const { account } = await api.signIn(
-        String(typed.get('email') ?? ''),
-        String(typed.get('password') ?? ''),
-      );
+      const { account } = await api.signIn(values.email, values.password);
 
       await adoptAccount(account);
 
@@ -125,11 +135,11 @@ export function SignIn() {
         </div>
       )}
 
-      <form ref={form} className="auth-form" onSubmit={(event) => void submit(event)}>
+      <form ref={form} className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
         <div className="field">
           <label htmlFor="email">{t('signIn.email')}</label>
           <input
-            className="input"
+            className={checks.errors.email == null ? 'input' : 'input input-wrong'}
             id="email"
             name="email"
             type="email"
@@ -138,7 +148,14 @@ export function SignIn() {
             spellCheck={false}
             disabled={busy}
             required
+            aria-invalid={checks.errors.email != null}
+            aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
+            onBlur={(event) => checks.left('email', event.target.value)}
+            onChange={(event) => checks.edited('email', event.target.value)}
           />
+          {checks.errors.email != null && (
+            <FieldError id="email-error" message={checks.errors.email} />
+          )}
         </div>
 
         <div className="field">
@@ -148,16 +165,26 @@ export function SignIn() {
           <PasswordField
             id="password"
             autoComplete="current-password"
-            wrong={status.kind === 'refused'}
+            wrong={status.kind === 'refused' || checks.errors.password != null}
             disabled={busy}
             submitting={busy}
-            describedBy={status.kind === 'refused' ? 'password-error' : undefined}
+            describedBy={
+              status.kind === 'refused' || checks.errors.password != null
+                ? 'password-error'
+                : undefined
+            }
+            onBlur={(value) => checks.left('password', value)}
+            onChange={(value) => checks.edited('password', value)}
           />
 
           {/* One message for a wrong address and a wrong password, because
                   two messages answer "is this address registered". */}
-          {status.kind === 'refused' && (
-            <FieldError id="password-error" message={t('signIn.refused')} />
+          {checks.errors.password != null ? (
+            <FieldError id="password-error" message={checks.errors.password} />
+          ) : (
+            status.kind === 'refused' && (
+              <FieldError id="password-error" message={t('signIn.refused')} />
+            )
           )}
         </div>
 

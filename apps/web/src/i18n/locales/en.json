@@ -85,7 +85,8 @@
     "failedTitle": "Signing in did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "newHere": "New here?",
-    "createAccount": "Create an account"
+    "createAccount": "Create an account",
+    "passwordBlank": "Enter your password."
   },
   "register": {
     "title": "Create your account",
@@ -108,7 +109,9 @@
     "limitedBody": "Try again at {{time}}.",
     "haveAccount": "Already have an account?",
     "failedTitle": "Creating your account did not work",
-    "failedBody": "Something went wrong on the way. Try again in a moment."
+    "failedBody": "Something went wrong on the way. Try again in a moment.",
+    "nameBlank": "Enter your full name.",
+    "passwordBlank": "Enter a password."
   },
   "account": {
     "title": "Your account"
@@ -167,7 +170,9 @@
     "continue": "Continue",
     "failedTitle": "That did not work",
     "failedBody": "Something went wrong on the way. Try again in a moment.",
-    "stepsLabel": "Before you start"
+    "stepsLabel": "Before you start",
+    "codeBlank": "Enter the 6-digit code from the email.",
+    "codeShort": "The code is 6 digits."
   },
   "verifyPhone": {
     "title": "Check your messages",
@@ -273,5 +278,9 @@
     "signOut": "Sign out",
     "optional": "Optional",
     "mobileHelp": "How you are reached on the night if something goes wrong. If you add one, we text it a code to check it."
+  },
+  "forms": {
+    "emailBlank": "Enter your email address.",
+    "emailShape": "That doesn't look like an email address. Check it has an @ and a domain."
   }
 }

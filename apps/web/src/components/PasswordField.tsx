@@ -12,6 +12,7 @@ export function PasswordField({
   value,
   inputRef,
   onChange,
+  onBlur,
 }: {
   id: string;
   autoComplete: 'current-password' | 'new-password';
@@ -22,6 +23,7 @@ export function PasswordField({
   value?: string;
   inputRef?: RefObject<HTMLInputElement | null>;
   onChange?: (typed: string) => void;
+  onBlur?: (typed: string) => void;
 }) {
   const { t } = useTranslation();
   const [revealed, setRevealed] = useState(false);
@@ -60,6 +62,7 @@ export function PasswordField({
         aria-invalid={wrong}
         aria-describedby={describedBy}
         onChange={onChange == null ? undefined : (event) => onChange(event.target.value)}
+        onBlur={onBlur == null ? undefined : (event) => onBlur(event.target.value)}
       />
       <button
         type="button"
