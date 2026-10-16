@@ -7,8 +7,8 @@
       "tokenExpiry": 3600,
       "requestMappings": [
         {
-          "requestParam": "scope",
-          "match": ".*",
+          "requestParam": "client_id",
+          "match": "*",
           "claims": {
             "sub": "google-dev-subject-0001",
             "email": "organiser@example.com",
@@ -25,8 +25,8 @@
       "tokenExpiry": 3600,
       "requestMappings": [
         {
-          "requestParam": "scope",
-          "match": ".*",
+          "requestParam": "client_id",
+          "match": "*",
           "claims": {
             "sub": "apple-dev-subject-0001",
             "email": "organiser@privaterelay.example.com",
