@@ -20,7 +20,9 @@ use App\Tests\Fixtures\Access\FixtureTableRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Json;
 use Psl\Str;
+use Psl\Type;
 use Symfony\Component\Uid\Uuid;
 
 final class OrganisationTest extends ApiTestCase
@@ -75,7 +77,87 @@ final class OrganisationTest extends ApiTestCase
         self::assertSame(AccountOrigin::Invitation, $invited->getOrigin());
         self::assertSame(AccountOrigin::SelfRegistered, $selfRegistered->getOrigin());
 
-        self::assertSame([], self::service(MembershipRepository::class)->findActiveFor($invited));
+        $this->signIn($invited);
+        self::assertSame([], $this->list());
+    }
+
+    #[Test]
+    public function theListShowsEachOrganisationWithTheCallersRole(): void
+    {
+        $owner = $this->account('several@example.com');
+        $first = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $second = $this->found($owner, 'Okafor Family', 'GH', 'Africa/Accra');
+        $this->found($this->account('stranger@example.com'), 'Not Yours', 'PT', 'Europe/Lisbon');
+
+        $this->signIn($owner);
+        $listed = $this->list();
+
+        self::assertSame(
+            [$first->getId()->toRfc4122(), $second->getId()->toRfc4122()],
+            \array_column($listed, 'id'),
+            'both of the caller\'s, oldest first, and nobody else\'s',
+        );
+        self::assertSame('owner', Type\shape(['seededAs' => Type\string()], true)->coerce($listed[1]['role'])['seededAs']);
+        self::assertSame('GHS', $listed[1]['currency']);
+    }
+
+    #[Test]
+    public function theOwnerCanChangeAnyFieldAndTheRestStay(): void
+    {
+        $owner = $this->account('edits@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        $body = $this->patch($organisation, ['name' => 'Ìrè Events Ltd', 'currency' => 'usd']);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame('Ìrè Events Ltd', $body['name']);
+        self::assertSame('USD', $body['currency']);
+        self::assertSame('NG', $body['countryCode'], 'a field left out keeps its value');
+        self::assertSame('Africa/Lagos', $body['timezone']);
+    }
+
+    #[Test]
+    public function anEditIsRefusedAgainstTheFieldsItGotWrong(): void
+    {
+        $owner = $this->account('wrong-edit@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        $body = $this->patch($organisation, ['name' => ' ', 'contactAddress' => 'hello at ire']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(
+            ['name', 'contactAddress'],
+            \array_column(Type\vec(Type\dict(Type\string(), Type\string()))->coerce($body['violations']), 'propertyPath'),
+        );
+    }
+
+    #[Test]
+    public function aNameIsTrimmedAndHeldToOneHundredCharacters(): void
+    {
+        $owner = $this->account('long-name@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        $body = $this->patch($organisation, ['name' => '  ' . Str\repeat('é', 100) . '  ']);
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(Str\repeat('é', 100), $body['name']);
+
+        $this->patch($organisation, ['name' => Str\repeat('é', 101)]);
+        self::assertResponseStatusCodeSame(422);
+    }
+
+    /** The access layer's 404, not 403: somebody outside is not told the organisation exists. */
+    #[Test]
+    public function somebodyOutsideTheOrganisationCannotEditIt(): void
+    {
+        $organisation = $this->found($this->account('owns-it@example.com'), 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($this->account('outsider@example.com'));
+
+        $this->patch($organisation, ['name' => 'Taken over']);
+
+        self::assertResponseStatusCodeSame(404);
     }
 
     #[Test]
@@ -128,5 +210,32 @@ final class OrganisationTest extends ApiTestCase
             'HTTP_AUTHORIZATION',
             'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($user),
         );
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function list(): array
+    {
+        $this->client->request('GET', '/api/orgs');
+        self::assertResponseStatusCodeSame(200);
+
+        return Type\shape(['organisations' => Type\vec(Type\dict(Type\string(), Type\mixed()))])
+            ->coerce(Json\decode((string) $this->client->getResponse()->getContent()))['organisations'];
+    }
+
+    /**
+     * @param array<string, string> $fields
+     *
+     * @return array<string, mixed>
+     */
+    private function patch(Organisation $organisation, array $fields): array
+    {
+        $this->client->request(
+            'PATCH',
+            '/api/orgs/' . $organisation->getId()->toRfc4122(),
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: Json\encode($fields),
+        );
+
+        return Type\dict(Type\string(), Type\mixed())->coerce(Json\decode((string) $this->client->getResponse()->getContent()));
     }
 }
