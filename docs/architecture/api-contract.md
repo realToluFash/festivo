@@ -98,6 +98,24 @@ resends and tries for one address take its row lock, so requests sent at once ar
 in turn: one resend sends a code and the rest get its cooldown, and the fifth wrong try is
 the fifth however many arrive together.
 
+## Verifying a phone
+
+`PUT /api/auth/phone` sets the primary phone from a country and a number typed any way;
+it is stored in E.164 with the country beside it, and a new number is texted a code at
+once. `POST /api/auth/verify/phone` takes the code, and `GET`/`POST
+/api/auth/verify/phone/resend` read and spend the cooldown. **The limits are the email
+table's, from the same code** (`ContactVerifier`, `VerificationCodeResender`,
+`ResendCooldown`), not a second set.
+
+- A number already verified on another account is `409 phone_taken`, and the current
+  number is untouched. One that another account never verified is released to whoever
+  sets it.
+- A changed number is a new row, unverified, and the old row goes at once. A number that
+  is already one of the account's alternatives is promoted and keeps its verification. The
+  same number again changes nothing and sends nothing.
+- A number refused for its shape is `422` against `number`, naming the country: required,
+  too short, too long, or not a number there.
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.

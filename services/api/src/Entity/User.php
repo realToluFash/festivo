@@ -164,6 +164,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
     }
 
+    public function removePhoneNumber(PhoneNumber $phoneNumber): void
+    {
+        $this->phoneNumbers->removeElement($phoneNumber);
+    }
+
     public function getPrimaryPhoneNumber(): ?PhoneNumber
     {
         foreach ($this->phoneNumbers as $phoneNumber) {

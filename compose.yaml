@@ -90,6 +90,10 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       MAILER_DSN: ${MAILER_DSN:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-Soirely <no-reply@soirely.com>}
+      SMS_API_BASE: ${SMS_API_BASE:-http://smocker:8080}
+      SMS_ACCOUNT_SID: ${SMS_ACCOUNT_SID:-ACdevelopment00000000000000000000}
+      SMS_AUTH_TOKEN: ${SMS_AUTH_TOKEN:-development-token}
+      SMS_FROM: ${SMS_FROM:-+447700900999}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis

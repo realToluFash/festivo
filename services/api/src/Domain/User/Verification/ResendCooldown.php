@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Verification;
 
-use App\Entity\EmailAddress;
+use App\Entity\VerifiableContact;
 use App\Entity\VerificationChallenge;
 use App\Repository\VerificationChallengeRepository;
 use DateTimeImmutable;
@@ -18,13 +18,13 @@ final readonly class ResendCooldown
     ) {
     }
 
-    public function secondsLeftFor(EmailAddress $address): int
+    public function secondsLeftFor(VerifiableContact $contact): int
     {
-        if ($address->isVerified()) {
+        if ($contact->isVerified()) {
             return 0;
         }
 
-        $newest = $this->verificationChallengeRepository->findNewestFor($address);
+        $newest = $this->verificationChallengeRepository->findNewestFor($contact);
 
         if (null === $newest) {
             return 0;

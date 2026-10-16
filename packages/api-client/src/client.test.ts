@@ -600,6 +600,48 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.name).toBe('Ìrè Events Ltd');
   });
 
+  test('setting a phone sends the country and the number as typed, and says a code went out', async () => {
+    let sent: { method?: string | undefined; path: string; body: unknown } | null = null;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async (input, init) => {
+        sent = {
+          method: init?.method,
+          path: new URL(String(input)).pathname,
+          body: JSON.parse(String(init?.body)),
+        };
+
+        return new Response(
+          JSON.stringify({
+            phone: {
+              id: 'p1',
+              number: '+2348035550142',
+              countryCode: 'NG',
+              verified: false,
+              primary: true,
+            },
+            verificationNeeded: true,
+            cooldownSeconds: 60,
+          }),
+          { status: 200 },
+        );
+      },
+    });
+
+    const result = await client.setPhone('NG', '0803 555 0142');
+
+    expect(sent).toEqual({
+      method: 'PUT',
+      path: '/api/auth/phone',
+      body: { countryCode: 'NG', number: '0803 555 0142' },
+    });
+    expect(result.phone?.number).toBe('+2348035550142');
+    expect(result.verificationNeeded).toBe(true);
+    expect(result.cooldownSeconds).toBe(60);
+  });
+
   test('signing out clears the session even when the request fails', async () => {
     const tokens = store('good', null);
 

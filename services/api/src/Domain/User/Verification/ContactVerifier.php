@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Verification;
 
-use App\Entity\EmailAddress;
+use App\Entity\VerifiableContact;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
@@ -14,7 +14,8 @@ use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Str;
 
-final readonly class EmailAddressVerifier
+/** An email address or a phone, proved by its code: one set of rules, so neither drifts from the other. */
+final readonly class ContactVerifier
 {
     public function __construct(
         private VerificationChallengeRepository $verificationChallengeRepository,
@@ -23,13 +24,13 @@ final readonly class EmailAddressVerifier
     }
 
     /** The refusal, or null. Re-read under the row lock, so a waiting request sees what the first committed. */
-    public function attempt(EmailAddress $address, string $code): ?ApiException
+    public function attempt(VerifiableContact $contact, string $code): ?ApiException
     {
-        return $this->entityManager->wrapInTransaction(function () use ($address, $code): ?ApiException {
-            $this->entityManager->refresh($address, LockMode::PESSIMISTIC_WRITE);
+        return $this->entityManager->wrapInTransaction(function () use ($contact, $code): ?ApiException {
+            $this->entityManager->refresh($contact, LockMode::PESSIMISTIC_WRITE);
 
             try {
-                $this->verify($address, $code);
+                $this->verify($contact, $code);
                 $this->entityManager->flush();
             } catch (ApiException $e) {
                 return $e;
@@ -39,13 +40,13 @@ final readonly class EmailAddressVerifier
         });
     }
 
-    public function verify(EmailAddress $address, string $code): void
+    public function verify(VerifiableContact $contact, string $code): void
     {
-        if ($address->isVerified()) {
+        if ($contact->isVerified()) {
             return;
         }
 
-        $challenge = $this->verificationChallengeRepository->findLiveFor($address);
+        $challenge = $this->verificationChallengeRepository->findLiveFor($contact);
 
         if (null === $challenge || '' === Str\trim($code)) {
             throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
@@ -64,7 +65,7 @@ final readonly class EmailAddressVerifier
             $this->refuse($challenge);
         }
 
-        $address->setVerifiedAt(new DateTimeImmutable());
+        $contact->setVerifiedAt(new DateTimeImmutable());
         $challenge->setRevokedAt(new DateTimeImmutable());
     }
 

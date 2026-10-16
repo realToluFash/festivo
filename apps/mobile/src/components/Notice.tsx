@@ -14,7 +14,7 @@ export function Notice({
 }: {
   tone: NoticeTone;
   mark: string;
-  title: string;
+  title?: string;
   body: string;
   /** The notice is the screen's message, so its title is the screen's heading. */
   heading?: boolean;
@@ -37,14 +37,16 @@ export function Notice({
         </Text>
       </View>
       <View style={styles.body}>
-        <Text
-          size={heading ? tokens.typeTitleDialog.size : tokens.typeRowTitle.size}
-          weight="bold"
-          style={tone === 'quiet' ? undefined : ink}
-          accessibilityRole={heading ? 'header' : undefined}
-        >
-          {title}
-        </Text>
+        {title != null && (
+          <Text
+            size={heading ? tokens.typeTitleDialog.size : tokens.typeRowTitle.size}
+            weight="bold"
+            style={tone === 'quiet' ? undefined : ink}
+            accessibilityRole={heading ? 'header' : undefined}
+          >
+            {title}
+          </Text>
+        )}
         <Text size={tokens.typeBodyPhone.size}>{body}</Text>
       </View>
     </View>

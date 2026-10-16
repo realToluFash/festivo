@@ -14,6 +14,7 @@ enum ErrorCode: string
     case NotFound = 'not_found';
     case Conflict = 'conflict';
     case EmailTaken = 'email_taken';
+    case PhoneTaken = 'phone_taken';
     case UnsupportedMediaType = 'unsupported_media_type';
 
     case Unauthenticated = 'unauthenticated';
@@ -42,7 +43,7 @@ enum ErrorCode: string
             self::ValidationFailed => 422,
             self::MethodNotAllowed => 405,
             self::NotFound => 404,
-            self::Conflict, self::EmailTaken => 409,
+            self::Conflict, self::EmailTaken, self::PhoneTaken => 409,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken => 401,
             self::Forbidden, self::PermissionRequired => 403,

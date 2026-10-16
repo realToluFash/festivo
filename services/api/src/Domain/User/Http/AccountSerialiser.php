@@ -31,6 +31,7 @@ final readonly class AccountSerialiser
             'phoneNumbers' => Vec\map($user->getPhoneNumbers(), static fn (PhoneNumber $phone): array => [
                 'id' => $phone->getId()->toRfc4122(),
                 'number' => $phone->getNumber(),
+                'countryCode' => $phone->getCountryCode(),
                 'verified' => $phone->isVerified(),
                 'primary' => $phone->isPrimary(),
             ]),

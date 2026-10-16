@@ -16,7 +16,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\UniqueConstraint(name: 'uniq_phone_number', columns: ['number'])]
 #[ORM\Index(name: 'idx_phone_number_user', columns: ['user_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_primary_phone_per_user', columns: ['user_id'], options: ['where' => 'is_primary'])]
-class PhoneNumber
+class PhoneNumber implements VerifiableContact
 {
     use Timestampable;
 
@@ -28,8 +28,13 @@ class PhoneNumber
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $user;
 
+    /** E.164, so the same number typed three ways is one row. */
     #[ORM\Column(type: Types::STRING, length: 32)]
     private string $number;
+
+    /** The country it was entered for, which a number's own prefix does not always settle (+1 is several). */
+    #[ORM\Column(type: Types::STRING, length: 2, nullable: true)]
+    private ?string $countryCode;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $verifiedAt = null;
@@ -37,11 +42,12 @@ class PhoneNumber
     #[ORM\Column(type: Types::BOOLEAN)]
     private bool $isPrimary;
 
-    public function __construct(User $user, string $number, bool $isPrimary = false)
+    public function __construct(User $user, string $number, bool $isPrimary = false, ?string $countryCode = null)
     {
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->number = $number;
+        $this->countryCode = $countryCode;
         $this->isPrimary = $isPrimary;
 
         $user->addPhoneNumber($this);
@@ -60,6 +66,11 @@ class PhoneNumber
     public function getNumber(): string
     {
         return $this->number;
+    }
+
+    public function getCountryCode(): ?string
+    {
+        return $this->countryCode;
     }
 
     public function getVerifiedAt(): ?DateTimeImmutable

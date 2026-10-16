@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
-use App\Domain\User\Verification\EmailAddressVerifier;
+use App\Domain\User\Verification\ContactVerifier;
 use App\Domain\User\Verification\ResendCooldown;
 use App\Domain\User\Verification\VerificationCodeMailer;
 use App\Domain\User\Verification\VerificationCodeResender;
@@ -26,7 +26,7 @@ final class VerificationController
 {
     public function __construct(
         private readonly Security $security,
-        private readonly EmailAddressVerifier $emailAddressVerifier,
+        private readonly ContactVerifier $contactVerifier,
         private readonly VerificationCodeResender $verificationCodeResender,
         private readonly VerificationCodeMailer $verificationCodeMailer,
         private readonly ResendCooldown $resendCooldown,
@@ -40,7 +40,7 @@ final class VerificationController
 
         $address = $this->address();
 
-        $refusal = $this->emailAddressVerifier->attempt($address, $body['code']);
+        $refusal = $this->contactVerifier->attempt($address, $body['code']);
 
         if (null !== $refusal) {
             throw $refusal;

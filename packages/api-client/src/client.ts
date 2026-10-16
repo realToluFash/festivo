@@ -37,7 +37,10 @@ export interface LinkedAddress {
 
 export interface LinkedPhone {
   id: string;
+  /** E.164. */
   number: string;
+  /** The country it was entered for; null for a number saved before that was recorded. */
+  countryCode: string | null;
   verified: boolean;
   primary: boolean;
 }
@@ -148,6 +151,10 @@ export class ApiClient {
     return this.request<T>(path, { ...init, method: 'POST', body });
   }
 
+  put<T>(path: string, body?: unknown, init?: Omit<RequestOptions, 'method'>): Promise<T> {
+    return this.request<T>(path, { ...init, method: 'PUT', body });
+  }
+
   patch<T>(path: string, body?: unknown, init?: Omit<RequestOptions, 'method'>): Promise<T> {
     return this.request<T>(path, { ...init, method: 'PATCH', body });
   }
@@ -175,6 +182,42 @@ export class ApiClient {
     }
 
     return account;
+  }
+
+  /** A new number is texted a code at once; the answer says whether one was, and how long until another. */
+  async setPhone(
+    countryCode: string,
+    number: string,
+  ): Promise<{ phone: LinkedPhone | null; verificationNeeded: boolean; cooldownSeconds: number }> {
+    const raw = await this.put<Record<string, unknown>>('/api/auth/phone', { countryCode, number });
+
+    return {
+      phone: raw.phone == null ? null : asLinkedPhone(raw.phone),
+      verificationNeeded: raw.verificationNeeded === true,
+      cooldownSeconds: typeof raw.cooldownSeconds === 'number' ? raw.cooldownSeconds : 0,
+    };
+  }
+
+  async verifyPhone(code: string): Promise<LinkedPhone> {
+    const phone = asLinkedPhone(await this.post<unknown>('/api/auth/verify/phone', { code }));
+
+    if (phone == null) {
+      throw new Error(
+        'The API answered /api/auth/verify/phone in a shape this client does not know. Check PhoneController in services/api.',
+      );
+    }
+
+    return phone;
+  }
+
+  async phoneCooldown(): Promise<number> {
+    return (await this.get<{ cooldownSeconds: number }>('/api/auth/verify/phone/resend'))
+      .cooldownSeconds;
+  }
+
+  async resendPhoneCode(): Promise<number> {
+    return (await this.post<{ cooldownSeconds: number }>('/api/auth/verify/phone/resend'))
+      .cooldownSeconds;
   }
 
   async verifyEmail(code: string): Promise<LinkedAddress> {
@@ -481,6 +524,7 @@ function asAccount(raw: unknown): Account | null {
     phoneNumbers.push({
       id: phone.id,
       number: phone.number,
+      countryCode: typeof phone.countryCode === 'string' ? phone.countryCode : null,
       verified: phone.verified === true,
       primary: phone.primary === true,
     });
@@ -530,6 +574,22 @@ function asMembership(raw: unknown): Membership | null {
       seededAs: typeof role.seededAs === 'string' ? role.seededAs : null,
       name: typeof role.name === 'string' ? role.name : null,
     },
+  };
+}
+
+function asLinkedPhone(raw: unknown): LinkedPhone | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const phone = raw as Record<string, unknown>;
+
+  if (typeof phone.id !== 'string' || typeof phone.number !== 'string') return null;
+
+  return {
+    id: phone.id,
+    number: phone.number,
+    countryCode: typeof phone.countryCode === 'string' ? phone.countryCode : null,
+    verified: phone.verified === true,
+    primary: phone.primary === true,
   };
 }
 

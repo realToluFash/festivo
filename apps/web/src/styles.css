@@ -1371,3 +1371,25 @@ h2 {
 .no-organisation p {
   margin: 0;
 }
+
+/* ── A phone number: its country code, then the number ───────────────────── */
+
+.field-help {
+  margin: 0;
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.phone-entry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+}
+
+.phone-country {
+  flex: 0 1 12rem;
+}
+
+.phone-number {
+  flex: 1 1 12rem;
+}

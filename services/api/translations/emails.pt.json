@@ -3,5 +3,6 @@
     "verification.heading": "Confirme o seu e-mail",
     "verification.body": "Introduza este código no Soirely para mostrar que o endereço é seu.",
     "verification.expiry": "Funciona durante {minutes} minutos e apenas uma vez.",
-    "verification.ignore": "Se não criou uma conta Soirely, nada acontece se ignorar esta mensagem."
+    "verification.ignore": "Se não criou uma conta Soirely, nada acontece se ignorar esta mensagem.",
+    "verification.text": "O seu código Soirely é {code}. É válido durante {minutes} minutos."
 }

@@ -85,6 +85,11 @@ export async function adoptAccount(account: Account): Promise<void> {
   set({ status: 'signedIn', session: sessionFrom(account, organisations) });
 }
 
+/** After a gate has been passed: the account read afresh. */
+export async function refreshAccount(): Promise<void> {
+  await askForAccount();
+}
+
 /** Remembered on this device, so the next visit opens where this one left off. */
 export function switchOrganisation(id: string): void {
   if (state.status !== 'signedIn') return;

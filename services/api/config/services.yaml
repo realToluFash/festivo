@@ -68,6 +68,15 @@ services:
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
 
+    # One adapter behind the port; in development it reaches the SMS mock.
+    App\Integrations\Twilio\TwilioTextMessageSender:
+        arguments:
+            $apiBase: '%env(SMS_API_BASE)%'
+            $accountSid: '%env(SMS_ACCOUNT_SID)%'
+            $authToken: '%env(SMS_AUTH_TOKEN)%'
+            $from: '%env(SMS_FROM)%'
+    App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Integrations\Twilio\TwilioTextMessageSender'
+
     # The assistant's adapter is chosen by ASSISTANT_PROVIDER rather than by a
     # line here, because a service id cannot be an environment variable and
     # pointing this at the local stand-in should not be a code change.
@@ -98,6 +107,11 @@ when@test:
         # "this password is in a breach" assertable at all: the real corpus is
         # somebody else's data and could answer differently tomorrow.
         App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Domain\User\Password\ScriptedBreachedPasswordChecker'
+
+        # No test sends a text; what would have been sent is kept for the test to read.
+        App\Domain\User\Verification\RecordingTextMessageSender:
+            public: true
+        App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Domain\User\Verification\RecordingTextMessageSender'
 
         # Re-declared in full, not merged: a `when@test` definition REPLACES the
         # autowired one, so every argument has to be named or it is lost. Pinned

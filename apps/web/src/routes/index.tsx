@@ -6,11 +6,13 @@ import { Dashboard } from './app/Dashboard.tsx';
 import { General } from './app/settings/General.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
+import { ChangePhone } from './public/ChangePhone.tsx';
 import { Home } from './public/Home.tsx';
 import { NotFound } from './public/NotFound.tsx';
 import { Register } from './public/Register.tsx';
 import { SignIn } from './public/SignIn.tsx';
 import { VerifyEmail } from './public/VerifyEmail.tsx';
+import { VerifyPhone } from './public/VerifyPhone.tsx';
 import { Status } from './public/Status.tsx';
 
 /**
@@ -34,6 +36,8 @@ export const routes = [
   { path: '/sign-in', element: <SignIn /> },
   { path: '/register', element: <Register /> },
   { path: '/verify-email', element: <VerifyEmail /> },
+  { path: '/verify-phone', element: <VerifyPhone /> },
+  { path: '/phone', element: <ChangePhone /> },
   { path: '/status', element: <Status /> },
   {
     path: '/app',
