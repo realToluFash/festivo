@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User;
 
 use App\Domain\User\Interfaces\BreachedPasswordCheckerInterface;
+use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\RegistrationResult;
 use App\Domain\User\Password\PasswordPolicy;
 use App\Domain\User\Password\PasswordResolver;
@@ -24,6 +25,7 @@ use Psl\Type;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use Throwable;
 
 final readonly class UserRegistrar
 {
@@ -122,45 +124,59 @@ final readonly class UserRegistrar
         if ([] !== $violations) {
             throw ApiException::validation($violations);
         }
-
-        // Every address, not only the primary one. Registering with somebody
-        // else's alternative address has to be refused with the same clean 409
-        // as registering with their primary one, rather than reaching the
-        // unique constraint.
-        if (null !== $this->emailAddressRepository->findOneByAddress($email)) {
-            throw new ApiException(ErrorCode::EmailTaken, 'That email address is already registered.');
-        }
     }
 
     private function persist(User $user, ?Request $request): RegistrationResult
     {
-        $this->entityManager->persist($user);
-        $tokens = $this->tokenIssuer->issueFor($user, $request);
-
         $address = $user->getPrimaryEmailAddress();
-        $code = null !== $address && !$address->isVerified()
-            ? $this->verificationCodeIssuer->issueFor($address)
-            : null;
 
         try {
-            $this->entityManager->flush();
+            $tokens = $this->entityManager->wrapInTransaction(function () use ($user, $address, $request): IssuedTokens {
+                if (null !== $address) {
+                    $this->releaseFromUnverifiedHolder($address->getAddress());
+                }
+
+                $this->entityManager->persist($user);
+                $tokens = $this->tokenIssuer->issueFor($user, $request);
+                $this->entityManager->flush();
+
+                return $tokens;
+            });
         } catch (UniqueConstraintViolationException $e) {
-            // The read in validate() cannot see a registration that lands
-            // between it and this write, so the constraint is the real guard
-            // and this turns it back into the same answer.
-            throw new ApiException(
-                ErrorCode::EmailTaken,
-                'That email address is already registered.',
-                [],
-                $e,
-            );
+            // A registration landing after the read above: the constraint is the real guard.
+            throw self::taken($e);
         }
 
-        if (null !== $address && null !== $code) {
+        if (null !== $address && !$address->isVerified()) {
+            $code = $this->verificationCodeIssuer->issueFor($address);
+            $this->entityManager->flush();
             $this->verificationCodeMailer->send($address, $code->code);
         }
 
         return new RegistrationResult($user, $tokens);
+    }
+
+    /** Any address counts, alternatives included; an account that never verified one owns nothing. */
+    private function releaseFromUnverifiedHolder(string $address): void
+    {
+        $held = $this->emailAddressRepository->findOneByAddress($address);
+
+        if (null === $held) {
+            return;
+        }
+
+        if ($held->getUser()->hasVerifiedEmailAddress()) {
+            throw self::taken();
+        }
+
+        // Flushed on its own: Doctrine inserts before it deletes, and the new row needs the address free.
+        $this->entityManager->remove($held->getUser());
+        $this->entityManager->flush();
+    }
+
+    private static function taken(?Throwable $previous = null): ApiException
+    {
+        return new ApiException(ErrorCode::EmailTaken, 'That email address is already registered.', [], $previous);
     }
 
     /**

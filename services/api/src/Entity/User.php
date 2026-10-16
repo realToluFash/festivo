@@ -42,11 +42,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $locale = null;
 
     /** @var Collection<int, EmailAddress> */
-    #[ORM\OneToMany(targetEntity: EmailAddress::class, mappedBy: 'user', cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: EmailAddress::class, mappedBy: 'user', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $emailAddresses;
 
     /** @var Collection<int, PhoneNumber> */
-    #[ORM\OneToMany(targetEntity: PhoneNumber::class, mappedBy: 'user', cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: PhoneNumber::class, mappedBy: 'user', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $phoneNumbers;
 
     public function __construct(string $name, ?string $passwordHash = null)
@@ -159,6 +159,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
 
         return null;
+    }
+
+    /** Whether this account ever proved it owns an address: one that never did can be released and deleted. */
+    public function hasVerifiedEmailAddress(): bool
+    {
+        foreach ($this->emailAddresses as $address) {
+            if ($address->isVerified()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
