@@ -116,9 +116,53 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "stepsLabel": "Antes de empezar"
   },
+  "verifyPhone": {
+    "title": "Revise sus mensajes",
+    "intro": "Hemos enviado un código por SMS a {{number}}.",
+    "codeLabel": "Código del SMS",
+    "submit": "Verificar número",
+    "submitting": "Verificando…",
+    "wrong": "Ese código no coincide. Revise el SMS más reciente de Soirely e inténtelo de nuevo.",
+    "codeBlank": "Introduzca el código de 6 dígitos del SMS.",
+    "codeShort": "El código tiene 6 dígitos.",
+    "resend": "Enviar un código nuevo",
+    "resendIn": "Enviar un código nuevo en {{time}}",
+    "resendNote": "Un código nuevo sustituye al anterior.",
+    "expiredTitle": "Ese código ha caducado",
+    "expiredBody": "Los códigos solo sirven durante un tiempo. Pida uno nuevo y use el del SMS más reciente.",
+    "exhaustedTitle": "Demasiados intentos fallidos",
+    "exhaustedBody": "Ese código ya no sirve. Pida uno nuevo para continuar.",
+    "failedTitle": "Eso no ha funcionado",
+    "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
+    "wrongNumber": "¿Número equivocado?",
+    "changeIt": "Cambiarlo",
+    "cantGetTexts": "¿No recibe SMS en este número?",
+    "carryOnWithout": "Continuar sin él",
+    "doneTitle": "Número verificado",
+    "doneBody": "Soirely puede contactarle en {{number}} si algo sale mal esa noche.",
+    "continue": "Continuar a Soirely",
+    "changeTitle": "Cambie su número de móvil",
+    "nowVerified": "Ahora: {{number}} · verificado",
+    "nowUnverified": "Ahora: {{number}} · aún sin verificar",
+    "changeNotice": "Su número actual deja de funcionar en Soirely en cuanto enviemos el SMS al nuevo.",
+    "countryLabel": "Prefijo",
+    "numberLabel": "Número de móvil",
+    "numberHelp": "El prefijo empieza en el país de su cuenta. Escriba el número como quiera.",
+    "numberBlank": "Indique su número de móvil.",
+    "tooShort": "Ese número parece demasiado corto para {{country}}. Revíselo e inténtelo de nuevo.",
+    "tooLong": "Ese número parece demasiado largo para {{country}}. Revíselo e inténtelo de nuevo.",
+    "taken": "Este número ya está verificado en otra cuenta de Soirely. Use otro número o conserve el actual.",
+    "send": "Enviar un código a este número",
+    "sending": "Enviando el código…",
+    "keep": "Conservar mi número actual"
+  },
   "session": {
     "unreachableTitle": "No se puede conectar con Soirely",
     "unreachableBody": "Su sesión sigue abierta. Soirely no responde, así que todavía no se puede cargar nada. Compruebe su conexión y vuelva a intentarlo.",
     "retrying": "Intentándolo de nuevo…"
+  },
+  "countryPicker": {
+    "search": "Buscar países",
+    "close": "Listo"
   }
 }
