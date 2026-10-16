@@ -102,6 +102,20 @@ Take exact values from `docs/design/tokens.mjs`.
   that say what happens, never "Submit" or "OK".
 - **Every card ends with a next step** — a next-up line or a footer action.
 
+### Forms check before they send
+
+A form never sends a request it already knows will be refused. Draw this for **every** form, as its own state (`blank`, and `invalid_<field>` where a format check applies):
+
+- Required fields carry no mark; optional ones carry an "Optional" pill.
+- The primary button stays **enabled**. A disabled button cannot say what is missing; a pressed one can.
+- Pressing it with a required field empty, or in a shape the client can check for certain, **sends nothing**. Each failing field gets the red border and its own message under it ("Enter your email address."), `aria-invalid` and `aria-describedby`, and focus moves to the first failing field.
+- A message clears as soon as the field becomes valid. After the first press, fields re-check as the person leaves them.
+- Check on the client only what is certain there: empty, an email's shape, a length or digit count the AC states, a number inside its stated limits, a date that must be in the future. Never what only the server knows (taken, breached, wrong password); those stay the server's refusals.
+- The server still checks everything. A field error it returns uses the same words in the same place.
+- **It must work in Play, not only as a Tweak state.** Each input records what is typed, and the primary button runs the check: clear a field, press the button, and the error appears with focus on the field; type, and it clears. A Tweak state shows the look; it does not show the behaviour, and a reviewer testing the artboard will find a form that does nothing.
+
+**If the story's AC does not say which fields are required, or what counts as valid, ask PM on that story** (`[pm] (from ux)`, per `role-comments`) with your proposed list. Draw your proposal meanwhile and say so in the Design section.
+
 ### Mechanics that fail silently if you get them wrong
 
 - Keep `<script src="./support.js"></script>` in the head exactly as the type's skeleton

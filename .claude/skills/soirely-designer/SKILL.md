@@ -1,6 +1,6 @@
 ---
 name: soirely-designer
-description: Design mode. Audits which of an epic's stories already have screens, draws the missing ones in the established design language as one artifact per epic, and links each story to the artboard that covers it — a proposal for review, never presented as the design. Use when asked to design a screen, to check what an epic's stories are missing, or when invoked as /soirely-designer.
+description: Design mode. Sweeps the backlog every run for stories that need design, audits which of an epic's stories already have screens, draws the missing ones in the established design language as one artifact per epic, and links each story to the artboard that covers it — a proposal for review, never presented as the design. Use when asked to design a screen, to check what an epic's stories are missing, or when invoked as /soirely-designer.
 user-invocable: true
 ---
 
@@ -36,7 +36,31 @@ copies of it.
 ## 2. Pick the work
 
 **Start with your inbox**: the `role-comments` routine, for comments tagged `[ux]` and
-replies to the ones you asked. Resolve those, then pick the work below.
+replies to the ones you asked. Resolve those, then sweep the backlog, then pick the work
+below.
+
+### Sweep the backlog, every run
+
+Nobody files a ticket for "this needs a screen", so a story that needs you rarely says so in
+your inbox. Every run, after the inbox, look through the stories that are not done
+(`stories-search`, `isDone: false`, newest first, every epic) and pick out the ones that
+need design:
+
+- a story with a screen in its AC and **no Design section**, or one that says "Not drawn"
+  or names no artboard;
+- a Design section that is **behind its AC**: a state, a field, a refusal or a layout the
+  AC now asks for that no artboard draws, often after a PM decision dated later than the
+  drawing;
+- a form whose AC does not say **which fields are required** or what counts as valid;
+- a story in `Failed QA` whose report blames a screen against the artboards.
+
+Draw what each one needs, in its epic's artifact, and write its Design section. Where the
+AC leaves the answer undecided, ask `[pm]` on that story with your proposal and draw the
+proposal meanwhile. A signed-off story is out of scope unless its AC moved after the
+sign-off.
+
+Report what the sweep found as its own list: the stories drawn, the questions asked, and
+the stories looked at and left alone. A sweep that found nothing says so in one line.
 
 `/soirely-designer sc-56` draws what that story needs. `/soirely-designer 27` takes an
 epic. With no argument:
@@ -65,7 +89,8 @@ several stories.
 For "partly", say which part is missing. For "not at all", say so plainly. There are 21
 artboards and far more stories, so expect gaps — the table is the useful part.
 
-**Report it and wait for a go-ahead before building.**
+**Report it and wait for a go-ahead before building.** That stop is for taking on a whole
+epic. A story the backlog sweep turned up, and a request from PM, are drawn without one.
 
 ## 4. Never draw data the product does not have
 
@@ -104,9 +129,15 @@ know is a count you have no way to know.
 **One artifact for the whole epic**, not one per story. Inside it, one artboard per screen,
 named for what it is — `SignIn.dc.html`, `VerifyEmail-Phone.dc.html`.
 
-Epic 27's artifact already exists: **https://claude.ai/artifact/Y5GEeEUCtzd38NPaLRt48t**.
-Update it with `Artifact` using **`url` + `root` + `files`**. Do **not** create from
-`type_url` again — that makes a second artifact, and the stories link to the first.
+Three artifacts already exist, and every story they cover links to its own:
+
+- epic 27, Accounts and sign-in: **https://claude.ai/artifact/Y5GEeEUCtzd38NPaLRt48t**
+- epic 28, Organisations and access: **https://claude.ai/artifact/3PTd8uLPLCH3gUugouhTGZ**
+- epic 34, Staffing: **https://claude.ai/artifact/6Urq4HMJ8pH5jGEyTXCfcE**
+
+Update one with `Artifact` using **`url` + `root` + `files`**. Do **not** create from
+`type_url` for an epic that has one — that makes a second artifact, and the stories link
+to the first. Create one only for an epic that has none.
 
 Read it before you change it (`action: "read"`), and read
 https://claude.ai/artifact/2Swi2WCFoRNeqPRBngDpbK, the worked example for Budget and costs,
