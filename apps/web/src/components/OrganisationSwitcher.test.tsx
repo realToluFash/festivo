@@ -80,6 +80,7 @@ describe('switching organisation', () => {
       locale: 'en',
       verified: true,
       complete: true,
+      needsOrganisation: false,
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
       phoneNumbers: [],
     });

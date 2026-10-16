@@ -53,6 +53,8 @@ export interface Account {
   locale: string | null;
   verified: boolean;
   complete: boolean;
+  /** The details screen asks for an organisation: a self-registered account in none. */
+  needsOrganisation: boolean;
   emailAddresses: LinkedAddress[];
   phoneNumbers: LinkedPhone[];
 }
@@ -78,6 +80,20 @@ export interface Membership extends Organisation {
 }
 
 export type OrganisationChanges = Partial<Omit<Organisation, 'id'>>;
+
+/** The two codes the onboarding gate refuses with; each names the screen that passes it. */
+export type Gate = 'account_unverified' | 'profile_incomplete';
+
+export interface ProfileDetails {
+  name: string;
+  /** Sent only when the account `needsOrganisation`. */
+  organisationName?: string;
+  countryCode?: string;
+  timezone?: string;
+  /** Optional; an empty number means no phone, and removes the one there was. */
+  phoneCountryCode?: string;
+  phoneNumber?: string;
+}
 
 /** `userAgent` and `ipAddress` are what the client claimed; nothing verifies either. */
 export interface DeviceSession {
@@ -105,6 +121,8 @@ export interface ClientOptions {
   locale?: () => string | null;
   /** Called when refresh fails and the session is over. */
   onSignedOut?: () => void;
+  /** Called when the API refuses a request because the account is behind an onboarding gate. */
+  onGate?: (gate: Gate) => void;
   fetch?: typeof fetch;
 }
 
@@ -135,7 +153,13 @@ export class ApiClient {
     }
 
     if (!response.ok) {
-      throw new ApiError(await toProblem(response), response);
+      const error = new ApiError(await toProblem(response), response);
+
+      if (error.is('account_unverified') || error.is('profile_incomplete')) {
+        this.options.onGate?.(error.code as Gate);
+      }
+
+      throw error;
     }
 
     if (response.status === 204) return undefined as T;
@@ -251,6 +275,22 @@ export class ApiClient {
     }
 
     return sessions;
+  }
+
+  /** The details screen. Answers whether a phone still has to be verified before the product opens. */
+  async completeProfile(
+    details: ProfileDetails,
+  ): Promise<{ account: Account; verificationNeeded: boolean }> {
+    const raw = await this.patch<Record<string, unknown>>('/api/auth/complete-profile', details);
+    const account = asAccount(raw?.account);
+
+    if (account == null) {
+      throw new Error(
+        'The API answered /api/auth/complete-profile without the account. Check ProfileController in services/api.',
+      );
+    }
+
+    return { account, verificationNeeded: raw.verificationNeeded === true };
   }
 
   async organisations(): Promise<Membership[]> {
@@ -473,6 +513,21 @@ export function primaryEmailAddress(account: Account): string | null {
   return account.emailAddresses.find((address) => address.primary)?.address ?? null;
 }
 
+export type Awaiting = 'email' | 'phone' | 'details';
+
+/** The gate an account is behind, in the API's order: the email, then a phone it has, then the details. */
+export function awaiting(
+  account: Pick<Account, 'verified' | 'complete' | 'emailAddresses'>,
+): Awaiting | null {
+  if (!account.verified) {
+    const email = account.emailAddresses.find((address) => address.primary);
+
+    return email?.verified === true ? 'phone' : 'email';
+  }
+
+  return account.complete ? null : 'details';
+}
+
 function asLinkedAddress(raw: unknown): LinkedAddress | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
@@ -538,6 +593,7 @@ function asAccount(raw: unknown): Account | null {
     locale: typeof candidate.locale === 'string' ? candidate.locale : null,
     verified: candidate.verified === true,
     complete: candidate.complete === true,
+    needsOrganisation: candidate.needsOrganisation === true,
     emailAddresses,
     phoneNumbers,
   };
