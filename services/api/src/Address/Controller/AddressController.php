@@ -8,7 +8,7 @@ use App\Address\AddressLookup;
 use App\Address\Exception\AddressNotFound;
 use App\Address\Exception\ProviderUnavailable;
 use App\Enum\ErrorCode;
-use App\Http\Access\Policy\PublicAccess;
+use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
@@ -18,7 +18,7 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Throwable;
 
-#[PublicAccess]
+#[Authenticated]
 final class AddressController
 {
     public function __construct(
