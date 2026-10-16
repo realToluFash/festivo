@@ -4,27 +4,21 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Domain\User\Controller\VerificationController;
-use App\Domain\User\Verification\EmailAddressVerifier;
 use App\Domain\User\Verification\VerificationCodeIssuer;
-use App\Domain\User\Verification\VerificationCodeMailer;
 use App\Entity\EmailAddress;
 use App\Entity\VerificationChallenge;
-use App\Enum\ErrorCode;
-use App\Http\Exception\ApiException;
 use App\Repository\EmailAddressRepository;
 use App\Repository\VerificationChallengeRepository;
 use App\Tests\ApiTestCase;
-use App\Tests\Double\RefusingRateLimiterFactory;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Regex;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use SensitiveParameter;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Mime\Email;
 
 final class VerifyEmailTest extends ApiTestCase
@@ -165,6 +159,7 @@ final class VerifyEmailTest extends ApiTestCase
     {
         $token = $this->register('resend@example.com');
         $first = $this->codeFor('resend@example.com');
+        $this->endCooldownFor('resend@example.com');
 
         $this->client->request('POST', '/api/auth/verify/resend', server: $this->authenticated($token));
 
@@ -184,39 +179,74 @@ final class VerifyEmailTest extends ApiTestCase
     public function aResendAnswersWithTheSecondsUntilTheNextOne(): void
     {
         $token = $this->register('cooldown@example.com');
+        $this->endCooldownFor('cooldown@example.com');
 
         $this->client->request('POST', '/api/auth/verify/resend', server: $this->authenticated($token));
 
-        $seconds = $this->body()['cooldownSeconds'];
-
-        self::assertIsInt($seconds);
-        self::assertGreaterThan(0, $seconds);
-        self::assertLessThanOrEqual(VerificationChallenge::RESEND_COOLDOWN_SECONDS, $seconds);
+        self::assertSame(200, $this->client->getResponse()->getStatusCode());
+        self::assertSame(VerificationChallenge::RESEND_COOLDOWN_SECONDS, $this->body()['cooldownSeconds']);
     }
 
-    /** Over HTTP it cannot be exhausted: `framework.test` resets the budget every request. */
+    #[Test]
+    public function theRegistrationEmailStartsTheCooldown(): void
+    {
+        $token = $this->register('fresh@example.com');
+
+        $this->client->request('POST', '/api/auth/verify/resend', server: $this->authenticated($token));
+
+        self::assertSame(429, $this->client->getResponse()->getStatusCode(), 'a second code was sent straight after registering');
+        $left = (int) $this->client->getResponse()->headers->get('Retry-After');
+        self::assertGreaterThan(0, $left);
+        self::assertLessThanOrEqual(VerificationChallenge::RESEND_COOLDOWN_SECONDS, $left);
+    }
+
     #[Test]
     public function aResendInsideTheCooldownIsRefusedWithTheTimeLeft(): void
     {
         $token = $this->register('second@example.com');
+        $this->endCooldownFor('second@example.com');
+        $this->client->request('POST', '/api/auth/verify/resend', server: $this->authenticated($token));
+        self::assertCount(1, self::getMailerMessages());
+
         $this->client->request('POST', '/api/auth/verify/resend', server: $this->authenticated($token));
 
-        $controller = new VerificationController(
-            self::serviceById(Security::class, Security::class),
-            self::serviceById(EmailAddressVerifier::class, EmailAddressVerifier::class),
-            self::serviceById(VerificationCodeIssuer::class, VerificationCodeIssuer::class),
-            self::serviceById(VerificationCodeMailer::class, VerificationCodeMailer::class),
-            new RefusingRateLimiterFactory(),
-            $this->entityManager(),
+        self::assertSame(429, $this->client->getResponse()->getStatusCode());
+        self::assertSame(
+            'https://soirely.com/errors/too_many_attempts',
+            $this->body()['type'],
         );
+        self::assertGreaterThan(0, (int) $this->client->getResponse()->headers->get('Retry-After'));
+        self::assertCount(0, self::getMailerMessages(), 'a refused resend still sent a code');
+    }
 
-        try {
-            $controller->resend();
-            self::fail('the endpoint sent a second code inside the cooldown');
-        } catch (ApiException $e) {
-            self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode);
-            self::assertArrayHasKey('Retry-After', $e->headers);
-        }
+    #[Test]
+    public function theCooldownCanBeReadWithoutSpendingIt(): void
+    {
+        $token = $this->register('reads@example.com');
+
+        $this->client->request('GET', '/api/auth/verify/resend', server: $this->authenticated($token));
+
+        self::assertSame(200, $this->client->getResponse()->getStatusCode());
+        $left = $this->body()['cooldownSeconds'];
+        self::assertIsInt($left);
+        self::assertGreaterThan(0, $left);
+
+        $this->endCooldownFor('reads@example.com');
+        $this->client->request('GET', '/api/auth/verify/resend', server: $this->authenticated($token));
+
+        self::assertSame(0, $this->body()['cooldownSeconds']);
+        self::assertCount(0, self::getMailerMessages(), 'reading the cooldown sent a code');
+    }
+
+    #[Test]
+    public function aVerifiedAddressHasNoCooldown(): void
+    {
+        $token = $this->register('done@example.com');
+        $this->verify($token, $this->codeFor('done@example.com'));
+
+        $this->client->request('GET', '/api/auth/verify/resend', server: $this->authenticated($token));
+
+        self::assertSame(0, $this->body()['cooldownSeconds']);
     }
 
     #[Test]
@@ -278,6 +308,19 @@ final class VerifyEmailTest extends ApiTestCase
         }
 
         self::fail("nothing was emailed to {$address}");
+    }
+
+    /** As if the newest code went out a cooldown ago. */
+    private function endCooldownFor(string $address): void
+    {
+        $this->entityManager()->getConnection()->executeStatement(
+            'UPDATE verification_challenges SET created_at = :then WHERE email_address_id = :address',
+            [
+                'then' => new DateTimeImmutable(Str\format('-%d seconds', VerificationChallenge::RESEND_COOLDOWN_SECONDS + 1))->format('Y-m-d H:i:s'),
+                'address' => $this->addressFor($address)->getId()->toRfc4122(),
+            ],
+        );
+        $this->entityManager()->clear();
     }
 
     private function challengeFor(string $address): ?VerificationChallenge

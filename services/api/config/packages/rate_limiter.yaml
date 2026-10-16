@@ -47,12 +47,3 @@ framework:
             policy: fixed_window
             limit: 5
             interval: '15 minutes'
-
-        verification_resend:
-            # One code a minute per address. The cooldown IS this limit: the
-            # screen counts down from what the response says is left, so a
-            # number here and a number in the client would be two answers to
-            # one question.
-            policy: sliding_window
-            limit: 1
-            interval: '1 minute'
