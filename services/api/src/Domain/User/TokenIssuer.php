@@ -7,14 +7,15 @@ namespace App\Domain\User;
 use App\Domain\User\Model\IssuedTokens;
 use App\Entity\RefreshToken;
 use App\Entity\User;
-use App\Repository\RefreshTokenRepository;
 use DateInterval;
 use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psl\SecureRandom;
 use Psl\Str;
 use SensitiveParameter;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Uid\Uuid;
@@ -29,7 +30,6 @@ final readonly class TokenIssuer
     public function __construct(
         private JWTTokenManagerInterface $jwtTokenManager,
         private EntityManagerInterface $entityManager,
-        private RefreshTokenRepository $refreshTokenRepository,
         #[Autowire(param: 'app.refresh_token_ttl')]
         private int $refreshTokenTtl,
     ) {
@@ -49,16 +49,17 @@ final readonly class TokenIssuer
         return $this->issue($used->getUser(), $used->getChainId(), $request);
     }
 
-    /** All of them: revoking one would leave the thief holding the newest token. */
+    /** All of them, since revoking one leaves the thief the newest. Bypasses the UnitOfWork: loaded tokens go stale. */
     public function revokeChain(#[SensitiveParameter] RefreshToken $token): void
     {
-        $now = new DateTimeImmutable();
-
-        foreach ($this->refreshTokenRepository->findChain($token->getChainId()) as $sibling) {
-            if (null === $sibling->getRevokedAt()) {
-                $sibling->setRevokedAt($now);
-            }
-        }
+        $this->entityManager
+            ->createQuery(
+                'UPDATE ' . RefreshToken::class . ' t SET t.revokedAt = :now'
+                . ' WHERE t.chainId = :chain AND t.revokedAt IS NULL',
+            )
+            ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
+            ->setParameter('chain', $token->getChainId(), UuidType::NAME)
+            ->execute();
     }
 
     /** SHA-256, not a password hash: 256 bits of randomness has nothing to brute-force. */

@@ -8,7 +8,6 @@ use App\Entity\RefreshToken;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
-use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<RefreshToken> */
 final class RefreshTokenRepository extends ServiceEntityRepository
@@ -21,12 +20,6 @@ final class RefreshTokenRepository extends ServiceEntityRepository
     public function findOneByHash(string $tokenHash): ?RefreshToken
     {
         return $this->findOneBy(['tokenHash' => $tokenHash]);
-    }
-
-    /** @return list<RefreshToken> */
-    public function findChain(Uuid $chainId): array
-    {
-        return $this->findBy(['chainId' => $chainId]);
     }
 
     /** @return list<RefreshToken> */
