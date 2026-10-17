@@ -40,6 +40,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. "Shorten the reference to {{count}} characters or fewer."** (sc-88,
+  Reference, refused on Mark paid at 101 after trimming). The house shape for a text field
+  over its limit: "Shorten the {field} to {{count}} characters or fewer.", so the cancel
+  reason (200) reads the same. The limit is a `{{count}}` slot, not a number in the words, so
+  the copy cannot drift from the rule. Won over "The reference can be at most 100
+  characters", which states the rule without saying what to do, and over "Reference is too
+  long", which says neither the limit nor the fix.
 - **17 Oct 2026. "Enter the amount as a number above 0, like {{example}}."** (sc-88, Amount
   paid). One message for every currency, with one slot. The code builds `{{example}}` with
   `Intl.NumberFormat` in the viewer's locale at the event currency's ISO 4217 minor unit, from
