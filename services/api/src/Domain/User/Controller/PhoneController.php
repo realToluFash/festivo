@@ -79,10 +79,16 @@ final readonly class PhoneController
         return new JsonResponse(self::serialised($phone));
     }
 
+    /** Read when Verify phone opens, as the email's is (sc-826): the cooldown, and a spent code shown as spent. */
     #[Route('/api/auth/verify/phone/resend', name: 'auth_verify_phone_resend_cooldown', methods: ['GET'])]
     public function cooldown(): JsonResponse
     {
-        return new JsonResponse(['cooldownSeconds' => $this->resendCooldown->secondsLeftFor($this->phone())]);
+        $phone = $this->phone();
+
+        return new JsonResponse([
+            'cooldownSeconds' => $this->resendCooldown->secondsLeftFor($phone),
+            'codeState' => $this->contactVerifier->codeState($phone)->value,
+        ]);
     }
 
     #[Route('/api/auth/verify/phone/resend', name: 'auth_verify_phone_resend', methods: ['POST'])]
