@@ -99,6 +99,7 @@ describe('the phone screens', () => {
 
     expect(phoneScreenCountry(blank, 'NG')).toBe('NG');
     expect(startingPhoneCountry(null, '', 'NG').code).toBe('NG');
+    expect(startingPhoneCountry('', null, null).code).toBe('');
   });
 
   it('focus the code when none is chosen, and the number otherwise', () => {
@@ -106,10 +107,5 @@ describe('the phone screens', () => {
     expect(refusedPhoneField('blank')).toBe('number');
     expect(refusedPhoneField('tooShort')).toBe('number');
     expect(refusedPhoneField(null)).toBeNull();
-  });
-
-  it('skip a blank country on every screen, as on the phone screens', () => {
-    expect(startingPhoneCountry(null, '', 'NG').code).toBe('NG');
-    expect(startingPhoneCountry('', null, null).code).toBe('');
   });
 });
