@@ -627,14 +627,14 @@
     "accountLine": "Su nombre, direcciones de correo electrónico y números de teléfono",
     "security": "Seguridad",
     "securityLine": "Contraseña, formas de iniciar sesión, verificación en dos pasos y dispositivos con sesión abierta",
-    "organisationHeading": "Organisation",
-    "organisation": "Organisation",
-    "organisationLine": "{{name}} · name, contact address, currency, time zone",
+    "organisationHeading": "Organización",
+    "organisation": "Organización",
+    "organisationLine": "{{name}} · nombre, dirección de contacto, moneda, zona horaria",
     "signedInAs": "Sesión iniciada como {{email}}",
     "signOut": "Cerrar sesión",
     "choose": "Elija una sección",
     "chooseLine": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta.",
-    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
+    "chooseLineWithOrganisation": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta. Organización reúne la configuración de {{name}}."
   },
   "switcher": {
     "yourRole": "Su función · {{role}}",
@@ -668,7 +668,7 @@
     "contactInvalid": "Eso no parece un correo electrónico. Compruebe que tiene una @ y un dominio.",
     "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
     "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento.",
-    "searchCurrency": "Search currencies",
-    "searchTimezone": "Search time zones"
+    "searchCurrency": "Buscar monedas",
+    "searchTimezone": "Buscar zonas horarias"
   }
 }
