@@ -1,11 +1,5 @@
 import { ApiError, type RecoveryOpening, type RecoveryState } from '@soirely/api-client';
-import {
-  cleanCode,
-  codeWording,
-  formatCountdown,
-  formatPhone,
-  recoveryFirstStep,
-} from '@soirely/domain';
+import { cleanCode, codeWording, formatCountdown, formatPhone } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Linking, StyleSheet, type TextInput, View } from 'react-native';
@@ -24,6 +18,8 @@ import { currentLocale } from '../src/i18n/index.ts';
 import { retryAfter } from '../src/kit/code.ts';
 import {
   type RecoveryField,
+  loadRecovery,
+  type RecoveryShown,
   recoveryCodeProblems,
   replacedElsewhere,
   startRefusal,
@@ -31,54 +27,25 @@ import {
 } from '../src/kit/recovery.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
-type Shown =
-  | { kind: 'loading' }
-  | { kind: 'start'; opening: RecoveryOpening; limitedUntil: string | null; sending: boolean }
-  | { kind: 'nobody'; supportAddress: string }
-  | { kind: 'request'; recovery: string; state: RecoveryState }
-  | { kind: 'replaced' }
-  | { kind: 'signIn' }
-  | { kind: 'failed' };
+type Shown = RecoveryShown;
 
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this screen signs anybody in. */
 export default function LostTwoFactor() {
   const challenge = heldChallenge()?.challenge ?? null;
   const [view, setView] = useState<Shown>({ kind: 'loading' });
 
-  const load = useCallback(async (): Promise<Shown> => {
-    const held = await heldRecovery();
-    const step = recoveryFirstStep(challenge, held);
-
-    if (step === 'held' && held != null) {
-      try {
-        return { kind: 'request', recovery: held, state: await api.recoveryState(held) };
-      } catch (refusal) {
-        if (replacedElsewhere(refusal)) return { kind: 'replaced' };
-        if (!(refusal instanceof ApiError && refusal.is('recovery_request_invalid')))
-          return { kind: 'failed' };
-
-        await dropRecovery();
-      }
-    }
-
-    if (challenge == null) return { kind: 'signIn' };
-    if (held != null) await dropRecovery();
-
-    try {
-      const opening = await api.recoveryOpening(challenge);
-
-      if (opening.open != null) {
-        await holdRecovery(opening.open.recovery);
-        return { kind: 'request', ...opening.open };
-      }
-
-      return opening.nobody
-        ? { kind: 'nobody', supportAddress: opening.supportAddress }
-        : { kind: 'start', opening, limitedUntil: null, sending: false };
-    } catch (refusal) {
-      return startRefusal(refusal) === 'signIn' ? { kind: 'signIn' } : { kind: 'failed' };
-    }
-  }, [challenge]);
+  const load = useCallback(
+    async (): Promise<Shown> =>
+      loadRecovery({
+        challenge,
+        held: heldRecovery,
+        hold: holdRecovery,
+        drop: dropRecovery,
+        state: (recovery) => api.recoveryState(recovery),
+        opening: (asked) => api.recoveryOpening(asked),
+      }),
+    [challenge],
+  );
 
   useEffect(() => {
     let live = true;
