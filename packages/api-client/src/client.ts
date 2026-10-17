@@ -517,7 +517,6 @@ export class ApiClient {
     return phone;
   }
 
-  /** Reads the cooldown and the code's state without spending either, as the email's opening does. */
   async phoneOpening(): Promise<PhoneCodeOpening> {
     const answer = await this.get<{ route?: unknown }>('/api/auth/verify/phone/resend');
     const route = answer?.route;

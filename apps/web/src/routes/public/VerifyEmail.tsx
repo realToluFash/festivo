@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
+import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
@@ -25,15 +26,6 @@ import {
 } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { useFormChecks } from '../../formChecks.ts';
-
-type Status =
-  | { kind: 'entering' }
-  | { kind: 'verifying' }
-  | { kind: 'wrong' }
-  | { kind: 'expired' }
-  | { kind: 'exhausted' }
-  | { kind: 'failed' }
-  | { kind: 'verified' };
 
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export function VerifyEmail() {
@@ -140,7 +132,7 @@ function CodeScreen({
   registersAgain?: boolean;
 }) {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<Status>({ kind: 'entering' });
+  const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const checks = useFormChecks(
     ['code'] as const,
@@ -169,10 +161,7 @@ function CodeScreen({
       .then(({ cooldownSeconds, codeState }) => {
         if (!live) return;
         setCooldown(cooldownSeconds);
-        // A spent code opens on its banner, so the screen never invites a try it knows is refused.
-        if (codeState !== 'live') {
-          setStatus((now) => (now.kind === 'entering' ? { kind: codeState } : now));
-        }
+        setStatus((now) => openingStatus(now, codeState));
       })
       .catch((error: unknown) => {
         if (live && error instanceof ApiError && error.is('registration_expired')) gone.current?.();
@@ -212,7 +201,7 @@ function CodeScreen({
         return;
       }
 
-      setStatus(refusalFrom(error));
+      setStatus(codeRefusal(error));
     }
   }
 
@@ -400,14 +389,4 @@ function Banner({
       </button>
     </>
   );
-}
-
-function refusalFrom(error: unknown): Status {
-  if (!(error instanceof ApiError)) return { kind: 'failed' };
-
-  if (error.is('verification_code_expired')) return { kind: 'expired' };
-  if (error.is('verification_code_exhausted')) return { kind: 'exhausted' };
-  if (error.is('verification_code_invalid')) return { kind: 'wrong' };
-
-  return { kind: 'failed' };
 }

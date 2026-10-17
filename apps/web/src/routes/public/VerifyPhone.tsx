@@ -10,19 +10,11 @@ import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
+import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
-
-type Status =
-  | { kind: 'entering' }
-  | { kind: 'verifying' }
-  | { kind: 'wrong' }
-  | { kind: 'expired' }
-  | { kind: 'exhausted' }
-  | { kind: 'failed' }
-  | { kind: 'verified' };
 
 /** "Check your messages": the code texted to the primary phone, under email's rules and with its parts. */
 export function VerifyPhone() {
@@ -31,7 +23,7 @@ export function VerifyPhone() {
   const [params] = useSearchParams();
   const onboarding = params.get('from') === 'onboarding';
   const [account, setAccount] = useState<Account | 'none' | null>(null);
-  const [status, setStatus] = useState<Status>({ kind: 'entering' });
+  const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
@@ -56,10 +48,7 @@ export function VerifyPhone() {
         if (!live) return;
         setCooldown(cooldownSeconds);
         setRoute(sent);
-        // A spent code opens on its banner, so the screen never invites a try it knows is refused.
-        if (codeState !== 'live') {
-          setStatus((now) => (now.kind === 'entering' ? { kind: codeState } : now));
-        }
+        setStatus((now) => openingStatus(now, codeState));
       })
       .catch(() => {});
 
@@ -126,7 +115,7 @@ export function VerifyPhone() {
       await api.verifyPhone(code);
       setStatus({ kind: 'verified' });
     } catch (error) {
-      setStatus(refusalFrom(error));
+      setStatus(codeRefusal(error));
     }
   }
 
@@ -364,13 +353,4 @@ function Banner({
       </div>
     </div>
   );
-}
-
-function refusalFrom(error: unknown): Status {
-  if (!(error instanceof ApiError)) return { kind: 'failed' };
-  if (error.is('verification_code_invalid')) return { kind: 'wrong' };
-  if (error.is('verification_code_expired')) return { kind: 'expired' };
-  if (error.is('verification_code_exhausted')) return { kind: 'exhausted' };
-
-  return { kind: 'failed' };
 }
