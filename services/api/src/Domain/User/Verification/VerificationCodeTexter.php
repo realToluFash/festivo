@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Verification;
 
 use App\Domain\User\Interfaces\TextMessageSenderInterface;
+use App\Domain\User\Mail\AccountLanguage;
 use App\Entity\PhoneNumber;
 use App\Entity\VerificationChallenge;
 use Psl\Type;
@@ -15,6 +16,7 @@ final readonly class VerificationCodeTexter
     public function __construct(
         private TextMessageSenderInterface $textMessageSender,
         private TranslatorInterface $translator,
+        private AccountLanguage $accountLanguage,
     ) {
     }
 
@@ -26,7 +28,7 @@ final readonly class VerificationCodeTexter
             $this->translator->trans('verification.text', [
                 '{code}' => $code,
                 '{minutes}' => (string) VerificationChallenge::LIFETIME_MINUTES,
-            ], 'emails', $phone->getUser()->getLocale()),
+            ], 'emails', $this->accountLanguage->of($phone->getUser())),
         );
     }
 }
