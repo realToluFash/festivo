@@ -192,7 +192,8 @@
   },
   "forms": {
     "emailBlank": "Introduzca su dirección de correo electrónico.",
-    "emailShape": "Eso no parece una dirección de correo. Compruebe que tiene una @ y un dominio."
+    "emailShape": "Eso no parece una dirección de correo. Compruebe que tiene una @ y un dominio.",
+    "countryBlank": "Elija un país."
   },
   "oauth": {
     "linked": "{{provider}} ya está vinculado a su cuenta. Puede iniciar sesión con cualquiera de los dos.",

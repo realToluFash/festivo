@@ -286,7 +286,8 @@
   },
   "forms": {
     "emailBlank": "Saisissez votre adresse e-mail.",
-    "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine."
+    "emailShape": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine.",
+    "countryBlank": "Choisissez un pays."
   },
   "oauth": {
     "linked": "{{provider}} est désormais associé à votre compte. Vous pouvez vous connecter avec l'un ou l'autre.",

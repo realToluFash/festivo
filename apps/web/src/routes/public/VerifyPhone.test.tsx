@@ -248,6 +248,20 @@ describe('change your mobile number', () => {
     expect(screen.getByRole('button', { name: 'Keep my current number' })).toBeDefined();
   });
 
+  it('starts with no code when the browser names no country, and refuses it blank', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-419']);
+    const sent = answering({ 'GET /api/auth/me': () => json(account([])) });
+    at('/phone');
+    await screen.findByLabelText('Mobile number');
+
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('');
+    fireEvent.change(screen.getByLabelText('Mobile number'), { target: { value: '803 555 0142' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Text a code to this number' }));
+
+    expect(screen.getByText('Choose a country.')).toBeDefined();
+    expect(sent.filter((request) => request.method === 'PUT')).toEqual([]);
+  });
+
   it('checks the length for the chosen country before sending', async () => {
     const sent = answering({ 'GET /api/auth/me': () => json(account([])) });
     at('/phone');

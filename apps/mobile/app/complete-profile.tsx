@@ -1,6 +1,6 @@
 import { ApiError, type Account, awaiting } from '@soirely/api-client';
 import {
-  deviceCountry,
+  deviceRegion,
   followCountry,
   phoneLengthProblem,
   pickPhoneCountry,
@@ -9,7 +9,14 @@ import {
 import { getCalendars, getLocales } from 'expo-localization';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, type TextInput, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Keyboard,
+  StyleSheet,
+  type TextInput,
+  View,
+  findNodeHandle,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -100,7 +107,11 @@ function Details({ account }: { account: Account }) {
   const [name, setName] = useState(account.name);
   const [organisationName, setOrganisationName] = useState('');
   const [countryCode, setCountryCode] = useState(
-    () => deviceCountry(getLocales().map((locale) => locale.languageTag)) ?? 'NG',
+    () =>
+      deviceRegion(
+        getLocales()[0]?.regionCode ?? null,
+        getLocales().map((locale) => locale.languageTag),
+      ) ?? '',
   );
   const [phone, setPhone] = useState(() =>
     startingPhoneCountry(
@@ -117,6 +128,7 @@ function Details({ account }: { account: Account }) {
   const nameInput = useRef<TextInput>(null);
   const organisationInput = useRef<TextInput>(null);
   const phoneInput = useRef<TextInput>(null);
+  const countryPicker = useRef<View>(null);
 
   const asksForOrganisation = account.needsOrganisation;
 
@@ -129,6 +141,8 @@ function Details({ account }: { account: Account }) {
     if (asksForOrganisation && organisationName.trim() === '') {
       checked.organisationName = t('completeProfile.organisationBlank');
     }
+    // Nothing named a country, so the field started blank: the person chooses rather than us guessing.
+    if (asksForOrganisation && countryCode === '') checked.countryCode = t('forms.countryBlank');
     // Optional: an empty field is no phone, so only a typed number is checked.
     if (phoneNumber.trim() !== '') {
       const problem = phoneProblemMessage(
@@ -141,6 +155,16 @@ function Details({ account }: { account: Account }) {
 
     if (Object.keys(checked).length > 0) {
       setErrors(checked);
+
+      // The picker is no text field: its refusal gets the screen reader's focus, and no keyboard opens.
+      if (checked.name == null && checked.organisationName == null && checked.countryCode != null) {
+        Keyboard.dismiss();
+        const picker = findNodeHandle(countryPicker.current);
+        if (picker != null) AccessibilityInfo.setAccessibilityFocus(picker);
+
+        return;
+      }
+
       const first =
         checked.name != null
           ? nameInput
@@ -261,8 +285,15 @@ function Details({ account }: { account: Account }) {
                 setCountryCode(code);
                 // The code follows the Country until the person picks one themselves (sc-485).
                 setPhone((now) => followCountry(now, code));
+                // A chosen Country answers its own refusal, and the number's when the code follows it.
+                setErrors((previous) => ({
+                  ...previous,
+                  countryCode: undefined,
+                  phoneNumber: phone.picked ? previous.phoneNumber : undefined,
+                }));
               }}
               disabled={saving}
+              pickerRef={countryPicker}
               testID="completeProfile.country"
             />
           </Field>

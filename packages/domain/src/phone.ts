@@ -6,11 +6,13 @@ import {
   validatePhoneNumberLength,
 } from 'libphonenumber-js/min';
 
-export type PhoneLengthProblem = 'blank' | 'tooShort' | 'tooLong';
+export type PhoneLengthProblem = 'blank' | 'noCountry' | 'tooShort' | 'tooLong';
 
 /** Present, and a length the country uses. Full validity is the API's, by the same library's rules. */
 export function phoneLengthProblem(typed: string, country: string): PhoneLengthProblem | null {
   if (typed.trim() === '') return 'blank';
+  // Nothing named a country, so the code started blank: never assume one (sc-945).
+  if (country === '') return 'noCountry';
 
   // A country the library has no lengths for is checked for presence only, and the API decides.
   if (!isPhoneCountry(country)) return null;

@@ -192,7 +192,8 @@
   },
   "forms": {
     "emailBlank": "Enter your email address.",
-    "emailShape": "That doesn't look like an email address. Check it has an @ and a domain."
+    "emailShape": "That doesn't look like an email address. Check it has an @ and a domain.",
+    "countryBlank": "Choose a country."
   },
   "oauth": {
     "linked": "{{provider}} is now linked to your account. You can sign in with either.",
