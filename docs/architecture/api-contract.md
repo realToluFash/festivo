@@ -84,6 +84,7 @@ stays in seconds either way (RFC 9110 §10.2.3). Today only
 | `POST /api/auth/login`               | 5 per address and 30 per IP per 15 minutes, fixed windows | a refused password    |
 | `POST /api/auth/verify/resend`       | one per 60 seconds per address                            | every code sent       |
 | `POST /api/auth/two-factor/recovery` | 3 per account per 24 hours, rolling                       | every request started |
+| `POST /api/auth/sessions/others`     | 5 per account per 15 minutes, fixed window                | every proved call     |
 
 ## Verifying an address
 

@@ -291,8 +291,10 @@ phone's button: every session but this device's ends at once.
 - **One statement**: `TokenIssuer::revokeAllExcept()` ends every live session but the chain
   of the one named, and puts each on the revoked-session list, so the other devices are
   refused on their next request. `signedOut` is the rows it ended; a second call answers 0.
-- **Without a `sessionId` that is this account's**, the caller's session ends as well, and
-  `thisDevice` is `true`: the client signs out.
+- **Without a `sessionId` that is this account's**, the caller's session ends as well.
+- **`thisDevice` is the caller's own chain**, the access token's `sid` claim, not the
+  `sessionId` the client named: `true` when that chain was among those ended, and the
+  client signs out. A stale or wrong `sessionId` is told the truth.
 - **One audit entry**, `sessions.signed_out_elsewhere`, carrying the count.
 
 ## Adding a password

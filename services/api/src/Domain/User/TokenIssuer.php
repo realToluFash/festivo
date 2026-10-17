@@ -102,13 +102,13 @@ final readonly class TokenIssuer
     /**
      * Every session but the one named, if it is this account's: the shared piece for sc-115 and sc-116.
      *
-     * @return int how many live sessions ended
+     * @return list<Uuid> the chains of the live sessions it ended
      */
-    public function revokeAllExcept(User $user, ?Uuid $keep): int
+    public function revokeAllExcept(User $user, ?Uuid $keep): array
     {
         $kept = null === $keep ? null : $this->entityManager->find(RefreshToken::class, $keep);
 
-        return $this->revokeLive($user, null !== $kept && $kept->getUser()->getId()->equals($user->getId()) ? $kept->getChainId() : null);
+        return $this->endLive($user, null !== $kept && $kept->getUser()->getId()->equals($user->getId()) ? $kept->getChainId() : null);
     }
 
     /** SHA-256, not a password hash: 256 bits of randomness has nothing to brute-force. */
@@ -141,12 +141,18 @@ final readonly class TokenIssuer
         );
     }
 
+    /** @return int how many live sessions ended */
+    private function revokeLive(User $user, ?Uuid $keepChain = null, ?IdentityProvider $signedInWith = null): int
+    {
+        return Iter\count($this->endLive($user, $keepChain, $signedInWith));
+    }
+
     /**
      * SQL rather than DQL for RETURNING: the chains it ended are the ones the revoked list needs.
      *
-     * @return int how many live sessions ended
+     * @return list<Uuid> the chains of the live sessions it ended
      */
-    private function revokeLive(User $user, ?Uuid $keepChain = null, ?IdentityProvider $signedInWith = null): int
+    private function endLive(User $user, ?Uuid $keepChain = null, ?IdentityProvider $signedInWith = null): array
     {
         $sql = <<<'SQL'
             UPDATE refresh_tokens
@@ -165,12 +171,13 @@ final readonly class TokenIssuer
             ['now' => Types::DATETIME_IMMUTABLE, 'user' => UuidType::NAME, 'keep' => UuidType::NAME, 'provider' => Types::STRING],
         )->fetchFirstColumn();
 
-        $this->revokedSessions->add(...Vec\map(
+        $ended = Vec\map(
             $chains,
             static fn (mixed $chain): Uuid => Uuid::fromString(Type\string()->coerce($chain)),
-        ));
+        );
+        $this->revokedSessions->add(...$ended);
 
-        return Iter\count($chains);
+        return $ended;
     }
 
     private static function truncate(?string $userAgent): ?string

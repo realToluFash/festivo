@@ -6,11 +6,11 @@ namespace App\Domain\User;
 
 use App\Audit\Auditor;
 use App\Domain\User\SignInMethods\RecentProof;
-use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Http\Exception\ApiException;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 use SensitiveParameter;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Uid\Uuid;
@@ -28,11 +28,12 @@ final readonly class SignOutEverywhereElse
     }
 
     /**
-     * Without this account's `$keep`, the caller's own session ends too.
+     * Without this account's `$keep`, the caller's own session ends too. `$caller` is the chain the access token
+     * carries; no chain means the caller cannot be told it stays in.
      *
      * @return array{signedOut: int, thisDevice: bool}
      */
-    public function signOut(User $user, #[SensitiveParameter] ?string $proof, ?Uuid $keep): array
+    public function signOut(User $user, #[SensitiveParameter] ?string $proof, ?Uuid $keep, ?Uuid $caller): array
     {
         // The proof first: whoever holds an unlocked phone must not be able to spend the owner's budget.
         $this->recentProof->require($user, $proof);
@@ -43,18 +44,18 @@ final readonly class SignOutEverywhereElse
             throw ApiException::tooManyAttempts('Too many tries.', $limit->getRetryAfter());
         }
 
-        $kept = null === $keep ? null : $this->entityManager->find(RefreshToken::class, $keep);
-        $thisDevice = null === $kept || !$kept->getUser()->getId()->equals($user->getId());
-
-        $signedOut = $this->entityManager->wrapInTransaction(function () use ($user, $keep): int {
-            $signedOut = $this->tokenIssuer->revokeAllExcept($user, $keep);
+        $ended = $this->entityManager->wrapInTransaction(function () use ($user, $keep): array {
+            $ended = $this->tokenIssuer->revokeAllExcept($user, $keep);
             $this->auditor->record('sessions.signed_out_elsewhere', 'Account', $user->getId(), Actor::User, $user->getId(), $user->getName(), [
-                'signedOut' => [null, $signedOut],
+                'signedOut' => [null, Iter\count($ended)],
             ]);
 
-            return $signedOut;
+            return $ended;
         });
 
-        return ['signedOut' => $signedOut, 'thisDevice' => $thisDevice];
+        return [
+            'signedOut' => Iter\count($ended),
+            'thisDevice' => null === $caller || Iter\any($ended, static fn (Uuid $chain): bool => $chain->equals($caller)),
+        ];
     }
 }

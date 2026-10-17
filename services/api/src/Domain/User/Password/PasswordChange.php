@@ -14,6 +14,7 @@ use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
@@ -60,7 +61,7 @@ final readonly class PasswordChange
                 $user->setPassword($this->passwordResolver->hash($new));
                 $this->entityManager->flush();
 
-                return $this->tokenIssuer->revokeAllExcept($user, $keepSession);
+                return Iter\count($this->tokenIssuer->revokeAllExcept($user, $keepSession));
             },
             'Too many tries.',
         );
