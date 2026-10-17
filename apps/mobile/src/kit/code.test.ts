@@ -1,7 +1,7 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { asksForCode, codeRefusal, retryAfter } from './code.ts';
+import { asksForCode, codeRefusal, openingStatus, retryAfter } from './code.ts';
 
 function refused(code: string): ApiError {
   const problem = { type: `https://soirely.com/errors/${code}`, title: 'No.', status: 422 };
@@ -44,5 +44,20 @@ describe('a resend refused for now', () => {
     expect(retryAfter(waiting)).toBe(42);
     expect(retryAfter(refused('validation_failed'))).toBeNull();
     expect(retryAfter(new TypeError('offline'))).toBeNull();
+  });
+});
+
+describe('where the verify screen opens', () => {
+  it('opens on the field while the code is live', () => {
+    expect(openingStatus({ kind: 'entering' }, 'live')).toEqual({ kind: 'entering' });
+  });
+
+  it('opens on the banner when the code is spent or has run out', () => {
+    expect(openingStatus({ kind: 'entering' }, 'exhausted')).toEqual({ kind: 'exhausted' });
+    expect(openingStatus({ kind: 'entering' }, 'expired')).toEqual({ kind: 'expired' });
+  });
+
+  it('leaves alone a screen the person has already moved on', () => {
+    expect(openingStatus({ kind: 'verifying' }, 'exhausted')).toEqual({ kind: 'verifying' });
   });
 });

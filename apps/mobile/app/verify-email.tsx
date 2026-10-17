@@ -1,4 +1,9 @@
-import { ApiError, type PendingRegistration, awaiting } from '@soirely/api-client';
+import {
+  ApiError,
+  type CodeOpening,
+  type PendingRegistration,
+  awaiting,
+} from '@soirely/api-client';
 import { cleanCode, codeProblem } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +15,7 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
-import { type CodeStatus, codeRefusal, retryAfter } from '../src/kit/code.ts';
+import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
 import { useFormChecks } from '../src/kit/formChecks.ts';
 import { type Landing, landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
@@ -38,6 +43,12 @@ export default function VerifyEmail() {
     () => codeInput.current?.focus(),
   );
 
+  /** A spent code opens on its banner, so the screen never invites a try it knows is refused. */
+  function opened({ cooldownSeconds, codeState }: CodeOpening): void {
+    setCooldown(cooldownSeconds);
+    setStatus((now) => (now.kind === 'verified' ? now : openingStatus(now, codeState)));
+  }
+
   useEffect(() => {
     let live = true;
 
@@ -48,8 +59,8 @@ export default function VerifyEmail() {
         if (!live) return;
         setPending(held);
         setAddress(held.email);
-        const seconds = await api.registrationCooldown(held.registration).catch(() => 0);
-        if (live) setCooldown(seconds);
+        const opening = await api.registrationOpening(held.registration).catch(() => null);
+        if (live && opening != null) opened(opening);
 
         return;
       }
@@ -68,9 +79,9 @@ export default function VerifyEmail() {
         }
 
         // Started by whichever send came last, the registration email included.
-        const seconds = await api.verificationCooldown();
+        const opening = await api.verificationOpening();
 
-        if (live) setCooldown(seconds);
+        if (live) opened(opening);
       } catch {
         if (live) setAddress('');
       }

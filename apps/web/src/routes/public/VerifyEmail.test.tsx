@@ -72,6 +72,41 @@ afterEach(() => {
 });
 
 describe('verifying an email address', () => {
+  it('opens on "Too many wrong tries", with no code field, when the code is already spent', async () => {
+    answering({
+      'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 0, codeState: 'exhausted' }),
+    });
+
+    open();
+
+    await waitFor(() => expect(screen.getByText('Too many wrong tries')).toBeDefined());
+    expect(screen.queryByLabelText('Code from the email')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Send a new code' })).toBeDefined();
+  });
+
+  it('opens on the expired banner when the code has run out', async () => {
+    answering({
+      'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 0, codeState: 'expired' }),
+    });
+
+    open();
+
+    await waitFor(() => expect(screen.getByText('That code has expired')).toBeDefined());
+    expect(screen.queryByLabelText('Code from the email')).toBeNull();
+  });
+
+  it('opens on the field when the code is live', async () => {
+    const seen = answering({
+      'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 30, codeState: 'live' }),
+    });
+
+    open();
+
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0));
+    expect(screen.getByLabelText('Code from the email')).toBeDefined();
+    expect(screen.queryByText('Too many wrong tries')).toBeNull();
+  });
+
   it('says where the code went, and asks for it', () => {
     answering({});
 
