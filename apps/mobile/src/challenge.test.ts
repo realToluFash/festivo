@@ -25,6 +25,7 @@ describe('where a sign-in goes next', () => {
         name: 'Folake',
         businessName: null,
         countryCode: null,
+        organisationCountry: null,
         locale: 'en',
         verified: true,
         complete: true,
