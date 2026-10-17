@@ -10,7 +10,7 @@
 # compose silently did nothing, because the value was already inside the
 # JavaScript. There was no error to find.
 
-FROM node:22-alpine AS build
+FROM node:22.23.3-alpine3.24 AS build
 WORKDIR /repo
 
 # The workspace root's manifests first, so a source change does not reinstall.
@@ -30,7 +30,7 @@ COPY packages/api-client packages/api-client
 COPY apps/web apps/web
 RUN npm run build --workspace @soirely/web
 
-FROM nginx:1.27-alpine AS serve
+FROM nginx:1.27.5-alpine3.21 AS serve
 
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
