@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\IdentityProvider;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -53,6 +54,10 @@ class RefreshToken
     #[ORM\Column(type: Types::STRING, length: 45, nullable: true)]
     private ?string $ipAddress = null;
 
+    /** The provider this chain's sign-in came through, so unlinking it signs those devices out; null for a password. */
+    #[ORM\Column(type: Types::STRING, length: 32, nullable: true, enumType: IdentityProvider::class)]
+    private ?IdentityProvider $signedInWith = null;
+
     public function __construct(
         User $user,
         string $tokenHash,
@@ -60,6 +65,7 @@ class RefreshToken
         ?Uuid $chainId = null,
         ?string $userAgent = null,
         ?string $ipAddress = null,
+        ?IdentityProvider $signedInWith = null,
     ) {
         $this->id = Uuid::v7();
         $this->user = $user;
@@ -68,6 +74,7 @@ class RefreshToken
         $this->expiresAt = $expiresAt;
         $this->userAgent = $userAgent;
         $this->ipAddress = $ipAddress;
+        $this->signedInWith = $signedInWith;
     }
 
     public function getId(): Uuid
@@ -113,6 +120,11 @@ class RefreshToken
     public function getIpAddress(): ?string
     {
         return $this->ipAddress;
+    }
+
+    public function getSignedInWith(): ?IdentityProvider
+    {
+        return $this->signedInWith;
     }
 
     public function setRevokedAt(?DateTimeImmutable $revokedAt): void

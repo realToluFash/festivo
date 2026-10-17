@@ -5,6 +5,8 @@
     "not_found": "We could not find what you asked for.",
     "conflict": "That conflicts with something that already exists.",
     "phone_taken": "This number is already verified on another Soirely account.",
+    "provider_taken": "That account is already linked to another Soirely account.",
+    "last_sign_in_method": "Set a password or link another account before removing this one.",
     "unsupported_media_type": "That format is not supported.",
     "unauthenticated": "Please sign in to continue.",
     "invalid_credentials": "That email and password do not match.",
@@ -34,5 +36,6 @@
     "two_factor_not_enrolled": "Start setting up two-factor first.",
     "two_factor_off": "Two-factor is not on.",
     "two_factor_required": "Enter the code from your authenticator app first.",
+    "proof_required": "Confirm it's you first.",
     "registration_expired": "Start registering again."
 }

@@ -26,14 +26,17 @@ final readonly class UserMailer
     ) {
     }
 
-    /** @param list<string> $paragraphs already in the person's locale, joined by a blank line */
-    public function send(string $address, ?string $locale, string $subjectKey, array $paragraphs): void
+    /**
+     * @param list<string>          $paragraphs        already in the person's locale, joined by a blank line
+     * @param array<string, string> $subjectParameters
+     */
+    public function send(string $address, ?string $locale, string $subjectKey, array $paragraphs, array $subjectParameters = []): void
     {
         $this->mailer->send(
             new Email()
                 ->from(Address::create($this->mailFrom))
                 ->to($address)
-                ->subject($this->line($subjectKey, $locale))
+                ->subject($this->line($subjectKey, $locale, $subjectParameters))
                 ->text(Str\join($paragraphs, "\n\n")),
         );
     }
@@ -68,5 +71,18 @@ final readonly class UserMailer
     public function line(string $key, ?string $locale, array $parameters = []): string
     {
         return $this->translator->trans($key, $parameters, self::DOMAIN, $locale);
+    }
+
+    /** As the devices card words a row: no place, and no claim that either part was checked. */
+    public function device(?string $userAgent, ?string $ipAddress, string $locale): string
+    {
+        $agent = ReadableAgent::of($userAgent);
+        $named = null === $agent
+            ? $this->line('password.device.unknown', $locale)
+            : $this->line('password.device.agent', $locale, ['{browser}' => $agent->browser, '{platform}' => $agent->platform]);
+
+        return null === $ipAddress || '' === $ipAddress
+            ? $named
+            : $this->line('password.device.from', $locale, ['{device}' => $named, '{address}' => $ipAddress]);
     }
 }

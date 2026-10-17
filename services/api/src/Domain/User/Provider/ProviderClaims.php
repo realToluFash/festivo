@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Provider;
 
+use App\Domain\User\EmailAddressNormaliser;
+
 /** What a provider vouched for. An address is identity only when the provider says it verified it. */
 final readonly class ProviderClaims
 {
@@ -13,5 +15,10 @@ final readonly class ProviderClaims
         public bool $emailVerified,
         public ?string $name,
     ) {
+    }
+
+    public function verifiedEmail(): ?string
+    {
+        return $this->emailVerified && null !== $this->email ? EmailAddressNormaliser::normalise($this->email) : null;
     }
 }

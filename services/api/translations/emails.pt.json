@@ -39,5 +39,15 @@
     "password.code.ignore": "Se não pediu para adicionar uma palavra-passe, pode ignorar este e-mail. Nada muda sem o código.",
     "password.added.subject": "Foi adicionada uma palavra-passe à sua conta Soirely",
     "password.added.body": "Foi adicionada uma palavra-passe a esta conta Soirely em {when}. Agora também pode iniciar sessão com ela.",
-    "password.added.notYou": "Se não foi você, reponha a sua palavra-passe agora: escolha «Esqueceu-se da palavra-passe?» no início de sessão, com este endereço."
+    "password.added.notYou": "Se não foi você, reponha a sua palavra-passe agora: escolha «Esqueceu-se da palavra-passe?» no início de sessão, com este endereço.",
+    "provider.linked.subject": "O {provider} está agora associado à sua conta Soirely",
+    "provider.linked.body": "O {provider} está agora associado à sua conta. Pode iniciar sessão no Soirely com esta conta {provider}.",
+    "provider.unlinked.subject": "O {provider} já não está associado à sua conta Soirely",
+    "provider.unlinked.body": "O {provider} já não está associado à sua conta. Já não pode iniciar sessão no Soirely com esta conta {provider}, e os dispositivos que entraram com ela terminaram a sessão.",
+    "provider.account": "Conta {provider}: {address}.",
+    "provider.when": "Quando: {when}.",
+    "provider.security": "Abrir Segurança:",
+    "provider.linked.notYou": "Se não foi você, altere a sua palavra-passe e desassocie o {provider} em Segurança.",
+    "provider.unlinked.notYou": "Se não foi você, altere a sua palavra-passe e verifique Segurança.",
+    "provider.why": "Está a receber esta mensagem porque as formas de iniciar sessão no Soirely mudaram."
 }

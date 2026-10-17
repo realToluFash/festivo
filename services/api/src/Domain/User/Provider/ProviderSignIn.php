@@ -71,9 +71,12 @@ final readonly class ProviderSignIn
 
         if (null !== $known) {
             self::fillBlankName($known->getUser(), $name);
+            $known->vouchedFor($claims->verifiedEmail());
             $this->entityManager->flush();
+            // Already linked, so the gate only records the provider on the session it starts.
+            $admission = $this->signInGate->admit($known->getUser(), $request, new ProviderLink($provider, $claims->subject));
 
-            return new ProviderSignInResult($known->getUser(), $this->signInGate->admit($known->getUser(), $request), false);
+            return new ProviderSignInResult($known->getUser(), $admission, false);
         }
 
         // An address the provider has not verified is a self-asserted string, never an identity.
@@ -85,7 +88,7 @@ final readonly class ProviderSignIn
         $owner = $this->userRepository->findOneByPrimaryEmailAddress($claims->email);
 
         if (null !== $owner && true === $owner->getPrimaryEmailAddress()?->isVerified()) {
-            $admission = $this->signInGate->admit($owner, $request, new ProviderLink($provider, $claims->subject));
+            $admission = $this->signInGate->admit($owner, $request, new ProviderLink($provider, $claims->subject, $claims->verifiedEmail()));
 
             if (!$admission instanceof IssuedTokens) {
                 // Nothing linked or named yet, and nothing said about linking, until the code passes.
@@ -98,8 +101,8 @@ final readonly class ProviderSignIn
             return new ProviderSignInResult($owner, $admission, true);
         }
 
-        $registered = $this->userRegistrar->registerFromProvider($claims->email, $name, $request);
-        $this->entityManager->persist(new ProviderIdentity($registered->user, $provider, $claims->subject));
+        $registered = $this->userRegistrar->registerFromProvider($claims->email, $name, $request, $provider);
+        $this->entityManager->persist(new ProviderIdentity($registered->user, $provider, $claims->subject, $claims->verifiedEmail()));
         $this->entityManager->flush();
 
         return new ProviderSignInResult($registered->user, $registered->tokens, false);

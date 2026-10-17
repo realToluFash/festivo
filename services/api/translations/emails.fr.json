@@ -39,5 +39,15 @@
     "password.code.ignore": "Si vous n'avez pas demandé à ajouter un mot de passe, vous pouvez ignorer cet e-mail. Rien ne change sans le code.",
     "password.added.subject": "Un mot de passe a été ajouté à votre compte Soirely",
     "password.added.body": "Un mot de passe a été ajouté à ce compte Soirely le {when}. Vous pouvez désormais aussi vous connecter avec.",
-    "password.added.notYou": "Si ce n'était pas vous, réinitialisez votre mot de passe dès maintenant : choisissez « Mot de passe oublié ? » sur la page de connexion, avec cette adresse."
+    "password.added.notYou": "Si ce n'était pas vous, réinitialisez votre mot de passe dès maintenant : choisissez « Mot de passe oublié ? » sur la page de connexion, avec cette adresse.",
+    "provider.linked.subject": "{provider} est désormais associé à votre compte Soirely",
+    "provider.linked.body": "{provider} est désormais associé à votre compte. Vous pouvez vous connecter à Soirely avec ce compte {provider}.",
+    "provider.unlinked.subject": "{provider} n'est plus associé à votre compte Soirely",
+    "provider.unlinked.body": "{provider} n'est plus associé à votre compte. Vous ne pouvez plus vous connecter à Soirely avec ce compte {provider}, et les appareils connectés avec lui ont été déconnectés.",
+    "provider.account": "Compte {provider} : {address}.",
+    "provider.when": "Quand : {when}.",
+    "provider.security": "Ouvrir Sécurité :",
+    "provider.linked.notYou": "Si ce n'était pas vous, changez votre mot de passe et dissociez {provider} dans Sécurité.",
+    "provider.unlinked.notYou": "Si ce n'était pas vous, changez votre mot de passe et vérifiez Sécurité.",
+    "provider.why": "Vous recevez ce message car vos moyens de connexion à Soirely ont changé."
 }

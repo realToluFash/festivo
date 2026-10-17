@@ -90,6 +90,23 @@ final readonly class AppleAppReturn
         ?string $sentRedirectUri = null,
         ?Request $request = null,
     ): ProviderSignInResult {
+        [$code, $appleUser] = $this->spend($handle, $codeVerifier, $sentRedirectUri);
+
+        return $this->providerSignIn->signInWithCode(IdentityProvider::Apple, $code, $codeVerifier, $this->appleReturnUri, $rawNonce, $request, self::nameFrom($appleUser));
+    }
+
+    /**
+     * The handle's code, spent, for a caller that redeems it itself: linking Apple from Security on Android.
+     *
+     * @return array{0: string, 1: ?string} the code, and Apple's `user` form field
+     */
+    public function spend(
+        #[SensitiveParameter]
+        string $handle,
+        #[SensitiveParameter]
+        string $codeVerifier,
+        ?string $sentRedirectUri = null,
+    ): array {
         if (null !== $sentRedirectUri && $sentRedirectUri !== $this->appleReturnUri) {
             throw new ApiException(ErrorCode::OAuthTokenInvalid, 'That sign-in could not be checked.');
         }
@@ -106,7 +123,12 @@ final readonly class AppleAppReturn
         $attempt->markUsed($now);
         $this->entityManager->flush();
 
-        return $this->providerSignIn->signInWithCode(IdentityProvider::Apple, $code, $codeVerifier, $this->appleReturnUri, $rawNonce, $request, self::nameFrom($appleUser));
+        return [$code, $appleUser];
+    }
+
+    public function returnUri(): string
+    {
+        return $this->appleReturnUri;
     }
 
     /** RFC 7636 S256: base64url of the SHA-256 of the verifier, unpadded. */

@@ -48,7 +48,7 @@ final class GoogleSignInTest extends ApiTestCase
             'complete' => Type\bool(),
             'emailAddresses' => Type\vec(Type\shape(['address' => Type\string(), 'verified' => Type\bool()], true)),
             'phoneNumbers' => Type\vec(Type\mixed()),
-            'providers' => Type\vec(Type\string()),
+            'providers' => Type\vec(Type\shape(['provider' => Type\string(), 'email' => Type\nullable(Type\string())])),
         ], true)->coerce($body['account']);
 
         self::assertSame('New Person', $account['name']);
@@ -57,7 +57,7 @@ final class GoogleSignInTest extends ApiTestCase
         self::assertTrue($account['verified'], 'no phone, so the email is enough');
         self::assertFalse($account['complete'], 'it lands on the details screen');
         self::assertSame([], $account['phoneNumbers']);
-        self::assertSame(['google'], $account['providers'], 'the details screen says Google confirmed the address');
+        self::assertSame([['provider' => 'google', 'email' => 'new.person@example.com']], $account['providers'], 'the details screen says Google confirmed the address');
         self::assertCount(0, self::getMailerMessages(), 'no verification email');
     }
 

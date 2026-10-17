@@ -47,10 +47,10 @@ final readonly class AccountSerialiser
                 'primary' => $phone->isPrimary(),
                 'pending' => $phone->isPending(),
             ]),
-            // Which providers vouch for this account, so a screen can say "Google has already confirmed it".
+            // Which providers vouch for this account, and as which address: the details screen and Security's ways to sign in.
             'providers' => Vec\map(
                 $this->providerIdentityRepository->findBy(['user' => $user]),
-                static fn (ProviderIdentity $identity): string => $identity->getProvider()->value,
+                static fn (ProviderIdentity $identity): array => ['provider' => $identity->getProvider()->value, 'email' => $identity->getEmail()],
             ),
         ];
     }

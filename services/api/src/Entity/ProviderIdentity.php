@@ -34,12 +34,17 @@ class ProviderIdentity
     #[ORM\Column(type: Types::STRING, length: 255)]
     private string $subject;
 
-    public function __construct(User $user, IdentityProvider $provider, string $subject)
+    /** The address the provider last vouched for, shown on Security; only ever one it said it verified. */
+    #[ORM\Column(type: Types::STRING, length: 180, nullable: true)]
+    private ?string $email;
+
+    public function __construct(User $user, IdentityProvider $provider, string $subject, ?string $email = null)
     {
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->provider = $provider;
         $this->subject = $subject;
+        $this->email = $email;
     }
 
     public function getId(): Uuid
@@ -60,5 +65,16 @@ class ProviderIdentity
     public function getSubject(): string
     {
         return $this->subject;
+    }
+
+    public function getEmail(): ?string
+    {
+        return $this->email;
+    }
+
+    /** A provider's address can change under the same `sub`; null keeps the one on record. */
+    public function vouchedFor(?string $email): void
+    {
+        $this->email = $email ?? $this->email;
     }
 }

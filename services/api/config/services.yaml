@@ -115,6 +115,9 @@ services:
     App\Domain\User\Password\PasswordChangeMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\SignInMethods\SignInMethodMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\TwoFactor\SecretBox:
         arguments:
             $twoFactorKey: '%env(TWO_FACTOR_KEY)%'
