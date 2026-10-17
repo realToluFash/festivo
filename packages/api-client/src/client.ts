@@ -25,6 +25,31 @@ export interface SignedIn {
   linked: boolean;
 }
 
+/** A first factor that passed on an account with two-factor on: no tokens until a code does. */
+export interface TwoFactorChallenge {
+  kind: 'twoFactor';
+  challenge: string;
+  expiresAt: string;
+  /** The address the code is for, shown as "the 6-digit code for <address>". */
+  email: string;
+  linked: boolean;
+}
+
+export type SignInOutcome = SignedIn | TwoFactorChallenge;
+
+export interface TwoFactorStatus {
+  on: boolean;
+  recoveryCodesLeft: number;
+}
+
+export interface TwoFactorEnrolment {
+  secret: string;
+  otpauthUri: string;
+  qrSvg: string;
+}
+
+export type SecondFactor = { code: string } | { recoveryCode: string };
+
 export type Provider = 'google' | 'apple';
 
 export interface Health {
@@ -195,8 +220,42 @@ export class ApiClient {
     return this.request<T>(path, { ...init, method: 'DELETE' });
   }
 
-  async signIn(email: string, password: string): Promise<SignedIn> {
+  async signIn(email: string, password: string): Promise<SignInOutcome> {
     return this.signedIn('/api/auth/login', { email, password }, 'SignInController');
+  }
+
+  async verifyTwoFactor(challenge: string, factor: SecondFactor): Promise<SignedIn> {
+    return this.signedInOnly(
+      '/api/auth/two-factor/verify',
+      { challenge, ...factor },
+      'TwoFactorSignInController',
+    );
+  }
+
+  async twoFactorStatus(): Promise<TwoFactorStatus> {
+    return this.get<TwoFactorStatus>('/api/auth/two-factor');
+  }
+
+  /** A new secret, off until `activateTwoFactor` is sent a code it made. */
+  async enrolTwoFactor(): Promise<TwoFactorEnrolment> {
+    return this.post<TwoFactorEnrolment>('/api/auth/two-factor/enrol');
+  }
+
+  /** @returns the recovery codes, which the API shows this once */
+  async activateTwoFactor(code: string): Promise<string[]> {
+    return (await this.post<{ recoveryCodes: string[] }>('/api/auth/two-factor/activate', { code }))
+      .recoveryCodes;
+  }
+
+  /** Takes an app code or an unused recovery code; every earlier recovery code stops working. */
+  async newRecoveryCodes(code: string): Promise<string[]> {
+    return (
+      await this.post<{ recoveryCodes: string[] }>('/api/auth/two-factor/recovery-codes', { code })
+    ).recoveryCodes;
+  }
+
+  async disableTwoFactor(code: string): Promise<void> {
+    await this.post('/api/auth/two-factor/disable', { code });
   }
 
   /** The ID token a provider issued, and the nonce whose hash went to the provider with the request. */
@@ -206,7 +265,7 @@ export class ApiClient {
     idToken: string,
     nonce: string,
     name?: string,
-  ): Promise<SignedIn> {
+  ): Promise<SignInOutcome> {
     return this.signedIn(
       `/api/auth/oauth/${provider}`,
       { idToken, nonce, ...(name == null || name === '' ? {} : { name }) },
@@ -224,7 +283,7 @@ export class ApiClient {
       nonce: string;
       name?: string;
     },
-  ): Promise<SignedIn> {
+  ): Promise<SignInOutcome> {
     const { name, ...rest } = attempt;
 
     return this.signedIn(
@@ -240,15 +299,26 @@ export class ApiClient {
   }
 
   /** Whose reset link this is; refused as `reset_link_invalid`, `reset_link_used` or `reset_link_expired`. */
-  async checkResetLink(token: string): Promise<{ email: string }> {
-    const body = await this.post<{ email?: unknown }>('/api/auth/password/reset/check', { token });
+  async checkResetLink(token: string): Promise<{ email: string; twoFactor: boolean }> {
+    const body = await this.post<{ email?: unknown; twoFactor?: unknown }>(
+      '/api/auth/password/reset/check',
+      { token },
+    );
 
-    return { email: typeof body?.email === 'string' ? body.email : '' };
+    return {
+      email: typeof body?.email === 'string' ? body.email : '',
+      twoFactor: body?.twoFactor === true,
+    };
+  }
+
+  /** With two-factor on, the code comes before the new password; nothing changes until it passes. */
+  async passResetCode(token: string, factor: SecondFactor): Promise<void> {
+    await this.post('/api/auth/password/reset/code', { token, ...factor });
   }
 
   /** A new password from a reset link, which signs this device in and every other one out. */
   async resetPassword(token: string, password: string): Promise<SignedIn> {
-    return this.signedIn(
+    return this.signedInOnly(
       '/api/auth/password/reset',
       { token, password },
       'PasswordRecoveryController',
@@ -257,7 +327,7 @@ export class ApiClient {
 
   /** Signed in as sign-in is: the same tokens, the same account. */
   async register(email: string, name: string, password: string): Promise<SignedIn> {
-    return this.signedIn('/api/auth/register', { email, name, password }, 'RegisterController');
+    return this.signedInOnly('/api/auth/register', { email, name, password }, 'RegisterController');
   }
 
   async me(): Promise<Account> {
@@ -536,12 +606,40 @@ export class ApiClient {
     return { tokens, body: body as Record<string, unknown> };
   }
 
+  /** Tokens and the account, or, with two-factor on, the challenge the code answers. */
   private async signedIn(
     path: string,
     credentials: Record<string, string>,
     controller: string,
+  ): Promise<SignInOutcome> {
+    const response = await this.sendTokenRequest(path, credentials);
+
+    if (response.status === 202) {
+      const challenge = asChallenge(await response.json().catch(() => null));
+
+      if (challenge == null) {
+        throw new Error(
+          `The API answered ${path} with a challenge this client cannot read. Check SignInResponse in services/api.`,
+        );
+      }
+
+      return challenge;
+    }
+
+    return this.adopt(response, path, controller);
+  }
+
+  /** A way in that never asks for a second factor: registering, or the code that just passed. */
+  private async signedInOnly(
+    path: string,
+    credentials: Record<string, string>,
+    controller: string,
   ): Promise<SignedIn> {
-    const { tokens, body } = await this.issued(await this.sendTokenRequest(path, credentials));
+    return this.adopt(await this.sendTokenRequest(path, credentials), path, controller);
+  }
+
+  private async adopt(response: Response, path: string, controller: string): Promise<SignedIn> {
+    const { tokens, body } = await this.issued(response);
     const account = asAccount(body.account);
 
     if (account == null) {
@@ -772,6 +870,23 @@ function asHealth(raw: unknown): Health | null {
   }
 
   return { status: candidate.status, checks };
+}
+
+function asChallenge(raw: unknown): TwoFactorChallenge | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+
+  const body = raw as Record<string, unknown>;
+  const { twoFactorChallenge, challengeExpiresAt, email } = body;
+
+  if (typeof twoFactorChallenge !== 'string' || typeof challengeExpiresAt !== 'string') return null;
+
+  return {
+    kind: 'twoFactor',
+    challenge: twoFactorChallenge,
+    expiresAt: challengeExpiresAt,
+    email: typeof email === 'string' ? email : '',
+    linked: body.linked === true,
+  };
 }
 
 function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTokens | null {

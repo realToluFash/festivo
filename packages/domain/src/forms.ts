@@ -20,3 +20,8 @@ export function codeProblem(typed: string): 'blank' | 'short' | null {
 
   return /^\d{6}$/u.test(code) ? null : 'short';
 }
+
+/** An authenticator key as it is shown, in groups of four, so it can be typed without losing place. */
+export function keyInGroups(secret: string): string {
+  return secret.replace(/(.{4})(?=.)/gu, '$1 ');
+}

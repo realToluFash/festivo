@@ -105,6 +105,9 @@ services:
     App\Domain\User\Recovery\RecoveryMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\TwoFactor\SecretBox:
+        arguments:
+            $twoFactorKey: '%env(TWO_FACTOR_KEY)%'
     App\Domain\User\Interfaces\IdTokenVerifierInterface: '@App\Integrations\OpenIdConnect\OpenIdTokenVerifier'
 
     # The assistant's adapter is chosen by ASSISTANT_PROVIDER rather than by a

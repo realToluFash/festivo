@@ -7,7 +7,7 @@ namespace App\Domain\User\Provider;
 use App\Domain\User\Interfaces\CodeRedeemerInterface;
 use App\Domain\User\Interfaces\IdTokenVerifierInterface;
 use App\Domain\User\Model\ProviderSignInResult;
-use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\SignInGate;
 use App\Domain\User\UserRegistrar;
 use App\Entity\ProviderIdentity;
 use App\Entity\User;
@@ -30,7 +30,7 @@ final readonly class ProviderSignIn
         private ProviderIdentityRepository $providerIdentityRepository,
         private UserRepository $userRepository,
         private UserRegistrar $userRegistrar,
-        private TokenIssuer $tokenIssuer,
+        private SignInGate $signInGate,
         private EntityManagerInterface $entityManager,
     ) {
     }
@@ -69,10 +69,9 @@ final readonly class ProviderSignIn
 
         if (null !== $known) {
             self::fillBlankName($known->getUser(), $name);
-            $tokens = $this->tokenIssuer->issueFor($known->getUser(), $request);
             $this->entityManager->flush();
 
-            return new ProviderSignInResult($known->getUser(), $tokens, false);
+            return new ProviderSignInResult($known->getUser(), $this->signInGate->admit($known->getUser(), $request), false);
         }
 
         // An address the provider has not verified is a self-asserted string, never an identity.
@@ -86,10 +85,9 @@ final readonly class ProviderSignIn
         if (null !== $owner && true === $owner->getPrimaryEmailAddress()?->isVerified()) {
             self::fillBlankName($owner, $name);
             $this->entityManager->persist(new ProviderIdentity($owner, $provider, $claims->subject));
-            $tokens = $this->tokenIssuer->issueFor($owner, $request);
             $this->entityManager->flush();
 
-            return new ProviderSignInResult($owner, $tokens, true);
+            return new ProviderSignInResult($owner, $this->signInGate->admit($owner, $request), true);
         }
 
         $registered = $this->userRegistrar->registerFromProvider($claims->email, $name, $request);

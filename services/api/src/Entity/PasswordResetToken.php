@@ -40,6 +40,10 @@ class PasswordResetToken
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $usedAt = null;
 
+    /** With two-factor on, a code passed for this link, so the new password may be set. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $secondFactorPassedAt = null;
+
     public function __construct(User $user, string $tokenHash, DateTimeImmutable $now)
     {
         $this->id = Uuid::v7();
@@ -61,6 +65,16 @@ class PasswordResetToken
     public function isExpiredAt(DateTimeImmutable $now): bool
     {
         return $now >= $this->expiresAt;
+    }
+
+    public function passedSecondFactor(DateTimeImmutable $now): void
+    {
+        $this->secondFactorPassedAt = $now;
+    }
+
+    public function hasPassedSecondFactor(): bool
+    {
+        return null !== $this->secondFactorPassedAt;
     }
 
     public function markUsed(DateTimeImmutable $now): void

@@ -10,7 +10,7 @@ final readonly class SignInResult
 {
     public function __construct(
         public User $user,
-        public IssuedTokens $tokens,
+        public IssuedTokens|IssuedChallenge $admission,
     ) {
     }
 }

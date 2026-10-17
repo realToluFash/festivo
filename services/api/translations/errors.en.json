@@ -27,5 +27,12 @@
     "service_unavailable": "The service is temporarily unavailable.",
     "assistant_unavailable": "The assistant is not available.",
     "assistant_busy": "The assistant is busy. Please try again in a moment.",
-    "assistant_refused": "The assistant would not answer that."
+    "assistant_refused": "The assistant would not answer that.",
+    "two_factor_challenge_invalid": "Sign in again.",
+    "two_factor_code_invalid": "That code did not work.",
+    "recovery_code_used": "That recovery code has already been used.",
+    "two_factor_already_on": "Two-factor is already on.",
+    "two_factor_not_enrolled": "Start setting up two-factor first.",
+    "two_factor_off": "Two-factor is not on.",
+    "two_factor_required": "Enter the code from your authenticator app first."
 }

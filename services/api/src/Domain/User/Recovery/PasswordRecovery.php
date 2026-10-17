@@ -8,6 +8,7 @@ use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\SecondFactorCheck;
 use App\Entity\PasswordResetToken;
 use App\Entity\ProviderIdentity;
 use App\Entity\User;
@@ -15,6 +16,7 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\PasswordResetTokenRepository;
 use App\Repository\ProviderIdentityRepository;
+use App\Repository\TwoFactorFactorRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\SecureRandom;
@@ -37,6 +39,8 @@ final readonly class PasswordRecovery
         private PasswordResolver $passwordResolver,
         private TokenIssuer $tokenIssuer,
         private RecoveryMailer $recoveryMailer,
+        private TwoFactorFactorRepository $twoFactorFactorRepository,
+        private SecondFactorCheck $secondFactorCheck,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -70,6 +74,35 @@ final readonly class PasswordRecovery
         return $this->usable($token)->getUser();
     }
 
+    /** Whether this link needs a code before the new password: the account has two-factor on. */
+    public function asksForSecondFactor(User $user): bool
+    {
+        return null !== $this->twoFactorFactorRepository->findActiveFor($user);
+    }
+
+    /** The code comes first, so a link alone cannot change the password or end a session. */
+    public function passSecondFactor(
+        #[SensitiveParameter]
+        string $token,
+        #[SensitiveParameter]
+        ?string $code,
+        #[SensitiveParameter]
+        ?string $recoveryCode,
+    ): void {
+        $reset = $this->usable($token);
+        $factor = $this->twoFactorFactorRepository->findActiveFor($reset->getUser())
+            ?? throw new ApiException(ErrorCode::TwoFactorOff, 'Two-factor is not on.');
+
+        match (true) {
+            null !== $code => $this->secondFactorCheck->passCode($factor, $code),
+            null !== $recoveryCode => $this->secondFactorCheck->passRecoveryCode($factor, $recoveryCode),
+            default => throw new ApiException(ErrorCode::BadRequest, 'Send a code or a recoveryCode.'),
+        };
+
+        $reset->passedSecondFactor($this->clock->now());
+        $this->entityManager->flush();
+    }
+
     public function reset(#[SensitiveParameter] string $token, #[SensitiveParameter] string $password, ?Request $request = null): SignInResult
     {
         $reset = $this->usable($token);
@@ -82,6 +115,10 @@ final readonly class PasswordRecovery
 
         $user = $reset->getUser();
         $now = $this->clock->now();
+
+        if ($this->asksForSecondFactor($user) && !$reset->hasPassedSecondFactor()) {
+            throw new ApiException(ErrorCode::TwoFactorRequired, 'Enter the code from your authenticator app first.');
+        }
 
         $user->setPassword($this->passwordResolver->hash($password));
         $reset->markUsed($now);

@@ -135,6 +135,11 @@ export default function Home() {
       ) : (
         <View style={styles.panel}>
           <Text weight="medium">{t('home.signedInAs', { name: account.name })}</Text>
+          <Link href="/security" asChild>
+            <Pressable style={styles.button} accessibilityRole="button" testID="home.security">
+              <Text weight="medium">{t('security.title')}</Text>
+            </Pressable>
+          </Link>
           <Pressable
             style={styles.button}
             accessibilityRole="button"

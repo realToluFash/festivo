@@ -24,6 +24,7 @@ enum ErrorCode: string
     case ResetLinkInvalid = 'reset_link_invalid';
     case ResetLinkUsed = 'reset_link_used';
     case ResetLinkExpired = 'reset_link_expired';
+    case TwoFactorChallengeInvalid = 'two_factor_challenge_invalid';
     case Forbidden = 'forbidden';
     case PermissionRequired = 'permission_required';
     case AccountUnverified = 'account_unverified';
@@ -34,6 +35,13 @@ enum ErrorCode: string
     case VerificationCodeInvalid = 'verification_code_invalid';
     case VerificationCodeExpired = 'verification_code_expired';
     case VerificationCodeExhausted = 'verification_code_exhausted';
+
+    case TwoFactorCodeInvalid = 'two_factor_code_invalid';
+    case RecoveryCodeUsed = 'recovery_code_used';
+    case TwoFactorAlreadyOn = 'two_factor_already_on';
+    case TwoFactorNotEnrolled = 'two_factor_not_enrolled';
+    case TwoFactorOff = 'two_factor_off';
+    case TwoFactorRequired = 'two_factor_required';
 
     case InternalError = 'internal_error';
     case ServiceUnavailable = 'service_unavailable';
@@ -50,13 +58,14 @@ enum ErrorCode: string
             self::MethodNotAllowed => 405,
             self::NotFound, self::ResetLinkInvalid => 404,
             self::ResetLinkUsed, self::ResetLinkExpired => 410,
-            self::Conflict, self::EmailTaken, self::PhoneTaken => 409,
+            self::Conflict, self::EmailTaken, self::PhoneTaken, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
             self::UnsupportedMediaType => 415,
-            self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid => 401,
-            self::Forbidden, self::PermissionRequired, self::AccountUnverified, self::ProfileIncomplete => 403,
+            self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid => 401,
+            self::Forbidden, self::PermissionRequired, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired => 403,
             self::TooManyRequests, self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
             self::VerificationCodeExhausted => 422,
+            self::TwoFactorCodeInvalid, self::RecoveryCodeUsed => 422,
             self::InternalError => 500,
             self::ServiceUnavailable => 503,
             self::AssistantUnavailable, self::AssistantBusy => 503,

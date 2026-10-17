@@ -1,10 +1,10 @@
-import { type Provider, ProviderCancelled, awaiting } from '@soirely/api-client';
+import { type Provider, ProviderCancelled } from '@soirely/api-client';
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 
 import { Pending } from '../../components/Pending.tsx';
 import { PROVIDER_NAMES, finishProviderSignIn } from '../../providerSignIn.ts';
-import { adoptAccount, landingFor } from '../../session.ts';
+import { landAfterSignIn } from '../../signedIn.ts';
 
 /** Where a provider sends the person back: signed in and on to where the account belongs, or back to sign-in. */
 export function OAuthCallback({ provider }: { provider: Provider }) {
@@ -17,10 +17,7 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
     started.current = true;
 
     finishProviderSignIn(provider, window.location.href)
-      .then(async ({ account }) => {
-        await adoptAccount(account);
-        navigate(landingFor(awaiting(account)), { replace: true });
-      })
+      .then((outcome) => landAfterSignIn(outcome, navigate))
       .catch((error: unknown) => {
         navigate(
           error instanceof ProviderCancelled

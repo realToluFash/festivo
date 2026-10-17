@@ -61,3 +61,11 @@ framework:
             policy: fixed_window
             limit: 5
             interval: '15 minutes'
+
+        two_factor_account:
+            # Per account, shared by every place a second factor is checked (sign-in,
+            # setup, turning it off), so guessing cannot move from one to another. Five
+            # wrong codes pause code entry until the window ends, and the refusal says when.
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\User\Controller\SignInController;
-use App\Domain\User\Http\AccountSerialiser;
+use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\UserAuthenticator;
 use App\Domain\User\UserRegistrar;
 use App\Entity\EmailAddress;
@@ -130,7 +130,7 @@ final class SignInTest extends ApiTestCase
         $open = self::serviceById('limiter.sign_in_ip', RateLimiterFactoryInterface::class);
 
         foreach ([[new RefusingRateLimiterFactory(), $open], [$open, new RefusingRateLimiterFactory()]] as [$a, $b]) {
-            $controller = new SignInController(self::service(AccountSerialiser::class), $authenticator, $b, $a);
+            $controller = new SignInController(self::service(SignInResponse::class), $authenticator, $b, $a);
 
             try {
                 $controller->signIn(Request::create('/api/auth/login', 'POST', content: Json\encode([
@@ -160,7 +160,7 @@ final class SignInTest extends ApiTestCase
             '22:46:00' => '22:47',
         ] as $windowEnd => $stated) {
             $controller = new SignInController(
-                self::service(AccountSerialiser::class),
+                self::service(SignInResponse::class),
                 $authenticator,
                 $open,
                 new RefusingRateLimiterFactory(new DateTimeImmutable('2026-10-15 ' . $windowEnd)),
@@ -247,7 +247,7 @@ final class SignInTest extends ApiTestCase
             new InMemoryStorage(),
         );
 
-        return new SignInController(self::service(AccountSerialiser::class), self::service(UserAuthenticator::class), $factory('ip'), $factory('account'));
+        return new SignInController(self::service(SignInResponse::class), self::service(UserAuthenticator::class), $factory('ip'), $factory('account'));
     }
 
     private static function refusal(SignInController $controller, string $email, #[SensitiveParameter] string $password): ApiException

@@ -60,7 +60,12 @@ function answering(answers: Record<string, () => Response>, calls: Call[] = []) 
 
     calls.push({ method, path: pathname });
 
-    const answer = answers[`${method} ${pathname}`];
+    // The two-factor card asks for its state on every visit; these tests are about devices.
+    const answer =
+      answers[`${method} ${pathname}`] ??
+      (`${method} ${pathname}` === 'GET /api/auth/two-factor'
+        ? () => json({ on: false, recoveryCodesLeft: 0 })
+        : null);
 
     if (answer == null) throw new Error(`Nothing stubbed for ${method} ${pathname}`);
 

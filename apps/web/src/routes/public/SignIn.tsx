@@ -1,5 +1,5 @@
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
-import { ApiError, awaiting } from '@soirely/api-client';
+import { ApiError } from '@soirely/api-client';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -9,7 +9,7 @@ import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
-import { adoptAccount, landingFor } from '../../session.ts';
+import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 
@@ -78,11 +78,7 @@ export function SignIn() {
     setStatus({ kind: 'signingIn' });
 
     try {
-      const { account } = await api.signIn(values.email, values.password);
-
-      await adoptAccount(account);
-
-      navigate(landingFor(awaiting(account)), { replace: true });
+      await landAfterSignIn(await api.signIn(values.email, values.password), navigate);
     } catch (error) {
       setStatus(refusalFrom(error));
     }

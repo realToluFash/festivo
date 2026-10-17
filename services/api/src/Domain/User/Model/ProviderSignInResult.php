@@ -10,7 +10,7 @@ final readonly class ProviderSignInResult
 {
     public function __construct(
         public User $user,
-        public IssuedTokens $tokens,
+        public IssuedTokens|IssuedChallenge $admission,
         /** The provider was linked to an existing account just now, which the person is told once. */
         public bool $linked,
     ) {
