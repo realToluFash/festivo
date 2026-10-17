@@ -275,7 +275,7 @@ describe('getting back in without the authenticator', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send new codes' }));
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Started again on another device' }),
+      await screen.findByRole('heading', { level: 1, name: 'A newer request replaced this one' }),
     ).toBeDefined();
     expect(
       screen.getByText(
