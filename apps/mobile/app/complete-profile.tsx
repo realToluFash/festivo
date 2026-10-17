@@ -9,20 +9,13 @@ import {
 import { getCalendars, getLocales } from 'expo-localization';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Keyboard,
-  StyleSheet,
-  type TextInput,
-  View,
-  findNodeHandle,
-} from 'react-native';
+import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
-import { CountryPicker } from '../src/components/CountryPicker.tsx';
+import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx';
 import { Field, TextField } from '../src/components/Field.tsx';
 import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Notice } from '../src/components/Notice.tsx';
@@ -155,9 +148,7 @@ function Details({ account }: { account: Account }) {
 
       // The picker is no text field: its refusal gets the screen reader's focus, and no keyboard opens.
       if (checked.name == null && checked.organisationName == null && checked.countryCode != null) {
-        Keyboard.dismiss();
-        const picker = findNodeHandle(countryPicker.current);
-        if (picker != null) AccessibilityInfo.setAccessibilityFocus(picker);
+        focusPicker(countryPicker);
 
         return;
       }

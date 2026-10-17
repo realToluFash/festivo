@@ -84,4 +84,9 @@ describe('the phone screens', () => {
     expect(refusedPhoneField('tooShort')).toBe('number');
     expect(refusedPhoneField(null)).toBeNull();
   });
+
+  it('skip a blank country on every screen, as on the phone screens', () => {
+    expect(startingPhoneCountry(null, '', 'NG').code).toBe('NG');
+    expect(startingPhoneCountry('', null, null).code).toBe('');
+  });
 });

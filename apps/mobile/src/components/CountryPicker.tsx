@@ -1,6 +1,16 @@
 import { callingCode, countryChoices } from '@soirely/domain';
-import { type Ref, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { type Ref, type RefObject, useMemo, useState } from 'react';
+import {
+  AccessibilityInfo,
+  FlatList,
+  Keyboard,
+  Modal,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+  findNodeHandle,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
@@ -190,3 +200,10 @@ const styles = StyleSheet.create({
   optionChosen: { backgroundColor: tokens.colorAccentTint },
   optionName: { flex: 1 },
 });
+
+/** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. */
+export function focusPicker(picker: RefObject<View | null>): void {
+  Keyboard.dismiss();
+  const node = findNodeHandle(picker.current);
+  if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+}
