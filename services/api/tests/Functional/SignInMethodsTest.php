@@ -302,6 +302,7 @@ final class SignInMethodsTest extends ApiTestCase
 
         self::assertSame(403, $this->statusCode());
         self::assertSame(ErrorCode::ProofRequired->type(), $body['type']);
+        self::assertSame('This needs your password, or a sign-in with Google or Apple, in the last 5 minutes, and your two-factor code if two-factor is on.', $body['detail']);
     }
 
     /** sc-58 and sc-59 untouched, and the session they start now says which provider started it. */

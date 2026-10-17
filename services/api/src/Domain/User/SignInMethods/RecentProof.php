@@ -27,6 +27,7 @@ use Psl\Str;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Signing in again before changing how one signs in, as OWASP ASVS 3.7.1 asks: proved for five minutes. */
 final readonly class RecentProof
@@ -43,6 +44,7 @@ final readonly class RecentProof
         private ClockInterface $clock,
         private RateLimiterFactoryInterface $passwordChangeAccountLimiter,
         private GuardedAttempt $guardedAttempt,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -106,7 +108,7 @@ final readonly class RecentProof
         $held = null === $proof || '' === $proof ? null : $this->signInProofRepository->findOneByHash(TokenIssuer::hash($proof));
 
         if (null === $held || !$held->standsFor($user, $this->clock->now())) {
-            throw new ApiException(ErrorCode::ProofRequired, 'Confirm it is you first.');
+            throw $this->proofRequired();
         }
     }
 
@@ -177,9 +179,17 @@ final readonly class RecentProof
         $held = $this->signInProofRepository->findOneByHash(TokenIssuer::hash($plain));
 
         if (null === $held || !$held->awaitsCodeFor($user, $this->clock->now())) {
-            throw new ApiException(ErrorCode::ProofRequired, 'Confirm it is you first.');
+            throw $this->proofRequired();
         }
 
         return [$plain, $held];
+    }
+
+    /** The title says a proof is needed; the detail says which one (RFC 9457 §3.1.5). */
+    private function proofRequired(): ApiException
+    {
+        return new ApiException(ErrorCode::ProofRequired, $this->translator->trans('proof.required', [
+            '{minutes}' => (string) SignInProof::MINUTES,
+        ]));
     }
 }

@@ -6,6 +6,7 @@
     "gate.details": "Añada algunos datos para continuar.",
     "gate.email_unverified": "Verifique su correo electrónico para continuar.",
     "gate.phone_unverified": "Verifique su número de móvil para continuar.",
+    "proof.required": "This needs your password, or a sign-in with Google or Apple, in the last {minutes} minutes, and your two-factor code if two-factor is on.",
     "validation.code_app_or_recovery_required": "Introduzca un código de su aplicación o un código de recuperación.",
     "validation.code_app_required": "Introduzca el código de 6 dígitos de su aplicación.",
     "validation.code_email_required": "Introduzca el código de 6 dígitos del correo.",

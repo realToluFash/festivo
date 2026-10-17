@@ -36,7 +36,7 @@
     "two_factor_not_enrolled": "Start setting up two-factor first.",
     "two_factor_off": "Two-factor is not on.",
     "two_factor_required": "Enter the code from your authenticator app first.",
-    "proof_required": "Confirm it's you first.",
+    "proof_required": "Confirm it is you first.",
     "recovery_nobody_to_approve": "Nobody in your organisation can confirm this. Contact Soirely support.",
     "recovery_request_invalid": "That request isn't open any more. Start again from the sign-in code screen.",
     "recovery_request_closed": "This request has already ended.",
