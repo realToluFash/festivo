@@ -38,6 +38,9 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. A status mark agrees with "o pedido"** (`lostTwoFactor.*Mark`): "Substituído",
+  as "Cancelado", "Confirmado", "Recusado". The daily limit is "um dos 3 pedidos que pode fazer
+  por dia" (`replacedNote`), echoing `limitedBody`, "Pode pedir 3 vezes por dia".
 - **17 Oct 2026. An API detail with a bare number takes it without agreement**
   (`messages:proof.required`): "nos últimos {minutes} minutos". The API catalogue has no
   plural, so the number is always 5 and the sentence is written for it.
