@@ -160,7 +160,15 @@
     "taken": "Ce numéro est déjà associé à un autre compte. Votre numéro actuel ne change pas.",
     "send": "Envoyer un code à ce numéro",
     "sending": "Envoi du code…",
-    "keep": "Garder mon numéro actuel"
+    "keep": "Garder mon numéro actuel",
+    "introWhatsApp": "Nous avons envoyé un code sur votre WhatsApp au {{number}}.",
+    "introFallback": "WhatsApp ne vous a pas atteint, nous vous l'avons donc envoyé par SMS au {{number}}.",
+    "introChosen": "Nous avons envoyé le même code par SMS au {{number}}. Celui reçu sur WhatsApp fonctionne aussi.",
+    "codeLabelWhatsApp": "Code reçu sur WhatsApp",
+    "codeBlankWhatsApp": "Saisissez le code à 6 chiffres reçu sur WhatsApp.",
+    "wrongWhatsApp": "Ce code ne correspond pas. Vérifiez le dernier message WhatsApp de Soirely et réessayez.",
+    "textInstead": "Me l'envoyer par SMS",
+    "textInsteadFailed": "Le SMS n'a pas pu être envoyé. Réessayez dans un instant."
   },
   "session": {
     "unreachableTitle": "Impossible de joindre Soirely",

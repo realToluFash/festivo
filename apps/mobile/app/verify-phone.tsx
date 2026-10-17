@@ -1,15 +1,18 @@
-import { type Account, phoneAwaitingCode } from '@soirely/api-client';
-import { cleanCode, codeProblem, formatPhone } from '@soirely/domain';
+import { type Account, type PhoneCodeRoute, phoneAwaitingCode } from '@soirely/api-client';
+import { cleanCode, codeProblem, codeWording, formatPhone } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
-import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
+import { Footnote, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
+import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
+import { tokens } from '../src/theme/tokens.ts';
 
 type Status = CodeStatus | { kind: 'verified' };
 
@@ -21,6 +24,10 @@ export default function VerifyPhone() {
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
+  const [textingFailed, setTextingFailed] = useState(false);
+  const wording = codeWording(route);
+  const lastRoute = useRef<PhoneCodeRoute | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -36,9 +43,10 @@ export default function VerifyPhone() {
 
     api
       .phoneOpening()
-      .then(({ cooldownSeconds, codeState }) => {
+      .then(({ cooldownSeconds, codeState, route: sent }) => {
         if (!live) return;
         setCooldown(cooldownSeconds);
+        setRoute(sent);
         setStatus((now) => (now.kind === 'verified' ? now : openingStatus(now, codeState)));
       })
       .catch(() => {});
@@ -47,6 +55,32 @@ export default function VerifyPhone() {
       live = false;
     };
   }, []);
+
+  // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
+  useEffect(() => {
+    if (!wording.watch) return;
+
+    const watching = setInterval(() => {
+      api
+        .phoneOpening()
+        .then((opening) => setRoute(opening.route))
+        .catch(() => {});
+    }, 5000);
+
+    return () => clearInterval(watching);
+  }, [wording.watch]);
+
+  // iOS has no live regions, so a changed line is announced by hand, as Android's live region does.
+  useEffect(() => {
+    const awaiting = account == null || account === 'none' ? null : phoneAwaitingCode(account);
+
+    if (lastRoute.current === 'whatsapp' && route === 'sms_fallback' && awaiting != null) {
+      AccessibilityInfo.announceForAccessibility(
+        t('verifyPhone.introFallback', { number: formatPhone(awaiting.number) }),
+      );
+    }
+    lastRoute.current = route;
+  }, [account, route, t]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -70,7 +104,13 @@ export default function VerifyPhone() {
     const code = cleanCode(typed);
 
     if (problem != null) {
-      setCodeError(t(problem === 'blank' ? 'verifyPhone.codeBlank' : 'verifyPhone.codeShort'));
+      setCodeError(
+        problem === 'short'
+          ? t('verifyPhone.codeShort')
+          : wording.fromWhatsApp
+            ? t('verifyPhone.codeBlankWhatsApp')
+            : t('verifyPhone.codeBlank'),
+      );
 
       return;
     }
@@ -90,6 +130,7 @@ export default function VerifyPhone() {
     try {
       setCooldown(await api.resendPhoneCode());
       setStatus({ kind: 'entering' });
+      setRoute((await api.phoneOpening()).route);
     } catch (error) {
       const seconds = retryAfter(error);
 
@@ -114,7 +155,25 @@ export default function VerifyPhone() {
     }
   }
 
-  const fieldError = codeError ?? (status.kind === 'wrong' ? t('verifyPhone.wrong') : null);
+  async function textInstead(): Promise<void> {
+    setTextingFailed(false);
+
+    try {
+      await api.textPhoneCodeInstead();
+      setRoute('sms_chosen');
+    } catch {
+      setTextingFailed(true);
+    }
+  }
+
+  const wrong = wording.fromWhatsApp ? t('verifyPhone.wrongWhatsApp') : t('verifyPhone.wrong');
+  const fieldError = codeError ?? (status.kind === 'wrong' ? wrong : null);
+  const line = {
+    whatsapp: t('verifyPhone.introWhatsApp', { number }),
+    fallback: t('verifyPhone.introFallback', { number }),
+    chosen: t('verifyPhone.introChosen', { number }),
+    texted: t('verifyPhone.intro', { number }),
+  }[wording.line];
 
   return (
     <AuthFrame
@@ -125,9 +184,8 @@ export default function VerifyPhone() {
           <AuthHeading
             done={verified}
             title={verified ? t('verifyPhone.doneTitle') : t('verifyPhone.title')}
-            intro={
-              verified ? t('verifyPhone.doneBody', { number }) : t('verifyPhone.intro', { number })
-            }
+            intro={verified ? t('verifyPhone.doneBody', { number }) : line}
+            introLive={!verified}
           />
         </>
       }
@@ -148,7 +206,23 @@ export default function VerifyPhone() {
           onLeft={() => {}}
           onVerify={(code) => void verify(code)}
           onResend={() => void resend()}
+          codeLabel={wording.fromWhatsApp ? t('verifyPhone.codeLabelWhatsApp') : undefined}
         >
+          {wording.offerText && (
+            <SecondaryButton
+              label={t('verifyPhone.textInstead')}
+              onPress={() => void textInstead()}
+              testID="verifyPhone.textInstead"
+            />
+          )}
+          {textingFailed && (
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={t('verifyPhone.textInsteadFailed')}
+            />
+          )}
+
           <Footnote
             question={t('verifyPhone.wrongNumber')}
             action={t('verifyPhone.changeIt')}
