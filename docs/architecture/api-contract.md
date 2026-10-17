@@ -169,7 +169,11 @@ never does: the primary phone is the one on the profile and the one texted.
 - **One answer for a held address**, this account's or another's: `409 already_linked`,
   the same bytes either way, so the endpoint is no oracle for who has an account.
 - `PATCH …/emails/{id}/primary` and `…/phones/{id}/primary` move the flag in one
-  transaction. An unverified row is `409 address_not_verified`.
+  transaction, reading the current primary under the account's row lock. An unverified row
+  is `409 address_not_verified`.
+- The email route also takes `proof` from `POST /api/auth/proof`, because it changes the
+  address that signs in and recovers the account. Without a live one it is
+  `403 proof_required`, before the id is looked at. The phone route takes none.
 - `DELETE …/emails/{id}` and `…/phones/{id}`: the primary is `409 primary_address`, the
   only verified row is `409 last_verified_address`. `204` otherwise.
 - An id that is not this account's, or not an id, is `404 not_found`, never `403`.

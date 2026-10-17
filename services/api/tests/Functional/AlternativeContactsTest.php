@@ -201,6 +201,27 @@ final class AlternativeContactsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aPromotionReadsThePrimaryUnderTheLock(): void
+    {
+        $second = new EmailAddress($this->fresh(), 'second@example.com');
+        $second->setVerifiedAt(new DateTimeImmutable());
+        self::em()->persist($second);
+        self::em()->flush();
+        $id = Uuid::fromString($this->idOf(self::ADDRESS));
+        $proof = $this->proof();
+        $stale = $this->fresh();
+        self::assertSame(self::ADDRESS, $stale->getPrimaryEmailAddress()?->getAddress());
+        $connection = self::em()->getConnection();
+        $connection->executeStatement('UPDATE email_addresses SET is_primary = false WHERE user_id = ?', [$stale->getId()->toRfc4122()]);
+        $connection->executeStatement('UPDATE email_addresses SET is_primary = true WHERE address = ?', ['second@example.com']);
+
+        self::service(LinkedContacts::class)->makeEmailPrimary($stale, $id, $proof);
+        $primaries = Vec\filter($this->fresh()->getEmailAddresses(), static fn (EmailAddress $address): bool => $address->isPrimary());
+
+        self::assertSame([self::ADDRESS], Vec\map($primaries, static fn (EmailAddress $address): string => $address->getAddress()));
+    }
+
+    #[Test]
     public function anotherAccountsAddressIsNotFound(): void
     {
         $other = $this->account('someone@example.com');

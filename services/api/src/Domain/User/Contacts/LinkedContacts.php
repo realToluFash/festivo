@@ -113,9 +113,10 @@ final readonly class LinkedContacts
             throw $this->refusal(ErrorCode::AddressNotVerified, 'contacts.not_verified_email');
         }
 
-        $before = $user->getPrimaryEmailAddress();
-        $this->entityManager->wrapInTransaction(function () use ($user, $address, $before): void {
+        $this->entityManager->wrapInTransaction(function () use ($user, $address): void {
             $this->lock($user);
+            $this->reread($user->getEmailAddresses());
+            $before = $user->getPrimaryEmailAddress();
             $before?->setPrimary(false);
             $this->entityManager->flush();
             $address->setPrimary(true);
@@ -134,9 +135,10 @@ final readonly class LinkedContacts
             throw $this->refusal(ErrorCode::AddressNotVerified, 'contacts.not_verified_phone');
         }
 
-        $before = $user->getPrimaryPhoneNumber();
-        $this->entityManager->wrapInTransaction(function () use ($user, $phone, $before): void {
+        $this->entityManager->wrapInTransaction(function () use ($user, $phone): void {
             $this->lock($user);
+            $this->reread($user->getPhoneNumbers());
+            $before = $user->getPrimaryPhoneNumber();
             $before?->setPrimary(false);
             $this->entityManager->flush();
             $phone->setPrimary(true);
@@ -233,6 +235,18 @@ final readonly class LinkedContacts
     private function lock(User $user): void
     {
         $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
+    }
+
+    /**
+     * A promotion that committed while this one waited for the lock has moved the flag, so the rows are read again under it.
+     *
+     * @param list<EmailAddress|PhoneNumber> $rows
+     */
+    private function reread(array $rows): void
+    {
+        foreach ($rows as $row) {
+            $this->entityManager->refresh($row);
+        }
     }
 
     private function record(User $user, string $action, string $field, ?string $before, ?string $after): void
