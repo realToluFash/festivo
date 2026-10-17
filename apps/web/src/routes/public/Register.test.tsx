@@ -192,6 +192,24 @@ describe('creating an account, for real', () => {
     expect(sessionStorage.getItem('soirely.registration')).toBeNull();
   });
 
+  it('offers to register again, not to sign out, when the address is wrong', async () => {
+    answering({
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0 }),
+    });
+
+    at('/register');
+    fillIn();
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Register again with the right one' }),
+    );
+
+    await waitFor(() => expect(sessionStorage.getItem('soirely.registration')).toBeNull());
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+    expect(screen.queryByText(/create your account again/)).toBeNull();
+  });
+
   /** A taken address gets no code, so its every code reads like this one: there is no "taken" to show. */
   it('says a wrong code is wrong, as it says to a taken address', async () => {
     answering({

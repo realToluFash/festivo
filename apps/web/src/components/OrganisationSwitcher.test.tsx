@@ -27,6 +27,7 @@ function inTwo(): void {
       hasPassword: true,
       organisation: IRE,
       organisations: [IRE, OKAFOR],
+      organisationCountry: null,
     },
   });
 }
@@ -82,6 +83,7 @@ describe('switching organisation', () => {
       name: 'Folake Adeyemi',
       businessName: null,
       countryCode: null,
+      organisationCountry: null,
       locale: 'en',
       verified: true,
       complete: true,
@@ -110,6 +112,7 @@ describe('switching organisation', () => {
         hasPassword: true,
         organisation: IRE,
         organisations: [IRE],
+        organisationCountry: null,
       },
     });
     at('/app');

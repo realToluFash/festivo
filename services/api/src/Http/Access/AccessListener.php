@@ -24,6 +24,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[AsEventListener(event: KernelEvents::CONTROLLER)]
 final readonly class AccessListener
@@ -36,6 +37,7 @@ final readonly class AccessListener
         private OnboardingGateInterface $onboardingGate,
         private MembershipDirectoryInterface $membershipDirectory,
         private EventDirectoryInterface $eventDirectory,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -109,9 +111,12 @@ final readonly class AccessListener
         $refusal = $this->onboardingGate->refusalFor($user, $route);
 
         if (null !== $refusal) {
-            throw new ApiException($refusal, ErrorCode::AccountUnverified === $refusal
-                ? 'Verify your email address to carry on.'
-                : 'Add a few details to carry on.');
+            throw new ApiException($refusal, $this->translator->trans(match (true) {
+                ErrorCode::AccountUnverified !== $refusal => 'gate.details',
+                // The title is the same for every occurrence (RFC 9457 §3.1.3); the detail names what is unverified.
+                true !== $user->getPrimaryEmailAddress()?->isVerified() => 'gate.email_unverified',
+                default => 'gate.phone_unverified',
+            }));
         }
 
         return $user;

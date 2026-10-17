@@ -17,7 +17,7 @@
     "reset_link_expired": "This link has expired.",
     "forbidden": "You do not have permission to do that.",
     "permission_required": "Your role does not include the permission this needs.",
-    "account_unverified": "Verify your email address to carry on.",
+    "account_unverified": "Verify your account to carry on.",
     "profile_incomplete": "Add a few details to carry on.",
     "too_many_requests": "Too many attempts. Please wait and try again.",
     "too_many_attempts": "Too many attempts. Please wait and try again.",

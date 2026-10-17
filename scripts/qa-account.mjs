@@ -1,5 +1,6 @@
 /*
- * A throwaway account for QA, registered through the API as a person would be.
+ * A throwaway account for QA, registered through the API as a person would be:
+ * register, read the code from Mailpit, then the code makes the account and signs in.
  * Addresses are `@soirely.test`, which can never be delivered to.
  *
  *   node scripts/qa-account.mjs                      register a new account
@@ -35,20 +36,38 @@ async function register() {
   const password = valueOf('--password') ?? passwordFor(email);
   const name = valueOf('--name') ?? 'QA Tester';
 
-  const body = await call('/api/auth/register', { email, name, password });
+  const { registration } = await call('/api/auth/register', { email, name, password });
+  const body = await call('/api/auth/register/verify', {
+    registration,
+    code: await codeFor(email),
+  });
 
   return {
     what: 'registered',
     email,
     password,
     name,
-    accountId: body.user?.id,
-    verified: body.user?.emailVerified,
-    complete: body.user?.profileComplete,
+    accountId: body.account?.id,
+    verified: body.account?.verified,
+    complete: body.account?.complete,
     accessToken: body.accessToken,
     refreshToken: body.refreshToken,
     sessionId: body.sessionId,
   };
+}
+
+/** The code goes out after the response, so it is waited for, for up to ten seconds. */
+async function codeFor(address) {
+  for (let tries = 0; tries < 20; tries += 1) {
+    const sent = await mail(address);
+    const code = sent.text?.match(/\b(\d{6})\b/)?.[1];
+
+    if (code != null) return code;
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(`No code reached ${address} in Mailpit (${MAILPIT}). Is the stack up? (just up)`);
 }
 
 async function session(email, password) {
@@ -64,7 +83,7 @@ async function session(email, password) {
   };
 }
 
-/** Nothing in this API sends mail yet — sc-56 — so this answers with nothing today. */
+/** The newest email to an address, as Mailpit caught it. */
 async function mail(address) {
   const response = await fetch(
     `${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${address}`)}`,

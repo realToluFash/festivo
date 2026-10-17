@@ -12,6 +12,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -19,6 +20,9 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /** The details screen's save: the person's name and optional mobile, and for an account that founds its own, the organisation. */
 final readonly class DetailsSaver
 {
+    /** The organisation fields "A few details" shows; a refusal reports no other. */
+    private const array SCREEN_FIELDS = ['organisationName', 'countryCode'];
+
     public function __construct(
         private AccountCompleteness $accountCompleteness,
         private OrganisationFounder $organisationFounder,
@@ -55,7 +59,10 @@ final readonly class DetailsSaver
             try {
                 $this->organisationFounder->found($user, $organisationName ?? '', $countryCode ?? '', $timezone ?? '');
             } catch (ApiException $e) {
-                $violations = [...$violations, ...Vec\map($e->violations, self::onThisScreen(...))];
+                // Only the fields this screen has: currency and timezone are derived, so nobody could fix them here.
+                $shown = Vec\filter(Vec\map($e->violations, self::onThisScreen(...)), static fn (array $v): bool => Iter\contains(self::SCREEN_FIELDS, $v['propertyPath']));
+
+                $violations = [] === $shown ? throw $e : [...$violations, ...$shown];
             }
         }
 

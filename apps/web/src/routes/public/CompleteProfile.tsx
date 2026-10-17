@@ -1,5 +1,12 @@
 import { ApiError } from '@soirely/api-client';
-import { countryChoices, deviceCountry, phoneLengthProblem } from '@soirely/domain';
+import {
+  countryChoices,
+  deviceCountry,
+  followCountry,
+  phoneLengthProblem,
+  pickPhoneCountry,
+  startingPhoneCountry,
+} from '@soirely/domain';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
@@ -94,6 +101,9 @@ export function CompleteProfile() {
       <Details
         name={state.session.name}
         needsOrganisation={state.session.needsOrganisation}
+        organisationCountry={
+          state.session.organisation?.countryCode ?? state.session.organisationCountry
+        }
         onSaved={(verificationNeeded) =>
           navigate(verificationNeeded ? '/verify-phone?from=onboarding' : '/app', {
             replace: true,
@@ -114,10 +124,12 @@ export function CompleteProfile() {
 function Details({
   name,
   needsOrganisation,
+  organisationCountry,
   onSaved,
 }: {
   name: string;
   needsOrganisation: boolean;
+  organisationCountry: string | null;
   onSaved: (verificationNeeded: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -130,10 +142,16 @@ function Details({
       name,
       organisationName: '',
       countryCode: country,
-      phoneCountryCode: country,
+      phoneCountryCode: startingPhoneCountry(
+        needsOrganisation ? country : null,
+        organisationCountry,
+        country,
+      ).code,
       phoneNumber: '',
     };
   });
+  // The code follows the Country until the person picks one themselves (sc-485).
+  const [phonePicked, setPhonePicked] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -142,7 +160,18 @@ function Details({
   const phoneInput = useRef<HTMLInputElement>(null);
 
   function change(field: Exclude<Field, 'timezone'>, value: string): void {
-    setValues((previous) => ({ ...previous, [field]: value }));
+    setValues((previous) => {
+      const next = { ...previous, [field]: value };
+
+      if (field === 'countryCode') {
+        next.phoneCountryCode = followCountry(
+          { code: previous.phoneCountryCode, picked: phonePicked },
+          value,
+        ).code;
+      }
+
+      return next;
+    });
     setErrors((previous) => {
       const next = { ...previous };
       delete next[field];
@@ -323,7 +352,10 @@ function Details({
         disabled={saving}
         help={t('completeProfile.mobileHelp')}
         inputRef={phoneInput}
-        onCountry={(code) => change('phoneCountryCode', code)}
+        onCountry={(code) => {
+          setPhonePicked(pickPhoneCountry(code).picked);
+          change('phoneCountryCode', code);
+        }}
         onNumber={(typed) => change('phoneNumber', typed)}
       />
 

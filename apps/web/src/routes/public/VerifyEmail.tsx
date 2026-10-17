@@ -62,6 +62,10 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
         dropRegistration();
         navigate('/register', { replace: true });
       }}
+      onGone={() => {
+        dropRegistration();
+        navigate('/sign-in', { replace: true });
+      }}
       carryOn={() => {
         if (account != null) navigate(landingFor(awaiting(account)), { replace: true });
       }}
@@ -69,6 +73,7 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
         dropRegistration();
         navigate('/register');
       }}
+      registersAgain
     />
   );
 }
@@ -116,8 +121,10 @@ function CodeScreen({
   verify,
   resend: sendAgain,
   onExpired,
+  onGone,
   carryOn,
   wrongAddress,
+  registersAgain = false,
 }: {
   address: string;
   alreadyVerified: boolean;
@@ -125,8 +132,12 @@ function CodeScreen({
   verify: (code: string) => Promise<void>;
   resend: () => Promise<number>;
   onExpired: () => void;
+  /** The sign-up had already run out when the screen opened: nothing to resume, so signed out. */
+  onGone?: () => void;
   carryOn: () => void | Promise<void>;
   wrongAddress: () => void | Promise<void>;
+  /** A sign-up has no session to sign out of: it starts again at Register. */
+  registersAgain?: boolean;
 }) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
@@ -145,6 +156,7 @@ function CodeScreen({
 
   // Read once, when the screen opens: the source is fixed for the screen's life.
   const firstOpening = useRef(readOpening);
+  const gone = useRef(onGone);
 
   useEffect(() => {
     if (alreadyVerified) return;
@@ -162,7 +174,9 @@ function CodeScreen({
           setStatus((now) => (now.kind === 'entering' ? { kind: codeState } : now));
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        if (live && error instanceof ApiError && error.is('registration_expired')) gone.current?.();
+      });
 
     return () => {
       live = false;
@@ -349,9 +363,9 @@ function CodeScreen({
           <div className="auth-footnote">
             <span>{t('verifyEmail.wrongAddress')}</span>
             <button className="link-button" type="button" onClick={() => void wrongAddress()}>
-              {t('verifyEmail.signOut')}
+              {registersAgain ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
             </button>
-            <span>{t('verifyEmail.wrongAddressBody')}</span>
+            {!registersAgain && <span>{t('verifyEmail.wrongAddressBody')}</span>}
           </div>
         </>
       )}
