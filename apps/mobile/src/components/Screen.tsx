@@ -22,6 +22,8 @@ import { tokens } from '../theme/tokens.ts';
 
 const LIFT = keyboardLift(Platform.OS);
 
+type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
+
 const ScreenScroll = createContext<RefObject<ScrollView | null> | null>(null);
 
 /** For a field and the button under it: the lift alone shows the field, and leaves the button behind the keys. */
@@ -51,7 +53,8 @@ export function useScrolledToTop(): RefObject<View | null> {
   const field = useRef<View>(null);
 
   useEffect(() => {
-    const content = scroll?.current?.getInnerViewNode();
+    // RN declares getInnerViewRef in ScrollView.js but not in its .d.ts; measureLayout needs that element.
+    const content = (scroll?.current as InnerViewRef | null | undefined)?.getInnerViewRef();
     if (field.current == null || content == null) return;
     field.current.measureLayout(content, (_x, y) => {
       scroll?.current?.scrollTo({ y: Math.max(0, y - tokens.spaceLg), animated: true });
