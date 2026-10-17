@@ -1,12 +1,5 @@
 import { ApiError, type RecoveryOpening, type RecoveryState } from '@soirely/api-client';
-import {
-  cleanCode,
-  codeWording,
-  formatCountdown,
-  formatPhone,
-  formatTimeOfDay,
-  lockLiftsAt,
-} from '@soirely/domain';
+import { cleanCode, codeWording, formatCountdown, formatPhone } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Linking, StyleSheet, type TextInput, View } from 'react-native';
@@ -108,11 +101,10 @@ export default function LostTwoFactor() {
       const why = startRefusal(refusal);
 
       if (why === 'limited') {
-        const lifts = lockLiftsAt(retryAfter(refusal) ?? NaN);
         setView({
           kind: 'start',
           opening,
-          limitedUntil: lifts == null ? '' : formatTimeOfDay(lifts, currentLocale()),
+          limitedUntil: refusal instanceof ApiError ? (refusal.problem.retryAt ?? '') : '',
           sending: false,
         });
       } else if (why === 'nobody') {
@@ -185,10 +177,6 @@ function BackToSignIn() {
   );
 }
 
-function listed(names: string[], type: 'conjunction' | 'disjunction'): string {
-  return new Intl.ListFormat(currentLocale(), { type }).format(names);
-}
-
 function Start({
   opening,
   limitedUntil,
@@ -206,7 +194,9 @@ function Start({
       ? t('lostTwoFactor.step1EmailOnly', { email: opening.email })
       : t('lostTwoFactor.step1', { email: opening.email, phone: formatPhone(opening.phone) }),
     t('lostTwoFactor.step2'),
-    t('lostTwoFactor.step3', { organisations: listed(opening.organisations, 'disjunction') }),
+    t('lostTwoFactor.step3', {
+      organisations: listed(opening.organisations, 'disjunction'),
+    }),
   ];
 
   return (
@@ -220,7 +210,11 @@ function Start({
           tone="attention"
           mark="!"
           title={t('lostTwoFactor.limitedTitle')}
-          body={t('lostTwoFactor.limitedBody', { time: limitedUntil })}
+          body={
+            limitedUntil === ''
+              ? t('lostTwoFactor.limitedBodyLater')
+              : t('lostTwoFactor.limitedBody', { when: limitedUntil })
+          }
         />
       )}
       <View style={styles.steps}>
@@ -558,7 +552,9 @@ function Codes({
 
       if (
         refusal instanceof ApiError &&
-        (refusal.is('verification_code_expired') || refusal.is('verification_code_exhausted'))
+        (refusal.is('verification_code_expired') ||
+          refusal.is('verification_code_exhausted') ||
+          refusal.is('recovery_request_proved'))
       ) {
         onState(await api.recoveryState(recovery).catch(() => state));
         return;
@@ -735,3 +731,7 @@ const styles = StyleSheet.create({
   grow: { flex: 1 },
   secondary: { color: tokens.colorInkSecondary },
 });
+
+function listed(names: string[], type: 'conjunction' | 'disjunction'): string {
+  return new Intl.ListFormat(currentLocale(), { type }).format(names);
+}

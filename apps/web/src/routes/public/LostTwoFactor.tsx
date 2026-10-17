@@ -4,15 +4,7 @@ import {
   type RecoveryState,
   type TwoFactorChallenge,
 } from '@soirely/api-client';
-import {
-  cleanCode,
-  codeProblem,
-  codeWording,
-  formatCountdown,
-  formatPhone,
-  formatTimeOfDay,
-  lockLiftsAt,
-} from '@soirely/domain';
+import { cleanCode, codeProblem, codeWording, formatCountdown, formatPhone } from '@soirely/domain';
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
@@ -101,11 +93,10 @@ export function LostTwoFactor() {
       setView({ kind: 'request', ...started });
     } catch (refusal) {
       if (refusal instanceof ApiError && refusal.is('too_many_attempts')) {
-        const lifts = lockLiftsAt(Number(refusal.response?.headers.get('Retry-After')));
         setView({
           kind: 'start',
           opening,
-          limitedUntil: lifts == null ? '' : formatTimeOfDay(lifts, currentLocale()),
+          limitedUntil: refusal instanceof ApiError ? (refusal.problem.retryAt ?? '') : '',
           sending: false,
         });
       } else if (refusal instanceof ApiError && refusal.is('recovery_nobody_to_approve')) {
@@ -216,7 +207,11 @@ function Start({
           </span>
           <div className="notice-body">
             <p className="notice-title">{t('lostTwoFactor.limitedTitle')}</p>
-            <p>{t('lostTwoFactor.limitedBody', { time: limitedUntil })}</p>
+            <p>
+              {limitedUntil === ''
+                ? t('lostTwoFactor.limitedBodyLater')
+                : t('lostTwoFactor.limitedBody', { when: limitedUntil })}
+            </p>
           </div>
         </div>
       )}
@@ -564,7 +559,9 @@ function Codes({
 
       if (
         refusal instanceof ApiError &&
-        (refusal.is('verification_code_expired') || refusal.is('verification_code_exhausted'))
+        (refusal.is('verification_code_expired') ||
+          refusal.is('verification_code_exhausted') ||
+          refusal.is('recovery_request_proved'))
       ) {
         onState(await api.recoveryState(recovery).catch(() => state));
         return;

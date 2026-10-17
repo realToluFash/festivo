@@ -249,12 +249,19 @@ describe('getting back in without the authenticator', () => {
   it('says when a fourth request today can be made', async () => {
     await atTheStart({
       'POST /api/auth/two-factor/recovery': () =>
-        problem('too_many_attempts', 429, {}, { 'Retry-After': '600' }),
+        problem(
+          'too_many_attempts',
+          429,
+          { retryAt: 'Sunday, Oct 18 at 17:09 WAT' },
+          { 'Retry-After': '600' },
+        ),
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
 
     expect(await screen.findByText('Too many requests')).toBeDefined();
-    expect(screen.getByText(/You can ask 3 times a day\. Try again at/)).toBeDefined();
+    expect(
+      screen.getByText('You can ask 3 times a day. Try again Sunday, Oct 18 at 17:09 WAT.'),
+    ).toBeDefined();
     expect(
       (screen.getByRole('button', { name: 'Send the codes' }) as HTMLButtonElement).disabled,
     ).toBe(true);

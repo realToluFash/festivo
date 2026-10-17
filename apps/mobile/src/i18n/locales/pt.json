@@ -460,7 +460,7 @@
     "send": "Enviar os códigos",
     "sending": "A enviar os códigos…",
     "limitedTitle": "Demasiados pedidos",
-    "limitedBody": "Pode pedir 3 vezes por dia. Tente de novo às {{time}}.",
+    "limitedBody": "Pode pedir 3 vezes por dia. Volte a tentar a partir de {{when}}.",
     "back": "Voltar ao início de sessão",
     "nobodyTitle": "Contacte o apoio da Soirely",
     "nobodyIntro": "Ninguém na sua organização pode confirmar isto. Contacte o apoio da Soirely.",
@@ -527,6 +527,7 @@
     "setupIntro": "A autenticação de dois fatores foi desativada para poder voltar a entrar. Configure-a de novo para que uma palavra-passe sozinha não abra a sua conta.",
     "setup": "Configurar a autenticação de dois fatores",
     "notNow": "Agora não",
-    "notNowNote": "Pode configurá-la a qualquer momento em Definições › Segurança."
+    "notNowNote": "Pode configurá-la a qualquer momento em Definições › Segurança.",
+    "limitedBodyLater": "Pode pedir 3 vezes por dia. Volte a tentar mais tarde."
   }
 }

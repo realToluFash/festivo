@@ -544,7 +544,7 @@
     "send": "Send the codes",
     "sending": "Sending the codes…",
     "limitedTitle": "Too many requests",
-    "limitedBody": "You can ask 3 times a day. Try again at {{time}}.",
+    "limitedBody": "You can ask 3 times a day. Try again {{when}}.",
     "back": "Back to sign in",
     "nobodyTitle": "Contact Soirely support",
     "nobodyIntro": "Nobody in your organisation can confirm this. Contact Soirely support.",
@@ -617,7 +617,8 @@
     "notMeButton": "Cancel and sign out everywhere",
     "notMeDoneTitle": "Cancelled and signed out",
     "notMeDone": "Any request that was waiting is cancelled, and every session is signed out. If somebody else knows your password, change it when you next sign in.",
-    "notMeBroken": "That link doesn’t work. Open it again from the newest email about your account."
+    "notMeBroken": "That link doesn’t work. Open it again from the newest email about your account.",
+    "limitedBodyLater": "You can ask 3 times a day. Try again later."
   },
   "recoveryRequests": {
     "cardTitle": "Requests to get back in",

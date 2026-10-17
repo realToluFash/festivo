@@ -544,7 +544,7 @@
     "send": "Enviar os códigos",
     "sending": "A enviar os códigos…",
     "limitedTitle": "Demasiados pedidos",
-    "limitedBody": "Pode pedir 3 vezes por dia. Tente de novo às {{time}}.",
+    "limitedBody": "Pode pedir 3 vezes por dia. Volte a tentar a partir de {{when}}.",
     "back": "Voltar ao início de sessão",
     "nobodyTitle": "Contacte o apoio da Soirely",
     "nobodyIntro": "Ninguém na sua organização pode confirmar isto. Contacte o apoio da Soirely.",
@@ -617,7 +617,8 @@
     "notMeButton": "Cancelar e terminar todas as sessões",
     "notMeDoneTitle": "Cancelado e sessões terminadas",
     "notMeDone": "Qualquer pedido pendente foi cancelado e todas as sessões foram terminadas. Se outra pessoa souber a sua palavra-passe, altere-a da próxima vez que iniciar sessão.",
-    "notMeBroken": "Essa ligação não funciona. Abra-a de novo a partir do email mais recente sobre a sua conta."
+    "notMeBroken": "Essa ligação não funciona. Abra-a de novo a partir do email mais recente sobre a sua conta.",
+    "limitedBodyLater": "Pode pedir 3 vezes por dia. Volte a tentar mais tarde."
   },
   "recoveryRequests": {
     "cardTitle": "Pedidos para voltar a entrar",

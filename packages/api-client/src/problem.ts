@@ -21,6 +21,8 @@ export interface Problem {
   detail?: string;
   correlationId?: string;
   violations?: Violation[];
+  /** On a 429 that names its instant for the reader, such as "Sunday, Oct 18 at 17:09 WAT". */
+  retryAt?: string;
 }
 
 /**

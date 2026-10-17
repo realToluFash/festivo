@@ -544,7 +544,7 @@
     "send": "Enviar los códigos",
     "sending": "Enviando los códigos…",
     "limitedTitle": "Demasiadas solicitudes",
-    "limitedBody": "Puede pedirlo 3 veces al día. Vuelva a intentarlo a las {{time}}.",
+    "limitedBody": "Puede pedirlo 3 veces al día. Vuelva a intentarlo a partir del {{when}}.",
     "back": "Volver a iniciar sesión",
     "nobodyTitle": "Póngase en contacto con el soporte de Soirely",
     "nobodyIntro": "Nadie de su organización puede confirmarlo. Póngase en contacto con el soporte de Soirely.",
@@ -617,7 +617,8 @@
     "notMeButton": "Cancelar y cerrar todas las sesiones",
     "notMeDoneTitle": "Cancelada y sesiones cerradas",
     "notMeDone": "Se ha cancelado cualquier solicitud pendiente y se han cerrado todas las sesiones. Si otra persona conoce su contraseña, cámbiela la próxima vez que inicie sesión.",
-    "notMeBroken": "Ese enlace no funciona. Ábralo de nuevo desde el correo más reciente sobre su cuenta."
+    "notMeBroken": "Ese enlace no funciona. Ábralo de nuevo desde el correo más reciente sobre su cuenta.",
+    "limitedBodyLater": "Puede pedirlo 3 veces al día. Vuelva a intentarlo más tarde."
   },
   "recoveryRequests": {
     "cardTitle": "Solicitudes para volver a entrar",
