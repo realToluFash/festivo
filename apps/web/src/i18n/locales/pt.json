@@ -137,7 +137,7 @@
     "end": "Encerrar a sessão",
     "keep": "Manter a sessão",
     "ended": "{{name}} ficou sem sessão.",
-    "delay": "Pode continuar a funcionar até 15 minutos enquanto isso lhe chega e, depois, terá de iniciar sessão novamente.",
+    "signInAgain": "It has to sign in again before it can carry on, so check it is not in the middle of an event.",
     "agent": "{{browser}} em {{platform}}",
     "dayAtTime": "{{day}} às {{time}}",
     "unknownDevice": "Um dispositivo que não se identificou",

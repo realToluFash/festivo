@@ -137,12 +137,7 @@ export function Security() {
                   <span className="mark mark-done" aria-hidden="true">
                     ✓
                   </span>
-                  {/* Two sentences rather than one interpolated into the other,
-                    so the delay reads identically wherever it appears and
-                    sc-117 deletes it from one key. */}
-                  <p>
-                    {t('devices.ended', { name: ended })} {t('devices.delay')}
-                  </p>
+                  <p>{t('devices.ended', { name: ended })}</p>
                 </div>
               )}
 
@@ -292,7 +287,7 @@ function Check({
         <div className="notice-body">
           <p className="notice-title">{t('devices.checkWarning')}</p>
           <p>
-            {t('devices.delay')} {t('devices.passwordAdvice')}
+            {t('devices.signInAgain')} {t('devices.passwordAdvice')}
           </p>
         </div>
       </div>

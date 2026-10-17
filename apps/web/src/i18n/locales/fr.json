@@ -137,7 +137,7 @@
     "end": "Le déconnecter",
     "keep": "Le laisser connecté",
     "ended": "{{name}} est déconnecté.",
-    "delay": "Il peut continuer à fonctionner pendant 15 minutes au maximum, le temps que cela lui parvienne, puis il devra se reconnecter.",
+    "signInAgain": "It has to sign in again before it can carry on, so check it is not in the middle of an event.",
     "agent": "{{browser}} sur {{platform}}",
     "dayAtTime": "{{day}} à {{time}}",
     "unknownDevice": "Un appareil qui ne s'est pas nommé",

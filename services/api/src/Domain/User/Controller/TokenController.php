@@ -14,7 +14,6 @@ use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Http\RefreshTokenCookies;
 use App\Repository\RefreshTokenRepository;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Psr\Log\LoggerInterface;
@@ -84,10 +83,8 @@ final class TokenController
 
         $token = $this->find($plain);
 
-        if (null === $token->getRevokedAt()) {
-            $token->setRevokedAt(new DateTimeImmutable());
-            $this->entityManager->flush();
-        }
+        $this->tokenIssuer->end($token);
+        $this->entityManager->flush();
 
         return $response;
     }
