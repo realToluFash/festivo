@@ -170,9 +170,12 @@ EntityManager on the refusal you are about to throw. Test that the lock is taken
 check, since the race cannot be seen from one request at a time.
 
 A budget keyed on something with no row to lock, such as sign-in's address (known or not),
-takes a Postgres advisory transaction lock on the key instead: `pg_advisory_xact_lock`, one
-per key, always in the same order (`SignInAttempts`, sc-838). `SignInConcurrencyTest` shows
-the pattern for proving it: real processes started at one instant, against one shared Redis.
+takes a Postgres advisory transaction lock on the key instead (`pg_advisory_xact_lock`,
+`SignInAttempts`, sc-838). Lock per account or address, **never per IP**: one venue's Wi-Fi
+is one IP, and a per-IP lock queues every guest behind every other guest's hash, so the IP
+budget may overshoot by what is in flight (sc-838's decision). `SignInConcurrencyTest` shows
+how to prove a lock: real processes started at one instant against one shared Redis, failing
+if any started late.
 
 ## Emails sent after the response
 

@@ -14,7 +14,8 @@ use Symfony\Component\RateLimiter\LimiterInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Throwable;
 
-/** Peek, check, spend as one step per address and IP (sc-838), under an advisory lock: the address may have no row. */
+/** Peek, check, spend as one step per address (sc-838), under an advisory lock: the address may have no row. */
+// Never per IP: guests on one venue's Wi-Fi must not queue on each other, so 30 per IP may overshoot in flight.
 final readonly class SignInAttempts
 {
     public function __construct(
@@ -34,9 +35,7 @@ final readonly class SignInAttempts
         $connection->beginTransaction();
 
         try {
-            // Always the address before the IP, so two requests can never hold one each and wait on the other.
-            $this->lock('sign-in:address:' . $address);
-            $this->lock('sign-in:ip:' . $ip);
+            $this->entityManager->getConnection()->executeStatement('SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))', ['key' => self::lockFor($address)]);
             self::refuseIfSpent($limits);
             $result = $this->checked($email, $password, $request, $limits);
             $connection->commit();
@@ -79,9 +78,9 @@ final readonly class SignInAttempts
         }
     }
 
-    /** Held until the transaction ends, by whichever connection takes it first. */
-    private function lock(string $key): void
+    /** The advisory lock's key for an address, held until the transaction ends. */
+    public static function lockFor(string $address): string
     {
-        $this->entityManager->getConnection()->executeStatement('SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))', ['key' => $key]);
+        return 'sign-in:address:' . $address;
     }
 }

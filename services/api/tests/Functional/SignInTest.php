@@ -217,6 +217,19 @@ final class SignInTest extends ApiTestCase
         self::assertSame(200, $controller->signIn(self::request('patient@example.com', self::PASSWORD))->getStatusCode());
     }
 
+    #[Test]
+    public function theThirtyFirstWrongPasswordFromOneIpIsRefusedWhateverTheAddress(): void
+    {
+        $limit = static fn (string $id, int $count): RateLimiterFactory => new RateLimiterFactory(['id' => $id, 'policy' => 'fixed_window', 'limit' => $count, 'interval' => '15 minutes'], new InMemoryStorage());
+        $controller = new SignInController(self::service(SignInResponse::class), new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $limit('ip', 30), $limit('account', 5)));
+
+        for ($i = 1; $i <= 30; ++$i) {
+            self::assertSame(ErrorCode::InvalidCredentials, self::refusal($controller, 'walker' . $i . '@example.com', 'a wrong guess')->errorCode, 'attempt ' . $i);
+        }
+
+        self::assertSame(ErrorCode::TooManyAttempts, self::refusal($controller, 'walker31@example.com', 'a wrong guess')->errorCode);
+    }
+
     /** The tests above build fixed windows; this holds the configured ones to the same policy. */
     #[Test]
     public function theConfiguredBudgetsAreFixedWindows(): void

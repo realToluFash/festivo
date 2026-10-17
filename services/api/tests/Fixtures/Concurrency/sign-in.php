@@ -24,16 +24,22 @@ $_SERVER['APP_ENV'] = 'test';
 $_ENV['APP_ENV'] = 'test';
 new Dotenv()->bootEnv(\dirname(__DIR__, 3) . '/.env');
 
-$kernel = new Kernel('test', false);
+// Debug, as PHPUnit boots it: a non-debug container is never rebuilt when the code changes.
+$kernel = new Kernel('test', true);
 $kernel->boot();
 $container = Type\instance_of(Symfony\Component\DependencyInjection\ContainerInterface::class)->coerce($kernel->getContainer()->get('test.service_container'));
 // The budgets every process here shares, as Redis is shared by every API container in production.
 $container->set('cache.rate_limiter', new RedisAdapter(Type\instance_of(Redis::class)->coerce($container->get('Redis')), $namespace));
 
 $wait = Type\float()->coerce($startAt) - \microtime(true);
-if ($wait > 0) {
-    Async\sleep(Duration::milliseconds((int) ($wait * 1_000)));
+// Late means staggered, and staggered attempts pass with or without the lock: the test must know.
+if ($wait <= 0) {
+    IO\write('late');
+
+    exit(0);
 }
+
+Async\sleep(Duration::milliseconds((int) ($wait * 1_000)));
 
 $response = $kernel->handle(Request::create('/api/auth/login', 'POST', server: [
     'CONTENT_TYPE' => 'application/json',
