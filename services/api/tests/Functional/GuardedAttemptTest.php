@@ -79,15 +79,29 @@ final class GuardedAttemptTest extends FunctionalTestCase
         self::assertFalse($checked, 'nothing to learn from a guess once the budget is gone');
     }
 
-    /** Only where the caller asks for it, as two-factor does: the wrong try that spends the budget is the pause. */
+    /** sc-965: every caller answers the wrong try that spends a budget with the pause, and the try before it as wrong. */
     #[Test]
-    public function theLastWrongTryIsThePauseOnlyWhenAsked(): void
+    public function theWrongTryThatSpendsABudgetIsThePause(): void
     {
-        $plain = self::budget(1);
-        self::assertSame(ErrorCode::InvalidCredentials, $this->refusal(static fn (): array => [$plain], self::wrong())->errorCode);
+        $account = self::budget(2);
+        $network = self::budget(30);
 
-        $pausing = self::budget(1);
-        self::assertSame(ErrorCode::TooManyAttempts, $this->refusal(static fn (): array => [$pausing], self::wrong(), lastWrongPauses: true)->errorCode);
+        self::assertSame(ErrorCode::InvalidCredentials, $this->refusal(static fn (): array => [$account, $network], self::wrong())->errorCode);
+
+        $last = $this->refusal(static fn (): array => [$account, $network], self::wrong());
+
+        self::assertSame(ErrorCode::TooManyAttempts, $last->errorCode);
+        self::assertSame(0, $account->consume(0)->getRemainingTokens());
+        self::assertSame(28, $network->consume(0)->getRemainingTokens(), 'every budget is still charged once');
+    }
+
+    #[Test]
+    public function aRightSecretOnTheLastTryIsAcceptedAndSpendsNothing(): void
+    {
+        $account = self::budget(1);
+
+        self::assertSame('right', $this->attempt(static fn () => null, static fn (): array => [$account], static fn (): string => 'right'));
+        self::assertSame(1, $account->consume(0)->getRemainingTokens());
     }
 
     /** A wrong try's own changes (a code's count) are committed before it is refused; a failure rolls back. */
@@ -123,19 +137,19 @@ final class GuardedAttemptTest extends FunctionalTestCase
      * @param callable(): list<LimiterInterface> $budgets
      * @param callable(): mixed                  $check
      */
-    private function attempt(callable $lock, callable $budgets, callable $check, bool $lastWrongPauses = false): mixed
+    private function attempt(callable $lock, callable $budgets, callable $check): mixed
     {
-        return new GuardedAttempt(self::em())->attempt($lock, $budgets, $check, 'Too many tries.', $lastWrongPauses);
+        return new GuardedAttempt(self::em())->attempt($lock, $budgets, $check, 'Too many tries.');
     }
 
     /**
      * @param callable(): list<LimiterInterface> $budgets
      * @param callable(): mixed                  $check
      */
-    private function refusal(callable $budgets, callable $check, bool $lastWrongPauses = false): ApiException
+    private function refusal(callable $budgets, callable $check): ApiException
     {
         try {
-            $this->attempt(static fn () => null, $budgets, $check, $lastWrongPauses);
+            $this->attempt(static fn () => null, $budgets, $check);
         } catch (ApiException $e) {
             return $e;
         }

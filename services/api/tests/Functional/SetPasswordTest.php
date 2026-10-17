@@ -183,13 +183,13 @@ final class SetPasswordTest extends ApiTestCase
         $this->spendWrong($setting, $user, 3);
         self::mockTime('+61 seconds');
         $setting->sendCode($user);
-        $this->spendWrong($setting, $user, 2);
+        $this->spendWrong($setting, $user, 1);
 
         try {
             $setting->passCode($user, '000000');
-            self::fail('a sixth wrong code across two emails was checked');
+            self::fail('a fifth wrong code across two emails was accepted');
         } catch (ApiException $e) {
-            self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode);
+            self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode, 'the fifth wrong code is itself the pause (sc-965)');
         }
 
         self::assertSame(['locked', 'peeked'], Vec\take($log->getArrayCopy(), 2), 'SELECT … FOR UPDATE before the budget is peeked');
