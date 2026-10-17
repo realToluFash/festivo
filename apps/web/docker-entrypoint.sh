@@ -33,6 +33,31 @@ JSON
 
 echo "soirely: wrote $TARGET for ${SOIRELY_ENVIRONMENT:-unknown} (api ${SOIRELY_API_URL})"
 
+# ── Android App Links ────────────────────────────────────────────────────────
+#
+# Sign in with Apple on Android comes back to the app by an https link on this
+# host, and Android opens it in the app only if this file names the app and its
+# release signing certificate. Written only when a fingerprint is configured, so
+# a deployment without one serves a 404 here, never a file that verifies nothing.
+WELL_KNOWN=/usr/share/nginx/html/.well-known
+if [ -n "${SOIRELY_ANDROID_CERT_SHA256:-}" ]; then
+    mkdir -p "$WELL_KNOWN"
+    FINGERPRINTS="$(printf '%s' "$SOIRELY_ANDROID_CERT_SHA256" | sed 's/[[:space:]]//g; s/,/","/g')"
+    cat > "$WELL_KNOWN/assetlinks.json" <<JSON
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "${SOIRELY_ANDROID_PACKAGE:-com.soirely.app}",
+      "sha256_cert_fingerprints": ["${FINGERPRINTS}"]
+    }
+  }
+]
+JSON
+    echo "soirely: wrote $WELL_KNOWN/assetlinks.json for ${SOIRELY_ANDROID_PACKAGE:-com.soirely.app}"
+fi
+
 # ── Security headers ─────────────────────────────────────────────────────────
 #
 # Generated rather than committed because connect-src has to name the API and
