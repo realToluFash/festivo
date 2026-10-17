@@ -6,55 +6,28 @@ namespace App\Domain\User\Registration;
 
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\VerificationChallenge;
+use App\Http\AfterResponse;
 use Psl\Str;
-use Psr\Log\LoggerInterface;
 use SensitiveParameter;
-use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
-use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Contracts\Service\ResetInterface;
-use Throwable;
 
-/** Sent after the answer has gone, so how long registration takes says nothing about the address. */
-#[AsEventListener(event: KernelEvents::TERMINATE, method: 'send')]
-final class RegistrationMail implements ResetInterface
+/** The two emails a sign-up sends, both after the answer has gone, so their cost says nothing about the address. */
+final readonly class RegistrationMail
 {
-    /** @var list<array{to: string, locale: ?string, code: ?string}> */
-    private array $queued = [];
-
     public function __construct(
-        private readonly UserMailer $userMailer,
-        private readonly string $webOrigin,
-        private readonly LoggerInterface $logger,
+        private UserMailer $userMailer,
+        private AfterResponse $afterResponse,
+        private string $webOrigin,
     ) {
     }
 
     public function code(string $to, ?string $locale, #[SensitiveParameter] string $code): void
     {
-        $this->queued[] = ['to' => $to, 'locale' => $locale, 'code' => $code];
+        $this->afterResponse->defer(fn () => $this->sendCode($to, $locale, $code));
     }
 
     public function alreadyRegistered(string $to, ?string $locale): void
     {
-        $this->queued[] = ['to' => $to, 'locale' => $locale, 'code' => null];
-    }
-
-    public function send(): void
-    {
-        $queued = $this->queued;
-        $this->queued = [];
-
-        foreach ($queued as $mail) {
-            try {
-                null === $mail['code'] ? $this->sendAlreadyRegistered($mail['to'], $mail['locale']) : $this->sendCode($mail['to'], $mail['locale'], $mail['code']);
-            } catch (Throwable $e) {
-                $this->logger->error('A registration email could not be sent.', ['exception' => $e::class]);
-            }
-        }
-    }
-
-    public function reset(): void
-    {
-        $this->queued = [];
+        $this->afterResponse->defer(fn () => $this->sendAlreadyRegistered($to, $locale));
     }
 
     private function sendCode(string $to, ?string $locale, #[SensitiveParameter] string $code): void
