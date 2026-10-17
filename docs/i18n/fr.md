@@ -42,6 +42,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. "Sign out everywhere else" is « Déconnecter les autres appareils »**
+  (`devices.everywhere`, its title with « ? »). The device is what is signed out, as in
+  `devices.signOut`; « partout ailleurs » reads as places. Its confirm buttons follow the
+  card's `end`/`keep`: « Le/Les déconnecter », « Le/Les laisser connecté(s) », and
+  « Déconnecter les {{count}} » when this device goes too. "Nothing was signed out" is
+  « Aucun appareil n'a été déconnecté ». "Whoever has it" is « la personne qui l'a », as
+  in `devices.checkWarning`.
+- **18 Oct 2026. A re-proof hint names the act, not the factor**: « Vous confirmerez
+  d'abord que c'est bien vous » (`devices.everywhereHint`), because a Google or Apple
+  account confirms with its provider, not a password.
 - **17 Oct 2026. "Vous êtes connecté", masculine as the generic form** (`home.signedIn`,
   `settings.signedInAs`, as in `nav.signedInAs` and "Vous restez connecté"). The code has
   no gender for the person, and « connecté·e » breaks screen readers. Ask `[dev]` for a
@@ -72,4 +82,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   pendant un événement", not "au milieu d'un événement", which reads as being physically in
   one.
 - **17 Oct 2026. "Code" stays "Code"** as a field label (`twoFactor.code`,
-  `waysCard.code`): it is the French word, listed in `same-as-english.json`.
+  `waysCard.code`, `devices.everywhereCode`): it is the French word, listed in `same-as-english.json`.
