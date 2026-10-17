@@ -173,6 +173,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
     }
 
+    public function removeEmailAddress(EmailAddress $emailAddress): void
+    {
+        $this->emailAddresses->removeElement($emailAddress);
+    }
+
     public function getPrimaryEmailAddress(): ?EmailAddress
     {
         foreach ($this->emailAddresses as $emailAddress) {
