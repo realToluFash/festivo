@@ -261,6 +261,27 @@ answers `{signedOut}`, the number of other sessions it ended.
   not them. It links only to sign-in, carries no part of either password, and a failed send
   leaves the change made.
 
+## Adding a password
+
+An account made with Google or Apple has no password (`hasPassword: false`), and adds one
+from the same card (sc-391). The provider session is not enough on its own, so the primary
+address is proved first:
+
+- `POST /api/auth/password/set/start` emails a 6-digit code under sc-56's rules: fifteen
+  minutes, five tries a code, a sixty-second resend cooldown (`429` with `Retry-After`).
+  One row per account in `password_set_codes`; a resend replaces the code and its tries.
+- `POST /api/auth/password/set/code` checks it under the account's row lock, with the
+  `password_set_account` budget (five wrong codes per fifteen minutes, across resends),
+  as "Attempt budgets" in symfony-api asks. A right code answers a one-time `stepUp` token,
+  kept hashed, good for fifteen minutes: the pass belongs to the client that entered the
+  code, not to the account, so another session on it cannot spend it (OWASP ASVS V2.5).
+- `POST /api/auth/password/set` takes `newPassword` under `NewPasswordRules` and that
+  `stepUp`, consumed under the account's row lock (else `verification_code_expired`; a wrong
+  token burns nothing). **No session ends**, since nothing was
+  replaced; the address is emailed that a password was added, with the device and network
+  address as the change email words them.
+- An account that already has a password is `409` at every step.
+
 ## Registering
 
 A password sign-up does not sign in, and does not make the account. `POST /api/auth/register`

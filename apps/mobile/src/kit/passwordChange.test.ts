@@ -1,7 +1,7 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { passwordRefusal } from './passwordChange.ts';
+import { passwordRefusal, setCodeRefusal } from './passwordChange.ts';
 
 const t = ((key: string, options?: Record<string, unknown>) =>
   options == null ? key : `${key} ${JSON.stringify(options)}`) as never;
@@ -61,5 +61,30 @@ describe('a refused password change', () => {
       field: 'failed',
       message: 'passwordCard.failedBody',
     });
+  });
+});
+
+describe('a refused code on the way to adding a password', () => {
+  it('says a wrong, run-out or spent code in the card words', () => {
+    expect(setCodeRefusal(refused('verification_code_invalid', 422), t, 'en').refusal).toBe(
+      'passwordCard.setCodeWrong',
+    );
+    expect(setCodeRefusal(refused('verification_code_expired', 422), t, 'en').refusal).toBe(
+      'passwordCard.setCodeExpired',
+    );
+    expect(setCodeRefusal(refused('verification_code_exhausted', 422), t, 'en').refusal).toBe(
+      'passwordCard.setCodeSpent',
+    );
+  });
+
+  it('pauses with the time it lifts, and puts nothing under the field', () => {
+    const paused = setCodeRefusal(
+      refused('too_many_attempts', 429, {}, { 'Retry-After': '600' }),
+      t,
+      'en',
+    );
+
+    expect(paused.refusal).toBeNull();
+    expect(paused.paused).toMatch(/^passwordCard\.pausedBody /);
   });
 });
