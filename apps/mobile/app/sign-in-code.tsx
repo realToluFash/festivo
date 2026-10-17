@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { heldChallenge, nextAfterSignIn } from '../src/challenge.ts';
 import { SecondFactorStep } from '../src/components/SecondFactorStep.tsx';
+import { codePassed } from '../src/providerSignIn.ts';
 
 /** "Enter your code": the second half of a sign-in, reached only with a challenge held. */
 export default function SignInCode() {
@@ -18,7 +19,9 @@ export default function SignInCode() {
       recoveryIntro={t('twoFactor.recoveryIntro')}
       submitLabel={t('twoFactor.verify')}
       onVerify={async (factor) => {
-        router.replace(nextAfterSignIn(await api.verifyTwoFactor(challenge.challenge, factor)));
+        router.replace(
+          nextAfterSignIn(codePassed(await api.verifyTwoFactor(challenge.challenge, factor))),
+        );
       }}
       onExpired={() => router.replace('/sign-in')}
     />

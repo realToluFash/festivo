@@ -32,7 +32,6 @@ export interface TwoFactorChallenge {
   expiresAt: string;
   /** The address the code is for, shown as "the 6-digit code for <address>". */
   email: string;
-  linked: boolean;
 }
 
 export type SignInOutcome = SignedIn | TwoFactorChallenge;
@@ -944,7 +943,6 @@ function asChallenge(raw: unknown): TwoFactorChallenge | null {
     challenge: twoFactorChallenge,
     expiresAt: challengeExpiresAt,
     email: typeof email === 'string' ? email : '',
-    linked: body.linked === true,
   };
 }
 

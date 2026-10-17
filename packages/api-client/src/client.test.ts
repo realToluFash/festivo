@@ -1082,7 +1082,6 @@ describe('a second factor', () => {
       challenge: 'the-challenge',
       expiresAt: '2026-10-17T12:05:00+00:00',
       email: 'ada@example.com',
-      linked: false,
     });
     expect(tokens.saved).toBeNull();
   });
