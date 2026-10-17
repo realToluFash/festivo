@@ -83,7 +83,7 @@ describe('Settings > General', () => {
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toMatch(/Saved\. Everyone in Ìrè Events Ltd/),
     );
-    expect(sent).toEqual([
+    expect(sent.filter((request) => request.path.startsWith('/api/orgs'))).toEqual([
       { method: 'PATCH', path: '/api/orgs/org_1', body: { name: 'Ìrè Events Ltd' } },
     ]);
     expect(screen.getByLabelText('Organisation: Ìrè Events Ltd, your role Owner')).toBeDefined();
@@ -143,5 +143,69 @@ describe('Settings > General', () => {
     expect(
       screen.getByText(/Your role, Coordinator, can see these but not change them/),
     ).toBeDefined();
+  });
+});
+
+describe('Settings > General, a request to get back in', () => {
+  const REQUEST = {
+    id: 'rq_1',
+    name: 'Tope Bello',
+    email: 'tope.bello@ire.events',
+    provedPhone: false,
+    own: false,
+    organisations: ['Ìrè Events'],
+    asked: 'Saturday, Oct 17 at 14:20 WAT',
+    expires: 'Saturday, Oct 24 at 14:20 WAT',
+  };
+
+  it('shows who asked, what they proved and when it ends, and approves only once confirmed', async () => {
+    const sent = answering(
+      () => new Response(JSON.stringify({ requests: [REQUEST] }), { status: 200 }),
+    );
+    settings();
+
+    expect(await screen.findByText('Tope Bello')).toBeDefined();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Requests to get back in' }),
+    ).toBeDefined();
+    expect(document.getElementById('requests')).not.toBeNull();
+    expect(screen.getByText('Proved with a code to their email (no verified phone)')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Asked Saturday, Oct 17 at 14:20 WAT · ends Saturday, Oct 24 at 14:20 WAT if nobody answers',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+    expect(
+      screen.getByRole('heading', { name: 'Approve, and turn off Tope Bello’s two-factor?' }),
+    ).toBeDefined();
+    expect(sent.some((request) => request.path.endsWith('/approve'))).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Turn off two-factor' }));
+    expect(await screen.findByText('Tope Bello’s two-factor is off.')).toBeDefined();
+    expect(sent.at(-1)).toEqual({
+      method: 'POST',
+      path: '/api/auth/recovery-requests/rq_1/approve',
+      body: null,
+    });
+    expect(screen.queryByText('Proved with a code to their email (no verified phone)')).toBeNull();
+  });
+
+  it('never offers an answer to your own request', async () => {
+    answering(
+      () =>
+        new Response(
+          JSON.stringify({ requests: [{ ...REQUEST, own: true, name: 'Folake Adeyemi' }] }),
+          { status: 200 },
+        ),
+    );
+    settings();
+
+    expect(await screen.findByText('Folake Adeyemi (you)')).toBeDefined();
+    expect(
+      screen.getByText('This is your own request. Somebody else in Ìrè Events has to answer it.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
   });
 });

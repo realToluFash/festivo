@@ -37,5 +37,8 @@
     "two_factor_off": "La double authentification n'est pas activée.",
     "two_factor_required": "Saisissez d'abord le code de votre application d'authentification.",
     "proof_required": "Confirmez d'abord que c'est bien vous.",
+    "recovery_nobody_to_approve": "Personne dans votre organisation ne peut le confirmer. Contactez l'assistance Soirely.",
+    "recovery_request_invalid": "Cette demande n'est plus ouverte. Recommencez depuis l'écran du code de connexion.",
+    "recovery_request_closed": "Cette demande est déjà terminée.",
     "registration_expired": "Recommencez l'inscription."
 }

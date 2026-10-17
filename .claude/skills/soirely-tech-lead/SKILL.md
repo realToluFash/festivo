@@ -143,7 +143,8 @@ Resolve states by name with `workflows-list`, because an id in a skill is a cach
 - **No blocking findings** → `Ready For QA` (`500000087`). That is QA's queue. Comment on the
   story with the PR link and anything QA should look at hard: `[qa] (from lead)`.
 - **Any blocking finding** → `In Progress` (`500000008`), with one `[dev] (from lead)` comment
-  on the story linking the review. The developer's inbox picks it up, and they answer each
+  on the story linking the review, or `[dev2]` when the story is labelled `dev2`. The label
+  names the developer who built it, and that developer's inbox picks it up and answers each
   finding in its thread on the pull request.
 
 **A re-review is the whole diff again**, not only the commits that answered you. A fix moves

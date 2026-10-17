@@ -53,6 +53,45 @@ export interface PhoneCodeOpening extends CodeOpening {
   route: PhoneCodeRoute | null;
 }
 
+export type RecoveryStatus =
+  'proving' | 'waiting' | 'approved' | 'turned_down' | 'expired' | 'cancelled';
+
+/** A request to get back in without the second factor (sc-509); `asked` and `expires` are written for the reader. */
+export interface RecoveryState {
+  status: RecoveryStatus;
+  email: string;
+  phone: string | null;
+  organisations: string[];
+  supportAddress: string;
+  askedAt: string | null;
+  asked: string | null;
+  expiresAt: string | null;
+  expires: string | null;
+  codes: { state: CodeState; cooldownSeconds: number; route: PhoneCodeRoute | null } | null;
+}
+
+/** What the start screen names before anything is sent, and an open request to carry on with. */
+export interface RecoveryOpening {
+  email: string | null;
+  phone: string | null;
+  organisations: string[];
+  nobody: boolean;
+  supportAddress: string;
+  open: { recovery: string; state: RecoveryState } | null;
+}
+
+/** One request on an owner's card: never a code, only what was proved and when. */
+export interface RecoveryRequest {
+  id: string;
+  name: string;
+  email: string;
+  provedPhone: boolean;
+  own: boolean;
+  organisations: string[];
+  asked: string | null;
+  expires: string | null;
+}
+
 /** A password sign-up waiting on its emailed code; `registration` is its one-day handle. */
 export interface PendingRegistration {
   registration: string;
@@ -143,6 +182,8 @@ export interface Account {
   hasPassword: boolean;
   /** The providers that vouch for this account, such as Google, each with its address. */
   providers: LinkedProvider[];
+  /** Two-factor was turned off by an approved recovery: asked to set it up again (sc-509). */
+  twoFactorSetupPrompt: boolean;
   emailAddresses: LinkedAddress[];
   phoneNumbers: LinkedPhone[];
 }
@@ -504,6 +545,108 @@ export class ApiClient {
   }
 
   /** The code proves the address: only now is the account made, and signed in. */
+  /** From the sign-in code step only: the challenge proves the first factor passed. Sends nothing. */
+  async recoveryOpening(challenge: string): Promise<RecoveryOpening> {
+    const answer = await this.post<Record<string, unknown>>(
+      '/api/auth/two-factor/recovery/opening',
+      { challenge },
+      { anonymous: true },
+    );
+    const state = asRecoveryState(answer.state);
+
+    return {
+      email: typeof answer.email === 'string' ? answer.email : null,
+      phone: typeof answer.phone === 'string' ? answer.phone : null,
+      organisations: strings(answer.organisations),
+      nobody: answer.nobody === true,
+      supportAddress: typeof answer.supportAddress === 'string' ? answer.supportAddress : '',
+      open:
+        typeof answer.recovery === 'string' && state != null
+          ? { recovery: answer.recovery, state }
+          : null,
+    };
+  }
+
+  async startRecovery(challenge: string): Promise<{ recovery: string; state: RecoveryState }> {
+    const answer = await this.post<Record<string, unknown>>(
+      '/api/auth/two-factor/recovery',
+      { challenge },
+      { anonymous: true },
+    );
+
+    if (typeof answer.recovery !== 'string') {
+      throw new Error(
+        'The API started a recovery without its handle. Check TwoFactorRecoveryController.',
+      );
+    }
+
+    return { recovery: answer.recovery, state: recoveryStateOf(answer) };
+  }
+
+  async recoveryState(recovery: string): Promise<RecoveryState> {
+    return this.recoveryStep('state', { recovery });
+  }
+
+  async resendRecoveryCodes(recovery: string): Promise<RecoveryState> {
+    return this.recoveryStep('resend', { recovery });
+  }
+
+  async textRecoveryCodeInstead(recovery: string): Promise<RecoveryState> {
+    return this.recoveryStep('text-instead', { recovery });
+  }
+
+  /** Both codes together; a wrong one comes back as a violation on `emailCode` or `phoneCode`. */
+  async proveRecovery(
+    recovery: string,
+    emailCode: string,
+    phoneCode: string | null,
+  ): Promise<RecoveryState> {
+    return this.recoveryStep('prove', {
+      recovery,
+      emailCode,
+      ...(phoneCode == null ? {} : { phoneCode }),
+    });
+  }
+
+  /** Cancels the request and ends every session, as the emails' "This wasn't me" does. */
+  async cancelRecovery(recovery: string): Promise<RecoveryState> {
+    return this.recoveryStep('cancel', { recovery });
+  }
+
+  async recoveryNotMe(request: string, token: string): Promise<void> {
+    await this.post<unknown>(
+      '/api/auth/two-factor/recovery/not-me',
+      { request, token },
+      { anonymous: true },
+    );
+  }
+
+  async recoveryRequests(): Promise<RecoveryRequest[]> {
+    const body = await this.get<{ requests?: unknown }>('/api/auth/recovery-requests');
+
+    return Array.isArray(body.requests)
+      ? body.requests.map(asRecoveryRequest).filter((request) => request != null)
+      : [];
+  }
+
+  async approveRecovery(id: string): Promise<void> {
+    await this.post<unknown>(`/api/auth/recovery-requests/${encodeURIComponent(id)}/approve`);
+  }
+
+  async turnDownRecovery(id: string): Promise<void> {
+    await this.post<unknown>(`/api/auth/recovery-requests/${encodeURIComponent(id)}/turn-down`);
+  }
+
+  async dismissTwoFactorPrompt(): Promise<void> {
+    await this.delete<unknown>('/api/auth/two-factor/setup-prompt');
+  }
+
+  private async recoveryStep(step: string, body: Record<string, unknown>): Promise<RecoveryState> {
+    return recoveryStateOf(
+      await this.post<unknown>(`/api/auth/two-factor/recovery/${step}`, body, { anonymous: true }),
+    );
+  }
+
   async confirmRegistration(registration: string, code: string): Promise<SignedIn> {
     return this.signedInOnly(
       '/api/auth/register/verify',
@@ -591,14 +734,7 @@ export class ApiClient {
 
     return {
       ...openingFrom(answer),
-      route:
-        route === 'whatsapp' ||
-        route === 'sms_fallback' ||
-        route === 'sms_chosen' ||
-        route === 'sms_preferred' ||
-        route === 'sms_only'
-          ? route
-          : null,
+      route: asRoute(route),
     };
   }
 
@@ -1011,6 +1147,7 @@ function asAccount(raw: unknown): Account | null {
     complete: candidate.complete === true,
     needsOrganisation: candidate.needsOrganisation === true,
     hasPassword: candidate.hasPassword === true,
+    twoFactorSetupPrompt: candidate.twoFactorSetupPrompt === true,
     providers: Array.isArray(candidate.providers)
       ? candidate.providers.flatMap(asLinkedProvider)
       : [],
@@ -1165,6 +1302,107 @@ function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTok
       typeof candidate.refreshExpiresAt === 'string' ? candidate.refreshExpiresAt : '',
     sessionId: typeof candidate.sessionId === 'string' ? candidate.sessionId : '',
   };
+}
+
+function recoveryStateOf(answer: unknown): RecoveryState {
+  const state =
+    typeof answer === 'object' && answer != null
+      ? asRecoveryState((answer as Record<string, unknown>).state)
+      : null;
+
+  if (state == null) {
+    throw new Error(
+      'The API answered a recovery step in a shape this client does not know. Check RecoveryView in services/api.',
+    );
+  }
+
+  return state;
+}
+
+function asRecoveryState(raw: unknown): RecoveryState | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+  const status = candidate.status;
+  const known = ['proving', 'waiting', 'approved', 'turned_down', 'expired', 'cancelled'];
+
+  if (
+    typeof status !== 'string' ||
+    !known.includes(status) ||
+    typeof candidate.email !== 'string'
+  ) {
+    return null;
+  }
+
+  const codes =
+    typeof candidate.codes === 'object' && candidate.codes != null
+      ? (candidate.codes as Record<string, unknown>)
+      : null;
+
+  return {
+    status: status as RecoveryStatus,
+    email: candidate.email,
+    phone: optionalString(candidate.phone),
+    organisations: strings(candidate.organisations),
+    supportAddress: optionalString(candidate.supportAddress) ?? '',
+    askedAt: optionalString(candidate.askedAt),
+    asked: optionalString(candidate.asked),
+    expiresAt: optionalString(candidate.expiresAt),
+    expires: optionalString(candidate.expires),
+    codes:
+      codes == null
+        ? null
+        : {
+            state: openingFrom({ codeState: codes.state }).codeState,
+            cooldownSeconds: cooldownFrom(codes),
+            route: asRoute(codes.route),
+          },
+  };
+}
+
+function asRecoveryRequest(raw: unknown): RecoveryRequest | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.name !== 'string' ||
+    typeof candidate.email !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    id: candidate.id,
+    name: candidate.name,
+    email: candidate.email,
+    provedPhone: candidate.provedPhone === true,
+    own: candidate.own === true,
+    organisations: strings(candidate.organisations),
+    asked: optionalString(candidate.asked),
+    expires: optionalString(candidate.expires),
+  };
+}
+
+function asRoute(route: unknown): PhoneCodeRoute | null {
+  return route === 'whatsapp' ||
+    route === 'sms_fallback' ||
+    route === 'sms_chosen' ||
+    route === 'sms_preferred' ||
+    route === 'sms_only'
+    ? route
+    : null;
+}
+
+function strings(raw: unknown): string[] {
+  return Array.isArray(raw)
+    ? raw.filter((value): value is string => typeof value === 'string')
+    : [];
+}
+
+function optionalString(raw: unknown): string | null {
+  return typeof raw === 'string' ? raw : null;
 }
 
 function openingFrom(answer: unknown): CodeOpening {

@@ -34,6 +34,7 @@ final readonly class AccountSerialiser
             'organisationCountry' => ($this->membershipRepository->findActiveFor($user)[0] ?? null)?->getOrganisation()->getCountryCode(),
             'locale' => $user->storedLanguage(),
             'timezone' => $user->getTimezone(),
+            'twoFactorSetupPrompt' => $user->hasTwoFactorSetupPrompt(),
             'verified' => $user->isVerified(),
             'complete' => $this->accountCompleteness->isComplete($user),
             'hasPassword' => null !== $user->getPassword(),

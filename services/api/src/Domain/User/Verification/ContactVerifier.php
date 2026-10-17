@@ -60,9 +60,19 @@ final readonly class ContactVerifier
             return;
         }
 
-        $challenge = $this->verificationChallengeRepository->findLiveFor($contact);
+        $challenge = $this->verificationChallengeRepository->findLiveFor($contact)
+            ?? throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
 
-        if (null === $challenge || '' === Str\trim($code)) {
+        $this->check($challenge, $code);
+
+        $contact->setVerifiedAt(new DateTimeImmutable());
+        $challenge->setRevokedAt(new DateTimeImmutable());
+    }
+
+    /** A try against one challenge, counted when wrong but never spent: recovery spends two codes together (sc-509). */
+    public function check(VerificationChallenge $challenge, string $code): void
+    {
+        if ('' === Str\trim($code)) {
             throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
         }
 
@@ -78,9 +88,6 @@ final readonly class ContactVerifier
         if (!\hash_equals($challenge->getCodeHash(), VerificationCodeIssuer::hash($code))) {
             $this->refuse($challenge);
         }
-
-        $contact->setVerifiedAt(new DateTimeImmutable());
-        $challenge->setRevokedAt(new DateTimeImmutable());
     }
 
     /** Written at once: the throw below skips the caller's flush, and the attempt must survive it. */

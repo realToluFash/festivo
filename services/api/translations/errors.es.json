@@ -37,5 +37,8 @@
     "two_factor_off": "La verificación en dos pasos no está activada.",
     "two_factor_required": "Primero introduzca el código de su aplicación de autenticación.",
     "proof_required": "Primero confirme que es usted.",
+    "recovery_nobody_to_approve": "Nadie de su organización puede confirmarlo. Póngase en contacto con el soporte de Soirely.",
+    "recovery_request_invalid": "Esa solicitud ya no está abierta. Empiece de nuevo desde la pantalla del código de inicio de sesión.",
+    "recovery_request_closed": "Esta solicitud ya ha terminado.",
     "registration_expired": "Vuelva a empezar el registro."
 }
