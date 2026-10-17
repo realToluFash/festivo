@@ -132,7 +132,7 @@ async function signInWithAppleOnAndroid(appLink: string): Promise<SignInOutcome>
 
   return remember(
     'apple',
-    await api.exchangeAppleHandle({ handle: outcome.handle, codeVerifier, nonce, redirectUri }),
+    await api.exchangeAppleHandle({ handle: outcome.handle, codeVerifier, nonce }),
   );
 }
 

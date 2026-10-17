@@ -141,5 +141,6 @@ describe("the App Link Apple's form_post comes back by", () => {
 
   test('is nothing else', () => {
     expect(appleAppLinkOutcome('https://soirely.com/oauth/apple/app')).toBeNull();
+    expect(appleAppLinkOutcome('https://soirely.com/oauth/apple/app?error=expired')).toBeNull();
   });
 });
