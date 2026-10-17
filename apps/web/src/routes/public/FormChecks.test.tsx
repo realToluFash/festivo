@@ -15,6 +15,7 @@ const UNVERIFIED: Session = {
   awaiting: 'email' as const,
   providers: [],
   needsOrganisation: false,
+  hasPassword: true,
   organisation: membership(),
   organisations: [membership()],
 };

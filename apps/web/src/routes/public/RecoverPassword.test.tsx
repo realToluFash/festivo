@@ -14,6 +14,7 @@ const ACCOUNT = {
   verified: true,
   complete: true,
   needsOrganisation: false,
+  hasPassword: true,
   emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
   phoneNumbers: [],
   providers: [],

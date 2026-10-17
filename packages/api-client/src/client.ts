@@ -100,6 +100,8 @@ export interface Account {
   complete: boolean;
   /** The details screen asks for an organisation: a self-registered account in none. */
   needsOrganisation: boolean;
+  /** False for an account that has only ever signed in with Google or Apple. */
+  hasPassword: boolean;
   /** The providers that vouch for this account, such as Google. */
   providers: string[];
   emailAddresses: LinkedAddress[];
@@ -193,7 +195,12 @@ export class ApiClient {
 
     // One retry, and only after a refresh that actually succeeded. Retrying a
     // 401 without that is an infinite loop against an expired session.
-    if (response.status === 401 && !init.anonymous && this.options.tokens != null) {
+    if (
+      response.status === 401 &&
+      !init.anonymous &&
+      this.options.tokens != null &&
+      !(await isAnswer(response))
+    ) {
       if (await this.refreshOnce()) {
         response = await this.send(path, init);
       }
@@ -352,6 +359,17 @@ export class ApiClient {
       { token, password },
       'PasswordRecoveryController',
     );
+  }
+
+  /** Signed in, knowing the current one: every other session ends, and `sessionId`'s stays. */
+  async changePassword(change: {
+    currentPassword: string;
+    newPassword: string;
+    sessionId: string | null;
+  }): Promise<{ signedOut: number }> {
+    const body = await this.patch<{ signedOut?: unknown }>('/api/auth/password', change);
+
+    return { signedOut: typeof body.signedOut === 'number' ? body.signedOut : 0 };
   }
 
   /** Signed in as sign-in is: the same tokens, the same account. */
@@ -826,6 +844,7 @@ function asAccount(raw: unknown): Account | null {
     verified: candidate.verified === true,
     complete: candidate.complete === true,
     needsOrganisation: candidate.needsOrganisation === true,
+    hasPassword: candidate.hasPassword === true,
     providers: Array.isArray(candidate.providers)
       ? candidate.providers.filter((provider): provider is string => typeof provider === 'string')
       : [],
@@ -983,6 +1002,11 @@ function openingFrom(answer: unknown): CodeOpening {
     cooldownSeconds: cooldownFrom(answer),
     codeState: state === 'expired' || state === 'exhausted' ? state : 'live',
   };
+}
+
+/** A wrong password on a signed-in request is the answer, not an expired session: refreshing would retry it. */
+async function isAnswer(response: Response): Promise<boolean> {
+  return new ApiError(await toProblem(response.clone()), response).is('invalid_credentials');
 }
 
 function cooldownFrom(answer: unknown): number {

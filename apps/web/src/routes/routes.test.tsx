@@ -16,6 +16,7 @@ const ADA: Session = {
   awaiting: null,
   providers: [],
   needsOrganisation: false,
+  hasPassword: true,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
 };
@@ -141,6 +142,7 @@ describe('the application tree', () => {
           verified: true,
           complete: true,
           needsOrganisation: false,
+          hasPassword: true,
           emailAddresses: [{ id: 'a1', address: 'ada@example.com', verified: true, primary: true }],
           phoneNumbers: [],
         }),

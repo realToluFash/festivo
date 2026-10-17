@@ -141,6 +141,27 @@ describe('the session refreshes without signing anybody out', () => {
     expect(tokens.saved).toMatchObject({ accessToken: 'fresh', refreshToken: 'next' });
   });
 
+  test('a wrong password on a signed-in request is the answer: no refresh, no second try', async () => {
+    const seen: string[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', 'good-refresh'),
+      fetch: async (input) => {
+        seen.push(new URL(String(input)).pathname);
+        return problem(401, 'invalid_credentials');
+      },
+    });
+
+    await expect(
+      client.changePassword({
+        currentPassword: 'wrong',
+        newPassword: 'a brand new passphrase',
+        sessionId: 's',
+      }),
+    ).rejects.toMatchObject({ code: 'invalid_credentials' });
+    expect(seen).toEqual(['/api/auth/password']);
+  });
+
   /**
    * The API rotates refresh tokens and treats a replay as theft — it revokes
    * the whole chain. Four requests failing together must therefore start ONE
@@ -916,6 +937,7 @@ const ACCOUNT = {
   verified: true,
   complete: true,
   needsOrganisation: false,
+  hasPassword: true,
   providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
