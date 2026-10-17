@@ -542,6 +542,7 @@ function EverywhereElse({
           >
             <CodeField
               ref={codeInput}
+              takesRecoveryCode
               wrong={codeError != null}
               editable={!working}
               autoComplete="one-time-code"

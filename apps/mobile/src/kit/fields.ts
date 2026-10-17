@@ -19,10 +19,12 @@ export function passwordProps(revealed: boolean) {
   } as const;
 }
 
-/** A one-time code: digits, offered from the text or the email, never corrected. */
-export const CODE_PROPS = {
-  ...FIELD_DEFAULTS,
-  keyboardType: 'number-pad',
-  textContentType: 'oneTimeCode',
-  autoCapitalize: 'none',
-} as const;
+/** A one-time code, never corrected. A recovery code has letters and a hyphen, so a field that takes one gets the full keyboard. */
+export function codeProps(takesRecoveryCode: boolean) {
+  return {
+    ...FIELD_DEFAULTS,
+    keyboardType: takesRecoveryCode ? 'default' : 'number-pad',
+    textContentType: 'oneTimeCode',
+    autoCapitalize: 'none',
+  } as const;
+}

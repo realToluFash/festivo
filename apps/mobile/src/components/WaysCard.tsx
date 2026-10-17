@@ -553,6 +553,7 @@ function Proving({
           <Field label={t('waysCard.code')} error={codeError} help={t('waysCard.codeHelp')}>
             <CodeField
               ref={codeInput}
+              takesRecoveryCode
               wrong={codeError != null}
               editable={!checking}
               autoComplete="one-time-code"
