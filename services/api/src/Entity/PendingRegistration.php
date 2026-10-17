@@ -100,6 +100,11 @@ class PendingRegistration
         $this->codeSentAt = $now;
     }
 
+    public function getId(): Uuid
+    {
+        return $this->id;
+    }
+
     public function isOpenAt(DateTimeImmutable $now): bool
     {
         return $now < $this->expiresAt;

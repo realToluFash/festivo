@@ -147,11 +147,12 @@ final class RegisterTest extends ApiTestCase
     {
         self::mockTime('2026-10-17 12:00:00');
         $handle = Type\string()->coerce($this->register('once@example.com', 'Once', self::GOOD_PASSWORD)['registration']);
-        $this->confirm($handle, $this->codeSentTo('once@example.com'));
+        $code = $this->codeSentTo('once@example.com');
+        $this->confirm($handle, $code);
         self::assertSame(201, $this->statusCode());
 
-        $this->confirm($handle, '000000');
-        self::assertSame(ErrorCode::RegistrationExpired->type(), $this->last()['type'], 'used');
+        $this->confirm($handle, $code);
+        self::assertSame(ErrorCode::RegistrationExpired->type(), $this->last()['type'], 'a second press of the right code: used, not a conflict');
 
         $later = Type\string()->coerce($this->register('later@example.com', 'Later', self::GOOD_PASSWORD)['registration']);
         self::mockTime('+25 hours');

@@ -13,7 +13,6 @@ use App\Entity\PendingRegistration;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\PendingRegistrationRepository;
-use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\SecureRandom;
 use Psl\Str;
@@ -57,25 +56,32 @@ final readonly class PendingRegistrations
 
     public function verify(#[SensitiveParameter] string $handle, #[SensitiveParameter] string $code, ?Request $request = null): RegistrationResult
     {
-        $pending = $this->open($handle);
+        $id = $this->open($handle)->getId();
         $connection = $this->entityManager->getConnection();
         $connection->beginTransaction();
 
         try {
-            $this->entityManager->refresh($pending, LockMode::PESSIMISTIC_WRITE);
+            // Held until the account exists, so a second press of the same code finds nothing left.
+            $pending = $this->pendingRegistrationRepository->findForUpdate($id)
+                ?? throw new ApiException(ErrorCode::RegistrationExpired, 'Start registering again.');
             $this->check($pending, $code);
+
+            $result = $this->userRegistrar->registerConfirmed($pending->getEmail(), $pending->getName(), (string) $pending->getPasswordHash(), $request);
+            $this->entityManager->remove($pending);
+            $this->entityManager->flush();
             $connection->commit();
+
+            return $result;
+        } catch (ApiException $refusal) {
+            // A refused code is kept: the attempt it cost has to count.
+            $connection->commit();
+
+            throw $refusal;
         } catch (Throwable $e) {
-            $connection->commit();
+            $connection->rollBack();
 
             throw $e;
         }
-
-        $result = $this->userRegistrar->registerConfirmed($pending->getEmail(), $pending->getName(), (string) $pending->getPasswordHash(), $request);
-        $this->entityManager->remove($pending);
-        $this->entityManager->flush();
-
-        return $result;
     }
 
     public function secondsUntilResend(#[SensitiveParameter] string $handle): int

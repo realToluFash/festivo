@@ -7,8 +7,11 @@ namespace App\Repository;
 use App\Entity\PendingRegistration;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Query;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<PendingRegistration> */
 final class PendingRegistrationRepository extends ServiceEntityRepository
@@ -21,6 +24,18 @@ final class PendingRegistrationRepository extends ServiceEntityRepository
     public function findOneByHandleHash(string $handleHash): ?PendingRegistration
     {
         return $this->findOneBy(['handleHash' => $handleHash]);
+    }
+
+    /** Read afresh under a row lock: null once another request has used it up. */
+    public function findForUpdate(Uuid $id): ?PendingRegistration
+    {
+        return $this->createQueryBuilder('p')
+            ->where('p.id = :id')
+            ->setParameter('id', $id, 'uuid')
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
     }
 
     /** Whether this address was told it already has an account since `$since`, by any attempt. */
