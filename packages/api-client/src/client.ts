@@ -234,6 +234,27 @@ export class ApiClient {
     );
   }
 
+  /** The same answer whether or not the address has an account; what happens next is only in the inbox. */
+  async forgotPassword(email: string): Promise<void> {
+    await this.post('/api/auth/password/forgot', { email });
+  }
+
+  /** Whose reset link this is; refused as `reset_link_invalid`, `reset_link_used` or `reset_link_expired`. */
+  async checkResetLink(token: string): Promise<{ email: string }> {
+    const body = await this.post<{ email?: unknown }>('/api/auth/password/reset/check', { token });
+
+    return { email: typeof body?.email === 'string' ? body.email : '' };
+  }
+
+  /** A new password from a reset link, which signs this device in and every other one out. */
+  async resetPassword(token: string, password: string): Promise<SignedIn> {
+    return this.signedIn(
+      '/api/auth/password/reset',
+      { token, password },
+      'PasswordRecoveryController',
+    );
+  }
+
   /** Signed in as sign-in is: the same tokens, the same account. */
   async register(email: string, name: string, password: string): Promise<SignedIn> {
     return this.signedIn('/api/auth/register', { email, name, password }, 'RegisterController');
