@@ -1,5 +1,11 @@
 import { type DeviceSession } from '@soirely/api-client';
-import { formatDay, formatTimeOfDay, readableAgent, thisDeviceFirst } from '@soirely/domain';
+import {
+  formatDay,
+  formatTimeOfDay,
+  othersOf,
+  readableAgent,
+  thisDeviceFirst,
+} from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -151,7 +157,7 @@ export function Security() {
         <section className="card" aria-labelledby="devices-title">
           {checking == null && everywhere && devices.kind === 'ready' ? (
             <EverywhereElse
-              {...othersOf(devices.sessions)}
+              {...othersOf(devices.sessions, currentSessionId())}
               hasPassword={session.hasPassword}
               providers={session.providers}
               returned={returned}
@@ -243,22 +249,23 @@ export function Security() {
                 </ul>
               )}
 
-              {devices.kind === 'ready' && othersOf(devices.sessions).count > 0 && (
-                <div className="device-footer">
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={() => {
-                      setEverywhereDone(null);
-                      setEnded(null);
-                      setEverywhere(true);
-                    }}
-                  >
-                    {t('devices.everywhere')}
-                  </button>
-                  <p className="muted">{t('devices.everywhereHint')}</p>
-                </div>
-              )}
+              {devices.kind === 'ready' &&
+                othersOf(devices.sessions, currentSessionId()).count > 0 && (
+                  <div className="device-footer">
+                    <button
+                      className="button"
+                      type="button"
+                      onClick={() => {
+                        setEverywhereDone(null);
+                        setEnded(null);
+                        setEverywhere(true);
+                      }}
+                    >
+                      {t('devices.everywhere')}
+                    </button>
+                    <p className="muted">{t('devices.everywhereHint')}</p>
+                  </div>
+                )}
             </>
           ) : (
             <Check
@@ -371,15 +378,6 @@ function Check({
       </div>
     </>
   );
-}
-
-/** Without this device in the list, Soirely cannot tell which is this one, so every session ends. */
-function othersOf(sessions: readonly DeviceSession[]): { count: number; sessionId: string | null } {
-  const here = currentSessionId();
-
-  return sessions.some((s) => s.id === here)
-    ? { count: sessions.length - 1, sessionId: here }
-    : { count: sessions.length, sessionId: null };
 }
 
 function nameOf(device: DeviceSession, t: TFunction): string {

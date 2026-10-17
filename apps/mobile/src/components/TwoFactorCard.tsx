@@ -13,6 +13,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useAboveKeyboard } from './Screen.tsx';
@@ -67,7 +68,7 @@ export function TwoFactorCard({ email, kind }: { email: string; kind: LayoutKind
   }
 
   return (
-    <View style={[styles.card, kind === 'tabletLandscape' ? styles.cardWide : styles.cardNarrow]}>
+    <View style={cardFrame(kind)}>
       {stage.kind === 'loading' && (
         <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
           {t('twoFactorCard.title')}
@@ -528,16 +529,6 @@ function refusalMessage(refusal: unknown, wrong: string, t: TFunction): string {
 
 const styles = StyleSheet.create({
   codeAndCheck: { gap: tokens.spaceLg },
-  // As AppSettings-* draws a Security card, so it moves into Settings unchanged (sc-722).
-  card: {
-    gap: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  cardNarrow: { padding: tokens.spaceXxl },
-  cardWide: { padding: tokens.space3xl, maxWidth: 640 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
   grow: { flex: 1 },
   state: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },

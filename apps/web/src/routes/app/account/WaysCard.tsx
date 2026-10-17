@@ -3,6 +3,7 @@ import {
   type LinkedProvider,
   type Provider,
   type ProviderSignInAttempt,
+  proofRefusal,
 } from '@soirely/api-client';
 import { formatTimeOfDay, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
 import { type TFunction } from 'i18next';
@@ -21,7 +22,7 @@ import {
   startProviderSignIn,
   takeProviderReturn,
 } from '../../../providerSignIn.ts';
-import { dropProof, heldProof, holdProof, proofRefusal } from '../../../recentProof.ts';
+import { dropProof, heldProof, holdProof } from '../../../recentProof.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
