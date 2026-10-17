@@ -136,10 +136,22 @@ final readonly class UserMailer
         return $this->translator->trans($key, $parameters, self::DOMAIN, $locale);
     }
 
+    /** The device as the devices card names its row (sc-55): readable when it can be, else the user agent as it came. */
+    public function named(?string $userAgent, string $locale): string
+    {
+        $agent = ReadableAgent::of($userAgent);
+
+        return match (true) {
+            null !== $agent => $this->line('password.device.agent', $locale, ['{browser}' => $agent->browser, '{platform}' => $agent->platform]),
+            null === $userAgent || '' === Str\trim($userAgent) => $this->line('password.device.unknown', $locale),
+            default => Str\trim($userAgent),
+        };
+    }
+
     /** As the devices card words a row: no place, and no claim that either part was checked. */
     public function device(?string $userAgent, ?string $ipAddress, string $locale): string
     {
-        $named = $this->agentName($userAgent, $locale) ?? $this->line('password.device.unknown', $locale);
+        $named = $this->named($userAgent, $locale);
 
         return null === $ipAddress || '' === $ipAddress
             ? $named

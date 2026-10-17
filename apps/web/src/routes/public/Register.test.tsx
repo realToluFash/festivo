@@ -70,7 +70,7 @@ function typePassword(value: string) {
   fireEvent.change(screen.getByLabelText('Password'), { target: { value } });
 }
 
-function fillIn(password = 'lagos-evenings') {
+function fillIn(password = 'lagos-evening-air') {
   fireEvent.change(screen.getByLabelText('Full name'), { target: { value: 'Folake Adeyemi' } });
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: '  folake@ire.events ' } });
   typePassword(password);
@@ -94,18 +94,18 @@ describe('creating an account', () => {
     expect(screen.getByLabelText('Full name').getAttribute('autocomplete')).toBe('name');
     expect(screen.getByLabelText('Email').getAttribute('autocomplete')).toBe('email');
     expect(screen.getByLabelText('Password').getAttribute('autocomplete')).toBe('new-password');
-    expect(screen.getByText('At least 12 characters')).toBeDefined();
+    expect(screen.getByText('At least 15 characters')).toBeDefined();
     expect(screen.getByText(/That is the only rule\./)).toBeDefined();
   });
 
-  it('marks the rule Met at twelve characters, with a word as well as a mark', () => {
+  it('marks the rule Met at fifteen characters, with a word as well as a mark', () => {
     const sent = answering({});
     at('/register');
 
-    typePassword('lagos-eveni');
+    typePassword('lagos-evening-');
     expect(screen.getByText('Not yet')).toBeDefined();
 
-    typePassword('lagos-evenin');
+    typePassword('lagos-evening-a');
     expect(screen.getByText('Met')).toBeDefined();
     expect(sent).toEqual([]);
   });
@@ -114,7 +114,7 @@ describe('creating an account', () => {
     const sent = answering({});
     at('/register');
 
-    fillIn('lagos-eveni');
+    fillIn('lagos-evening-');
 
     expect(sent).toEqual([]);
     expect(screen.getByText('Not yet')).toBeDefined();
@@ -159,7 +159,7 @@ describe('creating an account, for real', () => {
     expect(JSON.parse(registrations[0]?.body ?? '{}')).toMatchObject({
       email: 'folake@ire.events',
       name: 'Folake Adeyemi',
-      password: 'lagos-evenings',
+      password: 'lagos-evening-air',
     });
     expect(sent.some((request) => request.path === '/api/auth/me')).toBe(false);
   });

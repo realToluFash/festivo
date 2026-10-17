@@ -254,6 +254,8 @@ export interface ClientOptions {
   timeZone?: () => string | null;
   /** The app's own `Soirely/<version> (…)`, by which its sessions are named (sc-1242). A browser sends its own and cannot replace it. */
   userAgent?: string;
+  /** The app's install identifier, by which a sign-in from a new device is told apart (sc-511). The web has a cookie instead. */
+  device?: () => string | null;
   /** Called when refresh fails and the session is over. */
   onSignedOut?: () => void;
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
@@ -974,7 +976,7 @@ export class ApiClient {
     return this.options.refreshTokenIn ?? 'body';
   }
 
-  /** The device's language and zone, on every request: a token request creates or signs in the account. */
+  /** The device's language, zone and install identifier, on every request: a token request creates or signs in the account. */
   private deviceHeaders(): Record<string, string> {
     const headers: Record<string, string> = {};
     const locale = this.options.locale?.();
@@ -983,6 +985,8 @@ export class ApiClient {
     if (timeZone != null && timeZone !== '') headers['X-Timezone'] = timeZone;
     const userAgent = this.options.userAgent;
     if (userAgent != null && userAgent !== '') headers['User-Agent'] = userAgent;
+    const device = this.options.device?.();
+    if (device != null && device !== '') headers['X-Device-Id'] = device;
 
     return headers;
   }
