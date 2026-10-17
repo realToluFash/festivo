@@ -510,9 +510,9 @@ export class ApiClient {
     return phone;
   }
 
-  async phoneCooldown(): Promise<number> {
-    return (await this.get<{ cooldownSeconds: number }>('/api/auth/verify/phone/resend'))
-      .cooldownSeconds;
+  /** Reads the cooldown and the code's state without spending either, as the email's opening does. */
+  async phoneOpening(): Promise<CodeOpening> {
+    return openingFrom(await this.get<unknown>('/api/auth/verify/phone/resend'));
   }
 
   async resendPhoneCode(): Promise<number> {

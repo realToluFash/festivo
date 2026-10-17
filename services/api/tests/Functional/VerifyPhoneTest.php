@@ -17,6 +17,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
 use Psl\Str;
@@ -263,6 +264,32 @@ final class VerifyPhoneTest extends ApiTestCase
         $this->call('POST', '/api/auth/verify/phone', ['code' => $code]);
 
         self::assertSame(ErrorCode::VerificationCodeExpired->type(), $this->last()['type']);
+    }
+
+    /** What Verify phone reads as it opens (sc-826): the code's state, without spending a try or sending a text. */
+    #[Test]
+    public function theOpeningReadSaysWhetherTheCodeIsLiveExhaustedOrExpired(): void
+    {
+        $this->set('NG', '0803 555 0142');
+        $code = $this->codeTo('+2348035550142');
+        $sent = Iter\count($this->texts());
+        self::assertSame('live', $this->call('GET', '/api/auth/verify/phone/resend')['codeState']);
+
+        for ($attempt = 0; $attempt < VerificationChallenge::MAXIMUM_ATTEMPTS; ++$attempt) {
+            $this->call('POST', '/api/auth/verify/phone', ['code' => '000000']);
+        }
+
+        self::assertSame('exhausted', $this->call('GET', '/api/auth/verify/phone/resend')['codeState']);
+        $this->call('POST', '/api/auth/verify/phone', ['code' => $code]);
+        self::assertSame(ErrorCode::VerificationCodeExhausted->type(), $this->last()['type'], 'reading it spent no try, and the try agrees');
+
+        self::service(EntityManagerInterface::class)->getConnection()->executeStatement(
+            "UPDATE verification_challenges SET expires_at = NOW() - interval '1 minute' WHERE phone_number_id IS NOT NULL",
+        );
+        self::service(EntityManagerInterface::class)->clear();
+
+        self::assertSame('expired', $this->call('GET', '/api/auth/verify/phone/resend')['codeState'], 'expiry is checked first, as a try checks it');
+        self::assertCount($sent, $this->texts(), 'reading it sent no text');
     }
 
     #[Test]
