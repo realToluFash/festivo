@@ -200,10 +200,10 @@ prune-build-cache:
 # .claude/skills/soirely-qa-tester for what a pass does with them.
 #
 # These run against THIS checkout's stack. An agent in QA mode works in its own
-# stack instead — `just qa-env setup` makes it, at ../soirely-qa — so that it
-# and a developer never share a database, a port or a simulator.
+# stack instead — `just qa-env setup --tester N` makes tester N's, at ../soirely-qa,
+# ../soirely-qa2 or ../soirely-qa3 — so that no two share a database, a port or a simulator.
 
-# The separate QA stack: `just qa-env setup`, then work from ../soirely-qa.
+# A tester's own QA stack: `just qa-env setup --tester N`, then work from its worktree.
 qa-env *args:
     node scripts/qa-env.mjs {{args}}
 
