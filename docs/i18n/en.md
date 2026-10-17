@@ -40,6 +40,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. Marking paid refused (sc-88, shown on sc-1331's "Due now" sheet).**
+  "{{name}} has already marked this paid, so nothing has changed." (no name: "This has already
+  been marked paid, so nothing has changed."); "This payment has been cancelled, so it cannot be
+  marked paid."; "Enter the amount in {{currency}}, the currency this event uses."; "The date paid
+  cannot be in the future. Choose today or an earlier date."; "Payments cannot be marked paid on
+  this organisation's plan, so nothing has changed." Won over "… a moment ago", which the server
+  cannot know. "So nothing has changed" is the house close for a refused change. Never ask for
+  an upgrade in a refusal.
+- **17 Oct 2026. "From the reminder sent {{date}} · {{payments}} across {{count}} events"**
+  (sc-1331 subline). Two counts take two plural keys, and the one-event form drops "across 1
+  event". "1 payment" keeps its numeral because it is a count line, not prose.
 - **17 Oct 2026. "Your {{provider}} sign-in was more than {{count}} minutes ago, so nothing
   has changed yet. Continue with {{provider}} again to carry on."** (`waysCard.proofExpired_*`,
   web and mobile). A past sign-in is something that "was … ago", not something "… old".
