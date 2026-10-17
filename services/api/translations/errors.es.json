@@ -15,7 +15,7 @@
     "reset_link_expired": "Este enlace ha caducado.",
     "forbidden": "No tiene permiso para hacer eso.",
     "permission_required": "Su función no incluye el permiso que esto necesita.",
-    "account_unverified": "Verifique su correo electrónico para continuar.",
+    "account_unverified": "Verifique su cuenta para continuar.",
     "profile_incomplete": "Añada algunos datos para continuar.",
     "too_many_requests": "Demasiados intentos. Espere e inténtelo de nuevo.",
     "too_many_attempts": "Demasiados intentos. Espere e inténtelo de nuevo.",

@@ -65,6 +65,43 @@ final class OnboardingGateTest extends ApiTestCase
         self::assertSame(ErrorCode::AccountUnverified->type(), $this->call('GET', '/api/auth/sessions')['type']);
     }
 
+    /** One title for the gate (RFC 9457 §3.1.3), and a detail that names what is unverified. */
+    #[Test]
+    public function theGatesDetailNamesWhatIsUnverified(): void
+    {
+        $user = $this->registered('which@example.com');
+        $this->signIn($user);
+        $email = $this->call('GET', '/api/orgs');
+        self::assertSame('Verify your account to carry on.', $email['title']);
+        self::assertSame('Verify your email address to carry on.', $email['detail'], 'the email first, phone or no phone');
+
+        $this->verify($user);
+        $phone = new PhoneNumber($user, '+2348035550142', isPrimary: true, countryCode: 'NG');
+        self::em()->persist($phone);
+        self::em()->flush();
+        $this->signIn($user);
+
+        $onlyPhone = $this->call('GET', '/api/orgs');
+        self::assertSame('Verify your account to carry on.', $onlyPhone['title']);
+        self::assertSame('Verify your mobile number to carry on.', $onlyPhone['detail']);
+
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+        self::assertSame('Vérifiez votre numéro de portable pour continuer.', $this->call('GET', '/api/orgs')['detail']);
+    }
+
+    #[Test]
+    public function aMissingCountryIsOneViolationOnCountryAlone(): void
+    {
+        $user = $this->registered('nocountry@example.com');
+        $this->verify($user);
+        $this->signIn($user);
+
+        $body = $this->call('PATCH', '/api/auth/complete-profile', ['name' => 'Person', 'organisationName' => 'Ire Events', 'timezone' => 'Africa/Lagos']);
+
+        self::assertSame(422, $this->client->getResponse()->getStatusCode());
+        self::assertSame(['countryCode'], \array_column(Type\vec(Type\dict(Type\string(), Type\string()))->coerce($body['violations']), 'propertyPath'), 'currency is derived, so it is not a violation');
+    }
+
     /** A route nobody exempted is behind the gate: adding an unprotected one takes a deliberate act. */
     #[Test]
     public function aRouteNotOnTheExemptListIsGatedByDefault(): void
