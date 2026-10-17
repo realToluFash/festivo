@@ -169,6 +169,11 @@ manual `beginTransaction()`/`commit()`, not `wrapInTransaction()`, which closes 
 EntityManager on the refusal you are about to throw. Test that the lock is taken before the
 check, since the race cannot be seen from one request at a time.
 
+A budget keyed on something with no row to lock, such as sign-in's address (known or not),
+takes a Postgres advisory transaction lock on the key instead: `pg_advisory_xact_lock`, one
+per key, always in the same order (`SignInAttempts`, sc-838). `SignInConcurrencyTest` shows
+the pattern for proving it: real processes started at one instant, against one shared Redis.
+
 ## Emails sent after the response
 
 A send deferred with `AfterResponse::defer()` reads `$request->getLocale()` **before**

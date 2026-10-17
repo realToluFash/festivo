@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\User\Controller\SignInController;
 use App\Domain\User\Http\SignInResponse;
+use App\Domain\User\SignInAttempts;
 use App\Domain\User\UserAuthenticator;
 use App\Domain\User\UserRegistrar;
 use App\Entity\EmailAddress;
@@ -130,7 +131,7 @@ final class SignInTest extends ApiTestCase
         $open = self::serviceById('limiter.sign_in_ip', RateLimiterFactoryInterface::class);
 
         foreach ([[new RefusingRateLimiterFactory(), $open], [$open, new RefusingRateLimiterFactory()]] as [$a, $b]) {
-            $controller = new SignInController(self::service(SignInResponse::class), $authenticator, $b, $a);
+            $controller = new SignInController(self::service(SignInResponse::class), new SignInAttempts($authenticator, self::em(), $b, $a));
 
             try {
                 $controller->signIn(Request::create('/api/auth/login', 'POST', content: Json\encode([
@@ -161,9 +162,7 @@ final class SignInTest extends ApiTestCase
         ] as $windowEnd => $stated) {
             $controller = new SignInController(
                 self::service(SignInResponse::class),
-                $authenticator,
-                $open,
-                new RefusingRateLimiterFactory(new DateTimeImmutable('2026-10-15 ' . $windowEnd)),
+                new SignInAttempts($authenticator, self::em(), $open, new RefusingRateLimiterFactory(new DateTimeImmutable('2026-10-15 ' . $windowEnd))),
             );
 
             try {
@@ -247,7 +246,7 @@ final class SignInTest extends ApiTestCase
             new InMemoryStorage(),
         );
 
-        return new SignInController(self::service(SignInResponse::class), self::service(UserAuthenticator::class), $factory('ip'), $factory('account'));
+        return new SignInController(self::service(SignInResponse::class), new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $factory('ip'), $factory('account')));
     }
 
     private static function refusal(SignInController $controller, string $email, #[SensitiveParameter] string $password): ApiException
