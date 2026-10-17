@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   codeBeforeTrip,
+  firstFactor,
+  keptOnceCodeAsked,
   keptProof,
   keptProofRanOut,
   provingRefusal,
@@ -62,6 +64,19 @@ describe('proving it is you, from Security', () => {
     expect(provingRefusal(refusal('proof_required', 403), t, 'Google', 'en').message).toBe(
       'waysCard.providerRefused {"provider":"Google"}',
     );
+  });
+
+  it('answers a code asked after Google with the kept proof, and never sends the spent sign-in again', () => {
+    const signIn = { code: 'g-code', codeVerifier: 'v', redirectUri: 'soirely://oauth' } as never;
+    const kept = keptOnceCodeAsked('google', refusal('two_factor_required', 403, 'p-1'), null);
+
+    expect(kept).toBe('p-1');
+    expect(firstFactor('google', kept, signIn, '')).toEqual({ pendingProof: 'p-1' });
+    expect(firstFactor('google', null, signIn, '')).toEqual({ provider: 'google', signIn });
+    expect(
+      keptOnceCodeAsked('password', refusal('two_factor_required', 403, 'p-1'), null),
+    ).toBeNull();
+    expect(firstFactor('password', null, null, 'pw')).toEqual({ password: 'pw' });
   });
 
   it('goes back to step one only when a kept proof ran out, not on any refusal', () => {

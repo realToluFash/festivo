@@ -15,7 +15,8 @@ import { useFormChecks } from '../kit/formChecks.ts';
 import {
   type ProvingField,
   codeBeforeTrip,
-  keptProof,
+  firstFactor,
+  keptOnceCodeAsked,
   keptProofRanOut,
   provingRefusal,
   tripRefused,
@@ -89,12 +90,7 @@ export function ConfirmItsYou({
       if (via !== 'password' && via != null && kept.current == null)
         returned.current ??= await confirmWithProvider(via, true);
 
-      const first =
-        kept.current != null
-          ? { pendingProof: kept.current }
-          : via === 'password' || via == null || returned.current == null
-            ? { password: password.current }
-            : { provider: via, signIn: returned.current };
+      const first = firstFactor(via, kept.current, returned.current, password.current);
       const proved = await api.prove(first, codeAsked ? code.current.trim() : undefined);
       holdProof(proved);
       onProved(proved.proof);
@@ -104,7 +100,7 @@ export function ConfirmItsYou({
       if (error instanceof ProviderCancelled) return;
       // The sign-in passed and waits for its code: the retry sends the API's kept proof, dated from the sign-in.
       if (error instanceof ApiError && error.is('two_factor_required')) {
-        kept.current = via === 'password' ? null : keptProof(error, kept.current);
+        kept.current = keptOnceCodeAsked(via, error, kept.current);
         setCodeAsked(true);
 
         return;
@@ -121,7 +117,7 @@ export function ConfirmItsYou({
       }
 
       // Only a refused trip is made again: after a wrong code the next Continue sends the API's kept proof.
-      kept.current = via === 'password' ? null : keptProof(error, kept.current);
+      kept.current = keptOnceCodeAsked(via, error, kept.current);
       if (via !== 'password' && tripRefused(error)) returned.current = null;
       setRefusal(
         provingRefusal(
