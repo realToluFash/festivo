@@ -134,7 +134,12 @@ describe('Settings > General', () => {
   });
 
   it('shows the details as text, with no controls, to a role that cannot change them', () => {
-    signedIn(membership({ role: { id: 'role_2', seededAs: 'coordinator', name: null } }));
+    signedIn(
+      membership({
+        role: { id: 'role_2', seededAs: 'coordinator', name: null },
+        permissions: ['events.read', 'events.manage', 'budget.read'],
+      }),
+    );
     settings();
 
     expect(screen.getByText('hello@ire.events')).toBeDefined();

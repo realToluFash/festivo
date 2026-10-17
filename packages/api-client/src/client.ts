@@ -208,6 +208,8 @@ export interface MemberRole {
 
 export interface Membership extends Organisation {
   role: MemberRole;
+  /** What this role holds here, every registered one for Owner (sc-66): what a client may show. */
+  permissions: string[];
 }
 
 export type OrganisationChanges = Partial<Omit<Organisation, 'id'>>;
@@ -1227,6 +1229,8 @@ function asMembership(raw: unknown): Membership | null {
 
   if (organisation == null || typeof role?.id !== 'string') return null;
 
+  const permissions = (raw as Record<string, unknown>).permissions;
+
   return {
     ...organisation,
     role: {
@@ -1234,6 +1238,9 @@ function asMembership(raw: unknown): Membership | null {
       seededAs: typeof role.seededAs === 'string' ? role.seededAs : null,
       name: typeof role.name === 'string' ? role.name : null,
     },
+    permissions: Array.isArray(permissions)
+      ? permissions.filter((one): one is string => typeof one === 'string')
+      : [],
   };
 }
 

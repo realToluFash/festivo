@@ -64,9 +64,9 @@ export function useSession(): Session {
   return current.session;
 }
 
-/** Owner holds every permission; until sc-66 gives other roles theirs, nobody else holds any. */
+/** What the member's role holds in the open organisation (sc-66): a control it cannot use is not rendered. */
 export function can(session: Session, permission: string): boolean {
-  return permission !== '' && session.organisation?.role.seededAs === 'owner';
+  return session.organisation?.permissions.includes(permission) ?? false;
 }
 
 export async function restoreSession(): Promise<void> {
