@@ -15,6 +15,7 @@ import { OAuthCallback } from './public/OAuthCallback.tsx';
 import { Register } from './public/Register.tsx';
 import { ResetPassword } from './public/ResetPassword.tsx';
 import { SignIn } from './public/SignIn.tsx';
+import { TwoFactorSignIn } from './public/TwoFactorSignIn.tsx';
 import { VerifyEmail } from './public/VerifyEmail.tsx';
 import { VerifyPhone } from './public/VerifyPhone.tsx';
 import { Status } from './public/Status.tsx';
@@ -38,6 +39,7 @@ import { Status } from './public/Status.tsx';
 export const routes = [
   { path: '/', element: <Home /> },
   { path: '/sign-in', element: <SignIn /> },
+  { path: '/sign-in/code', element: <TwoFactorSignIn /> },
   { path: '/register', element: <Register /> },
   { path: '/forgot-password', element: <ForgotPassword /> },
   { path: '/reset-password', element: <ResetPassword /> },

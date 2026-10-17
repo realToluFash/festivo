@@ -330,5 +330,30 @@
     "invalidBody": "Il a peut-être été coupé ou mal saisi. Envoyez un nouveau lien et utilisez le dernier e-mail.",
     "sendNew": "Envoyer un nouveau lien",
     "rememberedAfterAll": "Vous vous en souvenez finalement ?"
+  },
+  "twoFactor": {
+    "title": "Saisissez votre code",
+    "intro": "Ouvrez votre application d'authentification et saisissez le code à 6 chiffres pour {{email}}.",
+    "code": "Code",
+    "verify": "Vérifier et se connecter",
+    "useRecovery": "Utiliser plutôt un code de récupération",
+    "recoveryTitle": "Saisissez un code de récupération",
+    "recoveryIntro": "L'un des codes enregistrés lors de l'activation de la double authentification. Chacun ne fonctionne qu'une fois.",
+    "recoveryCode": "Code de récupération",
+    "useThisCode": "Utiliser ce code",
+    "useApp": "Utiliser plutôt l'application d'authentification",
+    "back": "Retour à la connexion",
+    "lostBoth": "Vous avez perdu l'application d'authentification et vos codes de récupération ?",
+    "codeBlank": "Saisissez le code à 6 chiffres de votre application.",
+    "codeLength": "Le code comporte 6 chiffres.",
+    "recoveryBlank": "Saisissez l'un de vos codes de récupération.",
+    "codeWrong": "Ce code n'a pas fonctionné. Saisissez le code affiché maintenant par votre application.",
+    "recoveryWrong": "Ce code de récupération n'a pas fonctionné. Vérifiez-le dans votre liste enregistrée.",
+    "recoveryUsed": "Ce code de récupération a déjà été utilisé. Essayez-en un autre de votre liste.",
+    "pausedTitle": "Trop de codes erronés",
+    "pausedBody": "La saisie des codes est suspendue jusqu'à {{time}}. Saisissez ensuite le code affiché à ce moment-là par votre application.",
+    "tryAgainAt": "Réessayer à {{time}}",
+    "notYou": "Ce n'est pas vous ?",
+    "resetPassword": "Réinitialisez votre mot de passe"
   }
 }

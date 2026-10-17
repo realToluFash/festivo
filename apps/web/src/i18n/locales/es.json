@@ -330,5 +330,30 @@
     "invalidBody": "Puede que se haya cortado o escrito mal. Envíe un enlace nuevo y use el correo más reciente.",
     "sendNew": "Enviar un enlace nuevo",
     "rememberedAfterAll": "¿Al final la ha recordado?"
+  },
+  "twoFactor": {
+    "title": "Introduzca su código",
+    "intro": "Abra su aplicación de autenticación e introduzca el código de 6 dígitos de {{email}}.",
+    "code": "Código",
+    "verify": "Verificar e iniciar sesión",
+    "useRecovery": "Usar un código de recuperación",
+    "recoveryTitle": "Introduzca un código de recuperación",
+    "recoveryIntro": "Uno de los códigos que guardó al activar la verificación en dos pasos. Cada uno funciona una vez.",
+    "recoveryCode": "Código de recuperación",
+    "useThisCode": "Usar este código",
+    "useApp": "Usar la aplicación de autenticación",
+    "back": "Volver a iniciar sesión",
+    "lostBoth": "¿Ha perdido la aplicación de autenticación y los códigos de recuperación?",
+    "codeBlank": "Introduzca el código de 6 dígitos de su aplicación.",
+    "codeLength": "El código tiene 6 dígitos.",
+    "recoveryBlank": "Introduzca uno de sus códigos de recuperación.",
+    "codeWrong": "Ese código no ha funcionado. Introduzca el código que muestra ahora su aplicación.",
+    "recoveryWrong": "Ese código de recuperación no ha funcionado. Compruébelo con su lista guardada.",
+    "recoveryUsed": "Ese código de recuperación ya se ha usado. Pruebe otro de su lista.",
+    "pausedTitle": "Demasiados códigos incorrectos",
+    "pausedBody": "La introducción de códigos está en pausa hasta las {{time}}. Después, introduzca el código que muestre su aplicación en ese momento.",
+    "tryAgainAt": "Vuelva a intentarlo a las {{time}}",
+    "notYou": "¿No es usted quien lo intenta?",
+    "resetPassword": "Restablezca su contraseña"
   }
 }

@@ -1,7 +1,7 @@
 import {
   type Provider,
   type ProviderAttempt,
-  type SignedIn,
+  type SignInOutcome,
   ProviderFailed,
   appleName,
   authorizationUrl,
@@ -70,7 +70,7 @@ export async function startProviderSignIn(provider: Provider): Promise<void> {
 export async function finishProviderSignIn(
   provider: Provider,
   callbackUrl: string,
-): Promise<SignedIn> {
+): Promise<SignInOutcome> {
   const saved = sessionStorage.getItem(attemptKey(provider));
   sessionStorage.removeItem(attemptKey(provider));
 
@@ -80,7 +80,7 @@ export async function finishProviderSignIn(
   const attempt = JSON.parse(saved) as ProviderAttempt;
   const name = provider === 'apple' ? appleName(callbackParam(callbackUrl, 'user')) : undefined;
 
-  const signedIn = await api.signInWithProviderCode(provider, {
+  const outcome = await api.signInWithProviderCode(provider, {
     code: codeFromCallback(callbackUrl, attempt.state),
     codeVerifier: attempt.codeVerifier,
     redirectUri: redirectUri(provider),
@@ -88,9 +88,9 @@ export async function finishProviderSignIn(
     ...(name == null ? {} : { name }),
   });
 
-  if (signedIn.linked) sessionStorage.setItem(LINKED, PROVIDER_NAMES[provider]);
+  if (outcome.linked) sessionStorage.setItem(LINKED, PROVIDER_NAMES[provider]);
 
-  return signedIn;
+  return outcome;
 }
 
 /** "Google is now linked": the provider to name, once, on the screen the person lands on. */

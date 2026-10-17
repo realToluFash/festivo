@@ -330,5 +330,30 @@
     "invalidBody": "It may have been cut off or mistyped. Send a new link and use the newest email.",
     "sendNew": "Send a new link",
     "rememberedAfterAll": "Remembered it after all?"
+  },
+  "twoFactor": {
+    "title": "Enter your code",
+    "intro": "Open your authenticator app and enter the 6-digit code for {{email}}.",
+    "code": "Code",
+    "verify": "Verify and sign in",
+    "useRecovery": "Use a recovery code instead",
+    "recoveryTitle": "Enter a recovery code",
+    "recoveryIntro": "One of the codes you saved when you turned on two-factor. Each works once.",
+    "recoveryCode": "Recovery code",
+    "useThisCode": "Use this code",
+    "useApp": "Use your authenticator app instead",
+    "back": "Back to sign in",
+    "lostBoth": "Lost your authenticator and your recovery codes?",
+    "codeBlank": "Enter the 6-digit code from your app.",
+    "codeLength": "The code is 6 digits.",
+    "recoveryBlank": "Enter one of your recovery codes.",
+    "codeWrong": "That code did not work. Enter the code your app shows now.",
+    "recoveryWrong": "That recovery code did not work. Check it against your saved list.",
+    "recoveryUsed": "That recovery code has already been used. Try another one from your list.",
+    "pausedTitle": "Too many wrong codes",
+    "pausedBody": "Code entry is paused until {{time}}. Then enter the code your app shows at that moment.",
+    "tryAgainAt": "Try again at {{time}}",
+    "notYou": "Not you trying?",
+    "resetPassword": "Reset your password"
   }
 }
