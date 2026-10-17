@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Password;
 
+use App\Domain\User\Attempts\GuardedAttempt;
+use App\Domain\User\Attempts\WrongSecret;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Entity\PasswordSetCode;
@@ -69,27 +71,12 @@ final readonly class PasswordSetting
     /** @return string the one-time step-up token `set()` needs, so the pass is this client's, not the account's */
     public function passCode(User $user, #[SensitiveParameter] string $code): string
     {
-        $connection = $this->entityManager->getConnection();
-        $connection->beginTransaction();
-
-        try {
-            $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
-            $stepUp = \bin2hex(SecureRandom\bytes(self::STEP_UP_BYTES));
-            $refusal = $this->check($user, $code, TokenIssuer::hash($stepUp));
-            $this->entityManager->flush();
-            $connection->commit();
-        } catch (Throwable $e) {
-            $connection->rollBack();
-
-            throw $e;
-        }
-
-        // Thrown after the commit, so a wrong try is counted before it is refused.
-        if (null !== $refusal) {
-            throw $refusal;
-        }
-
-        return $stepUp;
+        return new GuardedAttempt($this->entityManager)->attempt(
+            fn () => $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE),
+            fn (): array => [$this->passwordSetAccountLimiter->create($user->getId()->toRfc4122())],
+            fn (): string|WrongSecret => $this->check($user, $code),
+            'Too many tries.',
+        );
     }
 
     /** Only with the step-up token the code gave this client, under the account's lock; nothing is signed out. */
@@ -136,42 +123,31 @@ final readonly class PasswordSetting
         $this->afterResponse->defer(fn () => $this->passwordChangeMailer->sendAdded($user, $now, $userAgent, $ipAddress, $asked));
     }
 
-    private function check(User $user, #[SensitiveParameter] string $code, string $stepUpHash): ?ApiException
+    /** A wrong code counts against the code itself too, which the commit keeps before the refusal is thrown. */
+    private function check(User $user, #[SensitiveParameter] string $code): string|WrongSecret
     {
-        $limit = $this->passwordSetAccountLimiter->create($user->getId()->toRfc4122());
-        $peek = $limit->consume(0);
-
-        if (0 === $peek->getRemainingTokens()) {
-            return ApiException::tooManyAttempts('Too many tries.', $peek->getRetryAfter());
-        }
-
         $held = $this->passwordSetCodeRepository->findOneForUser($user);
         $now = $this->clock->now();
 
-        if (null === $held) {
-            return new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
-        }
-
-        if ($held->isCodeExpiredAt($now)) {
-            return new ApiException(ErrorCode::VerificationCodeExpired, 'That code has expired.');
-        }
-
-        if ($held->isExhausted()) {
-            return new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.');
-        }
+        match (true) {
+            null === $held => throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.'),
+            $held->isCodeExpiredAt($now) => throw new ApiException(ErrorCode::VerificationCodeExpired, 'That code has expired.'),
+            $held->isExhausted() => throw new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.'),
+            default => null,
+        };
 
         if (!\hash_equals($held->getCodeHash(), VerificationCodeIssuer::hash(Str\trim($code)))) {
             $held->wrongAttempt();
-            $limit->consume();
 
-            return $held->isExhausted()
+            return new WrongSecret($held->isExhausted()
                 ? new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.')
-                : new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.');
+                : new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.'));
         }
 
-        $held->passed($stepUpHash, $now);
+        $stepUp = \bin2hex(SecureRandom\bytes(self::STEP_UP_BYTES));
+        $held->passed(TokenIssuer::hash($stepUp), $now);
 
-        return null;
+        return $stepUp;
     }
 
     private function refuseIfSet(User $user): void
