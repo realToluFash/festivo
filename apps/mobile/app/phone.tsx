@@ -82,7 +82,7 @@ export default function ChangePhone() {
         {current != null && <Notice tone="quiet" mark="i" body={t('verifyPhone.changeNotice')} />}
 
         <NumberForm
-          initialCountry={phoneScreenCountry(current?.countryCode, account.countryCode, device)}
+          initialCountry={phoneScreenCountry(account, device)}
           onTexted={() =>
             router.replace(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')
           }
