@@ -43,6 +43,19 @@ replies to the ones you asked. Resolve those, then pick the work below.
 
 Say which story you took and why it was next. If several are waiting, name them.
 
+**Start every new piece of work from the latest `main`.** Fetch first, then branch from
+the remote, not from a local `main` that may be behind, and never from another feature
+branch:
+
+```sh
+git fetch origin
+git switch -c feature/sc-<id>/<slug> origin/main
+```
+
+A branch cut from a stale base is reviewed against code that is no longer there, and its
+conflicts surface at merge rather than while the work is fresh. Rebasing an open branch
+onto a newer `main` is the same rule applied later: fetch, then `git rebase origin/main`.
+
 ## 3. Read before you write
 
 - **The story**, `stories-get-by-id` with `full: true`. The **AC is the contract** — build
