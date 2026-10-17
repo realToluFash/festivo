@@ -957,6 +957,69 @@ h2 {
   color: var(--colorInkSecondary);
 }
 
+/* ── Getting back in without the second factor (sc-509) ─────────────────── */
+
+.steps-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+}
+
+.steps-list .step-mark {
+  border: var(--borderMark) var(--colorMarkEmpty);
+  color: var(--colorInkSecondary);
+}
+
+.request-state {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+  font: var(--typeButton);
+}
+
+.request-state-attention {
+  color: var(--colorAttentionText);
+}
+
+.request-state-done {
+  color: var(--colorAccentText);
+}
+
+.request-state-broken {
+  color: var(--colorBrokenText);
+}
+
+.request-state-ended {
+  color: var(--colorInkSecondary);
+}
+
+.mark-ended {
+  border: var(--borderMark) var(--colorInkSecondary);
+  color: var(--colorInkSecondary);
+}
+
+.button-danger {
+  color: var(--colorBrokenText);
+}
+
+.request-card-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  padding-top: var(--spaceMd);
+  border-top: var(--borderInset);
+}
+
 /* ── A code from an email ─────────────────────────────────────────────────── */
 
 .code-input {
