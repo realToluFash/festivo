@@ -8,6 +8,11 @@ const ZONES = [
   { id: 'Europe/London', city: 'London', country: 'United Kingdom', offset: '+01:00' },
   { id: 'America/Sao_Paulo', city: 'Sao Paulo', country: 'Brazil', offset: '-03:00' },
   { id: 'Asia/Dubai', city: 'Dubai', country: 'United Arab Emirates', offset: '+04:00' },
+  { id: 'Asia/Kolkata', city: 'Kolkata', country: 'India', offset: '+05:30' },
+  { id: 'Asia/Kathmandu', city: 'Kathmandu', country: 'Nepal', offset: '+05:45' },
+  { id: 'Australia/Sydney', city: 'Sydney', country: 'Australia', offset: '+11:00' },
+  { id: 'Pacific/Tongatapu', city: 'Tongatapu', country: 'Tonga', offset: '+13:00' },
+  { id: 'Etc/UTC', city: 'UTC', country: '', offset: '+00:00' },
 ];
 
 describe('the time zone list', () => {
@@ -27,6 +32,22 @@ describe('the time zone list', () => {
     expect(matchingZones(ZONES, '+04').map((z) => z.id)).toEqual(['Asia/Dubai']);
     expect(matchingZones(ZONES, 'utc+4').map((z) => z.id)).toEqual(['Asia/Dubai']);
     expect(matchingZones(ZONES, '-3').map((z) => z.id)).toEqual(['America/Sao_Paulo']);
+  });
+
+  it('matches an offset as a number, never as text', () => {
+    const ids = (query: string) => matchingZones(ZONES, query).map((z) => z.id);
+    const plusOne = ['Africa/Lagos', 'Africa/Kinshasa', 'Europe/London'];
+
+    expect(ids('utc+1')).toEqual(plusOne);
+    expect(ids('+1')).toEqual(plusOne);
+    expect(ids('GMT + 1')).toEqual(plusOne);
+    expect(ids('+5')).toEqual(['Asia/Kolkata', 'Asia/Kathmandu']);
+    expect(ids('+5:30')).toEqual(['Asia/Kolkata']);
+    expect(ids('+0530')).toEqual(['Asia/Kolkata']);
+    expect(ids('+11')).toEqual(['Australia/Sydney']);
+    expect(ids('\u22123')).toEqual(['America/Sao_Paulo']);
+    expect(ids('+0')).toEqual(['Etc/UTC']);
+    expect(ids('01:00')).toEqual([]);
   });
 
   it('lists everything for an empty search, and nothing for no match', () => {
