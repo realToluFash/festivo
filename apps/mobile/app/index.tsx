@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { api } from '../src/api.ts';
+import { api, meAtLaunch } from '../src/api.ts';
 import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
@@ -12,7 +12,7 @@ import { config } from '../src/config.ts';
 import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
-import { resumeSignUp } from '../src/resumeSignUp.ts';
+import { launchRoute } from '../src/resumeSignUp.ts';
 
 /**
  * The health endpoint, rendered.
@@ -41,10 +41,11 @@ export default function Home() {
   useEffect(() => {
     let live = true;
 
-    api
-      .me()
-      .then((signedIn) => {
-        if (!live) return;
+    void meAtLaunch().then((answer) => {
+      if (!live) return;
+
+      if ('account' in answer) {
+        const signedIn = answer.account;
 
         void followAccount(signedIn);
 
@@ -52,25 +53,24 @@ export default function Home() {
         const landing = landingFor(awaiting(signedIn));
         if (landing !== '/') router.replace(landing);
         else setAccount(signedIn);
-      })
-      .catch((error: unknown) => {
-        if (!live) return;
+        return;
+      }
 
-        // Still signed in, so the answer is not sign-in.
-        if (error instanceof ApiUnreachableError) {
-          router.replace('/unreachable');
-          return;
-        }
+      // Still signed in, so the answer is not sign-in.
+      if (answer.error instanceof ApiUnreachableError) {
+        router.replace('/unreachable');
+        return;
+      }
 
-        setAccount(null);
-        void resumeSignUp({
-          held: heldRegistration,
-          open: (registration) => api.registrationOpening(registration),
-          drop: dropRegistration,
-        }).then((resumed) => {
-          if (live && resumed != null) router.replace(resumed);
-        });
+      setAccount(null);
+      void launchRoute(answer.ended, {
+        held: heldRegistration,
+        open: (registration) => api.registrationOpening(registration),
+        drop: dropRegistration,
+      }).then((route) => {
+        if (live && route != null) router.replace(route);
       });
+    });
 
     return () => {
       live = false;

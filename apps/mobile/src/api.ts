@@ -5,7 +5,7 @@
  * the correlation id and the error shape are decided once. Written per client,
  * each grows its own error path and most of those are never exercised.
  */
-import { ApiClient, awaiting } from '@soirely/api-client';
+import { type Account, ApiClient, awaiting } from '@soirely/api-client';
 import { getCalendars } from 'expo-localization';
 import { router } from 'expo-router';
 
@@ -13,6 +13,8 @@ import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
 import { landingFor } from './landing.ts';
 import { tokens } from './tokens.ts';
+
+let heldBack: { ended: boolean } | null = null;
 
 export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
@@ -22,7 +24,8 @@ export const api = new ApiClient({
   // Stated rather than defaulted: the web client states the opposite deliberately.
   refreshTokenIn: 'body',
   onSignedOut: () => {
-    router.replace('/sign-in?signedOut=1');
+    if (heldBack != null) heldBack.ended = true;
+    else router.replace('/sign-in?signedOut=1');
   },
   // A refusal names the gate but not whether the email or a phone is unproved, so ask the account.
   onGate: () => {
@@ -32,3 +35,19 @@ export const api = new ApiClient({
       .catch(() => router.replace('/'));
   },
 });
+
+/** Launch's own `me()`: an ended session is reported back rather than redirected, so a held sign-up can win (sc-927). */
+export async function meAtLaunch(): Promise<
+  { account: Account } | { error: unknown; ended: boolean }
+> {
+  const hold = { ended: false };
+  heldBack = hold;
+
+  try {
+    return { account: await api.me() };
+  } catch (error) {
+    return { error, ended: hold.ended };
+  } finally {
+    if (heldBack === hold) heldBack = null;
+  }
+}
