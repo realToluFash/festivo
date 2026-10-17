@@ -44,6 +44,7 @@ export function VerifyEmail() {
 
 function ForRegistration({ pending }: { pending: PendingRegistration }) {
   const navigate = useNavigate();
+  const session = useSessionState();
   const [account, setAccount] = useState<Account | null>(null);
 
   return (
@@ -64,7 +65,9 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
       }}
       onGone={() => {
         dropRegistration();
-        navigate('/sign-in', { replace: true });
+        // A session that ended under the held sign-up says so once the sign-up is gone too (sc-927).
+        const ended = session.status === 'signedOut' && session.ended;
+        navigate(ended ? '/sign-in?signed-out' : '/sign-in', { replace: true });
       }}
       carryOn={() => {
         if (account != null) navigate(landingFor(awaiting(account)), { replace: true });

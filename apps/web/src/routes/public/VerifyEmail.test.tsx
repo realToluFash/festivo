@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { dropRegistration, holdRegistration } from '../../pendingRegistration.ts';
 import { __setSessionState, type Session } from '../../session.ts';
 import { routes } from '../index.tsx';
 import { membership } from '../../test-memberships.ts';
@@ -274,5 +275,34 @@ describe('verifying an email address', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
     );
+  });
+});
+
+describe('a held sign-up on a device whose session has ended', () => {
+  beforeEach(() => {
+    __setSessionState({ status: 'signedOut', ended: true });
+    holdRegistration({ registration: 'the-handle', email: 'folake@ire.events' });
+  });
+
+  afterEach(() => dropRegistration());
+
+  it('opens on the code for that address while the sign-up is open', async () => {
+    answering({
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0, codeState: 'live' }),
+    });
+
+    open();
+
+    expect(await screen.findByLabelText('Code from the email')).toBeDefined();
+    expect(screen.getByText(/folake@ire\.events/)).toBeDefined();
+  });
+
+  it('says signed out on sign-in, and drops the sign-up, once its handle has run out', async () => {
+    answering({ 'GET /api/auth/register/resend': () => problem('registration_expired', 410) });
+
+    open();
+
+    expect(await screen.findByText('You were signed out')).toBeDefined();
+    expect(sessionStorage.getItem('soirely.registration')).toBeNull();
   });
 });
