@@ -44,6 +44,7 @@ const FOLAKE: Session = {
   awaiting: null,
   providers: [],
   needsOrganisation: false,
+  hasPassword: true,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
 };
@@ -336,6 +337,167 @@ describe('the devices signed in to an account', () => {
 
     // Absent, not merely hidden: a `.card` sets its own display, which beats `hidden`.
     await waitFor(() => expect(document.getElementById('devices-title')).toBeNull());
+  });
+});
+
+describe('changing the password', () => {
+  function fillIn(current: string, next: string) {
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.change(screen.getByLabelText('Current password'), { target: { value: current } });
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: next } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
+  }
+
+  it('comes first on the page, and says what changing it does', () => {
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
+    openSecurity();
+
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings[0]).toBe('Password');
+    expect(
+      screen.getByText(
+        'Used with your email to sign in. Changing it signs out your other devices; this one stays signed in.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('sends the current and the new password with this session, then says how many were signed out', async () => {
+    let sent: unknown = null;
+    const calls = answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'PATCH /api/auth/password': () => json({ signedOut: 2 }),
+    });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const { pathname } = new URL(String(input));
+      calls.push({ method: init?.method ?? 'GET', path: pathname });
+      if (pathname === '/api/auth/password') {
+        sent = JSON.parse(String(init?.body));
+        return json({ signedOut: 2 });
+      }
+      if (pathname === '/api/auth/two-factor') return json({ on: false, recoveryCodesLeft: 0 });
+      return json(SESSIONS);
+    });
+
+    openSecurity();
+    fillIn('the old passphrase', 'a brand new passphrase');
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          'Password changed. Your 2 other devices are signed out; they may keep working for up to 15 minutes while that reaches them, then they have to sign in again.',
+        ),
+      ).toBeDefined(),
+    );
+    expect(sent).toEqual({
+      currentPassword: 'the old passphrase',
+      newPassword: 'a brand new passphrase',
+      sessionId: HERE,
+    });
+    expect(calls.filter((call) => call.path === '/api/auth/sessions').length).toBe(2);
+  });
+
+  it('checks both fields and the length before sending anything', () => {
+    const calls = answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
+    openSecurity();
+    fillIn('', '');
+
+    expect(screen.getByText('Enter your current password.')).toBeDefined();
+    expect(screen.getByText('Enter a new password.')).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Current password'), { target: { value: 'old one' } });
+    fireEvent.change(screen.getByLabelText('New password'), { target: { value: 'too short' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save new password' }));
+
+    expect(calls.some((call) => call.method === 'PATCH')).toBe(false);
+  });
+
+  it('says a wrong current password is wrong, under that field', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'PATCH /api/auth/password': () =>
+        json(
+          { type: 'https://soirely.com/errors/invalid_credentials', title: 'No', status: 401 },
+          401,
+        ),
+    });
+
+    openSecurity();
+    fillIn('not the password', 'a brand new passphrase');
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('That is not your current password. Try again, or reset it by email.'),
+      ).toBeDefined(),
+    );
+    expect(screen.getByLabelText('Current password').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('says the same password is already the password, under the new one', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'PATCH /api/auth/password': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/validation_failed',
+            title: 'No',
+            status: 422,
+            violations: [
+              { propertyPath: 'newPassword', message: 'Same.', code: 'password_unchanged' },
+            ],
+          },
+          422,
+        ),
+    });
+
+    openSecurity();
+    fillIn('the old passphrase', 'the old passphrase');
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('That is already your password. Choose a different one.'),
+      ).toBeDefined(),
+    );
+  });
+
+  it('says until when it is paused, and that nothing changed', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'PATCH /api/auth/password': () =>
+        new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/too_many_attempts',
+            title: 'No',
+            status: 429,
+          }),
+          {
+            status: 429,
+            headers: { 'Content-Type': 'application/problem+json', 'Retry-After': '600' },
+          },
+        ),
+    });
+
+    openSecurity();
+    fillIn('not the password', 'a brand new passphrase');
+
+    await waitFor(() => expect(screen.getByText('Too many tries')).toBeDefined());
+    expect(screen.getByText(/^Try again at .+\. Nothing was changed\.$/)).toBeDefined();
+  });
+
+  it('has nothing to change for an account that signs in with Google', () => {
+    __setSessionState({
+      status: 'signedIn',
+      session: { ...FOLAKE, hasPassword: false, providers: ['google'] },
+    });
+    answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
+
+    openSecurity();
+
+    expect(
+      screen.getByText('You sign in with Google, so there is no password to change.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Change password' })).toBeNull();
   });
 });
 

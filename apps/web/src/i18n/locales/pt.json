@@ -400,5 +400,32 @@
     "keepItOn": "Manter ativa",
     "failedTitle": "Não foi possível carregar a autenticação de dois fatores",
     "failedBody": "Algo correu mal do nosso lado. Tente novamente daqui a pouco."
+  },
+  "passwordCard": {
+    "title": "Palavra-passe",
+    "intro": "Usada com o seu e-mail para iniciar sessão. Alterá-la termina a sessão nos seus outros dispositivos; este continua com sessão iniciada.",
+    "change": "Alterar palavra-passe",
+    "none": "Inicia sessão com {{provider}}, por isso não há palavra-passe para alterar.",
+    "formTitle": "Alterar a sua palavra-passe",
+    "current": "Palavra-passe atual",
+    "forgot": "Esqueceu-se?",
+    "new": "Nova palavra-passe",
+    "currentBlank": "Introduza a sua palavra-passe atual.",
+    "newBlank": "Introduza uma nova palavra-passe.",
+    "wrongCurrent": "Essa não é a sua palavra-passe atual. Tente novamente ou reponha-a por e-mail.",
+    "same": "Essa já é a sua palavra-passe. Escolha uma diferente.",
+    "pausedTitle": "Demasiadas tentativas",
+    "pausedBody": "Tente novamente às {{time}}. Nada foi alterado.",
+    "pausedSoon": "Aguarde um momento e tente novamente. Nada foi alterado.",
+    "signsOut": "Guardar termina a sessão nos seus outros dispositivos; este continua com sessão iniciada. Podem continuar a funcionar até 15 minutos enquanto isso lhes chega.",
+    "emailed": "Vamos enviar um e-mail para {{email}} a avisar da alteração.",
+    "save": "Guardar nova palavra-passe",
+    "saving": "A guardar…",
+    "cancel": "Cancelar",
+    "done_zero": "Palavra-passe alterada. Não havia outro dispositivo com sessão iniciada.",
+    "done_one": "Palavra-passe alterada. A sessão foi terminada no seu outro dispositivo; pode continuar a funcionar até 15 minutos enquanto isso lhe chega e depois terá de iniciar sessão novamente.",
+    "done_other": "Palavra-passe alterada. A sessão foi terminada nos seus {{count}} outros dispositivos; podem continuar a funcionar até 15 minutos enquanto isso lhes chega e depois terão de iniciar sessão novamente.",
+    "failedTitle": "Nada foi alterado",
+    "failedBody": "Não foi possível guardar a sua palavra-passe. Verifique a ligação e tente novamente."
   }
 }
