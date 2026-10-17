@@ -15,7 +15,7 @@
     "lint:comments": "node scripts/check-comments.mjs",
     "lint:api": "docker compose exec -T api php vendor/bin/mago lint",
     "analyse:api": "docker compose exec -T api php vendor/bin/mago analyze",
-    "guard:api": "docker compose exec -T api php vendor/bin/mago guard",
+    "guard:api": "docker compose exec -T api php vendor/bin/mago guard && node scripts/check-migrations.mjs",
     "test": "npm run test:scripts && npm run test:api && npm run test:packages",
     "test:scripts": "vitest run --dir scripts",
     "test:db": "node scripts/test-db.mjs",

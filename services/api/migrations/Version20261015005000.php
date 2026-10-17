@@ -19,7 +19,11 @@ final class Version20261015005000 extends AbstractMigration
         $this->addSql('ALTER TABLE refresh_tokens ADD chain_id UUID DEFAULT NULL');
 
         // Backfill before the constraint. Each existing row is its own chain.
-        $this->addSql('UPDATE refresh_tokens SET chain_id = id WHERE chain_id IS NULL');
+        $this->addSql(<<<'SQL'
+            UPDATE refresh_tokens
+            SET chain_id = id
+            WHERE chain_id IS NULL
+            SQL);
 
         $this->addSql('ALTER TABLE refresh_tokens ALTER COLUMN chain_id SET NOT NULL');
         $this->addSql('CREATE INDEX idx_refresh_token_chain ON refresh_tokens (chain_id)');
