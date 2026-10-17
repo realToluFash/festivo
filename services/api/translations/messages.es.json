@@ -18,6 +18,7 @@
     "validation.password_breached": "Esta contraseña ha aparecido en una filtración de datos conocida. Elija otra.",
     "validation.password_too_long": "Eso supera los {count} caracteres.",
     "validation.password_too_short": "Utilice al menos {count} caracteres.",
+    "validation.password_unchanged": "Esa ya es su contraseña. Elija otra diferente.",
     "validation.phone_invalid": "Ese no es un número de móvil de {country}. Revíselo e inténtelo de nuevo.",
     "validation.phone_required": "Indique su número de móvil.",
     "validation.phone_too_long": "Ese número parece demasiado largo para {country}. Revíselo e inténtelo de nuevo.",

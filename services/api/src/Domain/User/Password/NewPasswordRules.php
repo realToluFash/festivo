@@ -38,7 +38,7 @@ final readonly class NewPasswordRules
                     '{count}' => match ($failure) {
                         PasswordFailure::TooShort => (string) PasswordPolicy::MINIMUM_LENGTH,
                         PasswordFailure::TooLong => (string) PasswordPolicy::MAXIMUM_LENGTH,
-                        PasswordFailure::Breached => '',
+                        PasswordFailure::Breached, PasswordFailure::Unchanged => '',
                     },
                 ]),
                 'code' => $failure->value,
