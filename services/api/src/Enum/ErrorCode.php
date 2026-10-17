@@ -42,6 +42,9 @@ enum ErrorCode: string
     case TwoFactorNotEnrolled = 'two_factor_not_enrolled';
     case TwoFactorOff = 'two_factor_off';
     case TwoFactorRequired = 'two_factor_required';
+    case RecoveryNobodyToApprove = 'recovery_nobody_to_approve';
+    case RecoveryRequestInvalid = 'recovery_request_invalid';
+    case RecoveryRequestClosed = 'recovery_request_closed';
 
     case InternalError = 'internal_error';
     case ServiceUnavailable = 'service_unavailable';
@@ -59,6 +62,8 @@ enum ErrorCode: string
             self::NotFound, self::ResetLinkInvalid => 404,
             self::ResetLinkUsed, self::ResetLinkExpired, self::RegistrationExpired => 410,
             self::Conflict, self::PhoneTaken, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
+            self::RecoveryNobodyToApprove, self::RecoveryRequestClosed => 409,
+            self::RecoveryRequestInvalid => 404,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid => 401,
             self::Forbidden, self::PermissionRequired, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired => 403,

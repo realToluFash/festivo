@@ -128,4 +128,10 @@ class PhoneNumber implements VerifiableContact
     {
         $this->codesByText = true;
     }
+
+    /** A new attempt starts on WhatsApp again, as a new number's codes do (sc-750). */
+    public function forgetCodesByText(): void
+    {
+        $this->codesByText = false;
+    }
 }

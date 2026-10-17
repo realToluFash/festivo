@@ -8,6 +8,7 @@ use App\Entity\User;
 use DateTimeImmutable;
 use DateTimeZone;
 use IntlDateFormatter;
+use IntlDatePatternGenerator;
 use Psl\Regex;
 use Psl\Str;
 use Symfony\Component\Mailer\MailerInterface;
@@ -28,14 +29,17 @@ final readonly class UserMailer
     ) {
     }
 
-    /** @param list<string> $paragraphs already in the person's locale, joined by a blank line */
-    public function send(string $address, ?string $locale, string $subjectKey, array $paragraphs): void
+    /**
+     * @param list<string>          $paragraphs        already in the person's locale, joined by a blank line
+     * @param array<string, string> $subjectParameters
+     */
+    public function send(string $address, ?string $locale, string $subjectKey, array $paragraphs, array $subjectParameters = []): void
     {
         $this->mailer->send(
             new Email()
                 ->from(Address::create($this->mailFrom))
                 ->to($address)
-                ->subject($this->line($subjectKey, $locale))
+                ->subject($this->line($subjectKey, $locale, $subjectParameters))
                 ->text(Str\join($paragraphs, "\n\n")),
         );
     }
@@ -76,6 +80,36 @@ final readonly class UserMailer
         $formatter->setPattern(self::twentyFourHour($formatter->getPattern()));
 
         return ($formatter->format($local) ?: $local->format('Y-m-d H:i')) . ' ' . $label;
+    }
+
+    /** A deadline as the screens write it (sc-509): "Saturday, Oct 24 at 14:20 WAT", in the reader's zone, else UTC. */
+    public function deadline(DateTimeImmutable $at, User $user, string $locale): string
+    {
+        $zone = new DateTimeZone($user->getTimezone() ?? 'UTC');
+        $local = $at->setTimezone($zone);
+        $pattern = new IntlDatePatternGenerator($locale)->getBestPattern('EEEEMMMd') ?: 'EEEE, MMM d';
+        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $zone->getName(), null, $pattern);
+        $abbreviation = $local->format('T');
+
+        return $this->line('time.dateAt', $locale, [
+            '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),
+            '{time}' => $local->format('H:i'),
+            '{zone}' => Regex\matches($abbreviation, '/^[+-]/') ? 'UTC' . $local->format('P') : $abbreviation,
+        ]);
+    }
+
+    /**
+     * To every verified address the account holds, each in the account's language.
+     *
+     * @param list<string> $paragraphs
+     */
+    public function sendToEveryVerified(User $user, string $subjectKey, array $paragraphs): void
+    {
+        foreach ($user->getEmailAddresses() as $address) {
+            if ($address->isVerified()) {
+                $this->send($address->getAddress(), $this->localeFor($user), $subjectKey, $paragraphs);
+            }
+        }
     }
 
     /** CLDR's date and wording for the locale, on a 24-hour clock: its short time is 12-hour in en. Quoted text is left alone. */

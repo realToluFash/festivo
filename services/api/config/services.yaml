@@ -133,6 +133,16 @@ services:
     App\Domain\User\Password\PasswordChangeMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\TwoFactor\Recovery\NotMeLink:
+        arguments:
+            $secret: '%kernel.secret%'
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\TwoFactor\Recovery\TwoFactorRecoveryMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\User\Controller\TwoFactorRecoveryController:
+        arguments:
+            $supportAddress: '%env(SUPPORT_EMAIL)%'
     App\Domain\User\TwoFactor\SecretBox:
         arguments:
             $twoFactorKey: '%env(TWO_FACTOR_KEY)%'
