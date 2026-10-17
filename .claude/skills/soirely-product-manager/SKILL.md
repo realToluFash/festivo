@@ -126,7 +126,8 @@ Half of this job is refusing to answer in the wrong place.
 
 ## 5. What this mode must not do
 
-- **Need something from another role?** Ask it with a tagged comment — `[ux]` for a screen,
+- **Need something from another role?** Ask it with a tagged comment — `[bm]` for a price,
+  a plan limit or a cost, `[ux]` for a screen,
   `[dev]` for what was built, `[qa]` for what was tested — per `role-comments`.
 - **No code, no artboards.** A story is the deliverable. If the fix is one line, it is still
   `/soirely-developer`'s line.
@@ -136,7 +137,8 @@ Half of this job is refusing to answer in the wrong place.
   ready, or that it needs none, and no product question on it is open. The owner delegated
   this on 16 Oct: their sign-off of the screens is not a condition for it. Say in the
   designer's thread that you moved it. A story that waits on the owner for a decision only
-  they can make, such as a money or policy call, stays in Backlog until they make it.
+  they can make, such as a money or policy call, stays in Backlog until they make it. Tag
+  `[bm]` on it, so the owner decides from a memo rather than from scratch.
 - **Do not weaken an AC to make a build pass.** A criterion the build fails is either a
   defect or a decision to reverse deliberately, in writing, with the reason. Quietly
   deleting it is how a product ships something nobody chose.
