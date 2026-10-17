@@ -262,6 +262,11 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_us
 namespace = "App\\Integrations\\Twilio\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
 
+# WhatsApp, for phone codes (sc-750). It sees the port it implements and nothing else of ours.
+[[guard.perimeter.rules]]
+namespace = "App\\Integrations\\Meta\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:domain_user"]
+
 # The OpenID providers. It sees the port it implements and nothing else of ours.
 [[guard.perimeter.rules]]
 namespace = "App\\Integrations\\OpenIdConnect\\"

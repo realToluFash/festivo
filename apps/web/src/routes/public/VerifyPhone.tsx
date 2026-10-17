@@ -1,23 +1,20 @@
-import { type Account, ApiError, phoneAwaitingCode } from '@soirely/api-client';
-import { cleanCode, codeProblem, formatCountdown, formatPhone } from '@soirely/domain';
+import {
+  type Account,
+  ApiError,
+  type PhoneCodeRoute,
+  phoneAwaitingCode,
+} from '@soirely/api-client';
+import { cleanCode, codeProblem, codeWording, formatCountdown, formatPhone } from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
+import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
-
-type Status =
-  | { kind: 'entering' }
-  | { kind: 'verifying' }
-  | { kind: 'wrong' }
-  | { kind: 'expired' }
-  | { kind: 'exhausted' }
-  | { kind: 'failed' }
-  | { kind: 'verified' };
 
 /** "Check your messages": the code texted to the primary phone, under email's rules and with its parts. */
 export function VerifyPhone() {
@@ -26,9 +23,12 @@ export function VerifyPhone() {
   const [params] = useSearchParams();
   const onboarding = params.get('from') === 'onboarding';
   const [account, setAccount] = useState<Account | 'none' | null>(null);
-  const [status, setStatus] = useState<Status>({ kind: 'entering' });
+  const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
+  const [textingFailed, setTextingFailed] = useState(false);
+  const wording = codeWording(route);
 
   useEffect(() => {
     let live = true;
@@ -44,13 +44,11 @@ export function VerifyPhone() {
 
     api
       .phoneOpening()
-      .then(({ cooldownSeconds, codeState }) => {
+      .then(({ cooldownSeconds, codeState, route: sent }) => {
         if (!live) return;
         setCooldown(cooldownSeconds);
-        // A spent code opens on its banner, so the screen never invites a try it knows is refused.
-        if (codeState !== 'live') {
-          setStatus((now) => (now.kind === 'entering' ? { kind: codeState } : now));
-        }
+        setRoute(sent);
+        setStatus((now) => openingStatus(now, codeState));
       })
       .catch(() => {});
 
@@ -58,6 +56,20 @@ export function VerifyPhone() {
       live = false;
     };
   }, []);
+
+  // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
+  useEffect(() => {
+    if (!wording.watch) return;
+
+    const watching = setInterval(() => {
+      api
+        .phoneOpening()
+        .then((opening) => setRoute(opening.route))
+        .catch(() => {});
+    }, 5000);
+
+    return () => clearInterval(watching);
+  }, [wording.watch]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -84,7 +96,13 @@ export function VerifyPhone() {
     const problem = codeProblem(typed);
 
     if (problem != null) {
-      setCodeError(t(problem === 'blank' ? 'verifyPhone.codeBlank' : 'verifyPhone.codeShort'));
+      setCodeError(
+        problem === 'short'
+          ? t('verifyPhone.codeShort')
+          : wording.fromWhatsApp
+            ? t('verifyPhone.codeBlankWhatsApp')
+            : t('verifyPhone.codeBlank'),
+      );
       return;
     }
 
@@ -97,7 +115,7 @@ export function VerifyPhone() {
       await api.verifyPhone(code);
       setStatus({ kind: 'verified' });
     } catch (error) {
-      setStatus(refusalFrom(error));
+      setStatus(codeRefusal(error));
     }
   }
 
@@ -105,6 +123,7 @@ export function VerifyPhone() {
     try {
       setCooldown(await api.resendPhoneCode());
       setStatus({ kind: 'entering' });
+      setRoute((await api.phoneOpening()).route);
     } catch (error) {
       const seconds =
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
@@ -134,8 +153,26 @@ export function VerifyPhone() {
     }
   }
 
+  async function textInstead(): Promise<void> {
+    setTextingFailed(false);
+
+    try {
+      await api.textPhoneCodeInstead();
+      setRoute('sms_chosen');
+    } catch {
+      setTextingFailed(true);
+    }
+  }
+
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
-  const fieldError = codeError ?? (status.kind === 'wrong' ? t('verifyPhone.wrong') : null);
+  const wrong = wording.fromWhatsApp ? t('verifyPhone.wrongWhatsApp') : t('verifyPhone.wrong');
+  const fieldError = codeError ?? (status.kind === 'wrong' ? wrong : null);
+  const line = {
+    whatsapp: t('verifyPhone.introWhatsApp', { number }),
+    fallback: t('verifyPhone.introFallback', { number }),
+    chosen: t('verifyPhone.introChosen', { number }),
+    texted: t('verifyPhone.intro', { number }),
+  }[wording.line];
 
   return (
     <AuthPage>
@@ -173,7 +210,8 @@ export function VerifyPhone() {
         <>
           <div className="auth-heading">
             <h1>{t('verifyPhone.title')}</h1>
-            <p>{t('verifyPhone.intro', { number })}</p>
+            {/* One live element whose text changes, so a fallback is announced without moving focus. */}
+            <p aria-live="polite">{line}</p>
           </div>
 
           {status.kind === 'expired' && (
@@ -209,7 +247,11 @@ export function VerifyPhone() {
           {entering && (
             <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
               <div className="field">
-                <label htmlFor="code">{t('verifyPhone.codeLabel')}</label>
+                <label htmlFor="code">
+                  {wording.fromWhatsApp
+                    ? t('verifyPhone.codeLabelWhatsApp')
+                    : t('verifyPhone.codeLabel')}
+                </label>
                 <input
                   className={fieldError == null ? 'code-input' : 'code-input input-wrong'}
                   id="code"
@@ -249,6 +291,15 @@ export function VerifyPhone() {
                 </button>
                 <p>{t('verifyPhone.resendNote')}</p>
               </div>
+
+              {wording.offerText && (
+                <button className="button" type="button" onClick={() => void textInstead()}>
+                  {t('verifyPhone.textInstead')}
+                </button>
+              )}
+              {textingFailed && (
+                <FieldError id="text-instead-error" message={t('verifyPhone.textInsteadFailed')} />
+              )}
             </form>
           )}
 
@@ -302,13 +353,4 @@ function Banner({
       </div>
     </div>
   );
-}
-
-function refusalFrom(error: unknown): Status {
-  if (!(error instanceof ApiError)) return { kind: 'failed' };
-  if (error.is('verification_code_invalid')) return { kind: 'wrong' };
-  if (error.is('verification_code_expired')) return { kind: 'expired' };
-  if (error.is('verification_code_exhausted')) return { kind: 'exhausted' };
-
-  return { kind: 'failed' };
 }

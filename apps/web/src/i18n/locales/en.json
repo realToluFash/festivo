@@ -216,7 +216,15 @@
     "taken": "That number is already linked to another account. Your current number is unchanged.",
     "send": "Text a code to this number",
     "sending": "Texting a code…",
-    "keep": "Keep my current number"
+    "keep": "Keep my current number",
+    "introWhatsApp": "We sent a code to your WhatsApp on {{number}}.",
+    "introFallback": "WhatsApp didn't reach you, so we texted it to {{number}}.",
+    "introChosen": "We texted the same code to {{number}}. The one on WhatsApp works too.",
+    "codeLabelWhatsApp": "Code from WhatsApp",
+    "codeBlankWhatsApp": "Enter the 6-digit code from WhatsApp.",
+    "wrongWhatsApp": "That code does not match. Check the newest WhatsApp message from Soirely and try again.",
+    "textInstead": "Text it to me instead",
+    "textInsteadFailed": "The text could not be sent. Try again in a moment."
   },
   "session": {
     "unreachableTitle": "Cannot reach Soirely",

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\PhoneCodeRoute;
 use App\Enum\VerificationChannel;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -53,6 +54,21 @@ class VerificationChallenge
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $revokedAt = null;
+
+    /** How a phone's code went; null for an email, and for a phone's code from before sc-750. */
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: PhoneCodeRoute::class)]
+    private ?PhoneCodeRoute $route = null;
+
+    #[ORM\Column(type: Types::STRING, length: 128, nullable: true)]
+    private ?string $whatsAppMessageId = null;
+
+    /** The code itself, sealed, while it is live on WhatsApp alone: a text may follow, or be asked for. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $sealedCode = null;
+
+    /** Meta said it reached the WhatsApp account, which stops the fallback but not the person asking for a text. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $whatsAppDelivered = false;
 
     public function __construct(
         EmailAddress|PhoneNumber $subject,
@@ -112,9 +128,16 @@ class VerificationChallenge
         return $this->revokedAt;
     }
 
+    /** Used or replaced: the code can no longer be texted, so it is no longer kept. */
     public function setRevokedAt(?DateTimeImmutable $revokedAt): void
     {
         $this->revokedAt = $revokedAt;
+        $this->sealedCode = null === $revokedAt ? $this->sealedCode : null;
+    }
+
+    public function isLive(): bool
+    {
+        return null === $this->revokedAt && !$this->isExpired() && !$this->isExhausted();
     }
 
     public function isExhausted(): bool
@@ -125,5 +148,51 @@ class VerificationChallenge
     public function isExpired(): bool
     {
         return $this->expiresAt <= new DateTimeImmutable();
+    }
+
+    public function getRoute(): ?PhoneCodeRoute
+    {
+        return $this->route;
+    }
+
+    public function getWhatsAppMessageId(): ?string
+    {
+        return $this->whatsAppMessageId;
+    }
+
+    public function getSealedCode(): ?string
+    {
+        return $this->sealedCode;
+    }
+
+    public function sentByWhatsApp(string $messageId, string $sealedCode): void
+    {
+        $this->route = PhoneCodeRoute::WhatsApp;
+        $this->whatsAppMessageId = $messageId;
+        $this->sealedCode = $sealedCode;
+    }
+
+    /** By text, for good: the sealed code is no longer needed. */
+    public function texted(PhoneCodeRoute $route): void
+    {
+        $this->route = $route;
+        $this->sealedCode = null;
+    }
+
+    public function deliveredByWhatsApp(): void
+    {
+        $this->whatsAppDelivered = true;
+    }
+
+    /** "Text it to me instead" works for the whole life of a code that is on WhatsApp alone. */
+    public function mayBeTexted(): bool
+    {
+        return PhoneCodeRoute::WhatsApp === $this->route && null !== $this->sealedCode && $this->isLive();
+    }
+
+    /** The fallback, by contrast, stops once Meta says it arrived. */
+    public function fallbackDue(bool $failed, DateTimeImmutable $silentSince): bool
+    {
+        return $this->mayBeTexted() && !$this->whatsAppDelivered && ($failed || $this->getCreatedAt() <= $silentSince);
     }
 }

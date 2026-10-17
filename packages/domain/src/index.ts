@@ -17,3 +17,4 @@ export * from './initials.ts';
 export * from './phone.ts';
 export * from './forms.ts';
 export * from './timeZones.ts';
+export * from './phoneCodeRoute.ts';
