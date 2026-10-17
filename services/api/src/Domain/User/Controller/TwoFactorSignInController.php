@@ -38,6 +38,11 @@ final readonly class TwoFactorSignInController
         $code = $this->codeField->optional($body, 'code', CodeField::FROM_APP);
         $recoveryCode = $this->codeField->optional($body, 'recoveryCode', CodeField::RECOVERY);
 
+        // Neither sent is the app's code missing, the field the screen asks for first.
+        if (null === $code && null === $recoveryCode) {
+            $code = $this->codeField->required($body, 'code', CodeField::FROM_APP);
+        }
+
         $result = $this->signInGate->complete($body['challenge'], $code, $recoveryCode, $request);
 
         return new IssuedTokensResponse(
