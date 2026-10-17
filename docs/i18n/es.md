@@ -34,6 +34,9 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Switch organisation                                             | Cambiar de organización                                                      | Settled, sc-1420                                     |
 | Your role                                                       | Su función                                                                   | Settled, web switcher                                |
 | Owner / Administrator / Event manager / Coordinator / Read-only | Propietario / Administrador / Gestor de eventos / Coordinador / Solo lectura | Settled; app and web say the same                    |
+| Currency                                                        | Moneda                                                                       | Settled, sc-1585                                     |
+| Time zone                                                       | Zona horaria                                                                 | Settled, sc-1585                                     |
+| Contact address                                                 | Dirección de contacto                                                        | Settled, sc-1585                                     |
 
 ## Never translated
 
@@ -43,6 +46,25 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **18 Oct 2026. "Sign out everywhere else" is «Cerrar las demás sesiones».** Shorter than
+  «Cerrar sesión en los demás dispositivos», so it fits the phone button, and it is how
+  Spanish interfaces already say it. The confirm buttons follow `devices.end`: «Cerrar su
+  sesión» / «Cerrar sus sesiones», and «Cerrar las {{count}} sesiones» when this device is
+  among them; "Keep it/them signed in" is «Mantener la sesión» / «Mantener las sesiones».
+  "Nothing was signed out" is «No se ha cerrado ninguna sesión», the perfect because it has
+  just happened; the result lines keep the preterite of `passwordCard.done_*`. A disabled
+  "Try again at {{time}}" button is «Reintentar a las {{time}}», short where a sentence would
+  say «Inténtelo de nuevo» (sc-1193).
+
+- **17 Oct 2026. A picker's search field is «Buscar» and the plural noun.** «Buscar
+  monedas», «Buscar zonas horarias», as the country picker's «Buscar países» already says
+  (`orgGeneral.searchCurrency`, `orgGeneral.searchTimezone`). The Settings row line follows
+  its siblings: lower case after the «·», «nombre, dirección de contacto, moneda, zona
+  horaria»; the tablet pane's line names each section as «X reúne…», so Organisation is
+  «Organización reúne la configuración de {{name}}», where «de» needs no agreement with the
+  name (sc-1585). The email-address refusal was already formal without a contraction, so
+  it stays as it is.
 
 - **17 Oct 2026. A minute count in the API catalogue takes no agreement.** The API's
   catalogues have no ICU plural, so `{minutes}` sits where the plural reads right at 5:

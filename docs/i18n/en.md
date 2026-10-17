@@ -40,6 +40,29 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. Share-link passphrase (sc-94, `ShareLinks`, `SharedBudget-*`).** "Make the
+  passphrase at least {{count}} characters long, or leave it empty."; over the limit, "Shorten
+  the passphrase to {{count}} characters or fewer."; locked, "Too many wrong passphrases have
+  been tried on this link. Try again at {{time}}.", and without a usable `Retry-After`, "… Wait
+  a moment, then try again." "At", not the drawn "after", because every lock-out in the product
+  says "Try again at {{time}}". The organiser's note reads "While any line has a client price,
+  it shows no payments either.": "while", not "once", because payments come back when the event
+  returns to all at cost.
+- **17 Oct 2026. Attendance not recorded (sc-89, `PlannedActual`).** "Attendance was not
+  recorded"; "Nobody was checked in at the door, so there is no count of who came and no cost
+  per head. {{amount}} was paid to vendors."; "Check guests in at the door next time, and this
+  will show the cost per head of those who came." "Cost per head" is the page's term. The
+  drawn "what each guest who came really cost" was rejected, because "really" casts doubt on
+  the other figures.
+- **17 Oct 2026. Vendor form (sc-82, `Vendors`).** The phone reuses the account's settled hint
+  (`verifyPhone.numberHelp`) and its too-short and too-long keys. Only the invalid key is new,
+  "That is not a phone number for {{country}}. Check it and try again.", because a vendor's
+  number may be a landline. Website hint: "You can leave off https://. It is added when you
+  save."; other scheme: "Enter a web address that starts with https:// or http://, or leave
+  that part off." Blank: "Enter the vendor's name.", "Choose the category." Limits take the
+  house "Shorten the {field} to {{count}} characters or fewer.", and email shape reuses
+  `forms.emailShape`. Reuse a settled key wherever the same component says the same thing.
+
 - **17 Oct 2026. "That does not look like an email address. Check it has an @ and a domain."**
   (`orgGeneral.contactInvalid` and `forms.emailShape`, web and app, and the API's
   `validation.contact_address_invalid`; sc-1585). The house rule: no contractions in an error body.

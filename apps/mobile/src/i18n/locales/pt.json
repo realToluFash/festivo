@@ -574,7 +574,7 @@
     "everywhere": "Sign out everywhere else",
     "everywhereHint": "Every device except this one. Asks for your password first.",
     "everywhereTitle": "Sign out everywhere else?",
-    "everywhereBody_one": "This signs out your {{count}} other device, whoever has it. This device stays signed in.",
+    "everywhereBody_one": "This signs out your other device, whoever has it. This device stays signed in.",
     "everywhereBody_other": "This signs out your {{count}} other devices, whoever has them. This device stays signed in.",
     "everywhereSelf_one": "Soirely cannot tell whether the device listed is this one, so this signs it out whichever it is. You will sign in again straight after.",
     "everywhereSelf_other": "Soirely cannot tell which of these is this device, so this signs out all {{count}}, including this one. You will sign in again straight after.",
@@ -601,8 +601,8 @@
     "everywhereKeep_one": "Keep it signed in",
     "everywhereKeep_other": "Keep them signed in",
     "everywhereWorking": "Signing out…",
-    "everywhereDone_one": "{{count}} other device is signed out.",
-    "everywhereDone_other": "{{count}} other devices are signed out.",
+    "everywhereDone_one": "Your other device is signed out.",
+    "everywhereDone_other": "Your {{count}} other devices are signed out.",
     "everywhereNone": "No other devices were signed in.",
     "everywhereLimitedTitle": "Too many tries",
     "everywhereLimitedBody": "Try again at {{time}}. Nothing was signed out.",
@@ -627,14 +627,14 @@
     "accountLine": "O seu nome, endereços de e-mail e números de telefone",
     "security": "Segurança",
     "securityLine": "Palavra-passe, formas de iniciar sessão, dois fatores, dispositivos com sessão iniciada",
-    "organisationHeading": "Organisation",
-    "organisation": "Organisation",
-    "organisationLine": "{{name}} · name, contact address, currency, time zone",
+    "organisationHeading": "Organização",
+    "organisation": "Organização",
+    "organisationLine": "{{name}} · nome, endereço de contacto, moeda, fuso horário",
     "signedInAs": "Sessão iniciada como {{email}}",
     "signOut": "Encerrar sessão",
     "choose": "Escolha uma secção",
     "chooseLine": "Em Conta estão os seus dados e as formas de contacto. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada.",
-    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
+    "chooseLineWithOrganisation": "Em Conta estão os seus dados e as formas de contacto. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada. Em Organização estão as definições de {{name}}."
   },
   "switcher": {
     "yourRole": "A sua função · {{role}}",
@@ -722,10 +722,10 @@
     "saved": "Guardado. Todos em {{name}} veem os novos dados no próximo ecrã.",
     "nameBlank": "Indique o nome da organização.",
     "contactBlank": "Indique um e-mail de contacto.",
-    "contactInvalid": "Isso não parece um endereço de e-mail. Verifique se tem um @ e um domínio.",
+    "contactInvalid": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio.",
     "readOnly": "A sua função, {{role}}, pode ver estes dados mas não alterá-los. Os proprietários podem.",
     "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
-    "searchCurrency": "Search currencies",
-    "searchTimezone": "Search time zones"
+    "searchCurrency": "Pesquisar moedas",
+    "searchTimezone": "Pesquisar fusos horários"
   }
 }

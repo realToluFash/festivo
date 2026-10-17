@@ -574,7 +574,7 @@
     "everywhere": "Sign out everywhere else",
     "everywhereHint": "Every device except this one. Asks for your password first.",
     "everywhereTitle": "Sign out everywhere else?",
-    "everywhereBody_one": "This signs out your {{count}} other device, whoever has it. This device stays signed in.",
+    "everywhereBody_one": "This signs out your other device, whoever has it. This device stays signed in.",
     "everywhereBody_other": "This signs out your {{count}} other devices, whoever has them. This device stays signed in.",
     "everywhereSelf_one": "Soirely cannot tell whether the device listed is this one, so this signs it out whichever it is. You will sign in again straight after.",
     "everywhereSelf_other": "Soirely cannot tell which of these is this device, so this signs out all {{count}}, including this one. You will sign in again straight after.",
@@ -601,8 +601,8 @@
     "everywhereKeep_one": "Keep it signed in",
     "everywhereKeep_other": "Keep them signed in",
     "everywhereWorking": "Signing out…",
-    "everywhereDone_one": "{{count}} other device is signed out.",
-    "everywhereDone_other": "{{count}} other devices are signed out.",
+    "everywhereDone_one": "Your other device is signed out.",
+    "everywhereDone_other": "Your {{count}} other devices are signed out.",
     "everywhereNone": "No other devices were signed in.",
     "everywhereLimitedTitle": "Too many tries",
     "everywhereLimitedBody": "Try again at {{time}}. Nothing was signed out.",
@@ -629,12 +629,12 @@
     "securityLine": "Mot de passe, moyens de connexion, double authentification, appareils connectés",
     "organisationHeading": "Organisation",
     "organisation": "Organisation",
-    "organisationLine": "{{name}} · name, contact address, currency, time zone",
+    "organisationLine": "{{name}} · nom, adresse de contact, devise, fuseau horaire",
     "signedInAs": "Connecté en tant que {{email}}",
     "signOut": "Se déconnecter",
     "choose": "Choisissez une section",
     "chooseLine": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés.",
-    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
+    "chooseLineWithOrganisation": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés. Organisation réunit les réglages de {{name}}."
   },
   "switcher": {
     "yourRole": "Votre rôle · {{role}}",
@@ -725,7 +725,7 @@
     "contactInvalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine.",
     "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les propriétaires le peuvent.",
     "failed": "L'enregistrement n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant.",
-    "searchCurrency": "Search currencies",
-    "searchTimezone": "Search time zones"
+    "searchCurrency": "Rechercher une devise",
+    "searchTimezone": "Rechercher un fuseau horaire"
   }
 }

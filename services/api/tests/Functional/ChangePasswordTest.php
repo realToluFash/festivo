@@ -147,15 +147,18 @@ final class ChangePasswordTest extends ApiTestCase
             }
         }
 
-        self::assertArrayHasKey('Retry-After', $e->headers, 'the fifth says until when (sc-965)');
+        $fifth = $e;
 
         try {
             $change->change($user, self::OLD_PASSWORD, self::NEW_PASSWORD);
             self::fail('the sixth try was let through');
         } catch (ApiException $e) {
             self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode, 'even the right one waits');
-            self::assertArrayHasKey('Retry-After', $e->headers, 'and it says until when');
         }
+
+        self::assertStringContainsString('Try again at ', $fifth->getMessage());
+        self::assertSame($e->getMessage(), $fifth->getMessage(), 'the fifth states the minute the sixth does (sc-965)');
+        self::assertEqualsWithDelta((int) $e->headers['Retry-After'], (int) $fifth->headers['Retry-After'], 1, 'and the same Retry-After, to the second');
 
         self::assertTrue(self::service(PasswordResolver::class)->verify($this->account(), self::OLD_PASSWORD), 'nothing changed');
     }
