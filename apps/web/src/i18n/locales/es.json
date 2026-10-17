@@ -113,7 +113,10 @@
     "passwordBlank": "Introduzca una contraseña."
   },
   "account": {
-    "title": "Su cuenta"
+    "title": "Su cuenta",
+    "sections": "Secciones de la cuenta",
+    "sectionAccount": "Cuenta",
+    "sectionSecurity": "Seguridad"
   },
   "devices": {
     "title": "Dispositivos con sesión abierta",
@@ -456,5 +459,25 @@
     "setEmailed": "Enviaremos un correo a {{email}} para avisar de que se añadió una contraseña.",
     "setSave": "Guardar contraseña",
     "added": "Contraseña añadida. Puede iniciar sesión con ella o con {{provider}}."
+  },
+  "timeZone": {
+    "title": "Zona horaria",
+    "intro": "Las horas de los correos y mensajes que le envía Soirely se escriben en esta zona.",
+    "unset": "Sin configurar: las horas le llegan en UTC",
+    "change": "Cambiar",
+    "find": "Busque su zona horaria",
+    "help": "Escriba una ciudad, un país o un desfase y elija de la lista. Ahora: {{now}}.",
+    "nowUnset": "sin configurar, así que las horas le llegan en UTC",
+    "placeholder": "Lagos, Ghana o UTC+01",
+    "listLabel": "Zonas horarias",
+    "noneMatch": "Ninguna zona horaria coincide con «{{typed}}». Pruebe con una ciudad, un país o un desfase como UTC+01.",
+    "choose": "Elija una zona horaria de la lista.",
+    "chooseNoMatch": "Elija una zona horaria de la lista. Nada coincide con «{{typed}}».",
+    "refused": "No conocemos esa zona horaria, así que no se ha guardado nada. Elija una de la lista.",
+    "failed": "No se ha podido guardar su zona horaria. Compruebe su conexión e inténtelo de nuevo.",
+    "save": "Guardar zona horaria",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "saved": "Zona horaria cambiada a {{zone}}. Las horas de sus correos ya la usan."
   }
 }

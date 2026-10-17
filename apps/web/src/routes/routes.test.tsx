@@ -20,6 +20,7 @@ const ADA: Session = {
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
   organisationCountry: null,
+  timezone: null,
 };
 
 /**
@@ -186,6 +187,7 @@ describe('the application tree', () => {
           countryCode: 'NG',
           organisationCountry: null,
           locale: 'en',
+          timezone: null,
           verified: true,
           complete: true,
           needsOrganisation: false,

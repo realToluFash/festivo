@@ -18,6 +18,7 @@ const FOLAKE: Session = {
   organisation: null,
   organisations: [],
   organisationCountry: null,
+  timezone: null,
 };
 
 const ACCOUNT = {
@@ -27,6 +28,7 @@ const ACCOUNT = {
   countryCode: null,
   organisationCountry: null,
   locale: 'en',
+  timezone: null,
   verified: true,
   complete: true,
   needsOrganisation: false,
@@ -260,6 +262,7 @@ describe('a few details', () => {
       organisation,
       organisations: [organisation],
       organisationCountry: null,
+      timezone: null,
     });
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });

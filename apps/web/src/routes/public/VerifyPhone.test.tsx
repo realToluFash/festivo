@@ -20,6 +20,7 @@ function account(phoneNumbers: unknown[] = [PHONE]) {
     countryCode: null,
     organisationCountry: null,
     locale: 'en',
+    timezone: null,
     verified: false,
     complete: false,
     needsOrganisation: true,

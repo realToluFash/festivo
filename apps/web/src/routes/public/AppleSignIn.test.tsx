@@ -13,6 +13,7 @@ const ACCOUNT = {
   countryCode: null,
   organisationCountry: null,
   locale: 'en',
+  timezone: null,
   verified: true,
   complete: false,
   needsOrganisation: true,

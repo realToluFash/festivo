@@ -43,6 +43,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::STRING, length: 8, nullable: true)]
     private ?string $locale = null;
 
+    /** An IANA zone, from the device at sign-up or chosen in Settings > Account (sc-868); null means UTC. */
+    #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
+    private ?string $timezone = null;
+
     /** Set once, at creation: it is what tells an account that founds an organisation from one that joins. */
     #[ORM\Column(type: Types::STRING, length: 20, enumType: AccountOrigin::class)]
     private AccountOrigin $origin;
@@ -120,6 +124,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setLocale(?string $locale): void
     {
         $this->locale = $locale;
+    }
+
+    public function getTimezone(): ?string
+    {
+        return $this->timezone;
+    }
+
+    public function setTimezone(?string $timezone): void
+    {
+        $this->timezone = $timezone;
     }
 
     public function setPassword(?string $passwordHash): void

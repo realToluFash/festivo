@@ -21,6 +21,7 @@ function signedIn(organisation = IRE): void {
     organisation,
     organisations: [organisation],
     organisationCountry: null,
+    timezone: null,
   };
 
   __setSessionState({ status: 'signedIn', session });

@@ -19,6 +19,7 @@ const UNVERIFIED: Session = {
   organisation: membership(),
   organisations: [membership()],
   organisationCountry: null,
+  timezone: null,
 };
 
 function at(path: string) {

@@ -21,7 +21,7 @@ nelmio_cors:
         # cross-origin request does not send one without this.
         allow_credentials: true
         allow_methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
-        allow_headers: ['Accept', 'Accept-Language', 'Authorization', 'Content-Type']
+        allow_headers: ['Accept', 'Accept-Language', 'Authorization', 'Content-Type', 'X-Timezone']
         # A header a browser cannot read is a header the client does not have.
         # Retry-After is how a refused sign-in says when to try again, and Link
         # is how a list says where its next page is.

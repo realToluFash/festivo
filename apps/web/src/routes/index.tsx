@@ -1,5 +1,6 @@
 import { createBrowserRouter } from 'react-router';
 
+import { Account } from './app/account/Account.tsx';
 import { Security } from './app/account/Security.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
@@ -57,6 +58,7 @@ export const routes = [
       { index: true, element: <Dashboard /> },
       { path: 'events', element: <Dashboard /> },
       { path: 'guests', element: <Dashboard /> },
+      { path: 'account', element: <Account /> },
       { path: 'account/security', element: <Security /> },
       { path: 'settings', element: <General /> },
     ],

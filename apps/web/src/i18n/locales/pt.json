@@ -113,7 +113,10 @@
     "passwordBlank": "Introduza uma palavra-passe."
   },
   "account": {
-    "title": "A sua conta"
+    "title": "A sua conta",
+    "sections": "Secções da conta",
+    "sectionAccount": "Conta",
+    "sectionSecurity": "Segurança"
   },
   "devices": {
     "title": "Dispositivos com sessão iniciada",
@@ -456,5 +459,25 @@
     "setEmailed": "Vamos enviar um e-mail para {{email}} a avisar que foi adicionada uma palavra-passe.",
     "setSave": "Guardar palavra-passe",
     "added": "Palavra-passe adicionada. Pode iniciar sessão com ela ou com {{provider}}."
+  },
+  "timeZone": {
+    "title": "Fuso horário",
+    "intro": "As horas nos emails e mensagens que a Soirely lhe envia são escritas neste fuso.",
+    "unset": "Não definido: as horas chegam-lhe em UTC",
+    "change": "Alterar",
+    "find": "Procure o seu fuso horário",
+    "help": "Escreva uma cidade, um país ou uma diferença horária e escolha da lista. Agora: {{now}}.",
+    "nowUnset": "não definido, por isso as horas chegam-lhe em UTC",
+    "placeholder": "Lagos, Gana ou UTC+01",
+    "listLabel": "Fusos horários",
+    "noneMatch": "Nenhum fuso horário corresponde a «{{typed}}». Experimente uma cidade, um país ou uma diferença como UTC+01.",
+    "choose": "Escolha um fuso horário da lista.",
+    "chooseNoMatch": "Escolha um fuso horário da lista. Nada corresponde a «{{typed}}».",
+    "refused": "Não conhecemos esse fuso horário, por isso nada foi guardado. Escolha um da lista.",
+    "failed": "Não foi possível guardar o seu fuso horário. Verifique a sua ligação e tente novamente.",
+    "save": "Guardar fuso horário",
+    "saving": "A guardar…",
+    "cancel": "Cancelar",
+    "saved": "Fuso horário alterado para {{zone}}. As horas nos seus emails já o usam."
   }
 }
