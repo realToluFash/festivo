@@ -53,9 +53,11 @@ export default function Register() {
   }
 
   const heading = <AuthHeading title={t('register.title')} intro={t('register.intro')} />;
-  const form = <Form status={status} onSubmit={register} />;
+  // Keyed, so the form keeps what was typed when a rotation moves it among the other pieces.
+  const form = <Form key="form" status={status} onSubmit={register} />;
   const haveAccount = (
     <Footnote
+      key="have-account"
       question={t('register.haveAccount')}
       action={t('register.signIn')}
       onPress={() => router.replace('/sign-in')}
@@ -90,8 +92,8 @@ export default function Register() {
     return (
       <AuthFrame saying={heading}>
         {form}
-        <OrRule label={t('signIn.or')} />
-        <ProviderButtons />
+        <OrRule key="or" label={t('signIn.or')} />
+        <ProviderButtons key="providers" />
         {haveAccount}
       </AuthFrame>
     );
@@ -99,8 +101,8 @@ export default function Register() {
 
   return (
     <AuthFrame saying={heading} phoneTop={<BackRow />}>
-      <ProviderButtons />
-      <OrRule label={t('register.orWithEmail')} />
+      <ProviderButtons key="providers" />
+      <OrRule key="or" label={t('register.orWithEmail')} />
       {form}
       {haveAccount}
     </AuthFrame>
