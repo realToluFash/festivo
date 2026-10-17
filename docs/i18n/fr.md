@@ -23,7 +23,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Ways to sign in           | Moyens de connexion     | Settled                          |
 | Signed-in devices         | Appareils connectés     | Settled                          |
 | Start again               | Recommencer             | Settled                          |
-| Organisation              | Organisation            |                                  |
+| Organisation              | Organisation            | Settled: section name, same word |
 | Sign in                   | Se connecter            |                                  |
 | Sign out                  | Déconnecter             |                                  |
 | Email                     | Adresse e-mail          |                                  |
@@ -57,7 +57,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. A slot with no plural form** (`messages:proof.required`'s `{minutes}`) is
   written so it reads at the value it carries: « dans les {minutes} dernières minutes ».
 - **17 Oct 2026. Section names stand alone as nouns** in running text: « Compte réunit… »,
-  « Sécurité réunit… » (`settings.chooseLine`), « vérifiez Sécurité » (emails).
+  « Sécurité réunit… » (`settings.chooseLine`), « Organisation réunit les réglages de
+  {{name}} » (`settings.chooseLineWithOrganisation`), « vérifiez Sécurité » (emails).
+- **17 Oct 2026. A picker's search field reads « Rechercher un/une … »** in the singular:
+  « Rechercher un pays », « Rechercher une devise », « Rechercher un fuseau horaire ».
 
 - **17 Oct 2026. Signing out is immediate; no delay is promised.** "Tous vos autres
   appareils ont été déconnectés." (password-changed email, after #110's "Every other

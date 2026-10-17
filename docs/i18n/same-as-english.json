@@ -4,6 +4,8 @@
     "mobile:app.name",
     "mobile:frame.organisation",
     "mobile:home.title",
+    "mobile:settings.organisation",
+    "mobile:settings.organisationHeading",
     "mobile:twoFactor.code",
     "mobile:waysCard.code",
     "web:app.name",
