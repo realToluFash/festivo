@@ -43,7 +43,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. "Your other device is signed out." / "Your {{count}} other devices are signed out."**
   (`web:devices.everywhereDone_*`, matching `passwordCard.done_*`). A `_one` form names no
   number: "your 1 other device" reads as a machine wrote it. The same goes for
-  `devices.everywhereBody_one`.
+  `devices.everywhereBody_one`. The slot parity guard compares a key across all four
+  catalogues, so dropping `{{count}}` from a `_one` form is a [dev] change to all four at once
+  (asked on sc-1193).
 - **17 Oct 2026. "Asks you to confirm it is you first."** (`web:devices.everywhereHint`). Won
   over "Asks for your password first", which is untrue for an account that signs in only with
   Google or Apple. Name the act of confirming, not the factor, wherever the factor varies.
