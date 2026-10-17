@@ -49,7 +49,7 @@ final readonly class PasswordRecoveryController
             }
         }
 
-        $this->recoveryRequests->accept($body['email']);
+        $this->recoveryRequests->accept($body['email'], $request->getLocale());
 
         return new JsonResponse(new stdClass(), Response::HTTP_ACCEPTED);
     }

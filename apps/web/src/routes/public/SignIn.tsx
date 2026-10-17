@@ -167,8 +167,10 @@ export function SignIn() {
         <div className="field">
           <div className="field-heading">
             <label htmlFor="password">{t('signIn.password')}</label>
-            <Link className="link-button" to="/forgot-password">
-              {t('recovery.forgot')}
+            {/* Shorter on a phone, as drawn; the name a screen reader hears stays the whole question. */}
+            <Link className="link-button" to="/forgot-password" aria-label={t('recovery.forgot')}>
+              <span className="wide-only">{t('recovery.forgot')}</span>
+              <span className="narrow-only">{t('recovery.forgotShort')}</span>
             </Link>
           </div>
           <PasswordField
@@ -192,7 +194,11 @@ export function SignIn() {
             <FieldError id="password-error" message={checks.errors.password} />
           ) : (
             status.kind === 'refused' && (
-              <FieldError id="password-error" message={t('signIn.refused')} />
+              <FieldError id="password-error" message={t('signIn.refused')}>
+                <Link className="link-button" to="/forgot-password">
+                  {t('signIn.lockedReset')}
+                </Link>
+              </FieldError>
             )
           )}
         </div>

@@ -220,7 +220,9 @@ outcome: the alternative is writing a thirty-day credential somewhere readable.
 who has an account: a password account is emailed a link, an account with no password is
 told how it signs in, and an unknown address is sent nothing. The answer is also the same
 in time: the lookup and the email happen on `kernel.terminate`, after the response has
-gone (`RecoveryRequests`), so a registered address is no slower to answer. It is limited per
+gone (`RecoveryRequests`), so a registered address is no slower to answer. Under
+FrankenPHP that needs `FinishResponseListener`, which ends the response first: Symfony
+only does so itself for FastCGI and LiteSpeed. It is limited per
 address (keyed on what was typed) and per IP, and a refusal states a time.
 
 - **The link** carries 32 random bytes, kept only as their SHA-256, and works once for

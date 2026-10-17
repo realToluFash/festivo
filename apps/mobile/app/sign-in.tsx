@@ -192,6 +192,17 @@ function Credentials({
           testID: 'signIn.forgot',
         }}
         error={checks.errors.password ?? (status.kind === 'refused' ? t('signIn.refused') : null)}
+        errorActions={
+          checks.errors.password == null && status.kind === 'refused'
+            ? [
+                {
+                  label: t('signIn.lockedReset'),
+                  onPress: () => router.push('/forgot-password'),
+                  testID: 'signIn.refused.reset',
+                },
+              ]
+            : undefined
+        }
       >
         <PasswordField
           ref={password}

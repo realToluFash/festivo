@@ -47,7 +47,7 @@ final readonly class PasswordRecovery
     }
 
     /** Says nothing either way: what happens next is only ever in the inbox, so the caller cannot tell. */
-    public function request(string $email): void
+    public function request(string $email, ?string $locale = null): void
     {
         $user = $this->userRepository->findOneByPrimaryEmailAddress($email);
 
@@ -56,7 +56,7 @@ final readonly class PasswordRecovery
         }
 
         if (null === $user->getPassword()) {
-            $this->recoveryMailer->sendHowYouSignIn($user, $this->providerNames($user));
+            $this->recoveryMailer->sendHowYouSignIn($user, $this->providerNames($user), $locale);
 
             return;
         }
@@ -65,7 +65,7 @@ final readonly class PasswordRecovery
         $this->entityManager->persist(new PasswordResetToken($user, TokenIssuer::hash($plain), $this->clock->now()));
         $this->entityManager->flush();
 
-        $this->recoveryMailer->sendLink($user, $plain);
+        $this->recoveryMailer->sendLink($user, $plain, $locale);
     }
 
     /** Whose link this is, so the page can say "For <address>", or why it no longer works. */

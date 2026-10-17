@@ -209,6 +209,22 @@ final class PasswordRecoveryTest extends ApiTestCase
         self::assertCount($before + 1, $sent->getEvents()->getMessages(), 'the link goes once the answer has');
     }
 
+    /** An account with no language of its own hears in the one it asked in, dates included. */
+    #[Test]
+    public function theEmailsAreInTheLanguageTheResetWasAskedIn(): void
+    {
+        $this->account('folake@example.com');
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+
+        $token = $this->requestLink('folake@example.com');
+        self::assertSame('Choisissez un nouveau mot de passe Soirely', $this->lastEmail()->getSubject());
+
+        $this->call('POST', '/api/auth/password/reset', ['token' => $token, 'password' => self::NEW_PASSWORD]);
+        $changed = $this->lastEmail();
+        self::assertSame('Votre mot de passe Soirely a été changé', $changed->getSubject());
+        self::assertMatchesRegularExpression('/\b(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\b/', (string) $changed->getTextBody(), 'the date in French too');
+    }
+
     /** Either budget spent refuses with a time, and says nothing about whether the address has an account. */
     #[Test]
     public function aSpentBudgetIsRefusedWithATime(): void

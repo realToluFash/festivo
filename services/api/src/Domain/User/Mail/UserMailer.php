@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\User\Mail;
 
 use App\Entity\User;
+use DateTimeImmutable;
+use IntlDateFormatter;
 use Psl\Str;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
@@ -40,13 +42,25 @@ final readonly class UserMailer
      *
      * @param list<string> $paragraphs
      */
-    public function sendTo(User $user, string $subjectKey, array $paragraphs): void
+    public function sendTo(User $user, string $subjectKey, array $paragraphs, ?string $asked = null): void
     {
         $address = $user->getPrimaryEmailAddress()?->getAddress();
 
         if (null !== $address) {
-            $this->send($address, $user->getLocale(), $subjectKey, $paragraphs);
+            $this->send($address, $this->localeFor($user, $asked), $subjectKey, $paragraphs);
         }
+    }
+
+    /** The account's own language, or else the one the request that led to this email was made in. */
+    public function localeFor(User $user, ?string $asked = null): string
+    {
+        return $user->getLocale() ?? $asked ?? $this->translator->getLocale();
+    }
+
+    /** A moment as the reader writes it, in UTC, since a stored instant has no timezone of its own. */
+    public function moment(DateTimeImmutable $at, string $locale): string
+    {
+        return (IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, 'UTC')?->format($at) ?: $at->format('Y-m-d H:i')) . ' UTC';
     }
 
     /** @param array<string, string> $parameters */
