@@ -153,7 +153,7 @@
     "changeNotice": "Votre numéro actuel reste valable jusqu'à la vérification du nouveau.",
     "countryLabel": "Indicatif",
     "numberLabel": "Numéro de portable",
-    "numberHelp": "L'indicatif commence sur le pays de votre compte. Saisissez le numéro comme vous voulez.",
+    "numberHelp": "Choisissez l'indicatif du pays, puis saisissez le numéro comme vous le souhaitez.",
     "numberBlank": "Indiquez votre numéro de portable.",
     "tooShort": "Ce numéro semble trop court pour {{country}}. Vérifiez-le et réessayez.",
     "tooLong": "Ce numéro semble trop long pour {{country}}. Vérifiez-le et réessayez.",

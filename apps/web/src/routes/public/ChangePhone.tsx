@@ -1,5 +1,11 @@
 import { type Account, ApiError } from '@soirely/api-client';
-import { deviceCountry, formatPhone, phoneLengthProblem } from '@soirely/domain';
+import {
+  deviceCountry,
+  formatPhone,
+  phoneLengthProblem,
+  phoneScreenCountry,
+  refusedPhoneField,
+} from '@soirely/domain';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -63,7 +69,11 @@ export function ChangePhone() {
       )}
 
       <NumberForm
-        initialCountry={current?.countryCode ?? deviceCountry(navigator.languages) ?? ''}
+        initialCountry={phoneScreenCountry(
+          current?.countryCode,
+          account.countryCode,
+          deviceCountry(navigator.languages),
+        )}
         onTexted={() => navigate(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')}
       />
 
@@ -92,10 +102,14 @@ function NumberForm({
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    const problem = phoneProblemMessage(phoneLengthProblem(number, country), country, t);
+    const found = phoneLengthProblem(number, country);
+    const problem = phoneProblemMessage(found, country, t);
 
     if (problem != null) {
       setError(problem);
+      document
+        .getElementById(refusedPhoneField(found) === 'country' ? 'phone-country' : 'phone-number')
+        ?.focus();
       return;
     }
 

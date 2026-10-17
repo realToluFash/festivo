@@ -1,9 +1,22 @@
 import { type Account, ApiError } from '@soirely/api-client';
-import { deviceRegion, formatPhone, phoneLengthProblem } from '@soirely/domain';
+import {
+  deviceRegion,
+  formatPhone,
+  phoneLengthProblem,
+  phoneScreenCountry,
+  refusedPhoneField,
+} from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Keyboard,
+  StyleSheet,
+  type TextInput,
+  View,
+  findNodeHandle,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -69,7 +82,7 @@ export default function ChangePhone() {
         {current != null && <Notice tone="quiet" mark="i" body={t('verifyPhone.changeNotice')} />}
 
         <NumberForm
-          initialCountry={current?.countryCode ?? device ?? ''}
+          initialCountry={phoneScreenCountry(current?.countryCode, account.countryCode, device)}
           onTexted={() =>
             router.replace(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')
           }
@@ -99,12 +112,24 @@ function NumberForm({
   const [number, setNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const numberInput = useRef<TextInput>(null);
+  const countryPicker = useRef<View>(null);
 
   async function send(): Promise<void> {
-    const problem = phoneProblemMessage(phoneLengthProblem(number, country), country, t);
+    const found = phoneLengthProblem(number, country);
+    const problem = phoneProblemMessage(found, country, t);
 
     if (problem != null) {
       setError(problem);
+
+      // No code chosen: the picker is the refused field, so the keyboard goes and the screen reader lands there.
+      if (refusedPhoneField(found) === 'country') {
+        Keyboard.dismiss();
+        const picker = findNodeHandle(countryPicker.current);
+        if (picker != null) AccessibilityInfo.setAccessibilityFocus(picker);
+      } else {
+        numberInput.current?.focus();
+      }
 
       return;
     }
@@ -144,6 +169,8 @@ function NumberForm({
           setError(null);
         }}
         onSubmit={() => void send()}
+        ref={numberInput}
+        pickerRef={countryPicker}
         testID="phone"
       />
 

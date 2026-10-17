@@ -209,7 +209,7 @@
     "changeNotice": "Your current number keeps working until the new one is verified.",
     "countryLabel": "Code",
     "numberLabel": "Mobile number",
-    "numberHelp": "The code starts on your account's country. Type the number any way you like.",
+    "numberHelp": "Choose the country code, then type the number any way you like.",
     "numberBlank": "Enter your mobile number.",
     "tooShort": "That number looks too short for {{country}}. Check it and try again.",
     "tooLong": "That number looks too long for {{country}}. Check it and try again.",

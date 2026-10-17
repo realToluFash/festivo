@@ -310,7 +310,20 @@ describe('change your mobile number', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Text a code to this number' }));
 
     expect(screen.getByText('Choose a country.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Code'));
     expect(sent.filter((request) => request.method === 'PUT')).toEqual([]);
+  });
+
+  it("starts on the account's Country when there is no number, ahead of the browser's", async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    answering({ 'GET /api/auth/me': () => json({ ...account([]), countryCode: 'GH' }) });
+    at('/phone');
+    await screen.findByLabelText('Mobile number');
+
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('GH');
+    expect(
+      screen.getByText('Choose the country code, then type the number any way you like.'),
+    ).toBeDefined();
   });
 
   it('checks the length for the chosen country before sending', async () => {
@@ -320,6 +333,7 @@ describe('change your mobile number', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Text a code to this number' }));
     expect(screen.getByText('Enter your mobile number.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Mobile number'));
 
     fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'NG' } });
     fireEvent.change(screen.getByLabelText('Mobile number'), { target: { value: '803 55' } });
