@@ -168,6 +168,9 @@ export function SignIn() {
         <div className="field">
           <div className="field-heading">
             <label htmlFor="password">{t('signIn.password')}</label>
+            <Link className="link-button" to="/forgot-password">
+              {t('recovery.forgot')}
+            </Link>
           </div>
           <PasswordField
             id="password"
