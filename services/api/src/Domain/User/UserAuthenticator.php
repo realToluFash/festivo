@@ -7,6 +7,7 @@ namespace App\Domain\User;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\PasswordResolver;
+use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Domain\User\TwoFactor\SignInGate;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
@@ -41,8 +42,9 @@ final readonly class UserAuthenticator
             throw $this->refuse();
         }
 
-        // An account from before sc-852 learns its language here, as at its next request.
+        // An account from before sc-852 or sc-868 learns its language and zone here, as at its next request.
         AccountLanguage::rememberIfNone($user, $request);
+        AccountTimeZone::rememberIfNone($user, $request);
 
         return new SignInResult($user, $this->signInGate->admit($user, $request));
     }

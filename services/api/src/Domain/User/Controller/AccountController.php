@@ -74,7 +74,9 @@ final class AccountController
     {
         $body = Input::body($request, Type\shape(['timezone' => Type\string()]));
 
-        if (!AccountTimeZone::isKnown($body['timezone'])) {
+        $zone = AccountTimeZone::canonical($body['timezone']);
+
+        if (null === $zone) {
             throw ApiException::validation([[
                 'propertyPath' => 'timezone',
                 'message' => $this->translator->trans('validation.timezone_unknown'),
@@ -82,10 +84,10 @@ final class AccountController
             ]]);
         }
 
-        $this->user()->setTimezone($body['timezone']);
+        $this->user()->setTimezone($zone);
         $this->entityManager->flush();
 
-        return new JsonResponse(['timezone' => $body['timezone']]);
+        return new JsonResponse(['timezone' => $zone]);
     }
 
     /** Every IANA zone, named in the request's language, with its offset now: the list Settings > Account searches. */

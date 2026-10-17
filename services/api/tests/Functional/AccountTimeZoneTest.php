@@ -69,6 +69,8 @@ final class AccountTimeZoneTest extends ApiTestCase
 
         $body = $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Europe/London'], $user);
         self::assertSame(['timezone' => 'Europe/London'], $body);
+        self::assertSame(['timezone' => 'Europe/Kyiv'], $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Europe/Kiev'], $user));
+        $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Europe/London'], $user);
         self::assertSame('Europe/London', $this->call('GET', '/api/auth/me', null, $user)['timezone']);
 
         self::service(PasswordChangeMailer::class)->sendChanged($this->fresh($user), new DateTimeImmutable(self::AT), null, null);
@@ -99,6 +101,10 @@ final class AccountTimeZoneTest extends ApiTestCase
         $this->call('POST', '/api/auth/register/verify', ['registration' => $handle, 'code' => $code], zone: 'Africa/Nairobi');
         self::assertSame('Africa/Nairobi', $this->byAddress('new@example.com')->getTimezone());
 
+        $chrome = $this->registered('bengaluru@example.com', null);
+        $this->call('GET', '/api/auth/me', null, $chrome, zone: 'Asia/Calcutta');
+        self::assertSame('Asia/Kolkata', $this->fresh($chrome)->getTimezone(), "Chrome's legacy name, stored by its current one");
+
         $older = $this->registered('older@example.com', null);
         $this->call('GET', '/api/auth/me', null, $older, zone: 'Not/A_Zone');
         self::assertNull($this->fresh($older)->getTimezone(), 'a zone that is not one stores nothing');
@@ -106,6 +112,17 @@ final class AccountTimeZoneTest extends ApiTestCase
         self::assertSame('America/Sao_Paulo', $this->fresh($older)->getTimezone());
         $this->call('GET', '/api/auth/me', null, $older, zone: 'Europe/Paris');
         self::assertSame('America/Sao_Paulo', $this->fresh($older)->getTimezone(), 'only Settings changes one already set');
+    }
+
+    #[Test]
+    public function aPasswordSignInGivesAnOlderAccountItsZone(): void
+    {
+        $user = $this->registered('signin@example.com', null);
+
+        $this->call('POST', '/api/auth/login', ['email' => 'signin@example.com', 'password' => self::PASSWORD], zone: 'Africa/Accra');
+
+        self::assertSame(200, $this->client->getResponse()->getStatusCode());
+        self::assertSame('Africa/Accra', $this->fresh($user)->getTimezone());
     }
 
     /** One row per IANA zone, each with its own city, even where several share an offset. */

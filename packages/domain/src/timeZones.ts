@@ -19,7 +19,13 @@ export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: str
   const wanted = folded(query);
   if (wanted === '') return [...zones];
 
-  const compact = wanted.replace(/\s/g, '');
+  // "utc+1" and "+1" are how people write "+01:00".
+  const compact = wanted
+    .replace(/\s/g, '')
+    .replace(
+      /^(utc)?([+-])(\d)(?!\d)/,
+      (_m, _utc: string | undefined, sign: string, hour: string) => `utc${sign}0${hour}`,
+    );
 
   return zones.filter(
     (zone) =>

@@ -25,6 +25,8 @@ describe('the time zone list', () => {
       'Europe/London',
     ]);
     expect(matchingZones(ZONES, '+04').map((z) => z.id)).toEqual(['Asia/Dubai']);
+    expect(matchingZones(ZONES, 'utc+4').map((z) => z.id)).toEqual(['Asia/Dubai']);
+    expect(matchingZones(ZONES, '-3').map((z) => z.id)).toEqual(['America/Sao_Paulo']);
   });
 
   it('lists everything for an empty search, and nothing for no match', () => {
