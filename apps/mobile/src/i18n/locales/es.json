@@ -396,6 +396,7 @@
     "takenNext": "No ha cambiado nada. Para usarla aquí, desvincúlela primero de esa cuenta, o vincule otra cuenta de {{provider}}.",
     "lastRefused": "Establezca una contraseña o vincule otra cuenta antes de quitar esta.",
     "providerFailed": "{{provider}} no terminó, así que no ha cambiado nada. Inténtelo de nuevo.",
+    "providerRefused": "Esa cuenta de {{provider}} no es la vinculada aquí, o inició sesión hace demasiado tiempo. Inténtelo de nuevo.",
     "failedTitle": "No se ha cambiado nada",
     "failedBody": "No se ha podido completar. Compruebe su conexión e inténtelo de nuevo.",
     "proveTitle": "Confirme que es usted",

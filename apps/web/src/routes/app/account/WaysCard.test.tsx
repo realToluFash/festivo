@@ -245,6 +245,22 @@ describe('linking a provider', () => {
     ).toBeDefined();
   });
 
+  it('says the Google account was refused, not that Google did not finish, when the proof is turned down', async () => {
+    signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
+    backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+    answering({ 'POST /api/auth/proof': () => problem('invalid_credentials', 401) });
+
+    open('/oauth/google');
+
+    expect(
+      await screen.findByText(
+        "That Google account isn't the one linked here, or it was signed in too long ago. Try again.",
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeDefined();
+  });
+
   it('a Google-only account confirms with Google, and links Apple after', async () => {
     signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
     answering({});

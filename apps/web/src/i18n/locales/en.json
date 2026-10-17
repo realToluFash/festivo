@@ -483,6 +483,7 @@
     "takenNext": "Nothing changed. To use it here, unlink it from that account first, or link a different {{provider}} account.",
     "lastRefused": "Set a password or link another account before removing this one.",
     "providerFailed": "{{provider}} didn't finish, so nothing changed. Try again.",
+    "providerRefused": "That {{provider}} account isn't the one linked here, or it was signed in too long ago. Try again.",
     "failedTitle": "Nothing was changed",
     "failedBody": "That didn't go through. Check your connection and try again.",
     "proveTitle": "Confirm it's you",

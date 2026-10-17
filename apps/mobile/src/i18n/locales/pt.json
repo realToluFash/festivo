@@ -396,6 +396,7 @@
     "takenNext": "Nada mudou. Para a usar aqui, desassocie-a primeiro dessa conta, ou associe outra conta {{provider}}.",
     "lastRefused": "Defina uma palavra-passe ou associe outra conta antes de remover esta.",
     "providerFailed": "O {{provider}} não terminou, por isso nada mudou. Tente novamente.",
+    "providerRefused": "Essa conta {{provider}} não é a que está ligada aqui, ou iniciou sessão há demasiado tempo. Tente novamente.",
     "failedTitle": "Nada foi alterado",
     "failedBody": "Não foi possível concluir. Verifique a sua ligação e tente novamente.",
     "proveTitle": "Confirme que é você",

@@ -34,7 +34,10 @@ type Act = { action: 'link' | 'unlink'; provider: Provider };
 
 type Notice =
   | { kind: 'linked'; provider: Provider; email: string | null }
-  | { kind: 'unlinked' | 'taken' | 'last' | 'providerFailed'; provider: Provider }
+  | {
+      kind: 'unlinked' | 'taken' | 'last' | 'providerFailed' | 'providerRefused';
+      provider: Provider;
+    }
   | { kind: 'failed' };
 
 type Stage =
@@ -114,8 +117,12 @@ export function WaysCard({
     try {
       holdProof(await api.prove({ provider: back.provider, signIn: back.signIn }));
       await proceed(then);
-    } catch {
-      setStage({ kind: 'list', notice: { kind: 'providerFailed', provider: back.provider } });
+    } catch (error) {
+      const refused = error instanceof ApiError && error.is('invalid_credentials');
+      setStage({
+        kind: 'list',
+        notice: { kind: refused ? 'providerRefused' : 'providerFailed', provider: back.provider },
+      });
     }
   }
 
@@ -353,7 +360,9 @@ function Said({ notice }: { notice: Notice }) {
         ? t('waysCard.lastRefused')
         : notice.kind === 'providerFailed'
           ? t('waysCard.providerFailed', { provider: PROVIDER_NAMES[notice.provider] })
-          : t('waysCard.failedTitle');
+          : notice.kind === 'providerRefused'
+            ? t('waysCard.providerRefused', { provider: PROVIDER_NAMES[notice.provider] })
+            : t('waysCard.failedTitle');
 
   return (
     <div className="notice notice-broken" role="alert">
