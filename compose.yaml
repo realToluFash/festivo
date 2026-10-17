@@ -94,9 +94,12 @@ services:
       SMS_ACCOUNT_SID: ${SMS_ACCOUNT_SID:-ACdevelopment00000000000000000000}
       SMS_AUTH_TOKEN: ${SMS_AUTH_TOKEN:-development-token}
       SMS_FROM: ${SMS_FROM:-+447700900999}
-      OAUTH_GOOGLE_ISSUERS: ${OAUTH_GOOGLE_ISSUERS:-http://localhost:8089/google}
+      OAUTH_GOOGLE_ISSUERS: ${OAUTH_GOOGLE_ISSUERS:-http://localhost:8089/google,http://oidc:8080/google}
       OAUTH_GOOGLE_JWKS_URI: ${OAUTH_GOOGLE_JWKS_URI:-http://oidc:8080/google/jwks}
       OAUTH_GOOGLE_CLIENT_IDS: ${OAUTH_GOOGLE_CLIENT_IDS:-soirely-web,soirely-app}
+      OAUTH_GOOGLE_TOKEN_URI: ${OAUTH_GOOGLE_TOKEN_URI:-http://oidc:8080/google/token}
+      OAUTH_GOOGLE_WEB_CLIENT_ID: ${OAUTH_GOOGLE_WEB_CLIENT_ID:-soirely-web}
+      OAUTH_GOOGLE_WEB_CLIENT_SECRET: ${OAUTH_GOOGLE_WEB_CLIENT_SECRET:-development-secret}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis
@@ -228,7 +231,6 @@ services:
       SOIRELY_ENVIRONMENT: ${APP_ENV:-dev}
       # The local sign-in sandbox (service `oidc`) stands in for Google.
       SOIRELY_GOOGLE_AUTHORIZE_URL: ${SOIRELY_GOOGLE_AUTHORIZE_URL:-http://localhost:8089/google/authorize}
-      SOIRELY_GOOGLE_TOKEN_URL: ${SOIRELY_GOOGLE_TOKEN_URL:-http://localhost:8089/google/token}
       SOIRELY_GOOGLE_CLIENT_ID: ${SOIRELY_GOOGLE_CLIENT_ID:-soirely-web}
     ports:
       - '${WEB_PORT:-5173}:80'

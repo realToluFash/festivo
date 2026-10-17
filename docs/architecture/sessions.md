@@ -216,9 +216,20 @@ outcome: the alternative is writing a thirty-day credential somewhere readable.
 
 ## Signing in with Google
 
-`POST /api/auth/oauth/google` takes an ID token and the raw nonce, and answers as password
-sign-in does. The client runs the provider's authorization-code flow with PKCE, sending the
-provider the nonce's SHA-256 (hex) and keeping the nonce itself, which it gives the API.
+`POST /api/auth/oauth/google` answers as password sign-in does. Both clients run the
+provider's authorization-code flow with PKCE, sending the provider the nonce's SHA-256 (hex)
+and keeping the nonce itself, which they give the API. What they send differs:
+
+- **The app** redeems its own code, as a native client may without a secret, and sends the
+  ID token with the raw nonce.
+- **The web** sends the code, its PKCE verifier and the redirect URI with the raw nonce, and
+  the API redeems the code with the client secret (`HttpCodeRedeemer`). A browser is a
+  public client and cannot keep a secret (RFC 6749 §2.1); PKCE binds the code to the
+  browser that asked (RFC 7636). The ID token that comes back takes the same checks.
+- **Production values:** `OAUTH_GOOGLE_ISSUERS` is `https://accounts.google.com,accounts.google.com`,
+  `OAUTH_GOOGLE_JWKS_URI` is `https://www.googleapis.com/oauth2/v3/certs`,
+  `OAUTH_GOOGLE_TOKEN_URI` is `https://oauth2.googleapis.com/token`, and the client ids and
+  the web client's secret come from the owner's Google Cloud project.
 
 - **The token is checked in full** (`OpenIdTokenVerifier`): RS256 only, the signature
   against the provider's published keys, the issuer, an audience that is one of our client

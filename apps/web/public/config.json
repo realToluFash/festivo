@@ -5,7 +5,6 @@
   "environment": "development",
   "google": {
     "authorizeUrl": "http://localhost:8089/google/authorize",
-    "tokenUrl": "http://localhost:8089/google/token",
     "clientId": "soirely-web"
   }
 }

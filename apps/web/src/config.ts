@@ -20,8 +20,8 @@ export interface Config {
   mercureUrl: string;
   /** Named so a support conversation can establish which deployment. */
   environment: string;
-  /** Google's authorization and token endpoints and this client's id; the local sandbox in development. */
-  google: { authorizeUrl: string; tokenUrl: string; clientId: string } | null;
+  /** Google's authorization endpoint and this client's id; the API redeems the code, so no token endpoint. */
+  google: { authorizeUrl: string; clientId: string } | null;
 }
 
 const CONFIG_URL = '/config.json';
@@ -92,17 +92,9 @@ function parse(raw: unknown): Config {
 function providerFrom(raw: unknown): Config['google'] {
   if (typeof raw !== 'object' || raw == null) return null;
 
-  const { authorizeUrl, tokenUrl, clientId } = raw as Record<string, unknown>;
+  const { authorizeUrl, clientId } = raw as Record<string, unknown>;
 
-  if (
-    typeof authorizeUrl !== 'string' ||
-    typeof tokenUrl !== 'string' ||
-    typeof clientId !== 'string'
-  ) {
-    return null;
-  }
+  if (typeof authorizeUrl !== 'string' || typeof clientId !== 'string') return null;
 
-  return authorizeUrl === '' || tokenUrl === '' || clientId === ''
-    ? null
-    : { authorizeUrl, tokenUrl, clientId };
+  return authorizeUrl === '' || clientId === '' ? null : { authorizeUrl, clientId };
 }

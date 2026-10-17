@@ -79,7 +79,6 @@ describe('runtime configuration', () => {
   it("reads Google's endpoints, and treats a half-filled set as none", async () => {
     const google = {
       authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
-      tokenUrl: 'https://oauth2.googleapis.com/token',
       clientId: 'soirely-web',
     };
 

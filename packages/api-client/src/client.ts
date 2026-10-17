@@ -208,6 +208,14 @@ export class ApiClient {
     );
   }
 
+  /** The web's way in: its code and PKCE verifier, which only the API can redeem, with the secret it holds. */
+  async signInWithProviderCode(
+    provider: Provider,
+    attempt: { code: string; codeVerifier: string; redirectUri: string; nonce: string },
+  ): Promise<SignedIn> {
+    return this.signedIn(`/api/auth/oauth/${provider}`, attempt, 'ProviderSignInController');
+  }
+
   /** Signed in as sign-in is: the same tokens, the same account. */
   async register(email: string, name: string, password: string): Promise<SignedIn> {
     return this.signedIn('/api/auth/register', { email, name, password }, 'RegisterController');
