@@ -131,8 +131,9 @@ Half of this job is refusing to answer in the wrong place.
   `[dev]` for what was built, `[qa]` for what was tested — per `role-comments`.
 - **No code, no artboards.** A story is the deliverable. If the fix is one line, it is still
   `/soirely-developer`'s line.
-- **Never move a story to Done.** That is the user's, after a merge. `Ready For QA` is the
-  developer's move and `Passsed QA` / `Failed QA` are the QA agent's.
+- **Never move a story to Done.** That is the user's, after a merge. `In Review` is the
+  developer's move, `Ready For QA` the tech lead's, and `Passsed QA` / `Failed QA` the QA
+  agent's.
 - **Backlog to `To Do` is yours.** Move a story there once the designer says its design is
   ready, or that it needs none, and no product question on it is open. The owner delegated
   this on 16 Oct: their sign-off of the screens is not a condition for it. Say in the

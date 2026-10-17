@@ -1,22 +1,23 @@
 ---
 name: role-comments
-description: How the five roles talk to each other on a Shortcut story — a comment addressed with [pm] [qa] [ux] [dev] [bm], answered in its own thread, and the inbox routine every role runs to find what is waiting on it. Use when a role needs something from another, and at the start of every /soirely-* run.
+description: How the six roles talk to each other on a Shortcut story — a comment addressed with [pm] [qa] [ux] [dev] [bm] [lead], answered in its own thread, and the inbox routine every role runs to find what is waiting on it. Use when a role needs something from another, and at the start of every /soirely-* run.
 user-invocable: false
 ---
 
 # Comments between roles
 
-The five roles never talk in chat. A question one of them has for another is a comment on
+The six roles never talk in chat. A question one of them has for another is a comment on
 the story it is about, addressed by tag, so the right role finds it on its next run and
 anybody reading the story later can see what was asked and what was decided.
 
-| Tag     | Role                        | Asked about                                          |
-| ------- | --------------------------- | ---------------------------------------------------- |
-| `[pm]`  | `/soirely-product-manager`  | what the product does: scope, AC, an undecided state |
-| `[ux]`  | `/soirely-designer`         | what a screen looks like, an artboard, a missing one |
-| `[dev]` | `/soirely-developer`        | how it was built, a defect, a branch, a pull request |
-| `[qa]`  | `/soirely-qa-tester`        | what was tested, a finding, a re-test                |
-| `[bm]`  | `/soirely-business-manager` | money: a price, a plan limit, a cost, the market     |
+| Tag      | Role                        | Asked about                                                     |
+| -------- | --------------------------- | --------------------------------------------------------------- |
+| `[pm]`   | `/soirely-product-manager`  | what the product does: scope, AC, an undecided state            |
+| `[ux]`   | `/soirely-designer`         | what a screen looks like, an artboard, a missing one            |
+| `[dev]`  | `/soirely-developer`        | how it was built, a defect, a branch, a pull request            |
+| `[qa]`   | `/soirely-qa-tester`        | what was tested, a finding, a re-test                           |
+| `[bm]`   | `/soirely-business-manager` | money: a price, a plan limit, a cost, the market                |
+| `[lead]` | `/soirely-tech-lead`        | a review: a finding, a re-review, how something should be built |
 
 **Product questions go to `[pm]`.** If you are deciding what the product should do, stop:
 that is a question, and this is where it goes. **Money questions go to `[bm]`**: what

@@ -1,6 +1,6 @@
 ---
 name: soirely-developer
-description: Development mode. Takes whatever is sitting in Shortcut's Failed QA state, or a story you name, builds it across the API, the web client and the app, and hands it back in Ready For QA — commits per outcome, a draft pull request, nothing merged and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
+description: Development mode. Takes whatever is sitting in Shortcut's Failed QA state, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, a draft pull request, nothing merged and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
 user-invocable: true
 ---
 
@@ -138,8 +138,10 @@ gh run watch "$(gh run list --branch "$(git branch --show-current)" --limit 1 --
 1. **Commits** per outcome — `making-commits`. Stage named paths; never `git add -A`.
 2. **A draft pull request** — `create-pr`. Never `gh pr ready`.
 3. **Reply to every review comment and every QA finding**, in its thread.
-4. **Move the story to `Ready For QA`** (`500000087`), resolved by name, once the pull
-   request is open and its checks are green. That is the handover — see **create-pr**.
+4. **Move the story to `In Review`** (`500000009`), resolved by name, once the pull request
+   is open and its checks are green. That is the handover to `/soirely-tech-lead`, who
+   reviews it and moves it on to `Ready For QA` for QA, or back to you with `[dev]`
+   findings on the pull request. See **create-pr**.
 5. **Report**: the story, the PR number, what you did not do, and every assumption you made
    where the AC was silent.
 

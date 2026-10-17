@@ -185,11 +185,12 @@ shell quoting intact.
 
 Title: a conventional-commit prefix matching the branch's commits, naming the outcome.
 
-## Step 6: Hand it to QA
+## Step 6: Hand it to review
 
-**Move the story to `Ready For QA`** — `stories-update` with that state's id, resolved by
-name with `workflows-list`. That state is the handover: it is how the QA agent finds work,
-and a finished story left in `In Progress` is a story nobody tests.
+**Move the story to `In Review`** — `stories-update` with that state's id, resolved by name
+with `workflows-list`. That state is the handover: it is how `/soirely-tech-lead` finds
+work, and the lead moves it on to `Ready For QA`. A finished story left in `In Progress` is
+a story nobody reviews or tests.
 
 Move it when the work is actually finished — the pull request open and **its checks green**,
 not merely pushed. A story handed over on a red branch wastes somebody's pass on code that
