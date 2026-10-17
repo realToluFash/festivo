@@ -291,6 +291,16 @@ the same checks, nonce binding and account paths. What differs is what Apple sen
   the bundle id (iOS). Apple's client secret is not a fixed string but a JWT signed with the
   team's Sign in with Apple key, which expires within six months and has to be issued again.
 
+- **Android.** Apple will not redirect to an app's custom scheme, and returns the name only
+  by `form_post`, so on Android the app starts an attempt with the API first
+  (`POST /api/auth/oauth/apple/attempts`, its state and PKCE challenge), then opens Apple in
+  Custom Tabs. Apple posts to `/api/auth/oauth/apple/return`, which recognises the app's
+  state, keeps Apple's code, and 303s to the verified App Link `OAUTH_APPLE_APP_LINK` with a
+  one-time handle (60 seconds, `AppleAppAttempt::HANDLE_SECONDS`). The app trades the handle
+  and its PKCE verifier at `POST /api/auth/oauth/apple/handle`, and the API redeems the code
+  as it does the web's. Neither the code nor tokens travel in the App Link URL. A state the
+  API never saw is the web's, as before.
+
 ## Two-factor authentication
 
 An account with two-factor on is never issued tokens by its first factor alone.

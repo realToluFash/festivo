@@ -102,6 +102,7 @@ services:
     App\Domain\User\Controller\AppleReturnController:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+            $appleAppLink: '%env(OAUTH_APPLE_APP_LINK)%'
     App\Domain\User\Recovery\RecoveryMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'

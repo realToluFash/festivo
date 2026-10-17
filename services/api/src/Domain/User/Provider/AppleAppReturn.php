@@ -1,0 +1,122 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\User\Provider;
+
+use App\Domain\User\Model\ProviderSignInResult;
+use App\Domain\User\TokenIssuer;
+use App\Entity\AppleAppAttempt;
+use App\Enum\ErrorCode;
+use App\Enum\IdentityProvider;
+use App\Http\Exception\ApiException;
+use App\Repository\AppleAppAttemptRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Psl\Json;
+use Psl\SecureRandom;
+use Psl\Str;
+use Psl\Type;
+use Psr\Clock\ClockInterface;
+use SensitiveParameter;
+use Symfony\Component\HttpFoundation\Request;
+
+/** Apple on Android returns only by form_post; the app gets a one-time handle, never the code or tokens. */
+final readonly class AppleAppReturn
+{
+    private const int HANDLE_BYTES = 32;
+
+    public function __construct(
+        private AppleAppAttemptRepository $appleAppAttemptRepository,
+        private ProviderSignIn $providerSignIn,
+        private EntityManagerInterface $entityManager,
+        private ClockInterface $clock,
+    ) {
+    }
+
+    /** The app says it is starting, with its state and the S256 challenge of its PKCE verifier. */
+    public function start(#[SensitiveParameter] string $state, string $codeChallenge): void
+    {
+        if ('' === $state || null !== $this->appleAppAttemptRepository->findOneByStateHash(TokenIssuer::hash($state))) {
+            throw new ApiException(ErrorCode::BadRequest, 'Start a new sign-in.');
+        }
+
+        $this->entityManager->persist(new AppleAppAttempt(TokenIssuer::hash($state), $codeChallenge, $this->clock->now()));
+        $this->entityManager->flush();
+    }
+
+    /** The handle for the app, or null when the state is not an app's and the web takes it. */
+    public function receive(#[SensitiveParameter] string $state, #[SensitiveParameter] ?string $code, ?string $appleUser): ?string
+    {
+        $attempt = $this->appleAppAttemptRepository->findOneByStateHash(TokenIssuer::hash($state));
+        $now = $this->clock->now();
+
+        if (null === $attempt || !$attempt->isAwaitingAppleAt($now)) {
+            return null;
+        }
+
+        // A cancel or a failure at Apple carries no code: the app is sent back with nothing to exchange.
+        if (null === $code || '' === $code) {
+            $attempt->markUsed($now);
+            $this->entityManager->flush();
+
+            return '';
+        }
+
+        $handle = \bin2hex(SecureRandom\bytes(self::HANDLE_BYTES));
+        $attempt->received($code, $appleUser, TokenIssuer::hash($handle), $now);
+        $this->entityManager->flush();
+
+        return $handle;
+    }
+
+    /** Once, within its minute, and only with the verifier whose challenge started the attempt. */
+    public function exchange(
+        #[SensitiveParameter]
+        string $handle,
+        #[SensitiveParameter]
+        string $codeVerifier,
+        #[SensitiveParameter]
+        ?string $rawNonce,
+        string $redirectUri,
+        ?Request $request = null,
+    ): ProviderSignInResult {
+        $attempt = '' === $handle ? null : $this->appleAppAttemptRepository->findOneByHandleHash(TokenIssuer::hash($handle));
+        $now = $this->clock->now();
+        $code = $attempt?->getCode();
+
+        if (null === $attempt || null === $code || !$attempt->isHandleOpenAt($now) || !\hash_equals($attempt->getCodeChallenge(), self::challengeOf($codeVerifier))) {
+            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'That sign-in could not be checked.');
+        }
+
+        $appleUser = $attempt->getAppleUser();
+        $attempt->markUsed($now);
+        $this->entityManager->flush();
+
+        return $this->providerSignIn->signInWithCode(IdentityProvider::Apple, $code, $codeVerifier, $redirectUri, $rawNonce, $request, self::nameFrom($appleUser));
+    }
+
+    /** RFC 7636 S256: base64url of the SHA-256 of the verifier, unpadded. */
+    private static function challengeOf(#[SensitiveParameter] string $verifier): string
+    {
+        return Str\trim_right(Str\replace_every(\base64_encode(\hash('sha256', $verifier, true)), ['+' => '-', '/' => '_']), '=');
+    }
+
+    /** Apple sends the name once, as JSON beside the code, on the first authorisation only. */
+    private static function nameFrom(?string $appleUser): ?string
+    {
+        if (null === $appleUser) {
+            return null;
+        }
+
+        try {
+            $name = Type\shape(['name' => Type\shape(['firstName' => Type\optional(Type\string()), 'lastName' => Type\optional(Type\string())], true)], true)
+                ->coerce(Json\decode($appleUser))['name'];
+        } catch (Json\Exception\DecodeException|Type\Exception\CoercionException) {
+            return null;
+        }
+
+        $full = Str\trim(($name['firstName'] ?? '') . ' ' . ($name['lastName'] ?? ''));
+
+        return '' === $full ? null : $full;
+    }
+}
