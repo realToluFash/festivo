@@ -28,6 +28,8 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.soirely.app',
+    // The native Sign in with Apple sheet, which App Store review asks for beside Google.
+    usesAppleSignIn: true,
   },
   android: {
     package: 'com.soirely.app',
@@ -45,7 +47,13 @@ const config: ExpoConfig = {
     bundler: 'metro',
     output: 'single',
   },
-  plugins: ['expo-router', 'expo-font', 'expo-localization', 'expo-web-browser'],
+  plugins: [
+    'expo-router',
+    'expo-font',
+    'expo-localization',
+    'expo-web-browser',
+    'expo-apple-authentication',
+  ],
   experiments: {
     typedRoutes: true,
   },
@@ -59,6 +67,9 @@ const config: ExpoConfig = {
     googleAuthorizeUrl: process.env.EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL,
     googleTokenUrl: process.env.EXPO_PUBLIC_GOOGLE_TOKEN_URL,
     googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    appleAuthorizeUrl: process.env.EXPO_PUBLIC_APPLE_AUTHORIZE_URL,
+    appleTokenUrl: process.env.EXPO_PUBLIC_APPLE_TOKEN_URL,
+    appleClientId: process.env.EXPO_PUBLIC_APPLE_CLIENT_ID,
   },
 };
 

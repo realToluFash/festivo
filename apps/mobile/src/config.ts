@@ -18,13 +18,16 @@ interface Extra {
   googleAuthorizeUrl?: string;
   googleTokenUrl?: string;
   googleClientId?: string;
+  appleAuthorizeUrl?: string;
+  appleTokenUrl?: string;
+  appleClientId?: string;
 }
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
 
 const DEVELOPMENT_FALLBACK = 'http://localhost:8080';
 /** The local sign-in sandbox (compose service `oidc`), reached from a simulator as the API is. */
-const SANDBOX = 'http://localhost:8089/google';
+const SANDBOX = 'http://localhost:8089';
 
 export const config = {
   apiBaseUrl: (extra.apiUrl ?? DEVELOPMENT_FALLBACK).replace(/\/$/, ''),
@@ -32,8 +35,14 @@ export const config = {
   /** True when nothing configured the URL, so a screen can say so out loud. */
   usingFallbackApiUrl: extra.apiUrl == null || extra.apiUrl === '',
   google: {
-    authorizeUrl: extra.googleAuthorizeUrl ?? `${SANDBOX}/authorize`,
-    tokenUrl: extra.googleTokenUrl ?? `${SANDBOX}/token`,
+    authorizeUrl: extra.googleAuthorizeUrl ?? `${SANDBOX}/google/authorize`,
+    tokenUrl: extra.googleTokenUrl ?? `${SANDBOX}/google/token`,
     clientId: extra.googleClientId ?? 'soirely-app',
+  },
+  /** Off iOS, where the native sheet is used, Apple runs in the browser like Google. */
+  apple: {
+    authorizeUrl: extra.appleAuthorizeUrl ?? `${SANDBOX}/apple/authorize`,
+    tokenUrl: extra.appleTokenUrl ?? `${SANDBOX}/apple/token`,
+    clientId: extra.appleClientId ?? 'soirely-app',
   },
 } as const;

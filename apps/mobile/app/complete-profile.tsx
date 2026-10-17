@@ -57,24 +57,28 @@ export default function CompleteProfile() {
 
   if (account == null) return null;
 
-  const byGoogle = account.providers.includes('google');
+  const provider = account.providers.includes('google')
+    ? 'Google'
+    : account.providers.includes('apple')
+      ? 'Apple'
+      : undefined;
   const primaryEmail = account.emailAddresses.find((address) => address.primary)?.address ?? '';
 
   return (
     <AuthFrame
       saying={
         <>
-          <OnboardingSteps at="details" confirmedBy={byGoogle ? 'Google' : undefined} />
+          <OnboardingSteps at="details" confirmedBy={provider} />
           <AuthHeading title={t('completeProfile.title')} intro={t('completeProfile.intro')} />
         </>
       }
     >
       <LinkedNotice />
-      {byGoogle && (
+      {provider != null && (
         <Notice
           tone="quiet"
           mark={tokens.marks.info.glyph}
-          body={t('completeProfile.providerConfirmed', { provider: 'Google', email: primaryEmail })}
+          body={t('completeProfile.providerConfirmed', { provider, email: primaryEmail })}
         />
       )}
       <Details account={account} />
