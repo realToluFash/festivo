@@ -934,6 +934,7 @@ const ACCOUNT = {
   businessName: 'Ire Events',
   countryCode: 'NG',
   locale: 'en',
+  timezone: null,
   verified: true,
   complete: true,
   needsOrganisation: false,
@@ -971,6 +972,34 @@ describe('who is signed in', () => {
 
   test('refuses a shape it does not know, naming where to look', async () => {
     await expect(client(json({ data: ACCOUNT })).me()).rejects.toThrow(/AccountController/);
+  });
+});
+
+describe("the account's time zone", () => {
+  test('sends the device zone on every request, and reads the list', async () => {
+    const headers: (string | null)[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      timeZone: () => 'Africa/Lagos',
+      fetch: async (_url, init) => {
+        headers.push(new Headers(init?.headers).get('X-Timezone'));
+
+        return json({
+          timezones: [
+            { id: 'Africa/Lagos', city: 'Lagos', country: 'Nigeria', offset: '+01:00' },
+            { id: 42 },
+          ],
+        });
+      },
+    });
+
+    const zones = await client.timezones();
+
+    expect(zones).toEqual([
+      { id: 'Africa/Lagos', city: 'Lagos', country: 'Nigeria', offset: '+01:00' },
+    ]);
+    expect(headers).toEqual(['Africa/Lagos']);
   });
 });
 

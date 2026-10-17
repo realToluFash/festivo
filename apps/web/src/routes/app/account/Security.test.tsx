@@ -525,6 +525,7 @@ describe('adding a password to a Google account', () => {
           businessName: null,
           countryCode: null,
           locale: 'en',
+          timezone: null,
           verified: true,
           complete: true,
           needsOrganisation: false,

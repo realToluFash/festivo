@@ -184,6 +184,7 @@ describe('the application tree', () => {
           businessName: 'Okonkwo Events',
           countryCode: 'NG',
           locale: 'en',
+          timezone: null,
           verified: true,
           complete: true,
           needsOrganisation: false,

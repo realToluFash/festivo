@@ -12,6 +12,7 @@ const ACCOUNT = {
   businessName: null,
   countryCode: null,
   locale: 'en',
+  timezone: null,
   verified: true,
   complete: false,
   needsOrganisation: true,

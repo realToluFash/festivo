@@ -19,6 +19,7 @@ function account(phoneNumbers: unknown[] = [PHONE]) {
     businessName: null,
     countryCode: null,
     locale: 'en',
+    timezone: null,
     verified: false,
     complete: false,
     needsOrganisation: true,
