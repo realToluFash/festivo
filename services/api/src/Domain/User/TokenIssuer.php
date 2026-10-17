@@ -92,9 +92,8 @@ final readonly class TokenIssuer
     /**
      * Every session that a sign-in through this provider started: unlinking it signs those devices out.
      *
-     * @return int how many live sessions ended
+     * @return list<Uuid> the chains of the live sessions it ended
      */
-    /** @return list<Uuid> the chains of the live sessions it ended */
     public function revokeSignedInWith(User $user, IdentityProvider $provider): array
     {
         return $this->endLive($user, null, $provider);
