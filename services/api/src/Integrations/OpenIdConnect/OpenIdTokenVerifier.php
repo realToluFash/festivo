@@ -21,7 +21,6 @@ use Lcobucci\JWT\Validation\Constraint\PermittedFor;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use Lcobucci\JWT\Validation\Validator;
 use Psl\Str;
-use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Throwable;
@@ -37,6 +36,8 @@ final readonly class OpenIdTokenVerifier implements IdTokenVerifierInterface
         private ClockInterface $clock,
         private string $googleIssuers,
         private string $googleClientIds,
+        private string $appleIssuers,
+        private string $appleClientIds,
     ) {
     }
 
@@ -151,25 +152,16 @@ final readonly class OpenIdTokenVerifier implements IdTokenVerifierInterface
     {
         [$issuers, $audiences] = match ($provider) {
             IdentityProvider::Google => [$this->googleIssuers, $this->googleClientIds],
+            IdentityProvider::Apple => [$this->appleIssuers, $this->appleClientIds],
         };
 
-        $issuers = self::list($issuers);
+        $issuers = ConfiguredList::of($issuers);
 
         if ([] === $issuers) {
             throw self::refused();
         }
 
-        return [$issuers, self::list($audiences)];
-    }
-
-    /** @return list<non-empty-string> */
-    private static function list(string $csv): array
-    {
-        return Vec\filter_nulls(Vec\map(Str\split($csv, ','), static function (string $item): ?string {
-            $item = Str\trim($item);
-
-            return '' === $item ? null : $item;
-        }));
+        return [$issuers, ConfiguredList::of($audiences)];
     }
 
     private static function refused(): ApiException

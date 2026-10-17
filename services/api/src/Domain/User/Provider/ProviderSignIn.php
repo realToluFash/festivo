@@ -10,12 +10,14 @@ use App\Domain\User\Model\ProviderSignInResult;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\ProviderIdentity;
+use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Str;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -44,10 +46,11 @@ final readonly class ProviderSignIn
         #[SensitiveParameter]
         ?string $rawNonce,
         ?Request $request = null,
+        ?string $suppliedName = null,
     ): ProviderSignInResult {
         $idToken = $this->codeRedeemer->redeem($provider, $code, $codeVerifier, $redirectUri);
 
-        return $this->signIn($provider, $idToken, $rawNonce, $request);
+        return $this->signIn($provider, $idToken, $rawNonce, $request, $suppliedName);
     }
 
     public function signIn(
@@ -57,11 +60,15 @@ final readonly class ProviderSignIn
         #[SensitiveParameter]
         ?string $rawNonce,
         ?Request $request = null,
+        ?string $suppliedName = null,
     ): ProviderSignInResult {
         $claims = $this->idTokenVerifier->verify($provider, $idToken, $rawNonce);
         $known = $this->providerIdentityRepository->findOneBySubject($provider, $claims->subject);
+        // Apple puts no name in its token, and gives the client one only on the very first authorisation.
+        $name = $claims->name ?? self::nameOrNull($suppliedName);
 
         if (null !== $known) {
+            self::fillBlankName($known->getUser(), $name);
             $tokens = $this->tokenIssuer->issueFor($known->getUser(), $request);
             $this->entityManager->flush();
 
@@ -77,6 +84,7 @@ final readonly class ProviderSignIn
         $owner = $this->userRepository->findOneByPrimaryEmailAddress($claims->email);
 
         if (null !== $owner && true === $owner->getPrimaryEmailAddress()?->isVerified()) {
+            self::fillBlankName($owner, $name);
             $this->entityManager->persist(new ProviderIdentity($owner, $provider, $claims->subject));
             $tokens = $this->tokenIssuer->issueFor($owner, $request);
             $this->entityManager->flush();
@@ -84,10 +92,25 @@ final readonly class ProviderSignIn
             return new ProviderSignInResult($owner, $tokens, true);
         }
 
-        $registered = $this->userRegistrar->registerFromProvider($claims->email, $claims->name, $request);
+        $registered = $this->userRegistrar->registerFromProvider($claims->email, $name, $request);
         $this->entityManager->persist(new ProviderIdentity($registered->user, $provider, $claims->subject));
         $this->entityManager->flush();
 
         return new ProviderSignInResult($registered->user, $registered->tokens, false);
+    }
+
+    /** A name only ever fills a blank one: a later sign-in that brings none must not empty it. */
+    private static function fillBlankName(User $user, ?string $name): void
+    {
+        if (null !== $name && '' === Str\trim($user->getName())) {
+            $user->setName($name);
+        }
+    }
+
+    private static function nameOrNull(?string $name): ?string
+    {
+        $trimmed = Str\trim($name ?? '');
+
+        return '' === $trimmed ? null : $trimmed;
     }
 }
