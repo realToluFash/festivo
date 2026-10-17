@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { brief, decide, header, inboxFor, queueQuery, ROLES, rollup } from './role-tick.mjs';
+import {
+  brief,
+  decide,
+  developerOf,
+  header,
+  inboxFor,
+  ownedPr,
+  queueQuery,
+  ROLES,
+  rollup,
+} from './role-tick.mjs';
 
 const MINUTE = 60_000;
 const now = 1_000 * MINUTE;
@@ -153,7 +163,7 @@ describe('a run that left work waiting', () => {
 describe('a queue', () => {
   it('belongs to the linguists when it is a translation, and to nobody else', () => {
     expect(queueQuery('fr', 'To Do')).toBe('state:"To Do" label:translation');
-    expect(queueQuery('dev', 'To Do')).toBe('state:"To Do" !label:translation');
+    expect(queueQuery('dev', 'To Do')).toBe('state:"To Do" !label:translation !label:dev2');
     expect(queueQuery('qa', 'Ready For QA')).toBe('state:"Ready For QA"');
   });
 
@@ -174,6 +184,56 @@ describe('the three QA testers', () => {
     expect(queueQuery('qa3', 'Ready For QA')).toBe('state:"Ready For QA"');
     expect(brief('qa3', ['queue sc-1:Ready For QA'], '/x/role-tick.mjs')).toContain(
       '`/soirely-qa-tester qa3`',
+    );
+  });
+});
+
+// The label is the claim: whoever's label a story carries builds it, fixes it and merges it.
+describe('the two developers', () => {
+  const labelled = (id, labels) => ({
+    id,
+    labels,
+    comments: [{ id: 1, text: '[dev] (from lead)\nblocking: …' }],
+  });
+
+  it('each own the stories carrying their label, and developer 1 the unlabelled', () => {
+    expect(developerOf(['dev2', 'api'])).toBe('dev2');
+    expect(developerOf([{ name: 'dev1' }])).toBe('dev');
+    expect(developerOf([])).toBe('dev');
+  });
+
+  it('route a bare [dev] to the developer whose label the story carries', () => {
+    const stories = [labelled(5, ['dev2']), labelled(6, ['dev1']), labelled(7, [])];
+    expect(inboxFor('dev2', stories)).toEqual(['5#1']);
+    expect(inboxFor('dev', stories)).toEqual(['6#1', '7#1']);
+  });
+
+  it('let [dev2] reach developer 2 on any story', () => {
+    const stories = [{ id: 8, labels: [], comments: [{ id: 2, text: '[dev2] (from pm)\n…' }] }];
+    expect(inboxFor('dev2', stories)).toEqual(['8#2']);
+    expect(inboxFor('dev', stories)).toEqual([]);
+  });
+
+  it('share To Do, and see only their own work in progress', () => {
+    expect(queueQuery('dev2', 'To Do')).toBe('state:"To Do" !label:translation !label:dev1');
+    expect(queueQuery('dev2', 'Failed QA')).toBe('state:"Failed QA" label:dev2');
+    expect(queueQuery('dev', 'In Progress')).toBe(
+      'state:"In Progress" !label:translation !label:dev2',
+    );
+  });
+
+  it('are woken only by their own pull requests', () => {
+    const stories = { 41: { labels: ['dev2'] }, 42: { labels: ['dev1'] } };
+    expect(ownedPr('dev2', 'feature/sc-41/thing', stories)).toBe(true);
+    expect(ownedPr('dev', 'feature/sc-41/thing', stories)).toBe(false);
+    expect(ownedPr('dev', 'chore/no-story', stories)).toBe(true);
+    expect(ownedPr('dev2', 'chore/no-story', stories)).toBe(false);
+    expect(ownedPr('lead', 'feature/sc-41/thing', stories)).toBe(true);
+  });
+
+  it('wake developer 2 into its own run', () => {
+    expect(brief('dev2', ['queue sc-1:To Do'], '/x/role-tick.mjs')).toContain(
+      '`/soirely-developer dev2`',
     );
   });
 });

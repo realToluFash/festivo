@@ -141,7 +141,7 @@ the feature merges.
 ## 4. Doing your task
 
 1. **Move the ticket to `In Progress`** if you are the first to start it.
-2. **Work in your own worktree**, never in `~/Projects/soirely`, which is the developer's:
+2. **Work in your own worktree**, never in `~/Projects/soirely` or `~/Projects/soirely-dev2`, which are the developers':
 
    ```sh
    git fetch origin
