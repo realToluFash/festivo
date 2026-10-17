@@ -37,13 +37,10 @@ final readonly class AppleReturnController
             }
         }
 
-        $handle = isset($carried['state']) ? $this->appleAppReturn->receive($carried['state'], $carried['code'] ?? null, $carried['user'] ?? null) : null;
+        $appLinkQuery = isset($carried['state']) ? $this->appleAppReturn->receive($carried['state'], $carried['code'] ?? null, $carried['user'] ?? null) : null;
 
-        if (null !== $handle) {
-            return new RedirectResponse(
-                $this->appleAppLink . '?' . \http_build_query('' === $handle ? ['error' => 'cancelled'] : ['handle' => $handle]),
-                Response::HTTP_SEE_OTHER,
-            );
+        if (null !== $appLinkQuery) {
+            return new RedirectResponse($this->appleAppLink . '?' . \http_build_query($appLinkQuery), Response::HTTP_SEE_OTHER);
         }
 
         return new RedirectResponse(
