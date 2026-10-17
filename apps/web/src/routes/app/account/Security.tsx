@@ -10,7 +10,7 @@ import { Pending } from '../../../components/Pending.tsx';
 import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
-import { forgetSession, useSession } from '../../../session.ts';
+import { forgetSession, refreshAccount, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
 type Devices =
@@ -89,6 +89,7 @@ export function Security() {
           setDevices({ kind: 'loading' });
           setAttempt((n) => n + 1);
         }}
+        onAdded={() => refreshAccount()}
       />
 
       <TwoFactorCard email={session.email} onBusy={setSettingUp} />

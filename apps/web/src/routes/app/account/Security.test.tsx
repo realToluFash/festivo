@@ -485,7 +485,7 @@ describe('changing the password', () => {
     expect(screen.getByText(/^Try again at .+\. Nothing was changed\.$/)).toBeDefined();
   });
 
-  it('has nothing to change for an account that signs in with Google', () => {
+  it('offers a Google-only account a password, and says why', () => {
     __setSessionState({
       status: 'signedIn',
       session: { ...FOLAKE, hasPassword: false, providers: ['google'] },
@@ -495,9 +495,111 @@ describe('changing the password', () => {
     openSecurity();
 
     expect(
-      screen.getByText('You sign in with Google, so there is no password to change.'),
+      screen.getByText(
+        'You sign in with Google. Add a password so you can also sign in with your email if you ever lose that Google account.',
+      ),
     ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Set a password' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Change password' })).toBeNull();
+  });
+});
+
+describe('adding a password to a Google account', () => {
+  beforeEach(() => {
+    __setSessionState({
+      status: 'signedIn',
+      session: { ...FOLAKE, hasPassword: false, providers: ['google'] },
+    });
+  });
+
+  it('sends a code, takes it, then the password, and comes back as a password account', async () => {
+    const calls = answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/password/set/start': () => json({ cooldownSeconds: 60 }),
+      'POST /api/auth/password/set/code': () => json({ stepUp: 'the-step-up' }),
+      'POST /api/auth/password/set': () => new Response(null, { status: 204 }),
+      'GET /api/auth/me': () =>
+        json({
+          id: 'acc_1',
+          name: 'Folake Ire',
+          businessName: null,
+          countryCode: null,
+          locale: 'en',
+          verified: true,
+          complete: true,
+          needsOrganisation: false,
+          hasPassword: true,
+          providers: ['google'],
+          emailAddresses: [
+            { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
+          ],
+          phoneNumbers: [],
+        }),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+
+    openSecurity();
+    fireEvent.click(screen.getByRole('button', { name: 'Set a password' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Send a new code in 1:00' })).toBeDefined(),
+    );
+    expect(
+      screen.getByText("We sent a 6-digit code to folake@ire.events to make sure it's you."),
+    ).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Code from the email'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 2, name: 'Choose a password' })).toBeDefined(),
+    );
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'a brand new passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save password' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('Password added. You can sign in with it or with Google.'),
+      ).toBeDefined(),
+    );
+    expect(screen.getByRole('button', { name: 'Change password' })).toBeDefined();
+    expect(calls.filter((call) => call.path === '/api/auth/password/set/start')).toHaveLength(1);
+  });
+
+  it('checks the code before sending it, and says a wrong one is wrong', async () => {
+    const calls = answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/password/set/start': () => json({ cooldownSeconds: 60 }),
+      'POST /api/auth/password/set/code': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/verification_code_invalid',
+            title: 'No',
+            status: 422,
+          },
+          422,
+        ),
+    });
+
+    openSecurity();
+    fireEvent.click(screen.getByRole('button', { name: 'Set a password' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+
+    expect(screen.getByText('Enter the 6-digit code from the email.')).toBeDefined();
+    expect(calls.some((call) => call.path === '/api/auth/password/set/code')).toBe(false);
+
+    fireEvent.change(screen.getByLabelText('Code from the email'), { target: { value: '000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          'That code did not match. Check the newest email from Soirely and try again.',
+        ),
+      ).toBeDefined(),
+    );
   });
 });
 
