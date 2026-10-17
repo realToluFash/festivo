@@ -137,7 +137,7 @@
     "end": "Le déconnecter",
     "keep": "Le laisser connecté",
     "ended": "{{name}} est déconnecté.",
-    "signInAgain": "Il devra se reconnecter pour continuer : assurez-vous qu'il ne sert pas pendant un événement en cours.",
+    "signInAgain": "Il devra se reconnecter pour continuer : vérifiez d'abord que personne ne s'en sert pendant un événement.",
     "agent": "{{browser}} sur {{platform}}",
     "dayAtTime": "{{day}} à {{time}}",
     "unknownDevice": "Un appareil qui ne s'est pas nommé",
