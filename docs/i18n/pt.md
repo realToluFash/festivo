@@ -38,6 +38,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. "Sign out everywhere else" is "Encerrar as outras sessões"** (`devices.everywhere*`,
+  web and app). Shorter than "Encerrar a sessão nos outros dispositivos", so it fits the phone
+  button, and it keeps "encerrar". The confirm and keep buttons follow the card's `devices.end`
+  and `devices.keep` ("Encerrar a sessão", "Manter a sessão"; plural "as sessões"), the Done
+  lines echo `passwordCard.done_*`, and "it" in the warning is "o dispositivo", as
+  `devices.signInAgain`. Confirming identity is "confirme que é você", as `waysCard.proveLink`;
+  rejected "que é o próprio", which agrees with a man.
 - **17 Oct 2026. The email-address refusal is one sentence everywhere** (`orgGeneral.contactInvalid`
   and `forms.emailShape`, web and app): "Isso não parece um endereço de e-mail. Confirme que tem
   um @ e um domínio." The English of all four keys is the same, so the Portuguese is too;
@@ -77,3 +84,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. "It" in the device dialog is "o dispositivo"** (`devices.signInAgain`):
   Portuguese drops the subject, and on its own the sentence reads as if the person had to
   sign in again.
+- **18 Oct 2026. A moment in a sentence is "a {when}"** (`emails:password.changed.body`,
+  `password.added.body`, `recovery.changed.body`, `twoFactor.off.body`): "foi alterada a
+  18 de outubro de 2026 às 14:30". European Portuguese dates a day with "a"; "em {when}" is
+  the Brazilian habit, and two password emails disagreed. A label keeps the colon
+  ("Quando: {when}"), and a range keeps "até" / "a partir de".
