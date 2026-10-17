@@ -137,7 +137,7 @@
     "end": "Encerrar a sessão",
     "keep": "Manter a sessão",
     "ended": "{{name}} ficou sem sessão.",
-    "signInAgain": "O dispositivo terá de voltar a iniciar sessão para continuar, por isso confirme que não está a ser usado num evento a decorrer.",
+    "signInAgain": "O dispositivo terá de voltar a iniciar sessão para continuar, por isso confirme primeiro que ninguém o está a usar num evento.",
     "agent": "{{browser}} em {{platform}}",
     "dayAtTime": "{{day}} às {{time}}",
     "unknownDevice": "Um dispositivo que não se identificou",
