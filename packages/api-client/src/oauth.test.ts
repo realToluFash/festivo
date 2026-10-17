@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest';
 
 import {
   ProviderCancelled,
+  appleName,
+  callbackParam,
   ProviderFailed,
   authorizationUrl,
   base64Url,
@@ -95,5 +97,30 @@ describe('the provider flow', () => {
 
     expect(base64Url(bytes)).toBe('-_8AEA');
     expect(hex(bytes)).toBe('fbff0010');
+  });
+
+  test("asks Apple for its own scope and form_post, without Google's prompt", () => {
+    const url = new URL(
+      authorizationUrl(ENDPOINTS, {
+        redirectUri: 'http://api/return',
+        state: 's',
+        nonceHash: 'h',
+        codeChallenge: 'c',
+        scope: 'openid name email',
+        extra: { response_mode: 'form_post' },
+      }),
+    );
+
+    expect(url.searchParams.get('scope')).toBe('openid name email');
+    expect(url.searchParams.get('response_mode')).toBe('form_post');
+    expect(url.searchParams.has('prompt')).toBe(false);
+  });
+
+  test('reads the name Apple sends once, and nothing when it sends none', () => {
+    expect(appleName('{"name":{"firstName":"Ada","lastName":"Lovelace"}}')).toBe('Ada Lovelace');
+    expect(appleName('{"email":"x@privaterelay.appleid.com"}')).toBeUndefined();
+    expect(appleName('not json')).toBeUndefined();
+    expect(appleName(null)).toBeUndefined();
+    expect(callbackParam('http://x/oauth/apple?code=c&user=%7B%7D', 'user')).toBe('{}');
   });
 });

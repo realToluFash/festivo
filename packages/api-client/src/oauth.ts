@@ -63,18 +63,26 @@ export function hex(bytes: Uint8Array): string {
 /** The provider's URL, carrying the nonce's SHA-256 (hex) and the verifier's S256 challenge. */
 export function authorizationUrl(
   endpoints: Pick<ProviderEndpoints, 'authorizeUrl' | 'clientId'>,
-  request: { redirectUri: string; state: string; nonceHash: string; codeChallenge: string },
+  request: {
+    redirectUri: string;
+    state: string;
+    nonceHash: string;
+    codeChallenge: string;
+    /** Apple asks for `name email` and must answer by form_post; Google takes `prompt`. */
+    scope?: string;
+    extra?: Record<string, string>;
+  },
 ): string {
   return `${endpoints.authorizeUrl}?${form({
     client_id: endpoints.clientId,
     response_type: 'code',
     redirect_uri: request.redirectUri,
-    scope: 'openid email profile',
+    scope: request.scope ?? 'openid email profile',
     state: request.state,
     nonce: request.nonceHash,
     code_challenge: request.codeChallenge,
     code_challenge_method: 'S256',
-    prompt: 'select_account',
+    ...(request.extra ?? { prompt: 'select_account' }),
   })}`;
 }
 
@@ -117,4 +125,25 @@ export async function exchangeCode(
   if (typeof body.id_token !== 'string') throw new ProviderFailed('no ID token');
 
   return body.id_token;
+}
+
+/** Apple's `user` value, sent once on the first authorisation, as the name a person would read. */
+export function appleName(user: string | null | undefined): string | undefined {
+  if (user == null || user === '') return undefined;
+
+  try {
+    const parsed = JSON.parse(user) as { name?: { firstName?: unknown; lastName?: unknown } };
+    const parts = [parsed.name?.firstName, parsed.name?.lastName].filter(
+      (part): part is string => typeof part === 'string' && part.trim() !== '',
+    );
+
+    return parts.length === 0 ? undefined : parts.join(' ');
+  } catch {
+    return undefined;
+  }
+}
+
+/** The value of one query parameter of a callback, read without URL, which React Native lacks. */
+export function callbackParam(callbackUrl: string, name: string): string | null {
+  return query(callbackUrl).get(name) ?? null;
 }

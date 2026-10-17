@@ -25,7 +25,7 @@ export interface SignedIn {
   linked: boolean;
 }
 
-export type Provider = 'google';
+export type Provider = 'google' | 'apple';
 
 export interface Health {
   status: string;
@@ -200,10 +200,16 @@ export class ApiClient {
   }
 
   /** The ID token a provider issued, and the nonce whose hash went to the provider with the request. */
-  async signInWithProvider(provider: Provider, idToken: string, nonce: string): Promise<SignedIn> {
+  /** `name` is for Apple, which gives one only on the first authorisation and never puts it in the token. */
+  async signInWithProvider(
+    provider: Provider,
+    idToken: string,
+    nonce: string,
+    name?: string,
+  ): Promise<SignedIn> {
     return this.signedIn(
       `/api/auth/oauth/${provider}`,
-      { idToken, nonce },
+      { idToken, nonce, ...(name == null || name === '' ? {} : { name }) },
       'ProviderSignInController',
     );
   }
@@ -211,9 +217,21 @@ export class ApiClient {
   /** The web's way in: its code and PKCE verifier, which only the API can redeem, with the secret it holds. */
   async signInWithProviderCode(
     provider: Provider,
-    attempt: { code: string; codeVerifier: string; redirectUri: string; nonce: string },
+    attempt: {
+      code: string;
+      codeVerifier: string;
+      redirectUri: string;
+      nonce: string;
+      name?: string;
+    },
   ): Promise<SignedIn> {
-    return this.signedIn(`/api/auth/oauth/${provider}`, attempt, 'ProviderSignInController');
+    const { name, ...rest } = attempt;
+
+    return this.signedIn(
+      `/api/auth/oauth/${provider}`,
+      { ...rest, ...(name == null || name === '' ? {} : { name }) },
+      'ProviderSignInController',
+    );
   }
 
   /** Signed in as sign-in is: the same tokens, the same account. */
