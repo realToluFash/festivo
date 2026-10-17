@@ -12,6 +12,7 @@ import { Field } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { PasswordRule } from '../src/components/PasswordRule.tsx';
+import { SecondFactorStep } from '../src/components/SecondFactorStep.tsx';
 import { useFormChecks } from '../src/kit/formChecks.ts';
 import { landingFor } from '../src/landing.ts';
 import { tokens } from '../src/theme/tokens.ts';
@@ -22,6 +23,7 @@ type Status =
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
   | { kind: 'done'; email: string; account: Account }
+  | { kind: 'code'; email: string }
   | { kind: 'used' }
   | { kind: 'expired' }
   | { kind: 'invalid' };
@@ -46,8 +48,9 @@ export default function ResetPassword() {
 
     api
       .checkResetLink(token)
-      .then(({ email }) => {
-        if (live) setStatus({ kind: 'ready', email });
+      .then(({ email, twoFactor }) => {
+        // With two-factor on the code comes first, and nothing changes until it passes.
+        if (live) setStatus({ kind: twoFactor ? 'code' : 'ready', email });
       })
       .catch((error: unknown) => {
         if (live) setStatus({ kind: deadFrom(error) ?? 'invalid' });
@@ -118,6 +121,31 @@ export default function ResetPassword() {
           testID="recovery.signIn"
         />
       </AuthFrame>
+    );
+  }
+
+  if (status.kind === 'code') {
+    const email = status.email;
+
+    return (
+      <SecondFactorStep
+        intro={t('recovery.codeIntro', { email })}
+        recoveryIntro={t('recovery.codeRecoveryIntro')}
+        submitLabel={t('recovery.continueToPassword')}
+        pausedNote={t('recovery.nothingChanged')}
+        onVerify={async (factor) => {
+          try {
+            await api.passResetCode(token, factor);
+          } catch (error) {
+            const dead = deadFrom(error);
+            if (dead == null) throw error;
+            setStatus({ kind: dead });
+            return;
+          }
+          setStatus({ kind: 'ready', email });
+        }}
+        onExpired={() => setStatus({ kind: 'expired' })}
+      />
     );
   }
 

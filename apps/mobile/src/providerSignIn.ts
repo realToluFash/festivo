@@ -1,6 +1,6 @@
 import {
   type Provider,
-  type SignedIn,
+  type SignInOutcome,
   ProviderCancelled,
   ProviderFailed,
   authorizationUrl,
@@ -35,14 +35,14 @@ async function sha256(value: string): Promise<Uint8Array> {
   );
 }
 
-function remember(provider: Provider, signedIn: SignedIn): SignedIn {
-  linkedJustNow = signedIn.linked ? PROVIDER_NAMES[provider] : null;
+function remember(provider: Provider, outcome: SignInOutcome): SignInOutcome {
+  linkedJustNow = outcome.linked ? PROVIDER_NAMES[provider] : null;
 
-  return signedIn;
+  return outcome;
 }
 
 /** The system browser with the code flow and PKCE, the code redeemed here as a native client may. */
-async function signInInBrowser(provider: Provider): Promise<SignedIn> {
+async function signInInBrowser(provider: Provider): Promise<SignInOutcome> {
   const redirectUri = `soirely://oauth/${provider}`;
   const state = random();
   const nonce = random();
@@ -71,7 +71,7 @@ async function signInInBrowser(provider: Provider): Promise<SignedIn> {
 }
 
 /** Apple's own sheet: the nonce goes in as its hash, and the name comes back on the first time only. */
-async function signInWithAppleSheet(): Promise<SignedIn> {
+async function signInWithAppleSheet(): Promise<SignInOutcome> {
   const nonce = random();
 
   let credential;
@@ -99,7 +99,7 @@ async function signInWithAppleSheet(): Promise<SignedIn> {
 }
 
 /** On iOS Apple is the system sheet, as App Store review expects; elsewhere both run in the browser. */
-export async function signInWithProvider(provider: Provider): Promise<SignedIn> {
+export async function signInWithProvider(provider: Provider): Promise<SignInOutcome> {
   if (provider === 'apple' && Platform.OS === 'ios' && (await isAvailableAsync())) {
     return signInWithAppleSheet();
   }

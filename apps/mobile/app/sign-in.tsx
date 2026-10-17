@@ -1,4 +1,4 @@
-import { ApiError, awaiting } from '@soirely/api-client';
+import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,7 +15,7 @@ import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
-import { landingFor } from '../src/landing.ts';
+import { nextAfterSignIn } from '../src/challenge.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
 
 type Status =
@@ -45,9 +45,7 @@ export default function SignIn() {
     setStatus({ kind: 'signingIn' });
 
     try {
-      const { account } = await api.signIn(email, password);
-
-      router.replace(landingFor(awaiting(account)));
+      router.replace(nextAfterSignIn(await api.signIn(email, password)));
     } catch (error) {
       setStatus(refusalFrom(error));
     }

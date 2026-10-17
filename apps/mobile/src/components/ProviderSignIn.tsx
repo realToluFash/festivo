@@ -1,4 +1,4 @@
-import { type Provider, ProviderCancelled, awaiting } from '@soirely/api-client';
+import { type Provider, ProviderCancelled } from '@soirely/api-client';
 import {
   AppleAuthenticationButton,
   AppleAuthenticationButtonStyle,
@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { PROVIDER_NAMES, signInWithProvider } from '../providerSignIn.ts';
-import { landingFor } from '../landing.ts';
+import { nextAfterSignIn } from '../challenge.ts';
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
@@ -57,8 +57,7 @@ export function ProviderButtons({
     setBusy(true);
 
     try {
-      const { account } = await signInWithProvider(provider);
-      router.replace(landingFor(awaiting(account)));
+      router.replace(nextAfterSignIn(await signInWithProvider(provider)));
     } catch (error) {
       // Closing the provider is not a failure, so it says nothing; anything else says it did not work.
       if (!(error instanceof ProviderCancelled)) onFailed(PROVIDER_NAMES[provider]);
