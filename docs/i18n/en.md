@@ -40,6 +40,41 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. Dates on screens follow the locale (CLDR), the owner's call (sc-87,
+  #1700).** `{{date}}` and every date a screen shows come from `Intl.DateTimeFormat` with the
+  reader's locale, in the event's time zone: en-GB "Tuesday 23 September", en-US "Tuesday,
+  Sep 23". Boards are drawn in en-US and say the format follows the locale. Never write a
+  date, or its order, into a string. Rejected: one house style for every locale.
+- **17 Oct 2026. Quotes: added, revised and corrected (sc-87, `Quote-*`).** Saved lines, each
+  one string with slots, never parts joined in code: "Quote added: {{vendor}}, {{amount}},
+  quoted on {{date}}."; "Quote revised: {{vendor}}, {{amount}}, quoted on {{date}}." with
+  "The earlier quote is kept under Show the earlier quote." under it; "Quote corrected:
+  {{vendor}}, quote {{reference}}." and, with no quote number, its own key "Quote corrected:
+  {{vendor}}." (never "no quote number" in the slot), with "The amount, the date quoted and the
+  schedule are unchanged." under it. Live announcements: "Quote added.", "Quote revised.",
+  "Quote corrected." Correct form intro: "Correct what this quote covers, its quote number or
+  its budget lines. No earlier version is kept. To change the amount or the date quoted,
+  revise the quote, which keeps this one as an earlier quote." "Quoted on", not the bare
+  "quoted {{date}}": es, fr and pt need the preposition anyway. The intro says what the form
+  does first, with no colon-led list, which reads badly in a screen reader.
+- **17 Oct 2026. Quote and payment refusals (sc-87, `Quote-*`, `Engagement-*`).** Revise with
+  the amount and the date quoted unchanged, on the form and as the server's detail under one
+  key: "Change the amount or the date quoted to revise this quote. To change anything else,
+  correct the quote instead." (it sends nothing, so not "was not saved"). "The date quoted
+  cannot be in the future. Choose today or an earlier date."; "The date due cannot be before
+  the quote from {{vendor}} on {{date}}. Choose that date or a later one." (sc-88's date-paid
+  shape); "{{line}} is already agreed in the quote from {{vendor}}, so this quote was not
+  saved. Untick it in that quote first.", and the row that cannot be ticked reads "Agreed in
+  the quote from {{vendor}}"; "That vendor is no longer one of this organisation's vendors,
+  so the quote was not saved." (never echoes a name, because a vendor id from another
+  organisation must not read back that vendor's name); "Quotes and payment schedules are
+  read-only on this organisation's plan, so nothing has changed." Form checks: "Choose the
+  vendor."; "Enter what the quote covers."; "Enter the date quoted."; "Enter what the
+  payment is for." ("the payment", not "it": the message is read away from its label);
+  "Enter the date due."; "Shorten what the quote covers to {{count}} characters or fewer.",
+  and the same for the quote number and "what the payment is for". The amount and currency
+  checks are sc-88's shared keys.
+
 - **17 Oct 2026. Adding a payment already made (sc-88, `AddPaid-*`).** Title "Add a payment
   already made", button "Add as paid", kept as drawn: the title says what the person did, the
   button what happens. Refusals: "Choose the vendor it was paid to."; "Enter what it was
