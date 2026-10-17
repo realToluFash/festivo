@@ -81,92 +81,95 @@ export function Security() {
 
       <TwoFactorCard email={session.email} onBusy={setSettingUp} />
 
-      <section className="card" aria-labelledby="devices-title" hidden={settingUp}>
-        {checking == null ? (
-          <>
-            <div className="card-heading">
-              <h2 id="devices-title">{t('devices.title')}</h2>
-              {devices.kind === 'ready' && (
-                <span className="card-count">
-                  {t('devices.count', { count: devices.sessions.length })}
-                </span>
-              )}
-            </div>
+      {/* Not rendered at all during setup: `.card` sets a display, which `hidden` cannot beat. */}
+      {!settingUp && (
+        <section className="card" aria-labelledby="devices-title">
+          {checking == null ? (
+            <>
+              <div className="card-heading">
+                <h2 id="devices-title">{t('devices.title')}</h2>
+                {devices.kind === 'ready' && (
+                  <span className="card-count">
+                    {t('devices.count', { count: devices.sessions.length })}
+                  </span>
+                )}
+              </div>
 
-            <p>{t('devices.intro')}</p>
+              <p>{t('devices.intro')}</p>
 
-            {ended != null && (
-              <div className="status-done" role="status">
-                <span className="mark mark-done" aria-hidden="true">
-                  ✓
-                </span>
-                {/* Two sentences rather than one interpolated into the other,
+              {ended != null && (
+                <div className="status-done" role="status">
+                  <span className="mark mark-done" aria-hidden="true">
+                    ✓
+                  </span>
+                  {/* Two sentences rather than one interpolated into the other,
                     so the delay reads identically wherever it appears and
                     sc-117 deletes it from one key. */}
-                <p>
-                  {t('devices.ended', { name: ended })} {t('devices.delay')}
-                </p>
-              </div>
-            )}
-
-            {endFailed && (
-              <div className="notice notice-broken" role="alert">
-                <span className="mark mark-broken" aria-hidden="true">
-                  ✕
-                </span>
-                <div className="notice-body">
-                  <p className="notice-title">{t('devices.endFailedTitle')}</p>
-                  <p>{t('devices.endFailedBody')}</p>
+                  <p>
+                    {t('devices.ended', { name: ended })} {t('devices.delay')}
+                  </p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {devices.kind === 'loading' && <Pending />}
-
-            {devices.kind === 'failed' && (
-              <div className="notice notice-broken" role="alert">
-                <span className="mark mark-broken" aria-hidden="true">
-                  ✕
-                </span>
-                <div className="notice-body">
-                  <p className="notice-title">{t('devices.failedTitle')}</p>
-                  <p>{t('devices.failedBody')}</p>
+              {endFailed && (
+                <div className="notice notice-broken" role="alert">
+                  <span className="mark mark-broken" aria-hidden="true">
+                    ✕
+                  </span>
+                  <div className="notice-body">
+                    <p className="notice-title">{t('devices.endFailedTitle')}</p>
+                    <p>{t('devices.endFailedBody')}</p>
+                  </div>
                 </div>
-                <button
-                  className="button"
-                  type="button"
-                  onClick={() => {
-                    setDevices({ kind: 'loading' });
-                    setAttempt((n) => n + 1);
-                  }}
-                >
-                  {t('error.retry')}
-                </button>
-              </div>
-            )}
+              )}
 
-            {devices.kind === 'ready' && (
-              <ul className="device-list" aria-label={t('devices.listLabel')}>
-                {thisDeviceFirst(devices.sessions, currentSessionId()).map((device) => (
-                  <Row
-                    key={device.id}
-                    device={device}
-                    here={device.id === currentSessionId()}
-                    onEndHere={() => void endHere()}
-                    onCheck={() => setChecking(device)}
-                  />
-                ))}
-              </ul>
-            )}
-          </>
-        ) : (
-          <Check
-            device={checking}
-            onEnd={() => void end(checking)}
-            onKeep={() => setChecking(null)}
-          />
-        )}
-      </section>
+              {devices.kind === 'loading' && <Pending />}
+
+              {devices.kind === 'failed' && (
+                <div className="notice notice-broken" role="alert">
+                  <span className="mark mark-broken" aria-hidden="true">
+                    ✕
+                  </span>
+                  <div className="notice-body">
+                    <p className="notice-title">{t('devices.failedTitle')}</p>
+                    <p>{t('devices.failedBody')}</p>
+                  </div>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setDevices({ kind: 'loading' });
+                      setAttempt((n) => n + 1);
+                    }}
+                  >
+                    {t('error.retry')}
+                  </button>
+                </div>
+              )}
+
+              {devices.kind === 'ready' && (
+                <ul className="device-list" aria-label={t('devices.listLabel')}>
+                  {thisDeviceFirst(devices.sessions, currentSessionId()).map((device) => (
+                    <Row
+                      key={device.id}
+                      device={device}
+                      here={device.id === currentSessionId()}
+                      onEndHere={() => void endHere()}
+                      onCheck={() => setChecking(device)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : (
+            <Check
+              device={checking}
+              onEnd={() => void end(checking)}
+              onKeep={() => setChecking(null)}
+            />
+          )}
+        </section>
+      )}
     </div>
   );
 }

@@ -316,6 +316,27 @@ describe('the devices signed in to an account', () => {
     await waitFor(() => expect(screen.getByRole('status')).toBeDefined());
     expect(document.body.textContent).not.toMatch(/immediate/i);
   });
+
+  it('takes the devices card off the page while two-factor is being set up', async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/two-factor/enrol': () =>
+        json({
+          secret: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
+          otpauthUri: 'otpauth://totp/Soirely:folake@ire.events?secret=JBSW&issuer=Soirely',
+          qrSvg: '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+        }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on two-factor' }));
+    await screen.findByRole('heading', { name: 'Turn on two-factor authentication' });
+
+    // Absent, not merely hidden: a `.card` sets its own display, which beats `hidden`.
+    await waitFor(() => expect(document.getElementById('devices-title')).toBeNull());
+  });
 });
 
 function endOf(name: string): HTMLElement {
