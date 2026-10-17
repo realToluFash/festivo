@@ -106,6 +106,7 @@ describe('a few details', () => {
 
     fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
     expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('GH');
+    expect(screen.queryByText('Choose a country.')).toBeNull();
   });
 
   it('does not ask an invited account for an organisation', () => {

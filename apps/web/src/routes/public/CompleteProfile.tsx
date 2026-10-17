@@ -180,8 +180,10 @@ function Details({
     setErrors((previous) => {
       const next = { ...previous };
       delete next[field];
-      // A number checked for one country says nothing about another.
-      if (field === 'phoneCountryCode') delete next.phoneNumber;
+      // A number checked for one country says nothing about another, whether picked or followed.
+      if (field === 'phoneCountryCode' || (field === 'countryCode' && !phonePicked)) {
+        delete next.phoneNumber;
+      }
 
       return next;
     });
@@ -200,9 +202,7 @@ function Details({
       checked.countryCode = t('forms.countryBlank');
     }
     // Optional: an empty field is no phone, so only a typed number is checked.
-    if (values.phoneNumber.trim() !== '' && values.phoneCountryCode === '') {
-      checked.phoneNumber = t('forms.countryBlank');
-    } else if (values.phoneNumber.trim() !== '') {
+    if (values.phoneNumber.trim() !== '') {
       const problem = phoneProblemMessage(
         phoneLengthProblem(values.phoneNumber, values.phoneCountryCode),
         values.phoneCountryCode,

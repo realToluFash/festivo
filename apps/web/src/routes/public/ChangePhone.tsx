@@ -92,10 +92,7 @@ function NumberForm({
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    const problem =
-      country === ''
-        ? t('forms.countryBlank')
-        : phoneProblemMessage(phoneLengthProblem(number, country), country, t);
+    const problem = phoneProblemMessage(phoneLengthProblem(number, country), country, t);
 
     if (problem != null) {
       setError(problem);
