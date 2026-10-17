@@ -47,6 +47,9 @@ replies to the ones you asked. Resolve those, then pick the work below.
 
 Say which story you took and why it was next. If several are waiting, name them.
 
+**A story labelled `translation` is never yours**, in any state. It belongs to the linguists
+(`/soirely-linguist`), so skip it when picking.
+
 **Start every new piece of work from the latest `main`.** Fetch first, then branch from
 the remote, not from a local `main` that may be behind, and never from another feature
 branch:
@@ -100,20 +103,20 @@ that introduced the fault — `making-commits` has the rule and the trap. If it 
 
 Load the ones the story touches. They carry the conventions; this file does not repeat them.
 
-| Touching                            | Read                                                            |
-| ----------------------------------- | --------------------------------------------------------------- |
-| Anything across more than one layer | **cross-stack-change** — the order to build in, and one PR      |
-| `services/api` PHP                  | **writing-php**, **code-structure**, **symfony-api**            |
-| A Doctrine entity or a migration    | **writing-migrations**, and the API suite after it              |
-| API tests                           | **writing-tests**                                               |
-| A screen on either client           | **screen-from-design**, and the story's artboards               |
-| `apps/mobile`                       | **react-native-best-practices**                                 |
-| Any user-facing string              | **locale-parity** — four locales, in the same change            |
-| Naming anything                     | **name-things**                                                 |
-| Comments                            | **code-comments**, and `npm run lint:comments` before you stage |
-| Committing                          | **making-commits**                                              |
-| Opening the pull request            | **create-pr**                                                   |
-| Red CI                              | **fix-pr-checks**                                               |
+| Touching                            | Read                                                             |
+| ----------------------------------- | ---------------------------------------------------------------- |
+| Anything across more than one layer | **cross-stack-change** — the order to build in, and one PR       |
+| `services/api` PHP                  | **writing-php**, **code-structure**, **symfony-api**             |
+| A Doctrine entity or a migration    | **writing-migrations**, and the API suite after it               |
+| API tests                           | **writing-tests**                                                |
+| A screen on either client           | **screen-from-design**, and the story's artboards                |
+| `apps/mobile`                       | **react-native-best-practices**                                  |
+| Any user-facing string              | **locale-parity** — English in all four, the linguists translate |
+| Naming anything                     | **name-things**                                                  |
+| Comments                            | **code-comments**, and `npm run lint:comments` before you stage  |
+| Committing                          | **making-commits**                                               |
+| Opening the pull request            | **create-pr**                                                    |
+| Red CI                              | **fix-pr-checks**                                                |
 
 ## 6. The checks, before you hand anything over
 
