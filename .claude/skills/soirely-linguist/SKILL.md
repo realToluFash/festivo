@@ -204,8 +204,12 @@ by the same steps, and run the same check before moving it back to `Ready For QA
   language, and whether the artboards' English is the copy or a placeholder.
 - **QA `[qa]`**: what to test, and the findings. QA's screenshots in your locale are the
   best evidence of a string that does not fit.
-- **Developer `[dev]`**: a missing key, a stitched-together sentence, a missing plural or
-  slot, a date in a string, a literal in code. You never fix those yourself.
+- **Developer `[dev]` or `[dev2]`**: a missing key, a stitched-together sentence, a missing
+  plural or slot, a date in a string, a literal in code. You never fix those yourself.
+  Wherever this skill says `[dev]`, tag the developer who built the string: `[dev2]` when the
+  feature story carries the `dev2` label, `[dev]` when it carries `dev1` or no label. A
+  translation ticket carries neither, so a bare `[dev]` on one reaches developer 1 whoever
+  built the feature. Look up the feature story under **Covers** and use its label.
 - **Business manager `[bm]`**: the cost of an SMS that grew a segment, and a plan or price name.
 - **Creative director `[cd]`**: wording that an idea depends on.
 - **The other linguists**: a shared term, through the `[en]` editor.
