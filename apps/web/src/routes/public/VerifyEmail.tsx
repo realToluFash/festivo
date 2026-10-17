@@ -1,6 +1,6 @@
-import { ApiError } from '@soirely/api-client';
+import { type Account, ApiError, type PendingRegistration, awaiting } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown } from '@soirely/domain';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
@@ -8,7 +8,15 @@ import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
-import { forgetSession, refreshAccount, restoreSession, useSessionState } from '../../session.ts';
+import { dropRegistration, heldRegistration } from '../../pendingRegistration.ts';
+import {
+  adoptAccount,
+  forgetSession,
+  landingFor,
+  refreshAccount,
+  restoreSession,
+  useSessionState,
+} from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 
@@ -21,11 +29,100 @@ type Status =
   | { kind: 'failed' }
   | { kind: 'verified' };
 
+/** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export function VerifyEmail() {
-  const { t } = useTranslation();
+  const [pending] = useState(heldRegistration);
+
+  return pending == null ? <ForSession /> : <ForRegistration pending={pending} />;
+}
+
+function ForRegistration({ pending }: { pending: PendingRegistration }) {
+  const navigate = useNavigate();
+  const [account, setAccount] = useState<Account | null>(null);
+
+  return (
+    <CodeScreen
+      address={pending.email}
+      alreadyVerified={false}
+      cooldown={() => api.registrationCooldown(pending.registration)}
+      verify={async (code) => {
+        const signedIn = await api.confirmRegistration(pending.registration, code);
+        dropRegistration();
+        await adoptAccount(signedIn.account);
+        setAccount(signedIn.account);
+      }}
+      resend={() => api.resendRegistrationCode(pending.registration)}
+      onExpired={() => {
+        dropRegistration();
+        navigate('/register', { replace: true });
+      }}
+      carryOn={() => {
+        if (account != null) navigate(landingFor(awaiting(account)), { replace: true });
+      }}
+      wrongAddress={() => {
+        dropRegistration();
+        navigate('/register');
+      }}
+    />
+  );
+}
+
+function ForSession() {
   const navigate = useNavigate();
   const state = useSessionState();
 
+  useEffect(() => {
+    void restoreSession();
+  }, []);
+
+  if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
+  if (state.status === 'unreachable') return <Unreachable />;
+  if (state.status !== 'signedIn') return <Pending />;
+
+  return (
+    <CodeScreen
+      address={state.session.email}
+      alreadyVerified={state.session.verified}
+      cooldown={() => api.verificationCooldown()}
+      verify={async (code) => {
+        await api.verifyEmail(code);
+      }}
+      resend={() => api.resendVerification()}
+      onExpired={() => navigate('/sign-in', { replace: true })}
+      carryOn={async () => {
+        // The account is read again, so the next gate, or the product, opens rather than this screen.
+        await refreshAccount();
+        navigate('/app');
+      }}
+      wrongAddress={async () => {
+        await api.signOut();
+        forgetSession();
+        navigate('/sign-in');
+      }}
+    />
+  );
+}
+
+function CodeScreen({
+  address,
+  alreadyVerified,
+  cooldown: readCooldown,
+  verify,
+  resend: sendAgain,
+  onExpired,
+  carryOn,
+  wrongAddress,
+}: {
+  address: string;
+  alreadyVerified: boolean;
+  cooldown: () => Promise<number>;
+  verify: (code: string) => Promise<void>;
+  resend: () => Promise<number>;
+  onExpired: () => void;
+  carryOn: () => void | Promise<void>;
+  wrongAddress: () => void | Promise<void>;
+}) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const checks = useFormChecks(
@@ -40,20 +137,17 @@ export function VerifyEmail() {
     () => document.getElementById('code')?.focus(),
   );
 
-  useEffect(() => {
-    void restoreSession();
-  }, []);
-
-  const unverified = state.status === 'signedIn' && !state.session.verified;
+  // Read once, when the screen opens: the source is fixed for the screen's life.
+  const firstCooldown = useRef(readCooldown);
 
   useEffect(() => {
-    if (!unverified) return;
+    if (alreadyVerified) return;
 
     let live = true;
 
     // A failed read leaves the button enabled; a press then learns the time from the 429.
-    api
-      .verificationCooldown()
+    firstCooldown
+      .current()
       .then((seconds) => {
         if (live) setCooldown(seconds);
       })
@@ -62,7 +156,7 @@ export function VerifyEmail() {
     return () => {
       live = false;
     };
-  }, [unverified]);
+  }, [alreadyVerified]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -71,12 +165,6 @@ export function VerifyEmail() {
 
     return () => clearTimeout(tick);
   }, [cooldown]);
-
-  if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable />;
-  if (state.status !== 'signedIn') return <Pending />;
-
-  const address = state.session.email;
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -91,20 +179,30 @@ export function VerifyEmail() {
     setStatus({ kind: 'verifying' });
 
     try {
-      await api.verifyEmail(code);
+      await verify(code);
       setStatus({ kind: 'verified' });
     } catch (error) {
+      if (error instanceof ApiError && error.is('registration_expired')) {
+        onExpired();
+        return;
+      }
+
       setStatus(refusalFrom(error));
     }
   }
 
   async function resend(): Promise<void> {
     try {
-      setCooldown(await api.resendVerification());
+      setCooldown(await sendAgain());
       setStatus({ kind: 'entering' });
     } catch (error) {
       const seconds =
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
+
+      if (error instanceof ApiError && error.is('registration_expired')) {
+        onExpired();
+        return;
+      }
 
       if (Number.isFinite(seconds) && seconds > 0) {
         setCooldown(seconds);
@@ -117,19 +215,7 @@ export function VerifyEmail() {
     }
   }
 
-  /** The account is read again, so the next gate, or the product, opens rather than this screen. */
-  async function carryOn(): Promise<void> {
-    await refreshAccount();
-    navigate('/app');
-  }
-
-  async function signOut(): Promise<void> {
-    await api.signOut();
-    forgetSession();
-    navigate('/sign-in');
-  }
-
-  const verified = status.kind === 'verified' || state.session.verified;
+  const verified = status.kind === 'verified' || alreadyVerified;
   const entering = ['entering', 'verifying', 'wrong', 'failed'].includes(status.kind);
 
   const codeError = checks.errors.code ?? (status.kind === 'wrong' ? t('verifyEmail.wrong') : null);
@@ -251,7 +337,7 @@ export function VerifyEmail() {
 
           <div className="auth-footnote">
             <span>{t('verifyEmail.wrongAddress')}</span>
-            <button className="link-button" type="button" onClick={() => void signOut()}>
+            <button className="link-button" type="button" onClick={() => void wrongAddress()}>
               {t('verifyEmail.signOut')}
             </button>
             <span>{t('verifyEmail.wrongAddressBody')}</span>

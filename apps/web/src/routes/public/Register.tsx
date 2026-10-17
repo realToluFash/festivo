@@ -1,4 +1,4 @@
-import { ApiError, awaiting } from '@soirely/api-client';
+import { ApiError } from '@soirely/api-client';
 import { formatTimeOfDay, lockLiftsAt, meetsPasswordLength } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +11,7 @@ import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
-import { adoptAccount, landingFor } from '../../session.ts';
+import { holdRegistration } from '../../pendingRegistration.ts';
 
 type Status =
   | { kind: 'ready' }
@@ -21,7 +21,7 @@ type Status =
   | { kind: 'failed' };
 
 /** A field's refusal: one of the two the design words, or the API's own translated message. */
-type FieldError = 'taken' | 'breached' | { message: string };
+type FieldError = 'breached' | { message: string };
 type FieldErrors = Partial<Record<'name' | 'email' | 'password', FieldError>>;
 
 export function Register() {
@@ -85,11 +85,9 @@ export function Register() {
     setStatus({ kind: 'submitting' });
 
     try {
-      const { account } = await api.register(values.email.trim(), values.name.trim(), password);
-
-      await adoptAccount(account);
-
-      navigate(landingFor(awaiting(account)), { replace: true });
+      // Every address gets this same answer, so where it goes next says nothing either.
+      holdRegistration(await api.register(values.email.trim(), values.name.trim(), password));
+      navigate('/verify-email');
     } catch (error) {
       setStatus(refusalFrom(error));
     }
@@ -212,29 +210,13 @@ function FieldRefusal({ id, error }: { id: string; error: FieldError }) {
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>
-      {error === 'taken' ? (
-        <div className="field-error-body">
-          <p>{t('register.taken')}</p>
-          <div className="field-error-actions">
-            <Link className="link-button" to="/sign-in">
-              {t('register.signIn')}
-            </Link>
-            <Link className="link-button" to="/forgot-password">
-              {t('register.resetPassword')}
-            </Link>
-          </div>
-        </div>
-      ) : (
-        <p>{error === 'breached' ? t('register.breached') : error.message}</p>
-      )}
+      <p>{error === 'breached' ? t('register.breached') : error.message}</p>
     </div>
   );
 }
 
 function refusalFrom(error: unknown): Status {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
-
-  if (error.is('email_taken')) return { kind: 'refused', fields: { email: 'taken' } };
 
   if (error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
