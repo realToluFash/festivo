@@ -211,6 +211,28 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
   });
 
+  it('says nobody can confirm it when the last approver left while the codes were out', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery': () =>
+        json(
+          { recovery: 'handle', state: { ...PROVING, supportAddress: 'support@soirely.com' } },
+          201,
+        ),
+      'POST /api/auth/two-factor/recovery/prove': () => problem('recovery_nobody_to_approve', 409),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter both codes' });
+    fireEvent.change(screen.getByLabelText('Code from the email'), { target: { value: '481920' } });
+    fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '305117' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to get back in' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Contact Soirely support' }),
+    ).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Email support@soirely.com' })).toBeDefined();
+    expect(sessionStorage.getItem('soirely.twoFactorRecovery')).toBeNull();
+  });
+
   it('sends nobody codes when nobody can answer', async () => {
     await atTheStart({
       'POST /api/auth/two-factor/recovery/opening': () => json({ ...OPENING, nobody: true }),

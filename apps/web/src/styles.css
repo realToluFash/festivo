@@ -1012,6 +1012,24 @@ h2 {
   color: var(--colorBrokenText);
 }
 
+.request-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  padding-bottom: var(--spaceMd);
+  border-bottom: var(--borderInset);
+}
+
+.request {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.request h3 {
+  margin: 0;
+}
+
 .request-card-row {
   display: flex;
   flex-direction: column;

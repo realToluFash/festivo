@@ -165,6 +165,10 @@ describe('Settings > General, a request to get back in', () => {
     settings();
 
     expect(await screen.findByText('Tope Bello')).toBeDefined();
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Requests to get back in' }),
+    ).toBeDefined();
+    expect(document.getElementById('requests')).not.toBeNull();
     expect(screen.getByText('Proved with a code to their email (no verified phone)')).toBeDefined();
     expect(
       screen.getByText(

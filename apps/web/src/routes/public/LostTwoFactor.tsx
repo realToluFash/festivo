@@ -28,7 +28,7 @@ type View =
   | { kind: 'loading' }
   | { kind: 'start'; opening: RecoveryOpening; limitedUntil: string | null; sending: boolean }
   | { kind: 'nobody'; supportAddress: string }
-  | { kind: 'request'; recovery: string; state: RecoveryState; supportAddress: string }
+  | { kind: 'request'; recovery: string; state: RecoveryState }
   | { kind: 'signIn' }
   | { kind: 'failed' };
 
@@ -42,12 +42,7 @@ export function LostTwoFactor() {
 
     if (held != null) {
       try {
-        return {
-          kind: 'request',
-          recovery: held,
-          state: await api.recoveryState(held),
-          supportAddress: '',
-        };
+        return { kind: 'request', recovery: held, state: await api.recoveryState(held) };
       } catch (refusal) {
         if (!(refusal instanceof ApiError && refusal.is('recovery_request_invalid')))
           return { kind: 'failed' };
@@ -63,7 +58,7 @@ export function LostTwoFactor() {
 
       if (opening.open != null) {
         holdRecovery(opening.open.recovery);
-        return { kind: 'request', ...opening.open, supportAddress: opening.supportAddress };
+        return { kind: 'request', ...opening.open };
       }
 
       return opening.nobody
@@ -103,7 +98,7 @@ export function LostTwoFactor() {
     try {
       const started = await api.startRecovery(challenge);
       holdRecovery(started.recovery);
-      setView({ kind: 'request', ...started, supportAddress: opening.supportAddress });
+      setView({ kind: 'request', ...started });
     } catch (refusal) {
       if (refusal instanceof ApiError && refusal.is('too_many_attempts')) {
         const lifts = lockLiftsAt(Number(refusal.response?.headers.get('Retry-After')));
@@ -141,8 +136,11 @@ export function LostTwoFactor() {
         <Request
           recovery={view.recovery}
           state={view.state}
-          supportAddress={view.supportAddress}
           onState={(state) => setView({ ...view, state })}
+          onNobody={() => {
+            dropRecovery();
+            setView({ kind: 'nobody', supportAddress: view.state.supportAddress });
+          }}
           onAskAgain={() => {
             dropRecovery();
             reload();
@@ -305,16 +303,17 @@ function Failed({ onRetry }: { onRetry: () => void }) {
 function Request({
   recovery,
   state,
-  supportAddress,
   onState,
+  onNobody,
   onAskAgain,
 }: {
   recovery: string;
   state: RecoveryState;
-  supportAddress: string;
   onState: (state: RecoveryState) => void;
+  onNobody: () => void;
   onAskAgain: () => void;
 }) {
+  const supportAddress = state.supportAddress;
   const { t } = useTranslation();
   const navigate = useNavigate();
   const organisations = listed(state.organisations, 'conjunction');
@@ -336,7 +335,7 @@ function Request({
   }, [waiting, recovery, onState]);
 
   if (state.status === 'proving') {
-    return <Codes recovery={recovery} state={state} onState={onState} />;
+    return <Codes recovery={recovery} state={state} onState={onState} onNobody={onNobody} />;
   }
 
   if (waiting) {
@@ -448,10 +447,12 @@ function Codes({
   recovery,
   state,
   onState,
+  onNobody,
 }: {
   recovery: string;
   state: RecoveryState;
   onState: (state: RecoveryState) => void;
+  onNobody: () => void;
 }) {
   const { t } = useTranslation();
   const codes = state.codes;
@@ -540,6 +541,12 @@ function Codes({
       );
     } catch (refusal) {
       setAsking(false);
+
+      // The last approver left while the codes were out: the request is cancelled, nobody is told.
+      if (refusal instanceof ApiError && refusal.is('recovery_nobody_to_approve')) {
+        onNobody();
+        return;
+      }
 
       if (refusal instanceof ApiError && refusal.is('verification_code_invalid')) {
         const marked: Partial<Record<Field, string>> = {};

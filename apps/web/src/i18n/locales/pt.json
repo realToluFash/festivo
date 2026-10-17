@@ -568,6 +568,8 @@
     "notMeBroken": "Essa ligação não funciona. Abra-a de novo a partir do email mais recente sobre a sua conta."
   },
   "recoveryRequests": {
+    "cardTitle": "Pedidos para voltar a entrar",
+    "cardNote": "Só os proprietários e administradores veem isto. Um pedido sai daqui assim que alguém responde ou quando termina.",
     "mark": "À espera de resposta",
     "title": "Pediu para desativar a autenticação de dois fatores",
     "intro": "Perdeu a aplicação de autenticação e os códigos de recuperação, e a sessão continua terminada até alguém responder. Basta uma resposta de um proprietário ou administrador. Aprove apenas se tiver a certeza de que é essa pessoa, por exemplo ligando-lhe para um número que já tenha.",

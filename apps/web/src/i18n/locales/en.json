@@ -568,6 +568,8 @@
     "notMeBroken": "That link doesn’t work. Open it again from the newest email about your account."
   },
   "recoveryRequests": {
+    "cardTitle": "Requests to get back in",
+    "cardNote": "Only owners and admins see this. A request leaves it once somebody answers or it ends.",
     "mark": "Waiting for an answer",
     "title": "Asked to turn off two-factor",
     "intro": "They lost their authenticator and their recovery codes, and stay signed out until somebody answers. One answer from an owner or admin is enough. Approve only if you’re sure it’s them, for example by calling them on a number you already have.",

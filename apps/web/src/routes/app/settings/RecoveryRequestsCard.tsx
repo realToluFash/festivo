@@ -7,7 +7,7 @@ import { api } from '../../../api.ts';
 type Asking = { id: string; answer: 'approve' | 'turnDown' } | null;
 type Done = { name: string; answer: 'approve' | 'turnDown' } | null;
 
-/** Requests to get back in without the second factor (sc-509), here until Members exists. Absent when none wait. */
+/** "Requests to get back in" (sc-509), on General until Members exists: no card when none wait. */
 export function RecoveryRequestsCard() {
   const { t } = useTranslation();
   const [requests, setRequests] = useState<RecoveryRequest[]>([]);
@@ -76,107 +76,115 @@ export function RecoveryRequestsCard() {
         </div>
       )}
 
-      {requests.map((request) => {
-        const proved = request.own
-          ? request.provedPhone
-            ? t('recoveryRequests.provedBothOwn')
-            : t('recoveryRequests.provedEmailOwn')
-          : request.provedPhone
-            ? t('recoveryRequests.provedBoth')
-            : t('recoveryRequests.provedEmail');
-        const here = asking?.id === request.id ? asking.answer : null;
+      {requests.length > 0 && (
+        <section className="card settings-card" id="requests" aria-labelledby="requests-title">
+          <div className="request-card-head">
+            <h2 id="requests-title">{t('recoveryRequests.cardTitle')}</h2>
+            <p className="field-help">{t('recoveryRequests.cardNote')}</p>
+          </div>
+          {requests.map((request) => {
+            const proved = request.own
+              ? request.provedPhone
+                ? t('recoveryRequests.provedBothOwn')
+                : t('recoveryRequests.provedEmailOwn')
+              : request.provedPhone
+                ? t('recoveryRequests.provedBoth')
+                : t('recoveryRequests.provedEmail');
+            const here = asking?.id === request.id ? asking.answer : null;
 
-        return (
-          <section
-            className="card settings-card"
-            key={request.id}
-            aria-labelledby={`request-${request.id}`}
-          >
-            <p className="request-state request-state-attention">
-              <span className="mark mark-attention" aria-hidden="true">
-                …
-              </span>
-              <span>{t('recoveryRequests.mark')}</span>
-            </p>
-            <h2 id={`request-${request.id}`}>{t('recoveryRequests.title')}</h2>
-            <p className="field-help">{t('recoveryRequests.intro')}</p>
+            return (
+              <article
+                className="request"
+                key={request.id}
+                aria-labelledby={`request-${request.id}`}
+              >
+                <p className="request-state request-state-attention">
+                  <span className="mark mark-attention" aria-hidden="true">
+                    …
+                  </span>
+                  <span>{t('recoveryRequests.mark')}</span>
+                </p>
+                <h3 id={`request-${request.id}`}>{t('recoveryRequests.title')}</h3>
+                <p className="field-help">{t('recoveryRequests.intro')}</p>
 
-            <div className="request-card-row">
-              <strong>
-                {request.own ? t('recoveryRequests.you', { name: request.name }) : request.name}
-              </strong>
-              <span className="field-help">{request.email}</span>
-              <span>{proved}</span>
-              <span className="field-help">
-                {t('recoveryRequests.when', { asked: request.asked, expires: request.expires })}
-              </span>
+                <div className="request-card-row">
+                  <strong>
+                    {request.own ? t('recoveryRequests.you', { name: request.name }) : request.name}
+                  </strong>
+                  <span className="field-help">{request.email}</span>
+                  <span>{proved}</span>
+                  <span className="field-help">
+                    {t('recoveryRequests.when', { asked: request.asked, expires: request.expires })}
+                  </span>
 
-              {request.own ? (
-                <div className="notice notice-quiet">
-                  <p>
-                    {t('recoveryRequests.own', {
-                      organisations: new Intl.ListFormat(undefined, { type: 'conjunction' }).format(
-                        request.organisations,
-                      ),
-                    })}
-                  </p>
-                </div>
-              ) : here == null ? (
-                <div className="actions">
-                  <button
-                    className="button button-primary"
-                    type="button"
-                    onClick={() => setAsking({ id: request.id, answer: 'approve' })}
-                  >
-                    {t('recoveryRequests.approve')}
-                  </button>
-                  <button
-                    className="button button-danger"
-                    type="button"
-                    onClick={() => setAsking({ id: request.id, answer: 'turnDown' })}
-                  >
-                    {t('recoveryRequests.turnDown')}
-                  </button>
-                </div>
-              ) : (
-                <div className="notice notice-quiet">
-                  <div className="notice-body">
-                    <h3 ref={panel} tabIndex={-1} className="notice-heading">
-                      {here === 'approve'
-                        ? t('recoveryRequests.approveTitle', { name: request.name })
-                        : t('recoveryRequests.turnDownTitle', { name: request.name })}
-                    </h3>
-                    <p>
-                      {here === 'approve'
-                        ? t('recoveryRequests.approveBody')
-                        : t('recoveryRequests.turnDownBody')}
-                    </p>
-                    {problem != null && <p role="alert">{problem}</p>}
+                  {request.own ? (
+                    <div className="notice notice-quiet">
+                      <p>
+                        {t('recoveryRequests.own', {
+                          organisations: new Intl.ListFormat(undefined, {
+                            type: 'conjunction',
+                          }).format(request.organisations),
+                        })}
+                      </p>
+                    </div>
+                  ) : here == null ? (
                     <div className="actions">
                       <button
-                        className={
-                          here === 'approve' ? 'button button-primary' : 'button button-dark'
-                        }
+                        className="button button-primary"
                         type="button"
-                        onClick={() => void answer(request, here)}
+                        onClick={() => setAsking({ id: request.id, answer: 'approve' })}
                       >
-                        {here === 'approve'
-                          ? t('recoveryRequests.approveConfirm')
-                          : t('recoveryRequests.turnDownConfirm')}
+                        {t('recoveryRequests.approve')}
                       </button>
-                      <button className="button" type="button" onClick={() => setAsking(null)}>
-                        {here === 'approve'
-                          ? t('recoveryRequests.cancel')
-                          : t('recoveryRequests.keep')}
+                      <button
+                        className="button button-danger"
+                        type="button"
+                        onClick={() => setAsking({ id: request.id, answer: 'turnDown' })}
+                      >
+                        {t('recoveryRequests.turnDown')}
                       </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="notice notice-quiet">
+                      <div className="notice-body">
+                        <h4 ref={panel} tabIndex={-1} className="notice-heading">
+                          {here === 'approve'
+                            ? t('recoveryRequests.approveTitle', { name: request.name })
+                            : t('recoveryRequests.turnDownTitle', { name: request.name })}
+                        </h4>
+                        <p>
+                          {here === 'approve'
+                            ? t('recoveryRequests.approveBody')
+                            : t('recoveryRequests.turnDownBody')}
+                        </p>
+                        {problem != null && <p role="alert">{problem}</p>}
+                        <div className="actions">
+                          <button
+                            className={
+                              here === 'approve' ? 'button button-primary' : 'button button-dark'
+                            }
+                            type="button"
+                            onClick={() => void answer(request, here)}
+                          >
+                            {here === 'approve'
+                              ? t('recoveryRequests.approveConfirm')
+                              : t('recoveryRequests.turnDownConfirm')}
+                          </button>
+                          <button className="button" type="button" onClick={() => setAsking(null)}>
+                            {here === 'approve'
+                              ? t('recoveryRequests.cancel')
+                              : t('recoveryRequests.keep')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </section>
-        );
-      })}
+              </article>
+            );
+          })}
+        </section>
+      )}
     </>
   );
 }

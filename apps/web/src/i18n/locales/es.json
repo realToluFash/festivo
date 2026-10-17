@@ -568,6 +568,8 @@
     "notMeBroken": "Ese enlace no funciona. Ábralo de nuevo desde el correo más reciente sobre su cuenta."
   },
   "recoveryRequests": {
+    "cardTitle": "Solicitudes para volver a entrar",
+    "cardNote": "Solo lo ven los propietarios y administradores. Una solicitud desaparece en cuanto alguien responde o termina.",
     "mark": "Esperando una respuesta",
     "title": "Pide desactivar la verificación en dos pasos",
     "intro": "Ha perdido su aplicación de autenticación y sus códigos de recuperación, y su sesión sigue cerrada hasta que alguien responda. Basta con una respuesta de un propietario o administrador. Apruebe solo si está seguro de que es esa persona, por ejemplo llamándola a un número que ya tenga.",
