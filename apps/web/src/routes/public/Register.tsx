@@ -1,10 +1,5 @@
 import { ApiError, awaiting } from '@soirely/api-client';
-import {
-  formatTimeOfDay,
-  lockLiftsAt,
-  meetsPasswordLength,
-  PASSWORD_MINIMUM_LENGTH,
-} from '@soirely/domain';
+import { formatTimeOfDay, lockLiftsAt, meetsPasswordLength } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
@@ -12,6 +7,7 @@ import { Link, useNavigate } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
+import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
@@ -189,24 +185,7 @@ export function Register() {
           {fields.password && <FieldRefusal id="password-error" error={fields.password} />}
         </div>
 
-        <div className="rule-inset" id="password-rule">
-          <p className="rule-heading">{t('register.ruleHeading')}</p>
-          <div className="rule">
-            <span
-              className={lengthMet ? 'rule-mark rule-mark-met' : 'rule-mark'}
-              aria-hidden="true"
-            >
-              {lengthMet ? '✓' : ''}
-            </span>
-            <span className="rule-text">
-              {t('register.ruleLength', { count: PASSWORD_MINIMUM_LENGTH })}
-            </span>
-            <span className={lengthMet ? 'rule-state rule-state-met' : 'rule-state'}>
-              {lengthMet ? t('register.ruleMet') : t('register.ruleNotYet')}
-            </span>
-          </div>
-          <p className="rule-note">{t('register.ruleNote')}</p>
-        </div>
+        <PasswordRule met={lengthMet} id="password-rule" />
 
         <button className="button button-primary" type="submit" disabled={locked} aria-busy={busy}>
           {busy ? t('register.submitting') : t('register.submit')}
@@ -240,8 +219,7 @@ function FieldRefusal({ id, error }: { id: string; error: FieldError }) {
             <Link className="link-button" to="/sign-in">
               {t('register.signIn')}
             </Link>
-            {/* Recovery is sc-61; until it exists this opens sign-in, where it will start. */}
-            <Link className="link-button" to="/sign-in">
+            <Link className="link-button" to="/forgot-password">
               {t('register.resetPassword')}
             </Link>
           </div>
