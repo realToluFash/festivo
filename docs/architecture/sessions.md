@@ -284,6 +284,11 @@ phone's button: every session but this device's ends at once.
 - **The proof comes first**, the same five-minute proof that linking a provider takes: the
   password or Google or Apple, then the code with two-factor on, an app code or an unused
   recovery code, which is spent. Without one it is `proof_required` and nothing ends.
+- **A refused code keeps the first factor.** With two-factor on, a passed password or
+  provider sign-in is held as a proof awaiting its code, and the code's refusal carries it
+  as `pendingProof`. The retry sends `{pendingProof, code}` in place of the first factor,
+  because a provider's authorization code is single-use (RFC 6749 §4.1.2). It stands for no
+  change itself, lapses with the five minutes, and is spent once the code passes.
 - **Then the limit**: `sign_out_elsewhere_account`, five proved calls per account in a fixed
   fifteen-minute window. Past it, `429 too_many_attempts` with `Retry-After` and the time
   in the detail, and nothing ends. The proof is checked before the budget is spent, so

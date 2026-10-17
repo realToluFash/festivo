@@ -23,6 +23,8 @@ export interface Problem {
   violations?: Violation[];
   /** On a 429 that names its instant for the reader, such as "Sunday, Oct 18 at 17:09 WAT". */
   retryAt?: string;
+  /** On a refused two-factor code after the first factor passed: send it back with the next code instead. */
+  pendingProof?: string;
 }
 
 /**

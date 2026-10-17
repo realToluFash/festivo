@@ -47,7 +47,8 @@ final readonly class RecentProof
     }
 
     /**
-     * The password or a linked provider's sign-in, then the two-factor code when it is on.
+     * The password or a linked provider's sign-in, then the two-factor code when it is on. A refused code carries
+     * `pendingProof`, which stands in for the first factor on the next try: a provider's sign-in is single-use.
      *
      * @param array{0: IdentityProvider, 1: ProviderClaims}|null $provider
      *
@@ -60,7 +61,58 @@ final readonly class RecentProof
         ?array $provider,
         #[SensitiveParameter]
         ?string $code,
+        #[SensitiveParameter]
+        ?string $pendingProof = null,
     ): array {
+        $pending = null === $pendingProof || '' === $pendingProof ? null : $this->awaitingCode($user, $pendingProof);
+
+        if (null === $pending) {
+            $this->passFirstFactor($user, $password, $provider);
+        }
+
+        $factor = $this->twoFactorFactorRepository->findActiveFor($user);
+
+        if (null !== $factor) {
+            [$plain, $held] = $pending ?? $this->issue($user, awaitingCode: true);
+
+            try {
+                if (null === $code || '' === Str\trim($code)) {
+                    throw new ApiException(ErrorCode::TwoFactorRequired, 'Enter a code from your app, or a recovery code.');
+                }
+
+                $this->secondFactorCheck->passEither($factor, $code);
+            } catch (ApiException $refusal) {
+                throw new ApiException(
+                    $refusal->errorCode,
+                    $refusal->getMessage(),
+                    $refusal->violations,
+                    $refusal,
+                    $refusal->headers,
+                    [...$refusal->members, 'pendingProof' => $plain],
+                );
+            }
+
+            $this->entityManager->remove($held);
+        }
+
+        [$plain, $proof] = $this->issue($user);
+
+        return [$plain, $proof->getExpiresAt()];
+    }
+
+    /** Refused unless this client proved it within the five minutes; it may be used for several changes in that time. */
+    public function require(User $user, #[SensitiveParameter] ?string $proof): void
+    {
+        $held = null === $proof || '' === $proof ? null : $this->signInProofRepository->findOneByHash(TokenIssuer::hash($proof));
+
+        if (null === $held || !$held->standsFor($user, $this->clock->now())) {
+            throw new ApiException(ErrorCode::ProofRequired, 'Confirm it is you first.');
+        }
+    }
+
+    /** @param array{0: IdentityProvider, 1: ProviderClaims}|null $provider */
+    private function passFirstFactor(User $user, #[SensitiveParameter] ?string $password, ?array $provider): void
+    {
         if (null !== $provider) {
             $this->passProvider($user, ...$provider);
         } elseif (null !== $password && null !== $user->getPassword()) {
@@ -71,28 +123,6 @@ final readonly class RecentProof
                 'message' => 'Enter your password, or confirm with Google or Apple.',
                 'code' => ErrorCode::ValidationFailed->value,
             ]]);
-        }
-
-        $factor = $this->twoFactorFactorRepository->findActiveFor($user);
-
-        if (null !== $factor) {
-            if (null === $code || '' === Str\trim($code)) {
-                throw new ApiException(ErrorCode::TwoFactorRequired, 'Enter a code from your app, or a recovery code.');
-            }
-
-            $this->secondFactorCheck->passEither($factor, $code);
-        }
-
-        return $this->issue($user);
-    }
-
-    /** Refused unless this client proved it within the five minutes; it may be used for several changes in that time. */
-    public function require(User $user, #[SensitiveParameter] ?string $proof): void
-    {
-        $held = null === $proof || '' === $proof ? null : $this->signInProofRepository->findOneByHash(TokenIssuer::hash($proof));
-
-        if (null === $held || !$held->standsFor($user, $this->clock->now())) {
-            throw new ApiException(ErrorCode::ProofRequired, 'Confirm it is you first.');
         }
     }
 
@@ -123,8 +153,8 @@ final readonly class RecentProof
         }
     }
 
-    /** @return array{0: string, 1: DateTimeImmutable} */
-    private function issue(User $user): array
+    /** @return array{0: string, 1: SignInProof} */
+    private function issue(User $user, bool $awaitingCode = false): array
     {
         $now = $this->clock->now();
         $this->entityManager
@@ -134,10 +164,22 @@ final readonly class RecentProof
             ->execute();
 
         $plain = \bin2hex(SecureRandom\bytes(self::TOKEN_BYTES));
-        $proof = new SignInProof($user, TokenIssuer::hash($plain), $now);
+        $proof = new SignInProof($user, TokenIssuer::hash($plain), $now, $awaitingCode);
         $this->entityManager->persist($proof);
         $this->entityManager->flush();
 
-        return [$plain, $proof->getExpiresAt()];
+        return [$plain, $proof];
+    }
+
+    /** @return array{0: string, 1: SignInProof} */
+    private function awaitingCode(User $user, #[SensitiveParameter] string $plain): ?array
+    {
+        $held = $this->signInProofRepository->findOneByHash(TokenIssuer::hash($plain));
+
+        if (null === $held || !$held->awaitsCodeFor($user, $this->clock->now())) {
+            throw new ApiException(ErrorCode::ProofRequired, 'Confirm it is you first.');
+        }
+
+        return [$plain, $held];
     }
 }

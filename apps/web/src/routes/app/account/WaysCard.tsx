@@ -414,6 +414,8 @@ function Proving({
     message: string;
   } | null>(null);
   const [checking, setChecking] = useState(false);
+  // The API's kept proof after a refused code: Google's or Apple's sign-in is single-use (RFC 6749 §4.1.2).
+  const [kept, setKept] = useState<string | null>(null);
   // Turned on in the two-factor card since this page loaded: the API says so, and the field appears.
   const [codeAsked, setCodeAsked] = useState(twoFactorOn);
   const passwordInput = useRef<HTMLInputElement>(null);
@@ -443,9 +445,11 @@ function Proving({
 
     try {
       const proof = await api.prove(
-        returned != null && viaProvider != null
-          ? { provider: viaProvider, signIn: returned }
-          : { password },
+        kept != null
+          ? { pendingProof: kept }
+          : returned != null && viaProvider != null
+            ? { provider: viaProvider, signIn: returned }
+            : { password },
         second,
       );
       holdProof(proof);
@@ -460,7 +464,15 @@ function Proving({
         return;
       }
 
-      setRefusal(provingRefusal(error, t));
+      if (returned != null && error instanceof ApiError)
+        setKept(error.is('proof_required') ? null : (error.problem.pendingProof ?? kept));
+      setRefusal(
+        provingRefusal(
+          error,
+          t,
+          returned != null && viaProvider != null ? PROVIDER_NAMES[viaProvider] : null,
+        ),
+      );
     }
   }
 
@@ -677,9 +689,11 @@ function refused(error: unknown, provider: Provider): Notice {
   return { kind: 'failed' };
 }
 
+/** A provider's refusal is the trip's, said on the card, never on a password field it does not show. */
 function provingRefusal(
   error: unknown,
   t: TFunction,
+  providerName: string | null,
 ): { field: ProvingField | 'failed'; message: string } {
   if (error instanceof ApiError && error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
@@ -693,8 +707,10 @@ function provingRefusal(
     };
   }
 
-  if (error instanceof ApiError && error.is('invalid_credentials'))
-    return { field: 'password', message: t('waysCard.passwordWrong') };
+  if (error instanceof ApiError && (error.is('invalid_credentials') || error.is('proof_required')))
+    return providerName == null
+      ? { field: 'password', message: t('waysCard.passwordWrong') }
+      : { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
   if (
     error instanceof ApiError &&
     (error.is('two_factor_code_invalid') || error.is('recovery_code_used'))

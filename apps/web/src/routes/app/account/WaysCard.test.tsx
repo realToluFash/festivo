@@ -75,9 +75,9 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function problem(code: string, status: number): Response {
+function problem(code: string, status: number, members: Record<string, string> = {}): Response {
   return new Response(
-    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status }),
+    JSON.stringify({ type: `https://soirely.com/errors/${code}`, title: code, status, ...members }),
     { status, headers: { 'Content-Type': 'application/problem+json' } },
   );
 }
@@ -312,6 +312,42 @@ describe('linking a provider', () => {
         password: 'a decent passphrase',
         code: '123456',
       }),
+    );
+  });
+});
+
+describe('a wrong code after Google', () => {
+  it('retries with the kept proof, never sending Google’s single-use sign-in again', async () => {
+    signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
+    backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+    const answers = [
+      () => problem('two_factor_code_invalid', 422, { pendingProof: 'kept-1' }),
+      () => json({ proof: 'p', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+    ];
+    const sent = answering(
+      { 'POST /api/auth/proof': () => (answers.shift() ?? answers[0])!() },
+      true,
+    );
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+
+    open('/oauth/google');
+
+    fireEvent.change(await screen.findByLabelText('Code', {}, { timeout: 3000 }), {
+      target: { value: '000000' },
+    });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+    expect(
+      await screen.findByText('That code did not work. Check your app and try again.'),
+    ).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() =>
+      expect(sent.filter((s) => s.call === 'POST /api/auth/proof').map((s) => s.body)).toEqual([
+        expect.objectContaining({ provider: 'google', code: '000000' }),
+        { pendingProof: 'kept-1', code: '123456' },
+      ]),
     );
   });
 });

@@ -249,6 +249,45 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertIsString($body['proof'] ?? null, Json\encode($body));
     }
 
+    /** A provider's sign-in is single-use (RFC 6749 §4.1.2), so a mistyped code is retried against the kept one. */
+    #[Test]
+    public function aWrongCodeAfterGoogleIsRetriedWithoutGoingBack(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $refused = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', 'kemi@gmail.com')], 'code' => '000000']);
+        self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $refused['type']);
+        $pending = Type\string()->coerce($refused['pendingProof']);
+
+        $this->link(IdentityProvider::Apple, 'a-kemi', 'kemi@icloud.com', $pending);
+        self::assertSame(403, $this->statusCode(), 'it stands for nothing until the code passes');
+
+        $body = $this->call('POST', '/api/auth/proof', ['pendingProof' => $pending, 'code' => $this->codeNow()]);
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        $this->link(IdentityProvider::Apple, 'a-kemi', 'kemi@icloud.com', Type\string()->coerce($body['proof']));
+        self::assertSame(201, $this->statusCode());
+
+        $this->call('POST', '/api/auth/proof', ['pendingProof' => $pending, 'code' => $this->codeNow()]);
+        self::assertSame(ErrorCode::ProofRequired->type(), $this->last()['type'], 'spent once it passes');
+    }
+
+    #[Test]
+    public function aKeptSignInLapsesWithTheFiveMinutes(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $refused = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', 'kemi@gmail.com')]]);
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $refused['type']);
+
+        self::mockTime('+5 minutes');
+        $body = $this->call('POST', '/api/auth/proof', ['pendingProof' => $refused['pendingProof'], 'code' => $this->codeNow()]);
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::ProofRequired->type(), $body['type']);
+    }
+
     /** sc-58 and sc-59 untouched, and the session they start now says which provider started it. */
     #[Test]
     public function signingInWithAProviderRecordsItOnTheSession(): void
@@ -261,6 +300,14 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         $session = self::em()->find(RefreshToken::class, Uuid::fromString(Type\string()->coerce($body['sessionId'])));
         self::assertSame(IdentityProvider::Google, $session?->getSignedInWith());
+    }
+
+    private function twoFactorFor(User $user): void
+    {
+        $factor = new TwoFactorFactor($user, self::service(SecretBox::class)->seal(self::SECRET));
+        $factor->activate(new Clock()->now());
+        self::em()->persist($factor);
+        self::em()->flush();
     }
 
     private function provedByPassword(): string
