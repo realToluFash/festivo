@@ -998,7 +998,14 @@ describe("the account's time zone", () => {
     const zones = await client.timezones();
 
     expect(zones).toEqual([
-      { id: 'Africa/Lagos', city: 'Lagos', country: 'Nigeria', offset: '+01:00' },
+      {
+        id: 'Africa/Lagos',
+        city: 'Lagos',
+        ianaCity: 'Lagos',
+        formerNames: [],
+        country: 'Nigeria',
+        offset: '+01:00',
+      },
     ]);
     expect(headers).toEqual(['Africa/Lagos']);
   });

@@ -1,6 +1,10 @@
 export interface ZoneRow {
   id: string;
+  /** In the reader's language, from CLDR (sc-986); `ianaCity` is IANA's own spelling, which search also finds. */
   city: string;
+  ianaCity?: string;
+  /** tzdata's `backward` links to the zone, such as Calcutta for Kolkata. */
+  formerNames?: readonly string[];
   country: string;
   offset: string;
 }
@@ -26,6 +30,14 @@ function offsetQuery(
   return { sign: match[1]!, hours: match[2]!.padStart(2, '0'), minutes: match[3] ?? null };
 }
 
+function ownNameMatches(zone: ZoneRow, wanted: string): boolean {
+  return (
+    [zone.city, zone.ianaCity ?? '', zone.country, zone.id.replace(/_/g, ' ')].some((text) =>
+      folded(text).includes(wanted),
+    ) || folded(zoneLabel(zone)).startsWith(wanted)
+  );
+}
+
 /** An offset query matches by offset alone ("+5" the hour, "+5:30" exactly); text matches a label only from its start. */
 export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: string): Z[] {
   const wanted = folded(query);
@@ -40,19 +52,27 @@ export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: str
     );
   }
 
-  return zones.filter(
-    (zone) =>
-      [zone.city, zone.country, zone.id.replace(/_/g, ' ')].some((text) =>
-        folded(text).includes(wanted),
-      ) || folded(zoneLabel(zone)).startsWith(wanted),
-  );
+  return zones.filter((zone) => ownNameMatches(zone, wanted) || formerName(zone, query) != null);
 }
 
-/** The zone a typed text names exactly, by its label or its city, so a typed "Lagos" saves without a pick. */
+/** The former name a row was found by, to show as "was Calcutta"; null when its own name, country or offset matched. */
+export function formerName(zone: ZoneRow, query: string): string | null {
+  const wanted = folded(query);
+  if (wanted === '' || offsetQuery(wanted) !== null || ownNameMatches(zone, wanted)) return null;
+
+  return (zone.formerNames ?? []).find((name) => folded(name).includes(wanted)) ?? null;
+}
+
+/** The zone a typed text names exactly, by its label or either spelling of its city; never by a former name. */
 export function exactZone<Z extends ZoneRow>(zones: readonly Z[], typed: string): Z | null {
   const wanted = folded(typed);
 
   return (
-    zones.find((zone) => folded(zoneLabel(zone)) === wanted || folded(zone.city) === wanted) ?? null
+    zones.find(
+      (zone) =>
+        folded(zoneLabel(zone)) === wanted ||
+        folded(zone.city) === wanted ||
+        folded(zone.ianaCity ?? '') === wanted,
+    ) ?? null
   );
 }
