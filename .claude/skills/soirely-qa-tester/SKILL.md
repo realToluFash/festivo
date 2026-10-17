@@ -32,8 +32,8 @@ Two more, narrower:
 replies to the ones you asked. Resolve those, then pick the work below.
 
 `/soirely-qa-tester sc-55` tests that story. With no argument, **the queue is the
-`Ready For QA` state** — a developer puts a story there when the work is finished, and that
-is the handover:
+`Ready For QA` state** — the tech lead puts a story there once its pull request has passed
+review, and that is the handover:
 
 1. `stories-search` with `state: "Ready For QA"`. That is the queue.
    - **One story waiting** — take it and say which one you took.
@@ -353,8 +353,8 @@ The Standard workflow (`500000005`) today:
 | State            | Id          | Who moves it there                           |
 | ---------------- | ----------- | -------------------------------------------- |
 | In Progress      | `500000008` | the branch, when work starts                 |
-| In Review        | `500000009` | —                                            |
-| **Ready For QA** | `500000087` | **the developer, when the work is finished** |
+| In Review        | `500000009` | the developer, when the PR is open and green |
+| **Ready For QA** | `500000087` | **the tech lead, when review passes**        |
 | **Passsed QA**   | `500000084` | **you** (three s's — Shortcut's spelling)    |
 | **Failed QA**    | `500000083` | **you**                                      |
 | Done             | `500000010` | the user, after a merge. Never you.          |
