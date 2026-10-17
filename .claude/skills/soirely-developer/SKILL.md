@@ -202,8 +202,8 @@ gh run watch "$(gh run list --branch "$(git branch --show-current)" --limit 1 --
    resolves each one after checking the fix (section 9).
 4. **Move the story to `In Review`** (`500000009`), resolved by name, once the pull request
    is open and its checks are green. That is the handover to `/soirely-tech-lead`, who
-   reviews it and moves it on to `Ready For QA` for QA, or back to you with `[dev]`
-   findings on the pull request. See **create-pr**.
+   either passes it, leaving it in `In Review` for you to merge and move on (section 9),
+   or sends it back to you with `[dev]` findings on the pull request. See **create-pr**.
 5. **Report**: the story, the PR number, what you did not do, and every assumption you made
    where the AC was silent.
 
@@ -225,10 +225,10 @@ The lead (`/soirely-tech-lead`) reviews on the pull request. Every role posts as
 GitHub user, so the lead's summary is the review whose body opens with
 `## Review (from lead)`, and only its **last line** decides what happens next:
 
-| The lead's last line                              | What you do                                                                                                            |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `Back to In Progress: <n> blocking.`              | Answer each finding in its thread (section 7), fix, push, and hand it back to `In Review`. Do not resolve the threads. |
-| `Review passed at <sha>. Moving to Ready For QA.` | Merge, if every condition below holds.                                                                                 |
+| The lead's last line                      | What you do                                                                                                            |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `Back to In Progress: <n> blocking.`      | Answer each finding in its thread (section 7), fix, push, and hand it back to `In Review`. Do not resolve the threads. |
+| `Review passed at <sha>. Ready to merge.` | Merge, if every condition below holds, then move the story to `Ready For QA`.                                          |
 
 **Merge only when all of these hold**, and check each one rather than assuming it:
 
@@ -246,5 +246,8 @@ gh pr checks <n>
 gh pr merge <n> --merge
 ```
 
-After the merge, post `[qa] (from <your signature>)` on the story naming the merge commit, so QA tests
-what landed. Leave the story's state to the lead and QA, and never mark it Done.
+**Once it has merged, it is ready for QA, and handing it over is yours.** Move the story to
+`Ready For QA` (`500000087`, resolved by name) and post `[qa] (from <your signature>)` on it
+naming the merge commit, so QA tests what landed. Nobody else makes this move: a passed
+story you merge and leave in `In Review` is a story nobody tests. Never move it before the
+merge, and never mark it Done.

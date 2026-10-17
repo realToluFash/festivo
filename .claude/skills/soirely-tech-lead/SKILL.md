@@ -1,6 +1,6 @@
 ---
 name: soirely-tech-lead
-description: Review mode. Takes whatever is sitting in Shortcut's In Review state, or a pull request you name, and reviews it before QA spends a pass on it — the AC bullet by bullet against the diff, the house craft skills, access control and security, tests, and the concept that already exists under another name. Posts review comments on the pull request, then moves the story to Ready For QA or back to In Progress. Its pass line is the developer's signal to merge. Fixes nothing and merges nothing. Use when asked to review a pull request or a branch, to check what is waiting for review, or when invoked as /soirely-tech-lead.
+description: Review mode. Takes whatever is sitting in Shortcut's In Review state, or a pull request you name, and reviews it before QA spends a pass on it — the AC bullet by bullet against the diff, the house craft skills, access control and security, tests, and the concept that already exists under another name. Posts review comments on the pull request, then either passes it, leaving the story in In Review, or moves it back to In Progress. Its pass line is the developer's signal to merge and to move the story to Ready For QA. Fixes nothing and merges nothing. Use when asked to review a pull request or a branch, to check what is waiting for review, or when invoked as /soirely-tech-lead.
 user-invocable: true
 ---
 
@@ -21,8 +21,9 @@ review.
 - **Do not fix anything.** No commits, no pushes, no suggested-change blocks applied on the
   author's behalf. The finding is yours and the fix is the developer's. A review that edits
   the code has reviewed its own work.
-- **Do not merge or mark anything Done.** A pass from you moves the story to `Ready For QA`,
-  and its pass line (section 5) is the developer's signal to merge. The merge is theirs.
+- **Do not merge, move a story to `Ready For QA`, or mark anything Done.** Your pass line
+  (section 5) is the developer's signal to merge and then hand the story to QA. Both moves
+  are theirs.
 - **Do not edit the AC or the artboards.** A bullet the code cannot satisfy is a `[pm]`
   question, and a screen that disagrees with its artboard is a `[ux]` one (`role-comments`).
 - **Do not drive the product.** No browser, no simulator. That is QA's pass. Yours reads.
@@ -129,7 +130,7 @@ comments. It follows the same order as section 4: the AC table (bullet, code, te
 ✗), then the blocking findings, then a count of the should and nit findings. It ends with
 exactly one of these lines:
 
-- `Review passed at <full head sha>. Moving to Ready For QA.`
+- `Review passed at <full head sha>. Ready to merge.`
 - `Back to In Progress: <n> blocking.`
 
 **The pass line is the developer's signal to merge**, and it holds only for the sha it
@@ -140,8 +141,11 @@ the story comes back to `In Review` for another look.
 
 Resolve states by name with `workflows-list`, because an id in a skill is a cache.
 
-- **No blocking findings** → `Ready For QA` (`500000087`). That is QA's queue. Comment on the
-  story with the PR link and anything QA should look at hard: `[qa] (from lead)`.
+- **No blocking findings** → leave it in `In Review`. The developer merges it at the sha you
+  passed and then moves it to `Ready For QA`, QA's queue, so QA never tests a pull request
+  that has not landed. Comment on the story with the PR link and anything QA should look at
+  hard: `[qa] (from lead)`. A story in `In Review` whose head is the sha you passed is
+  waiting on the developer, not on you.
 - **Any blocking finding** → `In Progress` (`500000008`), with one `[dev] (from lead)` comment
   on the story linking the review, or `[dev2]` when the story is labelled `dev2`. The label
   names the developer who built it, and that developer's inbox picks it up and answers each
@@ -183,7 +187,8 @@ fixes one pull request, and a rule in a skill fixes the next twenty.
 - [ ] You grepped for the concept, not just the name.
 - [ ] Every finding you forwarded from a tool, you verified yourself.
 - [ ] Every blocking finding names a scenario and a rule.
-- [ ] The story moved, and the right role was tagged.
+- [ ] A story with blocking findings moved back to `In Progress`, a passed one stayed in
+      `In Review`, and the right role was tagged.
 
 Then tell the user in two or three lines: the pull request, pass or back, the count of
 blocking findings, and the one most worth their attention.

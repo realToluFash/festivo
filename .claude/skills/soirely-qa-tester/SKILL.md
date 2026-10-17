@@ -52,8 +52,8 @@ Resolve those, then pick the work below. **Sign every comment and report as your
 `(from qa2)`, so a reply finds the tester who did the work.
 
 `/soirely-qa-tester sc-55` tests that story. With no argument, **the queue is the
-`Ready For QA` state** — the tech lead puts a story there once its pull request has passed
-review, and that is the handover:
+`Ready For QA` state** — the developer puts a story there once the tech lead has passed its
+pull request and it has merged, and that is the handover:
 
 1. `stories-search` with `state: "Ready For QA"`. That is the queue, shared by all three
    testers.
@@ -397,15 +397,15 @@ In this order, because a comment that names a screenshot nobody uploaded is a de
 
 The Standard workflow (`500000005`) today:
 
-| State            | Id          | Who moves it there                           |
-| ---------------- | ----------- | -------------------------------------------- |
-| In Progress      | `500000008` | the branch, when work starts                 |
-| In Review        | `500000009` | the developer, when the PR is open and green |
-| **Ready For QA** | `500000087` | **the tech lead, when review passes**        |
-| **In QA**        | `500000194` | **you, when you claim it**                   |
-| **Passsed QA**   | `500000084` | **you** (three s's — Shortcut's spelling)    |
-| **Failed QA**    | `500000083` | **you**                                      |
-| Done             | `500000010` | the user, after a merge. Never you.          |
+| State            | Id          | Who moves it there                                     |
+| ---------------- | ----------- | ------------------------------------------------------ |
+| In Progress      | `500000008` | the branch, when work starts                           |
+| In Review        | `500000009` | the developer, when the PR is open and green           |
+| **Ready For QA** | `500000087` | **the developer, after the lead's pass and the merge** |
+| **In QA**        | `500000194` | **you, when you claim it**                             |
+| **Passsed QA**   | `500000084` | **you** (three s's — Shortcut's spelling)              |
+| **Failed QA**    | `500000083` | **you**                                                |
+| Done             | `500000010` | the user, after a merge. Never you.                    |
 
 **Resolve them by name anyway**, with `workflows-list`, at the time of posting — an id in a
 skill file is a cache, and the typo above is the reason to read rather than retype. If a
