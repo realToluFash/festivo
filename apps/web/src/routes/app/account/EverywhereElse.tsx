@@ -1,5 +1,5 @@
 import { ApiError, type LinkedProvider, type ProviderSignInAttempt } from '@soirely/api-client';
-import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
+import { formatTimeOfDay } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,7 @@ import {
   type ProviderReturn,
   startProviderSignIn,
 } from '../../../providerSignIn.ts';
+import { proofRefusal } from '../../../recentProof.ts';
 
 type Field = 'password' | 'code';
 
@@ -314,20 +315,17 @@ export function EverywhereElse({
 }
 
 function refusalFor(error: unknown, viaProvider: boolean, t: TFunction): Refusal {
-  if (error instanceof ApiError && error.is('too_many_attempts')) {
-    return {
-      kind: 'limited',
-      until: lockLiftsAt(Number(error.response?.headers.get('Retry-After'))),
-    };
-  }
+  const refusal = proofRefusal(error, !viaProvider);
 
-  if (error instanceof ApiError && error.is('invalid_credentials') && !viaProvider)
-    return { kind: 'field', field: 'password', message: t('devices.everywherePasswordWrong') };
-  if (
-    error instanceof ApiError &&
-    (error.is('two_factor_code_invalid') || error.is('recovery_code_used'))
-  )
-    return { kind: 'field', field: 'code', message: t('devices.everywhereCodeWrong') };
+  if (refusal.kind === 'limited') return refusal;
+  if (refusal.kind === 'field')
+    return {
+      ...refusal,
+      message:
+        refusal.field === 'password'
+          ? t('devices.everywherePasswordWrong')
+          : t('devices.everywhereCodeWrong'),
+    };
 
   return { kind: 'failed', message: t('devices.everywhereFailedBody') };
 }
