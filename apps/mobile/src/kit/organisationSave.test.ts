@@ -1,7 +1,7 @@
 import { ApiError, type Membership } from '@soirely/api-client';
 import { describe, expect, it, vi } from 'vitest';
 
-import { detailsOf, saveOrganisation } from './organisationSave.ts';
+import { afterEdit, detailsOf, refusalOf, saveOrganisation } from './organisationSave.ts';
 
 const organisation: Membership = {
   id: 'org_1',
@@ -84,5 +84,30 @@ describe('saving the Organisation page', () => {
     expect(await saveOrganisation(offline, organisation, detailsOf(organisation))).toEqual({
       kind: 'failed',
     });
+  });
+});
+
+describe('focus after a refused save', () => {
+  it('asks for the first refused field the person can type in', () => {
+    expect(refusalOf({ contactAddress: 'No.', name: 'No.' }).focus).toEqual({ field: 'name' });
+    expect(refusalOf({ currency: 'No.', contactAddress: 'No.' }).focus).toEqual({
+      field: 'contactAddress',
+    });
+    expect(refusalOf({ currency: 'No.' }).focus).toBeNull();
+  });
+
+  it('asks again on every refusal, even of the same field', () => {
+    expect(refusalOf({ name: 'No.' }).focus).not.toBe(refusalOf({ name: 'No.' }).focus);
+  });
+
+  it('never moves focus as the person edits, whichever field they touch', () => {
+    const refused = refusalOf({ name: 'No.', contactAddress: 'No.' });
+
+    for (const field of ['name', 'currency', 'contactAddress'] as const) {
+      const edited = afterEdit(refused, field);
+
+      expect(edited.focus).toBe(refused.focus);
+      expect(edited.errors[field]).toBeUndefined();
+    }
   });
 });

@@ -17,8 +17,14 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
-import { type FieldErrors, useFormChecks } from '../kit/formChecks.ts';
-import { detailsOf, saveOrganisation } from '../kit/organisationSave.ts';
+import { useFormChecks } from '../kit/formChecks.ts';
+import {
+  NO_REFUSAL,
+  afterEdit,
+  detailsOf,
+  refusalOf,
+  saveOrganisation,
+} from '../kit/organisationSave.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { replaceOrganisation } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -42,7 +48,7 @@ export function EditableDetails({
   const { t } = useTranslation();
   const locale = currentLocale();
   const [values, setValues] = useState<Details>(() => detailsOf(organisation));
-  const [refused, setRefused] = useState<FieldErrors<OrganisationField>>({});
+  const [refusal, setRefusal] = useState(NO_REFUSAL);
   const [status, setStatus] = useState<Status>('editing');
   const nameInput = useRef<TextInput>(null);
   const contactInput = useRef<TextInput>(null);
@@ -59,9 +65,8 @@ export function EditableDetails({
   );
 
   useEffect(() => {
-    const first = ORGANISATION_FIELDS.find((field) => refused[field] != null);
-    if (first === 'name' || first === 'contactAddress') focus(first);
-  }, [refused]);
+    if (refusal.focus != null) focus(refusal.focus.field);
+  }, [refusal.focus]);
 
   const currencies = useMemo(
     () =>
@@ -81,11 +86,11 @@ export function EditableDetails({
   );
 
   const busy = status === 'saving';
-  const errors = { ...refused, ...checks.errors };
+  const errors = { ...refusal.errors, ...checks.errors };
 
   function change(field: OrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
-    setRefused((previous) => ({ ...previous, [field]: undefined }));
+    setRefusal((previous) => afterEdit(previous, field));
     checks.edited(field, value);
     if (status === 'saved' || status === 'failed') setStatus('editing');
   }
@@ -105,7 +110,7 @@ export function EditableDetails({
       replaceOrganisation(outcome.organisation);
       setValues(detailsOf(outcome.organisation));
     }
-    if (outcome.kind === 'refused') setRefused(outcome.errors);
+    if (outcome.kind === 'refused') setRefusal(refusalOf(outcome.errors));
     setStatus(outcome.kind === 'refused' ? 'editing' : outcome.kind);
   }
 
