@@ -32,5 +32,12 @@
     "password.changed.notYou": "Se não foi você, reponha a sua palavra-passe agora: escolha «Esqueceu-se da palavra-passe?» no início de sessão, com este endereço. Isso termina a sessão em todos os dispositivos, incluindo o de quem a alterou.",
     "password.device.agent": "{browser} em {platform}",
     "password.device.unknown": "Um dispositivo que não se identificou",
-    "password.device.from": "{device}, a partir de {address}"
+    "password.device.from": "{device}, a partir de {address}",
+    "password.code.subject": "O seu código da Soirely",
+    "password.code.body": "Introduza este código na Soirely para adicionar uma palavra-passe à sua conta:",
+    "password.code.expiry": "É válido durante {minutes} minutos.",
+    "password.code.ignore": "Se não pediu para adicionar uma palavra-passe, pode ignorar este e-mail. Nada muda sem o código.",
+    "password.added.subject": "Foi adicionada uma palavra-passe à sua conta Soirely",
+    "password.added.body": "Foi adicionada uma palavra-passe a esta conta Soirely em {when}. Agora também pode iniciar sessão com ela.",
+    "password.added.notYou": "Se não foi você, reponha a sua palavra-passe agora: escolha «Esqueceu-se da palavra-passe?» no início de sessão, com este endereço."
 }

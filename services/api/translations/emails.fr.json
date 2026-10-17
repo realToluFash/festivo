@@ -32,5 +32,12 @@
     "password.changed.notYou": "Si ce n'était pas vous, réinitialisez votre mot de passe dès maintenant : choisissez « Mot de passe oublié ? » sur la page de connexion, avec cette adresse. Cela déconnecte tous les appareils, y compris celui de la personne qui l'a modifié.",
     "password.device.agent": "{browser} sur {platform}",
     "password.device.unknown": "Un appareil qui ne s'est pas nommé",
-    "password.device.from": "{device}, depuis {address}"
+    "password.device.from": "{device}, depuis {address}",
+    "password.code.subject": "Votre code Soirely",
+    "password.code.body": "Saisissez ce code dans Soirely pour ajouter un mot de passe à votre compte :",
+    "password.code.expiry": "Il est valable {minutes} minutes.",
+    "password.code.ignore": "Si vous n'avez pas demandé à ajouter un mot de passe, vous pouvez ignorer cet e-mail. Rien ne change sans le code.",
+    "password.added.subject": "Un mot de passe a été ajouté à votre compte Soirely",
+    "password.added.body": "Un mot de passe a été ajouté à ce compte Soirely le {when}. Vous pouvez désormais aussi vous connecter avec.",
+    "password.added.notYou": "Si ce n'était pas vous, réinitialisez votre mot de passe dès maintenant : choisissez « Mot de passe oublié ? » sur la page de connexion, avec cette adresse."
 }

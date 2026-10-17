@@ -32,5 +32,12 @@
     "password.changed.notYou": "If this was not you, reset your password now: choose \"Forgot your password?\" on sign-in, using this address. That signs out every device, including whoever changed it.",
     "password.device.agent": "{browser} on {platform}",
     "password.device.unknown": "A device that did not name itself",
-    "password.device.from": "{device}, from {address}"
+    "password.device.from": "{device}, from {address}",
+    "password.code.subject": "Your Soirely code",
+    "password.code.body": "Enter this code in Soirely to add a password to your account:",
+    "password.code.expiry": "It works for {minutes} minutes.",
+    "password.code.ignore": "If you did not ask to add a password, you can ignore this email. Nothing changes without the code.",
+    "password.added.subject": "A password was added to your Soirely account",
+    "password.added.body": "A password was added to this Soirely account on {when}. You can now sign in with it as well.",
+    "password.added.notYou": "If this was not you, reset your password now: choose \"Forgot your password?\" on sign-in, using this address."
 }
