@@ -68,3 +68,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`password.changed.devices`, `recovery.changed.body`). On screen, where the person has
   just pressed Save, the preterite «Se cerró la sesión en sus otros dispositivos» stays
   (`passwordCard.done_*`).
+- **17 Oct 2026. A replaced request.** The mark is «Sustituida», feminine like «Cancelada»
+  and «Rechazada» because it agrees with «solicitud», and the verb matches `resendNote`
+  («sustituyen»). "Start again" is «Empezar de nuevo» on the button and «Empiece de nuevo» in
+  a sentence. A request started elsewhere is reported in the perfect, «Se ha iniciado…», on
+  screen and in `errors:recovery_request_replaced` alike. The daily limit is worded as
+  `limitedBody` words it: «una de las 3 veces al día que puede pedirlo» (sc-1457).
