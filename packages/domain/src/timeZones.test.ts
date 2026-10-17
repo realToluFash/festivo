@@ -77,7 +77,8 @@ describe('cities in the reader’s language, and the names a zone once had', () 
       id: 'Europe/London',
       city: 'Londres',
       ianaCity: 'London',
-      formerNames: ['Belfast', 'GB'],
+      aliases: ['Belfast', 'GB'],
+      formerName: null,
       country: 'Royaume-Uni',
       offset: '+01:00',
     },
@@ -85,7 +86,8 @@ describe('cities in the reader’s language, and the names a zone once had', () 
       id: 'Asia/Kolkata',
       city: 'Kolkata',
       ianaCity: 'Kolkata',
-      formerNames: ['Calcutta'],
+      aliases: ['Calcutta'],
+      formerName: 'Calcutta',
       country: 'India',
       offset: '+05:30',
     },
@@ -93,7 +95,8 @@ describe('cities in the reader’s language, and the names a zone once had', () 
       id: 'America/Argentina/Buenos_Aires',
       city: 'Buenos Aires',
       ianaCity: 'Buenos Aires',
-      formerNames: [],
+      aliases: [],
+      formerName: null,
       country: 'Argentina',
       offset: '-03:00',
     },
@@ -101,9 +104,46 @@ describe('cities in the reader’s language, and the names a zone once had', () 
       id: 'America/St_Johns',
       city: 'St. John’s',
       ianaCity: 'St Johns',
-      formerNames: ['Newfoundland'],
+      aliases: ['Newfoundland'],
+      formerName: null,
       country: 'Canada',
       offset: '-02:30',
+    },
+    {
+      id: 'Asia/Ho_Chi_Minh',
+      city: 'Ho Chi Minh City',
+      ianaCity: 'Ho Chi Minh',
+      aliases: ['Saigon'],
+      formerName: 'Saigon',
+      country: 'Vietnam',
+      offset: '+07:00',
+    },
+    {
+      id: 'Europe/Kyiv',
+      city: 'Kyiv',
+      ianaCity: 'Kyiv',
+      aliases: ['Kiev', 'Simferopol', 'Uzhgorod', 'Zaporozhye'],
+      formerName: 'Kiev',
+      country: 'Ukraine',
+      offset: '+03:00',
+    },
+    {
+      id: 'America/Sao_Paulo',
+      city: 'São Paulo',
+      ianaCity: 'Sao Paulo',
+      aliases: ['East'],
+      formerName: null,
+      country: 'Brazil',
+      offset: '-03:00',
+    },
+    {
+      id: 'America/New_York',
+      city: 'New York',
+      ianaCity: 'New York',
+      aliases: ['Eastern'],
+      formerName: null,
+      country: 'United States',
+      offset: '-04:00',
     },
   ];
   const ids = (query: string) => matchingZones(LOCAL, query).map((z) => z.id);
@@ -123,6 +163,23 @@ describe('cities in the reader’s language, and the names a zone once had', () 
   it('finds a zone by a former name, and says which', () => {
     expect(ids('Calcutta')).toEqual(['Asia/Kolkata']);
     expect(formerName(LOCAL[1]!, 'calcutta')).toBe('Calcutta');
+    expect(ids('saigon')).toEqual(['Asia/Ho_Chi_Minh']);
+    expect(formerName(LOCAL[4]!, 'saigon')).toBe('Saigon');
+    expect(formerName(LOCAL[5]!, 'kiev')).toBe('Kiev');
+  });
+
+  it('finds a zone by any other link, and never calls that link its former name', () => {
+    const found = (query: string) =>
+      matchingZones(LOCAL, query).map((zone) => [zone.id, formerName(zone, query)]);
+
+    expect(found('zaporozhye')).toEqual([['Europe/Kyiv', null]]);
+    expect(found('uzhgorod')).toEqual([['Europe/Kyiv', null]]);
+    expect(found('east')).toEqual([
+      ['America/Sao_Paulo', null],
+      ['America/New_York', null],
+    ]);
+    expect(found('eastern')).toEqual([['America/New_York', null]]);
+    expect(found('gb')).toEqual([['Europe/London', null]]);
   });
 
   it('shows no former name when the row’s own name, country or offset matched', () => {
