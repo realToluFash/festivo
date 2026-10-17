@@ -1,9 +1,7 @@
 import type { Membership } from '@soirely/api-client';
-import { initials } from '@soirely/domain';
+import { initials, roleName } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-
-import { roleName } from '../roles.ts';
 
 export function OrganisationSwitcher({
   current,

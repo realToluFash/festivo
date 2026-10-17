@@ -7,8 +7,10 @@
     "subtitle": "La noche, desde su bolsillo.",
     "openSignIn": "Iniciar sesión",
     "openLayouts": "Demostración de diseños",
-    "signedInAs": "Sesión iniciada como {{name}}",
-    "signOut": "Cerrar sesión"
+    "signedIn": "You’re signed in",
+    "signedInTo": "You’re signed in to {{name}}",
+    "openSettings": "Open Settings",
+    "switchOrganisation": "Switch organisation"
   },
   "status": {
     "title": "Estado del servicio",
@@ -324,8 +326,7 @@
     "phoneKeepElsewhere": "Guárdelos en otro lugar que no sea este teléfono."
   },
   "security": {
-    "title": "Seguridad",
-    "back": "Atrás"
+    "title": "Seguridad"
   },
   "passwordCard": {
     "title": "Contraseña",
@@ -448,8 +449,7 @@
     "countryWas": "{{country}} · antes {{name}}"
   },
   "account": {
-    "title": "Su cuenta",
-    "back": "Atrás"
+    "title": "Su cuenta"
   },
   "lostTwoFactor": {
     "startTitle": "Vuelva a entrar sin su aplicación de autenticación",
@@ -602,5 +602,39 @@
     "everywhereFailedBody": "This is about reaching the API rather than about your account. Try again.",
     "loading": "Cargando…",
     "retry": "Inténtelo de nuevo"
+  },
+  "frame": {
+    "home": "Home",
+    "settings": "Settings",
+    "organisation": "Organisation"
+  },
+  "settings": {
+    "title": "Settings",
+    "sections": "Settings sections",
+    "yourAccount": "Your account",
+    "account": "Account",
+    "accountLine": "Your name, email addresses and phone numbers",
+    "security": "Security",
+    "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
+    "signedInAs": "Signed in as {{email}}",
+    "signOut": "Sign out",
+    "choose": "Choose a section",
+    "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices."
+  },
+  "switcher": {
+    "yourRole": "Your role · {{role}}",
+    "heading": "Your organisations",
+    "current": "Current",
+    "remembered": "Soirely remembers your choice on this device.",
+    "label": "Organisation: {{name}}, your role {{role}}",
+    "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
+    "close": "Close"
+  },
+  "roles": {
+    "owner": "Owner",
+    "administrator": "Administrator",
+    "event_manager": "Event manager",
+    "coordinator": "Coordinator",
+    "read_only": "Read-only"
   }
 }
