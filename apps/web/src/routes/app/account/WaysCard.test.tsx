@@ -194,6 +194,9 @@ describe('linking a provider', () => {
     });
     const saved = JSON.parse(sessionStorage.getItem('soirely.google.attempt') ?? '{}');
     expect(saved.purpose).toEqual({ kind: 'link' });
+    expect(new URL(String(leave.mock.calls[0]?.[0])).searchParams.get('prompt')).toBe(
+      'select_account',
+    );
   });
 
   it('back from Google, links with the proof and says which account', async () => {
@@ -255,6 +258,11 @@ describe('linking a provider', () => {
     await waitFor(() => expect(leave).toHaveBeenCalledOnce());
     const saved = JSON.parse(sessionStorage.getItem('soirely.google.attempt') ?? '{}');
     expect(saved.purpose).toEqual({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+    const url = new URL(String(leave.mock.calls[0]?.[0]));
+    expect([url.searchParams.get('prompt'), url.searchParams.get('max_age')]).toEqual([
+      'login',
+      '0',
+    ]);
   });
 
   it('with two-factor on, asks for the code with the password', async () => {

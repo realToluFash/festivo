@@ -219,6 +219,19 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertSame(ErrorCode::InvalidCredentials->type(), $body['type']);
     }
 
+    /** An unexpired token a provider SDK restored proves a sign-in long ago, not one now. */
+    #[Test]
+    public function aProviderSignInOlderThanFiveMinutesProvesNothing(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+
+        $body = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', 'kemi@gmail.com', '-6 minutes')]], $user);
+
+        self::assertSame(401, $this->statusCode());
+        self::assertSame(ErrorCode::InvalidCredentials->type(), $body['type']);
+        self::assertArrayNotHasKey('proof', $body);
+    }
+
     #[Test]
     public function withTwoFactorOnTheCodeIsAskedForToo(): void
     {
@@ -323,9 +336,9 @@ final class SignInMethodsTest extends ApiTestCase
         return TOTP::createFromSecret(self::SECRET)->at(Type\uint()->coerce(new Clock()->now()->getTimestamp()));
     }
 
-    private function googleToken(string $subject, string $email): string
+    private function googleToken(string $subject, string $email, string $signedIn = '-1 minute'): string
     {
-        return $this->signed('GOOGLE', $subject, $email);
+        return $this->signed('GOOGLE', $subject, $email, $signedIn);
     }
 
     private function appleToken(string $subject, string $email): string
@@ -333,14 +346,14 @@ final class SignInMethodsTest extends ApiTestCase
         return $this->signed('APPLE', $subject, $email);
     }
 
-    private function signed(string $provider, string $subject, string $email): string
+    private function signed(string $provider, string $subject, string $email, string $signedIn = '-1 minute'): string
     {
         $configured = static fn (string $name): string => Str\trim(Str\split(Type\string()->coerce($_SERVER[$name] ?? $_ENV[$name] ?? ''), ',')[0] ?? '');
 
         return self::service(TestSigningKeys::class)->sign([
             'iss' => $configured('OAUTH_' . $provider . '_ISSUERS'),
             'aud' => $configured('OAUTH_' . $provider . '_CLIENT_IDS'),
-            'iat' => new Clock()->now()->modify('-1 minute'),
+            'iat' => new Clock()->now()->modify($signedIn),
             'exp' => new Clock()->now()->modify('+1 hour'),
             'sub' => $subject,
             'email' => $email,

@@ -439,7 +439,7 @@ function Proving({
       const first =
         via === 'password' || via == null
           ? { password: password.current }
-          : { provider: via, signIn: await confirmWithProvider(via) };
+          : { provider: via, signIn: await confirmWithProvider(via, true) };
       held = await api.prove(first, codeAsked ? code.current.trim() : undefined);
       onProved();
     } catch (error) {

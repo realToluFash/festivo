@@ -32,6 +32,9 @@ export type ProviderReturn = { provider: Provider; purpose: ReturnPurpose } & (
 
 type SavedAttempt = ProviderAttempt & { purpose?: ReturnPurpose };
 
+/** Confirming it is you means signing in again at Google, not one click on a remembered account (OIDC Core §3.1.2.1). */
+export const REAUTHENTICATE = { prompt: 'login', max_age: '0' };
+
 /** How each provider is named on screen. */
 export const PROVIDER_NAMES: Record<Provider, string> = { google: 'Google', apple: 'Apple' };
 
@@ -85,7 +88,9 @@ export async function startProviderSignIn(
       codeChallenge: base64Url(await sha256(attempt.codeVerifier)),
       ...(provider === 'apple'
         ? { scope: 'openid name email', extra: { response_mode: 'form_post' } }
-        : {}),
+        : purpose?.kind === 'prove'
+          ? { extra: REAUTHENTICATE }
+          : {}),
     }),
   );
 }

@@ -130,6 +130,12 @@ final readonly class RecentProof
         if (null === $identity || !$identity->getUser()->getId()->equals($user->getId())) {
             throw new ApiException(ErrorCode::InvalidCredentials, 'That account is not linked to this Soirely account.');
         }
+
+        // A token a provider SDK restored from an hour ago proves nobody is here now.
+        $since = $claims->authenticatedAt;
+        if (null === $since || $since < $this->clock->now()->modify('-' . SignInProof::MINUTES . ' minutes')) {
+            throw new ApiException(ErrorCode::InvalidCredentials, 'Sign in again to confirm it is you.');
+        }
     }
 
     /** @return array{0: string, 1: DateTimeImmutable} */

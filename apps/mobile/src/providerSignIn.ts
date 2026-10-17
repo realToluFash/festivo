@@ -54,7 +54,7 @@ interface Ran {
 }
 
 /** The system browser with the code flow and PKCE, the code redeemed here as a native client may. */
-async function inBrowser(provider: Provider): Promise<Ran> {
+async function inBrowser(provider: Provider, reauthenticate = false): Promise<Ran> {
   const redirectUri = `soirely://oauth/${provider}`;
   const state = random();
   const nonce = random();
@@ -66,7 +66,11 @@ async function inBrowser(provider: Provider): Promise<Ran> {
       state,
       nonceHash: hex(await sha256(nonce)),
       codeChallenge: base64Url(await sha256(codeVerifier)),
-      ...(provider === 'apple' ? { scope: 'openid name email', extra: {} } : {}),
+      ...(provider === 'apple'
+        ? { scope: 'openid name email', extra: {} }
+        : reauthenticate
+          ? { extra: { prompt: 'login', max_age: '0' } }
+          : {}),
     }),
     redirectUri,
   );
@@ -142,7 +146,7 @@ async function appleOnAndroid(appLink: string): Promise<Ran> {
 }
 
 /** On iOS Apple is the system sheet, as App Store review expects; elsewhere both run in the browser. */
-async function run(provider: Provider): Promise<Ran> {
+async function run(provider: Provider, reauthenticate = false): Promise<Ran> {
   if (provider === 'apple' && Platform.OS === 'ios' && (await isAvailableAsync())) {
     return appleSheet();
   }
@@ -151,7 +155,7 @@ async function run(provider: Provider): Promise<Ran> {
     return appleOnAndroid(config.apple.appLink);
   }
 
-  return inBrowser(provider);
+  return inBrowser(provider, reauthenticate);
 }
 
 export async function signInWithProvider(provider: Provider): Promise<SignInOutcome> {
@@ -168,9 +172,12 @@ export async function signInWithProvider(provider: Provider): Promise<SignInOutc
   return remember(provider, outcome);
 }
 
-/** Security's own run: what the provider vouched for, to confirm it is you or to link, never a sign-in. */
-export async function confirmWithProvider(provider: Provider): Promise<ProviderSignInAttempt> {
-  return (await run(provider)).attempt;
+/** Security's own run, never a sign-in: `reauthenticate` when confirming it is you, so Google asks again. */
+export async function confirmWithProvider(
+  provider: Provider,
+  reauthenticate = false,
+): Promise<ProviderSignInAttempt> {
+  return (await run(provider, reauthenticate)).attempt;
 }
 
 /** The code passed: a provider sign-in it finished may have linked its provider only now. */
