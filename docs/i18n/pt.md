@@ -25,7 +25,8 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Password                  | Palavra-passe                |                                                                  |
 | Continue                  | Continuar                    |                                                                  |
 | Cancel                    | Cancelar                     |                                                                  |
-| Two-factor authentication | Autenticação de dois fatores |                                                                  |
+| Two-factor authentication | Autenticação de dois fatores | In a comma list of Security's contents, "dois fatores" alone     |
+| Home (tab)                | Início                       | Settled 17 Oct 2026. Not "Página inicial": too long for the tab  |
 | Recovery code             | Código de recuperação        |                                                                  |
 
 ## Never translated
@@ -36,6 +37,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **17 Oct 2026. The app's switcher and roles copy the web's** (`switcher.*`, `roles.*`), so
+  both clients say the same; `switcher.close` is "Fechar", as `recovery.dismiss`.
+- **17 Oct 2026. "You're signed in" is "Tem sessão iniciada"** (`home.signedIn`,
+  `home.signedInTo` with "em {{name}}"). A friendly statement in the formal register,
+  impersonal like the rest; "Está ligado" reads as a connection, and agrees with a gender.
+- **17 Oct 2026. Contact details are "as formas de contacto"** (`settings.chooseLine`).
+  Rejected "como o contactar": the clitic "o" assumes a man.
 
 - **17 Oct 2026. A former name is "ex-{{name}}"** (`timeZone.was`, `timeZone.countryWas`):
   "Índia · ex-Calcutta". Rejected "antes {{name}}" (not a phrase in Portuguese) and
