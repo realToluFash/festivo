@@ -40,6 +40,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. "Enter the amount as a number above 0, like {{example}}."** (sc-88, Amount
+  paid). One message for every currency, with one slot. The code builds `{{example}}` with
+  `Intl.NumberFormat` in the viewer's locale from 3,500 at the event currency's ISO 4217 minor
+  unit: "3,500" for JPY, XOF and CLP, "3,500.50" for GBP, EUR, USD and BRL, "3,500.500" for
+  KWD and BHD, and "3.500,50" in es, fr and pt. No currency symbol: the field shows it as its
+  prefix. Won over a variant per decimal count, which is three keys in four locales for one
+  rule and makes the person count decimal places, and over the drawn "like 3,500 or
+  3,500.50", which promises decimals a zero-decimal currency refuses and writes a number into
+  the string. The example shows the rule; the words never name a decimal count.
 - **17 Oct 2026. Marking paid refused (sc-88, shown on sc-1331's "Due now" sheet).**
   "{{name}} has already marked this paid, so nothing has changed." (no name: "This has already
   been marked paid, so nothing has changed."); "This payment has been cancelled, so it cannot be
