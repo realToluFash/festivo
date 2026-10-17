@@ -77,6 +77,7 @@
     "endedBody": "Sign in again to carry on.",
     "lockedTitle": "Too many tries",
     "lockedBody": "Try again at {{time}}.",
+    "lockedReset": "Reset your password",
     "or": "or",
     "withGoogle": "Continue with {{provider}}",
     "withApple": "Continue with {{provider}}",

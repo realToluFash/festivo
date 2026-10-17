@@ -147,6 +147,11 @@ function Credentials({
           mark="!"
           title={t('signIn.lockedTitle')}
           body={t('signIn.lockedBody', { time: status.retryAt })}
+          action={{
+            label: t('signIn.lockedReset'),
+            onPress: () => router.push('/forgot-password'),
+            testID: 'signIn.locked.reset',
+          }}
         />
       )}
 
