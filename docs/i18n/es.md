@@ -15,18 +15,25 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | Spanish                   | Notes |
-| ------------------------- | ------------------------- | ----- |
-| Settings                  | Configuración             |       |
-| Organisation              | Organización              |       |
-| Sign in                   | Iniciar sesión            |       |
-| Sign out                  | Cerrar sesión             |       |
-| Email                     | Correo electrónico        |       |
-| Password                  | Contraseña                |       |
-| Continue                  | Continuar                 |       |
-| Cancel                    | Cancelar                  |       |
-| Two-factor authentication | Verificación en dos pasos |       |
-| Recovery code             | Código de recuperación    |       |
+| English                                                         | Spanish                                                                      | Notes                                                |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Settings                                                        | Configuración                                                                |                                                      |
+| Organisation                                                    | Organización                                                                 |                                                      |
+| Sign in                                                         | Iniciar sesión                                                               |                                                      |
+| Sign out                                                        | Cerrar sesión                                                                |                                                      |
+| Email                                                           | Correo electrónico                                                           |                                                      |
+| Password                                                        | Contraseña                                                                   |                                                      |
+| Continue                                                        | Continuar                                                                    |                                                      |
+| Cancel                                                          | Cancelar                                                                     |                                                      |
+| Two-factor authentication                                       | Verificación en dos pasos                                                    |                                                      |
+| Recovery code                                                   | Código de recuperación                                                       |                                                      |
+| Home (tab)                                                      | Inicio                                                                       | Settled, sc-1420                                     |
+| Account (Settings row)                                          | Cuenta                                                                       | Settled, sc-1420; the screen title stays «Su cuenta» |
+| Security                                                        | Seguridad                                                                    | Settled, sc-1420                                     |
+| Signed-in devices                                               | Dispositivos con sesión abierta                                              | Settled, sc-1420                                     |
+| Switch organisation                                             | Cambiar de organización                                                      | Settled, sc-1420                                     |
+| Your role                                                       | Su función                                                                   | Settled, web switcher                                |
+| Owner / Administrator / Event manager / Coordinator / Read-only | Propietario / Administrador / Gestor de eventos / Coordinador / Solo lectura | Settled; app and web say the same                    |
 
 ## Never translated
 
@@ -36,6 +43,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **17 Oct 2026. "You're signed in" is «Ha iniciado sesión».** On the app's Home
+  (`home.signedIn`, `home.signedInTo`: «Ha iniciado sesión en {{name}}»). The English
+  contraction is warmth; Spanish carries it in the plain perfect, still _usted_, and «en»
+  needs no agreement with the organisation's name. "Open Settings" is «Abrir
+  Configuración», with the capital because it names the tab (sc-1420).
 
 - **17 Oct 2026. A device's state, not its timing.** Signed-out devices are described as
   done: «Se cerró la sesión en sus otros dispositivos.» with no delay or "hasta 15 minutos",
