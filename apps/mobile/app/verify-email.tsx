@@ -1,4 +1,4 @@
-import { awaiting } from '@soirely/api-client';
+import { ApiError, type PendingRegistration, awaiting } from '@soirely/api-client';
 import { cleanCode, codeProblem } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -12,11 +12,16 @@ import { CodeForm } from '../src/components/CodeForm.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { type CodeStatus, codeRefusal, retryAfter } from '../src/kit/code.ts';
 import { useFormChecks } from '../src/kit/formChecks.ts';
+import { type Landing, landingFor } from '../src/landing.ts';
+import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 
 type Status = CodeStatus | { kind: 'verified' };
 
+/** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export default function VerifyEmail() {
   const { t } = useTranslation();
+  const [pending, setPending] = useState<PendingRegistration | null>(null);
+  const [next, setNext] = useState<Landing>('/');
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [address, setAddress] = useState('');
@@ -36,9 +41,21 @@ export default function VerifyEmail() {
   useEffect(() => {
     let live = true;
 
-    api
-      .me()
-      .then(async (account) => {
+    void (async () => {
+      const held = await heldRegistration();
+
+      if (held != null) {
+        if (!live) return;
+        setPending(held);
+        setAddress(held.email);
+        const seconds = await api.registrationCooldown(held.registration).catch(() => 0);
+        if (live) setCooldown(seconds);
+
+        return;
+      }
+
+      try {
+        const account = await api.me();
         if (!live) return;
 
         setAddress(account.emailAddresses.find((one) => one.primary)?.address ?? '');
@@ -54,15 +71,21 @@ export default function VerifyEmail() {
         const seconds = await api.verificationCooldown();
 
         if (live) setCooldown(seconds);
-      })
-      .catch(() => {
+      } catch {
         if (live) setAddress('');
-      });
+      }
+    })();
 
     return () => {
       live = false;
     };
   }, []);
+
+  /** The handle has run out, or was used: the sign-up starts again. */
+  async function startAgain(): Promise<void> {
+    await dropRegistration();
+    router.replace('/register');
+  }
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -79,18 +102,38 @@ export default function VerifyEmail() {
     setStatus({ kind: 'verifying' });
 
     try {
-      await api.verifyEmail(cleanCode(typed));
+      if (pending == null) {
+        await api.verifyEmail(cleanCode(typed));
+      } else {
+        const { account } = await api.confirmRegistration(pending.registration, cleanCode(typed));
+        await dropRegistration();
+        setNext(landingFor(awaiting(account)));
+      }
       setStatus({ kind: 'verified' });
     } catch (error) {
+      if (error instanceof ApiError && error.is('registration_expired')) {
+        await startAgain();
+        return;
+      }
+
       setStatus(codeRefusal(error));
     }
   }
 
   async function resend(): Promise<void> {
     try {
-      setCooldown(await api.resendVerification());
+      setCooldown(
+        await (pending == null
+          ? api.resendVerification()
+          : api.resendRegistrationCode(pending.registration)),
+      );
       setStatus({ kind: 'entering' });
     } catch (error) {
+      if (error instanceof ApiError && error.is('registration_expired')) {
+        await startAgain();
+        return;
+      }
+
       const seconds = retryAfter(error);
 
       if (seconds == null) {
@@ -104,7 +147,13 @@ export default function VerifyEmail() {
     }
   }
 
-  async function signOut(): Promise<void> {
+  /** "Not your address?": a sign-up starts again; an older account signs out. */
+  async function wrongAddress(): Promise<void> {
+    if (pending != null) {
+      await startAgain();
+      return;
+    }
+
     await api.signOut();
     router.replace('/sign-in');
   }
@@ -130,7 +179,7 @@ export default function VerifyEmail() {
       {status.kind === 'verified' ? (
         <PrimaryButton
           label={t('verifyEmail.continue')}
-          onPress={() => router.replace('/')}
+          onPress={() => router.replace(next)}
           testID="verifyEmail.continue"
         />
       ) : (
@@ -148,7 +197,7 @@ export default function VerifyEmail() {
           <Footnote
             question={t('verifyEmail.wrongAddress')}
             action={t('verifyEmail.signOut')}
-            onPress={() => void signOut()}
+            onPress={() => void wrongAddress()}
             after={t('verifyEmail.wrongAddressBody')}
             testID="verifyEmail.signOut"
           />

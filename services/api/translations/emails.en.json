@@ -19,5 +19,10 @@
     "recovery.or": " or ",
     "twoFactor.off.subject": "Two-factor authentication was turned off",
     "twoFactor.off.body": "Two-factor authentication was turned off for your Soirely account on {when}. Signing in now asks only for your password, Google or Apple.",
-    "twoFactor.off.notYou": "If this was not you, reset your password and turn two-factor back on from Settings > Security."
+    "twoFactor.off.notYou": "If this was not you, reset your password and turn two-factor back on from Settings > Security.",
+    "alreadyRegistered.subject": "You already have a Soirely account",
+    "alreadyRegistered.body": "Someone tried to create a Soirely account with this address. You already have one. Sign in, or reset your password if you've forgotten it.",
+    "alreadyRegistered.signIn": "Sign in:",
+    "alreadyRegistered.reset": "Reset your password:",
+    "alreadyRegistered.ignore": "If this wasn't you, you can ignore this email."
 }

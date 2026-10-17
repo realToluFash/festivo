@@ -88,6 +88,33 @@ final readonly class UserRegistrar
         return $this->persist($user, $request);
     }
 
+    /**
+     * The account a sign-up's code just proved: its address verified, its password the one typed then.
+     */
+    public function registerConfirmed(string $email, string $name, string $passwordHash, ?Request $request = null): RegistrationResult
+    {
+        $user = new User(Str\trim($name), $passwordHash, AccountOrigin::SelfRegistered);
+        $address = new EmailAddress($user, Type\non_empty_string()->assert($email), isPrimary: true);
+        $address->setVerifiedAt(new DateTimeImmutable());
+
+        return $this->persist($user, $request);
+    }
+
+    /** @return string the normalised address, once every field is fit to register with */
+    public function validated(string $email, string $name, #[SensitiveParameter] string $password): string
+    {
+        $normalised = EmailAddressNormaliser::normalise($email);
+        $this->validate($normalised, $name, $password);
+
+        return $normalised;
+    }
+
+    /** Held by an account that has proved an address: an unverified holder holds nothing. */
+    public function isTaken(string $normalisedEmail): bool
+    {
+        return true === $this->emailAddressRepository->findOneByAddress($normalisedEmail)?->getUser()->hasVerifiedEmailAddress();
+    }
+
     private function build(
         string $email,
         string $name,
@@ -182,7 +209,8 @@ final readonly class UserRegistrar
 
     private static function taken(?Throwable $previous = null): ApiException
     {
-        return new ApiException(ErrorCode::EmailTaken, 'That email address is already registered.', [], $previous);
+        // Reached only by an invitation or a race: a password sign-up never says an address is taken (sc-512).
+        return new ApiException(ErrorCode::Conflict, 'That email address cannot be used.', [], $previous);
     }
 
     /**

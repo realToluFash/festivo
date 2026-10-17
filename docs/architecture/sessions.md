@@ -220,7 +220,8 @@ outcome: the alternative is writing a thirty-day credential somewhere readable.
 who has an account: a password account is emailed a link, an account with no password is
 told how it signs in, and an unknown address is sent nothing. The answer is also the same
 in time: the lookup and the email happen on `kernel.terminate`, after the response has
-gone (`RecoveryRequests`), so a registered address is no slower to answer. Under
+gone (`AfterResponse`, the one home for work the client must not wait for), so a
+registered address is no slower to answer. Under
 FrankenPHP that needs `FinishResponseListener`, which ends the response first: Symfony
 only does so itself for FastCGI and LiteSpeed. It is limited per
 address (keyed on what was typed) and per IP, and a refusal states a time.
@@ -235,6 +236,24 @@ address (keyed on what was typed) and per IP, and a refusal states a time.
   a notice saying when. Access tokens already issued run out on their own, within their
   lifetime, until sc-117 ends them at once.
 - **Two-factor** (sc-60) will ask for the code before this device is signed in.
+
+## Registering
+
+A password sign-up does not sign in, and does not make the account. `POST /api/auth/register`
+answers `202 {registration, email}` for every address, new or held by an account, with the
+same shape and in the same time: the password is hashed either way, and every email goes
+after the response (`RegistrationMail`, through `AfterResponse`). The handle lasts 24 hours and works once.
+
+- **New address:** the code goes to it. `POST /api/auth/register/verify` with the handle and
+  the code makes the account, its address verified, and signs it in. An unverified holder of
+  the address is released then, as before. Wrong, exhausted and expired codes follow sc-56.
+- **Taken address:** a code is made and never sent, so every guess reads as wrong, and the
+  address is emailed "You already have a Soirely account" instead, at most once an hour.
+- Resend (`/api/auth/register/resend`) keeps sc-56's 60-second cooldown. Until the code is
+  entered nothing exists to sign in to, so sign-in answers `invalid_credentials`.
+  `app:prune-pending-registrations` deletes expired attempts.
+
+Google and Apple sign-up are unchanged: the provider vouches for the address.
 
 ## Signing in with Google
 

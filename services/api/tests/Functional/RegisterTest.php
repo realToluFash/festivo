@@ -9,27 +9,35 @@ use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\Password\PasswordPolicy;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\Password\ScriptedBreachedPasswordChecker;
-use App\Domain\User\TokenIssuer;
+use App\Domain\User\Registration\PendingRegistrations;
 use App\Domain\User\UserRegistrar;
-use App\Entity\EmailAddress;
 use App\Entity\RefreshToken;
+use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
-use App\Repository\EmailAddressRepository;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
+use Psl\Math;
+use Psl\Regex;
+use Psl\Str;
 use Psl\Type;
+use Psl\Vec;
 use SensitiveParameter;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Mime\Email;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 final class RegisterTest extends ApiTestCase
 {
+    use ClockSensitiveTrait;
+
     /**
      * A literal password, which is the one thing a registration test cannot do
      * without. The rule is right everywhere else: a credential in source is a
@@ -39,165 +47,144 @@ final class RegisterTest extends ApiTestCase
      */
     private const string GOOD_PASSWORD = 'a decent passphrase';
 
-    #[Test]
-    public function itCreatesAnAccountAndSignsThePersonIn(): void
+    protected function setUp(): void
     {
-        $body = $this->register('New.Person@Example.COM  ', 'Ada Lovelace', self::GOOD_PASSWORD);
+        parent::setUp();
+        $this->client->disableReboot();
+    }
 
-        self::assertSame(201, $this->client->getResponse()->getStatusCode());
+    /** The same status, shape and handle for a new address and one an account holds (OWASP Authentication Cheat Sheet). */
+    #[Test]
+    public function aNewAndATakenAddressGetTheSameAnswer(): void
+    {
+        $this->owner('taken@example.com');
 
-        // Stored as the entity normalises it, and returned the same way, so the
-        // client is not holding a different string from the database.
-        // The same account sign-in answers with, so a client reads one shape.
-        $account = Type\shape([
-            'name' => Type\string(),
-            'verified' => Type\bool(),
-            'complete' => Type\bool(),
-            'businessName' => Type\null(),
-            'emailAddresses' => Type\vec(Type\shape(['address' => Type\string()], true)),
-            'phoneNumbers' => Type\vec(Type\mixed()),
-        ], true)->coerce($body['account']);
+        $new = $this->register('New.Person@Example.COM  ', 'Ada Lovelace', self::GOOD_PASSWORD);
+        $newStatus = $this->statusCode();
+        $taken = $this->register('taken@example.com', 'Somebody else', self::GOOD_PASSWORD);
 
-        self::assertSame('new.person@example.com', $account['emailAddresses'][0]['address']);
-        self::assertSame('Ada Lovelace', $account['name']);
+        self::assertSame(202, $newStatus);
+        self::assertSame(202, $this->statusCode());
+        self::assertSame(['registration', 'email'], Vec\keys($new));
+        self::assertSame(['registration', 'email'], Vec\keys($taken));
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', Type\string()->coerce($new['registration']));
+        self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', Type\string()->coerce($taken['registration']));
+        self::assertSame('new.person@example.com', $new['email']);
+        self::assertNull(self::service(UserRepository::class)->findOneByPrimaryEmailAddress('new.person@example.com'), 'no account until the code');
+    }
 
-        self::assertFalse($account['verified'], 'an ordinary registration proves nothing yet');
-        self::assertFalse($account['complete'], 'and carries no profile fields');
-        self::assertSame([], $account['phoneNumbers']);
+    /** Measured without the email, which goes after the answer: both hash the password, so both cost the same. */
+    #[Test]
+    public function aTakenAddressAnswersInTheTimeANewOneDoes(): void
+    {
+        $this->owner('taken@example.com');
+        $registrations = self::service(PendingRegistrations::class);
+        $time = static function (callable $attempt): float {
+            $start = \hrtime(true);
+            $attempt();
 
-        self::assertNotSame('', $body['accessToken']);
-        self::assertNotSame('', $body['refreshToken']);
-        self::assertArrayHasKey('refreshExpiresAt', $body);
+            return (\hrtime(true) - $start) / 1e6;
+        };
+
+        $new = $time(static fn () => $registrations->start('fresh@example.com', 'Fresh', self::GOOD_PASSWORD, 'en'));
+        $taken = $time(static fn () => $registrations->start('taken@example.com', 'Taken', self::GOOD_PASSWORD, 'en'));
+
+        self::assertLessThan(2.0, Math\maxva($new, $taken) / Math\maxva(1.0, Math\minva($new, $taken)), Str\format('new %.1fms, taken %.1fms', $new, $taken));
     }
 
     #[Test]
-    public function theAccountIsReachableAfterwards(): void
+    public function theAccountIsMadeOnlyByTheCodeAndThenSignedIn(): void
     {
-        $this->register('reachable@example.com', 'Reachable', self::GOOD_PASSWORD);
+        $handle = Type\string()->coerce($this->register('ada@example.com', 'Ada', self::GOOD_PASSWORD)['registration']);
+        $code = $this->codeSentTo('ada@example.com');
 
-        $user = self::service(UserRepository::class)->findOneByPrimaryEmailAddress('REACHABLE@example.com');
+        $this->client->request('POST', '/api/auth/login', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['email' => 'ada@example.com', 'password' => self::GOOD_PASSWORD]));
+        self::assertSame(401, $this->statusCode(), 'no account to sign in to yet');
+        self::assertSame(ErrorCode::InvalidCredentials->type(), $this->last()['type']);
 
-        self::assertNotNull($user, 'findOneByEmail normalises what it is given');
-        self::assertFalse($user->getPrimaryEmailAddress()?->isVerified() ?? true);
-        self::assertNotNull($user->getPassword());
-    }
+        $body = $this->confirm($handle, $code);
 
-    /**
-     * The password is hashed, and the hash is not a hash of the raw value: it is
-     * a hash of the normalised one. A sign-in path that normalises differently
-     * is the failure this pins down, and sc-55 inherits it.
-     */
-    #[Test]
-    public function thePasswordIsStoredHashedAndVerifiesThroughTheSameNormalisation(): void
-    {
-        $this->register('hashed@example.com', 'Hashed', self::GOOD_PASSWORD);
-
-        $user = self::service(UserRepository::class)->findOneByPrimaryEmailAddress('hashed@example.com');
+        self::assertSame(201, $this->statusCode(), Json\encode($body));
+        self::assertIsString($body['accessToken'] ?? null);
+        self::assertStringNotContainsString(self::GOOD_PASSWORD, (string) $this->client->getResponse()->getContent());
+        $user = self::service(UserRepository::class)->findOneByPrimaryEmailAddress('ada@example.com');
         self::assertNotNull($user);
-
-        $stored = $user->getPassword();
-        self::assertNotNull($stored);
-        self::assertNotSame(self::GOOD_PASSWORD, $stored, 'the plain value is not the stored value');
-        self::assertStringStartsWith('$argon2id$', $stored, 'sodium, not bcrypt — see security.yaml');
-
-        $passwords = self::service(PasswordResolver::class);
-        self::assertTrue($passwords->verify($user, self::GOOD_PASSWORD));
-        self::assertFalse($passwords->verify($user, self::GOOD_PASSWORD . 'x'));
+        self::assertTrue($user->hasVerifiedEmailAddress(), 'the code proved the address');
+        self::assertTrue(self::service(PasswordResolver::class)->verify($user, self::GOOD_PASSWORD));
+        self::assertSame(1, self::em()->getRepository(RefreshToken::class)->count([]), 'signed in once, by the code');
     }
 
     #[Test]
-    public function theRefreshTokenIsStoredAsAHashAndNotAsItself(): void
+    public function aTakenAddressGetsNoCodeAndItsOwnerAnEmailAtMostHourly(): void
     {
-        $body = $this->register('session@example.com', 'Session', self::GOOD_PASSWORD);
-        $plain = $body['refreshToken'];
+        self::mockTime('2026-10-17 12:00:00');
+        $this->owner('taken@example.com');
 
-        $rows = self::em()->getRepository(RefreshToken::class)->findAll();
-        self::assertCount(1, $rows);
+        $handle = Type\string()->coerce($this->register('  TAKEN@Example.com ', 'Somebody', self::GOOD_PASSWORD)['registration']);
+        $mail = $this->lastMail();
+        self::assertSame('taken@example.com', $mail->getTo()[0]->getAddress(), 'the address is normalised before the check');
+        self::assertSame('You already have a Soirely account', $mail->getSubject());
+        self::assertStringContainsString('/forgot-password', (string) $mail->getTextBody());
 
-        // The plain token must appear nowhere in the table. A dump of this
-        // database is then not a set of working sessions.
-        $stored = self::em()->getConnection()
-            ->executeQuery('SELECT token_hash FROM refresh_tokens')
-            ->fetchFirstColumn();
+        foreach (['000000', '123456'] as $guess) {
+            $this->confirm($handle, $guess);
+            self::assertSame(ErrorCode::VerificationCodeInvalid->type(), $this->last()['type'], 'every code reads as wrong');
+        }
+        self::assertSame(1, self::service(UserRepository::class)->count([]), 'no second account');
 
-        self::assertNotContains($plain, $stored);
-        self::assertContains(TokenIssuer::hash($plain), $stored);
+        self::mockTime('+2 minutes');
+        $this->resend($handle);
+        self::assertSame(200, $this->statusCode());
+        self::assertCount(0, self::getMailerMessages(), 'not again within the hour');
+
+        self::mockTime('+61 minutes');
+        $this->resend($handle);
+        self::assertSame('You already have a Soirely account', $this->lastMail()->getSubject(), 'and again after it');
     }
 
     #[Test]
-    public function thePasswordIsNowhereInTheResponse(): void
+    public function aHandleWorksOnceAndForADay(): void
     {
-        $this->register('quiet@example.com', 'Quiet', self::GOOD_PASSWORD);
+        self::mockTime('2026-10-17 12:00:00');
+        $handle = Type\string()->coerce($this->register('once@example.com', 'Once', self::GOOD_PASSWORD)['registration']);
+        $code = $this->codeSentTo('once@example.com');
+        $this->confirm($handle, $code);
+        self::assertSame(201, $this->statusCode());
 
-        $raw = (string) $this->client->getResponse()->getContent();
+        $this->confirm($handle, $code);
+        self::assertSame(ErrorCode::RegistrationExpired->type(), $this->last()['type'], 'a second press of the right code: used, not a conflict');
 
-        self::assertStringNotContainsString(self::GOOD_PASSWORD, $raw);
-        self::assertStringNotContainsString('password', $raw, 'not even the field name comes back');
+        $later = Type\string()->coerce($this->register('later@example.com', 'Later', self::GOOD_PASSWORD)['registration']);
+        self::mockTime('+25 hours');
+        $this->confirm($later, '000000');
+        self::assertSame(410, $this->statusCode());
+        self::assertSame(ErrorCode::RegistrationExpired->type(), $this->last()['type'], 'expired');
     }
 
     #[Test]
-    public function anAddressHeldByAVerifiedAccountIsRefused(): void
+    public function anAddressHeldByAnUnverifiedAccountIsReleasedOnceTheCodeProvesIt(): void
     {
-        $this->register('taken@example.com', 'First', self::GOOD_PASSWORD);
-        $this->verify('taken@example.com');
-        $body = $this->register('taken@example.com', 'Second', self::GOOD_PASSWORD);
-
-        self::assertSame(409, $this->client->getResponse()->getStatusCode());
-        self::assertSame(ErrorCode::EmailTaken->type(), $body['type']);
-    }
-
-    /**
-     * The same address written differently is the same address. Without
-     * normalisation on the lookup this registers twice and the second account
-     * can never sign in, because the provider finds the first.
-     */
-    #[Test]
-    public function theDuplicateCheckNormalisesTheAddress(): void
-    {
-        $this->register('normalise@example.com', 'First', self::GOOD_PASSWORD);
-        $this->verify('normalise@example.com');
-        $body = $this->register('  NORMALISE@Example.com ', 'Second', self::GOOD_PASSWORD);
-
-        self::assertSame(409, $this->client->getResponse()->getStatusCode());
-        self::assertSame(ErrorCode::EmailTaken->type(), $body['type']);
-    }
-
-    /** How a mistyped address is fixed: whoever really owns it can still sign up. */
-    #[Test]
-    public function anAddressHeldByAnUnverifiedAccountIsReleasedAndThatAccountDeleted(): void
-    {
-        $first = $this->register('released@example.com', 'Mistyped', self::GOOD_PASSWORD);
-        $firstId = Type\shape(['id' => Type\string()], true)->coerce($first['account'])['id'];
-
-        $second = $this->register('released@example.com', 'Real owner', self::GOOD_PASSWORD);
-
-        self::assertSame(201, $this->client->getResponse()->getStatusCode());
-        self::assertSame('Real owner', Type\shape(['name' => Type\string()], true)->coerce($second['account'])['name']);
-
+        $mistyped = self::service(UserRegistrar::class)->register('released@example.com', 'Mistyped', self::GOOD_PASSWORD)->user;
+        $mistypedId = $mistyped->getId();
         self::em()->clear();
-        self::assertNull(self::service(UserRepository::class)->find($firstId), 'the unverified holder is deleted');
-        self::assertSame(
-            'Real owner',
-            self::service(UserRepository::class)->findOneByPrimaryEmailAddress('released@example.com')?->getName(),
-        );
+
+        $handle = Type\string()->coerce($this->register('released@example.com', 'Real owner', self::GOOD_PASSWORD)['registration']);
+        self::assertNotNull(self::em()->find(User::class, $mistypedId), 'nothing changes until the code');
+
+        $this->confirm($handle, $this->codeSentTo('released@example.com'));
+
+        self::assertSame(201, $this->statusCode());
+        self::assertNull(self::em()->find(User::class, $mistypedId), 'the unverified holder was released');
     }
 
-    /** An alternative nobody verified still belongs to an account that proved it is real. */
+    /** "Not your address?" starts again: a fresh handle, and the old one still answers only for itself. */
     #[Test]
-    public function anUnverifiedAddressOfAVerifiedAccountIsStillRefused(): void
+    public function registeringAgainGivesAFreshHandle(): void
     {
-        $this->register('owner@example.com', 'Owner', self::GOOD_PASSWORD);
-        $this->verify('owner@example.com');
+        $first = $this->register('again@example.com', 'Again', self::GOOD_PASSWORD)['registration'];
+        $second = $this->register('again@example.com', 'Again', self::GOOD_PASSWORD)['registration'];
 
-        $owner = self::service(UserRepository::class)->findOneByPrimaryEmailAddress('owner@example.com');
-        self::assertNotNull($owner);
-        new EmailAddress($owner, 'owners-alternative@example.com');
-        self::em()->flush();
-
-        $body = $this->register('owners-alternative@example.com', 'Someone else', self::GOOD_PASSWORD);
-
-        self::assertSame(409, $this->client->getResponse()->getStatusCode());
-        self::assertSame(ErrorCode::EmailTaken->type(), $body['type']);
+        self::assertNotSame($first, $second);
     }
 
     #[Test]
@@ -390,7 +377,7 @@ final class RegisterTest extends ApiTestCase
     {
         $controller = new RegisterController(
             self::service(AccountSerialiser::class),
-            self::service(UserRegistrar::class),
+            self::service(PendingRegistrations::class),
             new RefusingRateLimiterFactory(),
         );
 
@@ -405,12 +392,50 @@ final class RegisterTest extends ApiTestCase
         }
     }
 
-    private function verify(string $address): void
+    private function owner(string $address): void
     {
-        $held = self::service(EmailAddressRepository::class)->findOneByAddress($address);
-        self::assertNotNull($held);
-        $held->setVerifiedAt(new DateTimeImmutable());
+        $user = self::service(UserRegistrar::class)->register($address, 'Owner', self::GOOD_PASSWORD)->user;
+        $user->getPrimaryEmailAddress()?->setVerifiedAt(new DateTimeImmutable());
         self::em()->flush();
+    }
+
+    /** @return array<string, mixed> */
+    private function confirm(#[SensitiveParameter] string $handle, #[SensitiveParameter] string $code): array
+    {
+        $this->client->request('POST', '/api/auth/register/verify', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['registration' => $handle, 'code' => $code]));
+
+        return $this->last();
+    }
+
+    private function resend(#[SensitiveParameter] string $handle): void
+    {
+        $this->client->request('POST', '/api/auth/register/resend', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['registration' => $handle]));
+    }
+
+    private function codeSentTo(string $address): string
+    {
+        $mail = $this->lastMail();
+        self::assertSame($address, $mail->getTo()[0]->getAddress());
+
+        return Regex\first_match((string) $mail->getTextBody(), '/\b(\d{6})\b/')[1] ?? '';
+    }
+
+    private function lastMail(): Email
+    {
+        return Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()));
+    }
+
+    private function statusCode(): int
+    {
+        return $this->client->getResponse()->getStatusCode();
+    }
+
+    /** @return array<string, mixed> */
+    private function last(): array
+    {
+        $raw = (string) $this->client->getResponse()->getContent();
+
+        return '' === $raw ? [] : Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($raw));
     }
 
     /** @param array<int, array<string, string>> $violations */

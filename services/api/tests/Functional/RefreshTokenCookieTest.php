@@ -12,9 +12,13 @@ use App\Http\RefreshTokenCookies;
 use App\Repository\RefreshTokenRepository;
 use App\Tests\ApiTestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
+use Psl\Regex;
+use Psl\Type;
 use Symfony\Component\BrowserKit\Cookie as BrowserKitCookie;
 use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\Mime\Email;
 
 final class RefreshTokenCookieTest extends ApiTestCase
 {
@@ -47,12 +51,18 @@ final class RefreshTokenCookieTest extends ApiTestCase
             'email' => 'cookie-register@example.com',
             'name' => 'Cookie Register',
             'password' => self::PASSWORD,
-            'refreshTokenIn' => 'cookie',
         ]));
+        $handle = Type\string()->coerce($this->decode()['registration']);
+        $mail = Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()));
+        $code = Regex\first_match((string) $mail->getTextBody(), '/\b(\d{6})\b/')[1] ?? '';
+
+        $this->client->request('POST', '/api/auth/register/verify', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ], content: Json\encode(['registration' => $handle, 'code' => $code, 'refreshTokenIn' => 'cookie']));
 
         self::assertSame(201, $this->client->getResponse()->getStatusCode());
         self::assertArrayNotHasKey('refreshToken', $this->decode());
-        self::assertNotNull($this->cookie(), 'sign-up signs you in, so it is the same moment');
+        self::assertNotNull($this->cookie(), 'the code signs you in, so it is the same moment');
     }
 
     #[Test]

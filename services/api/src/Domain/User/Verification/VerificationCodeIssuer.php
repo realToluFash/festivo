@@ -45,7 +45,7 @@ final readonly class VerificationCodeIssuer
         return \hash('sha256', $code);
     }
 
-    private static function generate(): string
+    public static function generate(): string
     {
         $digits = Str\repeat('0', VerificationChallenge::CODE_LENGTH);
 

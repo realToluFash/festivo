@@ -78,6 +78,12 @@ scope's private enum will sit next to `ErrorCode`. If that starts to grate the r
 - **An adapter goes under `Integrations/<Provider>/`**, and the port it implements stays in
   the capability's `Interfaces/`. A second geocoder is then
   `Integrations/Google/PlacesProvider.php` with nothing in `Address/` changing.
+- **Work the client must not wait for goes through `App\Http\AfterResponse::defer()`**, never
+  a new `kernel.terminate` listener. It ends the response first (`FinishResponseListener`),
+  resets between requests, and logs only an exception's class, so a deferred email can't leak
+  its address. The rule exists because a second hand-rolled queue appeared within two stories,
+  and the after-response contract had already broken once under FrankenPHP; it was fixed for
+  everyone only because there was one place to fix it.
 - **Exceptions belonging to a port stay with the port.** `ProviderUnavailable` is in
   `Address/Exception/` and not with the Nominatim adapter, because the controller catches it
   and `AddressLookup` declares it — it is the port's vocabulary, not one provider's.

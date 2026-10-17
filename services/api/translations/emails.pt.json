@@ -19,5 +19,10 @@
     "recovery.or": " ou ",
     "twoFactor.off.subject": "A autenticação de dois fatores foi desativada",
     "twoFactor.off.body": "A autenticação de dois fatores da sua conta Soirely foi desativada a {when}. Iniciar sessão pede agora apenas a sua palavra-passe, Google ou Apple.",
-    "twoFactor.off.notYou": "Se não foi você, redefina a sua palavra-passe e volte a ativar a autenticação de dois fatores em Definições > Segurança."
+    "twoFactor.off.notYou": "Se não foi você, redefina a sua palavra-passe e volte a ativar a autenticação de dois fatores em Definições > Segurança.",
+    "alreadyRegistered.subject": "Já tem uma conta Soirely",
+    "alreadyRegistered.body": "Alguém tentou criar uma conta Soirely com este endereço. Já tem uma. Inicie sessão, ou redefina a sua palavra-passe se a esqueceu.",
+    "alreadyRegistered.signIn": "Iniciar sessão:",
+    "alreadyRegistered.reset": "Redefinir a sua palavra-passe:",
+    "alreadyRegistered.ignore": "Se não foi você, pode ignorar este e-mail."
 }

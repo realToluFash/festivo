@@ -13,11 +13,9 @@ function refusal(status: number, code: string, extra: object = {}, headers: obje
 }
 
 describe('a refused registration', () => {
-  it('puts a taken address under Email', () => {
-    expect(registrationRefusal(refusal(409, 'email_taken'), 'en')).toEqual({
-      kind: 'refused',
-      fields: { email: 'taken' },
-    });
+  /** Registration never says an address is taken (sc-512): no answer is read that way. */
+  it('reads no refusal as a taken address', () => {
+    expect(registrationRefusal(refusal(409, 'conflict'), 'en')).toEqual({ kind: 'failed' });
   });
 
   it('words a breached password itself, and keeps every other message as the API sent it', () => {

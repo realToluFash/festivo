@@ -78,6 +78,7 @@ function fillIn(password = 'lagos-evenings') {
 }
 
 afterEach(() => {
+  sessionStorage.clear();
   vi.restoreAllMocks();
   __setSessionState({ status: 'unknown' });
 });
@@ -138,9 +139,11 @@ describe('creating an account', () => {
 });
 
 describe('creating an account, for real', () => {
-  it('registers once and lands on Verify email, with no sign-in between', async () => {
+  it('registers once and lands on Check your email by its handle, signed in to nothing', async () => {
     const sent = answering({
-      'POST /api/auth/register': () => json({ ...ISSUED, account: ACCOUNT }, 201),
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 60 }),
     });
 
     at('/register');
@@ -149,6 +152,7 @@ describe('creating an account, for real', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined(),
     );
+    expect(screen.getByText(/We sent a code to folake@ire\.events\./)).toBeDefined();
 
     const registrations = sent.filter((request) => request.path === '/api/auth/register');
     expect(registrations).toHaveLength(1);
@@ -157,19 +161,61 @@ describe('creating an account, for real', () => {
       name: 'Folake Adeyemi',
       password: 'lagos-evenings',
     });
+    expect(sent.some((request) => request.path === '/api/auth/me')).toBe(false);
   });
 
-  it('says a taken address is registered, under the field, with both ways out', async () => {
-    answering({ 'POST /api/auth/register': () => problem(409, 'email_taken') });
+  it('makes the account only when the code is entered, then goes on', async () => {
+    const sent = answering({
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0 }),
+      'POST /api/auth/register/verify': () => json({ ...ISSUED, account: ACCOUNT }, 201),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
 
     at('/register');
     fillIn();
+    fireEvent.change(await screen.findByLabelText('Code from the email'), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
+
+    await waitFor(
+      () => expect(screen.getByRole('heading', { level: 1, name: 'Email verified' })).toBeDefined(),
+      { timeout: 3000 },
+    );
+    expect(
+      JSON.parse(
+        sent.find((request) => request.path === '/api/auth/register/verify')?.body ?? '{}',
+      ),
+    ).toEqual({ registration: 'the-handle', code: '123456', refreshTokenIn: 'cookie' });
+    expect(sessionStorage.getItem('soirely.registration')).toBeNull();
+  });
+
+  /** A taken address gets no code, so its every code reads like this one: there is no "taken" to show. */
+  it('says a wrong code is wrong, as it says to a taken address', async () => {
+    answering({
+      'POST /api/auth/register': () =>
+        json({ registration: 'the-handle', email: 'folake@ire.events' }, 202),
+      'GET /api/auth/register/resend': () => json({ cooldownSeconds: 0 }),
+      'POST /api/auth/register/verify': () => problem(422, 'verification_code_invalid'),
+    });
+
+    at('/register');
+    fillIn();
+    fireEvent.change(await screen.findByLabelText('Code from the email'), {
+      target: { value: '000000' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify email' }));
 
     await waitFor(() =>
-      expect(screen.getByText(/This email is already registered\./)).toBeDefined(),
+      expect(
+        screen.getByText(
+          'That code does not match. Check the newest email from Soirely and try again.',
+        ),
+      ).toBeDefined(),
     );
-    expect(screen.getByLabelText('Email').getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByRole('link', { name: 'Reset your password' })).toBeDefined();
+    expect(screen.queryByText(/already registered/)).toBeNull();
   });
 
   it('says a breached password is breached, under the password', async () => {

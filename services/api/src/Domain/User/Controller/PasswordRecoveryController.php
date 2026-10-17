@@ -7,9 +7,9 @@ namespace App\Domain\User\Controller;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\Recovery\PasswordRecovery;
-use App\Domain\User\Recovery\RecoveryRequests;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\Policy\PublicAccess;
+use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
@@ -25,7 +25,7 @@ final readonly class PasswordRecoveryController
 {
     public function __construct(
         private PasswordRecovery $passwordRecovery,
-        private RecoveryRequests $recoveryRequests,
+        private AfterResponse $afterResponse,
         private SignInResponse $signInResponse,
         private RateLimiterFactoryInterface $passwordResetAddressLimiter,
         private RateLimiterFactoryInterface $passwordResetIpLimiter,
@@ -49,7 +49,10 @@ final readonly class PasswordRecoveryController
             }
         }
 
-        $this->recoveryRequests->accept($body['email'], $request->getLocale());
+        // After the answer has gone, or a registered address would answer slower than an unknown one.
+        $email = $body['email'];
+        $locale = $request->getLocale();
+        $this->afterResponse->defer(fn () => $this->passwordRecovery->request($email, $locale));
 
         return new JsonResponse(new stdClass(), Response::HTTP_ACCEPTED);
     }
