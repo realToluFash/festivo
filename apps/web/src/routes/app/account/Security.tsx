@@ -1,5 +1,7 @@
 import { type DeviceSession } from '@soirely/api-client';
 import {
+  type AppDevice,
+  appDevice,
   formatDay,
   formatTimeOfDay,
   othersOf,
@@ -380,7 +382,18 @@ function Check({
   );
 }
 
+const APP_NAMES = {
+  iPhone: 'devices.appIPhone',
+  iPad: 'devices.appIPad',
+  phone: 'devices.appAndroidPhone',
+  tablet: 'devices.appAndroidTablet',
+} as const satisfies Record<AppDevice, string>;
+
 function nameOf(device: DeviceSession, t: TFunction): string {
+  const app = appDevice(device.userAgent);
+
+  if (app != null) return t(APP_NAMES[app]);
+
   const parts = readableAgent(device.userAgent);
 
   if (parts != null) {

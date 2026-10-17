@@ -2,6 +2,7 @@
   "es": ["web:app.name", "web:orgGeneral.title", "mobile:app.name", "mobile:home.title"],
   "fr": [
     "mobile:app.name",
+    "mobile:frame.organisation",
     "mobile:home.title",
     "mobile:twoFactor.code",
     "mobile:waysCard.code",

@@ -44,6 +44,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. A minute count in the API catalogue takes no agreement.** The API's
+  catalogues have no ICU plural, so `{minutes}` sits where the plural reads right at 5:
+  «en los últimos {minutes} minutos» (`messages:proof.required`). "Continue with {provider}
+  again" is «Vuelva a iniciar sesión con {{provider}}», which names what happens rather than
+  quoting the button (`waysCard.proofExpired_*`). The provider emails' "If this wasn't you"
+  stays «Si no fue usted», as their `notYou` siblings say it (sc-1315).
+
 - **17 Oct 2026. "You're signed in" is «Ha iniciado sesión».** On the app's Home
   (`home.signedIn`, `home.signedInTo`: «Ha iniciado sesión en {{name}}»). The English
   contraction is warmth; Spanish carries it in the plain perfect, still _usted_, and «en»
@@ -61,3 +68,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`password.changed.devices`, `recovery.changed.body`). On screen, where the person has
   just pressed Save, the preterite «Se cerró la sesión en sus otros dispositivos» stays
   (`passwordCard.done_*`).
+- **17 Oct 2026. A replaced request.** The mark is «Sustituida», feminine like «Cancelada»
+  and «Rechazada» because it agrees with «solicitud», and the verb matches `resendNote`
+  («sustituyen»). "Start again" is «Empezar de nuevo» on the button and «Empiece de nuevo» in
+  a sentence. A request started elsewhere is reported in the perfect, «Se ha iniciado…», on
+  screen and in `errors:recovery_request_replaced` alike. The daily limit is worded as
+  `limitedBody` words it: «una de las 3 veces al día que puede pedirlo» (sc-1457).

@@ -46,6 +46,6 @@
     "recovery_request_invalid": "Esa solicitud ya no está abierta. Empiece de nuevo desde la pantalla del código de inicio de sesión.",
     "recovery_request_closed": "Esta solicitud ya ha terminado.",
     "recovery_request_proved": "Esta solicitud ya está esperando una respuesta.",
-    "recovery_request_replaced": "Se inició una solicitud más reciente en otro dispositivo.",
+    "recovery_request_replaced": "Se ha iniciado una solicitud más reciente en otro dispositivo.",
     "registration_expired": "Vuelva a empezar el registro."
 }

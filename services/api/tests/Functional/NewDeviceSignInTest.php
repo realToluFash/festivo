@@ -197,6 +197,18 @@ final class NewDeviceSignInTest extends ApiTestCase
         self::assertStringContainsString('Device: Soirely/1.0 CFNetwork/1568 Darwin/24.1.0', (string) $mail->getTextBody());
     }
 
+    /** The app's own user agent reads as the devices card reads it, without its versions (sc-1242). */
+    #[Test]
+    public function theAppIsNamedByItsDeviceClass(): void
+    {
+        $this->register('app-agent@example.com', self::PHONE);
+
+        $this->signIn('app-agent@example.com', self::TABLET, ['HTTP_USER_AGENT' => 'Soirely/1.4.0 (iPadOS 18.1; iPad)']);
+
+        $mail = Type\instance_of(Email::class)->coerce(Iter\first($this->noticesTo('app-agent@example.com')));
+        self::assertStringContainsString('Device: Soirely app on iPad', (string) $mail->getTextBody());
+    }
+
     #[Test]
     public function noMoreThanTenADayGoOutAndTheRestAreStillKnown(): void
     {

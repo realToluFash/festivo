@@ -139,10 +139,7 @@ final readonly class UserMailer
     /** The device as the devices card names its row (sc-55): readable when it can be, else the user agent as it came. */
     public function named(?string $userAgent, string $locale): string
     {
-        $agent = ReadableAgent::of($userAgent);
-
-        return match (true) {
-            null !== $agent => $this->line('password.device.agent', $locale, ['{browser}' => $agent->browser, '{platform}' => $agent->platform]),
+        return $this->agentName($userAgent, $locale) ?? match (true) {
             null === $userAgent || '' === Str\trim($userAgent) => $this->line('password.device.unknown', $locale),
             default => Str\trim($userAgent),
         };
@@ -156,5 +153,19 @@ final readonly class UserMailer
         return null === $ipAddress || '' === $ipAddress
             ? $named
             : $this->line('password.device.from', $locale, ['{device}' => $named, '{address}' => $ipAddress]);
+    }
+
+    /** The device as the devices card names its row, or null for a user agent neither the app's format nor the browser rules can read. */
+    public function agentName(?string $userAgent, string $locale): ?string
+    {
+        $agent = ReadableAgent::of($userAgent);
+
+        return match (AppDevice::of($userAgent)) {
+            AppDevice::IPhone => $this->line('password.device.appIPhone', $locale),
+            AppDevice::IPad => $this->line('password.device.appIPad', $locale),
+            AppDevice::Phone => $this->line('password.device.appAndroidPhone', $locale),
+            AppDevice::Tablet => $this->line('password.device.appAndroidTablet', $locale),
+            null => null === $agent ? null : $this->line('password.device.agent', $locale, ['{browser}' => $agent->browser, '{platform}' => $agent->platform]),
+        };
     }
 }

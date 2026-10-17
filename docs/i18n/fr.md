@@ -15,18 +15,23 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | French                  | Notes |
-| ------------------------- | ----------------------- | ----- |
-| Settings                  | Paramètres              |       |
-| Organisation              | Organisation            |       |
-| Sign in                   | Se connecter            |       |
-| Sign out                  | Déconnecter             |       |
-| Email                     | Adresse e-mail          |       |
-| Password                  | Mot de passe            |       |
-| Continue                  | Continuer               |       |
-| Cancel                    | Annuler                 |       |
-| Two-factor authentication | Double authentification |       |
-| Recovery code             | Code de récupération    |       |
+| English                   | French                  | Notes                            |
+| ------------------------- | ----------------------- | -------------------------------- |
+| Settings                  | Paramètres              | Settled: also the app's tab      |
+| Home                      | Accueil                 | Settled: the app's tab           |
+| Account / Security        | Compte / Sécurité       | Settled: section names           |
+| Ways to sign in           | Moyens de connexion     | Settled                          |
+| Signed-in devices         | Appareils connectés     | Settled                          |
+| Start again               | Recommencer             | Settled                          |
+| Organisation              | Organisation            |                                  |
+| Sign in                   | Se connecter            |                                  |
+| Sign out                  | Déconnecter             |                                  |
+| Email                     | Adresse e-mail          |                                  |
+| Password                  | Mot de passe            |                                  |
+| Continue                  | Continuer               |                                  |
+| Cancel                    | Annuler                 |                                  |
+| Two-factor authentication | Double authentification | Settled: also "two-factor" alone |
+| Recovery code             | Code de récupération    |                                  |
 
 ## Never translated
 
@@ -36,6 +41,23 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **17 Oct 2026. "Vous êtes connecté", masculine as the generic form** (`home.signedIn`,
+  `settings.signedInAs`, as in `nav.signedInAs` and "Vous restez connecté"). The code has
+  no gender for the person, and « connecté·e » breaks screen readers. Ask `[dev]` for a
+  slot if a string ever needs to agree.
+- **17 Oct 2026. Status marks agree with « demande »**: Annulée, Confirmée, Refusée,
+  Terminée, Remplacée. A new mark on the recovery request is feminine singular, one word.
+- **17 Oct 2026. The daily recovery limit reads « 3 fois par jour »** (`limitedBody`).
+  `replacedNote` says « Cela compte parmi les 3 demandes que vous pouvez faire par jour »
+  so that both lines give the same limit.
+- **17 Oct 2026. A button named in a sentence is quoted by its French label** in
+  guillemets: « Choisissez de nouveau « Continuer avec {{provider}} » » (`proofExpired_*`).
+  The person has to find it on the screen.
+- **17 Oct 2026. A slot with no plural form** (`messages:proof.required`'s `{minutes}`) is
+  written so it reads at the value it carries: « dans les {minutes} dernières minutes ».
+- **17 Oct 2026. Section names stand alone as nouns** in running text: « Compte réunit… »,
+  « Sécurité réunit… » (`settings.chooseLine`), « vérifiez Sécurité » (emails).
 
 - **17 Oct 2026. Signing out is immediate; no delay is promised.** "Tous vos autres
   appareils ont été déconnectés." (password-changed email, after #110's "Every other

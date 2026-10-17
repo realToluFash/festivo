@@ -212,6 +212,16 @@ final class ChangePasswordTest extends ApiTestCase
         self::assertStringContainsString('/sign-in', $text);
     }
 
+    /** The app's own user agent, named as the devices card names it, without its versions (sc-1242). */
+    #[Test]
+    public function theAppIsNamedByItsDeviceClass(): void
+    {
+        $this->change($this->signIn(), self::OLD_PASSWORD, self::NEW_PASSWORD, ['HTTP_USER_AGENT' => 'Soirely/1.4.0 (Android 15; tablet)', 'REMOTE_ADDR' => '197.210.78.3']);
+
+        $text = (string) Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()))->getTextBody();
+        self::assertStringContainsString('The device: Soirely app on Android tablet, from 197.210.78.3.', $text);
+    }
+
     #[Test]
     public function aDeviceItCannotReadIsNamedAsTheDevicesCardNamesIt(): void
     {

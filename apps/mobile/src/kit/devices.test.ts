@@ -38,6 +38,20 @@ describe('the devices card in the app', () => {
     expect(deviceName(device(null), t)).toBe('devices.unknownDevice');
   });
 
+  it('names the app by its device class, and shows any other Soirely string as it came', () => {
+    expect(deviceName(device('Soirely/1.4.0 (iOS 18.1; iPhone)'), t)).toBe('devices.appIPhone');
+    expect(deviceName(device('Soirely/1.4.0 (iPadOS 18.1; iPad)'), t)).toBe('devices.appIPad');
+    expect(deviceName(device('Soirely/1.4.0 (Android 15; phone)'), t)).toBe(
+      'devices.appAndroidPhone',
+    );
+    expect(deviceName(device('Soirely/1.4.0 (Android 15; tablet)'), t)).toBe(
+      'devices.appAndroidTablet',
+    );
+    expect(deviceName(device('Soirely/1.4.0 (Android 15; watch)'), t)).toBe(
+      'Soirely/1.4.0 (Android 15; watch)',
+    );
+  });
+
   it('puts a wrong password on the password field, unless Google or Apple refused', () => {
     expect(everywhereRefusal(refused('invalid_credentials', 401), false, t)).toEqual({
       kind: 'field',
