@@ -61,7 +61,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     {
         parent::setUp();
         $this->client->disableReboot();
-        self::getContainer()->set(PhoneCodeChannels::class, new PhoneCodeChannels(false, ''));
+        self::getContainer()->set(PhoneCodeChannels::class, new PhoneCodeChannels(true, 'NG'));
 
         $this->person = $this->account(self::ADDRESS, 'Folake Adeyemi');
         $this->organisation = self::service(OrganisationFounder::class)->found($this->person, 'Ìrè Events', 'NG', 'Africa/Lagos');
@@ -214,7 +214,28 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame([], self::em()->getRepository(TwoFactorRecovery::class)->findAll());
         $this->join($this->approver, SeededRole::Owner);
         self::em()->flush();
-        $this->start();
+
+        foreach (Vec\range(1, 3) as $_) {
+            $this->start();
+        }
+    }
+
+    #[Test]
+    public function textItToMeInsteadLastsOnlyTheRequestsOwnCodes(): void
+    {
+        $this->verifiedPhone('+447700900123', 'GB');
+
+        $handle = $this->start();
+        $emailCode = $this->emailCode();
+        $this->call('POST', '/api/auth/two-factor/recovery/text-instead', ['recovery' => $handle]);
+        self::assertTrue($this->phone()->wantsCodesByText(), 'the rest of this request is texted');
+        self::assertSame('waiting', $this->prove($handle, $emailCode, $this->textedCode())['status']);
+        self::assertFalse($this->phone()->wantsCodesByText(), 'proved: the choice ends with it');
+
+        $other = $this->start();
+        $this->call('POST', '/api/auth/two-factor/recovery/text-instead', ['recovery' => $other]);
+        $this->call('POST', '/api/auth/two-factor/recovery/cancel', ['recovery' => $other]);
+        self::assertFalse($this->phone()->wantsCodesByText(), 'cancelled: the same');
     }
 
     #[Test]
@@ -406,10 +427,10 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
     }
 
-    private function verifiedPhone(): void
+    private function verifiedPhone(string $number = '+2348035550142', string $country = 'NG'): void
     {
         $person = $this->fresh($this->person);
-        $phone = new PhoneNumber($person, '+2348035550142', true, 'NG');
+        $phone = new PhoneNumber($person, $number, true, $country);
         $phone->setVerifiedAt(new DateTimeImmutable());
         $person->addPhoneNumber($phone);
         self::em()->persist($phone);
@@ -514,6 +535,13 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         $organisation = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, $this->organisation->getId()));
         $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $as]));
         self::em()->persist(new Membership($organisation, $this->fresh($user), $role, MembershipStatus::Active));
+    }
+
+    private function phone(): PhoneNumber
+    {
+        self::em()->clear();
+
+        return Type\instance_of(PhoneNumber::class)->coerce(self::em()->getRepository(PhoneNumber::class)->findOneBy(['user' => $this->person]));
     }
 
     private function leaves(User $user): void

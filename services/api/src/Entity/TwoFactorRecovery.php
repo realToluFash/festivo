@@ -122,8 +122,10 @@ class TwoFactorRecovery
         return $lapsed ? TwoFactorRecoveryStatus::Expired : $this->status;
     }
 
+    /** "Text it to me instead" lasts the request's own codes (sc-750): a later code to the number is WhatsApp first again. */
     public function proved(DateTimeImmutable $now): void
     {
+        $this->phoneNumber?->forgetCodesByText();
         $this->status = TwoFactorRecoveryStatus::Waiting;
         $this->provedAt = $now;
         $this->expiresAt = $now->modify('+' . self::LIFETIME_HOURS . ' hours');
@@ -131,6 +133,7 @@ class TwoFactorRecovery
 
     public function close(TwoFactorRecoveryStatus $status, DateTimeImmutable $now, ?User $decidedBy = null): void
     {
+        $this->phoneNumber?->forgetCodesByText();
         $this->status = $status;
         $this->closedAt = TwoFactorRecoveryStatus::Expired === $status && null !== $this->expiresAt ? $this->expiresAt : $now;
         $this->decidedBy = $decidedBy;
