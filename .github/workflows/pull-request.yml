@@ -179,8 +179,38 @@ jobs:
         # every upload fails on a bucket that does not exist.
         run: docker compose up storage-init
 
+      # Built from scratch, the image spends most of two minutes compiling PHP
+      # extensions that change only when the Dockerfile does. The key follows
+      # the two files that decide the layers; a miss falls back to the newest
+      # cache, so a composer.lock change rebuilds only the composer layer.
+      - name: Restore the API image's layers
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/api-build-cache
+          key: api-image-${{ hashFiles('services/api/Dockerfile', 'services/api/composer.lock') }}
+          restore-keys: api-image-
+
       - name: Build the API image
-        run: docker compose build api
+        # buildx directly rather than `docker compose build`: compose asks for
+        # an interactive approval before writing a cache directory, and CI has
+        # nobody to give it. The tag is the name compose looks for, so the next
+        # step starts this image instead of building its own. The default
+        # docker driver cannot export a cache, hence the docker-container
+        # builder. The cache goes to a fresh directory and is swapped in after;
+        # exporting over the one it read from only ever grows.
+        env:
+          API_BUILD_CACHE: ${{ runner.temp }}/api-build-cache
+          API_BUILD_CACHE_NEXT: ${{ runner.temp }}/api-build-cache-next
+        run: |
+          docker buildx create --use --driver docker-container
+          docker buildx build services/api \
+            --target dev \
+            --tag "$(docker compose config --format json | jq -r .name)-api" \
+            --cache-from "type=local,src=${API_BUILD_CACHE}" \
+            --cache-to "type=local,dest=${API_BUILD_CACHE_NEXT},mode=max" \
+            --load
+          rm -rf "$API_BUILD_CACHE"
+          mv "$API_BUILD_CACHE_NEXT" "$API_BUILD_CACHE"
 
       - name: Start the API
         run: docker compose up -d api
