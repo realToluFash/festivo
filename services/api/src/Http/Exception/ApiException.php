@@ -63,6 +63,25 @@ class ApiException extends RuntimeException
         );
     }
 
+    /**
+     * The same 429, its minute written for the reader ("Sunday, Oct 18 at 17:09 WAT") and carried as `retryAt`.
+     *
+     * @param callable(DateTimeImmutable): string $written
+     */
+    public static function tooManyAttemptsUntil(string $refusal, DateTimeImmutable $windowEnd, callable $written): self
+    {
+        $when = $written(self::statedMinute($windowEnd));
+
+        return new self(
+            ErrorCode::TooManyAttempts,
+            $refusal . ' Try again ' . $when . '.',
+            [],
+            null,
+            ['Retry-After' => (string) self::secondsUntil($windowEnd)],
+            ['retryAt' => $when],
+        );
+    }
+
     /** Rounded up, as the clients round it: told 22:46, whoever tries at 22:46:01 gets in. */
     private static function statedMinute(DateTimeImmutable $windowEnd): DateTimeImmutable
     {

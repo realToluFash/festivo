@@ -339,6 +339,21 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(429, $this->statusCode());
         self::assertSame(ErrorCode::TooManyAttempts->type(), $this->last()['type']);
         self::assertNotNull($this->client->getResponse()->headers->get('Retry-After'));
+        $retryAt = Type\string()->coerce($this->last()['retryAt'] ?? null);
+        self::assertMatchesRegularExpression('/^[A-Z][a-z]+day, [A-Z][a-z]{2} \d{1,2} at \d{2}:\d{2} UTC$/', $retryAt, 'the instant, with its day and zone (#1118)');
+        self::assertSame('You can ask 3 times a day. Try again ' . $retryAt . '.', $this->last()['detail']);
+    }
+
+    #[Test]
+    public function aWaitingRequestSaysSoWhenItsCodesAreTriedAgain(): void
+    {
+        $handle = $this->proved();
+
+        $this->call('POST', '/api/auth/two-factor/recovery/prove', ['recovery' => $handle, 'emailCode' => '000000']);
+        self::assertSame(ErrorCode::RecoveryRequestProved->type(), $this->last()['type'], 'not "already ended" (#1121)');
+        self::assertSame('This request is already waiting for an answer.', $this->last()['title']);
+        $this->call('POST', '/api/auth/two-factor/recovery/resend', ['recovery' => $handle]);
+        self::assertSame(ErrorCode::RecoveryRequestProved->type(), $this->last()['type']);
     }
 
     #[Test]

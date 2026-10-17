@@ -40,5 +40,6 @@
     "recovery_nobody_to_approve": "Personne dans votre organisation ne peut le confirmer. Contactez l'assistance Soirely.",
     "recovery_request_invalid": "Cette demande n'est plus ouverte. Recommencez depuis l'écran du code de connexion.",
     "recovery_request_closed": "Cette demande est déjà terminée.",
+    "recovery_request_proved": "Cette demande attend déjà une réponse.",
     "registration_expired": "Recommencez l'inscription."
 }
