@@ -40,6 +40,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. "Your {{provider}} sign-in was more than {{count}} minutes ago, so nothing
+  has changed yet. Continue with {{provider}} again to carry on."** (`waysCard.proofExpired_*`,
+  web and mobile). A past sign-in is something that "was … ago", not something "… old".
+  "Nothing has changed yet" says the requested change is still waiting, not lost. The `_one`
+  form reads "more than a minute ago". Asked on sc-510; the keys are with [dev].
 - **17 Oct 2026. "Your other device is signed out." / "Your {{count}} other devices are signed out."**
   (`web:devices.everywhereDone_*`, matching `passwordCard.done_*`). A `_one` form names no
   number: "your 1 other device" reads as a machine wrote it. The same goes for
