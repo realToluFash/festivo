@@ -639,10 +639,7 @@ export class ApiClient {
 
     if (init.body !== undefined) headers['Content-Type'] = 'application/json';
 
-    const locale = this.options.locale?.();
-    if (locale != null && locale !== '') headers['Accept-Language'] = locale;
-    const timeZone = this.options.timeZone?.();
-    if (timeZone != null && timeZone !== '') headers['X-Timezone'] = timeZone;
+    Object.assign(headers, this.deviceHeaders());
 
     if (!init.anonymous && this.options.tokens != null) {
       const token = await this.options.tokens.access();
@@ -721,13 +718,28 @@ export class ApiClient {
     return this.options.refreshTokenIn ?? 'body';
   }
 
+  /** The device's language and zone, on every request: a token request creates or signs in the account. */
+  private deviceHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    const locale = this.options.locale?.();
+    if (locale != null && locale !== '') headers['Accept-Language'] = locale;
+    const timeZone = this.options.timeZone?.();
+    if (timeZone != null && timeZone !== '') headers['X-Timezone'] = timeZone;
+
+    return headers;
+  }
+
   /** `credentials: 'include'` only here: the cookie is scoped to /api/auth. */
   private sendTokenRequest(path: string, body: Record<string, string>): Promise<Response> {
     const doFetch = this.options.fetch ?? fetch;
 
     return doFetch(this.url(path), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...this.deviceHeaders(),
+      },
       body: JSON.stringify({ ...body, refreshTokenIn: this.delivery() }),
       credentials: this.delivery() === 'cookie' ? 'include' : 'omit',
     });

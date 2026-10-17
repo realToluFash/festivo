@@ -1002,6 +1002,34 @@ describe("the account's time zone", () => {
     ]);
     expect(headers).toEqual(['Africa/Lagos']);
   });
+
+  test('sends the zone and language on the request that makes the account, and on sign-in', async () => {
+    const sent: { path: string; zone: string | null; language: string | null }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      timeZone: () => 'Asia/Calcutta',
+      locale: () => 'fr',
+      fetch: async (input, init) => {
+        const headers = new Headers(init?.headers);
+        sent.push({
+          path: new URL(String(input)).pathname,
+          zone: headers.get('X-Timezone'),
+          language: headers.get('Accept-Language'),
+        });
+
+        return json({ accessToken: 'a', expiresIn: 900, refreshToken: 'r', account: ACCOUNT });
+      },
+    });
+
+    await client.confirmRegistration('reg', '123456');
+    await client.signIn('folake@ire.events', 'a decent passphrase');
+
+    expect(sent).toEqual([
+      { path: '/api/auth/register/verify', zone: 'Asia/Calcutta', language: 'fr' },
+      { path: '/api/auth/login', zone: 'Asia/Calcutta', language: 'fr' },
+    ]);
+  });
 });
 
 describe('the sessions an account has', () => {
