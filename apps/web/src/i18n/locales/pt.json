@@ -531,7 +531,9 @@
     "save": "Guardar fuso horário",
     "saving": "A guardar…",
     "cancel": "Cancelar",
-    "saved": "Fuso horário alterado para {{zone}}. As horas nos seus emails já o usam."
+    "saved": "Fuso horário alterado para {{zone}}. As horas nos seus emails já o usam.",
+    "was": "antes {{name}}",
+    "countryWas": "{{country}} · antes {{name}}"
   },
   "lostTwoFactor": {
     "startTitle": "Voltar a entrar sem a aplicação de autenticação",

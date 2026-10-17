@@ -135,6 +135,8 @@ export interface RecentProof {
 export interface TimeZoneOption {
   id: string;
   city: string;
+  ianaCity: string;
+  formerNames: string[];
   country: string;
   /** Its offset now, such as `+01:00`. */
   offset: string;
@@ -676,13 +678,21 @@ export class ApiClient {
     const body = await this.get<{ timezones?: unknown }>('/api/auth/timezones');
 
     return Array.isArray(body.timezones)
-      ? body.timezones.filter(
-          (zone): zone is TimeZoneOption =>
-            typeof zone?.id === 'string' &&
-            typeof zone.city === 'string' &&
-            typeof zone.country === 'string' &&
-            typeof zone.offset === 'string',
-        )
+      ? body.timezones
+          .filter(
+            (zone): zone is TimeZoneOption =>
+              typeof zone?.id === 'string' &&
+              typeof zone.city === 'string' &&
+              typeof zone.country === 'string' &&
+              typeof zone.offset === 'string',
+          )
+          .map((zone) => ({
+            ...zone,
+            ianaCity: typeof zone.ianaCity === 'string' ? zone.ianaCity : zone.city,
+            formerNames: Array.isArray(zone.formerNames)
+              ? zone.formerNames.filter((name: unknown): name is string => typeof name === 'string')
+              : [],
+          }))
       : [];
   }
 

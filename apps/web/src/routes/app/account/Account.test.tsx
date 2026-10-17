@@ -28,6 +28,14 @@ const ZONES = [
   { id: 'Africa/Lagos', city: 'Lagos', country: 'Nigeria', offset: '+01:00' },
   { id: 'Africa/Kinshasa', city: 'Kinshasa', country: 'Congo - Kinshasa', offset: '+01:00' },
   { id: 'Europe/London', city: 'London', country: 'United Kingdom', offset: '+01:00' },
+  {
+    id: 'Asia/Kolkata',
+    city: 'Kolkata',
+    ianaCity: 'Kolkata',
+    formerNames: ['Calcutta'],
+    country: 'India',
+    offset: '+05:30',
+  },
 ];
 
 interface Sent {
@@ -92,6 +100,22 @@ describe("the account's time zone", () => {
     open({ timezone: null });
 
     expect(screen.getByText('Not set: times reach you in UTC')).toBeDefined();
+  });
+
+  it('finds a zone by a former name, and says only then which name it was', async () => {
+    answering();
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.change(screen.getByLabelText('Find your time zone'), {
+      target: { value: 'calcutta' },
+    });
+    expect(screen.getByRole('option', { name: /Kolkata \(UTC\+05:30\)/ }).textContent).toContain(
+      'India · was Calcutta',
+    );
+
+    fireEvent.change(screen.getByLabelText('Find your time zone'), { target: { value: 'india' } });
+    expect(screen.getByRole('option', { name: /Kolkata/ }).textContent).not.toContain('was');
   });
 
   it('finds a zone by its country, picks it, and saves it', async () => {
