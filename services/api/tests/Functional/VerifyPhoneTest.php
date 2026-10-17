@@ -239,6 +239,17 @@ final class VerifyPhoneTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCodeSentAsANumberIsAFieldErrorInTheTextsWords(): void
+    {
+        $this->set('NG', '0803 555 0142');
+
+        $body = $this->call('POST', '/api/auth/verify/phone', ['code' => 123456]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([['propertyPath' => 'code', 'message' => 'Enter the 6-digit code from the text.', 'code' => 'validation_failed']], $body['violations']);
+    }
+
+    #[Test]
     public function anExpiredCodeSaysSo(): void
     {
         $this->set('NG', '0803 555 0142');

@@ -3,6 +3,10 @@
     "actor.api_client": "Client API",
     "actor.system": "Système",
     "actor.user": "Titulaire du compte",
+    "validation.code_app_or_recovery_required": "Saisissez un code de votre application ou un code de récupération.",
+    "validation.code_app_required": "Saisissez le code à 6 chiffres de votre application.",
+    "validation.code_email_required": "Saisissez le code à 6 chiffres de l'e-mail.",
+    "validation.code_text_required": "Saisissez le code à 6 chiffres du SMS.",
     "validation.contact_address_invalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine.",
     "validation.contact_address_required": "Indiquez une adresse e-mail de contact.",
     "validation.country_invalid": "Choisissez un pays.",
@@ -18,5 +22,6 @@
     "validation.phone_required": "Indiquez votre numéro de portable.",
     "validation.phone_too_long": "Ce numéro semble trop long pour {country}. Vérifiez-le et réessayez.",
     "validation.phone_too_short": "Ce numéro semble trop court pour {country}. Vérifiez-le et réessayez.",
+    "validation.recovery_code_required": "Saisissez l'un de vos codes de récupération.",
     "validation.timezone_invalid": "Choisissez un fuseau horaire."
 }

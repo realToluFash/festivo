@@ -10,6 +10,7 @@ use App\Domain\User\Recovery\PasswordRecovery;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\AfterResponse;
+use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
@@ -29,6 +30,7 @@ final readonly class PasswordRecoveryController
         private SignInResponse $signInResponse,
         private RateLimiterFactoryInterface $passwordResetAddressLimiter,
         private RateLimiterFactoryInterface $passwordResetIpLimiter,
+        private CodeField $codeField,
     ) {
     }
 
@@ -74,11 +76,13 @@ final readonly class PasswordRecoveryController
     {
         $body = Input::body($request, Type\shape([
             'token' => Type\string(),
-            'code' => Type\optional(Type\string()),
-            'recoveryCode' => Type\optional(Type\string()),
+            'code' => Type\optional(Type\mixed()),
+            'recoveryCode' => Type\optional(Type\mixed()),
         ]));
+        $code = $this->codeField->optional($body, 'code', CodeField::FROM_APP);
+        $recoveryCode = $this->codeField->optional($body, 'recoveryCode', CodeField::RECOVERY);
 
-        $this->passwordRecovery->passSecondFactor($body['token'], $body['code'] ?? null, $body['recoveryCode'] ?? null);
+        $this->passwordRecovery->passSecondFactor($body['token'], $code, $recoveryCode);
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }

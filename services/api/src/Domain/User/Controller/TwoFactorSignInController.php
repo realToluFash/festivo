@@ -9,6 +9,7 @@ use App\Domain\User\Http\IssuedTokensResponse;
 use App\Domain\User\TwoFactor\SignInGate;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\Policy\PublicAccess;
+use App\Http\CodeField;
 use App\Http\Input;
 use Psl\Type;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,6 +22,7 @@ final readonly class TwoFactorSignInController
     public function __construct(
         private SignInGate $signInGate,
         private AccountSerialiser $accountSerialiser,
+        private CodeField $codeField,
     ) {
     }
 
@@ -29,12 +31,14 @@ final readonly class TwoFactorSignInController
     {
         $body = Input::body($request, Type\shape([
             'challenge' => Type\string(),
-            'code' => Type\optional(Type\string()),
-            'recoveryCode' => Type\optional(Type\string()),
+            'code' => Type\optional(Type\mixed()),
+            'recoveryCode' => Type\optional(Type\mixed()),
             'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
         ]));
+        $code = $this->codeField->optional($body, 'code', CodeField::FROM_APP);
+        $recoveryCode = $this->codeField->optional($body, 'recoveryCode', CodeField::RECOVERY);
 
-        $result = $this->signInGate->complete($body['challenge'], $body['code'] ?? null, $body['recoveryCode'] ?? null, $request);
+        $result = $this->signInGate->complete($body['challenge'], $code, $recoveryCode, $request);
 
         return new IssuedTokensResponse(
             $result->tokens,

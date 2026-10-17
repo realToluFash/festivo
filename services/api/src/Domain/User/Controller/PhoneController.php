@@ -15,6 +15,7 @@ use App\Entity\User;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Http\Access\Policy\Authenticated;
+use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
@@ -35,6 +36,7 @@ final readonly class PhoneController
         private VerificationCodeResender $verificationCodeResender,
         private VerificationCodeSender $verificationCodeSender,
         private ResendCooldown $resendCooldown,
+        private CodeField $codeField,
     ) {
     }
 
@@ -62,10 +64,11 @@ final readonly class PhoneController
     #[Route('/api/auth/verify/phone', name: 'auth_verify_phone', methods: ['POST'])]
     public function verify(Request $request): JsonResponse
     {
-        $body = Input::body($request, Type\shape(['code' => Type\string()]));
+        $body = Input::body($request, Type\shape(['code' => Type\optional(Type\mixed())]));
+        $code = $this->codeField->required($body, 'code', CodeField::FROM_TEXT);
         $phone = $this->phone();
 
-        $refusal = $this->contactVerifier->attempt($phone, $body['code']);
+        $refusal = $this->contactVerifier->attempt($phone, $code);
 
         if (null !== $refusal) {
             throw $refusal;
