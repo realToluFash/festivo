@@ -76,6 +76,14 @@ framework:
             limit: 5
             interval: '15 minutes'
 
+        sign_out_elsewhere_account:
+            # Per account, spent by every proved call to sign out everywhere else: cheap to
+            # ask for, and each one ends sessions and writes to Redis. The proof is checked
+            # first, so whoever holds an unlocked device cannot spend the owner's budget.
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'
+
         password_set_account:
             # Per account, for the code a Google or Apple account proves its address with
             # before adding a password: five wrong codes per window, across resends.

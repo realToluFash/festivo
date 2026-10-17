@@ -8,10 +8,12 @@ import { useNavigate } from 'react-router';
 import { api } from '../../../api.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
 import { Pending } from '../../../components/Pending.tsx';
+import { EverywhereElse } from './EverywhereElse.tsx';
 import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { WaysCard } from './WaysCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { type ProviderReturn, takeProviderReturn } from '../../../providerSignIn.ts';
 import { forgetSession, refreshAccount, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
@@ -30,6 +32,11 @@ export function Security() {
   const [endFailed, setEndFailed] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
   const [settingPassword, setSettingPassword] = useState(false);
+  const [returned] = useState<ProviderReturn | null>(() => takeProviderReturn(['signOutOthers']));
+  const [everywhere, setEverywhere] = useState(
+    returned != null && !('failed' in returned && returned.failed === 'cancelled'),
+  );
+  const [everywhereDone, setEverywhereDone] = useState<number | null>(null);
 
   // The loading state belongs to the event that asks for a reload, not to the effect.
   useEffect(() => {
@@ -51,6 +58,7 @@ export function Security() {
 
   async function end(device: DeviceSession): Promise<void> {
     setEndFailed(false);
+    setEverywhereDone(null);
 
     try {
       await api.endSession(device.id);
@@ -66,6 +74,28 @@ export function Security() {
     setDevices((current) =>
       current.kind === 'ready'
         ? { kind: 'ready', sessions: current.sessions.filter((s) => s.id !== device.id) }
+        : current,
+    );
+  }
+
+  function endedElsewhere(result: { signedOut: number; thisDevice: boolean }): void {
+    if (result.thisDevice) {
+      forgetSession();
+      navigate('/sign-in');
+
+      return;
+    }
+
+    setEverywhere(false);
+    setEnded(null);
+    setEndFailed(false);
+    setEverywhereDone(result.signedOut);
+    setDevices((current) =>
+      current.kind === 'ready'
+        ? {
+            kind: 'ready',
+            sessions: current.sessions.filter((s) => s.id === currentSessionId()),
+          }
         : current,
     );
   }
@@ -119,7 +149,16 @@ export function Security() {
       {/* Not rendered at all during setup: `.card` sets a display, which `hidden` cannot beat. */}
       {!settingUp && (
         <section className="card" aria-labelledby="devices-title">
-          {checking == null ? (
+          {checking == null && everywhere && devices.kind === 'ready' ? (
+            <EverywhereElse
+              {...othersOf(devices.sessions)}
+              hasPassword={session.hasPassword}
+              providers={session.providers}
+              returned={returned}
+              onDone={endedElsewhere}
+              onKeep={() => setEverywhere(false)}
+            />
+          ) : checking == null ? (
             <>
               <div className="card-heading">
                 <h2 id="devices-title">{t('devices.title')}</h2>
@@ -138,6 +177,19 @@ export function Security() {
                     ✓
                   </span>
                   <p>{t('devices.ended', { name: ended })}</p>
+                </div>
+              )}
+
+              {everywhereDone != null && (
+                <div className="status-done" role="status">
+                  <span className="mark mark-done" aria-hidden="true">
+                    ✓
+                  </span>
+                  <p>
+                    {everywhereDone === 0
+                      ? t('devices.everywhereNone')
+                      : t('devices.everywhereDone', { count: everywhereDone })}
+                  </p>
                 </div>
               )}
 
@@ -189,6 +241,23 @@ export function Security() {
                     />
                   ))}
                 </ul>
+              )}
+
+              {devices.kind === 'ready' && othersOf(devices.sessions).count > 0 && (
+                <div className="device-footer">
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setEverywhereDone(null);
+                      setEnded(null);
+                      setEverywhere(true);
+                    }}
+                  >
+                    {t('devices.everywhere')}
+                  </button>
+                  <p className="muted">{t('devices.everywhereHint')}</p>
+                </div>
               )}
             </>
           ) : (
@@ -302,6 +371,15 @@ function Check({
       </div>
     </>
   );
+}
+
+/** Without this device in the list, Soirely cannot tell which is this one, so every session ends. */
+function othersOf(sessions: readonly DeviceSession[]): { count: number; sessionId: string | null } {
+  const here = currentSessionId();
+
+  return sessions.some((s) => s.id === here)
+    ? { count: sessions.length - 1, sessionId: here }
+    : { count: sessions.length, sessionId: null };
 }
 
 function nameOf(device: DeviceSession, t: TFunction): string {

@@ -1063,6 +1063,37 @@ describe('the ways an account signs in', () => {
   });
 });
 
+describe('signing out everywhere else', () => {
+  function client(response: Response, sent: { path: string; body: unknown }[]) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      fetch: async (url, init) => {
+        sent.push({
+          path: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return response;
+      },
+    });
+  }
+
+  test('sends the proof and this session, and reads the count', async () => {
+    const sent: { path: string; body: unknown }[] = [];
+
+    const ended = await client(
+      json({ signedOut: 2, thisDevice: false }),
+      sent,
+    ).signOutEverywhereElse('p-1', 's-1');
+
+    expect(ended).toEqual({ signedOut: 2, thisDevice: false });
+    expect(sent).toEqual([
+      { path: 'POST /api/auth/sessions/others', body: { proof: 'p-1', sessionId: 's-1' } },
+    ]);
+  });
+});
+
 describe("the account's time zone", () => {
   test('sends the device zone on every request, and reads the list', async () => {
     const headers: (string | null)[] = [];

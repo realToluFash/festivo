@@ -98,7 +98,7 @@ export function WaysCard({
 
   /** Back from a provider trip Security started, once two-factor's state is known. */
   async function finish(back: ProviderReturn, codeNeeded: boolean): Promise<void> {
-    if ('failed' in back) return;
+    if ('failed' in back || back.purpose.kind === 'signOutOthers') return;
 
     if (back.purpose.kind === 'link') {
       await link(back.provider, back.signIn);
