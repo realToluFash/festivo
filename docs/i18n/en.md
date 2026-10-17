@@ -40,6 +40,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. "A device that has not signed in to your Soirely account before has just
+  signed in."** (`emails:newDevice.body`). Won over "Your Soirely account was signed in to on
+  a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account
+  does not "see" devices. The device is the subject, so each locale can keep one plain verb.
+  The next lines give the time, the device and the address, so the sentence names none of them.
 - **17 Oct 2026. "Your {{provider}} sign-in was more than {{count}} minutes ago, so nothing
   has changed yet. Continue with {{provider}} again to carry on."** (`waysCard.proofExpired_*`,
   web and mobile). A past sign-in is something that "was … ago", not something "… old".

@@ -93,7 +93,7 @@
     "twoFactorRecovery.notMeNote": "Cancels any request that is waiting and signs out every session.",
     "twoFactorRecovery.footer": "You're getting this because of a change to how your Soirely account signs in.",
     "newDevice.subject": "New sign-in to Soirely",
-    "newDevice.body": "Your Soirely account was signed in to on a device it hasn't seen before.",
+    "newDevice.body": "A device that has not signed in to your Soirely account before has just signed in.",
     "newDevice.when": "When: {when}",
     "newDevice.device": "Device: {device}",
     "newDevice.address": "Network address: {address}",
