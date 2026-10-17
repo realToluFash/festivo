@@ -41,5 +41,6 @@
     "recovery_request_invalid": "Esse pedido já não está aberto. Comece de novo no ecrã do código de início de sessão.",
     "recovery_request_closed": "Este pedido já terminou.",
     "recovery_request_proved": "Este pedido já está à espera de resposta.",
+    "recovery_request_replaced": "Foi iniciado um pedido mais recente noutro dispositivo.",
     "registration_expired": "Comece o registo de novo."
 }

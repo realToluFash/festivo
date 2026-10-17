@@ -13,6 +13,8 @@ enum TwoFactorRecoveryStatus: string
     case TurnedDown = 'turned_down';
     case Expired = 'expired';
     case Cancelled = 'cancelled';
+    /** A newer request was started, so its codes went to another device. */
+    case Replaced = 'replaced';
 
     public function isOpen(): bool
     {

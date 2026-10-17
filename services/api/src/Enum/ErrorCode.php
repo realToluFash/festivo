@@ -49,6 +49,7 @@ enum ErrorCode: string
     case RecoveryRequestInvalid = 'recovery_request_invalid';
     case RecoveryRequestClosed = 'recovery_request_closed';
     case RecoveryRequestProved = 'recovery_request_proved';
+    case RecoveryRequestReplaced = 'recovery_request_replaced';
 
     case InternalError = 'internal_error';
     case ServiceUnavailable = 'service_unavailable';
@@ -66,7 +67,7 @@ enum ErrorCode: string
             self::NotFound, self::ResetLinkInvalid => 404,
             self::ResetLinkUsed, self::ResetLinkExpired, self::RegistrationExpired => 410,
             self::Conflict, self::PhoneTaken, self::ProviderTaken, self::LastSignInMethod, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
-            self::RecoveryNobodyToApprove, self::RecoveryRequestClosed, self::RecoveryRequestProved => 409,
+            self::RecoveryNobodyToApprove, self::RecoveryRequestClosed, self::RecoveryRequestProved, self::RecoveryRequestReplaced => 409,
             self::RecoveryRequestInvalid => 404,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid => 401,

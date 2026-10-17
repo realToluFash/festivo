@@ -41,5 +41,6 @@
     "recovery_request_invalid": "Cette demande n'est plus ouverte. Recommencez depuis l'écran du code de connexion.",
     "recovery_request_closed": "Cette demande est déjà terminée.",
     "recovery_request_proved": "Cette demande attend déjà une réponse.",
+    "recovery_request_replaced": "Une demande plus récente a été lancée sur un autre appareil.",
     "registration_expired": "Recommencez l'inscription."
 }

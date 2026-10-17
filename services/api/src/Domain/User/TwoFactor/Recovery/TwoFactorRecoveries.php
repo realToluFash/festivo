@@ -13,6 +13,7 @@ use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Entity\EmailAddress;
 use App\Entity\PhoneNumber;
 use App\Entity\TwoFactorRecovery;
+use App\Entity\TwoFactorRecoveryHandle;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
 use App\Enum\Actor;
@@ -69,7 +70,7 @@ final readonly class TwoFactorRecoveries
         return $challenge->getUser();
     }
 
-    /** @return array{0: TwoFactorRecovery, 1: string}|null an open request, handed back under a new handle */
+    /** @return array{0: TwoFactorRecovery, 1: string}|null an open request, with this device's own handle; others' still work */
     public function resume(User $user): ?array
     {
         $open = $this->twoFactorRecoveryRepository->findOpenFor($user)[0] ?? null;
@@ -78,8 +79,7 @@ final readonly class TwoFactorRecoveries
             return null;
         }
 
-        $handle = self::handle();
-        $open->setTokenHash(TokenIssuer::hash($handle));
+        $handle = $this->hold($open);
         $this->entityManager->flush();
 
         return [$open, $handle];
@@ -106,7 +106,7 @@ final readonly class TwoFactorRecoveries
             }
 
             foreach ($this->twoFactorRecoveryRepository->findOpenFor($user) as $earlier) {
-                $earlier->close(TwoFactorRecoveryStatus::Cancelled, $now);
+                $earlier->close(TwoFactorRecoveryStatus::Replaced, $now);
                 $this->audit('two_factor_recovery.replaced', $earlier, Actor::User, $user);
             }
 
@@ -114,9 +114,9 @@ final readonly class TwoFactorRecoveries
             $phone = null !== $phone && $phone->isVerified() ? $phone : null;
             $phone?->forgetCodesByText();
 
-            $handle = self::handle();
-            $recovery = new TwoFactorRecovery($user, TokenIssuer::hash($handle), $email, $phone);
+            $recovery = new TwoFactorRecovery($user, $email, $phone);
             $this->entityManager->persist($recovery);
+            $handle = $this->hold($recovery);
             $this->audit('two_factor_recovery.started', $recovery, Actor::User, $user);
             $this->sendCodes($recovery);
             $this->entityManager->flush();
@@ -131,10 +131,17 @@ final readonly class TwoFactorRecoveries
         return Type\shape([0 => Type\instance_of(TwoFactorRecovery::class), 1 => Type\string()])->coerce($started);
     }
 
+    /** Every step from a device answers with the account's current request, so a replaced one says so on each. */
     public function find(#[SensitiveParameter] string $handle): TwoFactorRecovery
     {
-        return $this->twoFactorRecoveryRepository->findOneByHash(TokenIssuer::hash($handle))
+        $recovery = $this->twoFactorRecoveryRepository->findOneByHandle(TokenIssuer::hash($handle))
             ?? throw new ApiException(ErrorCode::RecoveryRequestInvalid, 'Start again from the sign-in code screen.');
+
+        if (TwoFactorRecoveryStatus::Replaced === $recovery->statusAt($this->clock->now())) {
+            throw new ApiException(ErrorCode::RecoveryRequestReplaced, 'A newer request was started on another device. Start again to ask from here.', [], null, [], ['requestStatus' => TwoFactorRecoveryStatus::Replaced->value]);
+        }
+
+        return $recovery;
     }
 
     public function poll(TwoFactorRecovery $recovery): void
@@ -280,6 +287,15 @@ final readonly class TwoFactorRecoveries
 
         $this->tokenIssuer->revokeAllFor($user);
         $this->entityManager->flush();
+    }
+
+    /** A new handle on the request for this device, its plain value for the client. */
+    private function hold(TwoFactorRecovery $recovery): string
+    {
+        $handle = self::handle();
+        $this->entityManager->persist(new TwoFactorRecoveryHandle($recovery, TokenIssuer::hash($handle)));
+
+        return $handle;
     }
 
     private function tellEveryone(TwoFactorRecovery $recovery, ?string $userAgent): void
