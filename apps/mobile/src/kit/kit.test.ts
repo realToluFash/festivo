@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
-import { CODE_PROPS, FIELD_DEFAULTS, passwordProps } from './fields.ts';
+import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
 import { keyboardLift } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -24,7 +24,13 @@ describe('the keyboard lifts the card once', () => {
 
 describe('every field carries the caret colour', () => {
   it('in the defaults, the password field and the code field', () => {
-    for (const props of [FIELD_DEFAULTS, passwordProps(false), passwordProps(true), CODE_PROPS]) {
+    for (const props of [
+      FIELD_DEFAULTS,
+      passwordProps(false),
+      passwordProps(true),
+      codeProps(false),
+      codeProps(true),
+    ]) {
       expect(props.cursorColor).toBe(tokens.colorInk);
       expect(props.selectionColor).toBe(tokens.colorInk);
       expect(props.autoCorrect).toBe(false);
@@ -45,5 +51,16 @@ describe('the password field reveals', () => {
     expect(revealed.autoCorrect).toBe(false);
     expect(revealed.autoCapitalize).toBe('none');
     expect(revealed.contextMenuHidden).toBe(false);
+  });
+});
+
+describe('a code field offers the keyboard its code needs', () => {
+  it('digits only, for a code that can only be digits', () => {
+    expect(codeProps(false).keyboardType).toBe('number-pad');
+  });
+
+  it('letters and the hyphen, for a field that also takes a recovery code', () => {
+    expect(codeProps(true).keyboardType).toBe('default');
+    expect(codeProps(true).autoCapitalize).toBe('none');
   });
 });
