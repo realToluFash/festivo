@@ -214,6 +214,26 @@ this app also runs through React Native Web, and a device can refuse the keystor
 fall back to memory for the launch, so the session ends when the app closes. The honest
 outcome: the alternative is writing a thirty-day credential somewhere readable.
 
+## Recovering a password
+
+`POST /api/auth/password/forgot` always answers `202 {}`, so it cannot be used to find out
+who has an account: a password account is emailed a link, an account with no password is
+told how it signs in, and an unknown address is sent nothing. The answer is also the same
+in time: the lookup and the email happen on `kernel.terminate`, after the response has
+gone (`RecoveryRequests`), so a registered address is no slower to answer. It is limited per
+address (keyed on what was typed) and per IP, and a refusal states a time.
+
+- **The link** carries 32 random bytes, kept only as their SHA-256, and works once for
+  `PasswordResetToken::LIFETIME_MINUTES` (10), shorter than a verification code's 15.
+  `POST /api/auth/password/reset/check` says whose link it is, or `reset_link_invalid`
+  (404), `reset_link_used` or `reset_link_expired` (410), each with its own page.
+- **The reset** (`POST /api/auth/password/reset`) takes registration's rules
+  (`NewPasswordRules`), and a refused password changes nothing. A new one spends every
+  link the account was sent, revokes every refresh token, signs this device in, and emails
+  a notice saying when. Access tokens already issued run out on their own, within their
+  lifetime, until sc-117 ends them at once.
+- **Two-factor** (sc-60) will ask for the code before this device is signed in.
+
 ## Signing in with Google
 
 `POST /api/auth/oauth/google` answers as password sign-in does. Both clients run the

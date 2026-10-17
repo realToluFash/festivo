@@ -17,6 +17,20 @@ framework:
             limit: 20
             rate: { interval: '1 minute', amount: 10 }
 
+        password_reset_address:
+            # Per address, keyed on what was typed whether or not it is an account, so
+            # the limit answers nothing about who is registered. Fixed, so the refusal
+            # states a time that holds still.
+            policy: fixed_window
+            limit: 3
+            interval: '15 minutes'
+
+        password_reset_ip:
+            # Per IP, wider, for one network asking about many addresses.
+            policy: fixed_window
+            limit: 20
+            interval: '15 minutes'
+
         registration:
             # Per IP, which is the only thing available: the endpoint exists
             # because there is no account yet. Low, because a person registers
