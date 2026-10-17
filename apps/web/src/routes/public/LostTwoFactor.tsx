@@ -579,6 +579,12 @@ function Codes({
       setCooldown(next.codes?.cooldownSeconds ?? 0);
       onState(next);
     } catch (refusal) {
+      // Proved from another device meanwhile: the request is waiting, so its screen opens.
+      if (refusal instanceof ApiError && refusal.is('recovery_request_proved')) {
+        onState(await api.recoveryState(recovery).catch(() => state));
+        return;
+      }
+
       const seconds =
         refusal instanceof ApiError ? Number(refusal.response?.headers.get('Retry-After')) : NaN;
 
@@ -592,7 +598,12 @@ function Codes({
 
     try {
       onState(await api.textRecoveryCodeInstead(recovery));
-    } catch {
+    } catch (refusal) {
+      if (refusal instanceof ApiError && refusal.is('recovery_request_proved')) {
+        onState(await api.recoveryState(recovery).catch(() => state));
+        return;
+      }
+
       setTextingFailed(true);
     }
   }
