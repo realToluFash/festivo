@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\SignInMethods;
 
+use App\Domain\User\Attempts\GuardedAttempt;
+use App\Domain\User\Attempts\WrongSecret;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\Provider\ProviderClaims;
 use App\Domain\User\TokenIssuer;
@@ -25,7 +27,6 @@ use Psl\Str;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
-use Throwable;
 
 /** Signing in again before changing how one signs in, as OWASP ASVS 3.7.1 asks: proved for five minutes. */
 final readonly class RecentProof
@@ -41,6 +42,7 @@ final readonly class RecentProof
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private RateLimiterFactoryInterface $passwordChangeAccountLimiter,
+        private GuardedAttempt $guardedAttempt,
     ) {
     }
 
@@ -94,33 +96,17 @@ final readonly class RecentProof
         }
     }
 
-    /** Under the account's lock from peek to spend, on the budget PasswordChange spends: the same guess either way. */
+    /** Through the one guarded attempt, on the budget PasswordChange spends: the same guess either way. */
     private function passPassword(User $user, #[SensitiveParameter] string $password): void
     {
-        $connection = $this->entityManager->getConnection();
-        $connection->beginTransaction();
-
-        try {
-            $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
-            $limit = $this->passwordChangeAccountLimiter->create($user->getId()->toRfc4122());
-            $peek = $limit->consume(0);
-
-            if (0 === $peek->getRemainingTokens()) {
-                throw ApiException::tooManyAttempts('Too many tries.', $peek->getRetryAfter());
-            }
-
-            if (!$this->passwordResolver->verify($user, $password)) {
-                $limit->consume();
-
-                throw new ApiException(ErrorCode::InvalidCredentials, 'That is not your password.');
-            }
-
-            $connection->commit();
-        } catch (Throwable $e) {
-            $connection->rollBack();
-
-            throw $e;
-        }
+        $this->guardedAttempt->attempt(
+            fn () => $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE),
+            fn (): array => [$this->passwordChangeAccountLimiter->create($user->getId()->toRfc4122())],
+            fn (): ?WrongSecret => $this->passwordResolver->verify($user, $password)
+                ? null
+                : new WrongSecret(new ApiException(ErrorCode::InvalidCredentials, 'That is not your password.')),
+            'Too many tries.',
+        );
     }
 
     private function passProvider(User $user, IdentityProvider $provider, ProviderClaims $claims): void
