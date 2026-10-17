@@ -7,10 +7,10 @@
     "subtitle": "La soirée, depuis votre poche.",
     "openSignIn": "Se connecter",
     "openLayouts": "Démonstration des mises en page",
-    "signedIn": "You’re signed in",
-    "signedInTo": "You’re signed in to {{name}}",
-    "openSettings": "Open Settings",
-    "switchOrganisation": "Switch organisation"
+    "signedIn": "Vous êtes connecté",
+    "signedInTo": "Vous êtes connecté à {{name}}",
+    "openSettings": "Ouvrir les Paramètres",
+    "switchOrganisation": "Changer d'organisation"
   },
   "status": {
     "title": "État du service",
@@ -615,37 +615,37 @@
     "retry": "Veuillez réessayer"
   },
   "frame": {
-    "home": "Home",
-    "settings": "Settings",
+    "home": "Accueil",
+    "settings": "Paramètres",
     "organisation": "Organisation"
   },
   "settings": {
-    "title": "Settings",
-    "sections": "Settings sections",
-    "yourAccount": "Your account",
-    "account": "Account",
-    "accountLine": "Your name, email addresses and phone numbers",
-    "security": "Security",
-    "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
-    "signedInAs": "Signed in as {{email}}",
-    "signOut": "Sign out",
-    "choose": "Choose a section",
-    "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices."
+    "title": "Paramètres",
+    "sections": "Sections des paramètres",
+    "yourAccount": "Votre compte",
+    "account": "Compte",
+    "accountLine": "Votre nom, vos adresses e-mail et vos numéros de téléphone",
+    "security": "Sécurité",
+    "securityLine": "Mot de passe, moyens de connexion, double authentification, appareils connectés",
+    "signedInAs": "Connecté en tant que {{email}}",
+    "signOut": "Se déconnecter",
+    "choose": "Choisissez une section",
+    "chooseLine": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés."
   },
   "switcher": {
-    "yourRole": "Your role · {{role}}",
-    "heading": "Your organisations",
-    "current": "Current",
-    "remembered": "Soirely remembers your choice on this device.",
-    "label": "Organisation: {{name}}, your role {{role}}",
-    "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
-    "close": "Close"
+    "yourRole": "Votre rôle · {{role}}",
+    "heading": "Vos organisations",
+    "current": "Actuelle",
+    "remembered": "Soirely retient votre choix sur cet appareil.",
+    "label": "Organisation : {{name}}, votre rôle {{role}}",
+    "labelSwitch": "Organisation : {{name}}, votre rôle {{role}}. Changer d'organisation",
+    "close": "Fermer"
   },
   "roles": {
-    "owner": "Owner",
-    "administrator": "Administrator",
-    "event_manager": "Event manager",
-    "coordinator": "Coordinator",
-    "read_only": "Read-only"
+    "owner": "Propriétaire",
+    "administrator": "Administrateur",
+    "event_manager": "Responsable d'événements",
+    "coordinator": "Coordinateur",
+    "read_only": "Lecture seule"
   }
 }
