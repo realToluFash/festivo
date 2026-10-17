@@ -135,7 +135,6 @@ final readonly class TwoFactorRecoveries
             ?? throw new ApiException(ErrorCode::RecoveryRequestInvalid, 'Start again from the sign-in code screen.');
     }
 
-    /** Read on every open and poll while proving: a silent WhatsApp hands over to SMS from here, as on Verify phone. */
     public function poll(TwoFactorRecovery $recovery): void
     {
         $phone = $recovery->getPhoneNumber();
