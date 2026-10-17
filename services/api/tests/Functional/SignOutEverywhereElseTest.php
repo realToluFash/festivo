@@ -73,6 +73,24 @@ final class SignOutEverywhereElseTest extends ApiTestCase
         self::assertSame(401, $this->me($laptop['accessToken']));
     }
 
+    /** The client names a session it does not hold: it is told the truth, that this device is signed out too. */
+    #[Test]
+    public function namingAnotherSessionOfThisAccountSaysThisDeviceEnds(): void
+    {
+        $this->account('stale@example.com');
+        $laptop = $this->signIn('stale@example.com');
+        $phone = $this->signIn('stale@example.com');
+
+        $body = $this->call('POST', '/api/auth/sessions/others', $laptop['accessToken'], [
+            'proof' => $this->proved($laptop),
+            'sessionId' => $phone['sessionId'],
+        ]);
+
+        self::assertSame(['signedOut' => 2, 'thisDevice' => true], $body, "registering's own session and the laptop's");
+        self::assertSame(401, $this->me($laptop['accessToken']));
+        self::assertSame(200, $this->me($phone['accessToken']));
+    }
+
     #[Test]
     public function withoutAProofNothingIsRevoked(): void
     {

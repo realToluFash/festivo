@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\CallerSession;
 use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\SignOutEverywhereElse;
 use App\Domain\User\TimeZone\AccountTimeZone;
@@ -41,6 +42,7 @@ final class AccountController
         private readonly TranslatorInterface $translator,
         private readonly ClockInterface $clock,
         private readonly SignOutEverywhereElse $signOutEverywhereElse,
+        private readonly CallerSession $callerSession,
     ) {
     }
 
@@ -132,6 +134,7 @@ final class AccountController
             $this->user(),
             $body['proof'] ?? null,
             null !== $session && Uuid::isValid($session) ? Uuid::fromString($session) : null,
+            $this->callerSession->chain(),
         ));
     }
 
