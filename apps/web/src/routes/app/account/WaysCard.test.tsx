@@ -321,6 +321,7 @@ describe('a wrong code after Google', () => {
     signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
     backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
     const answers = [
+      () => problem('two_factor_required', 403, { pendingProof: 'kept-1' }),
       () => problem('two_factor_code_invalid', 422, { pendingProof: 'kept-1' }),
       () => json({ proof: 'p', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
     ];
@@ -345,7 +346,11 @@ describe('a wrong code after Google', () => {
 
     await waitFor(() =>
       expect(sent.filter((s) => s.call === 'POST /api/auth/proof').map((s) => s.body)).toEqual([
-        expect.objectContaining({ provider: 'google', code: '000000' }),
+        {
+          provider: 'google',
+          providerSignIn: expect.objectContaining({ code: 'the-code' }),
+        },
+        { pendingProof: 'kept-1', code: '000000' },
         { pendingProof: 'kept-1', code: '123456' },
       ]),
     );
@@ -357,19 +362,20 @@ describe('a kept sign-in that ran out', () => {
     signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
     backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
     const answers = [
-      () => problem('two_factor_code_invalid', 422, { pendingProof: 'kept-1' }),
+      () => problem('two_factor_required', 403, { pendingProof: 'kept-1' }),
       () => problem('proof_required', 403),
     ];
-    answering({ 'POST /api/auth/proof': () => (answers.shift() ?? answers[0])!() }, true);
+    const sent = answering(
+      { 'POST /api/auth/proof': () => (answers.shift() ?? answers[0])!() },
+      true,
+    );
     const leave = vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
 
+    // qa2's case: the right code typed first, after the five minutes from the Google sign-in.
     open('/oauth/google');
     fireEvent.change(await screen.findByLabelText('Code', {}, { timeout: 3000 }), {
-      target: { value: '000000' },
+      target: { value: '123456' },
     });
-    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
-    await screen.findByText('That code did not work. Check your app and try again.');
-    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
     fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
 
     expect(
@@ -378,6 +384,10 @@ describe('a kept sign-in that ran out', () => {
       ),
     ).toBeDefined();
     expect(screen.queryByLabelText('Code')).toBeNull();
+    expect(sent.filter((s) => s.call === 'POST /api/auth/proof').map((s) => s.body)).toEqual([
+      { provider: 'google', providerSignIn: expect.objectContaining({ code: 'the-code' }) },
+      { pendingProof: 'kept-1', code: '123456' },
+    ]);
     fireEvent.click(ways().getByRole('button', { name: 'Continue with Google' }));
     await waitFor(() => expect(leave).toHaveBeenCalledOnce());
     const saved = JSON.parse(sessionStorage.getItem('soirely.google.attempt') ?? '{}');
