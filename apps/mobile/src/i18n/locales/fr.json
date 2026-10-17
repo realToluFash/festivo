@@ -627,10 +627,14 @@
     "accountLine": "Votre nom, vos adresses e-mail et vos numéros de téléphone",
     "security": "Sécurité",
     "securityLine": "Mot de passe, moyens de connexion, double authentification, appareils connectés",
+    "organisationHeading": "Organisation",
+    "organisation": "Organisation",
+    "organisationLine": "{{name}} · name, contact address, currency, time zone",
     "signedInAs": "Connecté en tant que {{email}}",
     "signOut": "Se déconnecter",
     "choose": "Choisissez une section",
-    "chooseLine": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés."
+    "chooseLine": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés.",
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds {{name}}’s own settings."
   },
   "switcher": {
     "yourRole": "Votre rôle · {{role}}",
@@ -647,5 +651,24 @@
     "event_manager": "Responsable d'événements",
     "coordinator": "Coordinateur",
     "read_only": "Lecture seule"
+  },
+  "orgGeneral": {
+    "intro": "Le nom que voient votre équipe et vos invités, et les réglages avec lesquels chaque nouvel événement commence.",
+    "name": "Nom",
+    "country": "Pays",
+    "contact": "Adresse de contact",
+    "currency": "Devise",
+    "timezone": "Fuseau horaire",
+    "defaultsNote": "Devise et fuseau horaire : les nouveaux événements commencent avec ceux-ci. Les événements existants gardent les leurs.",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré. Tout le monde dans {{name}} verra les nouvelles informations à son prochain écran.",
+    "nameBlank": "Indiquez le nom de l'organisation.",
+    "contactBlank": "Indiquez une adresse e-mail de contact.",
+    "contactInvalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine.",
+    "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les propriétaires le peuvent.",
+    "failed": "L'enregistrement n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant.",
+    "searchCurrency": "Search currencies",
+    "searchTimezone": "Search time zones"
   }
 }

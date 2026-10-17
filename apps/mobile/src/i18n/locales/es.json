@@ -627,10 +627,14 @@
     "accountLine": "Su nombre, direcciones de correo electrónico y números de teléfono",
     "security": "Seguridad",
     "securityLine": "Contraseña, formas de iniciar sesión, verificación en dos pasos y dispositivos con sesión abierta",
+    "organisationHeading": "Organisation",
+    "organisation": "Organisation",
+    "organisationLine": "{{name}} · name, contact address, currency, time zone",
     "signedInAs": "Sesión iniciada como {{email}}",
     "signOut": "Cerrar sesión",
     "choose": "Elija una sección",
-    "chooseLine": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta."
+    "chooseLine": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta.",
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds {{name}}’s own settings."
   },
   "switcher": {
     "yourRole": "Su función · {{role}}",
@@ -647,5 +651,24 @@
     "event_manager": "Gestor de eventos",
     "coordinator": "Coordinador",
     "read_only": "Solo lectura"
+  },
+  "orgGeneral": {
+    "intro": "El nombre que ven su equipo y sus invitados, y los valores con los que empieza cada evento nuevo.",
+    "name": "Nombre",
+    "country": "País",
+    "contact": "Dirección de contacto",
+    "currency": "Moneda",
+    "timezone": "Zona horaria",
+    "defaultsNote": "Moneda y zona horaria: los eventos nuevos empiezan con estas. Los eventos que ya tiene conservan las suyas.",
+    "save": "Guardar cambios",
+    "saving": "Guardando…",
+    "saved": "Guardado. Todos en {{name}} verán los nuevos datos en su próxima pantalla.",
+    "nameBlank": "Indique el nombre de la organización.",
+    "contactBlank": "Indique un correo electrónico de contacto.",
+    "contactInvalid": "Eso no parece un correo electrónico. Compruebe que tiene una @ y un dominio.",
+    "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
+    "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento.",
+    "searchCurrency": "Search currencies",
+    "searchTimezone": "Search time zones"
   }
 }

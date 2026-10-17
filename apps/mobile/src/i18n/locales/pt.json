@@ -627,10 +627,14 @@
     "accountLine": "O seu nome, endereços de e-mail e números de telefone",
     "security": "Segurança",
     "securityLine": "Palavra-passe, formas de iniciar sessão, dois fatores, dispositivos com sessão iniciada",
+    "organisationHeading": "Organisation",
+    "organisation": "Organisation",
+    "organisationLine": "{{name}} · name, contact address, currency, time zone",
     "signedInAs": "Sessão iniciada como {{email}}",
     "signOut": "Encerrar sessão",
     "choose": "Escolha uma secção",
-    "chooseLine": "Em Conta estão os seus dados e as formas de contacto. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada."
+    "chooseLine": "Em Conta estão os seus dados e as formas de contacto. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada.",
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds {{name}}’s own settings."
   },
   "switcher": {
     "yourRole": "A sua função · {{role}}",
@@ -647,5 +651,24 @@
     "event_manager": "Gestor de eventos",
     "coordinator": "Coordenador",
     "read_only": "Só leitura"
+  },
+  "orgGeneral": {
+    "intro": "O nome que a sua equipa e os seus convidados veem, e os valores com que cada novo evento começa.",
+    "name": "Nome",
+    "country": "País",
+    "contact": "Endereço de contacto",
+    "currency": "Moeda",
+    "timezone": "Fuso horário",
+    "defaultsNote": "Moeda e fuso horário: os novos eventos começam com estes. Os eventos que já tem mantêm os seus.",
+    "save": "Guardar alterações",
+    "saving": "A guardar…",
+    "saved": "Guardado. Todos em {{name}} veem os novos dados no próximo ecrã.",
+    "nameBlank": "Indique o nome da organização.",
+    "contactBlank": "Indique um e-mail de contacto.",
+    "contactInvalid": "Isso não parece um endereço de e-mail. Verifique se tem um @ e um domínio.",
+    "readOnly": "A sua função, {{role}}, pode ver estes dados mas não alterá-los. Os proprietários podem.",
+    "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
+    "searchCurrency": "Search currencies",
+    "searchTimezone": "Search time zones"
   }
 }
