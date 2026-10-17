@@ -1,13 +1,15 @@
 {
   "es": ["web:app.name", "web:orgGeneral.title", "mobile:app.name", "mobile:home.title"],
   "fr": [
+    "mobile:app.name",
+    "mobile:home.title",
+    "mobile:twoFactor.code",
+    "mobile:waysCard.code",
     "web:app.name",
     "web:nav.organisation",
     "web:orgGeneral.section",
     "web:twoFactor.code",
-    "mobile:app.name",
-    "mobile:home.title",
-    "mobile:twoFactor.code"
+    "web:waysCard.code"
   ],
   "pt": ["web:app.name", "mobile:app.name", "mobile:home.title", "mobile:layouts.itemCount_one"]
 }
