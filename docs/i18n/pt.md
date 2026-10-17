@@ -38,6 +38,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. "Sign out everywhere else" is "Encerrar as outras sessões"** (`devices.everywhere*`,
+  web and app). Shorter than "Encerrar a sessão nos outros dispositivos", so it fits the phone
+  button, and it keeps "encerrar". The confirm and keep buttons follow the card's `devices.end`
+  and `devices.keep` ("Encerrar a sessão", "Manter a sessão"; plural "as sessões"), the Done
+  lines echo `passwordCard.done_*`, and "it" in the warning is "o dispositivo", as
+  `devices.signInAgain`. Confirming identity is "confirme que é você", as `waysCard.proveLink`;
+  rejected "que é o próprio", which agrees with a man.
 - **17 Oct 2026. The email-address refusal is one sentence everywhere** (`orgGeneral.contactInvalid`
   and `forms.emailShape`, web and app): "Isso não parece um endereço de e-mail. Confirme que tem
   um @ e um domínio." The English of all four keys is the same, so the Portuguese is too;
