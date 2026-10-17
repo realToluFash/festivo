@@ -12,6 +12,8 @@ use App\Tests\FunctionalTestCase;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Exception\DriverException;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Async;
+use Psl\DateTime\Duration;
 use Psl\Dict;
 use Psl\Iter;
 use Psl\SecureRandom;
@@ -53,6 +55,36 @@ final class SignInConcurrencyTest extends FunctionalTestCase
             $elsewhere->close();
             self::em()->getConnection()->executeStatement('SET lock_timeout = 0');
         }
+    }
+
+    /** Waiting on its own address, a sign-in holds no other lock: a per-IP lock taken first would show here. */
+    #[Test]
+    public function aSignInWaitingOnItsAddressHoldsNoOtherLock(): void
+    {
+        $holder = DriverManager::getConnection(self::em()->getConnection()->getParams());
+        $holder->beginTransaction();
+        $holder->executeStatement('SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))', ['key' => SignInAttempts::lockFor('held@example.com')]);
+        $startAt = \microtime(true) + 12;
+        [$handle, $pipes] = self::start((string) $startAt, 'held@example.com', self::VENUE_WIFI, 'sc943-' . SecureRandom\string(8));
+
+        try {
+            $waiting = 0;
+            while (0 === $waiting && \microtime(true) < $startAt + 10) {
+                Async\sleep(Duration::milliseconds(100));
+                $waiting = (int) $holder->fetchOne("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted");
+            }
+
+            self::assertSame(1, $waiting, 'the sign-in is waiting on its address');
+            self::assertSame(0, (int) $holder->fetchOne("SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND granted AND pid <> pg_backend_pid()"), 'and holds no lock of its own, such as one for its IP');
+        } finally {
+            $holder->rollBack();
+            $holder->close();
+        }
+
+        $out = Str\trim((string) \stream_get_contents($pipes[1]));
+        \fclose($pipes[1]);
+        \proc_close($handle);
+        self::assertSame('401', $out, 'and is answered once the address is free');
     }
 
     /** null when the attempt waited out the lock instead of being answered. */
