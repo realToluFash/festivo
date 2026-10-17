@@ -38,6 +38,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. The email-address refusal is one sentence everywhere** (`orgGeneral.contactInvalid`
+  and `forms.emailShape`, web and app): "Isso não parece um endereço de e-mail. Confirme que tem
+  um @ e um domínio." The English of all four keys is the same, so the Portuguese is too;
+  "Verifique se tem" was the odd one out.
+- **17 Oct 2026. A settings section's line names its contents with "Em … estão"**
+  (`settings.chooseLine`, `settings.chooseLineWithOrganisation`): "Em Organização estão as
+  definições de {{name}}." A search field's placeholder is "Pesquisar" plus the plural noun
+  (`orgGeneral.searchCurrency`, `searchTimezone`).
 - **17 Oct 2026. A status mark agrees with "o pedido"** (`lostTwoFactor.*Mark`): "Substituído",
   as "Cancelado", "Confirmado", "Recusado". The daily limit is "um dos 3 pedidos que pode fazer
   por dia" (`replacedNote`), echoing `limitedBody`, "Pode pedir 3 vezes por dia".
