@@ -1,7 +1,7 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { resumeSignUp } from './resumeSignUp.ts';
+import { launchRoute, resumeSignUp } from './resumeSignUp.ts';
 
 const PENDING = { registration: 'the-handle', email: 'folake@ire.events' };
 const OPEN = { cooldownSeconds: 0, codeState: 'live' as const };
@@ -53,6 +53,47 @@ describe('opening the app mid-sign-up', () => {
   it('does nothing when no sign-up is waiting', async () => {
     await expect(
       resumeSignUp({ held: async () => null, open: async () => OPEN, drop: async () => {} }),
+    ).resolves.toBeNull();
+  });
+});
+
+describe('opening the app on an ended session', () => {
+  it('goes to the code when a sign-up is still open, on the first launch', async () => {
+    await expect(
+      launchRoute(true, {
+        held: async () => PENDING,
+        open: async () => OPEN,
+        drop: async () => {},
+      }),
+    ).resolves.toBe('/verify-email');
+  });
+
+  it('says signed out, and clears the sign-up, when its handle has run out', async () => {
+    let dropped = false;
+
+    await expect(
+      launchRoute(true, {
+        held: async () => PENDING,
+        open: async () => {
+          throw expired();
+        },
+        drop: async () => {
+          dropped = true;
+        },
+      }),
+    ).resolves.toBe('/sign-in?signedOut=1');
+    expect(dropped).toBe(true);
+  });
+
+  it('says signed out when no sign-up is waiting', async () => {
+    await expect(
+      launchRoute(true, { held: async () => null, open: async () => OPEN, drop: async () => {} }),
+    ).resolves.toBe('/sign-in?signedOut=1');
+  });
+
+  it('stays put with no session and no sign-up, as before', async () => {
+    await expect(
+      launchRoute(false, { held: async () => null, open: async () => OPEN, drop: async () => {} }),
     ).resolves.toBeNull();
   });
 });
