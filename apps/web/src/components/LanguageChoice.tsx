@@ -1,11 +1,14 @@
 import { LOCALES } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
-import { currentLocale, setLanguage } from '../i18n/index.ts';
+import { chooseLanguage } from '../accountLanguage.ts';
+import { currentLocale } from '../i18n/index.ts';
+import { useSessionState } from '../session.ts';
 
 export function LanguageChoice() {
   const { t } = useTranslation();
   const current = currentLocale();
+  const signedIn = useSessionState().status === 'signedIn';
 
   return (
     <div className="language-choice" role="group" aria-label={t('language.label')}>
@@ -15,7 +18,7 @@ export function LanguageChoice() {
           type="button"
           lang={locale.code}
           aria-pressed={locale.code === current}
-          onClick={() => void setLanguage(locale.code)}
+          onClick={() => void chooseLanguage(locale.code, signedIn)}
         >
           {locale.nativeName}
         </button>

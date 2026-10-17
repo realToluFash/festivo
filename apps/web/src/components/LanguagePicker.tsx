@@ -1,7 +1,9 @@
 import { LOCALES } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
-import { currentLocale, setLanguage, storedLanguage } from '../i18n/index.ts';
+import { chooseLanguage } from '../accountLanguage.ts';
+import { currentLocale, storedLanguage } from '../i18n/index.ts';
+import { useSessionState } from '../session.ts';
 
 /**
  * Reachable from the public pages too, and that is the point.
@@ -16,13 +18,16 @@ import { currentLocale, setLanguage, storedLanguage } from '../i18n/index.ts';
 export function LanguagePicker() {
   const { t } = useTranslation();
   const stored = storedLanguage();
+  const signedIn = useSessionState().status === 'signedIn';
 
   return (
     <label className="language-picker">
       <span className="visually-hidden">{t('language.label')}</span>
       <select
         value={stored ?? ''}
-        onChange={(e) => void setLanguage(e.target.value === '' ? null : e.target.value)}
+        onChange={(e) =>
+          void chooseLanguage(e.target.value === '' ? null : e.target.value, signedIn)
+        }
         aria-label={t('language.label')}
       >
         <option value="" title={t('language.automaticHint')}>
