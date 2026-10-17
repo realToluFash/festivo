@@ -1157,6 +1157,42 @@ describe("the account's time zone", () => {
   });
 });
 
+describe("the app's user agent", () => {
+  test('goes on every request, the refresh included, and nothing is sent when none is given', async () => {
+    const agents: (string | null)[] = [];
+    const answers = [
+      json({ type: 'https://soirely.com/errors/unauthenticated', status: 401 }, 401),
+      json({ accessToken: 'b', expiresIn: 900, refreshToken: 'r2' }),
+      json({ sessions: [] }),
+    ];
+    const fetch: typeof globalThis.fetch = async (_url, init) => {
+      agents.push(new Headers(init?.headers).get('User-Agent'));
+
+      return answers.shift() ?? json({ sessions: [] });
+    };
+    const app = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('stale', 'r1'),
+      userAgent: 'Soirely/1.4.0 (iOS 18.1; iPhone)',
+      fetch,
+    });
+
+    await app.sessions();
+    await new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      fetch,
+    }).sessions();
+
+    expect(agents).toEqual([
+      'Soirely/1.4.0 (iOS 18.1; iPhone)',
+      'Soirely/1.4.0 (iOS 18.1; iPhone)',
+      'Soirely/1.4.0 (iOS 18.1; iPhone)',
+      null,
+    ]);
+  });
+});
+
 describe('the sessions an account has', () => {
   const SESSION = {
     id: '018f3a4c-0000-7c3d-9e1f-2a3b4c5d6e7f',

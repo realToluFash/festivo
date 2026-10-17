@@ -252,6 +252,8 @@ export interface ClientOptions {
   locale?: () => string | null;
   /** The device's IANA zone, which sets an account's own until it has one (sc-868). */
   timeZone?: () => string | null;
+  /** The app's own `Soirely/<version> (…)`, by which its sessions are named (sc-1242). A browser sends its own and cannot replace it. */
+  userAgent?: string;
   /** Called when refresh fails and the session is over. */
   onSignedOut?: () => void;
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
@@ -979,6 +981,8 @@ export class ApiClient {
     if (locale != null && locale !== '') headers['Accept-Language'] = locale;
     const timeZone = this.options.timeZone?.();
     if (timeZone != null && timeZone !== '') headers['X-Timezone'] = timeZone;
+    const userAgent = this.options.userAgent;
+    if (userAgent != null && userAgent !== '') headers['User-Agent'] = userAgent;
 
     return headers;
   }

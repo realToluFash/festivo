@@ -191,6 +191,19 @@ describe('the devices signed in to an account', () => {
     await waitFor(() => expect(screen.getByText('okhttp/4.12.0')).toBeDefined());
   });
 
+  it("names the app's own sessions by device, without a version", async () => {
+    answering({
+      'GET /api/auth/sessions': () =>
+        json({
+          sessions: [{ ...SESSIONS.sessions[0], userAgent: 'Soirely/1.4.0 (iPadOS 18.1; iPad)' }],
+        }),
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Soirely app on iPad')).toBeDefined());
+  });
+
   it('says so when a client gave no name and no address', async () => {
     answering({
       'GET /api/auth/sessions': () =>

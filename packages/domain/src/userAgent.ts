@@ -3,6 +3,41 @@ export interface ReadableAgent {
   platform: string;
 }
 
+export type AppDevice = 'iPhone' | 'iPad' | 'phone' | 'tablet';
+
+export interface AppAgentParts {
+  version: string;
+  platform: 'ios' | 'android';
+  /** The OS's own name, which on iOS says "iPadOS" on an iPad. Android's can be a build fingerprint, so it is not used. */
+  osName: string | null;
+  osVersion: string;
+  tablet: boolean;
+}
+
+/** The whole string or nothing: a `Soirely/` agent with any other device token is shown as it came (sc-1242). */
+const APP_AGENT = /^Soirely\/[^\s()]+ \([^;()]+ [^;()\s]+; (iPhone|iPad|phone|tablet)\)$/;
+
+/** RFC 9110 §10.1.5: a product token, then a comment carrying the OS and the device class. */
+export function appUserAgent(parts: AppAgentParts): string {
+  const os = parts.platform === 'ios' ? (parts.osName ?? 'iOS') : 'Android';
+  const device: AppDevice =
+    parts.platform === 'ios'
+      ? parts.tablet
+        ? 'iPad'
+        : 'iPhone'
+      : parts.tablet
+        ? 'tablet'
+        : 'phone';
+
+  return `Soirely/${parts.version} (${os} ${parts.osVersion}; ${device})`;
+}
+
+export function appDevice(userAgent: string | null | undefined): AppDevice | null {
+  const found = APP_AGENT.exec(userAgent?.trim() ?? '');
+
+  return (found?.[1] as AppDevice | undefined) ?? null;
+}
+
 export function readableAgent(userAgent: string | null | undefined): ReadableAgent | null {
   const raw = userAgent?.trim() ?? '';
 

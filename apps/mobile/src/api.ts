@@ -9,6 +9,7 @@ import { type Account, ApiClient, awaiting } from '@soirely/api-client';
 import { getCalendars } from 'expo-localization';
 import { router } from 'expo-router';
 
+import { appAgent } from './appAgent.ts';
 import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
 import { landingFor } from './landing.ts';
@@ -21,6 +22,7 @@ export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
   locale: () => currentLocale(),
   timeZone: () => getCalendars()[0]?.timeZone ?? null,
+  userAgent: appAgent,
   tokens,
   // Stated rather than defaulted: the web client states the opposite deliberately.
   refreshTokenIn: 'body',
