@@ -37,6 +37,12 @@ export interface TwoFactorChallenge {
 
 export type SignInOutcome = SignedIn | TwoFactorChallenge;
 
+/** A password sign-up waiting on its emailed code; `registration` is its one-day handle. */
+export interface PendingRegistration {
+  registration: string;
+  email: string;
+}
+
 export interface TwoFactorStatus {
   on: boolean;
   recoveryCodesLeft: number;
@@ -341,8 +347,46 @@ export class ApiClient {
   }
 
   /** Signed in as sign-in is: the same tokens, the same account. */
-  async register(email: string, name: string, password: string): Promise<SignedIn> {
-    return this.signedInOnly('/api/auth/register', { email, name, password }, 'RegisterController');
+  /** The same answer for every address, so it says nothing of who has an account; no session yet. */
+  async register(email: string, name: string, password: string): Promise<PendingRegistration> {
+    const body = await this.post<{ registration?: unknown; email?: unknown }>(
+      '/api/auth/register',
+      {
+        email,
+        name,
+        password,
+      },
+    );
+
+    if (typeof body?.registration !== 'string') {
+      throw new Error(
+        'The API answered /api/auth/register without a registration. Check RegisterController in services/api.',
+      );
+    }
+
+    return {
+      registration: body.registration,
+      email: typeof body.email === 'string' ? body.email : email,
+    };
+  }
+
+  /** The code proves the address: only now is the account made, and signed in. */
+  async confirmRegistration(registration: string, code: string): Promise<SignedIn> {
+    return this.signedInOnly(
+      '/api/auth/register/verify',
+      { registration, code },
+      'RegisterController',
+    );
+  }
+
+  async registrationCooldown(registration: string): Promise<number> {
+    return cooldownFrom(
+      await this.get<unknown>('/api/auth/register/resend', { query: { registration } }),
+    );
+  }
+
+  async resendRegistrationCode(registration: string): Promise<number> {
+    return cooldownFrom(await this.post<unknown>('/api/auth/register/resend', { registration }));
   }
 
   async me(): Promise<Account> {

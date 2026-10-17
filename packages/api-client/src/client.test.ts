@@ -495,7 +495,27 @@ describe('a browser never holds the refresh token', () => {
     expect(tokens.saved).toBeNull();
   });
 
-  test('registering answers with the account and saves the tokens', async () => {
+  test('registering answers with a handle and saves no tokens', async () => {
+    const tokens = store(null, null);
+    let sent: unknown = null;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      fetch: async (_input, init) => {
+        sent = JSON.parse(String(init?.body));
+        return json({ registration: 'the-handle', email: 'ada@example.com' }, 202);
+      },
+    });
+
+    const pending = await client.register('Ada@Example.com', 'Ada', 'a decent passphrase');
+
+    expect(sent).toMatchObject({ email: 'Ada@Example.com', name: 'Ada' });
+    expect(pending).toEqual({ registration: 'the-handle', email: 'ada@example.com' });
+    expect(tokens.saved).toBeNull();
+  });
+
+  test('the code then makes the account and saves its tokens', async () => {
     const tokens = store(null, null);
     let sent: unknown = null;
     const paths: string[] = [];
@@ -510,12 +530,12 @@ describe('a browser never holds the refresh token', () => {
       },
     });
 
-    const { account } = await client.register('ada@example.com', 'Ada', 'a decent passphrase');
+    const { account } = await client.confirmRegistration('the-handle', '123456');
 
-    expect(sent).toMatchObject({ email: 'ada@example.com', name: 'Ada' });
+    expect(sent).toMatchObject({ registration: 'the-handle', code: '123456' });
     expect(account.id).toBe(ACCOUNT.id);
     expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
-    expect(paths).toEqual(['/api/auth/register']);
+    expect(paths).toEqual(['/api/auth/register/verify']);
   });
 
   test('a registration the API refuses rejects with the code and saves nothing', async () => {
@@ -524,7 +544,7 @@ describe('a browser never holds the refresh token', () => {
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',
       tokens,
-      fetch: async () => problem(409, 'email_taken'),
+      fetch: async () => problem(422, 'validation_failed'),
     });
 
     await expect(client.register('ada@example.com', 'Ada', 'a decent passphrase')).rejects.toThrow(
