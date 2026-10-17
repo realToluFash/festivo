@@ -21,7 +21,7 @@ export default function TwoFactorAgain() {
     >
       <PrimaryButton
         label={t('lostTwoFactor.setup')}
-        onPress={() => router.replace('/security')}
+        onPress={() => router.replace('/settings/security')}
         testID="twoFactorAgain.setup"
       />
       <SecondaryButton

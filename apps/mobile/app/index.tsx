@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../src/api.ts';
-import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
+import { Home as SignedInHome } from '../src/components/Home.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { config } from '../src/config.ts';
@@ -13,9 +13,10 @@ import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
+import { reloadSignedIn } from '../src/signedIn.ts';
 
 /**
- * The health endpoint, rendered.
+ * Launch: the signed-in home once somebody is in (sc-722), else the health endpoint, rendered.
  *
  * Its job is to prove three things at once that otherwise only get proved in
  * production: the shared client package resolves and runs on this platform, the
@@ -51,7 +52,10 @@ export default function Home() {
         // Behind the onboarding gate, the gate's screen opens rather than the app.
         const landing = landingFor(awaiting(signedIn));
         if (landing !== '/') router.replace(landing);
-        else setAccount(signedIn);
+        else
+          void reloadSignedIn().then(() => {
+            if (live) setAccount(signedIn);
+          });
         return;
       }
 
@@ -97,9 +101,10 @@ export default function Home() {
     };
   }, [attempt]);
 
+  if (account != null) return <SignedInHome />;
+
   return (
     <Screen>
-      <LinkedNotice />
       <Text size={28} weight="bold">
         {t('home.title')}
       </Text>
@@ -144,40 +149,11 @@ export default function Home() {
         </View>
       )}
 
-      {account == null ? (
-        <Link href="/sign-in" asChild>
-          <Pressable style={styles.button} accessibilityRole="button" testID="home.openSignIn">
-            <Text weight="medium">{t('home.openSignIn')}</Text>
-          </Pressable>
-        </Link>
-      ) : (
-        <View style={styles.panel}>
-          <Text weight="medium">{t('home.signedInAs', { name: account.name })}</Text>
-          <Link href="/account" asChild>
-            <Pressable style={styles.button} accessibilityRole="button" testID="home.account">
-              <Text weight="medium">{t('account.title')}</Text>
-            </Pressable>
-          </Link>
-          <Link href="/security" asChild>
-            <Pressable style={styles.button} accessibilityRole="button" testID="home.security">
-              <Text weight="medium">{t('security.title')}</Text>
-            </Pressable>
-          </Link>
-          <Pressable
-            style={styles.button}
-            accessibilityRole="button"
-            testID="home.signOut"
-            onPress={() => {
-              void api.signOut().then(() => {
-                setAccount(null);
-                router.replace('/sign-in');
-              });
-            }}
-          >
-            <Text weight="medium">{t('home.signOut')}</Text>
-          </Pressable>
-        </View>
-      )}
+      <Link href="/sign-in" asChild>
+        <Pressable style={styles.button} accessibilityRole="button" testID="home.openSignIn">
+          <Text weight="medium">{t('home.openSignIn')}</Text>
+        </Pressable>
+      </Link>
 
       <Link href="/layouts" asChild>
         <Pressable style={styles.button} accessibilityRole="button">
