@@ -31,7 +31,9 @@ anybody reading the story later can see what was asked and what was decided.
 **A QA report is answered to the tester who signed it**: `(from qa2)` gets `[qa2]`. A
 question for QA in general is `[qa]`. **A developer question goes to the developer whose
 label the story carries**: `dev2` gets `[dev2]`, and `dev1` or no label gets `[dev]`. A
-bare `[dev]` on a `dev2` story still reaches developer 2, but write the tag that is meant. **Wording questions go to the linguists**: `[en]` for the source copy, the locale's tag for
+bare `[dev]` on a `dev2` story still reaches developer 2, but write the tag that is meant. A
+translation ticket carries no developer label, so a bare `[dev]` on one reaches developer 1:
+there, use the label of the feature story the string came from, which its **Covers** names. **Wording questions go to the linguists**: `[en]` for the source copy, the locale's tag for
 how it reads in that language. **Product questions go to `[pm]`.** If you are deciding what the product should do, stop:
 that is a question, and this is where it goes. **Money questions go to `[bm]`**: what
 something costs, what to charge for it, or where a plan's limit sits.

@@ -71,6 +71,11 @@ Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in
 and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. A client
 shows the time from `Retry-After`, in the reader's timezone, never a figure of its own.
 
+Where a budget is spent by a wrong secret (a password or a code), the wrong try that spends
+the last of it is itself answered with the pause, not with that place's wrong-secret error,
+so nobody spends one more try to learn the time. Every try after it, the right secret
+included, gets the pause unchecked until the window ends. A right secret spends nothing.
+
 A limit that can last past the day it was hit also names its instant for the reader, by
 `UserMailer::deadline`: the `detail` reads "Try again Sunday, Oct 18 at 17:09 WAT." (or
 "UTC" with no zone), and the same words come as a `retryAt` member. A client quotes
@@ -78,13 +83,16 @@ A limit that can last past the day it was hit also names its instant for the rea
 stays in seconds either way (RFC 9110 §10.2.3). Today only
 `POST /api/auth/two-factor/recovery` carries `retryAt`.
 
-| Endpoint                             | Budget                                                    | Spent by              |
-| ------------------------------------ | --------------------------------------------------------- | --------------------- |
-| `POST /api/auth/register`            | 10 per IP per hour, fixed window                          | every attempt         |
-| `POST /api/auth/login`               | 5 per address and 30 per IP per 15 minutes, fixed windows | a refused password    |
-| `POST /api/auth/verify/resend`       | one per 60 seconds per address                            | every code sent       |
-| `POST /api/auth/two-factor/recovery` | 3 per account per 24 hours, rolling                       | every request started |
-| `POST /api/auth/sessions/others`     | 5 per account per 15 minutes, fixed window                | every proved call     |
+| Endpoint                                           | Budget                                                          | Spent by                 |
+| -------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
+| `POST /api/auth/register`                          | 10 per IP per hour, fixed window                                | every attempt            |
+| `POST /api/auth/login`                             | 5 per address and 30 per IP per 15 minutes, fixed windows       | a refused password       |
+| `PATCH /api/auth/password`, `POST /api/auth/proof` | 5 per account per 15 minutes, fixed window, one budget for both | a wrong current password |
+| `POST /api/auth/password/set/code`                 | 5 per account per 15 minutes, fixed window, across resends      | a wrong code             |
+| Two-factor codes, wherever asked                   | 5 per account per 15 minutes, fixed window                      | a wrong code             |
+| `POST /api/auth/verify/resend`                     | one per 60 seconds per address                                  | every code sent          |
+| `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                             | every request started    |
+| `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                      | every proved call        |
 
 ## Verifying an address
 
@@ -154,7 +162,9 @@ is ever in a URL.
 - `…/two-factor/recovery/opening` and `…/two-factor/recovery` take the sign-in's
   `challenge`, so only a first factor that passed can ask. The first sends nothing and
   says whether anybody can answer (`nobody`, with `supportAddress`). It also hands back an
-  open request under a new handle. The second starts a request, ending any earlier one,
+  open request under a handle of this device's own: the request is the account's and the
+  handle the device's (`two_factor_recovery_handles`), so another device's handle keeps
+  working. The second starts a request, ending any earlier one as `replaced`,
   and sends a code to the verified primary address and one to the verified primary phone
   if there is one. Nobody to answer is `409 recovery_nobody_to_approve`, before anything
   is sent. An account with no verified primary address gets the same
@@ -167,8 +177,10 @@ is ever in a URL.
   or `phoneCode`, and neither is spent until both match. Once the request is proved,
   `/prove`, `/resend` and `/text-instead` are `409 recovery_request_proved`: it is waiting
   for an answer, so a client opens its waiting screen. `409 recovery_request_closed` is
-  only for one that has ended (approved, turned down, expired or cancelled). Both carry
-  `requestStatus`.
+  only for one that has ended (approved, turned down, expired or cancelled). Every step
+  from the handle of a request a newer one replaced is `409 recovery_request_replaced`
+  ("A newer request was started on another device. Start again to ask from here."). All
+  three carry `requestStatus`.
 - A proved request ends at **the moment it was proved + 7 × 24 h**. It reads as `expired`
   from that instant on, whether or not `app:two-factor-recovery:expire` has run yet.
   `asked` and `expires` are written for the reader by `UserMailer::deadline`, the one

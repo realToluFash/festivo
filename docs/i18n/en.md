@@ -45,6 +45,107 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account
   does not "see" devices. The device is the subject, so each locale can keep one plain verb.
   The next lines give the time, the device and the address, so the sentence names none of them.
+- **17 Oct 2026. Share-link passphrase (sc-94, `ShareLinks`, `SharedBudget-*`).** "Make the
+  passphrase at least {{count}} characters long, or leave it empty."; over the limit, "Shorten
+  the passphrase to {{count}} characters or fewer."; locked, "Too many wrong passphrases have
+  been tried on this link. Try again at {{time}}.", and without a usable `Retry-After`, "… Wait
+  a moment, then try again." "At", not the drawn "after", because every lock-out in the product
+  says "Try again at {{time}}". The organiser's note reads "While any line has a client price,
+  it shows no payments either.": "while", not "once", because payments come back when the event
+  returns to all at cost.
+- **17 Oct 2026. Attendance not recorded (sc-89, `PlannedActual`).** "Attendance was not
+  recorded"; "Nobody was checked in at the door, so there is no count of who came and no cost
+  per head. {{amount}} was paid to vendors."; "Check guests in at the door next time, and this
+  will show the cost per head of those who came." "Cost per head" is the page's term. The
+  drawn "what each guest who came really cost" was rejected, because "really" casts doubt on
+  the other figures.
+- **17 Oct 2026. Vendor form (sc-82, `Vendors`).** The phone reuses the account's settled hint
+  (`verifyPhone.numberHelp`) and its too-short and too-long keys. Only the invalid key is new,
+  "That is not a phone number for {{country}}. Check it and try again.", because a vendor's
+  number may be a landline. Website hint: "You can leave off https://. It is added when you
+  save."; other scheme: "Enter a web address that starts with https:// or http://, or leave
+  that part off." Blank: "Enter the vendor's name.", "Choose the category." Limits take the
+  house "Shorten the {field} to {{count}} characters or fewer.", and email shape reuses
+  `forms.emailShape`. Reuse a settled key wherever the same component says the same thing.
+
+- **17 Oct 2026. "That does not look like an email address. Check it has an @ and a domain."**
+  (`orgGeneral.contactInvalid` and `forms.emailShape`, web and app, and the API's
+  `validation.contact_address_invalid`; sc-1585). The house rule: no contractions in an error body.
+  Kept "look like" over "That is not an email address", which is blunter and reads as an accusation.
+  The web keys are pinned by tests, so that half is with [dev2] on sc-1585.
+- **17 Oct 2026. Dates on screens follow the locale (CLDR), the owner's call (sc-87,
+  #1700).** `{{date}}` and every date a screen shows come from `Intl.DateTimeFormat` with the
+  reader's locale, in the event's time zone: en-GB "Tuesday 23 September", en-US "Tuesday,
+  Sep 23". Boards are drawn in en-US and say the format follows the locale. Never write a
+  date, or its order, into a string. Rejected: one house style for every locale.
+- **17 Oct 2026. Quotes: added, revised and corrected (sc-87, `Quote-*`).** Saved lines, each
+  one string with slots, never parts joined in code: "Quote added: {{vendor}}, {{amount}},
+  quoted on {{date}}."; "Quote revised: {{vendor}}, {{amount}}, quoted on {{date}}." with
+  "The earlier quote is kept under Show the earlier quote." under it; "Quote corrected:
+  {{vendor}}, quote {{reference}}." and, with no quote number, its own key "Quote corrected:
+  {{vendor}}." (never "no quote number" in the slot), with "The amount, the date quoted and the
+  schedule are unchanged." under it. Live announcements: "Quote added.", "Quote revised.",
+  "Quote corrected." Correct form intro: "Correct what this quote covers, its quote number or
+  its budget lines. No earlier version is kept. To change the amount or the date quoted,
+  revise the quote, which keeps this one as an earlier quote." "Quoted on", not the bare
+  "quoted {{date}}": es, fr and pt need the preposition anyway. The intro says what the form
+  does first, with no colon-led list, which reads badly in a screen reader.
+- **17 Oct 2026. Quote and payment refusals (sc-87, `Quote-*`, `Engagement-*`).** Revise with
+  the amount and the date quoted unchanged, on the form and as the server's detail under one
+  key: "Change the amount or the date quoted to revise this quote. To change anything else,
+  correct the quote instead." (it sends nothing, so not "was not saved"). "The date quoted
+  cannot be in the future. Choose today or an earlier date."; "The date due cannot be before
+  the quote from {{vendor}} on {{date}}. Choose that date or a later one." (sc-88's date-paid
+  shape); "{{line}} is already agreed in the quote from {{vendor}}, so this quote was not
+  saved. Untick it in that quote first.", and the row that cannot be ticked reads "Agreed in
+  the quote from {{vendor}}"; "That vendor is no longer one of this organisation's vendors,
+  so the quote was not saved." (never echoes a name, because a vendor id from another
+  organisation must not read back that vendor's name); "Quotes and payment schedules are
+  read-only on this organisation's plan, so nothing has changed." Form checks: "Choose the
+  vendor."; "Enter what the quote covers."; "Enter the date quoted."; "Enter what the
+  payment is for." ("the payment", not "it": the message is read away from its label);
+  "Enter the date due."; "Shorten what the quote covers to {{count}} characters or fewer.",
+  and the same for the quote number and "what the payment is for". The amount and currency
+  checks are sc-88's shared keys.
+
+- **17 Oct 2026. Adding a payment already made (sc-88, `AddPaid-*`).** Title "Add a payment
+  already made", button "Add as paid", kept as drawn: the title says what the person did, the
+  button what happens. Refusals: "Choose the vendor it was paid to."; "Enter what it was
+  for."; "Shorten the description to {{count}} characters or fewer." (the house over-limit
+  shape; "description" because the field is the payment's description everywhere else it
+  shows); and "The date paid cannot be before the quote from {{vendor}} on {{date}}. Choose
+  that date or a later one." (also the server's detail for sc-87's payment dated before the
+  quote). Won over the drawn "before Bloom Lagos's quote of Monday, Sep 1": a possessive on a
+  name breaks on names ending in s and cannot be carried into es, fr or pt, and it said what
+  was wrong but not what to do. `{{date}}` comes from `Intl.DateTimeFormat` in the event's
+  time zone; in en-GB that reads "Monday 1 September", never "Monday, Sep 1".
+- **17 Oct 2026. "Shorten the reference to {{count}} characters or fewer."** (sc-88,
+  Reference, refused on Mark paid at 101 after trimming). The house shape for a text field
+  over its limit: "Shorten the {field} to {{count}} characters or fewer.", so the cancel
+  reason (200) reads the same. The limit is a `{{count}}` slot, not a number in the words, so
+  the copy cannot drift from the rule. Won over "The reference can be at most 100
+  characters", which states the rule without saying what to do, and over "Reference is too
+  long", which says neither the limit nor the fix.
+- **17 Oct 2026. "Enter the amount as a number above 0, like {{example}}."** (sc-88, Amount
+  paid). One message for every currency, with one slot. The code builds `{{example}}` with
+  `Intl.NumberFormat` in the viewer's locale at the event currency's ISO 4217 minor unit, from
+  3500 when it has none and 3500.5 otherwise: "3,500" for JPY, XOF and CLP, "3,500.50" for GBP, EUR, USD and BRL, "3,500.500" for
+  KWD and BHD, and "3.500,50" in es, fr and pt. No currency symbol: the field shows it as its
+  prefix. Won over a variant per decimal count, which is three keys in four locales for one
+  rule and makes the person count decimal places, and over the drawn "like 3,500 or
+  3,500.50", which promises decimals a zero-decimal currency refuses and writes a number into
+  the string. The example shows the rule; the words never name a decimal count.
+- **17 Oct 2026. Marking paid refused (sc-88, shown on sc-1331's "Due now" sheet).**
+  "{{name}} has already marked this paid, so nothing has changed." (no name: "This has already
+  been marked paid, so nothing has changed."); "This payment has been cancelled, so it cannot be
+  marked paid."; "Enter the amount in {{currency}}, the currency this event uses."; "The date paid
+  cannot be in the future. Choose today or an earlier date."; "Payments cannot be marked paid on
+  this organisation's plan, so nothing has changed." Won over "… a moment ago", which the server
+  cannot know. "So nothing has changed" is the house close for a refused change. Never ask for
+  an upgrade in a refusal.
+- **17 Oct 2026. "From the reminder sent {{date}} · {{payments}} across {{count}} events"**
+  (sc-1331 subline). Two counts take two plural keys, and the one-event form drops "across 1
+  event". "1 payment" keeps its numeral because it is a count line, not prose.
 - **17 Oct 2026. "Your {{provider}} sign-in was more than {{count}} minutes ago, so nothing
   has changed yet. Continue with {{provider}} again to carry on."** (`waysCard.proofExpired_*`,
   web and mobile). A past sign-in is something that "was … ago", not something "… old".

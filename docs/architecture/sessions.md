@@ -219,6 +219,12 @@ token in hand working for its fifteen minutes (`JWT_TOKEN_TTL=900`, which
   at once, mid-event.
 - **A token with no `sid`** has nothing to look up and is not refused. Every token the API
   issues carries one.
+- **This device is the session the caller holds, never one it names.** Whatever answers
+  about the caller's own session, such as `thisDevice`, reads `CallerSession` (the `sid`
+  claim). A `sessionId` in the body may choose what to keep, never who the caller is.
+  Signing out everywhere else (sc-115) and unlinking a provider (sc-510) both follow it,
+  and with no `sid` both answer `thisDevice: true`, since the caller cannot be told it
+  stays in.
 
 ## Where a native client keeps its half
 
@@ -289,6 +295,11 @@ phone's button: every session but this device's ends at once.
 - **The proof comes first**, the same five-minute proof that linking a provider takes: the
   password or Google or Apple, then the code with two-factor on, an app code or an unused
   recovery code, which is spent. Without one it is `proof_required` and nothing ends.
+- **A refused code keeps the first factor.** With two-factor on, a passed password or
+  provider sign-in is held as a proof awaiting its code, and the code's refusal carries it
+  as `pendingProof`. The retry sends `{pendingProof, code}` in place of the first factor,
+  because a provider's authorization code is single-use (RFC 6749 §4.1.2). It stands for no
+  change itself, lapses with the five minutes, and is spent once the code passes.
 - **Then the limit**: `sign_out_elsewhere_account`, five proved calls per account in a fixed
   fifteen-minute window. Past it, `429 too_many_attempts` with `Retry-After` and the time
   in the detail, and nothing ends. The proof is checked before the budget is spent, so

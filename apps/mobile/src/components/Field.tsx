@@ -1,7 +1,7 @@
 import type { ReactNode, Ref } from 'react';
 import { Pressable, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 
-import { CODE_PROPS, FIELD_DEFAULTS } from '../kit/fields.ts';
+import { codeProps, FIELD_DEFAULTS } from '../kit/fields.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 
@@ -127,10 +127,20 @@ export function TextField({ wrong = false, style, ref, ...rest }: TextFieldProps
   );
 }
 
-export function CodeField({ wrong = false, style, ref, ...rest }: TextFieldProps) {
+export type CodeFieldProps = TextFieldProps & {
+  takesRecoveryCode?: boolean;
+};
+
+export function CodeField({
+  wrong = false,
+  takesRecoveryCode = false,
+  style,
+  ref,
+  ...rest
+}: CodeFieldProps) {
   return (
     <TextInput
-      {...CODE_PROPS}
+      {...codeProps(takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
       ref={ref}

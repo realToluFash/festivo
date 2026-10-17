@@ -49,13 +49,18 @@ export interface PhoneCountry {
   picked: boolean;
 }
 
+/** The one rule for where a code starts: the first country something names, skipping blanks, else blank. */
+export function firstCountry(...named: readonly (string | null | undefined)[]): string {
+  return named.find((code) => code != null && code !== '') ?? '';
+}
+
 /** Where it starts: the Country on the screen, else the organisation's country, else the device's region. */
 export function startingPhoneCountry(
   screenCountry: string | null,
   organisationCountry: string | null,
   deviceCountry: string | null,
 ): PhoneCountry {
-  return { code: screenCountry ?? organisationCountry ?? deviceCountry ?? '', picked: false };
+  return { code: firstCountry(screenCountry, organisationCountry, deviceCountry), picked: false };
 }
 
 /** A changed Country carries the code with it, unless the person has chosen the code themselves. */
@@ -78,11 +83,7 @@ export function phoneScreenCountry(
 ): string {
   const numberCountry = account.phoneNumbers.find((phone) => phone.primary)?.countryCode;
 
-  return (
-    [numberCountry, account.organisationCountry, deviceCountry].find(
-      (code) => code != null && code !== '',
-    ) ?? ''
-  );
+  return firstCountry(numberCountry, account.organisationCountry, deviceCountry);
 }
 
 /** Where focus goes when a number is refused: the code when none is chosen, else the number itself. */

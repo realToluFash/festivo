@@ -1,24 +1,28 @@
-import { ApiError, type Membership, type OrganisationChanges } from '@soirely/api-client';
-import { countryChoices, currencyLabel, timezoneLabel } from '@soirely/domain';
+import { ApiError, type Membership } from '@soirely/api-client';
+import {
+  ORGANISATION_FIELDS,
+  ORGANISATION_NAME_MAXIMUM,
+  type OrganisationField,
+  countryChoices,
+  currencyLabel,
+  organisationChanges,
+  organisationProblem,
+  roleName,
+  timezoneLabel,
+  withCurrent,
+} from '@soirely/domain';
 import { type FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { roleName } from '../../../roles.ts';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
 
-type Field = 'name' | 'countryCode' | 'contactAddress' | 'currency' | 'timezone';
+type Field = OrganisationField;
 type Errors = Partial<Record<Field, string>>;
 
 type Status = { kind: 'editing' } | { kind: 'saving' } | { kind: 'saved' } | { kind: 'failed' };
-
-/** Checked before sending, as the artboard draws: a name, and a contact address in an email's shape. */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
-
-/** The API's OrganisationRules::NAME_MAXIMUM. */
-const NAME_MAXIMUM = 100;
 
 export function General() {
   const { t } = useTranslation();
@@ -94,7 +98,7 @@ function Editable({ organisation }: { organisation: Membership }) {
     try {
       const saved = await api.updateOrganisation(
         organisation.id,
-        changesFrom(organisation, values),
+        organisationChanges(organisation, values),
       );
 
       replaceOrganisation({ ...organisation, ...saved });
@@ -138,7 +142,7 @@ function Editable({ organisation }: { organisation: Membership }) {
           error={errors.name}
           busy={busy}
           autoComplete="organization"
-          maxLength={NAME_MAXIMUM}
+          maxLength={ORGANISATION_NAME_MAXIMUM}
           onChange={change}
         />
         <Choice
@@ -333,28 +337,11 @@ function FieldError({ id, message }: { id: string; message: string }) {
 
 function checkBeforeSending(values: Record<Field, string>, t: (key: string) => string): Errors {
   const errors: Errors = {};
-  const contact = values.contactAddress.trim();
 
-  if (values.name.trim() === '') errors.name = t('orgGeneral.nameBlank');
-
-  if (contact === '') errors.contactAddress = t('orgGeneral.contactBlank');
-  else if (!EMAIL_SHAPE.test(contact)) errors.contactAddress = t('orgGeneral.contactInvalid');
-
-  return errors;
-}
-
-/** Only what changed is sent, so an edit never rewrites a field somebody else has just saved. */
-function changesFrom(organisation: Membership, values: Record<Field, string>): OrganisationChanges {
-  const changes: OrganisationChanges = {};
-
-  for (const field of ['name', 'countryCode', 'contactAddress', 'currency', 'timezone'] as const) {
-    if (values[field].trim() !== organisation[field]) changes[field] = values[field].trim();
+  for (const field of ORGANISATION_FIELDS) {
+    const problem = organisationProblem(field, values[field]);
+    if (problem != null) errors[field] = t(`orgGeneral.${problem}`);
   }
 
-  return changes;
-}
-
-/** A stored value the browser does not list is still shown, rather than silently replaced on save. */
-function withCurrent(listed: readonly string[], current: string): string[] {
-  return listed.includes(current) ? [...listed] : [current, ...listed];
+  return errors;
 }

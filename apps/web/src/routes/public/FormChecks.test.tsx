@@ -85,7 +85,7 @@ describe('sign in checks before it sends', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
     expect(
-      screen.getByText("That doesn't look like an email address. Check it has an @ and a domain."),
+      screen.getByText('That does not look like an email address. Check it has an @ and a domain.'),
     ).toBeDefined();
     expect(posts(sent, '/api/auth/login')).toEqual([]);
   });
@@ -101,7 +101,7 @@ describe('sign in checks before it sends', () => {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake' } });
     fireEvent.blur(screen.getByLabelText('Email'), { target: { value: 'folake' } });
     expect(
-      screen.getByText("That doesn't look like an email address. Check it has an @ and a domain."),
+      screen.getByText('That does not look like an email address. Check it has an @ and a domain.'),
     ).toBeDefined();
   });
 });
@@ -131,7 +131,7 @@ describe('register checks before it sends', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
 
     expect(
-      screen.getByText("That doesn't look like an email address. Check it has an @ and a domain."),
+      screen.getByText('That does not look like an email address. Check it has an @ and a domain.'),
     ).toBeDefined();
     expect(document.activeElement).toBe(screen.getByLabelText('Email'));
     expect(posts(sent, '/api/auth/register')).toEqual([]);

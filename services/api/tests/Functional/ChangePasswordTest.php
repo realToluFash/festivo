@@ -10,13 +10,18 @@ use App\Domain\User\Password\PasswordChange;
 use App\Domain\User\Password\PasswordChangeMailer;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\Password\ScriptedBreachedPasswordChecker;
+use App\Domain\User\SignInMethods\RecentProof;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\SecondFactorCheck;
 use App\Domain\User\UserRegistrar;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
+use App\Repository\ProviderIdentityRepository;
 use App\Repository\RefreshTokenRepository;
+use App\Repository\SignInProofRepository;
+use App\Repository\TwoFactorFactorRepository;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
@@ -128,29 +133,56 @@ final class ChangePasswordTest extends ApiTestCase
     }
 
     #[Test]
-    public function fiveWrongCurrentPasswordsPauseItAndSayUntilWhen(): void
+    public function theFifthWrongCurrentPasswordIsItselfThePauseAndSaysUntilWhen(): void
     {
         $change = $this->passwordChange();
         $user = $this->account();
 
-        for ($try = 0; $try < 5; ++$try) {
+        for ($try = 1; $try <= 5; ++$try) {
             try {
                 $change->change($user, 'not the password at all', self::NEW_PASSWORD);
                 self::fail('a wrong current password was accepted');
             } catch (ApiException $e) {
-                self::assertSame(ErrorCode::InvalidCredentials, $e->errorCode);
+                self::assertSame($try < 5 ? ErrorCode::InvalidCredentials : ErrorCode::TooManyAttempts, $e->errorCode, 'try ' . $try);
             }
         }
+
+        $fifth = $e;
 
         try {
             $change->change($user, self::OLD_PASSWORD, self::NEW_PASSWORD);
             self::fail('the sixth try was let through');
         } catch (ApiException $e) {
             self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode, 'even the right one waits');
-            self::assertArrayHasKey('Retry-After', $e->headers, 'and it says until when');
         }
 
+        self::assertStringContainsString('Try again at ', $fifth->getMessage());
+        self::assertSame($e->getMessage(), $fifth->getMessage(), 'the fifth states the minute the sixth does (sc-965)');
+        self::assertEqualsWithDelta((int) $e->headers['Retry-After'], (int) $fifth->headers['Retry-After'], 1, 'and the same Retry-After, to the second');
+
         self::assertTrue(self::service(PasswordResolver::class)->verify($this->account(), self::OLD_PASSWORD), 'nothing changed');
+    }
+
+    /** sc-965: signing in again spends the same budget, so the fifth wrong password is the pause whichever screen it is on. */
+    #[Test]
+    public function theFifthWrongPasswordAcrossChangeAndProofIsThePause(): void
+    {
+        $budget = new RateLimiterFactory(['id' => 'change', 'policy' => 'fixed_window', 'limit' => 5, 'interval' => '15 minutes'], new InMemoryStorage());
+        $change = $this->passwordChange(budget: $budget);
+        $proof = $this->recentProof($budget);
+        $user = $this->account();
+        $answers = [];
+
+        foreach ([1, 2] as $_) {
+            $answers[] = self::refusedBy(static fn () => $change->change($user, 'not the password at all', self::NEW_PASSWORD))->errorCode;
+        }
+
+        foreach ([3, 4, 5] as $_) {
+            $answers[] = self::refusedBy(static fn () => $proof->prove($user, 'not the password at all', null, null))->errorCode;
+        }
+
+        self::assertSame([ErrorCode::InvalidCredentials, ErrorCode::InvalidCredentials, ErrorCode::InvalidCredentials, ErrorCode::InvalidCredentials, ErrorCode::TooManyAttempts], $answers);
+        self::assertArrayHasKey('Retry-After', self::refusedBy(static fn () => $change->change($user, self::OLD_PASSWORD, self::NEW_PASSWORD))->headers);
     }
 
     /** A row lock taken around the check is what makes parallel guesses queue behind the budget. */
@@ -212,6 +244,16 @@ final class ChangePasswordTest extends ApiTestCase
         self::assertStringContainsString('/sign-in', $text);
     }
 
+    /** The app's own user agent, named as the devices card names it, without its versions (sc-1242). */
+    #[Test]
+    public function theAppIsNamedByItsDeviceClass(): void
+    {
+        $this->change($this->signIn(), self::OLD_PASSWORD, self::NEW_PASSWORD, ['HTTP_USER_AGENT' => 'Soirely/1.4.0 (Android 15; tablet)', 'REMOTE_ADDR' => '197.210.78.3']);
+
+        $text = (string) Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()))->getTextBody();
+        self::assertStringContainsString('The device: Soirely app on Android tablet, from 197.210.78.3.', $text);
+    }
+
     #[Test]
     public function aDeviceItCannotReadIsNamedAsTheDevicesCardNamesIt(): void
     {
@@ -243,6 +285,34 @@ final class ChangePasswordTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
         self::assertTrue(self::service(PasswordResolver::class)->verify($this->account(), $composed));
+    }
+
+    private function recentProof(RateLimiterFactoryInterface $budget): RecentProof
+    {
+        return new RecentProof(
+            self::service(PasswordResolver::class),
+            self::service(SecondFactorCheck::class),
+            self::service(TwoFactorFactorRepository::class),
+            self::service(ProviderIdentityRepository::class),
+            self::service(SignInProofRepository::class),
+            self::em(),
+            new NativeClock(),
+            $budget,
+            new GuardedAttempt(self::em()),
+            self::service(TranslatorInterface::class),
+        );
+    }
+
+    /** @param callable(): mixed $call */
+    private static function refusedBy(callable $call): ApiException
+    {
+        try {
+            $call();
+        } catch (ApiException $e) {
+            return $e;
+        }
+
+        self::fail('it was accepted');
     }
 
     private function passwordChange(?NewPasswordRules $rules = null, ?EntityManagerInterface $em = null, ?RateLimiterFactoryInterface $budget = null): PasswordChange

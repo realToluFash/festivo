@@ -27,24 +27,26 @@ const KIT_STYLES = [
 describe('every field carries the caret colour', () => {
   it('in every TextInput in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
-      textInputs(text)
+      selfClosing('TextInput', text)
         .filter((tag) => !caretSet(tag.markup))
         .map((tag) => `${path}:${tag.line}`),
     );
 
     expect(
       offenders,
-      'Spread FIELD_DEFAULTS, CODE_PROPS or passwordProps() from src/kit/fields.ts.',
+      'Spread FIELD_DEFAULTS, codeProps() or passwordProps() from src/kit/fields.ts.',
     ).toEqual([]);
   });
 
   it('notices a TextInput that leaves the caret to the platform', () => {
     expect(
-      textInputs('<TextInput\n  style={styles.input}\n/>').filter((tag) => !caretSet(tag.markup)),
+      selfClosing('TextInput', '<TextInput\n  style={styles.input}\n/>').filter(
+        (tag) => !caretSet(tag.markup),
+      ),
     ).toHaveLength(1);
-    expect(textInputs('const input = useRef<TextInput>(null);')).toHaveLength(0);
+    expect(selfClosing('TextInput', 'const input = useRef<TextInput>(null);')).toHaveLength(0);
     expect(
-      textInputs('<TextInput {...FIELD_DEFAULTS} style={x} />').filter(
+      selfClosing('TextInput', '<TextInput {...FIELD_DEFAULTS} style={x} />').filter(
         (tag) => !caretSet(tag.markup),
       ),
     ).toHaveLength(0);
@@ -85,6 +87,28 @@ describe('the app runs on Hermes', () => {
     );
 
     expect(missing.map(([api]) => api)).toEqual([]);
+  });
+});
+
+describe('a field that takes a recovery code gets the full keyboard', () => {
+  // sc-124 QA #1616: these fields fell back to the number pad, and a recovery code has letters and a hyphen.
+  const RECOVERY_CODE_FIELDS = ['devices.everywhere.code', 'ways.code'];
+
+  it.each(RECOVERY_CODE_FIELDS)('%s', (testID) => {
+    const fields = sources(['src', 'app']).flatMap(({ text }) =>
+      selfClosing('CodeField', text).filter((tag) => tag.markup.includes(`testID="${testID}"`)),
+    );
+
+    expect(fields, `one CodeField with testID "${testID}"`).toHaveLength(1);
+    expect(takesRecoveryCode(fields[0]?.markup ?? '')).toBe(true);
+  });
+
+  it('notices a CodeField that leaves it out', () => {
+    expect(takesRecoveryCode('<CodeField\n  wrong={false}\n  testID="ways.code"\n')).toBe(false);
+    expect(takesRecoveryCode('<CodeField takesRecoveryCode={false} testID="ways.code" ')).toBe(
+      false,
+    );
+    expect(takesRecoveryCode('<CodeField\n  takesRecoveryCode\n  testID="ways.code"\n')).toBe(true);
   });
 });
 
@@ -131,10 +155,10 @@ function walk(directory: string): Source[] {
   });
 }
 
-/** A TextInput is always self-closing here, so its markup runs to the next `/>`. */
-function textInputs(text: string): { line: number; markup: string }[] {
+/** A TextInput or CodeField is always self-closing here, so its markup runs to the next `/>`. */
+function selfClosing(name: string, text: string): { line: number; markup: string }[] {
   // Not after an identifier, so a type argument such as useRef<TextInput> is not markup.
-  return [...text.matchAll(/(?<![\w.])<TextInput\b/gu)].map((match) => {
+  return [...text.matchAll(new RegExp(`(?<![\\w.])<${name}\\b`, 'gu'))].map((match) => {
     const start = match.index;
     const end = text.indexOf('/>', start);
 
@@ -144,7 +168,11 @@ function textInputs(text: string): { line: number; markup: string }[] {
 
 function caretSet(markup: string): boolean {
   return (
-    /\{\.\.\.(FIELD_DEFAULTS|CODE_PROPS|passwordProps\()/u.test(markup) ||
+    /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup) ||
     /\bcursorColor=/u.test(markup)
   );
+}
+
+function takesRecoveryCode(markup: string): boolean {
+  return /\btakesRecoveryCode(?!=\{false\})\b/u.test(markup);
 }

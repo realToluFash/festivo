@@ -256,6 +256,50 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
   });
 
+  it('says a request replaced on another device was started again there, and starts again here', async () => {
+    const sent = await atTheStart({
+      'POST /api/auth/two-factor/recovery': () =>
+        json(
+          {
+            recovery: 'handle',
+            state: { ...PROVING, codes: { ...PROVING.codes, cooldownSeconds: 0 } },
+          },
+          201,
+        ),
+      'POST /api/auth/two-factor/recovery/resend': () =>
+        problem('recovery_request_replaced', 409, { requestStatus: 'replaced' }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter both codes' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send new codes' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'A newer request replaced this one' }),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'A newer request was started on another device. Start again to ask from here.',
+      ),
+    ).toBeDefined();
+    expect(sessionStorage.getItem('soirely.twoFactorRecovery')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start again' }));
+    expect(await screen.findByRole('button', { name: 'Send the codes' })).toBeDefined();
+    expect(sent.filter((s) => s.path === '/api/auth/two-factor/recovery')).toHaveLength(1);
+  });
+
+  it('never shows a request this tab holds for somebody else to the person who just signed in', async () => {
+    sessionStorage.setItem('soirely.twoFactorRecovery', 'another-accounts-handle');
+    const sent = await atTheStart({
+      'POST /api/auth/two-factor/recovery/state': () => json({ state: WAITING }),
+    });
+
+    expect(screen.getByRole('button', { name: 'Send the codes' })).toBeDefined();
+    expect(sent.some((s) => s.path === '/api/auth/two-factor/recovery/state')).toBe(false);
+    expect(sessionStorage.getItem('soirely.twoFactorRecovery')).toBeNull();
+  });
+
   it('sends nobody codes when nobody can answer', async () => {
     await atTheStart({
       'POST /api/auth/two-factor/recovery/opening': () => json({ ...OPENING, nobody: true }),

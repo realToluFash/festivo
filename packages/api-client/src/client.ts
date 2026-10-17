@@ -136,7 +136,8 @@ export interface TimeZoneOption {
   id: string;
   city: string;
   ianaCity: string;
-  formerNames: string[];
+  aliases: string[];
+  formerName: string | null;
   country: string;
   /** Its offset now, such as `+01:00`. */
   offset: string;
@@ -252,6 +253,8 @@ export interface ClientOptions {
   locale?: () => string | null;
   /** The device's IANA zone, which sets an account's own until it has one (sc-868). */
   timeZone?: () => string | null;
+  /** The app's own `Soirely/<version> (…)`, by which its sessions are named (sc-1242). A browser sends its own and cannot replace it. */
+  userAgent?: string;
   /** The app's install identifier, by which a sign-in from a new device is told apart (sc-511). The web has a cookie instead. */
   device?: () => string | null;
   /** Called when refresh fails and the session is over. */
@@ -415,15 +418,20 @@ export class ApiClient {
     );
   }
 
-  /** The password or a linked provider, then `code` when two-factor is on: proof for the next five minutes. */
+  /** The password, a linked provider, or a refused code's `pendingProof`, then `code`: proof for five minutes. */
   async prove(
-    first: { password: string } | { provider: Provider; signIn: ProviderSignInAttempt },
+    first:
+      | { password: string }
+      | { provider: Provider; signIn: ProviderSignInAttempt }
+      | { pendingProof: string },
     code?: string,
   ): Promise<RecentProof> {
     const body = await this.post<{ proof?: unknown; expiresAt?: unknown }>('/api/auth/proof', {
       ...('password' in first
         ? { password: first.password }
-        : { provider: first.provider, providerSignIn: first.signIn }),
+        : 'pendingProof' in first
+          ? { pendingProof: first.pendingProof }
+          : { provider: first.provider, providerSignIn: first.signIn }),
       ...(code == null ? {} : { code }),
     });
 
@@ -451,11 +459,10 @@ export class ApiClient {
   async unlinkProvider(
     provider: Provider,
     proof: string,
-    sessionId: string | null,
   ): Promise<{ signedOut: number; thisDevice: boolean }> {
     const body = await this.post<{ signedOut?: unknown; thisDevice?: unknown }>(
       `/api/auth/providers/${provider}/unlink`,
-      { proof, sessionId },
+      { proof },
     );
 
     return {
@@ -691,9 +698,10 @@ export class ApiClient {
           .map((zone) => ({
             ...zone,
             ianaCity: typeof zone.ianaCity === 'string' ? zone.ianaCity : zone.city,
-            formerNames: Array.isArray(zone.formerNames)
-              ? zone.formerNames.filter((name: unknown): name is string => typeof name === 'string')
+            aliases: Array.isArray(zone.aliases)
+              ? zone.aliases.filter((name: unknown): name is string => typeof name === 'string')
               : [],
+            formerName: typeof zone.formerName === 'string' ? zone.formerName : null,
           }))
       : [];
   }
@@ -981,6 +989,8 @@ export class ApiClient {
     if (locale != null && locale !== '') headers['Accept-Language'] = locale;
     const timeZone = this.options.timeZone?.();
     if (timeZone != null && timeZone !== '') headers['X-Timezone'] = timeZone;
+    const userAgent = this.options.userAgent;
+    if (userAgent != null && userAgent !== '') headers['User-Agent'] = userAgent;
     const device = this.options.device?.();
     if (device != null && device !== '') headers['X-Device-Id'] = device;
 

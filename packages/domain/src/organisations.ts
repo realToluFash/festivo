@@ -1,0 +1,73 @@
+import { emailProblem } from './forms.ts';
+
+/** The one remembered on this device while the account still belongs to it, else the first. */
+export function chooseOrganisation<T extends { id: string }>(
+  organisations: readonly T[],
+  remembered: string | null,
+): T | null {
+  return organisations.find(({ id }) => id === remembered) ?? organisations[0] ?? null;
+}
+
+/** A seeded role is worded in the reader's language; a role an organisation made keeps its own name. */
+export function roleName(
+  word: (key: string) => string,
+  role: { seededAs: string | null; name: string | null },
+): string {
+  return role.seededAs != null ? word(`roles.${role.seededAs}`) : (role.name ?? '');
+}
+
+/** Owner holds every permission; until sc-66 gives other roles theirs, nobody else holds any. */
+export function roleHolds(role: { seededAs: string | null }, permission: string): boolean {
+  return permission !== '' && role.seededAs === 'owner';
+}
+
+export type OrganisationField = 'name' | 'countryCode' | 'contactAddress' | 'currency' | 'timezone';
+
+export type OrganisationDetails = Record<OrganisationField, string>;
+
+/** The order both clients show the fields in, and so the order a refusal takes focus in. */
+export const ORGANISATION_FIELDS: readonly OrganisationField[] = [
+  'name',
+  'countryCode',
+  'contactAddress',
+  'currency',
+  'timezone',
+];
+
+/** The API's OrganisationRules::NAME_MAXIMUM. */
+export const ORGANISATION_NAME_MAXIMUM = 100;
+
+/** What a client checks before saving. Country, currency and time zone come from pickers, so they cannot be wrong. */
+export function organisationProblem(
+  field: OrganisationField,
+  value: string,
+): 'nameBlank' | 'contactBlank' | 'contactInvalid' | null {
+  if (field === 'name') return value.trim() === '' ? 'nameBlank' : null;
+
+  if (field !== 'contactAddress') return null;
+
+  const problem = emailProblem(value);
+
+  if (problem == null) return null;
+
+  return problem === 'blank' ? 'contactBlank' : 'contactInvalid';
+}
+
+/** Only what changed is sent, so an edit never rewrites a field somebody else has just saved. */
+export function organisationChanges(
+  saved: OrganisationDetails,
+  values: OrganisationDetails,
+): Partial<OrganisationDetails> {
+  const changes: Partial<OrganisationDetails> = {};
+
+  for (const field of ORGANISATION_FIELDS) {
+    if (values[field].trim() !== saved[field]) changes[field] = values[field].trim();
+  }
+
+  return changes;
+}
+
+/** A stored value the platform does not list is still offered first, rather than silently replaced on save. */
+export function withCurrent(listed: readonly string[], current: string): string[] {
+  return listed.includes(current) ? [...listed] : [current, ...listed];
+}

@@ -15,27 +15,73 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | French                  | Notes |
-| ------------------------- | ----------------------- | ----- |
-| Settings                  | Paramètres              |       |
-| Organisation              | Organisation            |       |
-| Sign in                   | Se connecter            |       |
-| Sign out                  | Déconnecter             |       |
-| Email                     | Adresse e-mail          |       |
-| Password                  | Mot de passe            |       |
-| Continue                  | Continuer               |       |
-| Cancel                    | Annuler                 |       |
-| Two-factor authentication | Double authentification |       |
-| Recovery code             | Code de récupération    |       |
+| English                   | French                  | Notes                            |
+| ------------------------- | ----------------------- | -------------------------------- |
+| Settings                  | Paramètres              | Settled: also the app's tab      |
+| Home                      | Accueil                 | Settled: the app's tab           |
+| Account / Security        | Compte / Sécurité       | Settled: section names           |
+| Ways to sign in           | Moyens de connexion     | Settled                          |
+| Signed-in devices         | Appareils connectés     | Settled                          |
+| Start again               | Recommencer             | Settled                          |
+| Organisation              | Organisation            | Settled: section name, same word |
+| Sign in                   | Se connecter            |                                  |
+| Sign out                  | Déconnecter             |                                  |
+| Email                     | Adresse e-mail          |                                  |
+| Password                  | Mot de passe            |                                  |
+| Continue                  | Continuer               |                                  |
+| Cancel                    | Annuler                 |                                  |
+| Two-factor authentication | Double authentification | Settled: also "two-factor" alone |
+| Recovery code             | Code de récupération    |                                  |
 
 ## Never translated
 
 - Soirely
+- iPhone, iPad, Android
 - A person's name or title: Chief, Alhaji, Dr., Mrs.
 
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **18 Oct 2026. The app as a device is « Application Soirely sur … ».** « Application
+  Soirely sur iPhone », « … sur iPad », « … sur un téléphone Android », « … sur une
+  tablette Android » (`devices.app*`, `password.device.app*`). « sur » as in `devices.agent`
+  (« Safari sur iPhone »); « Application » rather than « appli » for the register; the
+  article before « téléphone » and « tablette » because they name a kind of device, where
+  iPhone and iPad are names (sc-1283).
+- **18 Oct 2026. A device name is never the subject of an agreeing participle.** Device
+  names are masculine (« Safari sur iPhone ») or feminine (« Application Soirely … »), so
+  `devices.ended` reads « Appareil déconnecté : {{name}}. », agreeing with « Appareil »
+  rather than « {{name}} est déconnecté » (sc-1283).
+- **18 Oct 2026. "Sign out everywhere else" is « Déconnecter les autres appareils »**
+  (`devices.everywhere`, its title with « ? »). The device is what is signed out, as in
+  `devices.signOut`; « partout ailleurs » reads as places. Its confirm buttons follow the
+  card's `end`/`keep`: « Le/Les déconnecter », « Le/Les laisser connecté(s) », and
+  « Déconnecter les {{count}} » when this device goes too. "Nothing was signed out" is
+  « Aucun appareil n'a été déconnecté ». "Whoever has it" is « la personne qui l'a », as
+  in `devices.checkWarning`.
+- **18 Oct 2026. A re-proof hint names the act, not the factor**: « Vous confirmerez
+  d'abord que c'est bien vous » (`devices.everywhereHint`), because a Google or Apple
+  account confirms with its provider, not a password.
+- **17 Oct 2026. "Vous êtes connecté", masculine as the generic form** (`home.signedIn`,
+  `settings.signedInAs`, as in `nav.signedInAs` and "Vous restez connecté"). The code has
+  no gender for the person, and « connecté·e » breaks screen readers. Ask `[dev]` for a
+  slot if a string ever needs to agree.
+- **17 Oct 2026. Status marks agree with « demande »**: Annulée, Confirmée, Refusée,
+  Terminée, Remplacée. A new mark on the recovery request is feminine singular, one word.
+- **17 Oct 2026. The daily recovery limit reads « 3 fois par jour »** (`limitedBody`).
+  `replacedNote` says « Cela compte parmi les 3 demandes que vous pouvez faire par jour »
+  so that both lines give the same limit.
+- **17 Oct 2026. A button named in a sentence is quoted by its French label** in
+  guillemets: « Choisissez de nouveau « Continuer avec {{provider}} » » (`proofExpired_*`).
+  The person has to find it on the screen.
+- **17 Oct 2026. A slot with no plural form** (`messages:proof.required`'s `{minutes}`) is
+  written so it reads at the value it carries: « dans les {minutes} dernières minutes ».
+- **17 Oct 2026. Section names stand alone as nouns** in running text: « Compte réunit… »,
+  « Sécurité réunit… » (`settings.chooseLine`), « Organisation réunit les réglages de
+  {{name}} » (`settings.chooseLineWithOrganisation`), « vérifiez Sécurité » (emails).
+- **17 Oct 2026. A picker's search field reads « Rechercher un/une … »** in the singular:
+  « Rechercher un pays », « Rechercher une devise », « Rechercher un fuseau horaire ».
 
 - **17 Oct 2026. Signing out is immediate; no delay is promised.** "Tous vos autres
   appareils ont été déconnectés." (password-changed email, after #110's "Every other
@@ -47,4 +93,4 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   pendant un événement", not "au milieu d'un événement", which reads as being physically in
   one.
 - **17 Oct 2026. "Code" stays "Code"** as a field label (`twoFactor.code`,
-  `waysCard.code`): it is the French word, listed in `same-as-english.json`.
+  `waysCard.code`, `devices.everywhereCode`): it is the French word, listed in `same-as-english.json`.

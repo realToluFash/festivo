@@ -27,6 +27,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
@@ -89,6 +90,18 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(['Somebody asked to get into your account without two-factor'], $this->headingsTo(self::ADDRESS, 'A request to get into your Soirely account'));
         self::assertStringContainsString('proved their email address with a code. They have no verified phone.', $this->mailTo('bisi@example.com', 'Folake Adeyemi asked to get back into their account'));
         self::assertSame([], $this->mailsTo(self::ADDRESS, 'Folake Adeyemi asked to get back into their account'), 'never to the person');
+    }
+
+    /** The started email names the device as the devices card names its row, the app included (sc-1242). */
+    #[Test]
+    #[TestWith(['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Device: Chrome on macOS'])]
+    #[TestWith(['Soirely/1.4.0 (iOS 18.1; iPhone)', 'Device: Soirely app on iPhone'])]
+    public function theStartedEmailNamesTheDevice(string $userAgent, string $line): void
+    {
+        $this->client->setServerParameter('HTTP_USER_AGENT', $userAgent);
+        $this->proved();
+
+        self::assertStringContainsString($line, $this->mailTo(self::ADDRESS, 'A request to get into your Soirely account'));
     }
 
     #[Test]
@@ -220,6 +233,47 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         }
     }
 
+    /** sc-1658: the start and waiting screens name only the organisations in which somebody was asked. */
+    #[Test]
+    public function anOrganisationWithNoOtherApproverIsNotNamed(): void
+    {
+        self::service(OrganisationFounder::class)->found($this->fresh($this->person), 'Ọ̀rẹ́ Studio', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+
+        self::assertSame(['Ìrè Events'], $this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()])['organisations']);
+        self::assertSame(['Ìrè Events'], $this->state($this->proved())['organisations']);
+    }
+
+    #[Test]
+    public function theSoleOwnersOwnOrganisationIsNotNamedButTheOtherIs(): void
+    {
+        $this->leaves($this->approver);
+        $hall = self::service(OrganisationFounder::class)->found($this->fresh($this->approver), 'Bisi Hall', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+        $this->join($this->person, SeededRole::Owner, $hall);
+        self::em()->flush();
+
+        self::assertSame(['Bisi Hall'], $this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()])['organisations']);
+        self::assertSame(['Bisi Hall'], $this->state($this->proved())['organisations']);
+    }
+
+    #[Test]
+    public function anOrganisationLeftWithNobodyElseDropsOffTheWaitingScreen(): void
+    {
+        $tunde = $this->account('tunde@example.com', 'Tunde Bello');
+        $hall = self::service(OrganisationFounder::class)->found($tunde, 'Tunde Hall', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+        $this->join($this->person, SeededRole::Owner, $hall);
+        self::em()->flush();
+
+        $handle = $this->proved();
+        self::assertSame(['Ìrè Events', 'Tunde Hall'], $this->state($handle)['organisations'], 'oldest membership first');
+
+        $this->leaves($tunde);
+
+        self::assertSame(['Ìrè Events'], $this->state($handle)['organisations']);
+    }
+
     #[Test]
     public function textItToMeInsteadLastsOnlyTheRequestsOwnCodes(): void
     {
@@ -332,7 +386,8 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     {
         $first = $this->start();
         $this->start();
-        self::assertSame('cancelled', $this->state($first)['status'], 'starting again ends the one before');
+        $this->call('POST', '/api/auth/two-factor/recovery/state', ['recovery' => $first]);
+        self::assertSame(ErrorCode::RecoveryRequestReplaced->type(), $this->last()['type'], 'starting again ends the one before');
         $this->start();
 
         $this->call('POST', '/api/auth/two-factor/recovery', ['challenge' => $this->challenge()]);
@@ -365,6 +420,40 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertIsString($opening['recovery']);
         self::assertSame('proving', Type\shape(['status' => Type\string()], true)->coerce($opening['state'])['status']);
         self::assertSame('proving', $this->state(Type\string()->coerce($opening['recovery']))['status']);
+    }
+
+    /** pm #1267: the request is the account's and the handle the device's, so opening it elsewhere leaves this one working. */
+    #[Test]
+    public function aSecondDeviceOpeningTheRequestLeavesTheFirstOnesHandleWorking(): void
+    {
+        $first = $this->start();
+        $code = $this->emailCode();
+        $second = Type\string()->coerce($this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()])['recovery']);
+
+        self::assertNotSame($first, $second);
+        self::assertSame('proving', $this->state($first)['status']);
+        self::assertSame('waiting', $this->prove($second, $code)['status']);
+
+        self::assertSame('waiting', $this->state($first)['status'], 'the first device sees the waiting screen too');
+        $this->call('POST', '/api/auth/two-factor/recovery/resend', ['recovery' => $first]);
+        self::assertSame(ErrorCode::RecoveryRequestProved->type(), $this->last()['type']);
+    }
+
+    #[Test]
+    public function aRequestReplacedOnAnotherDeviceSaysSoOnEveryStep(): void
+    {
+        $first = $this->start();
+        $this->start();
+
+        foreach (['state', 'resend', 'text-instead', 'cancel'] as $step) {
+            $body = $this->call('POST', '/api/auth/two-factor/recovery/' . $step, ['recovery' => $first]);
+            self::assertSame(409, $this->statusCode(), $step);
+            self::assertSame(ErrorCode::RecoveryRequestReplaced->type(), $body['type'], $step);
+            self::assertSame('A newer request was started on another device. Start again to ask from here.', $body['detail'], $step);
+        }
+
+        $this->call('POST', '/api/auth/two-factor/recovery/prove', ['recovery' => $first, 'emailCode' => '000000']);
+        self::assertSame(ErrorCode::RecoveryRequestReplaced->type(), $this->last()['type']);
     }
 
     #[Test]
@@ -545,9 +634,9 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         return $user;
     }
 
-    private function join(User $user, SeededRole $as): void
+    private function join(User $user, SeededRole $as, ?Organisation $to = null): void
     {
-        $organisation = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, $this->organisation->getId()));
+        $organisation = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, ($to ?? $this->organisation)->getId()));
         $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $as]));
         self::em()->persist(new Membership($organisation, $this->fresh($user), $role, MembershipStatus::Active));
     }

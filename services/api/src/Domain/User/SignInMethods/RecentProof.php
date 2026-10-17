@@ -27,6 +27,7 @@ use Psl\Str;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Signing in again before changing how one signs in, as OWASP ASVS 3.7.1 asks: proved for five minutes. */
 final readonly class RecentProof
@@ -43,11 +44,13 @@ final readonly class RecentProof
         private ClockInterface $clock,
         private RateLimiterFactoryInterface $passwordChangeAccountLimiter,
         private GuardedAttempt $guardedAttempt,
+        private TranslatorInterface $translator,
     ) {
     }
 
     /**
-     * The password or a linked provider's sign-in, then the two-factor code when it is on.
+     * The password or a linked provider's sign-in, then the two-factor code when it is on. A refused code carries
+     * `pendingProof`, which stands in for the first factor on the next try: a provider's sign-in is single-use.
      *
      * @param array{0: IdentityProvider, 1: ProviderClaims}|null $provider
      *
@@ -60,30 +63,41 @@ final readonly class RecentProof
         ?array $provider,
         #[SensitiveParameter]
         ?string $code,
+        #[SensitiveParameter]
+        ?string $pendingProof = null,
     ): array {
-        if (null !== $provider) {
-            $this->passProvider($user, ...$provider);
-        } elseif (null !== $password && null !== $user->getPassword()) {
-            $this->passPassword($user, $password);
-        } else {
-            throw ApiException::validation([[
-                'propertyPath' => null === $user->getPassword() ? 'provider' : 'password',
-                'message' => 'Enter your password, or confirm with Google or Apple.',
-                'code' => ErrorCode::ValidationFailed->value,
-            ]]);
-        }
+        $pending = null === $pendingProof || '' === $pendingProof ? null : $this->awaitingCode($user, $pendingProof);
+
+        $provedAt = null === $pending ? $this->passFirstFactor($user, $password, $provider) : $pending[1]->provedAt();
 
         $factor = $this->twoFactorFactorRepository->findActiveFor($user);
 
         if (null !== $factor) {
-            if (null === $code || '' === Str\trim($code)) {
-                throw new ApiException(ErrorCode::TwoFactorRequired, 'Enter a code from your app, or a recovery code.');
+            [$plain, $held] = $pending ?? $this->issue($user, $provedAt, awaitingCode: true);
+
+            try {
+                if (null === $code || '' === Str\trim($code)) {
+                    throw new ApiException(ErrorCode::TwoFactorRequired, 'Enter a code from your app, or a recovery code.');
+                }
+
+                $this->secondFactorCheck->passEither($factor, $code);
+            } catch (ApiException $refusal) {
+                throw new ApiException(
+                    $refusal->errorCode,
+                    $refusal->getMessage(),
+                    $refusal->violations,
+                    $refusal,
+                    $refusal->headers,
+                    [...$refusal->members, 'pendingProof' => $plain],
+                );
             }
 
-            $this->secondFactorCheck->passEither($factor, $code);
+            $this->entityManager->remove($held);
         }
 
-        return $this->issue($user);
+        [$plain, $proof] = $this->issue($user, $provedAt);
+
+        return [$plain, $proof->getExpiresAt()];
     }
 
     /** Refused unless this client proved it within the five minutes; it may be used for several changes in that time. */
@@ -92,8 +106,32 @@ final readonly class RecentProof
         $held = null === $proof || '' === $proof ? null : $this->signInProofRepository->findOneByHash(TokenIssuer::hash($proof));
 
         if (null === $held || !$held->standsFor($user, $this->clock->now())) {
-            throw new ApiException(ErrorCode::ProofRequired, 'Confirm it is you first.');
+            throw $this->proofRequired();
         }
+    }
+
+    /**
+     * @param array{0: IdentityProvider, 1: ProviderClaims}|null $provider
+     *
+     * @return DateTimeImmutable when it passed, which the five minutes count from
+     */
+    private function passFirstFactor(User $user, #[SensitiveParameter] ?string $password, ?array $provider): DateTimeImmutable
+    {
+        if (null !== $provider) {
+            return $this->passProvider($user, ...$provider);
+        }
+
+        if (null !== $password && null !== $user->getPassword()) {
+            $this->passPassword($user, $password);
+
+            return $this->clock->now();
+        }
+
+        throw ApiException::validation([[
+            'propertyPath' => null === $user->getPassword() ? 'provider' : 'password',
+            'message' => 'Enter your password, or confirm with Google or Apple.',
+            'code' => ErrorCode::ValidationFailed->value,
+        ]]);
     }
 
     /** Through the one guarded attempt, on the budget PasswordChange spends: the same guess either way. */
@@ -109,7 +147,7 @@ final readonly class RecentProof
         );
     }
 
-    private function passProvider(User $user, IdentityProvider $provider, ProviderClaims $claims): void
+    private function passProvider(User $user, IdentityProvider $provider, ProviderClaims $claims): DateTimeImmutable
     {
         $identity = $this->providerIdentityRepository->findOneBySubject($provider, $claims->subject);
 
@@ -121,10 +159,12 @@ final readonly class RecentProof
         if (null === $since || $since < $this->clock->now()->modify('-' . SignInProof::MINUTES . ' minutes')) {
             throw new ApiException(ErrorCode::InvalidCredentials, 'Sign in again to confirm it is you.');
         }
+
+        return $since;
     }
 
-    /** @return array{0: string, 1: DateTimeImmutable} */
-    private function issue(User $user): array
+    /** @return array{0: string, 1: SignInProof} */
+    private function issue(User $user, DateTimeImmutable $provedAt, bool $awaitingCode = false): array
     {
         $now = $this->clock->now();
         $this->entityManager
@@ -134,10 +174,30 @@ final readonly class RecentProof
             ->execute();
 
         $plain = \bin2hex(SecureRandom\bytes(self::TOKEN_BYTES));
-        $proof = new SignInProof($user, TokenIssuer::hash($plain), $now);
+        $proof = new SignInProof($user, TokenIssuer::hash($plain), $provedAt, $awaitingCode);
         $this->entityManager->persist($proof);
         $this->entityManager->flush();
 
-        return [$plain, $proof->getExpiresAt()];
+        return [$plain, $proof];
+    }
+
+    /** @return array{0: string, 1: SignInProof} */
+    private function awaitingCode(User $user, #[SensitiveParameter] string $plain): ?array
+    {
+        $held = $this->signInProofRepository->findOneByHash(TokenIssuer::hash($plain));
+
+        if (null === $held || !$held->awaitsCodeFor($user, $this->clock->now())) {
+            throw $this->proofRequired();
+        }
+
+        return [$plain, $held];
+    }
+
+    /** The title says a proof is needed; the detail says which one (RFC 9457 §3.1.5). */
+    private function proofRequired(): ApiException
+    {
+        return new ApiException(ErrorCode::ProofRequired, $this->translator->trans('proof.required', [
+            '{minutes}' => (string) SignInProof::MINUTES,
+        ]));
     }
 }

@@ -9,14 +9,7 @@ import {
 import { getLocales } from 'expo-localization';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Keyboard,
-  StyleSheet,
-  type TextInput,
-  View,
-  findNodeHandle,
-} from 'react-native';
+import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -24,6 +17,7 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
+import { focusPicker } from '../src/components/CountryPicker.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
 import { phoneProblemMessage } from '../src/phoneProblem.ts';
 import { tokens } from '../src/theme/tokens.ts';
@@ -122,11 +116,8 @@ function NumberForm({
     if (problem != null) {
       setError(problem);
 
-      // No code chosen: the picker is the refused field, so the keyboard goes and the screen reader lands there.
       if (refusedPhoneField(found) === 'country') {
-        Keyboard.dismiss();
-        const picker = findNodeHandle(countryPicker.current);
-        if (picker != null) AccessibilityInfo.setAccessibilityFocus(picker);
+        focusPicker(countryPicker);
       } else {
         numberInput.current?.focus();
       }

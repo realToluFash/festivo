@@ -1038,6 +1038,17 @@ describe('the ways an account signs in', () => {
     });
   });
 
+  test('a retried code sends the kept proof, not the spent sign-in', async () => {
+    const sent: { path: string; body: unknown }[] = [];
+
+    await client(json({ proof: 'p-2', expiresAt: '' }), sent).prove(
+      { pendingProof: 'pending-1' },
+      '123456',
+    );
+
+    expect(sent[0]?.body).toEqual({ pendingProof: 'pending-1', code: '123456' });
+  });
+
   test('links and unlinks with the proof, naming this session', async () => {
     const sent: { path: string; body: unknown }[] = [];
 
@@ -1048,7 +1059,6 @@ describe('the ways an account signs in', () => {
     const unlinked = await client(json({ signedOut: 2, thisDevice: true }), sent).unlinkProvider(
       'apple',
       'p-1',
-      's-1',
     );
 
     expect(linked).toEqual({ provider: 'apple', email: 'x7k2m9@privaterelay.appleid.com' });
@@ -1058,7 +1068,7 @@ describe('the ways an account signs in', () => {
         path: 'POST /api/auth/providers/apple',
         body: { proof: 'p-1', providerSignIn: { handle: 'h', codeVerifier: 'v', nonce: 'n' } },
       },
-      { path: 'POST /api/auth/providers/apple/unlink', body: { proof: 'p-1', sessionId: 's-1' } },
+      { path: 'POST /api/auth/providers/apple/unlink', body: { proof: 'p-1' } },
     ]);
   });
 });
@@ -1120,7 +1130,8 @@ describe("the account's time zone", () => {
         id: 'Africa/Lagos',
         city: 'Lagos',
         ianaCity: 'Lagos',
-        formerNames: [],
+        aliases: [],
+        formerName: null,
         country: 'Nigeria',
         offset: '+01:00',
       },
@@ -1153,6 +1164,42 @@ describe("the account's time zone", () => {
     expect(sent).toEqual([
       { path: '/api/auth/register/verify', zone: 'Asia/Calcutta', language: 'fr' },
       { path: '/api/auth/login', zone: 'Asia/Calcutta', language: 'fr' },
+    ]);
+  });
+});
+
+describe("the app's user agent", () => {
+  test('goes on every request, the refresh included, and nothing is sent when none is given', async () => {
+    const agents: (string | null)[] = [];
+    const answers = [
+      json({ type: 'https://soirely.com/errors/unauthenticated', status: 401 }, 401),
+      json({ accessToken: 'b', expiresIn: 900, refreshToken: 'r2' }),
+      json({ sessions: [] }),
+    ];
+    const fetch: typeof globalThis.fetch = async (_url, init) => {
+      agents.push(new Headers(init?.headers).get('User-Agent'));
+
+      return answers.shift() ?? json({ sessions: [] });
+    };
+    const app = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('stale', 'r1'),
+      userAgent: 'Soirely/1.4.0 (iOS 18.1; iPhone)',
+      fetch,
+    });
+
+    await app.sessions();
+    await new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      fetch,
+    }).sessions();
+
+    expect(agents).toEqual([
+      'Soirely/1.4.0 (iOS 18.1; iPhone)',
+      'Soirely/1.4.0 (iOS 18.1; iPhone)',
+      'Soirely/1.4.0 (iOS 18.1; iPhone)',
+      null,
     ]);
   });
 });

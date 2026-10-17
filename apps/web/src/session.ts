@@ -7,6 +7,7 @@ import {
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
+import { chooseOrganisation, roleHolds } from '@soirely/domain';
 import { useSyncExternalStore } from 'react';
 
 import { followAccount } from './accountLanguage.ts';
@@ -63,9 +64,8 @@ export function useSession(): Session {
   return current.session;
 }
 
-/** Owner holds every permission; until sc-66 gives other roles theirs, nobody else holds any. */
 export function can(session: Session, permission: string): boolean {
-  return permission !== '' && session.organisation?.role.seededAs === 'owner';
+  return session.organisation != null && roleHolds(session.organisation.role, permission);
 }
 
 export async function restoreSession(): Promise<void> {
@@ -165,8 +165,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     organisations,
     organisationCountry: account.organisationCountry,
     timezone: account.timezone,
-    organisation:
-      organisations.find((membership) => membership.id === remembered) ?? organisations[0] ?? null,
+    organisation: chooseOrganisation(organisations, remembered),
   };
 }
 

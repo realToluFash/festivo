@@ -7,8 +7,10 @@
     "subtitle": "The night, from your pocket.",
     "openSignIn": "Sign in",
     "openLayouts": "Layout demonstration",
-    "signedInAs": "Signed in as {{name}}",
-    "signOut": "Sign out"
+    "signedIn": "You’re signed in",
+    "signedInTo": "You’re signed in to {{name}}",
+    "openSettings": "Open Settings",
+    "switchOrganisation": "Switch organisation"
   },
   "status": {
     "title": "Service status",
@@ -200,7 +202,7 @@
   },
   "forms": {
     "emailBlank": "Enter your email address.",
-    "emailShape": "That doesn't look like an email address. Check it has an @ and a domain.",
+    "emailShape": "That does not look like an email address. Check it has an @ and a domain.",
     "countryBlank": "Choose a country."
   },
   "oauth": {
@@ -324,8 +326,7 @@
     "phoneKeepElsewhere": "Keep them somewhere other than this phone."
   },
   "security": {
-    "title": "Security",
-    "back": "Back"
+    "title": "Security"
   },
   "passwordCard": {
     "title": "Password",
@@ -397,6 +398,8 @@
     "lastRefused": "Set a password or link another account before removing this one.",
     "providerFailed": "{{provider}} didn't finish, so nothing changed. Try again.",
     "providerRefused": "That {{provider}} account isn't the one linked here, or it was signed in too long ago. Try again.",
+    "proofExpired_one": "Your {{provider}} sign-in was more than a minute ago, so nothing has changed yet. Continue with {{provider}} again to carry on.",
+    "proofExpired_other": "Your {{provider}} sign-in was more than {{count}} minutes ago, so nothing has changed yet. Continue with {{provider}} again to carry on.",
     "failedTitle": "Nothing was changed",
     "failedBody": "That didn't go through. Check your connection and try again.",
     "proveTitle": "Confirm it's you",
@@ -448,8 +451,7 @@
     "countryWas": "{{country}} · was {{name}}"
   },
   "account": {
-    "title": "Your account",
-    "back": "Back"
+    "title": "Your account"
   },
   "lostTwoFactor": {
     "startTitle": "Get back in without your authenticator",
@@ -509,6 +511,11 @@
     "notYou": "This wasn’t you?",
     "cancel": "Cancel the request",
     "cancelledMark": "Cancelled",
+    "replacedMark": "Replaced",
+    "replacedTitle": "A newer request replaced this one",
+    "replacedIntro": "A newer request was started on another device. Start again to ask from here.",
+    "replacedNote": "Starting again sends new codes here and ends the request on the other device. It counts as one of your 3 requests a day.",
+    "startAgain": "Start again",
     "cancelledTitle": "Request cancelled",
     "cancelledIntro": "Nothing changed. Two-factor is still on.",
     "approvedMark": "Confirmed",
@@ -553,6 +560,10 @@
     "ended": "{{name}} is signed out.",
     "signInAgain": "It has to sign in again before it can carry on, so first check that nobody is using it at an event.",
     "agent": "{{browser}} on {{platform}}",
+    "appIPhone": "Soirely app on iPhone",
+    "appIPad": "Soirely app on iPad",
+    "appAndroidPhone": "Soirely app on Android phone",
+    "appAndroidTablet": "Soirely app on Android tablet",
     "dayAtTime": "{{day}} at {{time}}",
     "unknownDevice": "A device that did not name itself",
     "unknownAddress": "an address it did not give",
@@ -561,9 +572,9 @@
     "endFailedTitle": "That device was not signed out",
     "endFailedBody": "Nothing has changed. Try again, and check the list afterwards.",
     "everywhere": "Sign out everywhere else",
-    "everywhereHint": "Every device except this one. Asks for your password first.",
+    "everywhereHint": "Every device except this one. Asks you to confirm it is you first.",
     "everywhereTitle": "Sign out everywhere else?",
-    "everywhereBody_one": "This signs out your {{count}} other device, whoever has it. This device stays signed in.",
+    "everywhereBody_one": "This signs out your other device, whoever has it. This device stays signed in.",
     "everywhereBody_other": "This signs out your {{count}} other devices, whoever has them. This device stays signed in.",
     "everywhereSelf_one": "Soirely cannot tell whether the device listed is this one, so this signs it out whichever it is. You will sign in again straight after.",
     "everywhereSelf_other": "Soirely cannot tell which of these is this device, so this signs out all {{count}}, including this one. You will sign in again straight after.",
@@ -590,8 +601,8 @@
     "everywhereKeep_one": "Keep it signed in",
     "everywhereKeep_other": "Keep them signed in",
     "everywhereWorking": "Signing out…",
-    "everywhereDone_one": "{{count}} other device is signed out.",
-    "everywhereDone_other": "{{count}} other devices are signed out.",
+    "everywhereDone_one": "Your other device is signed out.",
+    "everywhereDone_other": "Your {{count}} other devices are signed out.",
     "everywhereNone": "No other devices were signed in.",
     "everywhereLimitedTitle": "Too many tries",
     "everywhereLimitedBody": "Try again at {{time}}. Nothing was signed out.",
@@ -602,5 +613,62 @@
     "everywhereFailedBody": "This is about reaching the API rather than about your account. Try again.",
     "loading": "Loading…",
     "retry": "Try again"
+  },
+  "frame": {
+    "home": "Home",
+    "settings": "Settings",
+    "organisation": "Organisation"
+  },
+  "settings": {
+    "title": "Settings",
+    "sections": "Settings sections",
+    "yourAccount": "Your account",
+    "account": "Account",
+    "accountLine": "Your name, email addresses and phone numbers",
+    "security": "Security",
+    "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
+    "organisationHeading": "Organisation",
+    "organisation": "Organisation",
+    "organisationLine": "{{name}} · name, contact address, currency, time zone",
+    "signedInAs": "Signed in as {{email}}",
+    "signOut": "Sign out",
+    "choose": "Choose a section",
+    "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices.",
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
+  },
+  "switcher": {
+    "yourRole": "Your role · {{role}}",
+    "heading": "Your organisations",
+    "current": "Current",
+    "remembered": "Soirely remembers your choice on this device.",
+    "label": "Organisation: {{name}}, your role {{role}}",
+    "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
+    "close": "Close"
+  },
+  "roles": {
+    "owner": "Owner",
+    "administrator": "Administrator",
+    "event_manager": "Event manager",
+    "coordinator": "Coordinator",
+    "read_only": "Read-only"
+  },
+  "orgGeneral": {
+    "intro": "The name your team and guests see, and the defaults every new event starts with.",
+    "name": "Name",
+    "country": "Country",
+    "contact": "Contact address",
+    "currency": "Currency",
+    "timezone": "Time zone",
+    "defaultsNote": "Currency and time zone: new events start with these. Events you already have keep theirs.",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "Saved. Everyone in {{name}} sees the new details on their next screen.",
+    "nameBlank": "Enter the organisation's name.",
+    "contactBlank": "Enter a contact email address.",
+    "contactInvalid": "That does not look like an email address. Check it has an @ and a domain.",
+    "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
+    "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
+    "searchCurrency": "Search currencies",
+    "searchTimezone": "Search time zones"
   }
 }

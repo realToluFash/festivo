@@ -5,7 +5,13 @@ import {
   type ProviderSignInAttempt,
   proofRefusal,
 } from '@soirely/api-client';
-import { formatTimeOfDay, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
+import {
+  PROOF_MINUTES,
+  formatTimeOfDay,
+  proveWith,
+  providerRows,
+  type ProviderRow,
+} from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,7 +29,6 @@ import {
   takeProviderReturn,
 } from '../../../providerSignIn.ts';
 import { dropProof, heldProof, holdProof } from '../../../recentProof.ts';
-import { currentSessionId } from '../../../tokens.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -151,7 +156,7 @@ export function WaysCard({
     setStage({ kind: 'working' });
 
     try {
-      const { thisDevice } = await api.unlinkProvider(provider, proof, currentSessionId());
+      const { thisDevice } = await api.unlinkProvider(provider, proof);
 
       if (thisDevice) {
         onSignedOutHere();
@@ -400,7 +405,10 @@ function Proving({
   const { t } = useTranslation();
   const name = PROVIDER_NAMES[act.provider];
   const via = proveWith(hasPassword, providers, act.provider);
-  const askPassword = via === 'password' && returned == null;
+  // Dropped when the five minutes from the provider's sign-in run out: back to step one, the change kept.
+  const [signIn, setSignIn] = useState(returned);
+  const [expired, setExpired] = useState(false);
+  const askPassword = via === 'password' && signIn == null;
   const viaProvider = via === 'password' ? null : via;
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -409,6 +417,8 @@ function Proving({
     message: string;
   } | null>(null);
   const [checking, setChecking] = useState(false);
+  // The API's kept proof after a refused code: Google's or Apple's sign-in is single-use (RFC 6749 §4.1.2).
+  const [kept, setKept] = useState<string | null>(null);
   // Turned on in the two-factor card since this page loaded: the API says so, and the field appears.
   const [codeAsked, setCodeAsked] = useState(twoFactorOn);
   const passwordInput = useRef<HTMLInputElement>(null);
@@ -438,9 +448,11 @@ function Proving({
 
     try {
       const proof = await api.prove(
-        returned != null && viaProvider != null
-          ? { provider: viaProvider, signIn: returned }
-          : { password },
+        kept != null
+          ? { pendingProof: kept }
+          : signIn != null && viaProvider != null
+            ? { provider: viaProvider, signIn }
+            : { password },
         second,
       );
       holdProof(proof);
@@ -449,13 +461,31 @@ function Proving({
       setChecking(false);
       dropProof();
 
-      if (error instanceof ApiError && error.is('two_factor_required') && returned == null) {
+      if (error instanceof ApiError && error.is('two_factor_required') && signIn == null) {
         setCodeAsked(true);
 
         return;
       }
 
-      setRefusal(provingRefusal(error, t));
+      if (signIn != null && error instanceof ApiError && error.is('proof_required')) {
+        setSignIn(null);
+        setKept(null);
+        setCode('');
+        setRefusal(null);
+        setExpired(true);
+        heading.current?.focus();
+
+        return;
+      }
+
+      if (signIn != null && error instanceof ApiError) setKept(error.problem.pendingProof ?? kept);
+      setRefusal(
+        provingRefusal(
+          error,
+          t,
+          signIn != null && viaProvider != null ? PROVIDER_NAMES[viaProvider] : null,
+        ),
+      );
     }
   }
 
@@ -486,7 +516,21 @@ function Proving({
         </div>
       )}
 
-      {returned != null && viaProvider != null && (
+      {expired && viaProvider != null && (
+        <div className="notice notice-attention" role="status">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <p>
+            {t('waysCard.proofExpired', {
+              provider: PROVIDER_NAMES[viaProvider],
+              count: PROOF_MINUTES,
+            })}
+          </p>
+        </div>
+      )}
+
+      {signIn != null && viaProvider != null && (
         <p className="muted">
           {t('waysCard.providerConfirmed', { provider: PROVIDER_NAMES[viaProvider] })}
         </p>
@@ -518,7 +562,7 @@ function Proving({
           </div>
         )}
 
-        {codeAsked && (askPassword || returned != null) && (
+        {codeAsked && (askPassword || signIn != null) && (
           <div className="field">
             <label htmlFor="ways-code">{t('waysCard.code')}</label>
             <input
@@ -557,7 +601,7 @@ function Proving({
           </div>
         )}
 
-        {askPassword || returned != null ? (
+        {askPassword || signIn != null ? (
           <div className="actions">
             <button className="button button-primary" type="submit" aria-busy={checking}>
               {checking ? t('waysCard.checking') : t('waysCard.continue')}
@@ -675,8 +719,12 @@ function refused(error: unknown, provider: Provider): Notice {
 function provingRefusal(
   error: unknown,
   t: TFunction,
+  providerName: string | null,
 ): { field: ProvingField | 'failed'; message: string } {
-  const refusal = proofRefusal(error);
+  const refusal = proofRefusal(error, providerName == null);
+
+  if (refusal.kind === 'trip')
+    return { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
 
   if (refusal.kind === 'limited')
     return {

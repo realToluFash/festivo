@@ -1,11 +1,11 @@
-import { type Account, ApiUnreachableError, type Health, awaiting } from '@soirely/api-client';
+import { ApiUnreachableError, type Health, awaiting } from '@soirely/api-client';
 import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../src/api.ts';
-import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
+import { Home as SignedInHome } from '../src/components/Home.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { config } from '../src/config.ts';
@@ -13,9 +13,10 @@ import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
+import { launchSignedIn } from '../src/signedIn.ts';
 
 /**
- * The health endpoint, rendered.
+ * Launch: the signed-in home once somebody is in (sc-722), else the health endpoint, rendered.
  *
  * Its job is to prove three things at once that otherwise only get proved in
  * production: the shared client package resolves and runs on this platform, the
@@ -23,11 +24,14 @@ import { launchRoute } from '../src/resumeSignUp.ts';
  */
 type State = { kind: 'loading' } | { kind: 'ok'; health: Health } | { kind: 'failed' };
 
+/** Who is launching: nothing is drawn until that is known, so a signed-in person never sees the placeholder. */
+type Launching = 'deciding' | 'signedIn' | 'signedOut';
+
 export default function Home() {
   const { t } = useTranslation();
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [account, setAccount] = useState<Account | null>(null);
+  const [launching, setLaunching] = useState<Launching>('deciding');
 
   // The loading state belongs to the event that causes the reload, not to the
   // effect. Setting it in the effect body made every attempt two renders
@@ -51,7 +55,10 @@ export default function Home() {
         // Behind the onboarding gate, the gate's screen opens rather than the app.
         const landing = landingFor(awaiting(signedIn));
         if (landing !== '/') router.replace(landing);
-        else setAccount(signedIn);
+        else
+          void launchSignedIn().then((loaded) => {
+            if (live && loaded) setLaunching('signedIn');
+          });
         return;
       }
 
@@ -61,7 +68,7 @@ export default function Home() {
         return;
       }
 
-      if (live) setAccount(null);
+      if (live) setLaunching('signedOut');
       else if (!answer.ended) return;
 
       void launchRoute(answer.ended, {
@@ -97,9 +104,18 @@ export default function Home() {
     };
   }, [attempt]);
 
+  if (launching === 'signedIn') return <SignedInHome />;
+
+  if (launching === 'deciding') {
+    return (
+      <View style={styles.deciding}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
   return (
     <Screen>
-      <LinkedNotice />
       <Text size={28} weight="bold">
         {t('home.title')}
       </Text>
@@ -144,40 +160,11 @@ export default function Home() {
         </View>
       )}
 
-      {account == null ? (
-        <Link href="/sign-in" asChild>
-          <Pressable style={styles.button} accessibilityRole="button" testID="home.openSignIn">
-            <Text weight="medium">{t('home.openSignIn')}</Text>
-          </Pressable>
-        </Link>
-      ) : (
-        <View style={styles.panel}>
-          <Text weight="medium">{t('home.signedInAs', { name: account.name })}</Text>
-          <Link href="/account" asChild>
-            <Pressable style={styles.button} accessibilityRole="button" testID="home.account">
-              <Text weight="medium">{t('account.title')}</Text>
-            </Pressable>
-          </Link>
-          <Link href="/security" asChild>
-            <Pressable style={styles.button} accessibilityRole="button" testID="home.security">
-              <Text weight="medium">{t('security.title')}</Text>
-            </Pressable>
-          </Link>
-          <Pressable
-            style={styles.button}
-            accessibilityRole="button"
-            testID="home.signOut"
-            onPress={() => {
-              void api.signOut().then(() => {
-                setAccount(null);
-                router.replace('/sign-in');
-              });
-            }}
-          >
-            <Text weight="medium">{t('home.signOut')}</Text>
-          </Pressable>
-        </View>
-      )}
+      <Link href="/sign-in" asChild>
+        <Pressable style={styles.button} accessibilityRole="button" testID="home.openSignIn">
+          <Text weight="medium">{t('home.openSignIn')}</Text>
+        </Pressable>
+      </Link>
 
       <Link href="/layouts" asChild>
         <Pressable style={styles.button} accessibilityRole="button">
@@ -189,6 +176,7 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  deciding: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   panel: { backgroundColor: '#FFFFFF', borderRadius: 10, padding: 16, gap: 8 },
   notice: { backgroundColor: '#FDECEA', borderRadius: 10, padding: 16, gap: 12 },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
