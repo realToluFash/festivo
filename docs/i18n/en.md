@@ -40,6 +40,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. Adding a payment already made (sc-88, `AddPaid-*`).** Title "Add a payment
+  already made", button "Add as paid", kept as drawn: the title says what the person did, the
+  button what happens. Refusals: "Choose the vendor it was paid to."; "Enter what it was
+  for."; "Shorten the description to {{count}} characters or fewer." (the house over-limit
+  shape; "description" because the field is the payment's description everywhere else it
+  shows); and "The date paid cannot be before the quote from {{vendor}} on {{date}}. Choose
+  that date or a later one." (also the server's detail for sc-87's payment dated before the
+  quote). Won over the drawn "before Bloom Lagos's quote of Monday, Sep 1": a possessive on a
+  name breaks on names ending in s and cannot be carried into es, fr or pt, and it said what
+  was wrong but not what to do. `{{date}}` comes from `Intl.DateTimeFormat` in the event's
+  time zone; in en-GB that reads "Monday 1 September", never "Monday, Sep 1".
 - **17 Oct 2026. "Shorten the reference to {{count}} characters or fewer."** (sc-88,
   Reference, refused on Mark paid at 101 after trimming). The house shape for a text field
   over its limit: "Shorten the {field} to {{count}} characters or fewer.", so the cancel
