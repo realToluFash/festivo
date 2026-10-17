@@ -7,6 +7,7 @@ namespace App\Domain\User\Contacts;
 use App\Audit\Auditor;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Phone\ParsedPhone;
+use App\Domain\User\SignInMethods\RecentProof;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeSender;
 use App\Entity\EmailAddress;
@@ -22,6 +23,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
+use SensitiveParameter;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -41,6 +43,7 @@ final readonly class LinkedContacts
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private RateLimiterFactoryInterface $contactAddAccountLimiter,
+        private RecentProof $recentProof,
     ) {
     }
 
@@ -100,8 +103,10 @@ final readonly class LinkedContacts
         }));
     }
 
-    public function makeEmailPrimary(User $user, Uuid $id): EmailAddress
+    /** It changes which address signs the account in and receives its recovery, so it asks for a recent proof first. */
+    public function makeEmailPrimary(User $user, Uuid $id, #[SensitiveParameter] ?string $proof): EmailAddress
     {
+        $this->recentProof->require($user, $proof);
         $address = $this->ownEmail($user, $id);
 
         if (!$address->isVerified()) {

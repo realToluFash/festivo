@@ -1,4 +1,9 @@
-import { type Account, ApiError } from '@soirely/api-client';
+import {
+  type Account,
+  ApiError,
+  type Provider,
+  type ProviderSignInAttempt,
+} from '@soirely/api-client';
 import {
   CONTACTS_MOST,
   contactActions,
@@ -15,7 +20,11 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { takeProviderReturn } from '../../../providerSignIn.ts';
+import { heldProof } from '../../../recentProof.ts';
+import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { emailMessage, useFormChecks } from '../../../formChecks.ts';
 import { PhoneEntry } from '../../../components/PhoneEntry.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
@@ -30,11 +39,21 @@ interface Row {
   pending?: boolean;
 }
 
-type Asking = { id: string; what: 'promote' | 'remove' } | null;
+type Asking = { id: string; what: 'promote' | 'prove' | 'remove' } | null;
+
+/** How this account proves it is the person before an address becomes the one it signs in with. */
+interface Confirming {
+  via: 'password' | Provider | null;
+  twoFactorOn: boolean;
+  returned: { address: string; signIn: ProviderSignInAttempt } | null;
+}
 
 /** Settings > Account: email addresses and phone numbers (sc-113). A primary address signs in; nothing else here does. */
 export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Promise<void> }) {
   const [account, setAccount] = useState<Account | null>(null);
+  const [twoFactorOn, setTwoFactorOn] = useState<boolean | null>(null);
+  // Back from Google or Apple, started by "Make primary": once, on arrival.
+  const [returned] = useState(() => takeProviderReturn(['makePrimary']));
 
   async function reload(): Promise<void> {
     setAccount(await api.me());
@@ -49,13 +68,30 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
         if (live) setAccount(me);
       })
       .catch(() => {});
+    api
+      .twoFactorStatus()
+      .then((status) => {
+        if (live) setTwoFactorOn(status.on);
+      })
+      .catch(() => {
+        if (live) setTwoFactorOn(false);
+      });
 
     return () => {
       live = false;
     };
   }, []);
 
-  if (account == null) return null;
+  if (account == null || twoFactorOn == null) return null;
+
+  const confirming: Confirming = {
+    via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
+    twoFactorOn,
+    returned:
+      returned != null && 'signIn' in returned && returned.purpose.kind === 'makePrimary'
+        ? { address: returned.purpose.address, signIn: returned.signIn }
+        : null,
+  };
 
   return (
     <>
@@ -63,6 +99,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
         kind="email"
         rows={account.emailAddresses.map((held) => ({ ...held, shown: held.address }))}
         country={account.organisationCountry ?? ''}
+        confirming={confirming}
         onChanged={reload}
         onPrimaryChanged={async () => {
           await reload();
@@ -84,19 +121,23 @@ function ContactsCard({
   kind,
   rows: all,
   country,
+  confirming,
   onChanged,
   onPrimaryChanged,
 }: {
   kind: Kind;
   rows: Row[];
   country: string;
+  confirming?: Confirming;
   onChanged: () => Promise<void>;
   onPrimaryChanged: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const rows = listedContacts(all);
   const left = contactsLeft(all);
-  const [asking, setAsking] = useState<Asking>(null);
+  const [asking, setAsking] = useState<Asking>(() =>
+    confirming?.returned == null ? null : { id: confirming.returned.address, what: 'prove' },
+  );
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [adding, setAdding] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -106,12 +147,21 @@ function ContactsCard({
 
   useEffect(() => doneLine.current?.focus(), [done]);
 
-  async function act(row: Row, what: 'promote' | 'remove'): Promise<void> {
+  async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
     setRowError(null);
+    const standing = proof ?? heldProof();
+
+    // An address signs the account in, so it is proved first; a number never does.
+    if (email && what === 'promote' && standing == null) {
+      setAsking({ id: row.id, what: 'prove' });
+      return;
+    }
 
     try {
       if (what === 'promote') {
-        await (email ? api.makeEmailPrimary(row.id) : api.makePhonePrimary(row.id));
+        await (email && standing != null
+          ? api.makeEmailPrimary(row.id, standing)
+          : api.makePhonePrimary(row.id));
         setAsking(null);
         setDone(
           email
@@ -240,6 +290,23 @@ function ContactsCard({
                 </div>
               )}
 
+              {here === 'prove' && confirming != null && (
+                <div className="way-last">
+                  <ConfirmItsYou
+                    idPrefix={`primary-${row.id}`}
+                    intro={t('contacts.proveIntro')}
+                    via={confirming.via}
+                    twoFactorOn={confirming.twoFactorOn}
+                    returned={
+                      confirming.returned?.address === row.id ? confirming.returned.signIn : null
+                    }
+                    purpose={{ kind: 'makePrimary', address: row.id }}
+                    onProved={(proof) => void act(row, 'promote', proof)}
+                    onCancel={() => setAsking(null)}
+                  />
+                </div>
+              )}
+
               {here === 'remove' && (
                 <div className="notice notice-quiet way-last">
                   <div className="notice-body">
@@ -324,36 +391,30 @@ function ContactsCard({
 function AddEmail({ onAdded, onCancel }: { onAdded: () => Promise<void>; onCancel: () => void }) {
   const { t } = useTranslation();
   const [address, setAddress] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [refused, setRefused] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const field = useRef<HTMLInputElement>(null);
+  const checks = useFormChecks(
+    ['address'] as const,
+    (_field, value) => emailMessage(value, t),
+    () => field.current?.focus(),
+  );
+  const error = checks.errors.address ?? refused;
 
   useEffect(() => field.current?.focus(), []);
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    const typed = address.trim();
-    const problem =
-      typed === ''
-        ? t('contacts.emailBlank')
-        : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed)
-          ? null
-          : t('contacts.emailInvalid');
-
-    if (problem != null) {
-      setError(problem);
-      field.current?.focus();
-      return;
-    }
+    if (sending || !checks.passes({ address })) return;
 
     setSending(true);
 
     try {
-      await api.addEmailAddress(typed);
+      await api.addEmailAddress(address.trim());
       await onAdded();
     } catch (refusal) {
       setSending(false);
-      setError(addRefusal(refusal, 'email', t));
+      setRefused(addRefusal(refusal, 'email', t));
       field.current?.focus();
     }
   }
@@ -378,8 +439,10 @@ function AddEmail({ onAdded, onCancel }: { onAdded: () => Promise<void>; onCance
           }
           onChange={(event) => {
             setAddress(event.target.value);
-            setError(null);
+            setRefused(null);
+            checks.edited('address', event.target.value);
           }}
+          onBlur={(event) => checks.left('address', event.target.value)}
         />
         {error != null && <FieldError id="contacts-email-error" message={error} />}
         <p className="field-help" id="contacts-email-help">

@@ -41,9 +41,12 @@ final readonly class ContactsController
     }
 
     #[Route('/api/auth/emails/{id}/primary', name: 'auth_emails_primary', methods: ['PATCH'])]
-    public function makeEmailPrimary(string $id): JsonResponse
+    /** With the proof from `POST /api/auth/proof`: it changes how the account signs in. */
+    public function makeEmailPrimary(Request $request, string $id): JsonResponse
     {
-        return new JsonResponse(self::email($this->linkedContacts->makeEmailPrimary($this->user(), self::id($id))));
+        $body = '' === $request->getContent() ? [] : Input::body($request, Type\shape(['proof' => Type\optional(Type\nullable(Type\string()))]));
+
+        return new JsonResponse(self::email($this->linkedContacts->makeEmailPrimary($this->user(), self::id($id), $body['proof'] ?? null)));
     }
 
     #[Route('/api/auth/emails/{id}', name: 'auth_emails_remove', methods: ['DELETE'])]

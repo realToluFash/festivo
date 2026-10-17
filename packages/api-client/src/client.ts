@@ -820,11 +820,11 @@ export class ApiClient {
     );
   }
 
-  /** Refused `address_not_verified` for an unproved address: the primary is where recovery goes. */
-  async makeEmailPrimary(id: string): Promise<LinkedAddress> {
+  /** With the proof from `prove()`: it changes how the account signs in. Refused `address_not_verified` for an unproved one. */
+  async makeEmailPrimary(id: string, proof: string): Promise<LinkedAddress> {
     return linkedOrThrow(
       asLinkedAddress(
-        await this.patch<unknown>(`/api/auth/emails/${encodeURIComponent(id)}/primary`),
+        await this.patch<unknown>(`/api/auth/emails/${encodeURIComponent(id)}/primary`, { proof }),
       ),
     );
   }

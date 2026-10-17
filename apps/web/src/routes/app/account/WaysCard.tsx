@@ -3,32 +3,21 @@ import {
   type LinkedProvider,
   type Provider,
   type ProviderSignInAttempt,
-  proofRefusal,
 } from '@soirely/api-client';
-import {
-  PROOF_MINUTES,
-  formatTimeOfDay,
-  proveWith,
-  providerRows,
-  type ProviderRow,
-} from '@soirely/domain';
-import { type TFunction } from 'i18next';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { proveWith, providerRows, type ProviderRow } from '@soirely/domain';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { FieldError } from '../../../components/FieldError.tsx';
-import { PasswordField } from '../../../components/PasswordField.tsx';
+import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { AppleMark, GoogleMark } from '../../../components/ProviderSignIn.tsx';
-import { useFormChecks } from '../../../formChecks.ts';
-import { currentLocale } from '../../../i18n/index.ts';
 import {
   PROVIDER_NAMES,
   type ProviderReturn,
   startProviderSignIn,
   takeProviderReturn,
 } from '../../../providerSignIn.ts';
-import { dropProof, heldProof, holdProof } from '../../../recentProof.ts';
+import { heldProof, holdProof } from '../../../recentProof.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -98,7 +87,12 @@ export function WaysCard({
 
   /** Back from a provider trip Security started, once two-factor's state is known. */
   async function finish(back: ProviderReturn, codeNeeded: boolean): Promise<void> {
-    if ('failed' in back || back.purpose.kind === 'signOutOthers') return;
+    if (
+      'failed' in back ||
+      back.purpose.kind === 'signOutOthers' ||
+      back.purpose.kind === 'makePrimary'
+    )
+      return;
 
     if (back.purpose.kind === 'link') {
       await link(back.provider, back.signIn);
@@ -380,9 +374,6 @@ function Said({ notice }: { notice: Notice }) {
   );
 }
 
-type ProvingField = 'password' | 'code';
-
-/** The password or a linked provider, and the code when two-factor is on; blank fields are caught here. */
 function Proving({
   act,
   email,
@@ -404,249 +395,32 @@ function Proving({
 }) {
   const { t } = useTranslation();
   const name = PROVIDER_NAMES[act.provider];
-  const via = proveWith(hasPassword, providers, act.provider);
-  // Dropped when the five minutes from the provider's sign-in run out: back to step one, the change kept.
-  const [signIn, setSignIn] = useState(returned);
-  const [expired, setExpired] = useState(false);
-  const askPassword = via === 'password' && signIn == null;
-  const viaProvider = via === 'password' ? null : via;
-  const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
-  const [refusal, setRefusal] = useState<{
-    field: ProvingField | 'failed';
-    message: string;
-  } | null>(null);
-  const [checking, setChecking] = useState(false);
-  // The API's kept proof after a refused code: Google's or Apple's sign-in is single-use (RFC 6749 §4.1.2).
-  const [kept, setKept] = useState<string | null>(null);
-  // Turned on in the two-factor card since this page loaded: the API says so, and the field appears.
-  const [codeAsked, setCodeAsked] = useState(twoFactorOn);
-  const passwordInput = useRef<HTMLInputElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
-
-  const checks = useFormChecks<ProvingField>(
-    askPassword ? ['password', 'code'] : ['code'],
-    (field, value) => {
-      if (field === 'password') return value === '' ? t('waysCard.passwordBlank') : null;
-
-      return codeAsked && value.trim() === '' ? t('waysCard.codeBlank') : null;
-    },
-    (field) =>
-      field === 'password'
-        ? passwordInput.current?.focus()
-        : document.getElementById('ways-code')?.focus(),
-  );
-
-  useEffect(() => heading.current?.focus(), []);
-
-  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    if (checking || !checks.passes({ password, code })) return;
-
-    setChecking(true);
-    const second = codeAsked ? code.trim() : undefined;
-
-    try {
-      const proof = await api.prove(
-        kept != null
-          ? { pendingProof: kept }
-          : signIn != null && viaProvider != null
-            ? { provider: viaProvider, signIn }
-            : { password },
-        second,
-      );
-      holdProof(proof);
-      onProved(proof.proof);
-    } catch (error) {
-      setChecking(false);
-      dropProof();
-
-      if (error instanceof ApiError && error.is('two_factor_required') && signIn == null) {
-        setCodeAsked(true);
-
-        return;
-      }
-
-      if (signIn != null && error instanceof ApiError && error.is('proof_required')) {
-        setSignIn(null);
-        setKept(null);
-        setCode('');
-        setRefusal(null);
-        setExpired(true);
-        heading.current?.focus();
-
-        return;
-      }
-
-      if (signIn != null && error instanceof ApiError) setKept(error.problem.pendingProof ?? kept);
-      setRefusal(
-        provingRefusal(
-          error,
-          t,
-          signIn != null && viaProvider != null ? PROVIDER_NAMES[viaProvider] : null,
-        ),
-      );
-    }
-  }
-
-  const passwordError =
-    checks.errors.password ?? (refusal?.field === 'password' ? refusal.message : null);
-  const codeError = checks.errors.code ?? (refusal?.field === 'code' ? refusal.message : null);
 
   return (
-    <>
-      <h2 id="ways-title" tabIndex={-1} ref={heading}>
-        {t('waysCard.proveTitle')}
-      </h2>
-      <p>
-        {act.action === 'link'
+    <ConfirmItsYou
+      idPrefix="ways"
+      intro={
+        act.action === 'link'
           ? t('waysCard.proveLink', { provider: name })
-          : t('waysCard.proveUnlink', { provider: name })}
-      </p>
-
-      {refusal?.field === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p className="notice-title">{t('waysCard.failedTitle')}</p>
-            <p>{refusal.message}</p>
-          </div>
-        </div>
-      )}
-
-      {expired && viaProvider != null && (
-        <div className="notice notice-attention" role="status">
-          <span className="mark mark-attention" aria-hidden="true">
-            !
-          </span>
-          <p>
-            {t('waysCard.proofExpired', {
-              provider: PROVIDER_NAMES[viaProvider],
-              count: PROOF_MINUTES,
-            })}
-          </p>
-        </div>
-      )}
-
-      {signIn != null && viaProvider != null && (
-        <p className="muted">
-          {t('waysCard.providerConfirmed', { provider: PROVIDER_NAMES[viaProvider] })}
-        </p>
-      )}
-
-      <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
-        {askPassword && (
-          <div className="field">
-            <label htmlFor="ways-password">{t('waysCard.yourPassword')}</label>
-            <PasswordField
-              id="ways-password"
-              autoComplete="current-password"
-              inputRef={passwordInput}
-              value={password}
-              onChange={(value) => {
-                setPassword(value);
-                if (refusal?.field === 'password') setRefusal(null);
-                checks.edited('password', value);
-              }}
-              onBlur={(value) => checks.left('password', value)}
-              wrong={passwordError != null}
-              disabled={checking}
-              submitting={checking}
-              describedBy={passwordError == null ? undefined : 'ways-password-error'}
-            />
-            {passwordError != null && (
-              <FieldError id="ways-password-error" message={passwordError} />
-            )}
-          </div>
-        )}
-
-        {codeAsked && (askPassword || signIn != null) && (
-          <div className="field">
-            <label htmlFor="ways-code">{t('waysCard.code')}</label>
-            <input
-              className={codeError == null ? 'input' : 'input input-wrong'}
-              id="ways-code"
-              type="text"
-              autoComplete="one-time-code"
-              autoCorrect="off"
-              spellCheck={false}
-              value={code}
-              disabled={checking}
-              aria-invalid={codeError != null}
-              aria-describedby={
-                codeError == null ? 'ways-code-help' : 'ways-code-error ways-code-help'
-              }
-              onChange={(event) => {
-                setCode(event.target.value);
-                if (refusal?.field === 'code') setRefusal(null);
-                checks.edited('code', event.target.value);
-              }}
-              onBlur={(event) => checks.left('code', event.target.value)}
-            />
-            {codeError != null && <FieldError id="ways-code-error" message={codeError} />}
-            <p className="field-help" id="ways-code-help">
-              {t('waysCard.codeHelp')}
-            </p>
-          </div>
-        )}
-
-        {act.action === 'link' && (
+          : t('waysCard.proveUnlink', { provider: name })
+      }
+      via={proveWith(hasPassword, providers, act.provider)}
+      twoFactorOn={twoFactorOn}
+      returned={returned}
+      purpose={{ kind: 'prove', then: act }}
+      note={
+        act.action === 'link' && (
           <div className="notice notice-quiet">
             <span className="mark mark-info" aria-hidden="true">
               i
             </span>
             <p>{t('waysCard.linkNote', { provider: name, email })}</p>
           </div>
-        )}
-
-        {askPassword || signIn != null ? (
-          <div className="actions">
-            <button className="button button-primary" type="submit" aria-busy={checking}>
-              {checking ? t('waysCard.checking') : t('waysCard.continue')}
-            </button>
-            <button className="button" type="button" onClick={onCancel} disabled={checking}>
-              {t('waysCard.cancel')}
-            </button>
-          </div>
-        ) : (
-          viaProvider != null && (
-            <>
-              <p className="muted">
-                {t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[viaProvider] })}
-              </p>
-              <div className="actions">
-                <button
-                  className={
-                    viaProvider === 'google' ? 'button button-google' : 'button button-apple'
-                  }
-                  type="button"
-                  onClick={() => {
-                    void startProviderSignIn(viaProvider, { kind: 'prove', then: act }).catch(() =>
-                      setRefusal({
-                        field: 'failed',
-                        message: t('waysCard.providerFailed', {
-                          provider: PROVIDER_NAMES[viaProvider],
-                        }),
-                      }),
-                    );
-                  }}
-                >
-                  {viaProvider === 'google' ? <GoogleMark /> : <AppleMark />}
-                  <span>
-                    {t('waysCard.continueWith', { provider: PROVIDER_NAMES[viaProvider] })}
-                  </span>
-                </button>
-                <button className="button" type="button" onClick={onCancel}>
-                  {t('waysCard.cancel')}
-                </button>
-              </div>
-            </>
-          )
-        )}
-      </form>
-    </>
+        )
+      }
+      onProved={onProved}
+      onCancel={onCancel}
+    />
   );
 }
 
@@ -714,33 +488,6 @@ function refused(error: unknown, provider: Provider): Notice {
     return { kind: 'last', provider };
 
   return { kind: 'failed' };
-}
-
-function provingRefusal(
-  error: unknown,
-  t: TFunction,
-  providerName: string | null,
-): { field: ProvingField | 'failed'; message: string } {
-  const refusal = proofRefusal(error, providerName == null);
-
-  if (refusal.kind === 'trip')
-    return { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
-
-  if (refusal.kind === 'limited')
-    return {
-      field: 'failed',
-      message:
-        refusal.until == null
-          ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, currentLocale()) }),
-    };
-  if (refusal.kind === 'field')
-    return {
-      field: refusal.field,
-      message: refusal.field === 'password' ? t('waysCard.passwordWrong') : t('waysCard.codeWrong'),
-    };
-
-  return { field: 'failed', message: t('waysCard.failedBody') };
 }
 
 function LockMark() {

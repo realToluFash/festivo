@@ -21,10 +21,13 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
     if (started.current) return;
     started.current = true;
 
-    // Security's own trip, to confirm it is you or to choose the account to link: it finishes there.
-    if (returnPurpose(provider) != null) {
+    // A trip Settings started, to confirm it is you or to choose the account to link: it finishes where it began.
+    const purpose = returnPurpose(provider);
+    if (purpose != null) {
       keepProviderReturn(provider, window.location.href);
-      navigate('/app/account/security', { replace: true });
+      navigate(purpose.kind === 'makePrimary' ? '/app/account' : '/app/account/security', {
+        replace: true,
+      });
 
       return;
     }

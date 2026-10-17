@@ -1,4 +1,4 @@
-import { type Account, ApiError } from '@soirely/api-client';
+import { type Account, ApiError, type Provider } from '@soirely/api-client';
 import {
   CONTACTS_MOST,
   contactActions,
@@ -10,18 +10,21 @@ import {
   phoneLengthProblem,
 } from '@soirely/domain';
 import { router } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
+import { emailMessage, useFormChecks } from '../kit/formChecks.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
+import { heldProof } from '../recentProof.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
@@ -38,7 +41,7 @@ interface Row {
   pending?: boolean;
 }
 
-type Asking = { id: string; what: 'promote' | 'remove' } | null;
+type Asking = { id: string; what: 'promote' | 'prove' | 'remove' } | null;
 
 /** Settings > Account in the app: email addresses and phone numbers (sc-113), the rules shared with web. */
 export function ContactsCards({
@@ -50,6 +53,23 @@ export function ContactsCards({
   kind: LayoutKind;
   onChanged: () => Promise<void>;
 }) {
+  const [twoFactorOn, setTwoFactorOn] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+
+    api
+      .twoFactorStatus()
+      .then((status) => {
+        if (live) setTwoFactorOn(status.on);
+      })
+      .catch(() => {});
+
+    return () => {
+      live = false;
+    };
+  }, []);
+
   return (
     <>
       <ContactsCard
@@ -57,6 +77,10 @@ export function ContactsCards({
         layout={layout}
         rows={account.emailAddresses.map((held) => ({ ...held, shown: held.address }))}
         country={account.organisationCountry ?? ''}
+        confirming={{
+          via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
+          twoFactorOn,
+        }}
         onChanged={onChanged}
       />
       <ContactsCard
@@ -75,12 +99,15 @@ function ContactsCard({
   layout,
   rows: all,
   country,
+  confirming,
   onChanged,
 }: {
   kind: Kind;
   layout: LayoutKind;
   rows: Row[];
   country: string;
+  /** How the person proves it is them before an address becomes the one signing in. */
+  confirming?: { via: 'password' | Provider | null; twoFactorOn: boolean };
   onChanged: () => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -93,12 +120,21 @@ function ContactsCard({
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
 
-  async function act(row: Row, what: 'promote' | 'remove'): Promise<void> {
+  async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
     setRowError(null);
+    const standing = proof ?? heldProof();
+
+    // An address signs the account in, so it is proved first; a number never does.
+    if (email && what === 'promote' && standing == null) {
+      setAsking({ id: row.id, what: 'prove' });
+      return;
+    }
 
     try {
       if (what === 'promote') {
-        await (email ? api.makeEmailPrimary(row.id) : api.makePhonePrimary(row.id));
+        await (email && standing != null
+          ? api.makeEmailPrimary(row.id, standing)
+          : api.makePhonePrimary(row.id));
         setDone(
           email
             ? t('contacts.promoted', { address: row.shown })
@@ -201,7 +237,20 @@ function ContactsCard({
                 />
               )}
 
-              {here != null && (
+              {here === 'prove' && confirming != null && (
+                <View style={styles.asking}>
+                  <ConfirmItsYou
+                    idPrefix={`contacts.${row.id}.prove`}
+                    intro={t('contacts.proveIntro')}
+                    via={confirming.via}
+                    twoFactorOn={confirming.twoFactorOn}
+                    onProved={(proved) => void act(row, 'promote', proved)}
+                    onCancel={() => setAsking(null)}
+                  />
+                </View>
+              )}
+
+              {(here === 'promote' || here === 'remove') && (
                 <View style={styles.asking}>
                   <Text size={tokens.typeBodyPhone.size} weight="semibold">
                     {here === 'promote'
@@ -299,25 +348,22 @@ function Adding({
   const field = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
   const [country, setCountry] = useState(initialCountry);
-  const [error, setError] = useState<string | null>(null);
+  const [refused, setRefused] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const checks = useFormChecks(
+    ['value'] as const,
+    (_field, value) =>
+      email
+        ? emailMessage(value, t)
+        : phoneProblemMessage(phoneLengthProblem(value, country), country, t),
+    () => field.current?.focus(),
+  );
+  const error = checks.errors.value ?? refused;
 
   async function send(): Promise<void> {
+    if (sending || !checks.passes({ value: typed.current })) return;
+
     const value = typed.current.trim();
-    const problem = email
-      ? value === ''
-        ? t('contacts.emailBlank')
-        : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
-          ? null
-          : t('contacts.emailInvalid')
-      : phoneProblemMessage(phoneLengthProblem(value, country), country, t);
-
-    if (problem != null) {
-      setError(problem);
-      field.current?.focus();
-      return;
-    }
-
     setSending(true);
 
     try {
@@ -325,7 +371,7 @@ function Adding({
       await onAdded();
     } catch (refusal) {
       setSending(false);
-      setError(addRefusal(refusal, kind, t));
+      setRefused(addRefusal(refusal, kind, t));
     }
   }
 
@@ -347,8 +393,10 @@ function Adding({
             returnKeyType="done"
             onChangeText={(text) => {
               typed.current = text;
-              setError(null);
+              setRefused(null);
+              checks.edited('value', text);
             }}
+            onBlur={() => checks.left('value', typed.current)}
             onSubmitEditing={() => void send()}
             accessibilityLabel={t('contacts.emailLabel')}
             testID="contacts.email.field"
@@ -364,11 +412,12 @@ function Adding({
           disabled={sending}
           onCountry={(code) => {
             setCountry(code);
-            setError(null);
+            setRefused(null);
           }}
           onNumber={(text) => {
             typed.current = text;
-            setError(null);
+            setRefused(null);
+            checks.edited('value', text);
           }}
           onSubmit={() => void send()}
           testID="contacts.phone.field"

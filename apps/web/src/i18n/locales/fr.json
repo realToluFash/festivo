@@ -741,8 +741,6 @@
     "phoneHelp": "We text a code to prove it is yours. Until then it stays unverified.",
     "addPhoneConfirm": "Add number",
     "cancel": "Cancel",
-    "emailBlank": "Enter an email address.",
-    "emailInvalid": "That doesn’t look like an email address. Check it has an @ and a domain.",
     "alreadyLinked": "That address is already linked to an account.",
     "alreadyLinkedPhone": "That number is already linked to an account.",
     "limitEmails": "You can link {{most}} email addresses. Remove one to add another.",
@@ -759,6 +757,7 @@
     "refusedLastVerifiedPhone": "This is your only verified number. Verify another before removing this one.",
     "refusedNotVerified": "Verify this address before making it primary.",
     "refusedNotVerifiedPhone": "Verify this number before making it primary.",
-    "failed": "That did not work. Try again."
+    "failed": "That did not work. Try again.",
+    "proveIntro": "Confirm it's you before changing the address you sign in with."
   }
 }

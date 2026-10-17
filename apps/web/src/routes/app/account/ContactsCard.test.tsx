@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { tokens } from '../../../tokens.ts';
@@ -82,6 +83,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  sessionStorage.clear();
   __setSessionState({ status: 'unknown' });
   tokens.clear();
 });
@@ -140,10 +142,12 @@ describe('email addresses and phone numbers', () => {
     expect(screen.getByRole('button', { name: 'Add a phone number' })).toBeDefined();
   });
 
-  it('says what making an address primary changes before it happens, then does it', async () => {
+  it('says what making an address primary changes, then asks the person to prove it is them', async () => {
     const sent = answering({
       'GET /api/auth/me': () => json(ME),
       'GET /api/orgs': () => json({ organisations: [] }),
+      'POST /api/auth/proof': () =>
+        json({ proof: 'p-1', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
       'PATCH /api/auth/emails/e2/primary': () =>
         json({ id: 'e2', address: 'folake.adeyemi@gmail.com', verified: true, primary: true }),
     });
@@ -155,14 +159,87 @@ describe('email addresses and phone numbers', () => {
         'You will sign in with it from now on, and account mail goes there. folake@ire.events stays linked and stops signing you in.',
       ),
     ).toBeDefined();
-    expect(sent.some((s) => s.call.startsWith('PATCH'))).toBe(false);
-
     fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+
+    expect(
+      await screen.findByText("Confirm it's you before changing the address you sign in with."),
+    ).toBeDefined();
+    expect(sent.some((s) => s.call.startsWith('PATCH'))).toBe(false);
+    fireEvent.change(screen.getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
     expect(
       await screen.findByText(
         'folake.adeyemi@gmail.com is now your primary address. Sign in with it from now on.',
       ),
     ).toBeDefined();
+    expect(sent.find((s) => s.call === 'PATCH /api/auth/emails/e2/primary')?.body).toEqual({
+      proof: 'p-1',
+    });
+  });
+
+  it('uses a proof this tab still holds, without asking again', async () => {
+    holdProof({ proof: 'held', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    const sent = answering({
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'PATCH /api/auth/emails/e2/primary': () =>
+        json({ id: 'e2', address: 'folake.adeyemi@gmail.com', verified: true, primary: true }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+
+    await waitFor(() =>
+      expect(sent.find((s) => s.call === 'PATCH /api/auth/emails/e2/primary')?.body).toEqual({
+        proof: 'held',
+      }),
+    );
+    expect(sent.some((s) => s.call === 'POST /api/auth/proof')).toBe(false);
+  });
+
+  it('proves with Google for an account with no password, and finishes back on Account', async () => {
+    sessionStorage.setItem(
+      'soirely.google.attempt',
+      JSON.stringify({
+        state: 's',
+        nonce: 'n',
+        codeVerifier: 'v',
+        purpose: { kind: 'makePrimary', address: 'e2' },
+      }),
+    );
+    window.history.replaceState(null, '', '/oauth/google?state=s&code=the-code');
+    const sent = answering({
+      'GET /api/auth/me': () =>
+        json({
+          ...ME,
+          hasPassword: false,
+          providers: [{ provider: 'google', email: 'folake@gmail.com' }],
+        }),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'POST /api/auth/proof': () =>
+        json({ proof: 'p-g', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+      'PATCH /api/auth/emails/e2/primary': () =>
+        json({ id: 'e2', address: 'folake.adeyemi@gmail.com', verified: true, primary: true }),
+    });
+    __setSessionState({ status: 'signedIn', session: { ...FOLAKE, hasPassword: false } });
+    render(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/oauth/google'] })} />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }, { timeout: 3000 }));
+
+    await waitFor(() =>
+      expect(sent.find((s) => s.call === 'PATCH /api/auth/emails/e2/primary')?.body).toEqual({
+        proof: 'p-g',
+      }),
+    );
+    expect(sent.find((s) => s.call === 'POST /api/auth/proof')?.body).toEqual(
+      expect.objectContaining({ provider: 'google' }),
+    );
   });
 
   it('asks before removing a verified address, and removes an unverified one at once', async () => {
@@ -207,13 +284,13 @@ describe('email addresses and phone numbers', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add an email address' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add address' }));
-    expect(screen.getByText('Enter an email address.')).toBeDefined();
+    expect(screen.getByText('Enter your email address.')).toBeDefined();
     fireEvent.change(screen.getByLabelText('Email address to add'), {
       target: { value: 'folake.adeyemi@gmail' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add address' }));
     expect(
-      screen.getByText('That doesn’t look like an email address. Check it has an @ and a domain.'),
+      screen.getByText("That doesn't look like an email address. Check it has an @ and a domain."),
     ).toBeDefined();
     expect(sent.some((s) => s.call === 'POST /api/auth/emails')).toBe(false);
 

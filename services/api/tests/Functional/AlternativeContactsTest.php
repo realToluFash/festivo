@@ -18,7 +18,6 @@ use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
-use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -62,6 +61,8 @@ final class AlternativeContactsTest extends ApiTestCase
         self::assertFalse($verified['primary']);
 
         $this->call('PATCH', '/api/auth/emails/' . $id . '/primary');
+        self::assertSame(ErrorCode::ProofRequired->type(), $this->last()['type'] ?? null, 'it changes how the account signs in');
+        $this->call('PATCH', '/api/auth/emails/' . $id . '/primary', ['proof' => $this->proof()]);
         self::assertSame(200, $this->statusCode());
         $old = $this->idOf(self::ADDRESS);
         $this->call('DELETE', '/api/auth/emails/' . $old);
@@ -91,7 +92,7 @@ final class AlternativeContactsTest extends ApiTestCase
         $this->call('POST', '/api/auth/emails', ['address' => 'second@example.com']);
         $id = $this->idOf('second@example.com');
         $this->call('POST', '/api/auth/verify/email', ['address' => $id, 'code' => $this->codeFor('second@example.com')]);
-        $this->call('PATCH', '/api/auth/emails/' . $id . '/primary');
+        $this->call('PATCH', '/api/auth/emails/' . $id . '/primary', ['proof' => $this->proof()]);
 
         $user = $this->fresh();
         self::assertSame('second@example.com', $user->getPrimaryEmailAddress()?->getAddress());
@@ -135,7 +136,7 @@ final class AlternativeContactsTest extends ApiTestCase
     public function anUnverifiedAddressCannotBecomePrimary(): void
     {
         $this->call('POST', '/api/auth/emails', ['address' => 'second@example.com']);
-        $body = $this->call('PATCH', '/api/auth/emails/' . $this->idOf('second@example.com') . '/primary');
+        $body = $this->call('PATCH', '/api/auth/emails/' . $this->idOf('second@example.com') . '/primary', ['proof' => $this->proof()]);
 
         self::assertSame(ErrorCode::AddressNotVerified->type(), $body['type']);
         self::assertSame(self::ADDRESS, $this->fresh()->getPrimaryEmailAddress()?->getAddress());
@@ -179,16 +180,24 @@ final class AlternativeContactsTest extends ApiTestCase
         self::assertCount(1, $this->emails());
     }
 
+    /** Promotions in turn, through the service, leave one primary each time; the account's row lock orders ones at once. */
     #[Test]
-    public function twoPrimariesCannotBothCommit(): void
+    public function eachPromotionLeavesExactlyOnePrimary(): void
     {
         $second = new EmailAddress($this->fresh(), 'second@example.com');
         $second->setVerifiedAt(new DateTimeImmutable());
-        $second->setPrimary(true);
         self::em()->persist($second);
-
-        $this->expectException(UniqueConstraintViolationException::class);
         self::em()->flush();
+        $contacts = self::service(LinkedContacts::class);
+
+        foreach (['second@example.com', self::ADDRESS, 'second@example.com'] as $next) {
+            $id = Uuid::fromString($this->idOf($next));
+            $proof = $this->proof();
+            $contacts->makeEmailPrimary($this->fresh(), $id, $proof);
+            $primaries = Vec\filter($this->fresh()->getEmailAddresses(), static fn (EmailAddress $address): bool => $address->isPrimary());
+
+            self::assertSame([$next], Vec\map($primaries, static fn (EmailAddress $address): string => $address->getAddress()));
+        }
     }
 
     #[Test]
@@ -198,8 +207,10 @@ final class AlternativeContactsTest extends ApiTestCase
         $theirs = $other->getPrimaryEmailAddress()?->getId()->toRfc4122() ?? self::fail('no address');
         $this->signInAs($this->user);
 
+        $proof = $this->proof();
+
         foreach ([['PATCH', '/primary'], ['DELETE', '']] as [$method, $suffix]) {
-            $body = $this->call($method, '/api/auth/emails/' . $theirs . $suffix);
+            $body = $this->call($method, '/api/auth/emails/' . $theirs . $suffix, ['proof' => $proof]);
             self::assertSame(404, $this->statusCode(), $method);
             self::assertSame(ErrorCode::NotFound->type(), $body['type'], $method);
         }
@@ -258,6 +269,13 @@ final class AlternativeContactsTest extends ApiTestCase
         $this->signInAs($user);
 
         return $user;
+    }
+
+    private function proof(): string
+    {
+        $body = $this->call('POST', '/api/auth/proof', ['password' => self::PASSWORD]);
+
+        return Type\string()->coerce($body['proof'] ?? self::fail(Json\encode($body)));
     }
 
     private function primaryPhone(): void
