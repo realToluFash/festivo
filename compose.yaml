@@ -44,7 +44,7 @@ services:
     restart: unless-stopped
 
   mercure:
-    image: dunglas/mercure:v0.16
+    image: dunglas/mercure:v0.16.3
     environment:
       # Two different keys on purpose. The API publishes with one; clients
       # subscribe with the other. One shared key would let any subscriber
@@ -272,7 +272,7 @@ services:
   # environment variables only — see .env.example.
 
   mailpit:
-    image: axllent/mailpit:v1.21
+    image: axllent/mailpit:v1.21.8
     environment:
       MP_MAX_MESSAGES: 5000
       MP_SMTP_AUTH_ACCEPT_ANY: 1
@@ -326,10 +326,16 @@ services:
       - ./infra/oidc:/config:ro
     ports:
       - '${OIDC_PORT:-8089}:8080'
-    # No healthcheck: this image is distroless — no shell, no wget, no curl — so
-    # any check would fail forever while the service answered normally, and a
-    # permanently red status is worse than none. Check it from the host instead:
-    #   curl -sf localhost:8089/google/.well-known/openid-configuration
+    # The image is distroless: no shell, no wget, no curl. It does carry a JDK,
+    # and Java runs a single source file directly, so the check is a few lines
+    # of Java mounted with the config. Each run starts a JVM, about a second and
+    # a half, hence the longer timeout.
+    healthcheck:
+      test: ['CMD', 'java', '/config/Healthcheck.java']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
     restart: unless-stopped
 
 volumes:
