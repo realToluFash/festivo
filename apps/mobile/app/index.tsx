@@ -42,9 +42,8 @@ export default function Home() {
     let live = true;
 
     void meAtLaunch().then((answer) => {
-      if (!live) return;
-
       if ('account' in answer) {
+        if (!live) return;
         const signedIn = answer.account;
 
         void followAccount(signedIn);
@@ -58,17 +57,20 @@ export default function Home() {
 
       // Still signed in, so the answer is not sign-in.
       if (answer.error instanceof ApiUnreachableError) {
-        router.replace('/unreachable');
+        if (live) router.replace('/unreachable');
         return;
       }
 
-      setAccount(null);
+      if (live) setAccount(null);
+      else if (!answer.ended) return;
+
       void launchRoute(answer.ended, {
         held: heldRegistration,
         open: (registration) => api.registrationOpening(registration),
         drop: dropRegistration,
       }).then((route) => {
-        if (live && route != null) router.replace(route);
+        // Launch already left: the signed-out notice still follows, a held sign-up waits for the next launch.
+        if (route != null && (live || route === '/sign-in?signedOut=1')) router.replace(route);
       });
     });
 
