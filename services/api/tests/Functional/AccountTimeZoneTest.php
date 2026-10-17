@@ -135,10 +135,37 @@ final class AccountTimeZoneTest extends ApiTestCase
             ->coerce($this->call('GET', '/api/auth/timezones', null, $user)['timezones']);
         $byId = static fn (string $id): ?array => Iter\first(Vec\filter($zones, static fn (array $zone): bool => $zone['id'] === $id));
 
-        self::assertSame(['id' => 'Africa/Lagos', 'city' => 'Lagos', 'country' => 'Nigeria', 'offset' => '+01:00'], $byId('Africa/Lagos'));
+        self::assertSame(['id' => 'Africa/Lagos', 'city' => 'Lagos', 'country' => 'Nigeria', 'offset' => '+01:00'], $byId('Africa/Lagos'), 'no CLDR city: IANA’s');
         self::assertSame('Kinshasa', $byId('Africa/Kinshasa')['city'] ?? null, 'its own row, though it shares an offset');
         self::assertSame('Mexico City', $byId('America/Mexico_City')['city'] ?? null);
         self::assertSame('+01:00', $byId('Europe/London')['offset'] ?? null, "today's offset, summer time included");
+    }
+
+    /** sc-986: CLDR's city in the reader's language, IANA's spelling beside it, and tzdata's former names. */
+    #[Test]
+    public function citiesReadInTheLanguageAndKeepTheirFormerNames(): void
+    {
+        $user = $this->registered('names@example.com', null);
+        $rows = static fn (array $list): array => Type\vec(Type\shape([
+            'id' => Type\string(),
+            'city' => Type\string(),
+            'ianaCity' => Type\string(),
+            'formerNames' => Type\vec(Type\string()),
+        ], true))->coerce($list['timezones']);
+        $fr = $rows($this->call('GET', '/api/auth/timezones', null, $user, language: 'fr'));
+        $en = $rows($this->call('GET', '/api/auth/timezones', null, $user, language: 'en'));
+        $row = static fn (array $zones, string $id): array => Iter\first(Vec\filter($zones, static fn (array $zone): bool => $zone['id'] === $id)) ?? [];
+
+        self::assertSame(['Londres', 'London'], [$row($fr, 'Europe/London')['city'] ?? null, $row($fr, 'Europe/London')['ianaCity'] ?? null]);
+        self::assertSame('Saint-Jean de Terre-Neuve', $row($fr, 'America/St_Johns')['city'] ?? null);
+        self::assertSame('St. John’s', $row($en, 'America/St_Johns')['city'] ?? null, 'CLDR’s English, not IANA’s St Johns');
+        self::assertSame('Lagos', $row($fr, 'Africa/Lagos')['city'] ?? null, 'no CLDR city: IANA’s');
+        self::assertContains('Calcutta', $row($en, 'Asia/Kolkata')['formerNames'] ?? []);
+        self::assertContains('Saigon', $row($en, 'Asia/Ho_Chi_Minh')['formerNames'] ?? []);
+        self::assertSame([], $row($en, 'America/Argentina/Buenos_Aires')['formerNames'] ?? null, 'a link with the row’s own city is never a former name');
+
+        $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Asia/Calcutta'], $user);
+        self::assertSame('Asia/Kolkata', $this->fresh($user)->getTimezone(), 'only the current IANA id is ever stored');
     }
 
     private function moment(User $user, string $locale): string
@@ -179,12 +206,13 @@ final class AccountTimeZoneTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function call(string $method, string $path, ?array $body = null, ?User $as = null, ?string $zone = null): array
+    private function call(string $method, string $path, ?array $body = null, ?User $as = null, ?string $zone = null, string $language = 'en'): array
     {
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => null === $as ? '' : 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($as),
             'HTTP_X_TIMEZONE' => $zone ?? '',
+            'HTTP_ACCEPT_LANGUAGE' => $language,
         ], content: Json\encode($body ?? new stdClass()));
 
         return $this->last();
