@@ -14,8 +14,8 @@ use Throwable;
 #[AsEventListener(event: KernelEvents::TERMINATE, method: 'fulfil')]
 final class RecoveryRequests implements ResetInterface
 {
-    /** @var list<string> */
-    private array $addresses = [];
+    /** @var list<array{email: string, locale: string}> */
+    private array $requests = [];
 
     public function __construct(
         private readonly PasswordRecovery $passwordRecovery,
@@ -23,19 +23,20 @@ final class RecoveryRequests implements ResetInterface
     ) {
     }
 
-    public function accept(string $email): void
+    /** The request's language goes with it: the email is written after the request has gone. */
+    public function accept(string $email, string $locale): void
     {
-        $this->addresses[] = $email;
+        $this->requests[] = ['email' => $email, 'locale' => $locale];
     }
 
     public function fulfil(): void
     {
-        $addresses = $this->addresses;
-        $this->addresses = [];
+        $requests = $this->requests;
+        $this->requests = [];
 
-        foreach ($addresses as $email) {
+        foreach ($requests as $asked) {
             try {
-                $this->passwordRecovery->request($email);
+                $this->passwordRecovery->request($asked['email'], $asked['locale']);
             } catch (Throwable $e) {
                 $this->logger->error('A password reset request could not be fulfilled.', ['exception' => $e::class]);
             }
@@ -44,6 +45,6 @@ final class RecoveryRequests implements ResetInterface
 
     public function reset(): void
     {
-        $this->addresses = [];
+        $this->requests = [];
     }
 }

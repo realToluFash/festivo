@@ -8,7 +8,6 @@ use App\Domain\User\Mail\UserMailer;
 use App\Entity\PasswordResetToken;
 use App\Entity\User;
 use DateTimeImmutable;
-use IntlDateFormatter;
 use Psl\Str;
 use SensitiveParameter;
 
@@ -21,9 +20,9 @@ final readonly class RecoveryMailer
     ) {
     }
 
-    public function sendLink(User $user, #[SensitiveParameter] string $token): void
+    public function sendLink(User $user, #[SensitiveParameter] string $token, ?string $asked = null): void
     {
-        $locale = $user->getLocale();
+        $locale = $this->userMailer->localeFor($user, $asked);
         $link = Str\trim_right($this->webOrigin, '/') . '/reset-password?token=' . \rawurlencode($token);
 
         $this->userMailer->sendTo($user, 'recovery.link.subject', [
@@ -32,31 +31,30 @@ final readonly class RecoveryMailer
             $link,
             $this->line('recovery.link.expiry', $locale, ['{minutes}' => (string) PasswordResetToken::LIFETIME_MINUTES]),
             $this->line('recovery.link.ignore', $locale),
-        ]);
+        ], $locale);
     }
 
     /** @param list<string> $providers the names the person signs in with, such as Google */
-    public function sendHowYouSignIn(User $user, array $providers): void
+    public function sendHowYouSignIn(User $user, array $providers, ?string $asked = null): void
     {
-        $locale = $user->getLocale();
+        $locale = $this->userMailer->localeFor($user, $asked);
 
         $this->userMailer->sendTo($user, 'recovery.provider.subject', [
             $this->line('recovery.provider.body', $locale, [
                 '{providers}' => Str\join($providers, $this->line('recovery.or', $locale)),
             ]),
             $this->line('recovery.provider.ignore', $locale),
-        ]);
+        ], $locale);
     }
 
     public function sendChanged(User $user, DateTimeImmutable $at): void
     {
-        $locale = $user->getLocale();
-        $when = IntlDateFormatter::create($locale ?? 'en', IntlDateFormatter::LONG, IntlDateFormatter::SHORT, 'UTC')?->format($at) ?? $at->format('Y-m-d H:i');
+        $locale = $this->userMailer->localeFor($user);
 
         $this->userMailer->sendTo($user, 'recovery.changed.subject', [
-            $this->line('recovery.changed.body', $locale, ['{when}' => $when . ' UTC']),
+            $this->line('recovery.changed.body', $locale, ['{when}' => $this->userMailer->moment($at, $locale)]),
             $this->line('recovery.changed.notYou', $locale),
-        ]);
+        ], $locale);
     }
 
     /** @param array<string, string> $parameters */
