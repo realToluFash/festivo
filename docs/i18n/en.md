@@ -42,8 +42,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 
 - **17 Oct 2026. "Enter the amount as a number above 0, like {{example}}."** (sc-88, Amount
   paid). One message for every currency, with one slot. The code builds `{{example}}` with
-  `Intl.NumberFormat` in the viewer's locale from 3,500 at the event currency's ISO 4217 minor
-  unit: "3,500" for JPY, XOF and CLP, "3,500.50" for GBP, EUR, USD and BRL, "3,500.500" for
+  `Intl.NumberFormat` in the viewer's locale at the event currency's ISO 4217 minor unit, from
+  3500 when it has none and 3500.5 otherwise: "3,500" for JPY, XOF and CLP, "3,500.50" for GBP, EUR, USD and BRL, "3,500.500" for
   KWD and BHD, and "3.500,50" in es, fr and pt. No currency symbol: the field shows it as its
   prefix. Won over a variant per decimal count, which is three keys in four locales for one
   rule and makes the person count decimal places, and over the drawn "like 3,500 or
