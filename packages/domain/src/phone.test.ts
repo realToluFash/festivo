@@ -94,6 +94,14 @@ describe('the phone screens', () => {
     );
   });
 
+  it('read a blank Country as no Country, as "A few details" does', () => {
+    const blank = { organisationCountry: '', phoneNumbers: [] };
+
+    expect(phoneScreenCountry(blank, 'NG')).toBe('NG');
+    expect(startingPhoneCountry(null, '', 'NG').code).toBe('NG');
+    expect(startingPhoneCountry('', null, null).code).toBe('');
+  });
+
   it('focus the code when none is chosen, and the number otherwise', () => {
     expect(refusedPhoneField('noCountry')).toBe('country');
     expect(refusedPhoneField('blank')).toBe('number');
