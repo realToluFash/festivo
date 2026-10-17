@@ -40,3 +40,27 @@ function isPhoneCountry(country: string): country is CountryCode {
 export function formatPhone(e164: string): string {
   return parsePhoneNumberFromString(e164)?.formatInternational() ?? e164;
 }
+
+/** The mobile number's country code on "A few details" (sc-485): it follows the Country until picked by hand. */
+export interface PhoneCountry {
+  code: string;
+  picked: boolean;
+}
+
+/** Where it starts: the Country on the screen, else the organisation's country, else the device's region. */
+export function startingPhoneCountry(
+  screenCountry: string | null,
+  organisationCountry: string | null,
+  deviceCountry: string | null,
+): PhoneCountry {
+  return { code: screenCountry ?? organisationCountry ?? deviceCountry ?? '', picked: false };
+}
+
+/** A changed Country carries the code with it, unless the person has chosen the code themselves. */
+export function followCountry(phone: PhoneCountry, country: string): PhoneCountry {
+  return phone.picked ? phone : { code: country, picked: false };
+}
+
+export function pickPhoneCountry(code: string): PhoneCountry {
+  return { code, picked: true };
+}

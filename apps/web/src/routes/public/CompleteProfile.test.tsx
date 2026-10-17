@@ -129,6 +129,21 @@ describe('a few details', () => {
     expect(typeof (saved?.body as { timezone?: unknown }).timezone).toBe('string');
   });
 
+  it('starts the phone code on the Country, follows it, and stays once picked by hand', () => {
+    answering({});
+    at('/complete-profile');
+
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'NG' } });
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('NG');
+
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('GH');
+
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'KE' } });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'NG' } });
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('KE');
+  });
+
   it('marks the mobile optional and checks a typed one for its country before sending', () => {
     const sent = answering({});
     at('/complete-profile', { ...FOLAKE, needsOrganisation: false });
