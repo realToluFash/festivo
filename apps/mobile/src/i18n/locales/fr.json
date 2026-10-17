@@ -392,7 +392,8 @@
     "save": "Enregistrer le fuseau",
     "saving": "Enregistrement…",
     "cancel": "Annuler",
-    "saved": "Fuseau horaire changé pour {{zone}}. Les heures de vos e-mails l'utilisent désormais."
+    "saved": "Fuseau horaire changé pour {{zone}}. Les heures de vos e-mails l'utilisent désormais.",
+    "was": "anciennement {{name}}"
   },
   "account": {
     "title": "Votre compte",

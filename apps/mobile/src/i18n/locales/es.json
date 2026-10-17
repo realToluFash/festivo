@@ -392,7 +392,8 @@
     "save": "Guardar zona horaria",
     "saving": "Guardando…",
     "cancel": "Cancelar",
-    "saved": "Zona horaria cambiada a {{zone}}. Las horas de sus correos ya la usan."
+    "saved": "Zona horaria cambiada a {{zone}}. Las horas de sus correos ya la usan.",
+    "was": "antes {{name}}"
   },
   "account": {
     "title": "Su cuenta",

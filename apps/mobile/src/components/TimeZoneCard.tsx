@@ -1,5 +1,5 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
-import { exactZone, matchingZones, zoneLabel } from '@soirely/domain';
+import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -129,6 +129,14 @@ function Choosing({
 
   const showingPicked = picked != null && typed === zoneLabel(picked);
   const matches = showingPicked ? [] : matchingZones(zones, typed).slice(0, SHOWN);
+  // "India · was Calcutta" only for the row a former name found (sc-986).
+  const rowDetail = (zone: TimeZoneOption): string => {
+    const was = formerName(zone, typed);
+
+    return was == null
+      ? zone.country
+      : [zone.country, t('timeZone.was', { name: was })].filter(Boolean).join(' · ');
+  };
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
 
   async function save(): Promise<void> {
@@ -210,7 +218,7 @@ function Choosing({
             >
               <Text size={tokens.typeBodyPhone.size}>{zoneLabel(zone)}</Text>
               <Text size={tokens.typeSmall.size} style={styles.secondary}>
-                {zone.country}
+                {rowDetail(zone)}
               </Text>
             </Pressable>
           ))}

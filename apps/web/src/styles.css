@@ -1578,6 +1578,7 @@ h2 {
 
 .tz-option {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--spaceLg);
   align-items: center;
@@ -1585,6 +1586,11 @@ h2 {
   padding: 0 var(--spaceMd);
   border-radius: var(--radiusSmall);
   cursor: pointer;
+}
+
+.tz-option .muted {
+  margin-left: auto;
+  text-align: right;
 }
 
 .tz-option-active,

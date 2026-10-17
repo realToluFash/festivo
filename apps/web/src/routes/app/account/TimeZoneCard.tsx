@@ -1,5 +1,5 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
-import { exactZone, matchingZones, zoneLabel } from '@soirely/domain';
+import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -127,6 +127,14 @@ function Choosing({
 
   const showingPicked = picked != null && typed === zoneLabel(picked);
   const matches = showingPicked ? [] : matchingZones(zones, typed).slice(0, SHOWN);
+  // "India · was Calcutta" only for the row a former name found (sc-986).
+  const rowDetail = (zone: TimeZoneOption): string => {
+    const was = formerName(zone, typed);
+
+    return was == null
+      ? zone.country
+      : [zone.country, t('timeZone.was', { name: was })].filter(Boolean).join(' · ');
+  };
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
 
   function pick(zone: TimeZoneOption): void {
@@ -234,7 +242,7 @@ function Choosing({
                 }}
               >
                 <span>{zoneLabel(zone)}</span>
-                <span className="muted">{zone.country}</span>
+                <span className="muted">{rowDetail(zone)}</span>
               </li>
             ))}
           </ul>

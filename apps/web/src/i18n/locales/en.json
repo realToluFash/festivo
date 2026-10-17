@@ -479,6 +479,7 @@
     "save": "Save time zone",
     "saving": "Saving…",
     "cancel": "Cancel",
-    "saved": "Time zone changed to {{zone}}. Times in your emails now use it."
+    "saved": "Time zone changed to {{zone}}. Times in your emails now use it.",
+    "was": "was {{name}}"
   }
 }
