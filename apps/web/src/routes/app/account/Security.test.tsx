@@ -215,8 +215,9 @@ describe('the devices signed in to an account', () => {
 
     expect(screen.getByRole('heading', { name: 'Sign out Chrome on Windows?' })).toBeDefined();
     expect(screen.getByText(/Whoever has it is signed out/)).toBeDefined();
-    expect(document.body.textContent).toMatch(/up to 15 minutes/);
+    expect(document.body.textContent).toMatch(/has to sign in again before it can carry on/);
     expect(document.body.textContent).toMatch(/change your password as well/);
+    expect(document.body.textContent).not.toMatch(/15 minutes/);
   });
 
   it('leaves the list untouched when the check is declined', async () => {
@@ -232,7 +233,7 @@ describe('the devices signed in to an account', () => {
     expect(calls.filter((call) => call.method === 'DELETE')).toEqual([]);
   });
 
-  it('ends the named session, drops its row, and says the device may keep working', async () => {
+  it('ends the named session, drops its row, and says it is signed out', async () => {
     const calls = answering({
       'GET /api/auth/sessions': () => json(SESSIONS),
       [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () => new Response(null, { status: 204 }),
@@ -244,8 +245,9 @@ describe('the devices signed in to an account', () => {
     fireEvent.click(endOf('Chrome on Windows'));
     fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
 
-    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/is signed out/));
-    expect(screen.getByRole('status').textContent).toMatch(/up to 15 minutes/);
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toMatch(/Chrome on Windows is signed out\.$/),
+    );
     expect(screen.queryByText('Chrome on Windows')).toBeNull();
     expect(calls).toContainEqual({ method: 'DELETE', path: `/api/auth/sessions/${ELSEWHERE}` });
   });
@@ -391,9 +393,7 @@ describe('changing the password', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByText(
-          'Password changed. Your 2 other devices are signed out; they may keep working for up to 15 minutes while that reaches them, then they have to sign in again.',
-        ),
+        screen.getByText('Password changed. Your 2 other devices are signed out.'),
       ).toBeDefined(),
     );
     expect(sent).toEqual({

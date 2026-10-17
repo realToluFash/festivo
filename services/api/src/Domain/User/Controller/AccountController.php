@@ -7,6 +7,7 @@ namespace App\Domain\User\Controller;
 use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Domain\User\TimeZone\TimeZoneList;
+use App\Domain\User\TokenIssuer;
 use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -15,7 +16,6 @@ use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Locale\SupportedLocales;
 use App\Repository\RefreshTokenRepository;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Psl\Vec;
@@ -35,6 +35,7 @@ final class AccountController
         private readonly AccountSerialiser $accountSerialiser,
         private readonly Security $security,
         private readonly RefreshTokenRepository $refreshTokenRepository,
+        private readonly TokenIssuer $tokenIssuer,
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
         private readonly ClockInterface $clock,
@@ -128,10 +129,8 @@ final class AccountController
             throw ApiException::notFound('No session with that id.');
         }
 
-        if (null === $session->getRevokedAt()) {
-            $session->setRevokedAt(new DateTimeImmutable());
-            $this->entityManager->flush();
-        }
+        $this->tokenIssuer->end($session);
+        $this->entityManager->flush();
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }

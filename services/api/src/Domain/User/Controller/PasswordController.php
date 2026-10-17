@@ -33,7 +33,7 @@ final readonly class PasswordController
     ) {
     }
 
-    /** `sessionId` names the caller's own session, which stays signed in; the client holds it, the token doesn't yet (sc-117). */
+    /** `sessionId` names the caller's own session, which stays signed in. */
     #[Route('/api/auth/password', name: 'auth_password_change', methods: ['PATCH'])]
     public function change(Request $request): JsonResponse
     {

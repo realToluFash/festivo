@@ -28,7 +28,7 @@
     "password.changed.subject": "Your Soirely password was changed",
     "password.changed.body": "The password for this Soirely account was changed on {when}.",
     "password.changed.where": "The device: {device}.",
-    "password.changed.devices": "Your other devices have been signed out. They may keep working for up to 15 minutes while that reaches them.",
+    "password.changed.devices": "Your other devices have been signed out.",
     "password.changed.notYou": "If this was not you, reset your password now: choose \"Forgot your password?\" on sign-in, using this address. That signs out every device, including whoever changed it.",
     "password.device.agent": "{browser} on {platform}",
     "password.device.unknown": "A device that did not name itself",

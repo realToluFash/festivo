@@ -191,14 +191,29 @@ thief keeps the newest token, and the response looks exactly the same.
 **Nothing schedules it yet.** Where it runs (host cron, a scheduled container, or
 Messenger's scheduler) is an open decision on sc-114.
 
-## The access token's fifteen minutes
+## Ending a session takes effect at once
 
-Ending a session cannot take effect sooner than the access token in hand expires, because
-nothing consults a server to use one. `JWT_TOKEN_TTL=900` is that window and
-`TokenLifetimeTest` holds it there. **sc-117** closes it to zero — the access token carries
-its session id and a Redis set lists the sessions revoked in the last fifteen minutes, one
-`SISMEMBER` per request — and until it lands, "sign out this device" is honest about
-taking up to fifteen minutes. The wording for that is in sc-115 and sc-116.
+Revoking a refresh token stops a session being renewed; on its own it would leave the access
+token in hand working for its fifteen minutes (`JWT_TOKEN_TTL=900`, which
+`TokenLifetimeTest` holds there). sc-117 closes that:
+
+- **The access token carries its session**, as OpenID Connect's `sid` claim
+  (`TokenIssuer::SESSION_CLAIM`): the refresh chain's id, which every access token of the
+  session shares across rotations.
+- **Every way a session ends records it** in `RevokedSessions`: one device from the list or
+  from itself (`TokenIssuer::end()`), a replayed chain, everything but this one (sc-115,
+  sc-116), and everything (a password reset, a two-factor recovery). A new revocation path
+  goes through `TokenIssuer`, or it quietly reverts to fifteen minutes.
+- **One Redis key per ended session**, `revoked_session:<chain>`, set to expire after
+  `JWT_TOKEN_TTL` itself, by which time every access token of that session has expired
+  anyway. No database read: `RevokedSessionListener` asks Redis once per authenticated
+  request, and marks the token invalid, so it is refused exactly as an expired one is.
+- **It fails open** (sc-117, Decided 16 Oct). With Redis unreachable nothing is refused,
+  revocation falls back to the fifteen minutes, and each failed write or check is logged at
+  `critical` with `RevokedSessions::UNREACHABLE`. Failing closed would sign everybody out
+  at once, mid-event.
+- **A token with no `sid`** has nothing to look up and is not refused. Every token the API
+  issues carries one.
 
 ## Where a native client keeps its half
 
@@ -233,14 +248,13 @@ address (keyed on what was typed) and per IP, and a refusal states a time.
 - **The reset** (`POST /api/auth/password/reset`) takes registration's rules
   (`NewPasswordRules`), and a refused password changes nothing. A new one spends every
   link the account was sent, revokes every refresh token, signs this device in, and emails
-  a notice saying when. Access tokens already issued run out on their own, within their
-  lifetime, until sc-117 ends them at once.
+  a notice saying when. Access tokens already issued stop at once (see above).
 - **Two-factor** (sc-60) will ask for the code before this device is signed in.
 
 ## Changing a password
 
 `PATCH /api/auth/password` takes `currentPassword`, `newPassword` and the caller's own
-`sessionId` (the client holds it; the access token does not carry one until sc-117). It
+`sessionId`, the refresh token's id the client holds. It
 answers `{signedOut}`, the number of other sessions it ended.
 
 - **The current password comes first.** A wrong one is `invalid_credentials` and changes
@@ -253,8 +267,8 @@ answers `{signedOut}`, the number of other sessions it ended.
   password is `password_unchanged`, checked before the breach corpus is asked.
 - **Every other session ends, this one stays**: `TokenIssuer::revokeAllExcept()` revokes
   every live refresh token but the chain of the session named, in the same transaction as
-  the new hash. A `sessionId` that is not this account's keeps nothing. Other devices keep
-  working until their access token expires (see the fifteen minutes above).
+  the new hash. A `sessionId` that is not this account's keeps nothing. Other devices are
+  refused on their next request (see above).
 - **The primary address is emailed** after the response (`AfterResponse`): when, and the
   device as the devices card reads it (`ReadableAgent`, the PHP twin of `readableAgent()`)
   with the network address and no place, and to reset by "Forgot your password?" if it was

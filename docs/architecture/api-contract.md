@@ -179,6 +179,13 @@ Where each of those lives differs between the browser and a native client, and t
 one decision here that cannot be changed quietly later — see
 [sessions.md](sessions.md), which also covers who may call this API from a browser.
 
+**An access token can be refused before it expires.** When its session ends, by signing out
+from it or from another device, a password change or reset, or a replayed refresh token,
+the next request carrying it is `401 unauthenticated`, the same response an expired token
+gets, because a client can do only one thing about either: refresh, and sign in again if
+that fails. The list of ended sessions fails open, so during a Redis outage an ended session
+works until its token expires, at most fifteen minutes (sessions.md, sc-117).
+
 ## Pagination
 
 API Platform's, not a hand-rolled one. Fifty per page by default, two hundred maximum, and
