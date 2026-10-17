@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 /**
  * Where the API is, from configuration rather than from a literal.
@@ -17,7 +18,8 @@ interface Extra {
   environment?: string;
   googleAuthorizeUrl?: string;
   googleTokenUrl?: string;
-  googleClientId?: string;
+  googleIosClientId?: string;
+  googleAndroidClientId?: string;
   appleAuthorizeUrl?: string;
   appleTokenUrl?: string;
   appleClientId?: string;
@@ -39,7 +41,9 @@ export const config = {
   google: {
     authorizeUrl: extra.googleAuthorizeUrl ?? `${SANDBOX}/google/authorize`,
     tokenUrl: extra.googleTokenUrl ?? `${SANDBOX}/google/token`,
-    clientId: extra.googleClientId ?? 'soirely-app',
+    clientId:
+      Platform.select({ ios: extra.googleIosClientId, android: extra.googleAndroidClientId }) ??
+      'soirely-app',
   },
   /** Off iOS, where the native sheet is used, Apple runs in the browser like Google. */
   apple: {

@@ -86,6 +86,15 @@ export function authorizationUrl(
   })}`;
 }
 
+const GOOGLE_CLIENT_SUFFIX = '.apps.googleusercontent.com';
+
+/** Google's iOS client answers only on its own id reversed as the scheme; the sandbox's ids have none. */
+export function googleIosRedirectUri(clientId: string): string | null {
+  if (!clientId.endsWith(GOOGLE_CLIENT_SUFFIX)) return null;
+
+  return `com.googleusercontent.apps.${clientId.slice(0, -GOOGLE_CLIENT_SUFFIX.length)}:/oauth2redirect/google`;
+}
+
 /** The code the provider came back with; a refusal or a closed window is a cancellation. */
 export function codeFromCallback(callbackUrl: string, expectedState: string): string {
   const params = query(callbackUrl);

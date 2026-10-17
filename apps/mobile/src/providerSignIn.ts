@@ -9,6 +9,7 @@ import {
   base64Url,
   codeFromCallback,
   exchangeCode,
+  googleIosRedirectUri,
   hex,
 } from '@soirely/api-client';
 import {
@@ -46,9 +47,18 @@ function remember(provider: Provider, outcome: SignInOutcome): SignInOutcome {
   return outcome;
 }
 
+function browserRedirectUri(provider: Provider): string {
+  const googleIos =
+    provider === 'google' && Platform.OS === 'ios'
+      ? googleIosRedirectUri(config.google.clientId)
+      : null;
+
+  return googleIos ?? `soirely://oauth/${provider}`;
+}
+
 /** The system browser with the code flow and PKCE, the code redeemed here as a native client may. */
 async function signInInBrowser(provider: Provider): Promise<SignInOutcome> {
-  const redirectUri = `soirely://oauth/${provider}`;
+  const redirectUri = browserRedirectUri(provider);
   const state = random();
   const nonce = random();
   const codeVerifier = random();

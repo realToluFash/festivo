@@ -315,7 +315,13 @@ and keeping the nonce itself, which they give the API. What they send differs:
 - **Production values:** `OAUTH_GOOGLE_ISSUERS` is `https://accounts.google.com,accounts.google.com`,
   `OAUTH_GOOGLE_JWKS_URI` is `https://www.googleapis.com/oauth2/v3/certs`,
   `OAUTH_GOOGLE_TOKEN_URI` is `https://oauth2.googleapis.com/token`, and the client ids and
-  the web client's secret come from the owner's Google Cloud project.
+  the web client's secret come from the owner's Google Cloud project. Google issues a client
+  per platform, so `OAUTH_GOOGLE_CLIENT_IDS` lists the web, iOS and Android ids, and the app
+  is built with the one for its platform. Which goes where, and how the secret is rotated, is
+  in [`docs/operations/credentials.md`](../operations/credentials.md).
+- **The iOS app comes back on Google's scheme.** Google's iOS client accepts only its own id
+  reversed as the redirect scheme (`com.googleusercontent.apps.<id>:/oauth2redirect/google`),
+  so a real Google id gets that redirect; the sandbox's `soirely-app` keeps `soirely://`.
 
 - **The token is checked in full** (`OpenIdTokenVerifier`): RS256 only, the signature
   against the provider's published keys, the issuer, an audience that is one of our client

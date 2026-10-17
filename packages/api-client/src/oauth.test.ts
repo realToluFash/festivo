@@ -10,6 +10,7 @@ import {
   callbackParam,
   codeFromCallback,
   exchangeCode,
+  googleIosRedirectUri,
   hex,
 } from './oauth.ts';
 
@@ -142,5 +143,17 @@ describe("the App Link Apple's form_post comes back by", () => {
   test('is nothing else', () => {
     expect(appleAppLinkOutcome('https://soirely.com/oauth/apple/app')).toBeNull();
     expect(appleAppLinkOutcome('https://soirely.com/oauth/apple/app?error=expired')).toBeNull();
+  });
+});
+
+describe("the redirect Google's iOS client answers on", () => {
+  test('is the client id reversed into a scheme', () => {
+    expect(googleIosRedirectUri('1234-abcd.apps.googleusercontent.com')).toBe(
+      'com.googleusercontent.apps.1234-abcd:/oauth2redirect/google',
+    );
+  });
+
+  test("is none for the sandbox's client", () => {
+    expect(googleIosRedirectUri('soirely-app')).toBeNull();
   });
 });

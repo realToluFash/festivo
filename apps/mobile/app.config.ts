@@ -83,10 +83,11 @@ const config: ExpoConfig = {
     // what it falls back to and why that is safe only on a simulator.
     apiUrl: process.env.EXPO_PUBLIC_API_URL,
     environment: process.env.EXPO_PUBLIC_ENVIRONMENT ?? 'development',
-    // Google's endpoints and the app's client id; absent, src/config.ts uses the local sandbox.
+    // Google's endpoints and a client id per platform, as Google issues them; absent, src/config.ts uses the sandbox.
     googleAuthorizeUrl: process.env.EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL,
     googleTokenUrl: process.env.EXPO_PUBLIC_GOOGLE_TOKEN_URL,
-    googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
+    googleIosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
+    googleAndroidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     appleAuthorizeUrl: process.env.EXPO_PUBLIC_APPLE_AUTHORIZE_URL,
     appleTokenUrl: process.env.EXPO_PUBLIC_APPLE_TOKEN_URL,
     appleClientId: process.env.EXPO_PUBLIC_APPLE_CLIENT_ID,
