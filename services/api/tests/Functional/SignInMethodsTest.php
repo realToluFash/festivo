@@ -160,6 +160,25 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertStringNotContainsString('change your password', $text);
     }
 
+    /** The lead's scenario on #117: Google at T, the right code at T+4, and the change at T+6 is refused. */
+    #[Test]
+    public function aProofReachedThroughAKeptOneLapsesWithTheProviderSignIn(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $refused = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', 'kemi@gmail.com', '-0 minutes')], 'code' => '000000']);
+        self::mockTime('+4 minutes');
+        $body = $this->call('POST', '/api/auth/proof', ['pendingProof' => $refused['pendingProof'], 'code' => $this->codeNow()]);
+        self::assertSame('2026-10-17T12:05:00+00:00', $body['expiresAt'] ?? null, 'five minutes from Google, not from the code');
+
+        self::mockTime('+2 minutes');
+        $this->link(IdentityProvider::Apple, 'a-kemi', 'kemi@icloud.com', Type\string()->coerce($body['proof']));
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::ProofRequired->type(), $this->last()['type']);
+    }
+
     #[Test]
     public function theLastWayInCanNeverBeRemoved(): void
     {

@@ -68,14 +68,12 @@ final readonly class RecentProof
     ): array {
         $pending = null === $pendingProof || '' === $pendingProof ? null : $this->awaitingCode($user, $pendingProof);
 
-        if (null === $pending) {
-            $this->passFirstFactor($user, $password, $provider);
-        }
+        $provedAt = null === $pending ? $this->passFirstFactor($user, $password, $provider) : $pending[1]->provedAt();
 
         $factor = $this->twoFactorFactorRepository->findActiveFor($user);
 
         if (null !== $factor) {
-            [$plain, $held] = $pending ?? $this->issue($user, awaitingCode: true);
+            [$plain, $held] = $pending ?? $this->issue($user, $provedAt, awaitingCode: true);
 
             try {
                 if (null === $code || '' === Str\trim($code)) {
@@ -97,7 +95,7 @@ final readonly class RecentProof
             $this->entityManager->remove($held);
         }
 
-        [$plain, $proof] = $this->issue($user);
+        [$plain, $proof] = $this->issue($user, $provedAt);
 
         return [$plain, $proof->getExpiresAt()];
     }
@@ -112,20 +110,28 @@ final readonly class RecentProof
         }
     }
 
-    /** @param array{0: IdentityProvider, 1: ProviderClaims}|null $provider */
-    private function passFirstFactor(User $user, #[SensitiveParameter] ?string $password, ?array $provider): void
+    /**
+     * @param array{0: IdentityProvider, 1: ProviderClaims}|null $provider
+     *
+     * @return DateTimeImmutable when it passed, which the five minutes count from
+     */
+    private function passFirstFactor(User $user, #[SensitiveParameter] ?string $password, ?array $provider): DateTimeImmutable
     {
         if (null !== $provider) {
-            $this->passProvider($user, ...$provider);
-        } elseif (null !== $password && null !== $user->getPassword()) {
-            $this->passPassword($user, $password);
-        } else {
-            throw ApiException::validation([[
-                'propertyPath' => null === $user->getPassword() ? 'provider' : 'password',
-                'message' => 'Enter your password, or confirm with Google or Apple.',
-                'code' => ErrorCode::ValidationFailed->value,
-            ]]);
+            return $this->passProvider($user, ...$provider);
         }
+
+        if (null !== $password && null !== $user->getPassword()) {
+            $this->passPassword($user, $password);
+
+            return $this->clock->now();
+        }
+
+        throw ApiException::validation([[
+            'propertyPath' => null === $user->getPassword() ? 'provider' : 'password',
+            'message' => 'Enter your password, or confirm with Google or Apple.',
+            'code' => ErrorCode::ValidationFailed->value,
+        ]]);
     }
 
     /** Through the one guarded attempt, on the budget PasswordChange spends: the same guess either way. */
@@ -141,7 +147,7 @@ final readonly class RecentProof
         );
     }
 
-    private function passProvider(User $user, IdentityProvider $provider, ProviderClaims $claims): void
+    private function passProvider(User $user, IdentityProvider $provider, ProviderClaims $claims): DateTimeImmutable
     {
         $identity = $this->providerIdentityRepository->findOneBySubject($provider, $claims->subject);
 
@@ -153,10 +159,12 @@ final readonly class RecentProof
         if (null === $since || $since < $this->clock->now()->modify('-' . SignInProof::MINUTES . ' minutes')) {
             throw new ApiException(ErrorCode::InvalidCredentials, 'Sign in again to confirm it is you.');
         }
+
+        return $since;
     }
 
     /** @return array{0: string, 1: SignInProof} */
-    private function issue(User $user, bool $awaitingCode = false): array
+    private function issue(User $user, DateTimeImmutable $provedAt, bool $awaitingCode = false): array
     {
         $now = $this->clock->now();
         $this->entityManager
@@ -166,7 +174,7 @@ final readonly class RecentProof
             ->execute();
 
         $plain = \bin2hex(SecureRandom\bytes(self::TOKEN_BYTES));
-        $proof = new SignInProof($user, TokenIssuer::hash($plain), $now, $awaitingCode);
+        $proof = new SignInProof($user, TokenIssuer::hash($plain), $provedAt, $awaitingCode);
         $this->entityManager->persist($proof);
         $this->entityManager->flush();
 

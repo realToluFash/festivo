@@ -41,18 +41,24 @@ class SignInProof
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $awaitingCode;
 
-    public function __construct(User $user, string $tokenHash, DateTimeImmutable $now, bool $awaitingCode = false)
+    /** @param DateTimeImmutable $provedAt when its first factor passed: a provider's sign-in, not the code after it */
+    public function __construct(User $user, string $tokenHash, DateTimeImmutable $provedAt, bool $awaitingCode = false)
     {
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->tokenHash = $tokenHash;
-        $this->expiresAt = $now->modify('+' . self::MINUTES . ' minutes');
+        $this->expiresAt = $provedAt->modify('+' . self::MINUTES . ' minutes');
         $this->awaitingCode = $awaitingCode;
     }
 
     public function getExpiresAt(): DateTimeImmutable
     {
         return $this->expiresAt;
+    }
+
+    public function provedAt(): DateTimeImmutable
+    {
+        return $this->expiresAt->modify('-' . self::MINUTES . ' minutes');
     }
 
     public function standsFor(User $user, DateTimeImmutable $now): bool
