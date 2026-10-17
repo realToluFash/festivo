@@ -342,14 +342,14 @@
     "pausedTitle": "Demasiadas tentativas",
     "pausedBody": "Tente novamente às {{time}}. Nada foi alterado.",
     "pausedSoon": "Aguarde um momento e tente novamente. Nada foi alterado.",
-    "signsOut": "Guardar termina a sessão nos seus outros dispositivos; este continua com sessão iniciada. Podem continuar a funcionar até 15 minutos enquanto isso lhes chega.",
+    "signsOut": "Ao guardar, encerra a sessão nos seus outros dispositivos; neste, a sessão mantém-se iniciada.",
     "emailed": "Vamos enviar um e-mail para {{email}} a avisar da alteração.",
     "save": "Guardar nova palavra-passe",
     "saving": "A guardar…",
     "cancel": "Cancelar",
     "done_zero": "Palavra-passe alterada. Não havia outro dispositivo com sessão iniciada.",
-    "done_one": "Palavra-passe alterada. A sessão foi terminada no seu outro dispositivo; pode continuar a funcionar até 15 minutos enquanto isso lhe chega e depois terá de iniciar sessão novamente.",
-    "done_other": "Palavra-passe alterada. A sessão foi terminada nos seus {{count}} outros dispositivos; podem continuar a funcionar até 15 minutos enquanto isso lhes chega e depois terão de iniciar sessão novamente.",
+    "done_one": "Palavra-passe alterada. A sessão foi encerrada no seu outro dispositivo.",
+    "done_other": "Palavra-passe alterada. A sessão foi encerrada nos seus {{count}} outros dispositivos.",
     "failedTitle": "Nada foi alterado",
     "failedBody": "Não foi possível guardar a sua palavra-passe. Verifique a ligação e tente novamente.",
     "setRest": "Inicia sessão com {{provider}}. Adicione uma palavra-passe para poder também iniciar sessão com o seu e-mail se algum dia perder essa conta {{provider}}.",
@@ -444,8 +444,8 @@
     "saving": "A guardar…",
     "cancel": "Cancelar",
     "saved": "Fuso horário alterado para {{zone}}. As horas nos seus emails já o usam.",
-    "was": "antes {{name}}",
-    "countryWas": "{{country}} · antes {{name}}"
+    "was": "ex-{{name}}",
+    "countryWas": "{{country}} · ex-{{name}}"
   },
   "account": {
     "title": "A sua conta",
