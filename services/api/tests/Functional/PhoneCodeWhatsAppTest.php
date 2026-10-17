@@ -9,6 +9,7 @@ use App\Domain\User\Verification\PhoneCodeChannels;
 use App\Domain\User\Verification\RecordingTextMessageSender;
 use App\Domain\User\Verification\RecordingWhatsAppSender;
 use App\Entity\PhoneCodeDelivery;
+use App\Entity\PhoneNumber;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Tests\ApiTestCase;
@@ -99,6 +100,65 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
 
         self::assertSame('whatsapp', $this->opening()['route']);
         self::assertSame([], $this->texts());
+
+        // Delivered to a WhatsApp account is not delivered to the person: they may still ask for a text.
+        $this->call('POST', '/api/auth/verify/phone/text-instead');
+        self::assertSame(['route' => 'sms_chosen'], $this->last());
+        self::assertSame($this->whatsAppCode(), $this->textedCode());
+    }
+
+    /** A code that can no longer be used is never texted: no paid SMS for a dead code. */
+    #[Test]
+    public function anExpiredOrExhaustedCodeIsNeverTexted(): void
+    {
+        $this->order(smsOnly: 'US');
+        $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0142']);
+
+        for ($attempt = 0; $attempt < VerificationChallenge::MAXIMUM_ATTEMPTS; ++$attempt) {
+            $this->call('POST', '/api/auth/verify/phone', ['code' => '000000']);
+        }
+        $this->sentAgo(31);
+        $this->opening();
+        $this->report('failed');
+        $this->call('POST', '/api/auth/verify/phone/text-instead');
+        self::assertSame([], $this->texts(), 'exhausted');
+        self::assertNull($this->challenge()->getSealedCode(), 'and no longer kept');
+
+        $this->sentAgo(61);
+        $this->call('POST', '/api/auth/verify/phone/resend');
+        self::service(EntityManagerInterface::class)->getConnection()->executeStatement("UPDATE verification_challenges SET expires_at = NOW() - interval '1 minute', created_at = NOW() - interval '20 minutes' WHERE revoked_at IS NULL");
+        self::em()->clear();
+
+        self::assertSame('expired', $this->opening()['codeState']);
+        self::assertSame([], $this->texts(), 'expired');
+    }
+
+    /** A late report about an old code acts on that code, never on the one sent since. */
+    #[Test]
+    public function aLateFailureForAReplacedCodeLeavesTheNewOneAlone(): void
+    {
+        $this->order(smsOnly: 'US');
+        $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0142']);
+        $first = Iter\last($this->whatsApp()->sent)['id'] ?? '';
+        $this->sentAgo(61);
+        $this->call('POST', '/api/auth/verify/phone/resend');
+
+        $this->report('failed', messageId: $first);
+
+        self::assertSame([], $this->texts());
+        self::assertSame('whatsapp', $this->opening()['route']);
+    }
+
+    /** The code is kept only while it is live on WhatsApp: used, it is gone. */
+    #[Test]
+    public function aUsedCodeIsNoLongerKept(): void
+    {
+        $this->order(smsOnly: 'US');
+        $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0142']);
+
+        $this->call('POST', '/api/auth/verify/phone', ['code' => $this->whatsAppCode()]);
+
+        self::assertNull($this->challenge()->getSealedCode());
     }
 
     /** Nothing heard from WhatsApp for 30 seconds: the screen's read texts the same code. */
@@ -133,9 +193,12 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
 
         $this->sentAgo(61);
         $this->call('POST', '/api/auth/verify/phone/resend');
-        self::assertCount(1, $this->whatsApp()->sent, 'a new code stays on text for this number');
+        self::assertCount(1, $this->whatsApp()->sent, 'a new code stays on text for the rest of the attempt');
         self::assertCount(2, $this->texts());
-        self::assertSame('sms_chosen', $this->opening()['route']);
+        self::assertSame('sms_preferred', $this->opening()['route'], 'a new code, so not "the same code"');
+
+        $this->call('POST', '/api/auth/verify/phone', ['code' => $this->textedCode()]);
+        self::assertFalse($this->phone()->wantsCodesByText(), 'the attempt is over once the number is verified');
     }
 
     #[Test]
@@ -167,13 +230,15 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         $this->order(smsOnly: 'US');
         $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0142']);
 
+        $this->report('failed');
+        $texted = $this->textedCode();
+
         for ($attempt = 0; $attempt < VerificationChallenge::MAXIMUM_ATTEMPTS; ++$attempt) {
             $this->call('POST', '/api/auth/verify/phone', ['code' => '000000']);
         }
 
-        $this->report('failed');
-        $this->call('POST', '/api/auth/verify/phone', ['code' => $this->textedCode()]);
-        self::assertSame(ErrorCode::VerificationCodeExhausted->type(), $this->last()['type']);
+        $this->call('POST', '/api/auth/verify/phone', ['code' => $texted]);
+        self::assertSame(ErrorCode::VerificationCodeExhausted->type(), $this->last()['type'], 'the texted code shares the five tries');
     }
 
     /** Each code's route is kept per country, with no content, for the monthly fallback rate. */
@@ -232,6 +297,13 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         return Type\instance_of(VerificationChallenge::class)->coerce(self::em()->getRepository(VerificationChallenge::class)->findOneBy([], ['id' => 'DESC']));
     }
 
+    private function phone(): PhoneNumber
+    {
+        self::em()->clear();
+
+        return Type\instance_of(PhoneNumber::class)->coerce(self::em()->getRepository(PhoneNumber::class)->findOneBy([]));
+    }
+
     private function sentAgo(int $seconds): void
     {
         self::service(EntityManagerInterface::class)->getConnection()->executeStatement(
@@ -241,9 +313,9 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         self::em()->clear();
     }
 
-    private function report(string $status, string $signedWith = 'development-app-secret'): void
+    private function report(string $status, string $signedWith = 'development-app-secret', ?string $messageId = null): void
     {
-        $body = Json\encode(['entry' => [['changes' => [['value' => ['statuses' => [['id' => Iter\last($this->whatsApp()->sent)['id'] ?? '', 'status' => $status]]]]]]]]);
+        $body = Json\encode(['entry' => [['changes' => [['value' => ['statuses' => [['id' => $messageId ?? Iter\last($this->whatsApp()->sent)['id'] ?? '', 'status' => $status]]]]]]]]);
 
         $this->client->request('POST', '/api/webhooks/whatsapp', server: [
             'CONTENT_TYPE' => 'application/json',

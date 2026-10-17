@@ -20,6 +20,7 @@ final class Version20261017090000 extends AbstractMigration
         $this->addSql('ALTER TABLE verification_challenges ADD route VARCHAR(16) DEFAULT NULL');
         $this->addSql('ALTER TABLE verification_challenges ADD whats_app_message_id VARCHAR(128) DEFAULT NULL');
         $this->addSql('ALTER TABLE verification_challenges ADD sealed_code TEXT DEFAULT NULL');
+        $this->addSql('ALTER TABLE verification_challenges ADD whats_app_delivered BOOLEAN DEFAULT false NOT NULL');
         $this->addSql('ALTER TABLE phone_numbers ADD codes_by_text BOOLEAN DEFAULT false NOT NULL');
         $this->addSql(<<<'SQL'
             CREATE TABLE phone_code_deliveries (
@@ -37,6 +38,7 @@ final class Version20261017090000 extends AbstractMigration
     {
         $this->addSql('DROP TABLE phone_code_deliveries');
         $this->addSql('ALTER TABLE phone_numbers DROP codes_by_text');
+        $this->addSql('ALTER TABLE verification_challenges DROP whats_app_delivered');
         $this->addSql('ALTER TABLE verification_challenges DROP sealed_code');
         $this->addSql('ALTER TABLE verification_challenges DROP whats_app_message_id');
         $this->addSql('ALTER TABLE verification_challenges DROP route');

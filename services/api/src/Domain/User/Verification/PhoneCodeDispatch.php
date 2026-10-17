@@ -46,7 +46,7 @@ final readonly class PhoneCodeDispatch
         $country = self::countryOf($phone);
 
         if ($phone->wantsCodesByText() || !$this->phoneCodeChannels->whatsAppFirst($country)) {
-            $this->text($phone, $issued->challenge, $issued->code, $phone->wantsCodesByText() ? PhoneCodeRoute::SmsChosen : PhoneCodeRoute::SmsOnly);
+            $this->text($phone, $issued->challenge, $issued->code, $phone->wantsCodesByText() ? PhoneCodeRoute::SmsPreferred : PhoneCodeRoute::SmsOnly);
 
             return;
         }
@@ -68,26 +68,19 @@ final readonly class PhoneCodeDispatch
     }
 
     /** @return bool whether the text went now: WhatsApp failed, or 30 seconds passed with no word it arrived */
-    public function fallBackIfDue(PhoneNumber $phone, bool $failed = false): bool
+    public function fallBackIfDue(PhoneNumber $phone): bool
     {
-        return $this->underLock($phone, function (VerificationChallenge $challenge) use ($phone, $failed): bool {
-            $due = $challenge->getCreatedAt() <= new DateTimeImmutable('-' . self::FALLBACK_SECONDS . ' seconds');
+        $live = $this->verificationChallengeRepository->findLiveFor($phone);
 
-            if (!$challenge->awaitsWhatsApp() || (!$failed && !$due)) {
-                return false;
-            }
-
-            $this->text($phone, $challenge, $this->openCode($challenge), PhoneCodeRoute::SmsFallback);
-
-            return true;
-        });
+        return null !== $live && $this->fallBack($live, failed: false);
     }
 
-    /** "Text it to me instead": the same code once, and every later code for this number by text. */
+    /** "Text it to me instead": the same code once, for as long as it is live, and later codes by text too. */
     public function textInstead(PhoneNumber $phone): void
     {
-        $sent = $this->underLock($phone, function (VerificationChallenge $challenge) use ($phone): bool {
-            if (!$challenge->awaitsWhatsApp() || $challenge->isExpired() || $challenge->isExhausted()) {
+        $live = $this->verificationChallengeRepository->findLiveFor($phone);
+        $sent = null !== $live && $this->underLock($live, function (VerificationChallenge $challenge) use ($phone): bool {
+            if (!$challenge->mayBeTexted()) {
                 return false;
             }
 
@@ -102,20 +95,23 @@ final readonly class PhoneCodeDispatch
         }
     }
 
+    /** Meta's report, for the code it names and only while that code is live: never a newer one. */
     public function reported(string $messageId, string $status): void
     {
         $challenge = $this->verificationChallengeRepository->findOneBy(['whatsAppMessageId' => $messageId]);
-        $phone = $challenge?->getPhoneNumber();
 
-        if (null === $challenge || null === $phone || !$challenge->awaitsWhatsApp()) {
+        if (null === $challenge) {
             return;
         }
 
         if ('failed' === $status) {
-            $this->fallBackIfDue($phone, failed: true);
+            $this->fallBack($challenge, failed: true);
         } elseif ('delivered' === $status || 'read' === $status) {
-            $challenge->deliveredByWhatsApp();
-            $this->entityManager->flush();
+            $this->underLock($challenge, static function (VerificationChallenge $locked): bool {
+                $locked->deliveredByWhatsApp();
+
+                return true;
+            });
         }
     }
 
@@ -126,12 +122,10 @@ final readonly class PhoneCodeDispatch
         $texted = 0;
 
         foreach ($due as $challenge) {
-            $phone = $challenge->getPhoneNumber();
-
-            if (null !== $phone && $this->fallBackIfDue($phone)) {
-                ++$texted;
-            }
+            $texted += $this->fallBack($challenge, failed: false) ? 1 : 0;
         }
+
+        $this->verificationChallengeRepository->forgetLapsedCodes();
 
         return $texted;
     }
@@ -141,15 +135,26 @@ final readonly class PhoneCodeDispatch
         return $this->verificationChallengeRepository->findNewestFor($phone)?->getRoute();
     }
 
-    /** @param callable(VerificationChallenge): bool $step under the challenge's row lock, so a poll and a report text once */
-    private function underLock(PhoneNumber $phone, callable $step): bool
+    /** Under the challenge's row lock, so a poll, a report and the backstop text it once between them. */
+    private function fallBack(VerificationChallenge $challenge, bool $failed): bool
     {
-        $challenge = $this->verificationChallengeRepository->findNewestFor($phone);
+        $phone = $challenge->getPhoneNumber();
+        $silentSince = new DateTimeImmutable('-' . self::FALLBACK_SECONDS . ' seconds');
 
-        if (null === $challenge) {
-            return false;
-        }
+        return null !== $phone && $this->underLock($challenge, function (VerificationChallenge $locked) use ($phone, $failed, $silentSince): bool {
+            if (!$locked->fallbackDue($failed, $silentSince)) {
+                return false;
+            }
 
+            $this->text($phone, $locked, $this->openCode($locked), PhoneCodeRoute::SmsFallback);
+
+            return true;
+        });
+    }
+
+    /** @param callable(VerificationChallenge): bool $step */
+    private function underLock(VerificationChallenge $challenge, callable $step): bool
+    {
         $connection = $this->entityManager->getConnection();
         $connection->beginTransaction();
 

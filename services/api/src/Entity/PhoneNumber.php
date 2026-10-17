@@ -47,7 +47,7 @@ class PhoneNumber implements VerifiableContact
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $isPending = false;
 
-    /** Chose "Text it to me instead": every later code for this number is texted too (sc-750). */
+    /** Chose "Text it to me instead": later codes are texted too, until the number is verified (sc-750). */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $codesByText = false;
 
@@ -87,9 +87,11 @@ class PhoneNumber implements VerifiableContact
         return $this->verifiedAt;
     }
 
+    /** Verified ends the attempt, and the choice of texts with it (sc-750: "for the rest of that attempt"). */
     public function setVerifiedAt(?DateTimeImmutable $verifiedAt): void
     {
         $this->verifiedAt = $verifiedAt;
+        $this->codesByText = null === $verifiedAt && $this->codesByText;
     }
 
     public function isPrimary(): bool

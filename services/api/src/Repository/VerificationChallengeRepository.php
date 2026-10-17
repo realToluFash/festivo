@@ -39,7 +39,7 @@ final class VerificationChallengeRepository extends ServiceEntityRepository
     {
         $this->getEntityManager()
             ->createQuery(Str\format(
-                'UPDATE App\Entity\VerificationChallenge c SET c.revokedAt = :now WHERE c.%s = :contact AND c.revokedAt IS NULL',
+                'UPDATE App\Entity\VerificationChallenge c SET c.revokedAt = :now, c.sealedCode = NULL WHERE c.%s = :contact AND c.revokedAt IS NULL',
                 self::field($contact),
             ))
             ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
@@ -56,6 +56,24 @@ final class VerificationChallengeRepository extends ServiceEntityRepository
             ->execute();
 
         $this->getEntityManager()->refresh($challenge);
+
+        if ($challenge->isExhausted() && null !== $challenge->getSealedCode()) {
+            $this->getEntityManager()
+                ->createQuery('UPDATE App\Entity\VerificationChallenge c SET c.sealedCode = NULL WHERE c.id = :id')
+                ->setParameter('id', $challenge->getId(), 'uuid')
+                ->execute();
+            $this->getEntityManager()->refresh($challenge);
+        }
+    }
+
+    /** @return int how many codes no longer live were still kept sealed, and now are not */
+    public function forgetLapsedCodes(): int
+    {
+        return Type\int()->coerce($this->getEntityManager()
+            ->createQuery('UPDATE App\Entity\VerificationChallenge c SET c.sealedCode = NULL WHERE c.sealedCode IS NOT NULL AND (c.expiresAt <= :now OR c.revokedAt IS NOT NULL OR c.attempts >= :maximum)')
+            ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
+            ->setParameter('maximum', VerificationChallenge::MAXIMUM_ATTEMPTS)
+            ->execute());
     }
 
     private static function field(VerifiableContact $contact): string

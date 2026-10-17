@@ -46,7 +46,8 @@ export interface CodeOpening {
 }
 
 /** How a phone's code went (sc-750); null for a code from before there was a choice, which was texted. */
-export type PhoneCodeRoute = 'whatsapp' | 'sms_fallback' | 'sms_chosen' | 'sms_only';
+export type PhoneCodeRoute =
+  'whatsapp' | 'sms_fallback' | 'sms_chosen' | 'sms_preferred' | 'sms_only';
 
 export interface PhoneCodeOpening extends CodeOpening {
   route: PhoneCodeRoute | null;
@@ -527,6 +528,7 @@ export class ApiClient {
         route === 'whatsapp' ||
         route === 'sms_fallback' ||
         route === 'sms_chosen' ||
+        route === 'sms_preferred' ||
         route === 'sms_only'
           ? route
           : null,

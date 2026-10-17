@@ -62,9 +62,13 @@ class VerificationChallenge
     #[ORM\Column(type: Types::STRING, length: 128, nullable: true)]
     private ?string $whatsAppMessageId = null;
 
-    /** The code itself, sealed, only while WhatsApp may still need SMS to take over with the same one. */
+    /** The code itself, sealed, while it is live on WhatsApp alone: a text may follow, or be asked for. */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $sealedCode = null;
+
+    /** Meta said it reached the WhatsApp account, which stops the fallback but not the person asking for a text. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $whatsAppDelivered = false;
 
     public function __construct(
         EmailAddress|PhoneNumber $subject,
@@ -124,9 +128,16 @@ class VerificationChallenge
         return $this->revokedAt;
     }
 
+    /** Used or replaced: the code can no longer be texted, so it is no longer kept. */
     public function setRevokedAt(?DateTimeImmutable $revokedAt): void
     {
         $this->revokedAt = $revokedAt;
+        $this->sealedCode = null === $revokedAt ? $this->sealedCode : null;
+    }
+
+    public function isLive(): bool
+    {
+        return null === $this->revokedAt && !$this->isExpired() && !$this->isExhausted();
     }
 
     public function isExhausted(): bool
@@ -168,15 +179,20 @@ class VerificationChallenge
         $this->sealedCode = null;
     }
 
-    /** Delivered on WhatsApp: no text will follow, so the code is no longer kept. */
     public function deliveredByWhatsApp(): void
     {
-        $this->sealedCode = null;
+        $this->whatsAppDelivered = true;
     }
 
-    /** On WhatsApp and not yet known to have arrived, so a text may still take over. */
-    public function awaitsWhatsApp(): bool
+    /** "Text it to me instead" works for the whole life of a code that is on WhatsApp alone. */
+    public function mayBeTexted(): bool
     {
-        return PhoneCodeRoute::WhatsApp === $this->route && null !== $this->sealedCode;
+        return PhoneCodeRoute::WhatsApp === $this->route && null !== $this->sealedCode && $this->isLive();
+    }
+
+    /** The fallback, by contrast, stops once Meta says it arrived. */
+    public function fallbackDue(bool $failed, DateTimeImmutable $silentSince): bool
+    {
+        return $this->mayBeTexted() && !$this->whatsAppDelivered && ($failed || $this->getCreatedAt() <= $silentSince);
     }
 }

@@ -1,4 +1,5 @@
-export type CodeRoute = 'whatsapp' | 'sms_fallback' | 'sms_chosen' | 'sms_only' | null;
+export type CodeRoute =
+  'whatsapp' | 'sms_fallback' | 'sms_chosen' | 'sms_preferred' | 'sms_only' | null;
 
 export interface CodeWording {
   /** The one line saying where the code went, which changes in place as the route does. */

@@ -24,8 +24,9 @@ describe('where the phone code went', () => {
     expect(codeWording('sms_chosen')).toMatchObject({ line: 'chosen', offerText: false });
   });
 
-  it('reads as it always has for a texted code, or one from before WhatsApp', () => {
+  it('reads as it always has for a texted code, a later one after the choice, or one from before WhatsApp', () => {
     expect(codeWording('sms_only').line).toBe('texted');
+    expect(codeWording('sms_preferred').line).toBe('texted');
     expect(codeWording(null).line).toBe('texted');
   });
 });
