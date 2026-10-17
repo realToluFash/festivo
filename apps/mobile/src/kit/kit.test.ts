@@ -33,6 +33,15 @@ describe('a field and its button rest above the keyboard', () => {
     expect(groupBottom + underHeader.margin).toBe(underHeader.keyboardTop);
   });
 
+  it('keeping the top of a group taller than the room below the scroll view top', () => {
+    const tall = { ...underHeader, height: 500 };
+    const offset = offsetAboveKeyboard(tall);
+    const groupTop = tall.scrollTop + tall.contentY - offset;
+
+    expect(offset).toBe(584);
+    expect(groupTop).toBe(tall.scrollTop + tall.margin);
+  });
+
   it('never past the top of the content', () => {
     expect(offsetAboveKeyboard({ ...underHeader, contentY: 0, height: 40 })).toBe(0);
   });

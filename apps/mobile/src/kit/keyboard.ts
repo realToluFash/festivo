@@ -34,7 +34,7 @@ export interface Lift {
   margin: number;
 }
 
-/** The scroll offset that rests a group's bottom `margin` above the keyboard. */
+/** The scroll offset that rests a group's bottom `margin` above the keyboard, its top never above the scroll view's. */
 export function offsetAboveKeyboard({
   contentY,
   height,
@@ -42,5 +42,7 @@ export function offsetAboveKeyboard({
   keyboardTop,
   margin,
 }: Lift): number {
-  return Math.max(0, contentY + height + margin - (keyboardTop - scrollTop));
+  const bottomAboveKeys = contentY + height + margin - (keyboardTop - scrollTop);
+
+  return Math.max(0, Math.min(bottomAboveKeys, contentY - margin));
 }
