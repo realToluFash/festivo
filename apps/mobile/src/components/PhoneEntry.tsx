@@ -15,6 +15,7 @@ export function PhoneEntry({
   error,
   disabled,
   ref,
+  pickerRef,
   onCountry,
   onNumber,
   onSubmit,
@@ -27,6 +28,7 @@ export function PhoneEntry({
   error: string | null | undefined;
   disabled: boolean;
   ref?: Ref<TextInput> | undefined;
+  pickerRef?: Ref<View> | undefined;
   onCountry: (code: string) => void;
   onNumber: (typed: string) => void;
   onSubmit: () => void;
@@ -44,6 +46,7 @@ export function PhoneEntry({
             onChange={onCountry}
             disabled={disabled}
             withCallingCode
+            pickerRef={pickerRef}
             testID={`${testID}.country`}
           />
         </View>

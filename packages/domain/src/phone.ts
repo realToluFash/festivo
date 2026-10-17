@@ -66,3 +66,21 @@ export function followCountry(phone: PhoneCountry, country: string): PhoneCountr
 export function pickPhoneCountry(code: string): PhoneCountry {
   return { code, picked: true };
 }
+
+/** The phone screens' code (sc-945): the current number's country, the account's Country, the device's region, else blank. */
+export function phoneScreenCountry(
+  numberCountry: string | null | undefined,
+  accountCountry: string | null | undefined,
+  deviceCountry: string | null | undefined,
+): string {
+  return (
+    [numberCountry, accountCountry, deviceCountry].find((code) => code != null && code !== '') ?? ''
+  );
+}
+
+/** Where focus goes when a number is refused: the code when none is chosen, else the number itself. */
+export function refusedPhoneField(problem: PhoneLengthProblem | null): 'country' | 'number' | null {
+  if (problem == null) return null;
+
+  return problem === 'noCountry' ? 'country' : 'number';
+}

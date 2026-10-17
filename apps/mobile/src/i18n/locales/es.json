@@ -153,7 +153,7 @@
     "changeNotice": "Su número actual sigue funcionando hasta que se verifique el nuevo.",
     "countryLabel": "Prefijo",
     "numberLabel": "Número de móvil",
-    "numberHelp": "El prefijo empieza en el país de su cuenta. Escriba el número como quiera.",
+    "numberHelp": "Elija el prefijo del país y escriba el número como prefiera.",
     "numberBlank": "Indique su número de móvil.",
     "tooShort": "Ese número parece demasiado corto para {{country}}. Revíselo e inténtelo de nuevo.",
     "tooLong": "Ese número parece demasiado largo para {{country}}. Revíselo e inténtelo de nuevo.",

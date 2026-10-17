@@ -5,7 +5,9 @@ import {
   followCountry,
   formatPhone,
   phoneLengthProblem,
+  phoneScreenCountry,
   pickPhoneCountry,
+  refusedPhoneField,
   startingPhoneCountry,
 } from './phone.ts';
 
@@ -65,5 +67,21 @@ describe('a number with no country', () => {
     expect(phoneLengthProblem('803 555 0142', '')).toBe('noCountry');
     expect(phoneLengthProblem('', '')).toBe('blank');
     expect(phoneLengthProblem('803 555 0142', 'NG')).toBeNull();
+  });
+});
+
+describe('the phone screens', () => {
+  it('start on the number’s country, then the account’s Country, then the device, else blank', () => {
+    expect(phoneScreenCountry('GB', 'GH', 'NG')).toBe('GB');
+    expect(phoneScreenCountry(null, 'GH', 'NG')).toBe('GH');
+    expect(phoneScreenCountry(undefined, null, 'NG')).toBe('NG');
+    expect(phoneScreenCountry(null, '', null)).toBe('');
+  });
+
+  it('focus the code when none is chosen, and the number otherwise', () => {
+    expect(refusedPhoneField('noCountry')).toBe('country');
+    expect(refusedPhoneField('blank')).toBe('number');
+    expect(refusedPhoneField('tooShort')).toBe('number');
+    expect(refusedPhoneField(null)).toBeNull();
   });
 });
