@@ -2,6 +2,7 @@
   "es": ["web:app.name", "web:orgGeneral.title", "mobile:app.name", "mobile:home.title"],
   "fr": [
     "mobile:app.name",
+    "mobile:devices.everywhereCode",
     "mobile:frame.organisation",
     "mobile:home.title",
     "mobile:settings.organisation",
@@ -9,6 +10,7 @@
     "mobile:twoFactor.code",
     "mobile:waysCard.code",
     "web:app.name",
+    "web:devices.everywhereCode",
     "web:nav.organisation",
     "web:orgGeneral.section",
     "web:twoFactor.code",
