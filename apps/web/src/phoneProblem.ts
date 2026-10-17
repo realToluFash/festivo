@@ -11,6 +11,7 @@ export function phoneProblemMessage(
 ): string | null {
   if (problem == null) return null;
   if (problem === 'blank') return t('verifyPhone.numberBlank');
+  if (problem === 'noCountry') return t('forms.countryBlank');
 
   const name =
     countryChoices(currentLocale()).find(({ code }) => code === country)?.name ?? country;

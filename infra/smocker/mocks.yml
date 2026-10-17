@@ -44,3 +44,22 @@
         "message": "The 'To' number is not a valid phone number.",
         "status": 400
       }
+
+# Stands in for Meta's WhatsApp Cloud API (sc-750): accepts the code template and answers with a
+# message id as Meta does. Delivery reports are Meta's webhook, which nothing sends in development,
+# so a code here falls back to SMS after 30 seconds unless the screen is closed first.
+- request:
+    method: POST
+    path:
+      matcher: ShouldMatch
+      value: '/whatsapp/v21\.0/.*/messages'
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/json]
+    body: >
+      {
+        "messaging_product": "whatsapp",
+        "contacts": [{ "input": "+2348035550142", "wa_id": "2348035550142" }],
+        "messages": [{ "id": "wamid.development", "message_status": "accepted" }]
+      }

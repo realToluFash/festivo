@@ -18,3 +18,4 @@ export * from './phone.ts';
 export * from './forms.ts';
 export * from './signInMethods.ts';
 export * from './timeZones.ts';
+export * from './phoneCodeRoute.ts';

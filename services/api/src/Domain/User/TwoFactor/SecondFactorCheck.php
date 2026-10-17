@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\User\TwoFactor;
 
+use App\Domain\User\Attempts\GuardedAttempt;
+use App\Domain\User\Attempts\WrongSecret;
 use App\Entity\TwoFactorFactor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
@@ -12,9 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Psl\Regex;
 use Psr\Clock\ClockInterface;
 use SensitiveParameter;
-use Symfony\Component\RateLimiter\LimiterInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
-use Throwable;
 
 /** One attempt budget per account, shared by sign-in, setup and turning off, so guessing cannot move between them. */
 final readonly class SecondFactorCheck
@@ -26,39 +26,44 @@ final readonly class SecondFactorCheck
         private RateLimiterFactoryInterface $twoFactorAccountLimiter,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private GuardedAttempt $guardedAttempt,
     ) {
     }
 
     public function passCode(TwoFactorFactor $factor, #[SensitiveParameter] string $code): void
     {
-        $this->guarded($factor, function () use ($factor, $code): void {
+        $this->guarded($factor, function () use ($factor, $code): ?WrongSecret {
             $secret = $this->secretBox->open($factor->getEncryptedSecret());
             $step = $this->authenticatorCodes->matchingStep($secret, $code, $this->clock->now()->getTimestamp());
             $last = $factor->getLastAcceptedStep();
 
             // A code already accepted, or one older than it, is a replay and reads as a wrong one.
             if (null === $step || (null !== $last && $step <= $last)) {
-                throw $this->spend($factor, ErrorCode::TwoFactorCodeInvalid, 'That code did not work.');
+                return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'That code did not work.'));
             }
 
             $factor->accepted($step);
+
+            return null;
         });
     }
 
     public function passRecoveryCode(TwoFactorFactor $factor, #[SensitiveParameter] string $typed): void
     {
-        $this->guarded($factor, function () use ($factor, $typed): void {
+        $this->guarded($factor, function () use ($factor, $typed): ?WrongSecret {
             $code = $this->recoveryCodes->find($factor->getUser(), $typed);
 
             if (null === $code) {
-                throw $this->spend($factor, ErrorCode::TwoFactorCodeInvalid, 'That code did not work.');
+                return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'That code did not work.'));
             }
 
             if ($code->isUsed()) {
-                throw $this->spend($factor, ErrorCode::RecoveryCodeUsed, 'That recovery code has already been used.');
+                return new WrongSecret(new ApiException(ErrorCode::RecoveryCodeUsed, 'That recovery code has already been used.'));
             }
 
             $code->markUsed($this->clock->now());
+
+            return null;
         });
     }
 
@@ -72,45 +77,15 @@ final readonly class SecondFactorCheck
             : $this->passRecoveryCode($factor, $trimmed);
     }
 
-    /** Locked from peek to charge, so parallel guesses queue instead of all passing the peek. */
+    /** @param callable(): ?WrongSecret $check the wrong code that spends the budget is refused as the pause itself */
     private function guarded(TwoFactorFactor $factor, callable $check): void
     {
-        $connection = $this->entityManager->getConnection();
-        $connection->beginTransaction();
-
-        try {
-            $this->entityManager->refresh($factor, LockMode::PESSIMISTIC_WRITE);
-            $this->refuseIfLocked($factor);
-            $check();
-            $this->entityManager->flush();
-            $connection->commit();
-        } catch (Throwable $e) {
-            $connection->rollBack();
-
-            throw $e;
-        }
-    }
-
-    private function refuseIfLocked(TwoFactorFactor $factor): void
-    {
-        $peek = $this->limiter($factor)->consume(0);
-
-        if ($peek->getRemainingTokens() <= 0) {
-            throw ApiException::tooManyAttempts('Too many wrong codes.', $peek->getRetryAfter());
-        }
-    }
-
-    private function spend(TwoFactorFactor $factor, ErrorCode $errorCode, string $refusal): ApiException
-    {
-        $limit = $this->limiter($factor)->consume();
-
-        return $limit->getRemainingTokens() <= 0
-            ? ApiException::tooManyAttempts('Too many wrong codes.', $limit->getRetryAfter())
-            : new ApiException($errorCode, $refusal);
-    }
-
-    private function limiter(TwoFactorFactor $factor): LimiterInterface
-    {
-        return $this->twoFactorAccountLimiter->create($factor->getUser()->getId()->toRfc4122());
+        $this->guardedAttempt->attempt(
+            fn () => $this->entityManager->refresh($factor, LockMode::PESSIMISTIC_WRITE),
+            fn (): array => [$this->twoFactorAccountLimiter->create($factor->getUser()->getId()->toRfc4122())],
+            $check,
+            'Too many wrong codes.',
+            lastWrongPauses: true,
+        );
     }
 }

@@ -59,3 +59,11 @@ describe('the phone code on "A few details"', () => {
     expect(startingPhoneCountry(null, null, 'GB').code).toBe('GB');
   });
 });
+
+describe('a number with no country', () => {
+  it('is refused once typed, and a blank number is still blank first', () => {
+    expect(phoneLengthProblem('803 555 0142', '')).toBe('noCountry');
+    expect(phoneLengthProblem('', '')).toBe('blank');
+    expect(phoneLengthProblem('803 555 0142', 'NG')).toBeNull();
+  });
+});

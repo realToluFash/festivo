@@ -16,11 +16,14 @@ export function AuthHeading({
   title,
   intro,
   introBeside = false,
+  introLive = false,
   done = false,
 }: {
   title: string;
   intro?: string | undefined;
   introBeside?: boolean;
+  /** The intro is a status that changes in place, announced politely (WCAG 2.2 SC 4.1.3). */
+  introLive?: boolean;
   done?: boolean;
 }) {
   const { kind } = useLayout();
@@ -41,7 +44,11 @@ export function AuthHeading({
           {title}
         </Text>
         {showIntro && (
-          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
+          <Text
+            size={tokens.typeBodyPhone.size}
+            style={styles.secondary}
+            accessibilityLiveRegion={introLive ? 'polite' : 'none'}
+          >
             {intro}
           </Text>
         )}

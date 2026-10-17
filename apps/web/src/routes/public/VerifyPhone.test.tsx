@@ -113,6 +113,57 @@ describe('check your messages', () => {
     expect(await screen.findByLabelText('Code from the text')).toBeDefined();
   });
 
+  it('says the code went to WhatsApp, and texts the same code when asked', async () => {
+    const sent = answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 60, codeState: 'live', route: 'whatsapp' }),
+      'POST /api/auth/verify/phone/text-instead': () => json({ route: 'sms_chosen' }),
+    });
+    at('/verify-phone');
+
+    expect(
+      await screen.findByText('We sent a code to your WhatsApp on +234 803 555 0142.'),
+    ).toBeDefined();
+    expect(screen.getByLabelText('Code from WhatsApp')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+    expect(screen.getByText('Enter the 6-digit code from WhatsApp.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Text it to me instead' }));
+
+    expect(
+      await screen.findByText(
+        'We texted the same code to +234 803 555 0142. The one on WhatsApp works too.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Text it to me instead' })).toBeNull();
+    expect(sent.filter((request) => request.method === 'POST').length).toBe(1);
+  });
+
+  it('changes the line in place when WhatsApp hands the code to SMS', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let route = 'whatsapp';
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () =>
+        json({ cooldownSeconds: 60, codeState: 'live', route }),
+    });
+    at('/verify-phone');
+
+    const line = await screen.findByText('We sent a code to your WhatsApp on +234 803 555 0142.');
+    expect(line.getAttribute('aria-live')).toBe('polite');
+
+    route = 'sms_fallback';
+    await vi.advanceTimersByTimeAsync(5000);
+
+    await waitFor(() =>
+      expect(line.textContent).toBe(
+        "WhatsApp didn't reach you, so we texted it to +234 803 555 0142.",
+      ),
+    );
+    vi.useRealTimers();
+  });
+
   it('checks the code is six digits before sending', async () => {
     const sent = answering({
       'GET /api/auth/me': () => json(account()),
@@ -246,6 +297,20 @@ describe('change your mobile number', () => {
     expect(screen.getByText(/keeps working until the new one is verified/)).toBeDefined();
     expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('NG');
     expect(screen.getByRole('button', { name: 'Keep my current number' })).toBeDefined();
+  });
+
+  it('starts with no code when the browser names no country, and refuses it blank', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-419']);
+    const sent = answering({ 'GET /api/auth/me': () => json(account([])) });
+    at('/phone');
+    await screen.findByLabelText('Mobile number');
+
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('');
+    fireEvent.change(screen.getByLabelText('Mobile number'), { target: { value: '803 555 0142' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Text a code to this number' }));
+
+    expect(screen.getByText('Choose a country.')).toBeDefined();
+    expect(sent.filter((request) => request.method === 'PUT')).toEqual([]);
   });
 
   it('checks the length for the chosen country before sending', async () => {

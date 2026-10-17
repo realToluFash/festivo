@@ -23,6 +23,7 @@ final readonly class OnboardingGate implements OnboardingGateInterface
         'auth_verify_phone',
         'auth_verify_phone_resend',
         'auth_verify_phone_resend_cooldown',
+        'auth_verify_phone_text_instead',
     ];
 
     public function __construct(

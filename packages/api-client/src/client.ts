@@ -45,6 +45,14 @@ export interface CodeOpening {
   codeState: CodeState;
 }
 
+/** How a phone's code went (sc-750); null for a code from before there was a choice, which was texted. */
+export type PhoneCodeRoute =
+  'whatsapp' | 'sms_fallback' | 'sms_chosen' | 'sms_preferred' | 'sms_only';
+
+export interface PhoneCodeOpening extends CodeOpening {
+  route: PhoneCodeRoute | null;
+}
+
 /** A password sign-up waiting on its emailed code; `registration` is its one-day handle. */
 export interface PendingRegistration {
   registration: string;
@@ -577,9 +585,26 @@ export class ApiClient {
     return phone;
   }
 
-  /** Reads the cooldown and the code's state without spending either, as the email's opening does. */
-  async phoneOpening(): Promise<CodeOpening> {
-    return openingFrom(await this.get<unknown>('/api/auth/verify/phone/resend'));
+  async phoneOpening(): Promise<PhoneCodeOpening> {
+    const answer = await this.get<{ route?: unknown }>('/api/auth/verify/phone/resend');
+    const route = answer?.route;
+
+    return {
+      ...openingFrom(answer),
+      route:
+        route === 'whatsapp' ||
+        route === 'sms_fallback' ||
+        route === 'sms_chosen' ||
+        route === 'sms_preferred' ||
+        route === 'sms_only'
+          ? route
+          : null,
+    };
+  }
+
+  /** "Text it to me instead": the same code once by SMS, and later codes for this number by text. */
+  async textPhoneCodeInstead(): Promise<void> {
+    await this.post<unknown>('/api/auth/verify/phone/text-instead');
   }
 
   async resendPhoneCode(): Promise<number> {
@@ -706,10 +731,7 @@ export class ApiClient {
 
     if (init.body !== undefined) headers['Content-Type'] = 'application/json';
 
-    const locale = this.options.locale?.();
-    if (locale != null && locale !== '') headers['Accept-Language'] = locale;
-    const timeZone = this.options.timeZone?.();
-    if (timeZone != null && timeZone !== '') headers['X-Timezone'] = timeZone;
+    Object.assign(headers, this.deviceHeaders());
 
     if (!init.anonymous && this.options.tokens != null) {
       const token = await this.options.tokens.access();
@@ -788,13 +810,28 @@ export class ApiClient {
     return this.options.refreshTokenIn ?? 'body';
   }
 
+  /** The device's language and zone, on every request: a token request creates or signs in the account. */
+  private deviceHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {};
+    const locale = this.options.locale?.();
+    if (locale != null && locale !== '') headers['Accept-Language'] = locale;
+    const timeZone = this.options.timeZone?.();
+    if (timeZone != null && timeZone !== '') headers['X-Timezone'] = timeZone;
+
+    return headers;
+  }
+
   /** `credentials: 'include'` only here: the cookie is scoped to /api/auth. */
   private sendTokenRequest(path: string, body: Record<string, string>): Promise<Response> {
     const doFetch = this.options.fetch ?? fetch;
 
     return doFetch(this.url(path), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        ...this.deviceHeaders(),
+      },
       body: JSON.stringify({ ...body, refreshTokenIn: this.delivery() }),
       credentials: this.delivery() === 'cookie' ? 'include' : 'omit',
     });

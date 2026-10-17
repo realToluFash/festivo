@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Attempts\GuardedAttempt;
 use App\Domain\User\Controller\SignInController;
 use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\SignInAttempts;
@@ -131,7 +132,7 @@ final class SignInTest extends ApiTestCase
         $open = self::serviceById('limiter.sign_in_ip', RateLimiterFactoryInterface::class);
 
         foreach ([[new RefusingRateLimiterFactory(), $open], [$open, new RefusingRateLimiterFactory()]] as [$a, $b]) {
-            $controller = new SignInController(self::service(SignInResponse::class), new SignInAttempts($authenticator, self::em(), $b, $a));
+            $controller = new SignInController(self::service(SignInResponse::class), new SignInAttempts($authenticator, self::em(), $b, $a, new GuardedAttempt(self::em())));
 
             try {
                 $controller->signIn(Request::create('/api/auth/login', 'POST', content: Json\encode([
@@ -162,7 +163,7 @@ final class SignInTest extends ApiTestCase
         ] as $windowEnd => $stated) {
             $controller = new SignInController(
                 self::service(SignInResponse::class),
-                new SignInAttempts($authenticator, self::em(), $open, new RefusingRateLimiterFactory(new DateTimeImmutable('2026-10-15 ' . $windowEnd))),
+                new SignInAttempts($authenticator, self::em(), $open, new RefusingRateLimiterFactory(new DateTimeImmutable('2026-10-15 ' . $windowEnd)), new GuardedAttempt(self::em())),
             );
 
             try {
@@ -221,7 +222,7 @@ final class SignInTest extends ApiTestCase
     public function theThirtyFirstWrongPasswordFromOneIpIsRefusedWhateverTheAddress(): void
     {
         $limit = static fn (string $id, int $count): RateLimiterFactory => new RateLimiterFactory(['id' => $id, 'policy' => 'fixed_window', 'limit' => $count, 'interval' => '15 minutes'], new InMemoryStorage());
-        $controller = new SignInController(self::service(SignInResponse::class), new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $limit('ip', 30), $limit('account', 5)));
+        $controller = new SignInController(self::service(SignInResponse::class), new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $limit('ip', 30), $limit('account', 5), new GuardedAttempt(self::em())));
 
         for ($i = 1; $i <= 30; ++$i) {
             self::assertSame(ErrorCode::InvalidCredentials, self::refusal($controller, 'walker' . $i . '@example.com', 'a wrong guess')->errorCode, 'attempt ' . $i);
@@ -259,7 +260,7 @@ final class SignInTest extends ApiTestCase
             new InMemoryStorage(),
         );
 
-        return new SignInController(self::service(SignInResponse::class), new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $factory('ip'), $factory('account')));
+        return new SignInController(self::service(SignInResponse::class), new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $factory('ip'), $factory('account'), new GuardedAttempt(self::em())));
     }
 
     private static function refusal(SignInController $controller, string $email, #[SensitiveParameter] string $password): ApiException

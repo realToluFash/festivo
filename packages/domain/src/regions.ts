@@ -292,6 +292,13 @@ export function deviceCountry(languages: readonly string[]): string | null {
   return null;
 }
 
+/** The phone's Region setting first (UTS #35 `rg`), then the languages' country, else none: never an assumed one. */
+export function deviceRegion(region: string | null, languages: readonly string[]): string | null {
+  const setting = region?.toUpperCase() ?? null;
+
+  return setting != null && COUNTRY_CODES.includes(setting) ? setting : deviceCountry(languages);
+}
+
 function safeLocale(tag: string): Intl.Locale | null {
   try {
     return new Intl.Locale(tag);

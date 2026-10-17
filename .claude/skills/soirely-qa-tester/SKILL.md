@@ -1,13 +1,27 @@
 ---
 name: soirely-qa-tester
-description: QA mode. Takes whatever is sitting in Shortcut's Ready For QA state, or a story you name, and tests it against its own acceptance criteria on the API, the web client and the app on simulators, hunts the edge cases the criteria imply, and reports back into Shortcut — a comment in the house format, screenshots attached, and the story moved to Passed QA or Failed QA. Use when asked to QA, verify or test a story end to end, to check whether anything is waiting for QA, or when invoked as /soirely-qa-tester.
+description: QA mode, for one of three testers — /soirely-qa-tester, /soirely-qa-tester qa2 or qa3, each with its own stack. Claims a story from Shortcut's Ready For QA state by moving it to In QA, or takes a story you name, and tests it against its own acceptance criteria on the API, the web client and the app on simulators, hunts the edge cases the criteria imply, and reports back into Shortcut — a comment in the house format, screenshots attached, and the story moved to Passed QA or Failed QA. Use when asked to QA, verify or test a story end to end, to check whether anything is waiting for QA, or when invoked as /soirely-qa-tester.
 user-invocable: true
+argument-hint: [qa2|qa3] [sc-id]
 ---
 
 # QA mode
 
 You are testing, not building. That single change of role is what this file is for, and
 almost everything below follows from it.
+
+**There are three testers, and you are one of them.** `$ARGUMENTS` says which:
+
+| Run                      | You are  | Tag and signature     | Worktree and stack                      | Ports (dev + N×10000) |
+| ------------------------ | -------- | --------------------- | --------------------------------------- | --------------------- |
+| `/soirely-qa-tester`     | tester 1 | `[qa]`, `(from qa)`   | `~/Projects/soirely-qa`, `soirely-qa`   | API 18080, web 15173  |
+| `/soirely-qa-tester qa2` | tester 2 | `[qa2]`, `(from qa2)` | `~/Projects/soirely-qa2`, `soirely-qa2` | API 28080, web 25173  |
+| `/soirely-qa-tester qa3` | tester 3 | `[qa3]`, `(from qa3)` | `~/Projects/soirely-qa3`, `soirely-qa3` | API 38080, web 35173  |
+
+Below, **N is your tester number**, and **`soirely-qa<n>` is your worktree and project**:
+`<n>` is empty for tester 1, and `2` or `3` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`.
+Examples show tester 1's ports; `node .qa/bin/qa-env.mjs status` prints yours. Never touch
+another tester's worktree, stack, simulators or browser.
 
 ## 1. The two things this mode must not do
 
@@ -32,18 +46,21 @@ Two more, narrower:
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.
 
-**Start with your inbox**: the `role-comments` routine, for comments tagged `[qa]` and
-replies to the ones you asked. Resolve those, then pick the work below.
+**Start with your inbox**: the `role-comments` routine, for comments tagged with your tag
+and replies to the ones you asked. Tester 1 also answers a bare `[qa]` that names no tester.
+Resolve those, then pick the work below. **Sign every comment and report as yourself**,
+`(from qa2)`, so a reply finds the tester who did the work.
 
 `/soirely-qa-tester sc-55` tests that story. With no argument, **the queue is the
 `Ready For QA` state** — the tech lead puts a story there once its pull request has passed
 review, and that is the handover:
 
-1. `stories-search` with `state: "Ready For QA"`. That is the queue.
-   - **One story waiting** — take it and say which one you took.
-   - **Several** — take the one that has been waiting longest (`updated` ascending), name
-     the rest in your first line, and offer to work through them. Do not silently test one
-     and leave the others looking untested.
+1. `stories-search` with `state: "Ready For QA"`. That is the queue, shared by all three
+   testers.
+   - **Pick by your number**, so three testers reaching the queue together pick different
+     stories. Sort it by `updated`, oldest first, and take story N if there are at least N.
+     Otherwise take the oldest. Name the rest in your first line.
+   - **Then claim it** (below) before reading anything else about it.
    - **None** — say so plainly and stop. "Nothing is waiting for QA" is a complete answer
      and takes one line; do not go looking for work to do instead.
 2. Failing that, `label: "needs qa"`, which predates the state and may still be on a story.
@@ -51,12 +68,27 @@ review, and that is the handover:
 4. Failing that, ask. Do not guess from the diff; a diff is where the work is, not where
    the specification is.
 
+**Claiming a story** is how the other two know to leave it alone:
+
+1. **Move it to `In QA`** (`stories-update`), straight away.
+2. **Post the claim**, a comment whose whole text is `QA claim: qa<n>`, with no tag, so it
+   wakes nobody.
+3. **Check you won.** Read the story's comments. If another tester's `QA claim:` was posted
+   after the story last entered `Ready For QA` (`stories-get-history`) and before yours,
+   the story is theirs. Post nothing more on it and pick again. Two claims a few seconds
+   apart are normal, and the earlier one wins.
+
+**A story stuck in `In QA`** has a winning claim more than three hours old and no report,
+which means its tester's run died. Any tester may take it over, with a new claim that names
+the old one: `QA claim: qa2, taking over from qa3's of 09:14`. A story named in the
+command (`/soirely-qa-tester qa2 sc-55`) is claimed the same way.
+
 **A `translation` ticket is tested on `main`**, not on a pull request: the linguist moves
 it to `Ready For QA` only once every pull request it depends on is merged.
-`just qa-env checkout main`, then test each string in its description, in each locale it
+`cd ~/Projects/soirely-qa<n> && node .qa/bin/qa-env.mjs checkout main`, then test each string in its description, in each locale it
 names, on phone and iPad. Each string is checked for its meaning, for truncation, and for
 plurals at 0, 1, 2 and a large number. A finding is tagged for its locale's linguist
-(`[fr] (from qa)`), with the screenshot, never `[dev]` unless a key or slot is broken.
+(`[fr] (from qa2)`), with the screenshot, never `[dev]` unless a key or slot is broken.
 
 **A story in `Ready For QA` is a claim, not a certainty.** It means somebody thinks the work
 is finished. Check that the pull request exists and that its checks are green before
@@ -121,36 +153,36 @@ pass on one stack is two people editing the same thing: their suite drops the da
 are reading, your offline test stops the API their suite is running in, and their branch
 switch changes the code halfway through your report. So QA lives apart:
 
-- **A worktree at `~/Projects/soirely-qa`**, on the _pushed_ head of the pull request, never
+- **A worktree at `~/Projects/soirely-qa<n>`**, on the _pushed_ head of the pull request, never
   on a branch the developer has checked out. What you test is what the PR contains, not
   somebody's unsaved edit.
-- **Compose project `soirely-qa`**: its own containers, volumes and database, every port
-  moved up by 10000, and `127.0.0.1` rather than `localhost`, so even the browser cookies
+- **Compose project `soirely-qa<n>`**: its own containers, volumes and database, every port
+  moved up by N×10000, and `127.0.0.1` rather than `localhost`, so even the browser cookies
   stay apart.
-- **Its own bundler (18081) and its own simulators**, `Soirely QA iPhone` and
-  `Soirely QA iPad`.
+- **Its own bundler (18081 for tester 1) and its own simulators**, `Soirely QA<n> iPhone` and
+  `Soirely QA<n> iPad`.
 
 **You are usually started in the developer's checkout, `~/Projects/soirely`. Work in the
-QA worktree anyway.** It is the main checkout's sibling, `../soirely-qa`. Your session's
+QA worktree anyway.** It is the main checkout's sibling, `../soirely-qa<n>`. Your session's
 directory does not move, so you point every action at the worktree:
 
-- **Every shell command starts with `cd ~/Projects/soirely-qa &&`.** That includes `git`,
+- **Every shell command starts with `cd ~/Projects/soirely-qa<n> &&`.** That includes `git`,
   `docker compose`, `just`, `node .qa/bin/…`, `maestro` and `curl` writing to `.qa/`. A bare
   `docker compose` in the main checkout reaches the developer's stack. A bare `git` reports
   the developer's branch, not what you are testing.
-- **Every file you read, write or screenshot is under `~/Projects/soirely-qa/`**, as an
+- **Every file you read, write or screenshot is under `~/Projects/soirely-qa<n>/`**, as an
   absolute path. Read the code, the docs and the Maestro flows there, because that is the
   commit under test. The main checkout may be on another branch entirely.
 - **Write nothing in `~/Projects/soirely`.** It is somebody else's working tree. That
   includes `.qa/` and new flows.
 
 Before anything else, check that the worktree exists:
-`test -f ~/Projects/soirely-qa/.qa/bin/qa-env.mjs`. If it doesn't, run `just qa-env setup`
+`test -f ~/Projects/soirely-qa<n>/.qa/bin/qa-env.mjs`. If it doesn't, run `just qa-env setup --tester <N>`
 **once** from the main checkout to create it. That is the one command you run there. Then
 carry on from the worktree.
 
 ```sh
-cd ~/Projects/soirely-qa
+cd ~/Projects/soirely-qa<n>
 node .qa/bin/qa-env.mjs checkout 36          # the PR under test: fetch, check out, rebuild, fresh database
 node .qa/bin/qa-env.mjs checkout sc-55       # or by story, when one remote branch names it
 node .qa/bin/qa-env.mjs status               # what is checked out, and whether it answers
@@ -175,8 +207,8 @@ API, and nobody else's.
 | Postgres | `just psql`              | confirming what a request actually wrote |
 
 **Name the environment and the commit in the report.**
-`cd ~/Projects/soirely-qa && git rev-parse --short HEAD`, and the PR it came from. A report that does not say what it tested cannot be re-run. The
-environment is `QA stack (~/Projects/soirely-qa)`.
+`cd ~/Projects/soirely-qa<n> && git rev-parse --short HEAD`, and the PR it came from. A report that does not say what it tested cannot be re-run. The
+environment is `QA stack (~/Projects/soirely-qa<n>)`.
 
 **Accounts come from the script, never by hand and never a developer's own.** Addresses are
 `@soirely.test`, which can never be delivered to, and timestamped so two passes never
@@ -205,14 +237,18 @@ Read the **status, the headers and the body**, and check each against the contra
 
 Prefer the **Playwright MCP**, which drives a real browser and gives you the accessibility
 tree rather than a screenshot to squint at. If its tools are not in this session, it is one
-command and a restart. Either way, the address is `http://127.0.0.1:15173` — `localhost:5173`
-is the developer's.
+command and a restart. Either way, the address is your own web client (`15173` for tester
+
+1. — `localhost:5173` is the developer's.
+
+**It must run `--isolated`**, so each session has its own browser in memory. Without it the
+three testers share one browser profile: the second cannot start it, and if it could, they
+would sign each other out.
 
 ```sh
-claude mcp add playwright -- npx @playwright/mcp@latest --viewport-size 1440,900
-# or, to attach to a browser you can watch, already on the QA web client:
+claude mcp add --scope user playwright -- npx @playwright/mcp@latest --isolated --viewport-size 1440,900
+# or, to attach to a browser you can watch, already on your web client (port 9221 + N):
 node .qa/bin/qa-env.mjs chrome
-claude mcp add playwright -- npx @playwright/mcp@latest --cdp-endpoint http://localhost:9222
 ```
 
 Drive it the way a person does — click the control, read the page — and **find elements by
@@ -239,7 +275,7 @@ node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the t
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
 developer's bundler and whichever simulator happens to be booted.
 
-Flows live in `~/Projects/soirely-qa/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
+Flows live in `~/Projects/soirely-qa<n>/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
 and Mailpit as `${MAILPIT_URL}` (the harness passes both), and **target `testID`** rather than
 prose — a flow that taps `"Sign in"` taps whichever one it finds first and breaks in
 Spanish. A story that needs a new flow gets one committed beside the others; that is the
@@ -271,7 +307,7 @@ catch. No test caught that; no reading of the code caught it; a screenshot caugh
 
 ### Screenshots
 
-Into `~/Projects/soirely-qa/.qa/`, which is gitignored. `xcrun simctl io "Soirely QA iPhone" screenshot .qa/<name>.png`
+Into `~/Projects/soirely-qa<n>/.qa/`, which is gitignored. `xcrun simctl io "Soirely QA<n> iPhone" screenshot .qa/<name>.png`
 for a simulator — never `booted`, which is whichever simulator answers first, the driver's own screenshot for a browser.
 
 - **Every failure, always.** A failure with no picture is an opinion.
@@ -302,13 +338,13 @@ The house format, which is the one everybody here reads. Exactly these sections,
 order, and **nothing else**:
 
 ```markdown
-Tested on the QA stack (`~/Projects/soirely-qa`), PR #36 (`feature/sc-55/…`) at `1a8b4cc`.
+Tested on the QA stack (`~/Projects/soirely-qa<n>`), PR #36 (`feature/sc-55/…`) at `1a8b4cc`.
 
 Test URLs:
 
 http://127.0.0.1:15173/sign-in
 http://127.0.0.1:18080/api/auth/login
-app: Expo Go on Soirely QA iPhone and Soirely QA iPad
+app: Expo Go on Soirely QA<n> iPhone and Soirely QA<n> iPad
 
 Test description:
 
@@ -356,8 +392,8 @@ In this order, because a comment that names a screenshot nobody uploaded is a de
    has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a missing state on
    an artboard, `[dev]` for a question about the build. See `role-comments`.
 4. **Move the story** — `stories-update` with the `workflow_state_id` of **Passed QA** or
-   **Failed QA**. A story tested out of `Ready For QA` always leaves it, whichever way the
-   pass went; leaving it there means the next run picks it up again.
+   **Failed QA**. A story you claimed always leaves `In QA`, whichever way the pass went.
+   Leaving it there means the other testers treat it as taken until the claim goes stale.
 
 The Standard workflow (`500000005`) today:
 
@@ -366,6 +402,7 @@ The Standard workflow (`500000005`) today:
 | In Progress      | `500000008` | the branch, when work starts                 |
 | In Review        | `500000009` | the developer, when the PR is open and green |
 | **Ready For QA** | `500000087` | **the tech lead, when review passes**        |
+| **In QA**        | `500000194` | **you, when you claim it**                   |
 | **Passsed QA**   | `500000084` | **you** (three s's — Shortcut's spelling)    |
 | **Failed QA**    | `500000083` | **you**                                      |
 | Done             | `500000010` | the user, after a merge. Never you.          |
@@ -403,8 +440,8 @@ anything.
 - [ ] One non-English locale was looked at.
 - [ ] The environment and the commit are named at the top.
 - [ ] The story was moved, or you said why it could not be.
-- [ ] You worked in `~/Projects/soirely-qa`, against the QA stack, and the report says so.
-- [ ] You changed no source file. `cd ~/Projects/soirely-qa && git status` is clean apart
+- [ ] You worked in `~/Projects/soirely-qa<n>`, against the QA stack, and the report says so.
+- [ ] You changed no source file. `cd ~/Projects/soirely-qa<n> && git status` is clean apart
       from `.qa/` and any new Maestro flow, and nothing of yours is in `~/Projects/soirely`.
 
 Then tell the user, in two or three lines: pass or fail, the count, the one thing most

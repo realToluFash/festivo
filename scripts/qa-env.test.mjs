@@ -8,7 +8,10 @@ import {
   parseTarget,
   QA_OVERRIDES,
   QA_PORTS,
+  qaConfig,
   renderQaEnv,
+  TESTERS,
+  testerOf,
 } from './qa-env.mjs';
 
 // A port left at its development default is two stacks fighting over it, and a
@@ -107,5 +110,52 @@ describe('the branch for a story', () => {
 
   it('is an error when none does', () => {
     expect(() => branchForStory('sc-99', remote)).toThrow(/no remote branch/);
+  });
+});
+
+// Three testers run at once. A port two stacks share is one tester's stack failing to
+// start, and a shared project name is one tester's reset dropping another's database.
+describe('the three QA testers', () => {
+  const configs = TESTERS.map((tester) => qaConfig(tester));
+
+  it('are tester 1 exactly as before', () => {
+    expect(configs[0].project).toBe('soirely-qa');
+    expect(configs[0].ports.API_PORT).toBe(18080);
+    expect(configs[0].simulators.phone.name).toBe('Soirely QA iPhone');
+  });
+
+  it('each have their own project, simulators and Chrome', () => {
+    for (const key of ['project', 'chromePort']) {
+      expect(new Set(configs.map((c) => c[key])).size, key).toBe(TESTERS.length);
+    }
+    const names = configs.flatMap((c) => Object.values(c.simulators).map((s) => s.name));
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('share no port with each other or with development', () => {
+    const example = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
+    const development = [...example.matchAll(/^[A-Z_]+_PORT=(\d+)/gm)].map(([, p]) => Number(p));
+    const all = [...development, ...configs.flatMap((c) => Object.values(c.ports))];
+    expect(new Set(all).size).toBe(all.length);
+    expect(Math.max(...all)).toBeLessThan(65536);
+  });
+
+  it('render a .env naming their own project', () => {
+    const rendered = renderQaEnv(
+      'COMPOSE_PROJECT_NAME=soirely\n',
+      configs[2].overrides,
+      configs[2].project,
+    );
+    expect(rendered).toMatch(/^COMPOSE_PROJECT_NAME=soirely-qa3$/m);
+  });
+
+  it('are known by their worktree', () => {
+    expect(testerOf('/Users/x/Projects/soirely-qa')).toBe(1);
+    expect(testerOf('/Users/x/Projects/soirely-qa3')).toBe(3);
+    expect(testerOf('/Users/x/Projects/soirely')).toBeNull();
+  });
+
+  it('stop at three', () => {
+    expect(() => qaConfig(4)).toThrow(/no QA tester 4/);
   });
 });

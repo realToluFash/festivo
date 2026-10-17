@@ -7,6 +7,7 @@ namespace App\Domain\User\Controller;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Domain\User\Phone\PrimaryPhoneSetter;
 use App\Domain\User\Verification\ContactVerifier;
+use App\Domain\User\Verification\PhoneCodeDispatch;
 use App\Domain\User\Verification\ResendCooldown;
 use App\Domain\User\Verification\VerificationCodeResender;
 use App\Domain\User\Verification\VerificationCodeSender;
@@ -14,6 +15,7 @@ use App\Entity\PhoneNumber;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
+use App\Enum\PhoneCodeRoute;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\CodeField;
 use App\Http\Exception\ApiException;
@@ -35,6 +37,7 @@ final readonly class PhoneController
         private ContactVerifier $contactVerifier,
         private VerificationCodeResender $verificationCodeResender,
         private VerificationCodeSender $verificationCodeSender,
+        private PhoneCodeDispatch $phoneCodeDispatch,
         private ResendCooldown $resendCooldown,
         private CodeField $codeField,
     ) {
@@ -79,16 +82,28 @@ final readonly class PhoneController
         return new JsonResponse(self::serialised($phone));
     }
 
-    /** Read when Verify phone opens, as the email's is (sc-826): the cooldown, and a spent code shown as spent. */
+    /** Read on every open and every poll, so it must never spend a try or send a code itself. */
     #[Route('/api/auth/verify/phone/resend', name: 'auth_verify_phone_resend_cooldown', methods: ['GET'])]
     public function cooldown(): JsonResponse
     {
         $phone = $this->phone();
+        // Polled while the code is on WhatsApp, so a silent WhatsApp hands over to SMS in about 30 seconds.
+        $this->phoneCodeDispatch->fallBackIfDue($phone);
 
         return new JsonResponse([
             'cooldownSeconds' => $this->resendCooldown->secondsLeftFor($phone),
             'codeState' => $this->contactVerifier->codeState($phone)->value,
+            'route' => $this->phoneCodeDispatch->routeOf($phone)?->value,
         ]);
+    }
+
+    /** "Text it to me instead": the same code by SMS once, and later codes for this number by text too. */
+    #[Route('/api/auth/verify/phone/text-instead', name: 'auth_verify_phone_text_instead', methods: ['POST'])]
+    public function textInstead(): JsonResponse
+    {
+        $this->phoneCodeDispatch->textInstead($this->phone());
+
+        return new JsonResponse(['route' => PhoneCodeRoute::SmsChosen->value]);
     }
 
     #[Route('/api/auth/verify/phone/resend', name: 'auth_verify_phone_resend', methods: ['POST'])]
@@ -111,7 +126,7 @@ final readonly class PhoneController
             );
         }
 
-        $this->verificationCodeSender->send($phone, $issued->code);
+        $this->verificationCodeSender->send($phone, $issued);
 
         return new JsonResponse(['cooldownSeconds' => VerificationChallenge::RESEND_COOLDOWN_SECONDS]);
     }

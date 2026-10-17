@@ -160,7 +160,15 @@
     "taken": "Ese número ya está vinculado a otra cuenta. Su número actual no cambia.",
     "send": "Enviar un código a este número",
     "sending": "Enviando el código…",
-    "keep": "Conservar mi número actual"
+    "keep": "Conservar mi número actual",
+    "introWhatsApp": "Le hemos enviado un código a su WhatsApp en el {{number}}.",
+    "introFallback": "WhatsApp no le llegó, así que se lo hemos enviado por SMS al {{number}}.",
+    "introChosen": "Le hemos enviado el mismo código por SMS al {{number}}. El de WhatsApp también sirve.",
+    "codeLabelWhatsApp": "Código de WhatsApp",
+    "codeBlankWhatsApp": "Introduzca el código de 6 dígitos de WhatsApp.",
+    "wrongWhatsApp": "Ese código no coincide. Revise el mensaje de WhatsApp más reciente de Soirely e inténtelo de nuevo.",
+    "textInstead": "Enviármelo por SMS",
+    "textInsteadFailed": "No se ha podido enviar el SMS. Inténtelo de nuevo en un momento."
   },
   "session": {
     "unreachableTitle": "No se puede conectar con Soirely",
@@ -192,7 +200,8 @@
   },
   "forms": {
     "emailBlank": "Introduzca su dirección de correo electrónico.",
-    "emailShape": "Eso no parece una dirección de correo. Compruebe que tiene una @ y un dominio."
+    "emailShape": "Eso no parece una dirección de correo. Compruebe que tiene una @ y un dominio.",
+    "countryBlank": "Elija un país."
   },
   "oauth": {
     "linked": "{{provider}} ya está vinculado a su cuenta. Puede iniciar sesión con cualquiera de los dos.",

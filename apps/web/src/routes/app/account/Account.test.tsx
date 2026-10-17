@@ -134,6 +134,7 @@ describe("the account's time zone", () => {
     expect(sent.find((s) => s.call === 'PUT /api/auth/timezone')?.body).toEqual({
       timezone: 'Europe/London',
     });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change' }));
   });
 
   it('sends nothing until a listed zone is picked', async () => {

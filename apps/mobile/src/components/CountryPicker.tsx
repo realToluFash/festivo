@@ -1,5 +1,5 @@
 import { callingCode, countryChoices } from '@soirely/domain';
-import { useMemo, useState } from 'react';
+import { type Ref, useMemo, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
@@ -18,6 +18,7 @@ export function CountryPicker({
   onChange,
   disabled = false,
   withCallingCode = false,
+  pickerRef,
   testID,
 }: {
   label: string;
@@ -26,6 +27,8 @@ export function CountryPicker({
   disabled?: boolean;
   /** For a phone: "+234 Nigeria", and only countries that can be dialled. */
   withCallingCode?: boolean;
+  /** For moving screen-reader focus here when it is the field refused first. */
+  pickerRef?: Ref<View> | undefined;
   testID: string;
 }) {
   const { t } = useTranslation();
@@ -44,6 +47,8 @@ export function CountryPicker({
   const [search, setSearch] = useState('');
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
+  // Nothing named a country: the field shows its label, as an empty input shows its placeholder.
+  const blank = chosen === '';
   const needle = search.trim().toLocaleLowerCase(locale);
   const shown =
     needle === ''
@@ -53,15 +58,16 @@ export function CountryPicker({
   return (
     <>
       <Pressable
+        ref={pickerRef}
         style={styles.field}
         onPress={() => setOpen(true)}
         disabled={disabled}
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${chosen}`}
+        accessibilityLabel={blank ? label : `${label}: ${chosen}`}
         testID={testID}
       >
-        <Text size={CONTROL_TEXT_SIZE} style={styles.value}>
-          {chosen}
+        <Text size={CONTROL_TEXT_SIZE} style={blank ? styles.placeholder : styles.value}>
+          {blank ? label : chosen}
         </Text>
         <Chevron />
       </Pressable>
@@ -156,6 +162,7 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorCard,
   },
   value: { flex: 1, color: tokens.colorInk },
+  placeholder: { flex: 1, color: tokens.colorInkTertiary },
   page: { backgroundColor: tokens.colorPage },
   sheet: { flex: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
   sheetHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

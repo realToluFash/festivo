@@ -21,9 +21,12 @@ export function CodeForm({
   onVerify,
   onResend,
   inputRef,
+  codeLabel,
   children,
 }: {
   copy: 'verifyEmail' | 'verifyPhone';
+  /** In place of the copy's own, as a phone code from WhatsApp is labelled. */
+  codeLabel?: string | undefined;
   status: CodeStatus;
   cooldown: number;
   error: string | null;
@@ -73,7 +76,7 @@ export function CodeForm({
 
       {asksForCode(status) && (
         <>
-          <Field label={t(`${copy}.codeLabel`)} error={error}>
+          <Field label={codeLabel ?? t(`${copy}.codeLabel`)} error={error}>
             <CodeField
               ref={inputRef}
               wrong={error != null}
@@ -85,7 +88,7 @@ export function CodeForm({
               }}
               onBlur={() => onLeft(typed.current)}
               onSubmitEditing={() => onVerify(typed.current)}
-              accessibilityLabel={t(`${copy}.codeLabel`)}
+              accessibilityLabel={codeLabel ?? t(`${copy}.codeLabel`)}
               testID={`${copy}.code`}
             />
           </Field>

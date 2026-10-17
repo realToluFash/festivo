@@ -63,7 +63,7 @@ export function ChangePhone() {
       )}
 
       <NumberForm
-        initialCountry={current?.countryCode ?? deviceCountry(navigator.languages) ?? 'NG'}
+        initialCountry={current?.countryCode ?? deviceCountry(navigator.languages) ?? ''}
         onTexted={() => navigate(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')}
       />
 

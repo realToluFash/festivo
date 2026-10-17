@@ -161,3 +161,19 @@ describe('a queue', () => {
     expect(brief('pt', ['inbox 900#1'], '/x/role-tick.mjs')).toContain('`/soirely-linguist pt`');
   });
 });
+
+describe('the three QA testers', () => {
+  it('each get the comments addressed to them by number', () => {
+    const stories = [{ id: 7, comments: [{ id: 1, text: '[qa2] (from dev)\nFixed, re-test.' }] }];
+    expect(header('[qa3] (from qa2)\n…')).toEqual({ to: ['qa3'], from: 'qa2' });
+    expect(inboxFor('qa2', stories)).toEqual(['7#1']);
+    expect(inboxFor('qa', stories)).toEqual([]);
+  });
+
+  it('are woken by the same queue, each into its own run', () => {
+    expect(queueQuery('qa3', 'Ready For QA')).toBe('state:"Ready For QA"');
+    expect(brief('qa3', ['queue sc-1:Ready For QA'], '/x/role-tick.mjs')).toContain(
+      '`/soirely-qa-tester qa3`',
+    );
+  });
+});
