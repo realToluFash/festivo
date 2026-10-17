@@ -256,6 +256,9 @@ describe('signing in, for real', () => {
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/do not match/));
     expect(screen.getByRole('alert').textContent).not.toMatch(/address|account/i);
+    expect(screen.getByRole('link', { name: 'Reset your password' }).getAttribute('href')).toBe(
+      '/forgot-password',
+    );
   });
 
   it('says when to try again after too many tries, from the header', async () => {
