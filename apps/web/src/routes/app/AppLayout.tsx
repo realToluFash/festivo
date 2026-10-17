@@ -16,6 +16,7 @@ import {
   useSessionState,
 } from '../../session.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
+import { heldRegistration } from '../../pendingRegistration.ts';
 
 /**
  * The signed-in shell, built for a desk.
@@ -37,6 +38,9 @@ export function AppLayout() {
   }, []);
 
   if (state.status === 'signedOut') {
+    // A sign-up waiting on its code has no session yet: it goes back to its code, not to sign-in.
+    if (heldRegistration() != null) return <Navigate to="/verify-email" replace />;
+
     return <Navigate to={state.ended ? '/sign-in?signed-out' : '/sign-in'} replace />;
   }
 

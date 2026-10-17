@@ -207,9 +207,9 @@ export default function VerifyEmail() {
         >
           <Footnote
             question={t('verifyEmail.wrongAddress')}
-            action={t('verifyEmail.signOut')}
+            action={pending != null ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
             onPress={() => void wrongAddress()}
-            after={t('verifyEmail.wrongAddressBody')}
+            {...(pending != null ? {} : { after: t('verifyEmail.wrongAddressBody') })}
             testID="verifyEmail.signOut"
           />
         </CodeForm>

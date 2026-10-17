@@ -110,6 +110,7 @@
     "exhaustedBody": "Esse código já não funciona. Envie um novo para continuar.",
     "wrongAddress": "Não é o seu endereço?",
     "wrongAddressBody": "e criar novamente a sua conta com o endereço correto.",
+    "registerAgain": "Registe-se novamente com o endereço correto",
     "signOut": "Encerrar sessão",
     "doneTitle": "E-mail verificado",
     "doneBody": "{{address}} está confirmado. A seguir, alguns dados para que a sua equipa saiba quem é quem.",

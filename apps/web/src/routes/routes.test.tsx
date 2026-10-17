@@ -97,6 +97,51 @@ describe('the application tree', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it('sends a sign-up still waiting on its code back to the code, not to sign in', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    sessionStorage.setItem(
+      'soirely.registration',
+      JSON.stringify({ registration: 'the-handle', email: 'ada@example.com' }),
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ cooldownSeconds: 0, codeState: 'live' }), {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+
+    at('/app');
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined(),
+    );
+    sessionStorage.clear();
+  });
+
+  it('clears a sign-up that has run out, and opens on sign in', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    sessionStorage.setItem(
+      'soirely.registration',
+      JSON.stringify({ registration: 'spent', email: 'ada@example.com' }),
+    );
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          type: 'https://soirely.com/errors/registration_expired',
+          title: 'Gone',
+          status: 410,
+        }),
+        { status: 410, headers: { 'Content-Type': 'application/problem+json' } },
+      ),
+    );
+
+    at('/app');
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeDefined(),
+    );
+    expect(sessionStorage.getItem('soirely.registration')).toBeNull();
+  });
+
   it('says they were signed out when a session was lost on the way', async () => {
     __setSessionState({ status: 'signedOut', ended: true });
 

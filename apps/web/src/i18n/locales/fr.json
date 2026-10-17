@@ -163,6 +163,7 @@
     "exhaustedBody": "Ce code ne fonctionne plus. Envoyez-en un nouveau pour continuer.",
     "wrongAddress": "Ce n'est pas votre adresse ?",
     "wrongAddressBody": "et recréer votre compte avec la bonne adresse.",
+    "registerAgain": "Inscrivez-vous à nouveau avec la bonne adresse",
     "signOut": "Se déconnecter",
     "doneTitle": "Adresse vérifiée",
     "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
