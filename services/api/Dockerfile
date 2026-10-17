@@ -44,16 +44,18 @@ RUN mkdir -p /app/var /data/caddy /config/caddy \
     && chown -R 1000:1000 /app/var /data /config
 USER 1000:1000
 
+# --- autoloader -------------------------------------------------------------
+# The vendor stage installs without an autoloader, so it is written here, where
+# the classes it maps have arrived, and only the result reaches prod.
+FROM vendor AS autoload
+COPY . .
+RUN composer dump-autoload --no-dev --classmap-authoritative --no-interaction
+
 # --- production -------------------------------------------------------------
 FROM base AS prod
 ENV APP_ENV=prod
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-COPY --from=vendor /app/vendor ./vendor
-COPY . .
-# The vendor stage installs without an autoloader, so it is written here, where
-# the classes it maps have arrived.
-RUN composer dump-autoload --no-dev --classmap-authoritative --no-interaction
-RUN php bin/console cache:warmup --no-interaction || true
+COPY --from=autoload /app /app
+RUN php bin/console cache:warmup --no-interaction
 # The daily prunes in config/crontab: run a second container from this image
 # with `supercronic /app/config/crontab` as its command.
 ARG TARGETARCH
