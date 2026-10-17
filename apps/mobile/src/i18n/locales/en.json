@@ -398,6 +398,8 @@
     "lastRefused": "Set a password or link another account before removing this one.",
     "providerFailed": "{{provider}} didn't finish, so nothing changed. Try again.",
     "providerRefused": "That {{provider}} account isn't the one linked here, or it was signed in too long ago. Try again.",
+    "proofExpired_one": "Your {{provider}} sign-in was more than a minute ago, so nothing has changed yet. Continue with {{provider}} again to carry on.",
+    "proofExpired_other": "Your {{provider}} sign-in was more than {{count}} minutes ago, so nothing has changed yet. Continue with {{provider}} again to carry on.",
     "failedTitle": "Nothing was changed",
     "failedBody": "That didn't go through. Check your connection and try again.",
     "proveTitle": "Confirm it's you",

@@ -16,7 +16,8 @@ describe("what /proof's refusal means to a card", () => {
       kind: 'field',
       field: 'password',
     });
-    expect(proofRefusal(refused('invalid_credentials'), false)).toEqual({ kind: 'failed' });
+    expect(proofRefusal(refused('invalid_credentials'), false)).toEqual({ kind: 'trip' });
+    expect(proofRefusal(refused('proof_required'), false)).toEqual({ kind: 'trip' });
   });
 
   it('puts a wrong or spent code on the code field', () => {

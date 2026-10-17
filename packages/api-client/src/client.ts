@@ -415,15 +415,20 @@ export class ApiClient {
     );
   }
 
-  /** The password or a linked provider, then `code` when two-factor is on: proof for the next five minutes. */
+  /** The password, a linked provider, or a refused code's `pendingProof`, then `code`: proof for five minutes. */
   async prove(
-    first: { password: string } | { provider: Provider; signIn: ProviderSignInAttempt },
+    first:
+      | { password: string }
+      | { provider: Provider; signIn: ProviderSignInAttempt }
+      | { pendingProof: string },
     code?: string,
   ): Promise<RecentProof> {
     const body = await this.post<{ proof?: unknown; expiresAt?: unknown }>('/api/auth/proof', {
       ...('password' in first
         ? { password: first.password }
-        : { provider: first.provider, providerSignIn: first.signIn }),
+        : 'pendingProof' in first
+          ? { pendingProof: first.pendingProof }
+          : { provider: first.provider, providerSignIn: first.signIn }),
       ...(code == null ? {} : { code }),
     });
 
@@ -451,11 +456,10 @@ export class ApiClient {
   async unlinkProvider(
     provider: Provider,
     proof: string,
-    sessionId: string | null,
   ): Promise<{ signedOut: number; thisDevice: boolean }> {
     const body = await this.post<{ signedOut?: unknown; thisDevice?: unknown }>(
       `/api/auth/providers/${provider}/unlink`,
-      { proof, sessionId },
+      { proof },
     );
 
     return {

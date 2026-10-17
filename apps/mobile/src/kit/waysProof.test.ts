@@ -2,13 +2,24 @@ import { ApiError } from '@soirely/api-client';
 import { type TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { codeBeforeTrip, provingRefusal, tripRefused } from './waysProof.ts';
+import {
+  codeBeforeTrip,
+  keptProof,
+  keptProofRanOut,
+  provingRefusal,
+  tripRefused,
+} from './waysProof.ts';
 
 const t = ((key: string, values?: Record<string, string>) =>
   values == null ? key : `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
 
-function refusal(code: string, status: number): ApiError {
-  const problem = { type: `https://soirely.com/errors/${code}`, title: 'No.', status };
+function refusal(code: string, status: number, pendingProof?: string): ApiError {
+  const problem = {
+    type: `https://soirely.com/errors/${code}`,
+    title: 'No.',
+    status,
+    ...(pendingProof == null ? {} : { pendingProof }),
+  };
 
   return new ApiError(problem, new Response(JSON.stringify(problem), { status }));
 }
@@ -40,5 +51,22 @@ describe('proving it is you, from Security', () => {
     expect(tripRefused(refusal('recovery_code_used', 422))).toBe(false);
     expect(tripRefused(new TypeError('offline'))).toBe(false);
     expect(tripRefused(refusal('invalid_credentials', 401))).toBe(true);
+    expect(tripRefused(refusal('proof_required', 403))).toBe(true);
+  });
+
+  it('retries a code with the kept proof, never the single-use sign-in', () => {
+    expect(keptProof(refusal('two_factor_code_invalid', 422, 'p-1'), null)).toBe('p-1');
+    expect(keptProof(refusal('two_factor_code_invalid', 422), 'p-1')).toBe('p-1');
+    expect(keptProof(new TypeError('offline'), 'p-1')).toBe('p-1');
+    expect(keptProof(refusal('proof_required', 403), 'p-1')).toBeNull();
+    expect(provingRefusal(refusal('proof_required', 403), t, 'Google', 'en').message).toBe(
+      'waysCard.providerRefused {"provider":"Google"}',
+    );
+  });
+
+  it('goes back to step one only when a kept proof ran out, not on any refusal', () => {
+    expect(keptProofRanOut(refusal('proof_required', 403), true)).toBe(true);
+    expect(keptProofRanOut(refusal('proof_required', 403), false)).toBe(false);
+    expect(keptProofRanOut(refusal('two_factor_code_invalid', 422, 'p-1'), true)).toBe(false);
   });
 });

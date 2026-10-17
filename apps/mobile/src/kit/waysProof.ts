@@ -9,9 +9,23 @@ export function codeBeforeTrip(via: ReturnType<typeof proveWith>, twoFactorOn: b
   return twoFactorOn && via === 'password';
 }
 
-/** A refusal of the trip itself (the wrong account, or a sign-in too old): only then is it made again. */
+/** A refusal of the trip itself (the wrong account, a sign-in too old, or a kept one lapsed): only then is it made again. */
 export function tripRefused(error: unknown): boolean {
-  return error instanceof ApiError && error.is('invalid_credentials');
+  return (
+    error instanceof ApiError && (error.is('invalid_credentials') || error.is('proof_required'))
+  );
+}
+
+/** What the next Continue sends first: the API's kept proof once it has one, as a provider's sign-in is single-use. */
+export function keptProof(error: unknown, kept: string | null): string | null {
+  if (tripRefused(error)) return null;
+
+  return error instanceof ApiError ? (error.problem.pendingProof ?? kept) : kept;
+}
+
+/** The five minutes from the provider's sign-in ran out at step two: back to step one, the change kept (sc-510). */
+export function keptProofRanOut(error: unknown, sentKept: boolean): boolean {
+  return sentKept && error instanceof ApiError && error.is('proof_required');
 }
 
 /** Where a refused proof is said: a provider's refusal is the trip's, never a password field the screen doesn't show. */
@@ -36,7 +50,7 @@ export function provingRefusal(
       field: refusal.field,
       message: refusal.field === 'password' ? t('waysCard.passwordWrong') : t('waysCard.codeWrong'),
     };
-  if (providerName != null && error instanceof ApiError && error.is('invalid_credentials'))
+  if (refusal.kind === 'trip')
     return { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
 
   return { field: 'failed', message: t('waysCard.failedBody') };

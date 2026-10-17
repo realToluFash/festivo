@@ -126,6 +126,10 @@ Two rules follow from it:
   id and then checking the event is backwards — a table id from another event will have
   been read before anybody asks whether it should have been.
 - An organisation-level check runs before any fast path that would skip it.
+- **The caller's own session is `CallerSession`, never an id in the body.** An answer
+  about "this device" reads the access token's `sid` claim; a client-named `sessionId`
+  can be stale, wrong or another device's. Found twice, in sign out everywhere else and in
+  unlinking a provider (`docs/architecture/sessions.md`).
 
 ## Entities and migrations
 

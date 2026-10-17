@@ -37,12 +37,18 @@ class SignInProof
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private DateTimeImmutable $expiresAt;
 
-    public function __construct(User $user, string $tokenHash, DateTimeImmutable $now)
+    /** The first factor passed and the two-factor code has not: it stands for nothing but another try at the code. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $awaitingCode;
+
+    /** @param DateTimeImmutable $provedAt when its first factor passed: a provider's sign-in, not the code after it */
+    public function __construct(User $user, string $tokenHash, DateTimeImmutable $provedAt, bool $awaitingCode = false)
     {
         $this->id = Uuid::v7();
         $this->user = $user;
         $this->tokenHash = $tokenHash;
-        $this->expiresAt = $now->modify('+' . self::MINUTES . ' minutes');
+        $this->expiresAt = $provedAt->modify('+' . self::MINUTES . ' minutes');
+        $this->awaitingCode = $awaitingCode;
     }
 
     public function getExpiresAt(): DateTimeImmutable
@@ -50,7 +56,22 @@ class SignInProof
         return $this->expiresAt;
     }
 
+    public function provedAt(): DateTimeImmutable
+    {
+        return $this->expiresAt->modify('-' . self::MINUTES . ' minutes');
+    }
+
     public function standsFor(User $user, DateTimeImmutable $now): bool
+    {
+        return !$this->awaitingCode && $this->heldBy($user, $now);
+    }
+
+    public function awaitsCodeFor(User $user, DateTimeImmutable $now): bool
+    {
+        return $this->awaitingCode && $this->heldBy($user, $now);
+    }
+
+    private function heldBy(User $user, DateTimeImmutable $now): bool
     {
         return $this->user->getId()->equals($user->getId()) && $now < $this->expiresAt;
     }

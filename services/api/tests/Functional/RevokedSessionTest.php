@@ -127,7 +127,7 @@ final class RevokedSessionTest extends ApiTestCase
         self::em()->flush();
         $laptop = $this->signIn('unlinked@example.com');
 
-        self::assertSame(1, self::service(TokenIssuer::class)->revokeSignedInWith($user, IdentityProvider::Google));
+        self::assertCount(1, self::service(TokenIssuer::class)->revokeSignedInWith($user, IdentityProvider::Google));
 
         self::assertSame(401, $this->me($google->accessToken));
         self::assertSame(200, $this->me($laptop['accessToken']));

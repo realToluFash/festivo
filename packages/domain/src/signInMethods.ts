@@ -45,6 +45,9 @@ export function proveWith(
   return linked[0]?.provider ?? null;
 }
 
+/** The API's SignInProof::MINUTES: how long a proof stands, counted from its first factor. */
+export const PROOF_MINUTES = 5;
+
 /** A proof stands until a few seconds before it lapses, so a slow request is not refused mid-way. */
 export function proofStands(expiresAt: string | null, now: Date = new Date()): boolean {
   if (expiresAt == null) return false;

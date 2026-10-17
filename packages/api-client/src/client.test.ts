@@ -1038,6 +1038,17 @@ describe('the ways an account signs in', () => {
     });
   });
 
+  test('a retried code sends the kept proof, not the spent sign-in', async () => {
+    const sent: { path: string; body: unknown }[] = [];
+
+    await client(json({ proof: 'p-2', expiresAt: '' }), sent).prove(
+      { pendingProof: 'pending-1' },
+      '123456',
+    );
+
+    expect(sent[0]?.body).toEqual({ pendingProof: 'pending-1', code: '123456' });
+  });
+
   test('links and unlinks with the proof, naming this session', async () => {
     const sent: { path: string; body: unknown }[] = [];
 
@@ -1048,7 +1059,6 @@ describe('the ways an account signs in', () => {
     const unlinked = await client(json({ signedOut: 2, thisDevice: true }), sent).unlinkProvider(
       'apple',
       'p-1',
-      's-1',
     );
 
     expect(linked).toEqual({ provider: 'apple', email: 'x7k2m9@privaterelay.appleid.com' });
@@ -1058,7 +1068,7 @@ describe('the ways an account signs in', () => {
         path: 'POST /api/auth/providers/apple',
         body: { proof: 'p-1', providerSignIn: { handle: 'h', codeVerifier: 'v', nonce: 'n' } },
       },
-      { path: 'POST /api/auth/providers/apple/unlink', body: { proof: 'p-1', sessionId: 's-1' } },
+      { path: 'POST /api/auth/providers/apple/unlink', body: { proof: 'p-1' } },
     ]);
   });
 });

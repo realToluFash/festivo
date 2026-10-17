@@ -5,7 +5,13 @@ import {
   ProviderCancelled,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import { proofStands, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
+import {
+  PROOF_MINUTES,
+  proofStands,
+  proveWith,
+  providerRows,
+  type ProviderRow,
+} from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -17,12 +23,13 @@ import { useFormChecks } from '../kit/formChecks.ts';
 import {
   type ProvingField,
   codeBeforeTrip,
+  keptProof,
+  keptProofRanOut,
   provingRefusal,
   tripRefused,
 } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { currentSessionId } from '../tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field } from './Field.tsx';
@@ -149,7 +156,7 @@ export function WaysCard({
     setStage({ kind: 'working' });
 
     try {
-      const { thisDevice } = await api.unlinkProvider(provider, proof, currentSessionId());
+      const { thisDevice } = await api.unlinkProvider(provider, proof);
 
       if (thisDevice) {
         onSignedOutHere();
@@ -411,6 +418,8 @@ function Proving({
   // With a provider, the code is asked for when it returns, never before the trip (a code lapses in 30 seconds).
   const [codeAsked, setCodeAsked] = useState(codeBeforeTrip(via, twoFactorOn));
   const returned = useRef<ProviderSignInAttempt | null>(null);
+  const kept = useRef<string | null>(null);
+  const [expired, setExpired] = useState(false);
   const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<{
     field: ProvingField | 'failed';
@@ -435,15 +444,19 @@ function Proving({
 
     setChecking(true);
     setRefusal(null);
+    setExpired(false);
+    const sentKept = kept.current != null;
 
     try {
-      if (via !== 'password' && via != null)
+      if (via !== 'password' && via != null && kept.current == null)
         returned.current ??= await confirmWithProvider(via, true);
 
       const first =
-        via === 'password' || via == null || returned.current == null
-          ? { password: password.current }
-          : { provider: via, signIn: returned.current };
+        kept.current != null
+          ? { pendingProof: kept.current }
+          : via === 'password' || via == null || returned.current == null
+            ? { password: password.current }
+            : { provider: via, signIn: returned.current };
       held = await api.prove(first, codeAsked ? code.current.trim() : undefined);
       onProved();
     } catch (error) {
@@ -456,7 +469,18 @@ function Proving({
         return;
       }
 
-      // Only a refused trip is made again: after a wrong code the next Continue re-sends the kept sign-in.
+      if (via !== 'password' && keptProofRanOut(error, sentKept)) {
+        kept.current = null;
+        returned.current = null;
+        code.current = '';
+        setCodeAsked(codeBeforeTrip(via, twoFactorOn));
+        setExpired(true);
+
+        return;
+      }
+
+      // Only a refused trip is made again: after a wrong code the next Continue sends the API's kept proof.
+      kept.current = via === 'password' ? null : keptProof(error, kept.current);
       if (via !== 'password' && tripRefused(error)) returned.current = null;
       setRefusal(
         provingRefusal(
@@ -483,6 +507,14 @@ function Proving({
           ? t('waysCard.proveLink', { provider: name })
           : t('waysCard.proveUnlink', { provider: name })}
       </Text>
+
+      {expired && via !== 'password' && via != null && (
+        <Notice
+          tone="attention"
+          mark="!"
+          body={t('waysCard.proofExpired', { provider: PROVIDER_NAMES[via], count: PROOF_MINUTES })}
+        />
+      )}
 
       {refusal?.field === 'failed' && (
         <Notice

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\CallerSession;
 use App\Domain\User\Provider\ProviderAssertion;
 use App\Domain\User\SignInMethods\ProviderLinking;
 use App\Domain\User\SignInMethods\RecentProof;
@@ -20,7 +21,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Uid\Uuid;
 
 /** Settings > Security, Ways to sign in: prove it is you, then link or unlink Google or Apple. */
 #[Authenticated]
@@ -32,10 +32,11 @@ final readonly class SignInMethodsController
         private ProviderLinking $providerLinking,
         private ProviderAssertion $providerAssertion,
         private CodeField $codeField,
+        private CallerSession $callerSession,
     ) {
     }
 
-    /** The password, or `provider` with its `providerSignIn`, then `code` when two-factor is on. */
+    /** The password, or `provider` with its `providerSignIn`, then `code` when two-factor is on; `pendingProof` retries a code. */
     #[Route('/api/auth/proof', name: 'auth_proof', methods: ['POST'])]
     public function prove(Request $request): JsonResponse
     {
@@ -44,6 +45,7 @@ final readonly class SignInMethodsController
             'provider' => Type\optional(Type\nullable(Type\backed_enum(IdentityProvider::class))),
             'providerSignIn' => Type\optional(ProviderAssertion::shape()),
             'code' => Type\optional(Type\mixed()),
+            'pendingProof' => Type\optional(Type\nullable(Type\string())),
         ]));
 
         $provider = $body['provider'] ?? null;
@@ -52,6 +54,7 @@ final readonly class SignInMethodsController
             $body['password'] ?? null,
             null === $provider ? null : [$provider, $this->providerAssertion->claims($provider, $body['providerSignIn'] ?? [])],
             $this->codeField->optional($body, 'code', CodeField::FROM_APP_OR_RECOVERY),
+            $body['pendingProof'] ?? null,
         );
 
         return new JsonResponse(['proof' => $proof, 'expiresAt' => $expiresAt->format(\DATE_ATOM)]);
@@ -81,16 +84,13 @@ final readonly class SignInMethodsController
     {
         $body = Input::body($request, Type\shape([
             'proof' => Type\optional(Type\nullable(Type\string())),
-            'sessionId' => Type\optional(Type\nullable(Type\string())),
         ]));
-
-        $session = $body['sessionId'] ?? null;
 
         return new JsonResponse($this->providerLinking->unlink(
             $this->user(),
             IdentityProvider::from($provider),
             $body['proof'] ?? null,
-            null !== $session && Uuid::isValid($session) ? Uuid::fromString($session) : null,
+            $this->callerSession->chain(),
             $request,
         ));
     }
