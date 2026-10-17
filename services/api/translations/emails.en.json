@@ -4,5 +4,17 @@
     "verification.body": "Enter this code in Soirely to show the address is yours.",
     "verification.expiry": "It works for {minutes} minutes, and only once.",
     "verification.ignore": "If you did not create a Soirely account, nothing happens if you ignore this.",
-    "verification.text": "Your Soirely code is {code}. It works for {minutes} minutes."
+    "verification.text": "Your Soirely code is {code}. It works for {minutes} minutes.",
+    "recovery.link.subject": "Set a new Soirely password",
+    "recovery.link.heading": "Set a new password",
+    "recovery.link.body": "Somebody asked to reset the password for this Soirely account. Open this link to set a new one:",
+    "recovery.link.expiry": "It works for {minutes} minutes, and only once.",
+    "recovery.link.ignore": "If you did not ask, ignore this email. Your password stays as it is.",
+    "recovery.provider.subject": "How you sign in to Soirely",
+    "recovery.provider.body": "Somebody asked to reset the password for this Soirely account, but it has no password: you sign in with {providers}. Use that button on the sign-in screen.",
+    "recovery.provider.ignore": "If you did not ask, you can ignore this email.",
+    "recovery.changed.subject": "Your Soirely password was changed",
+    "recovery.changed.body": "The password for this Soirely account was changed on {when}. Every other device has been signed out.",
+    "recovery.changed.notYou": "If this was not you, reset your password again straight away.",
+    "recovery.or": " or "
 }
