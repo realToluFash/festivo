@@ -7,10 +7,10 @@
     "subtitle": "La noche, desde su bolsillo.",
     "openSignIn": "Iniciar sesión",
     "openLayouts": "Demostración de diseños",
-    "signedIn": "You’re signed in",
-    "signedInTo": "You’re signed in to {{name}}",
-    "openSettings": "Open Settings",
-    "switchOrganisation": "Switch organisation"
+    "signedIn": "Ha iniciado sesión",
+    "signedInTo": "Ha iniciado sesión en {{name}}",
+    "openSettings": "Abrir Configuración",
+    "switchOrganisation": "Cambiar de organización"
   },
   "status": {
     "title": "Estado del servicio",
@@ -604,37 +604,37 @@
     "retry": "Inténtelo de nuevo"
   },
   "frame": {
-    "home": "Home",
-    "settings": "Settings",
-    "organisation": "Organisation"
+    "home": "Inicio",
+    "settings": "Configuración",
+    "organisation": "Organización"
   },
   "settings": {
-    "title": "Settings",
-    "sections": "Settings sections",
-    "yourAccount": "Your account",
-    "account": "Account",
-    "accountLine": "Your name, email addresses and phone numbers",
-    "security": "Security",
-    "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
-    "signedInAs": "Signed in as {{email}}",
-    "signOut": "Sign out",
-    "choose": "Choose a section",
-    "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices."
+    "title": "Configuración",
+    "sections": "Secciones de Configuración",
+    "yourAccount": "Su cuenta",
+    "account": "Cuenta",
+    "accountLine": "Su nombre, direcciones de correo electrónico y números de teléfono",
+    "security": "Seguridad",
+    "securityLine": "Contraseña, formas de iniciar sesión, verificación en dos pasos y dispositivos con sesión abierta",
+    "signedInAs": "Sesión iniciada como {{email}}",
+    "signOut": "Cerrar sesión",
+    "choose": "Elija una sección",
+    "chooseLine": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta."
   },
   "switcher": {
-    "yourRole": "Your role · {{role}}",
-    "heading": "Your organisations",
-    "current": "Current",
-    "remembered": "Soirely remembers your choice on this device.",
-    "label": "Organisation: {{name}}, your role {{role}}",
-    "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
-    "close": "Close"
+    "yourRole": "Su función · {{role}}",
+    "heading": "Sus organizaciones",
+    "current": "Actual",
+    "remembered": "Soirely recuerda su elección en este dispositivo.",
+    "label": "Organización: {{name}}, su función {{role}}",
+    "labelSwitch": "Organización: {{name}}, su función {{role}}. Cambiar de organización",
+    "close": "Cerrar"
   },
   "roles": {
-    "owner": "Owner",
-    "administrator": "Administrator",
-    "event_manager": "Event manager",
-    "coordinator": "Coordinator",
-    "read_only": "Read-only"
+    "owner": "Propietario",
+    "administrator": "Administrador",
+    "event_manager": "Gestor de eventos",
+    "coordinator": "Coordinador",
+    "read_only": "Solo lectura"
   }
 }
