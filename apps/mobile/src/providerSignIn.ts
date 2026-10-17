@@ -1,6 +1,7 @@
 import {
   type Provider,
   type SignInOutcome,
+  type SignedIn,
   ProviderCancelled,
   ProviderFailed,
   appleAppLinkOutcome,
@@ -25,6 +26,7 @@ import { config } from './config.ts';
 export const PROVIDER_NAMES: Record<Provider, string> = { google: 'Google', apple: 'Apple' };
 
 let linkedJustNow: string | null = null;
+let linkingOnCode: string | null = null;
 
 function random(): string {
   return base64Url(getRandomBytes(32));
@@ -37,7 +39,9 @@ async function sha256(value: string): Promise<Uint8Array> {
 }
 
 function remember(provider: Provider, outcome: SignInOutcome): SignInOutcome {
-  linkedJustNow = outcome.linked ? PROVIDER_NAMES[provider] : null;
+  const challenged = 'challenge' in outcome;
+  linkingOnCode = challenged ? PROVIDER_NAMES[provider] : null;
+  linkedJustNow = !challenged && outcome.linked ? PROVIDER_NAMES[provider] : null;
 
   return outcome;
 }
@@ -147,6 +151,14 @@ export async function signInWithProvider(provider: Provider): Promise<SignInOutc
   }
 
   return signInInBrowser(provider);
+}
+
+/** The code passed: a provider sign-in it finished may have linked its provider only now. */
+export function codePassed(signedIn: SignedIn): SignedIn {
+  if (signedIn.linked && linkingOnCode != null) linkedJustNow = linkingOnCode;
+  linkingOnCode = null;
+
+  return signedIn;
 }
 
 /** "Google is now linked": the provider to name, once, on the screen the person lands on. */

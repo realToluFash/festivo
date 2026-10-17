@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
+use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorFactorRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
@@ -112,6 +113,28 @@ final class TwoFactorTest extends ApiTestCase
         self::assertSame(202, $this->statusCode(), Json\encode($body));
         self::assertIsString($body['twoFactorChallenge'] ?? null);
         self::assertArrayNotHasKey('accessToken', $body);
+    }
+
+    #[Test]
+    public function aFirstGoogleSignInLinksOnlyOnceTheCodePasses(): void
+    {
+        $secret = $this->turnedOn()['secret'];
+        $identities = self::service(ProviderIdentityRepository::class);
+
+        $body = $this->call('POST', '/api/auth/oauth/google', ['idToken' => $this->googleToken('g-new')]);
+        self::assertSame(202, $this->statusCode(), Json\encode($body));
+        self::assertArrayNotHasKey('linked', $body, 'the challenge says nothing about linking');
+        $challenge = Type\string()->coerce($body['twoFactorChallenge']);
+        self::assertNull($identities->findOneBySubject(IdentityProvider::Google, 'g-new'));
+
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => '000000']);
+        self::assertNull($identities->findOneBySubject(IdentityProvider::Google, 'g-new'), 'not after a wrong code');
+
+        self::mockTime('+30 seconds');
+        $passed = $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => $this->codeNow($secret)]);
+        self::assertSame(200, $this->statusCode(), Json\encode($passed));
+        self::assertTrue($passed['linked']);
+        self::assertSame($this->user->getId()->toRfc4122(), $identities->findOneBySubject(IdentityProvider::Google, 'g-new')?->getUser()->getId()->toRfc4122());
     }
 
     #[Test]

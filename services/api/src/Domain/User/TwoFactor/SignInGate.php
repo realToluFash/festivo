@@ -6,12 +6,15 @@ namespace App\Domain\User\TwoFactor;
 
 use App\Domain\User\Model\IssuedChallenge;
 use App\Domain\User\Model\IssuedTokens;
+use App\Domain\User\Model\ProviderLink;
 use App\Domain\User\Model\TwoFactorSignInResult;
 use App\Domain\User\TokenIssuer;
+use App\Entity\ProviderIdentity;
 use App\Entity\TwoFactorChallenge;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorChallengeRepository;
 use App\Repository\TwoFactorFactorRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,7 +23,7 @@ use Psr\Clock\ClockInterface;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 
-/** Where an existing account is let in. With two-factor on, a challenge comes back instead of tokens. */
+/** Where an existing account is let in, and a provider linked to it. With two-factor on, a challenge comes back first. */
 final readonly class SignInGate
 {
     private const int CHALLENGE_BYTES = 32;
@@ -28,6 +31,7 @@ final readonly class SignInGate
     public function __construct(
         private TwoFactorFactorRepository $twoFactorFactorRepository,
         private TwoFactorChallengeRepository $twoFactorChallengeRepository,
+        private ProviderIdentityRepository $providerIdentityRepository,
         private SecondFactorCheck $secondFactorCheck,
         private TokenIssuer $tokenIssuer,
         private EntityManagerInterface $entityManager,
@@ -35,14 +39,16 @@ final readonly class SignInGate
     ) {
     }
 
-    public function admit(User $user, ?Request $request = null): IssuedTokens|IssuedChallenge
+    public function admit(User $user, ?Request $request = null, ?ProviderLink $link = null): IssuedTokens|IssuedChallenge
     {
         if (null === $this->twoFactorFactorRepository->findActiveFor($user)) {
+            $this->link($user, $link);
+
             return $this->issue($user, $request);
         }
 
         $plain = \bin2hex(SecureRandom\bytes(self::CHALLENGE_BYTES));
-        $challenge = new TwoFactorChallenge($user, TokenIssuer::hash($plain), $this->clock->now());
+        $challenge = new TwoFactorChallenge($user, TokenIssuer::hash($plain), $this->clock->now(), $link?->provider, $link?->subject);
         $this->entityManager->persist($challenge);
         $this->entityManager->flush();
 
@@ -78,8 +84,23 @@ final readonly class SignInGate
         };
 
         $challenge->markUsed($now);
+        $provider = $challenge->getLinkProvider();
+        $subject = $challenge->getLinkSubject();
+        $linked = $this->link($user, null === $provider || null === $subject ? null : new ProviderLink($provider, $subject));
 
-        return new TwoFactorSignInResult($user, $this->issue($user, $request));
+        return new TwoFactorSignInResult($user, $this->issue($user, $request), $linked);
+    }
+
+    /** False when there is nothing to link, or a sign-in that passed first already linked it. */
+    private function link(User $user, ?ProviderLink $link): bool
+    {
+        if (null === $link || null !== $this->providerIdentityRepository->findOneBySubject($link->provider, $link->subject)) {
+            return false;
+        }
+
+        $this->entityManager->persist(new ProviderIdentity($user, $link->provider, $link->subject));
+
+        return true;
     }
 
     private function issue(User $user, ?Request $request): IssuedTokens

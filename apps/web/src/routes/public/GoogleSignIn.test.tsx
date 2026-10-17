@@ -146,6 +146,43 @@ describe('continue with Google', () => {
     expect(sessionStorage.getItem('soirely.provider.linked')).toBeNull();
   });
 
+  it('says Google is linked only once the two-factor code has passed', async () => {
+    returningFromGoogle('code=the-code&state=the-state');
+    answering({
+      'POST http://api.test/api/auth/oauth/google': () =>
+        json(
+          {
+            twoFactorChallenge: 'the-challenge',
+            challengeExpiresAt: '2026-10-17T12:05:00+00:00',
+            email: 'organiser@example.com',
+          },
+          202,
+        ),
+      'POST http://api.test/api/auth/two-factor/verify': () =>
+        json({ ...ISSUED, account: ACCOUNT, linked: true }),
+      'GET http://api.test/api/orgs': () => json({ organisations: [] }),
+    });
+    at('/oauth/google?code=the-code&state=the-state');
+
+    await waitFor(
+      () =>
+        expect(screen.getByRole('heading', { level: 1, name: 'Enter your code' })).toBeDefined(),
+      THE_WAY_BACK,
+    );
+    expect(screen.queryByText(/Google is now linked/)).toBeNull();
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify and sign in' }));
+
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText('Google is now linked to your account. You can sign in with either.'),
+        ).toBeDefined(),
+      THE_WAY_BACK,
+    );
+  });
+
   it('goes back to sign-in quietly when the person closed Google', async () => {
     returningFromGoogle('error=access_denied&state=the-state');
     answering({});

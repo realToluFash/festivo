@@ -1,6 +1,7 @@
 import {
   type Provider,
   type ProviderAttempt,
+  type SignedIn,
   type SignInOutcome,
   ProviderFailed,
   appleName,
@@ -15,6 +16,7 @@ import { api } from './api.ts';
 import { config } from './config.ts';
 
 const LINKED = 'soirely.provider.linked';
+const LINKING = 'soirely.provider.linking';
 
 /** How each provider is named on screen. */
 export const PROVIDER_NAMES: Record<Provider, string> = { google: 'Google', apple: 'Apple' };
@@ -88,9 +90,19 @@ export async function finishProviderSignIn(
     ...(name == null ? {} : { name }),
   });
 
-  if (outcome.linked) sessionStorage.setItem(LINKED, PROVIDER_NAMES[provider]);
+  if ('challenge' in outcome) sessionStorage.setItem(LINKING, PROVIDER_NAMES[provider]);
+  else if (outcome.linked) sessionStorage.setItem(LINKED, PROVIDER_NAMES[provider]);
 
   return outcome;
+}
+
+/** The code passed: a provider sign-in it finished may have linked its provider only now. */
+export function codePassed(signedIn: SignedIn): SignedIn {
+  const provider = sessionStorage.getItem(LINKING);
+  sessionStorage.removeItem(LINKING);
+  if (signedIn.linked && provider != null) sessionStorage.setItem(LINKED, provider);
+
+  return signedIn;
 }
 
 /** "Google is now linked": the provider to name, once, on the screen the person lands on. */

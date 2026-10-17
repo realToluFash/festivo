@@ -288,6 +288,9 @@ and keeping the nonce itself, which they give the API. What they send differs:
   never did is released, as registration releases it, so a password typed by somebody else
   cannot stay in. Otherwise a new account, with the address already verified and no
   password. A token whose address the provider did not verify is refused.
+- **Linking waits for the second factor.** With two-factor on, the challenge carries the
+  provider and `sub`, and the `provider_identities` row is written only when its code
+  passes; the `202` says nothing about linking, and `two-factor/verify` answers `linked`.
 
 ## Signing in with Apple
 
@@ -340,7 +343,8 @@ with a `code` or a `recoveryCode` and only then issues tokens.
   code cannot be replayed inside its own window.
 - **The secret is encrypted at rest** with libsodium's secretbox, keyed by
   `TWO_FACTOR_KEY` (32 bytes, base64). It has to be readable to check a code, so it
-  cannot be hashed. The value in `.env` is for development; production sets its own, and
+  cannot be hashed. `.env` leaves it empty and `.env.dev` holds development's, so an
+  environment that sets none refuses two-factor rather than using a published key;
   changing it strands every enrolled factor.
 - **Attempts** share one budget per account across sign-in, setup and turning it off:
   five wrong codes in a fixed **fifteen-minute** window (`two_factor_account`) pause
