@@ -289,6 +289,17 @@ describe('getting back in without the authenticator', () => {
     expect(sent.filter((s) => s.path === '/api/auth/two-factor/recovery')).toHaveLength(1);
   });
 
+  it('never shows a request this tab holds for somebody else to the person who just signed in', async () => {
+    sessionStorage.setItem('soirely.twoFactorRecovery', 'another-accounts-handle');
+    const sent = await atTheStart({
+      'POST /api/auth/two-factor/recovery/state': () => json({ state: WAITING }),
+    });
+
+    expect(screen.getByRole('button', { name: 'Send the codes' })).toBeDefined();
+    expect(sent.some((s) => s.path === '/api/auth/two-factor/recovery/state')).toBe(false);
+    expect(sessionStorage.getItem('soirely.twoFactorRecovery')).toBeNull();
+  });
+
   it('sends nobody codes when nobody can answer', async () => {
     await atTheStart({
       'POST /api/auth/two-factor/recovery/opening': () => json({ ...OPENING, nobody: true }),

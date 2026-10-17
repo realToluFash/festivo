@@ -4,7 +4,14 @@ import {
   type RecoveryState,
   type TwoFactorChallenge,
 } from '@soirely/api-client';
-import { cleanCode, codeProblem, codeWording, formatCountdown, formatPhone } from '@soirely/domain';
+import {
+  cleanCode,
+  codeProblem,
+  codeWording,
+  formatCountdown,
+  formatPhone,
+  recoveryFirstStep,
+} from '@soirely/domain';
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
@@ -33,7 +40,7 @@ export function LostTwoFactor() {
   const load = useCallback(async (): Promise<View> => {
     const held = heldRecovery();
 
-    if (held != null) {
+    if (recoveryFirstStep(challenge, held) === 'held' && held != null) {
       try {
         return { kind: 'request', recovery: held, state: await api.recoveryState(held) };
       } catch (refusal) {
@@ -46,6 +53,7 @@ export function LostTwoFactor() {
     }
 
     if (challenge == null) return { kind: 'signIn' };
+    if (held != null) dropRecovery();
 
     try {
       const opening = await api.recoveryOpening(challenge);

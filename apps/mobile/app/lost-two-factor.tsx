@@ -1,5 +1,11 @@
 import { ApiError, type RecoveryOpening, type RecoveryState } from '@soirely/api-client';
-import { cleanCode, codeWording, formatCountdown, formatPhone } from '@soirely/domain';
+import {
+  cleanCode,
+  codeWording,
+  formatCountdown,
+  formatPhone,
+  recoveryFirstStep,
+} from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Linking, StyleSheet, type TextInput, View } from 'react-native';
@@ -41,8 +47,9 @@ export default function LostTwoFactor() {
 
   const load = useCallback(async (): Promise<Shown> => {
     const held = await heldRecovery();
+    const step = recoveryFirstStep(challenge, held);
 
-    if (held != null) {
+    if (step === 'held' && held != null) {
       try {
         return { kind: 'request', recovery: held, state: await api.recoveryState(held) };
       } catch (refusal) {
@@ -55,6 +62,7 @@ export default function LostTwoFactor() {
     }
 
     if (challenge == null) return { kind: 'signIn' };
+    if (held != null) await dropRecovery();
 
     try {
       const opening = await api.recoveryOpening(challenge);
