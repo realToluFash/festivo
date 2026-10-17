@@ -24,6 +24,7 @@ use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
+use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -40,6 +41,9 @@ final class TwoFactorTest extends ApiTestCase
 
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
+
+    /** @mago-expect lint:no-literal-password */
+    private const string NEW_PASSWORD = 'a brand new passphrase';
 
     private const string ADDRESS = 'folake@example.com';
 
@@ -235,6 +239,43 @@ final class TwoFactorTest extends ApiTestCase
         self::assertSame(ErrorCode::TwoFactorChallengeInvalid->type(), $this->last()['type']);
     }
 
+    /** A reset link alone changes nothing: the code comes before the new password (OWASP, NIST SP 800-63B). */
+    #[Test]
+    public function aPasswordResetAsksForTheCodeBeforeAnythingChanges(): void
+    {
+        $secret = $this->turnedOn()['secret'];
+        self::mockTime('+30 seconds');
+        $elsewhere = $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $this->challenge(), 'code' => $this->codeNow($secret)]);
+        $refreshToken = Type\string()->coerce($elsewhere['refreshToken'] ?? null);
+
+        $this->call('POST', '/api/auth/password/forgot', ['email' => self::ADDRESS]);
+        $link = Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()));
+        $token = Regex\first_match((string) $link->getTextBody(), '/reset-password\?token=([0-9a-f]+)/')[1] ?? '';
+
+        self::assertTrue($this->call('POST', '/api/auth/password/reset/check', ['token' => $token])['twoFactor']);
+
+        $this->call('POST', '/api/auth/password/reset', ['token' => $token, 'password' => self::NEW_PASSWORD]);
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $this->last()['type'], 'no new password before the code');
+        self::assertSame(202, $this->login()[0], 'the old password still signs in, to a challenge');
+        $this->call('POST', '/api/auth/refresh', ['refreshToken' => $refreshToken]);
+        self::assertSame(200, $this->statusCode(), 'and no session was ended');
+        $refreshToken = Type\string()->coerce($this->last()['refreshToken'] ?? null);
+
+        $this->call('POST', '/api/auth/password/reset/code', ['token' => $token, 'code' => '000000']);
+        self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type']);
+
+        self::mockTime('+30 seconds');
+        $this->call('POST', '/api/auth/password/reset/code', ['token' => $token, 'code' => $this->codeNow($secret)]);
+        self::assertSame(204, $this->statusCode());
+
+        $signedIn = $this->call('POST', '/api/auth/password/reset', ['token' => $token, 'password' => self::NEW_PASSWORD]);
+        self::assertIsString($signedIn['accessToken'] ?? null, 'the code passed, so this device is signed in');
+
+        $this->call('POST', '/api/auth/refresh', ['refreshToken' => $refreshToken]);
+        self::assertSame(401, $this->statusCode(), 'now every other session has ended');
+        self::assertSame(401, $this->loginWith(self::PASSWORD), 'and the old password no longer works');
+    }
+
     #[Test]
     public function theStoredSecretIsUnreadableWithoutTheKey(): void
     {
@@ -276,6 +317,14 @@ final class TwoFactorTest extends ApiTestCase
         self::assertSame(202, $status);
 
         return Type\string()->coerce($body['twoFactorChallenge']);
+    }
+
+    private function loginWith(#[SensitiveParameter] string $password): int
+    {
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $this->call('POST', '/api/auth/login', ['email' => self::ADDRESS, 'password' => $password]);
+
+        return $this->statusCode();
     }
 
     /** @return array{0: int, 1: array<string, mixed>} */

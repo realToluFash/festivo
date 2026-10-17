@@ -33,5 +33,6 @@
     "recovery_code_used": "Ce code de récupération a déjà été utilisé.",
     "two_factor_already_on": "La double authentification est déjà activée.",
     "two_factor_not_enrolled": "Commencez d'abord à configurer la double authentification.",
-    "two_factor_off": "La double authentification n'est pas activée."
+    "two_factor_off": "La double authentification n'est pas activée.",
+    "two_factor_required": "Saisissez d'abord le code de votre application d'authentification."
 }

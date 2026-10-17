@@ -33,5 +33,6 @@
     "recovery_code_used": "Ese código de recuperación ya se ha usado.",
     "two_factor_already_on": "La verificación en dos pasos ya está activada.",
     "two_factor_not_enrolled": "Primero empiece a configurar la verificación en dos pasos.",
-    "two_factor_off": "La verificación en dos pasos no está activada."
+    "two_factor_off": "La verificación en dos pasos no está activada.",
+    "two_factor_required": "Primero introduzca el código de su aplicación de autenticación."
 }

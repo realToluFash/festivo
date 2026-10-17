@@ -41,6 +41,7 @@ enum ErrorCode: string
     case TwoFactorAlreadyOn = 'two_factor_already_on';
     case TwoFactorNotEnrolled = 'two_factor_not_enrolled';
     case TwoFactorOff = 'two_factor_off';
+    case TwoFactorRequired = 'two_factor_required';
 
     case InternalError = 'internal_error';
     case ServiceUnavailable = 'service_unavailable';
@@ -60,7 +61,7 @@ enum ErrorCode: string
             self::Conflict, self::EmailTaken, self::PhoneTaken, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid => 401,
-            self::Forbidden, self::PermissionRequired, self::AccountUnverified, self::ProfileIncomplete => 403,
+            self::Forbidden, self::PermissionRequired, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired => 403,
             self::TooManyRequests, self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
             self::VerificationCodeExhausted => 422,

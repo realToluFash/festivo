@@ -314,6 +314,11 @@ with a `code` or a `recoveryCode` and only then issues tokens.
   code entry until the window ends, and the refusal is `too_many_attempts` with the time.
   Each check holds a row lock on the factor from the peek to the charge, so parallel
   requests queue rather than all passing the peek, and a replay sees the newest step.
+- **A password reset** asks for the code before anything changes: with two-factor on,
+  `reset/check` says so, `POST /api/auth/password/reset/code` takes an app code or a
+  recovery code for that link (sharing the attempt budget), and only then does
+  `POST /api/auth/password/reset` set the password, end every session and sign this device
+  in. Until the code passes, the old password and every session stand.
 - **Setup** stays off until a code from the new secret matches, so a misconfigured app
   cannot lock anybody out. Activating returns ten recovery codes, shown once. Each is
   forty bits, so it is kept as a salted slow hash (the password hasher), as NIST SP 800-63B

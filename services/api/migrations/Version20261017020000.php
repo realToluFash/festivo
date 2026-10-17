@@ -61,10 +61,14 @@ final class Version20261017020000 extends AbstractMigration
         $this->addSql('CREATE UNIQUE INDEX uniq_two_factor_challenge_hash ON two_factor_challenges (token_hash)');
         $this->addSql('CREATE INDEX idx_two_factor_challenge_user ON two_factor_challenges (user_id)');
         $this->addSql('ALTER TABLE two_factor_challenges ADD CONSTRAINT FK_1207DB1CA76ED395 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE NOT DEFERRABLE');
+
+        // Null on every existing link: none was opened on an account with two-factor, which did not exist.
+        $this->addSql('ALTER TABLE password_reset_tokens ADD second_factor_passed_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
     }
 
     public function down(Schema $schema): void
     {
+        $this->addSql('ALTER TABLE password_reset_tokens DROP second_factor_passed_at');
         $this->addSql('ALTER TABLE two_factor_challenges DROP CONSTRAINT FK_1207DB1CA76ED395');
         $this->addSql('ALTER TABLE recovery_codes DROP CONSTRAINT FK_F1F70537A76ED395');
         $this->addSql('ALTER TABLE two_factor_factors DROP CONSTRAINT FK_CE3AD6B9A76ED395');
