@@ -51,6 +51,13 @@ review, and that is the handover:
 4. Failing that, ask. Do not guess from the diff; a diff is where the work is, not where
    the specification is.
 
+**A `translation` ticket is tested on `main`**, not on a pull request: the linguist moves
+it to `Ready For QA` only once every pull request it depends on is merged.
+`just qa-env checkout main`, then test each string in its description, in each locale it
+names, on phone and iPad. Each string is checked for its meaning, for truncation, and for
+plurals at 0, 1, 2 and a large number. A finding is tagged for its locale's linguist
+(`[fr] (from qa)`), with the screenshot, never `[dev]` unless a key or slot is broken.
+
 **A story in `Ready For QA` is a claim, not a certainty.** It means somebody thinks the work
 is finished. Check that the pull request exists and that its checks are green before
 testing: a red branch is a finding for the author, not an afternoon of QA against code that
@@ -83,19 +90,19 @@ about a message is tested where a person reads it, not only where it is produced
 Not a generic list: these are the ones that have actually been wrong in this product, and
 the AC rarely mentions them.
 
-| Class                    | What to try                                                                                                                               |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **The unmatched value**  | Input that maps to no option the field offers. The most commonly missing criterion in this repo.                                          |
-| **Empty and too many**   | Zero rows, one row, and more than the design drew. A count of one in a sentence written for many.                                         |
-| **The boundary**         | Exactly at the limit, one under, one over. Two addresses when the cap is two.                                                             |
-| **The same thing twice** | Double-submit a form, replay a token, press the button before the first press answers.                                                    |
-| **A long string**        | A 90-character name, a Yoruba name with diacritics, an address at the length limit. French and Portuguese run 20–30% longer than English. |
-| **Another language**     | At least one non-English locale per pass. Everything ships in four, and a missing key renders as its own path.                            |
-| **Nothing to say**       | A null phone, an unnamed device, a client that sent no user agent.                                                                        |
-| **The way back**         | Reload mid-flow, press Back, open the same URL in a second tab, sign out in one and act in the other.                                     |
-| **Time**                 | Wait out the access token (15 minutes) and act. Rate limits. A token used twice.                                                          |
-| **Refusal**              | Somebody else's id, a malformed id, an id that does not exist. Each must answer the same as the others where the contract says so.        |
-| **Offline**              | Stop the API mid-flow (`docker compose stop api`) and read what the screen says. Start it again.                                          |
+| Class                    | What to try                                                                                                                                              |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The unmatched value**  | Input that maps to no option the field offers. The most commonly missing criterion in this repo.                                                         |
+| **Empty and too many**   | Zero rows, one row, and more than the design drew. A count of one in a sentence written for many.                                                        |
+| **The boundary**         | Exactly at the limit, one under, one over. Two addresses when the cap is two.                                                                            |
+| **The same thing twice** | Double-submit a form, replay a token, press the button before the first press answers.                                                                   |
+| **A long string**        | A 90-character name, a Yoruba name with diacritics, an address at the length limit. French and Portuguese run 20–30% longer than English.                |
+| **Another language**     | At least one non-English locale per pass. English in a non-English screen is expected until its translation ticket lands; a key path on screen never is. |
+| **Nothing to say**       | A null phone, an unnamed device, a client that sent no user agent.                                                                                       |
+| **The way back**         | Reload mid-flow, press Back, open the same URL in a second tab, sign out in one and act in the other.                                                    |
+| **Time**                 | Wait out the access token (15 minutes) and act. Rate limits. A token used twice.                                                                         |
+| **Refusal**              | Somebody else's id, a malformed id, an id that does not exist. Each must answer the same as the others where the contract says so.                       |
+| **Offline**              | Stop the API mid-flow (`docker compose stop api`) and read what the screen says. Start it again.                                                         |
 
 ### What a story about a screen always includes
 

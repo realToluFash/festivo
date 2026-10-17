@@ -28,15 +28,21 @@ is what runs every three minutes, so a quiet tick has to cost almost nothing:
   manager's stale costs. Some runs also die before they finish. So each role wakes after a
   quiet spell anyway, if it has work waiting or is a sweeping role:
 
-| Role                        | Woken by                                                               | Heartbeat                      |
-| --------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
-| `/soirely-product-manager`  | `[pm]`, new in To Do or Failed QA                                      | 2 hours                        |
-| `/soirely-designer`         | `[ux]`, new in To Do or Failed QA                                      | 2 hours                        |
-| `/soirely-developer`        | `[dev]`, new in Failed QA, In Progress, To Do; a PR's checks finishing | 30 minutes, if work is waiting |
-| `/soirely-qa-tester`        | `[qa]`, new in Ready For QA                                            | 30 minutes, if work is waiting |
-| `/soirely-tech-lead`        | `[lead]`, new in In Review                                             | 30 minutes, if work is waiting |
-| `/soirely-business-manager` | `[bm]`, new in Backlog or To Do                                        | 12 hours                       |
-| `/soirely-ops`              | `[ops]`, `main` red                                                    | 6 hours                        |
+| Role                         | Woken by                                                               | Heartbeat                      |
+| ---------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
+| `/soirely-product-manager`   | `[pm]`, new in To Do or Failed QA                                      | 2 hours                        |
+| `/soirely-designer`          | `[ux]`, new in To Do or Failed QA                                      | 2 hours                        |
+| `/soirely-developer`         | `[dev]`, new in Failed QA, In Progress, To Do; a PR's checks finishing | 30 minutes, if work is waiting |
+| `/soirely-qa-tester`         | `[qa]`, new in Ready For QA                                            | 30 minutes, if work is waiting |
+| `/soirely-tech-lead`         | `[lead]`, new in In Review                                             | 30 minutes, if work is waiting |
+| `/soirely-business-manager`  | `[bm]`, new in Backlog or To Do                                        | 12 hours                       |
+| `/soirely-ops`               | `[ops]`, `main` red                                                    | 6 hours                        |
+| `/soirely-linguist en`       | `[en]`, a translation ticket new in To Do, In Progress or Failed QA    | 2 hours                        |
+| `/soirely-linguist es/fr/pt` | its tag, a translation ticket new in To Do, In Progress or Failed QA   | 30 minutes, if work is waiting |
+| `/soirely-creative`          | `[cd]`                                                                 | 24 hours                       |
+
+The other roles' queues leave out stories labelled `translation`, which are the linguists'.
+A linguist's routine is scheduled per locale, with the locale as its role: `role-tick.mjs fr`.
 
 The check reads Shortcut through `SHORTCUT_API_TOKEN`, the owner's API token from Shortcut,
 Settings, API Tokens, exported in `~/.zshrc`. Without it the check sees only GitHub and the
@@ -109,9 +115,10 @@ watching, so:
   - Only the developer switches branches in `~/Projects/soirely`.
   - QA works in `~/Projects/soirely-qa` (its skill, section 4).
   - Ops works in its own worktree, `../soirely-ops`.
-  - The tech lead, product manager, designer and business manager read code at a pull
-    request's head with `gh pr diff` and `git show origin/<branch>:<path>`, and never check
-    anything out.
+  - Each linguist works in its own worktree, `../soirely-<locale>`.
+  - The tech lead, product manager, designer, business manager and creative director read
+    code at a pull request's head with `gh pr diff` and `git show origin/<branch>:<path>`,
+    and never check anything out.
 - **The report is ten lines at most.** What you did, which stories moved, the questions
   you left and where, and anything waiting on the owner. The evidence lives on the story
   and the pull request, not in the report.

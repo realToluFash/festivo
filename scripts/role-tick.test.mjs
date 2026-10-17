@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { brief, decide, header, inboxFor, ROLES, rollup } from './role-tick.mjs';
+import { brief, decide, header, inboxFor, queueQuery, ROLES, rollup } from './role-tick.mjs';
 
 const MINUTE = 60_000;
 const now = 1_000 * MINUTE;
@@ -134,7 +134,7 @@ describe('the brief for a woken run', () => {
       ['queue sc-795:Ready For QA'],
       '/repo/.git/soirely-roles/role-tick.mjs',
     );
-    expect(text).toContain('/soirely-qa-tester');
+    expect(text).toContain('`/soirely-qa-tester`');
     expect(text).toContain('queue sc-795:Ready For QA');
     expect(text).toContain('node /repo/.git/soirely-roles/role-tick.mjs qa --done');
   });
@@ -145,5 +145,19 @@ describe('a run that left work waiting', () => {
     const more = { seen: ['sc-56:Ready For QA'], woke: 0 };
     const snapshot = { queue: ['sc-56:Ready For QA'], shortcut: true };
     expect(decide({ role: 'qa', previous: more, snapshot, now }).verdict).toBe('wake');
+  });
+});
+
+// A translation ticket in To Do is the linguists' work; waking the developer for it is a
+// full run spent finding nothing to build.
+describe('a queue', () => {
+  it('belongs to the linguists when it is a translation, and to nobody else', () => {
+    expect(queueQuery('fr', 'To Do')).toBe('state:"To Do" label:translation');
+    expect(queueQuery('dev', 'To Do')).toBe('state:"To Do" !label:translation');
+    expect(queueQuery('qa', 'Ready For QA')).toBe('state:"Ready For QA"');
+  });
+
+  it('wakes a linguist with its own locale', () => {
+    expect(brief('pt', ['inbox 900#1'], '/x/role-tick.mjs')).toContain('`/soirely-linguist pt`');
   });
 });

@@ -51,9 +51,13 @@ replies to the ones you asked. Resolve those, then pick the work below.
      ("That is a product and design decision, not a schema one. Settle it before build.")
 2. **A story about to be built with AC that cannot be verified** — the next few in `To Do`.
    Run `/review-ac` on it rather than reading it by eye.
-3. **The epic in progress**, for scope that has drifted: stories that no longer belong, a
+3. **An idea waiting on a decision**: a `Backlog` story labelled `idea` with a `[pm]
+(from cd)` question. Accept (write the AC, or fold it into a story, and move it to
+   `To Do`), park, or reject (archive), each with a one-line reason. The creative director
+   holds at most three open, so an undecided one blocks the next.
+4. **The epic in progress**, for scope that has drifted: stories that no longer belong, a
    boundary that has moved, a "carried forward" note that is now wrong.
-4. Failing those, say the backlog is in order and stop. That is a complete answer.
+5. Failing those, say the backlog is in order and stop. That is a complete answer.
 
 Say which you took, and name what else is waiting.
 

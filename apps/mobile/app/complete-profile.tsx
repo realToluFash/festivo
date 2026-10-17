@@ -1,5 +1,11 @@
 import { ApiError, type Account, awaiting } from '@soirely/api-client';
-import { deviceCountry, phoneLengthProblem } from '@soirely/domain';
+import {
+  deviceCountry,
+  followCountry,
+  phoneLengthProblem,
+  pickPhoneCountry,
+  startingPhoneCountry,
+} from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -96,7 +102,14 @@ function Details({ account }: { account: Account }) {
   const [countryCode, setCountryCode] = useState(
     () => deviceCountry(getLocales().map((locale) => locale.languageTag)) ?? 'NG',
   );
-  const [phoneCountryCode, setPhoneCountryCode] = useState(countryCode);
+  const [phone, setPhone] = useState(() =>
+    startingPhoneCountry(
+      account.needsOrganisation ? countryCode : null,
+      account.organisationCountry,
+      countryCode,
+    ),
+  );
+  const phoneCountryCode = phone.code;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
@@ -244,7 +257,11 @@ function Details({ account }: { account: Account }) {
             <CountryPicker
               label={t('completeProfile.country')}
               value={countryCode}
-              onChange={setCountryCode}
+              onChange={(code) => {
+                setCountryCode(code);
+                // The code follows the Country until the person picks one themselves (sc-485).
+                setPhone((now) => followCountry(now, code));
+              }}
               disabled={saving}
               testID="completeProfile.country"
             />
@@ -261,7 +278,7 @@ function Details({ account }: { account: Account }) {
         error={errors.phoneNumber ?? errors.phoneCountryCode}
         disabled={saving}
         onCountry={(code) => {
-          setPhoneCountryCode(code);
+          setPhone(pickPhoneCountry(code));
           setErrors((previous) => ({
             ...previous,
             phoneCountryCode: undefined,

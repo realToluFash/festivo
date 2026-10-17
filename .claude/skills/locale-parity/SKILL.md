@@ -22,6 +22,13 @@ No string literal anywhere a user can see it. That means all of:
 A key added to one locale file and not the other three is the defect this skill exists to
 prevent. Add all four in the same change.
 
+**The developer writes the English; the linguists write the rest.** In a feature, put the
+English text in all four catalogues, then leave a comment on the story:
+`[en] (from dev)` followed by the keys added or reworded. The `[en]` editor files the
+translation ticket (`soirely-linguist`, section 3), and `scripts/locale-status.mjs` finds any
+key nobody mentioned. Rewording an English string leaves the other three alone. The sweep
+marks them stale.
+
 ## Things that look fine and are not
 
 **A label in a module-level constant cannot be translated where it sits.** Status maps,
@@ -51,9 +58,10 @@ name, through whatever helper the client provides for it.
 
 ## Register
 
-Formal throughout, and consistent:
+Each language's own guide is `docs/i18n/<locale>.md`, kept by its linguist. Formal
+throughout, and consistent:
 
-- English: international spelling, no contractions in error bodies — "cannot", not "can't"
+- English: British spelling, no contractions in error bodies — "cannot", not "can't"
 - Spanish: formal, consistent across the file
 - French: vouvoiement — "Veuillez…"
 - Portuguese: PT-PT vocabulary — "ficheiro", "palavra-passe", "secção"

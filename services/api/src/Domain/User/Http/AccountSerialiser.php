@@ -9,6 +9,7 @@ use App\Entity\EmailAddress;
 use App\Entity\PhoneNumber;
 use App\Entity\ProviderIdentity;
 use App\Entity\User;
+use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
 use Psl\Vec;
 
@@ -17,6 +18,7 @@ final readonly class AccountSerialiser
     public function __construct(
         private AccountCompleteness $accountCompleteness,
         private ProviderIdentityRepository $providerIdentityRepository,
+        private MembershipRepository $membershipRepository,
     ) {
     }
 
@@ -28,6 +30,8 @@ final readonly class AccountSerialiser
             'name' => $user->getName(),
             'businessName' => $user->getBusinessName(),
             'countryCode' => $user->getCountryCode(),
+            // Read here because "A few details" is behind the gate /api/orgs sits behind: an invited person's phone starts on it.
+            'organisationCountry' => ($this->membershipRepository->findActiveFor($user)[0] ?? null)?->getOrganisation()->getCountryCode(),
             'locale' => $user->storedLanguage(),
             'verified' => $user->isVerified(),
             'complete' => $this->accountCompleteness->isComplete($user),

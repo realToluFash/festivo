@@ -18,6 +18,7 @@ function account(phoneNumbers: unknown[] = [PHONE]) {
     name: 'Folake Adeyemi',
     businessName: null,
     countryCode: null,
+    organisationCountry: null,
     locale: 'en',
     verified: false,
     complete: false,
