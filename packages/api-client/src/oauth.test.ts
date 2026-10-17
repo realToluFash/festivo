@@ -2,11 +2,12 @@ import { describe, expect, test } from 'vitest';
 
 import {
   ProviderCancelled,
-  appleName,
-  callbackParam,
   ProviderFailed,
+  appleAppLinkOutcome,
+  appleName,
   authorizationUrl,
   base64Url,
+  callbackParam,
   codeFromCallback,
   exchangeCode,
   hex,
@@ -122,5 +123,23 @@ describe('the provider flow', () => {
     expect(appleName('not json')).toBeUndefined();
     expect(appleName(null)).toBeUndefined();
     expect(callbackParam('http://x/oauth/apple?code=c&user=%7B%7D', 'user')).toBe('{}');
+  });
+});
+
+describe("the App Link Apple's form_post comes back by", () => {
+  test('carries the one-time handle', () => {
+    expect(appleAppLinkOutcome('https://soirely.com/oauth/apple/app?handle=abc123')).toEqual({
+      handle: 'abc123',
+    });
+  });
+
+  test('says when the person cancelled at Apple', () => {
+    expect(appleAppLinkOutcome('https://soirely.com/oauth/apple/app?error=cancelled')).toEqual({
+      cancelled: true,
+    });
+  });
+
+  test('is nothing else', () => {
+    expect(appleAppLinkOutcome('https://soirely.com/oauth/apple/app')).toBeNull();
   });
 });

@@ -147,3 +147,11 @@ export function appleName(user: string | null | undefined): string | undefined {
 export function callbackParam(callbackUrl: string, name: string): string | null {
   return query(callbackUrl).get(name) ?? null;
 }
+
+/** What the App Link brought back from Apple on Android: the one-time handle, or a cancel. */
+export function appleAppLinkOutcome(url: string): { handle: string } | { cancelled: true } | null {
+  const handle = callbackParam(url, 'handle');
+  if (handle != null && handle !== '') return { handle };
+
+  return callbackParam(url, 'error') === 'cancelled' ? { cancelled: true } : null;
+}
