@@ -15,6 +15,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { CodeField, Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Stage =
@@ -219,6 +220,7 @@ function SettingUp({
   const input = useRef<TextInput>(null);
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const aboveKeyboard = useAboveKeyboard();
 
   async function submit(): Promise<void> {
     if (checking) return;
@@ -257,28 +259,34 @@ function SettingUp({
         {keyInGroups(enrolment.secret)}
       </Text>
 
-      <Field label={t('twoFactorCard.enterCode')} error={error} help={t('twoFactorCard.staysOff')}>
-        <CodeField
-          ref={input}
-          wrong={error != null}
-          editable={!checking}
-          onChangeText={(text) => {
-            typed.current = text;
-            setError(null);
-          }}
-          returnKeyType="done"
-          onSubmitEditing={() => void submit()}
-          accessibilityLabel={t('twoFactorCard.enterCode')}
-          testID="twoFactor.setupCode"
-        />
-      </Field>
+      <View ref={aboveKeyboard} style={styles.codeAndCheck}>
+        <Field
+          label={t('twoFactorCard.enterCode')}
+          error={error}
+          help={t('twoFactorCard.staysOff')}
+        >
+          <CodeField
+            ref={input}
+            wrong={error != null}
+            editable={!checking}
+            onChangeText={(text) => {
+              typed.current = text;
+              setError(null);
+            }}
+            returnKeyType="done"
+            onSubmitEditing={() => void submit()}
+            accessibilityLabel={t('twoFactorCard.enterCode')}
+            testID="twoFactor.setupCode"
+          />
+        </Field>
 
-      <PrimaryButton
-        label={t('twoFactorCard.checkCode')}
-        onPress={() => void submit()}
-        busy={checking}
-        testID="twoFactor.checkCode"
-      />
+        <PrimaryButton
+          label={t('twoFactorCard.checkCode')}
+          onPress={() => void submit()}
+          busy={checking}
+          testID="twoFactor.checkCode"
+        />
+      </View>
       <QuietButton label={t('twoFactorCard.cancel')} onPress={onCancel} testID="twoFactor.cancel" />
     </>
   );
@@ -519,6 +527,7 @@ function refusalMessage(refusal: unknown, wrong: string, t: TFunction): string {
 }
 
 const styles = StyleSheet.create({
+  codeAndCheck: { gap: tokens.spaceLg },
   // As AppSettings-* draws a Security card, so it moves into Settings unchanged (sc-722).
   card: {
     gap: tokens.spaceLg,

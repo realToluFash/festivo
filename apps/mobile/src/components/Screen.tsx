@@ -1,5 +1,13 @@
-import type { ReactNode } from 'react';
 import {
+  type ReactNode,
+  type RefObject,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+} from 'react';
+import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,6 +21,29 @@ import { keyboardLift } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 
 const LIFT = keyboardLift(Platform.OS);
+
+const ScreenScroll = createContext<RefObject<ScrollView | null> | null>(null);
+
+/** For a field and the button under it: the lift alone shows the field, and leaves the button behind the keys. */
+export function useAboveKeyboard(): RefObject<View | null> {
+  const scroll = useContext(ScreenScroll);
+  const group = useRef<View>(null);
+
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', () => {
+      if (group.current == null) return;
+      scroll?.current?.scrollResponderScrollNativeHandleToKeyboard(
+        group.current,
+        tokens.spaceLg,
+        true,
+      );
+    });
+
+    return () => shown.remove();
+  }, [scroll]);
+
+  return group;
+}
 
 /**
  * The documented way to build a screen. Use this, not a bare View.
@@ -50,6 +81,7 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
+  const scrollView = useRef<ScrollView>(null);
 
   const padding: ViewStyle = {
     paddingTop: edges.includes('top') ? insets.top : 0,
@@ -60,6 +92,7 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
+      ref={scrollView}
       style={styles.fill}
       contentContainerStyle={[styles.content, contentStyle]}
       // So the first tap after typing hits the control rather than only
@@ -75,15 +108,17 @@ export function Screen({
   );
 
   return (
-    <View style={[styles.root, padding, style]}>
-      {LIFT.avoid == null ? (
-        body
-      ) : (
-        <KeyboardAvoidingView style={styles.fill} behavior={LIFT.avoid}>
-          {body}
-        </KeyboardAvoidingView>
-      )}
-    </View>
+    <ScreenScroll.Provider value={scroll ? scrollView : null}>
+      <View style={[styles.root, padding, style]}>
+        {LIFT.avoid == null ? (
+          body
+        ) : (
+          <KeyboardAvoidingView style={styles.fill} behavior={LIFT.avoid}>
+            {body}
+          </KeyboardAvoidingView>
+        )}
+      </View>
+    </ScreenScroll.Provider>
   );
 }
 
