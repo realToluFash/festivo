@@ -18,12 +18,18 @@ export function dropChallenge(): void {
 }
 
 /** Where any sign-in goes next: the code screen when two-factor asks for one, else where the account belongs. */
-export function nextAfterSignIn(outcome: SignInOutcome): Landing | '/sign-in-code' {
+export function nextAfterSignIn(
+  outcome: SignInOutcome,
+): Landing | '/sign-in-code' | '/two-factor-again' {
   if ('challenge' in outcome) {
     holdChallenge(outcome);
     return '/sign-in-code';
   }
 
   dropChallenge();
-  return landingFor(awaiting(outcome.account));
+
+  // Two-factor was turned off to let them back in (sc-509): asked to set it up again first.
+  return outcome.account.twoFactorSetupPrompt
+    ? '/two-factor-again'
+    : landingFor(awaiting(outcome.account));
 }
