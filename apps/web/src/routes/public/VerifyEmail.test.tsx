@@ -20,6 +20,7 @@ const FOLAKE: Session = {
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
   organisationCountry: null,
+  timezone: null,
 };
 
 function answering(answers: Record<string, () => Response>, seen: string[] = []) {

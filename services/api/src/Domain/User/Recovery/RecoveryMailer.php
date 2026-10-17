@@ -52,7 +52,7 @@ final readonly class RecoveryMailer
         $locale = $this->userMailer->localeFor($user);
 
         $this->userMailer->sendTo($user, 'recovery.changed.subject', [
-            $this->line('recovery.changed.body', $locale, ['{when}' => $this->userMailer->moment($at, $locale)]),
+            $this->line('recovery.changed.body', $locale, ['{when}' => $this->userMailer->moment($at, $user, $locale)]),
             $this->line('recovery.changed.notYou', $locale),
         ], $locale);
     }

@@ -27,5 +27,6 @@
     "validation.phone_too_long": "Esse número parece demasiado longo para {country}. Verifique-o e tente novamente.",
     "validation.phone_too_short": "Esse número parece demasiado curto para {country}. Verifique-o e tente novamente.",
     "validation.recovery_code_required": "Introduza um dos seus códigos de recuperação.",
-    "validation.timezone_invalid": "Escolha um fuso horário."
+    "validation.timezone_invalid": "Escolha um fuso horário.",
+    "validation.timezone_unknown": "Não conhecemos esse fuso horário, por isso nada foi guardado. Escolha um da lista."
 }

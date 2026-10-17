@@ -6,6 +6,7 @@
  * each grows its own error path and most of those are never exercised.
  */
 import { ApiClient, awaiting } from '@soirely/api-client';
+import { getCalendars } from 'expo-localization';
 import { router } from 'expo-router';
 
 import { config } from './config.ts';
@@ -16,6 +17,7 @@ import { tokens } from './tokens.ts';
 export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
   locale: () => currentLocale(),
+  timeZone: () => getCalendars()[0]?.timeZone ?? null,
   tokens,
   // Stated rather than defaulted: the web client states the opposite deliberately.
   refreshTokenIn: 'body',

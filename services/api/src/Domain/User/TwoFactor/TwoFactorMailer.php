@@ -19,7 +19,7 @@ final readonly class TwoFactorMailer
     public function sendTurnedOff(User $user, DateTimeImmutable $at): void
     {
         $locale = $this->userMailer->localeFor($user);
-        $when = $this->userMailer->moment($at, $locale);
+        $when = $this->userMailer->moment($at, $user, $locale);
 
         $this->userMailer->sendTo($user, 'twoFactor.off.subject', [
             $this->userMailer->line('twoFactor.off.body', $locale, ['{when}' => $when]),

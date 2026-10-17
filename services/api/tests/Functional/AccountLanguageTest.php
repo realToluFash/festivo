@@ -44,7 +44,9 @@ final class AccountLanguageTest extends ApiTestCase
     #[DataProvider('momentsInEachLanguage')]
     public function emailTimesAreTwentyFourHourInEveryLanguage(string $locale, string $expected): void
     {
-        self::assertSame($expected, self::service(UserMailer::class)->moment(new DateTimeImmutable('2026-10-17 15:05:00 UTC'), $locale));
+        $user = self::service(UserRegistrar::class)->register($locale . '@example.com', 'Someone', self::PASSWORD)->user;
+
+        self::assertSame($expected, self::service(UserMailer::class)->moment(new DateTimeImmutable('2026-10-17 15:05:00 UTC'), $user, $locale));
     }
 
     /** @return iterable<string, array{0: string, 1: string}> */

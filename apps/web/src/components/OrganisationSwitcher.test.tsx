@@ -28,6 +28,7 @@ function inTwo(): void {
       organisation: IRE,
       organisations: [IRE, OKAFOR],
       organisationCountry: null,
+      timezone: null,
     },
   });
 }
@@ -85,6 +86,7 @@ describe('switching organisation', () => {
       countryCode: null,
       organisationCountry: null,
       locale: 'en',
+      timezone: null,
       verified: true,
       complete: true,
       needsOrganisation: false,
@@ -113,6 +115,7 @@ describe('switching organisation', () => {
         organisation: IRE,
         organisations: [IRE],
         organisationCountry: null,
+        timezone: null,
       },
     });
     at('/app');

@@ -6,6 +6,7 @@ namespace App\Domain\User\Mail;
 
 use App\Entity\User;
 use DateTimeImmutable;
+use DateTimeZone;
 use IntlDateFormatter;
 use Psl\Regex;
 use Psl\Str;
@@ -59,18 +60,22 @@ final readonly class UserMailer
         return $this->accountLanguage->of($user, $asked);
     }
 
-    /** A moment as the reader writes it, in UTC, since a stored instant has no timezone of its own. */
-    public function moment(DateTimeImmutable $at, string $locale): string
+    /** The one way a time is written for a person (sc-868): their zone, else UTC, 24-hour, labelled "WAT" or "UTC+04:00". */
+    public function moment(DateTimeImmutable $at, User $user, string $locale): string
     {
-        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, 'UTC');
+        $zone = new DateTimeZone($user->getTimezone() ?? 'UTC');
+        $local = $at->setTimezone($zone);
+        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, $zone->getName());
+        $abbreviation = $local->format('T');
+        $label = Regex\matches($abbreviation, '/^[+-]/') ? 'UTC' . $local->format('P') : $abbreviation;
 
         if (null === $formatter) {
-            return $at->format('Y-m-d H:i') . ' UTC';
+            return $local->format('Y-m-d H:i') . ' ' . $label;
         }
 
         $formatter->setPattern(self::twentyFourHour($formatter->getPattern()));
 
-        return ($formatter->format($at) ?: $at->format('Y-m-d H:i')) . ' UTC';
+        return ($formatter->format($local) ?: $local->format('Y-m-d H:i')) . ' ' . $label;
     }
 
     /** CLDR's date and wording for the locale, on a 24-hour clock: its short time is 12-hour in en. Quoted text is left alone. */

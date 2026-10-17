@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation;
 
 use App\Domain\User\EmailAddressNormaliser;
+use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use Psl\Str;
@@ -53,8 +54,12 @@ final readonly class OrganisationRules
             $violations[] = $this->violation('currency', 'validation.currency_invalid');
         }
 
-        if (!Regions::isTimezone($checked['timezone'])) {
+        $zone = AccountTimeZone::canonical($checked['timezone']);
+
+        if (null === $zone) {
             $violations[] = $this->violation('timezone', 'validation.timezone_invalid');
+        } else {
+            $checked['timezone'] = $zone;
         }
 
         if ('' === $checked['contactAddress']) {

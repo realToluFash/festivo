@@ -9,6 +9,7 @@ use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\RegistrationResult;
 use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordResolver;
+use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeMailer;
 use App\Entity\EmailAddress;
@@ -167,6 +168,7 @@ final readonly class UserRegistrar
         $address = $user->getPrimaryEmailAddress();
 
         AccountLanguage::rememberIfNone($user, $request);
+        AccountTimeZone::rememberIfNone($user, $request);
 
         try {
             $tokens = $this->entityManager->wrapInTransaction(function () use ($user, $address, $request): IssuedTokens {
