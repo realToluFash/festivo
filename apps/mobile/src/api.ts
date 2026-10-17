@@ -12,9 +12,10 @@ import { router } from 'expo-router';
 import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
 import { landingFor } from './landing.ts';
+import { signedOutHold } from './signedOutHold.ts';
 import { tokens } from './tokens.ts';
 
-let heldBack: { ended: boolean } | null = null;
+const hold = signedOutHold(() => router.replace('/sign-in?signedOut=1'));
 
 export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
@@ -23,10 +24,7 @@ export const api = new ApiClient({
   tokens,
   // Stated rather than defaulted: the web client states the opposite deliberately.
   refreshTokenIn: 'body',
-  onSignedOut: () => {
-    if (heldBack != null) heldBack.ended = true;
-    else router.replace('/sign-in?signedOut=1');
-  },
+  onSignedOut: () => hold.onSignedOut(),
   // A refusal names the gate but not whether the email or a phone is unproved, so ask the account.
   onGate: () => {
     void api
@@ -36,18 +34,11 @@ export const api = new ApiClient({
   },
 });
 
-/** Launch's own `me()`: an ended session is reported back rather than redirected, so a held sign-up can win (sc-927). */
+/** Launch's own `me()`: an ended session is reported back rather than redirected (sc-927). */
 export async function meAtLaunch(): Promise<
   { account: Account } | { error: unknown; ended: boolean }
 > {
-  const hold = { ended: false };
-  heldBack = hold;
+  const answer = await hold.during(() => api.me());
 
-  try {
-    return { account: await api.me() };
-  } catch (error) {
-    return { error, ended: hold.ended };
-  } finally {
-    if (heldBack === hold) heldBack = null;
-  }
+  return 'value' in answer ? { account: answer.value } : answer;
 }
