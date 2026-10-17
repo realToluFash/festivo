@@ -122,6 +122,13 @@ export function parseTarget(arg) {
   return { kind: 'branch', name: value.replace(/^origin\//, '') };
 }
 
+// One of a tester's simulators runs at a time: the phone unless --ipad asks otherwise.
+export function simulatorFor(args) {
+  return args.includes('--ipad')
+    ? { open: 'ipad', shut: 'phone' }
+    : { open: 'phone', shut: 'ipad' };
+}
+
 export function branchForStory(id, remoteBranches) {
   const matches = remoteBranches
     .map((b) => b.trim().replace(/^origin\//, ''))
@@ -373,13 +380,10 @@ function ensureExpoGo(udid) {
 async function ios(args) {
   const root = qaWorktree();
   assertQaStack(root);
-  const which = args.includes('--phone')
-    ? ['phone']
-    : args.includes('--ipad')
-      ? ['ipad']
-      : ['phone', 'ipad'];
-
-  const devices = which.map((key) => {
+  const { open, shut } = simulatorFor(args);
+  const other = simulatorId(CONFIG.simulators[shut].name);
+  if (other) run('xcrun', ['simctl', 'shutdown', other], { optional: true });
+  const devices = [open].map((key) => {
     const udid = simulatorId(CONFIG.simulators[key].name);
     if (!udid) throw new Error(`no ${CONFIG.simulators[key].name} simulator — run setup`);
     run('xcrun', ['simctl', 'boot', udid], { optional: true });
@@ -410,9 +414,7 @@ async function ios(args) {
   }
   for (const udid of devices)
     run('xcrun', ['simctl', 'openurl', udid, CONFIG.urls.metro], { optional: true });
-  console.log(
-    `\nBundler on ${CONFIG.urls.metro}, open on ${which.join(' and ')}. Leave it running.`,
-  );
+  console.log(`\nBundler on ${CONFIG.urls.metro}, open on the ${open}. Leave it running.`);
 
   await new Promise((done) => metro.on('exit', done));
 }
