@@ -1,6 +1,6 @@
 ---
 name: role-comments
-description: How the roles talk to each other on a Shortcut story — a comment addressed with [pm] [qa] [qa2] [qa3] [ux] [dev] [bm] [lead] [ops] [cd] [en] [es] [fr] [pt], answered in its own thread, and the inbox routine every role runs to find what is waiting on it. Use when a role needs something from another, and at the start of every /soirely-* run.
+description: How the roles talk to each other on a Shortcut story — a comment addressed with [pm] [qa] [qa2] [qa3] [ux] [dev] [dev2] [bm] [lead] [ops] [cd] [en] [es] [fr] [pt], answered in its own thread, and the inbox routine every role runs to find what is waiting on it. Use when a role needs something from another, and at the start of every /soirely-* run.
 user-invocable: false
 ---
 
@@ -15,6 +15,7 @@ anybody reading the story later can see what was asked and what was decided.
 | `[pm]`   | `/soirely-product-manager`  | what the product does: scope, AC, an undecided state                 |
 | `[ux]`   | `/soirely-designer`         | what a screen looks like, an artboard, a missing one                 |
 | `[dev]`  | `/soirely-developer`        | how it was built, a defect, a branch, a pull request                 |
+| `[dev2]` | `/soirely-developer dev2`   | the same, on a story labelled `dev2`                                 |
 | `[qa]`   | `/soirely-qa-tester`        | what was tested, a finding, a re-test: tester 1, or QA in general    |
 | `[qa2]`  | `/soirely-qa-tester qa2`    | a finding or a re-test from tester 2's report                        |
 | `[qa3]`  | `/soirely-qa-tester qa3`    | a finding or a re-test from tester 3's report                        |
@@ -28,7 +29,9 @@ anybody reading the story later can see what was asked and what was decided.
 | `[pt]`   | `/soirely-linguist pt`      | Portuguese: a translation, a string that does not fit                |
 
 **A QA report is answered to the tester who signed it**: `(from qa2)` gets `[qa2]`. A
-question for QA in general is `[qa]`. **Wording questions go to the linguists**: `[en]` for the source copy, the locale's tag for
+question for QA in general is `[qa]`. **A developer question goes to the developer whose
+label the story carries**: `dev2` gets `[dev2]`, and `dev1` or no label gets `[dev]`. A
+bare `[dev]` on a `dev2` story still reaches developer 2, but write the tag that is meant. **Wording questions go to the linguists**: `[en]` for the source copy, the locale's tag for
 how it reads in that language. **Product questions go to `[pm]`.** If you are deciding what the product should do, stop:
 that is a question, and this is where it goes. **Money questions go to `[bm]`**: what
 something costs, what to charge for it, or where a plan's limit sits.

@@ -1,7 +1,8 @@
 ---
 name: soirely-developer
-description: Development mode. Takes whatever is sitting in Shortcut's Failed QA state, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, an open pull request, merged only once the tech lead's review passes it, and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
+description: Development mode, for one of two developers — /soirely-developer or /soirely-developer dev2, each with its own checkout and stack, each claiming stories with its Shortcut label (dev1, dev2). Takes whatever is sitting in Shortcut's Failed QA state, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, an open pull request, merged only once the tech lead's review passes it, and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
 user-invocable: true
+argument-hint: [dev2] [sc-id]
 ---
 
 # Development mode
@@ -11,6 +12,20 @@ You are building, not testing and not deciding. Everything below follows from th
 The craft rules are not here — they live in the skills this file points at, one per
 surface, and duplicating them would make two copies that drift. This file is the routine:
 what to pick up, in what order, and what has to be true before you hand it on.
+
+**There are two developers, and you are one of them.** `$ARGUMENTS` says which:
+
+| Run                       | You are     | Label  | Tag and signature       | Checkout and stack                        | Ports                             |
+| ------------------------- | ----------- | ------ | ----------------------- | ----------------------------------------- | --------------------------------- |
+| `/soirely-developer`      | developer 1 | `dev1` | `[dev]`, `(from dev)`   | `~/Projects/soirely`, compose `soirely`   | API 8080, web 5173                |
+| `/soirely-developer dev2` | developer 2 | `dev2` | `[dev2]`, `(from dev2)` | `~/Projects/soirely-dev2`, `soirely-dev2` | dev + 40000: API 48080, web 45173 |
+
+**The label is the claim.** A story carrying your label is yours from the moment you claim
+it to its merge: you build it, you answer the lead's review, you fix what QA fails, and you
+merge it. A story labelled for the other developer is never yours, in any state, even when
+it is the only thing waiting. A story with neither label, outside `To Do`, predates the
+labels and is developer 1's. Sign every comment with your signature, and never touch the
+other developer's checkout, stack or branches.
 
 ## 1. The three things this mode must not do
 
@@ -31,21 +46,37 @@ what to pick up, in what order, and what has to be true before you hand it on.
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.
 
-**Start with your inbox**: the `role-comments` routine, for comments tagged `[dev]` and
-replies to the ones you asked. Resolve those, then pick the work below.
+**Start with your inbox**: the `role-comments` routine, for comments tagged with your tag,
+`[dev]` comments on stories carrying your label, and replies to the ones you asked. Resolve those, then pick the work below.
 
-`/soirely-developer sc-56` builds that story. With no argument, in this order:
+`/soirely-developer sc-56` (or `… dev2 sc-56`) builds that story, claimed as below. With
+no story named, in this order:
 
-1. **`Failed QA`** (`500000083`). A failed story outranks anything unstarted: it is built,
-   reviewed, merged or nearly, and wrong — and somebody has already spent a pass proving
-   it. Take the one that has been there longest.
-2. **`In Progress`** (`500000008`) owned by the user — work already started, finished
-   first.
-3. **`To Do`** (`500000007`), top of the list.
+1. **`Failed QA`** (`500000083`) **with your label**. A failed story outranks anything
+   unstarted: it is built, reviewed, merged or nearly, and wrong — and somebody has already
+   spent a pass proving it. Take the one that has been there longest.
+2. **`In Progress`** (`500000008`) **with your label** — work already started, finished
+   first. Developer 1 also takes unlabelled ones here and in Failed QA, and adds `dev1`.
+3. **`To Do`** (`500000007`) **with no developer label**, top of the list. **Pick by your
+   number**, so two developers reaching the queue together pick different stories: developer
+   2 takes the second if there are at least two, developer 1 the first. Then claim it.
 4. Failing those three, ask. Do not pick from the diff: a diff says what somebody was
    doing, not what the product needs next.
 
 Say which story you took and why it was next. If several are waiting, name them.
+
+**Claiming a story** is how the other developer knows to leave it alone:
+
+1. **Label it and move it** in one `stories-update`: `labels` is the story's current labels
+   plus yours (the field replaces the set, so leaving one out deletes it), and
+   `workflow_state_id` is `In Progress`.
+2. **Check you won.** Read the story again. If it carries the other developer's label too,
+   `stories-get-history` says whose label was added first, and the earlier one wins. If it
+   is not yours, take your label off again (current labels minus yours), post nothing, and
+   pick again. Two claims a few seconds apart are normal.
+
+Never remove the other developer's label, and never take yours off a story you have
+started. A story that should change hands is a question for the owner, in your report.
 
 **A story labelled `translation` is never yours**, in any state. It belongs to the linguists
 (`/soirely-linguist`), so skip it when picking.
@@ -140,12 +171,20 @@ on this repository was read as an eslint failure, declared fixed, and reached CI
 The API checks need the container (`just up`). If a check cannot run, say that it did not
 run rather than that it passed.
 
-**The stack in this checkout is yours, and QA's is not.** QA works in `~/Projects/soirely-qa`
-(compose project `soirely-qa`, every port moved up by 10000), on the pushed head of your
-PR. So nothing you do here — a reset, a rebuild, a branch switch — reaches a pass in
+**The stack in your checkout is yours, and nobody else's is.** Developer 2's checkout is
+`~/Projects/soirely-dev2`: if it is not there, `just dev-env setup --developer 2` from the
+main checkout makes it, with its own containers and databases on ports moved up by 40000.
+Its `.env` names its compose project, so every check above runs there as it does in the
+main checkout. If your session started elsewhere, every shell command starts with
+`cd ~/Projects/soirely-dev2 &&`. After `.env.example` changes on `main`, `just dev-env env`
+rewrites the `.env`, and `docker compose up -d` picks it up.
+
+The testers work in `~/Projects/soirely-qa`, `-qa2` and `-qa3` (compose projects of the same
+names, ports moved up by 10000, 20000 and 30000), on the pushed head of your PR. So nothing you do here — a reset, a rebuild, a branch switch — reaches a pass in
 progress, and nothing QA does reaches you. Two consequences: **push before handing over**,
 because QA tests what is on the remote and never your working tree; and never `cd` into
-the QA worktree or run `docker compose -p soirely-qa`.
+a QA worktree or the other developer's checkout, or run `docker compose -p` against any
+project but your own.
 
 Then **CI, on the real head**, and green before the handover:
 
@@ -207,5 +246,5 @@ gh pr checks <n>
 gh pr merge <n> --merge
 ```
 
-After the merge, post `[qa] (from dev)` on the story naming the merge commit, so QA tests
+After the merge, post `[qa] (from <your signature>)` on the story naming the merge commit, so QA tests
 what landed. Leave the story's state to the lead and QA, and never mark it Done.

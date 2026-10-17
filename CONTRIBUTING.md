@@ -56,6 +56,14 @@ offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`,
 `… qa3` from the main checkout as usual; each does its work in its own worktree, through
 `node .qa/bin/qa-env.mjs`.
 
+There are two developers. Developer 1 works in this checkout on the development ports.
+`just dev-env setup --developer 2` makes developer 2's: a worktree at `../soirely-dev2` with
+its own containers and database, every port moved up by 40000. Start `/soirely-developer dev2`
+from that worktree. Every `just` recipe and `npm run` check works there as it does here,
+because its `.env` names its own compose project. A developer claims a story by adding its
+label, `dev1` or `dev2`, so the other leaves it alone; `.claude/skills/soirely-developer`
+has the details.
+
 ## The shape of the work
 
 **An epic is a scope of work, not a stack.** "Auth" is one epic covering the Symfony

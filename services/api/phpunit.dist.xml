@@ -33,6 +33,9 @@
         <env name="MAILER_DSN" value="null://null" force="true" />
         <env name="CORS_WEB_ORIGIN" value="https://app.soirely.test" force="true" />
         <env name="CORS_EXPO_WEB_ORIGIN" value="" force="true" />
+        <!-- A second stack on other ports sets these too, and the suite assumes the defaults. -->
+        <env name="STORAGE_PUBLIC_ENDPOINT" value="http://localhost:4566" force="true" />
+        <env name="OAUTH_APPLE_RETURN_URI" value="http://localhost:8080/api/auth/oauth/apple/return" force="true" />
     </php>
 
     <testsuites>
