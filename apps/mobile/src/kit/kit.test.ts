@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
 import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
-import { keyboardLift } from './keyboard.ts';
+import { coveredBy, keyboardLift, offsetAboveKeyboard } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
   it('on iOS, by the scroll view alone', () => {
@@ -19,6 +19,28 @@ describe('the keyboard lifts the card once', () => {
 
       expect(lift.avoid != null && lift.adjustScrollInsets, os).toBe(false);
     }
+  });
+});
+
+describe('a field and its button rest above the keyboard', () => {
+  const underHeader = { contentY: 600, height: 150, scrollTop: 100, keyboardTop: 500, margin: 16 };
+
+  it('counting the header above the scroll view', () => {
+    const offset = offsetAboveKeyboard(underHeader);
+    const groupBottom = underHeader.scrollTop + underHeader.contentY - offset + underHeader.height;
+
+    expect(offset).toBe(366);
+    expect(groupBottom + underHeader.margin).toBe(underHeader.keyboardTop);
+  });
+
+  it('never past the top of the content', () => {
+    expect(offsetAboveKeyboard({ ...underHeader, contentY: 0, height: 40 })).toBe(0);
+  });
+
+  it('only when the keyboard covers the group or its margin', () => {
+    expect(coveredBy(500, { y: 300, height: 150 }, 16)).toBe(false);
+    expect(coveredBy(500, { y: 300, height: 190 }, 16)).toBe(true);
+    expect(coveredBy(500, { y: 450, height: 150 }, 16)).toBe(true);
   });
 });
 

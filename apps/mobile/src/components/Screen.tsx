@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { keyboardLift } from '../kit/keyboard.ts';
+import { keyboardLift, coveredBy, offsetAboveKeyboard } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 
 const LIFT = keyboardLift(Platform.OS);
@@ -26,25 +26,68 @@ type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
 
 const ScreenScroll = createContext<RefObject<ScrollView | null> | null>(null);
 
-/** For a field and the button under it: the lift alone shows the field, and leaves the button behind the keys. */
-export function useAboveKeyboard(): RefObject<View | null> {
+export interface AboveKeyboard {
+  ref: RefObject<View | null>;
+  onLayout: () => void;
+}
+
+// Not scrollResponderScrollNativeHandleToKeyboard: it measures as if the scroll view began at
+// the top of the window, so under a header it stops short and leaves the button behind the keys.
+function liftAboveKeyboard(
+  scroll: RefObject<ScrollView | null> | null,
+  group: View | null,
+  keyboardTop: number | null,
+): void {
+  const view = scroll?.current;
+  const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (view == null || content == null || scrollHost == null) return;
+  if (group == null || keyboardTop == null) return;
+
+  group.measureInWindow((_gx, groupY, _gw, groupHeight) => {
+    if (!coveredBy(keyboardTop, { y: groupY, height: groupHeight }, tokens.spaceLg)) return;
+
+    group.measureLayout(content, (_x, contentY, _w, height) => {
+      scrollHost.measureInWindow((_sx, scrollTop) => {
+        view.scrollTo({
+          y: offsetAboveKeyboard({
+            contentY,
+            height,
+            scrollTop,
+            keyboardTop,
+            margin: tokens.spaceLg,
+          }),
+          animated: true,
+        });
+      });
+    });
+  });
+}
+
+/** For a field and the button under it, spread on their View. It lifts again when an error grows the group. */
+export function useAboveKeyboard(): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
-  const group = useRef<View>(null);
+  const ref = useRef<View>(null);
+  const keyboardTop = useRef<number | null>(
+    Keyboard.isVisible() ? (Keyboard.metrics()?.screenY ?? null) : null,
+  );
 
   useEffect(() => {
-    const shown = Keyboard.addListener('keyboardDidShow', () => {
-      if (group.current == null) return;
-      scroll?.current?.scrollResponderScrollNativeHandleToKeyboard(
-        group.current,
-        tokens.spaceLg,
-        true,
-      );
+    const shown = Keyboard.addListener('keyboardDidShow', (event) => {
+      keyboardTop.current = event.endCoordinates.screenY;
+      liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
+    });
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardTop.current = null;
     });
 
-    return () => shown.remove();
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
   }, [scroll]);
 
-  return group;
+  return { ref, onLayout: () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current) };
 }
 
 /** For a field that opens a list under it: brings the field to the top of the screen once it mounts. */
