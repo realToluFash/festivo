@@ -449,6 +449,30 @@ with a `code` or a `recoveryCode` and only then issues tokens.
   and deletes every old one, so an old code is refused exactly as a wrong one is. Turning it off takes an app code or an unused recovery code, and emails
   the address.
 
+## A sign-in from a new device
+
+sc-511. After every sign-in that lets somebody in (password, Google or Apple, after the
+second factor when it is on: `SignInGate::issue()`), `KnownDevices` asks whether this device
+has signed in to this account before, and if not emails the primary address "New sign-in to
+Soirely".
+
+- **The device is the identifier the client keeps, never the user agent.** The app sends
+  its install identifier as `X-Device-Id` (`apps/mobile/src/installId.ts`, in AsyncStorage
+  so that a reinstall is a new device). The web gets a `soirely_device` cookie, set by the
+  API the first time it asks (`DeviceIdentity`, `DeviceCookieListener`): `HttpOnly`,
+  `SameSite=Strict`, on `/api/auth` as the refresh cookie is, for 400 days, renewed each
+  sign-in. A cleared cookie or a reinstall is a new device, and emails.
+- **`known_devices` holds it, hashed**, one row per account and device, apart from
+  `refresh_tokens`: those are pruned when they expire, and the device is still known after.
+  The insert is `ON CONFLICT DO NOTHING`, so only one sign-in can be the first on a device,
+  and only that one emails.
+- **Registering and recovering a password remember the device and email nothing.** A
+  refresh never asks.
+- **At most `KnownDevices::DAILY_CAP` (10) emails per account in 24 hours.** Past it the
+  device is still remembered, and the sign-in is still on the devices list.
+- The email carries the time in the account's zone, the device as the devices card names it,
+  and the network address. No location is guessed from the address.
+
 ## What is not built yet
 
 - **Signing in with Apple.** The button is drawn and does nothing until sc-59.
