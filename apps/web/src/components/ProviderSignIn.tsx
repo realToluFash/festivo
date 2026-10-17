@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
-import { startGoogleSignIn } from '../googleSignIn.ts';
+import { startProviderSignIn } from '../providerSignIn.ts';
 
 /** Both are built to their owners' published specification; the marks are copied, not redrawn. */
 export function ProviderSignIn() {
@@ -20,14 +20,22 @@ export function ProviderSignIn() {
         className="button button-google"
         type="button"
         onClick={() => {
-          startGoogleSignIn().catch(() => navigate('/sign-in?provider-failed=Google'));
+          void startProviderSignIn('google').catch(() =>
+            navigate('/sign-in?provider-failed=Google'),
+          );
         }}
       >
         <GoogleMark />
         <span>{t('signIn.withGoogle', { provider: 'Google' })}</span>
       </button>
 
-      <button className="button button-apple" type="button">
+      <button
+        className="button button-apple"
+        type="button"
+        onClick={() => {
+          void startProviderSignIn('apple').catch(() => navigate('/sign-in?provider-failed=Apple'));
+        }}
+      >
         <AppleMark />
         <span>{t('signIn.withApple', { provider: 'Apple' })}</span>
       </button>

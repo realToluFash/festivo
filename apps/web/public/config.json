@@ -6,5 +6,9 @@
   "google": {
     "authorizeUrl": "http://localhost:8089/google/authorize",
     "clientId": "soirely-web"
+  },
+  "apple": {
+    "authorizeUrl": "http://localhost:8089/apple/authorize",
+    "clientId": "soirely-web"
   }
 }

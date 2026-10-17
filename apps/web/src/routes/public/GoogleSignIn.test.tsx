@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { browser } from '../../googleSignIn.ts';
+import { browser } from '../../providerSignIn.ts';
 import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
@@ -143,7 +143,7 @@ describe('continue with Google', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByText(/Google is now linked/)).toBeNull();
-    expect(sessionStorage.getItem('soirely.google.linked')).toBeNull();
+    expect(sessionStorage.getItem('soirely.provider.linked')).toBeNull();
   });
 
   it('goes back to sign-in quietly when the person closed Google', async () => {

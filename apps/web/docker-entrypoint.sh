@@ -23,6 +23,10 @@ cat > "$TARGET" <<JSON
   "google": {
     "authorizeUrl": "${SOIRELY_GOOGLE_AUTHORIZE_URL:-}",
     "clientId": "${SOIRELY_GOOGLE_CLIENT_ID:-}"
+  },
+  "apple": {
+    "authorizeUrl": "${SOIRELY_APPLE_AUTHORIZE_URL:-}",
+    "clientId": "${SOIRELY_APPLE_CLIENT_ID:-}"
   }
 }
 JSON

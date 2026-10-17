@@ -1,13 +1,13 @@
-import { ProviderCancelled, awaiting } from '@soirely/api-client';
+import { type Provider, ProviderCancelled, awaiting } from '@soirely/api-client';
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 
 import { Pending } from '../../components/Pending.tsx';
-import { finishGoogleSignIn } from '../../googleSignIn.ts';
+import { PROVIDER_NAMES, finishProviderSignIn } from '../../providerSignIn.ts';
 import { adoptAccount, landingFor } from '../../session.ts';
 
-/** Where Google sends the person back: signed in and on to where the account belongs, or back to sign-in. */
-export function OAuthCallback() {
+/** Where a provider sends the person back: signed in and on to where the account belongs, or back to sign-in. */
+export function OAuthCallback({ provider }: { provider: Provider }) {
   const navigate = useNavigate();
   const started = useRef(false);
 
@@ -16,20 +16,20 @@ export function OAuthCallback() {
     if (started.current) return;
     started.current = true;
 
-    finishGoogleSignIn(window.location.href)
+    finishProviderSignIn(provider, window.location.href)
       .then(async ({ account }) => {
         await adoptAccount(account);
         navigate(landingFor(awaiting(account)), { replace: true });
       })
       .catch((error: unknown) => {
         navigate(
-          error instanceof ProviderCancelled ? '/sign-in' : '/sign-in?provider-failed=Google',
-          {
-            replace: true,
-          },
+          error instanceof ProviderCancelled
+            ? '/sign-in'
+            : `/sign-in?provider-failed=${PROVIDER_NAMES[provider]}`,
+          { replace: true },
         );
       });
-  }, [navigate]);
+  }, [navigate, provider]);
 
   return <Pending />;
 }
