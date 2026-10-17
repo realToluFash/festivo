@@ -219,7 +219,6 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertSame(ErrorCode::InvalidCredentials->type(), $body['type']);
     }
 
-    /** An unexpired token a provider SDK restored proves a sign-in long ago, not one now. */
     #[Test]
     public function aProviderSignInOlderThanFiveMinutesProvesNothing(): void
     {

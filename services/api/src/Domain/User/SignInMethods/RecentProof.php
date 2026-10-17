@@ -131,7 +131,6 @@ final readonly class RecentProof
             throw new ApiException(ErrorCode::InvalidCredentials, 'That account is not linked to this Soirely account.');
         }
 
-        // A token a provider SDK restored from an hour ago proves nobody is here now.
         $since = $claims->authenticatedAt;
         if (null === $since || $since < $this->clock->now()->modify('-' . SignInProof::MINUTES . ' minutes')) {
             throw new ApiException(ErrorCode::InvalidCredentials, 'Sign in again to confirm it is you.');
