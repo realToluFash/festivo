@@ -364,5 +364,29 @@
     "setEmailed": "We will email {{email}} to say a password was added.",
     "setSave": "Save password",
     "added": "Password added. You can sign in with it or with {{provider}}."
+  },
+  "timeZone": {
+    "title": "Time zone",
+    "intro": "Times in the emails and texts Soirely sends you are written in this zone.",
+    "unset": "Not set: times reach you in UTC",
+    "change": "Change",
+    "find": "Find your time zone",
+    "help": "Type a city, a country or an offset, then pick from the list. Now: {{now}}.",
+    "nowUnset": "not set, so times reach you in UTC",
+    "placeholder": "Lagos, Ghana or UTC+01",
+    "listLabel": "Time zones",
+    "noneMatch": "No time zone matches “{{typed}}”. Try a city, a country or an offset like UTC+01.",
+    "choose": "Choose a time zone from the list.",
+    "chooseNoMatch": "Choose a time zone from the list. Nothing matches “{{typed}}”.",
+    "refused": "That time zone isn’t one we know, so nothing was saved. Choose one from the list.",
+    "failed": "Your time zone could not be saved. Check your connection and try again.",
+    "save": "Save time zone",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "saved": "Time zone changed to {{zone}}. Times in your emails now use it."
+  },
+  "account": {
+    "title": "Your account",
+    "back": "Back"
   }
 }
