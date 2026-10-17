@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\User\Controller\PasswordRecoveryController;
-use App\Domain\User\Http\AccountSerialiser;
+use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\Recovery\PasswordRecovery;
 use App\Domain\User\Recovery\RecoveryRequests;
 use App\Domain\User\UserRegistrar;
@@ -191,7 +191,7 @@ final class PasswordRecoveryTest extends ApiTestCase
         $controller = new PasswordRecoveryController(
             self::service(PasswordRecovery::class),
             self::service(RecoveryRequests::class),
-            self::service(AccountSerialiser::class),
+            self::service(SignInResponse::class),
             self::serviceById('limiter.password_reset_address', RateLimiterFactoryInterface::class),
             self::serviceById('limiter.password_reset_ip', RateLimiterFactoryInterface::class),
         );
@@ -216,7 +216,7 @@ final class PasswordRecoveryTest extends ApiTestCase
         $open = self::serviceById('limiter.password_reset_ip', RateLimiterFactoryInterface::class);
 
         foreach ([[new RefusingRateLimiterFactory(), $open], [$open, new RefusingRateLimiterFactory()]] as [$address, $ip]) {
-            $controller = new PasswordRecoveryController(self::service(PasswordRecovery::class), self::service(RecoveryRequests::class), self::service(AccountSerialiser::class), $address, $ip);
+            $controller = new PasswordRecoveryController(self::service(PasswordRecovery::class), self::service(RecoveryRequests::class), self::service(SignInResponse::class), $address, $ip);
 
             try {
                 $controller->forgot(Request::create('/api/auth/password/forgot', 'POST', content: Json\encode(['email' => 'anybody@example.com'])));

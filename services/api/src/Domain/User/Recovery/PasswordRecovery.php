@@ -8,6 +8,7 @@ use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\TokenIssuer;
+use App\Domain\User\TwoFactor\SignInGate;
 use App\Entity\PasswordResetToken;
 use App\Entity\ProviderIdentity;
 use App\Entity\User;
@@ -37,6 +38,7 @@ final readonly class PasswordRecovery
         private PasswordResolver $passwordResolver,
         private TokenIssuer $tokenIssuer,
         private RecoveryMailer $recoveryMailer,
+        private SignInGate $signInGate,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -89,12 +91,13 @@ final readonly class PasswordRecovery
 
         $this->passwordResetTokenRepository->spendAllFor($user, $now);
         $this->tokenIssuer->revokeAllFor($user);
-        $tokens = $this->tokenIssuer->issueFor($user, $request);
         $this->entityManager->flush();
+        // A reset link is not a way past the second factor: with it on, the code comes next.
+        $admission = $this->signInGate->admit($user, $request);
 
         $this->recoveryMailer->sendChanged($user, $now);
 
-        return new SignInResult($user, $tokens);
+        return new SignInResult($user, $admission);
     }
 
     private function usable(#[SensitiveParameter] string $token): PasswordResetToken

@@ -6,10 +6,10 @@ namespace App\Domain\User;
 
 use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\PasswordResolver;
+use App\Domain\User\TwoFactor\SignInGate;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\UserRepository;
-use Doctrine\ORM\EntityManagerInterface;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -18,8 +18,7 @@ final readonly class UserAuthenticator
     public function __construct(
         private UserRepository $userRepository,
         private PasswordResolver $passwordResolver,
-        private TokenIssuer $tokenIssuer,
-        private EntityManagerInterface $entityManager,
+        private SignInGate $signInGate,
     ) {
     }
 
@@ -41,11 +40,7 @@ final readonly class UserAuthenticator
             throw $this->refuse();
         }
 
-        $tokens = $this->tokenIssuer->issueFor($user, $request);
-
-        $this->entityManager->flush();
-
-        return new SignInResult($user, $tokens);
+        return new SignInResult($user, $this->signInGate->admit($user, $request));
     }
 
     private function refuse(): ApiException

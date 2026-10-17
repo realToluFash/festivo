@@ -16,5 +16,8 @@
     "recovery.changed.subject": "A sua palavra-passe da Soirely foi alterada",
     "recovery.changed.body": "A palavra-passe desta conta Soirely foi alterada a {when}. Todos os outros dispositivos terminaram a sessão.",
     "recovery.changed.notYou": "Se não foi o próprio, reponha a palavra-passe de novo imediatamente.",
-    "recovery.or": " ou "
+    "recovery.or": " ou ",
+    "twoFactor.off.subject": "A autenticação de dois fatores foi desativada",
+    "twoFactor.off.body": "A autenticação de dois fatores da sua conta Soirely foi desativada a {when}. Iniciar sessão pede agora apenas a sua palavra-passe, Google ou Apple.",
+    "twoFactor.off.notYou": "Se não foi você, redefina a sua palavra-passe e volte a ativar a autenticação de dois fatores em Definições > Segurança."
 }

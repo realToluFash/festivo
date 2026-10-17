@@ -1,0 +1,357 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Tests\Functional;
+
+use App\Domain\User\TwoFactor\SecondFactorCheck;
+use App\Domain\User\TwoFactor\SecretBox;
+use App\Domain\User\UserRegistrar;
+use App\Entity\ProviderIdentity;
+use App\Entity\TwoFactorFactor;
+use App\Entity\User;
+use App\Enum\ErrorCode;
+use App\Enum\IdentityProvider;
+use App\Http\Exception\ApiException;
+use App\Repository\TwoFactorFactorRepository;
+use App\Tests\ApiTestCase;
+use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
+use App\Tests\Traits\OnboardsAccounts;
+use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use LogicException;
+use OTPHP\TOTP;
+use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
+use Psl\Json;
+use Psl\Str;
+use Psl\Type;
+use Psl\Vec;
+use SensitiveParameter;
+use stdClass;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
+use Symfony\Component\Mime\Email;
+
+final class TwoFactorTest extends ApiTestCase
+{
+    use ClockSensitiveTrait;
+    use OnboardsAccounts;
+
+    /** @mago-expect lint:no-literal-password */
+    private const string PASSWORD = 'a decent passphrase';
+
+    private const string ADDRESS = 'folake@example.com';
+
+    private User $user;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->client->disableReboot();
+        self::mockTime('2026-10-17 12:00:10');
+        $this->user = $this->account();
+    }
+
+    #[Test]
+    public function itIsOffUntilACodeFromTheNewSecretMatches(): void
+    {
+        $this->authenticated();
+        $enrolled = $this->call('POST', '/api/auth/two-factor/enrol');
+
+        self::assertStringStartsWith('otpauth://totp/Soirely', Type\string()->coerce($enrolled['otpauthUri']));
+        self::assertStringContainsString('<svg', Type\string()->coerce($enrolled['qrSvg']));
+        self::assertSame(['on' => false, 'recoveryCodesLeft' => 0], $this->call('GET', '/api/auth/two-factor'));
+
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => '000000']);
+        self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type']);
+        self::assertSame(['on' => false, 'recoveryCodesLeft' => 0], $this->call('GET', '/api/auth/two-factor'), 'a wrong code turns nothing on');
+        self::assertSame(200, $this->login()[0], 'and sign-in still issues tokens');
+
+        $this->authenticated();
+        $codes = $this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow(Type\string()->coerce($enrolled['secret']))]);
+
+        self::assertCount(10, Type\vec(Type\string())->coerce($codes['recoveryCodes']));
+        self::assertSame(['on' => true, 'recoveryCodesLeft' => 10], $this->call('GET', '/api/auth/two-factor'));
+    }
+
+    #[Test]
+    public function aPasswordSignInGetsAChallengeAndNoTokensUntilTheCodePasses(): void
+    {
+        $secret = $this->turnedOn()['secret'];
+
+        [$status, $body] = $this->login();
+
+        self::assertSame(202, $status);
+        self::assertSame(self::ADDRESS, $body['email']);
+        self::assertArrayNotHasKey('accessToken', $body);
+        self::assertArrayNotHasKey('account', $body, 'nothing about the account before the second factor');
+
+        self::mockTime('+30 seconds');
+        $signedIn = $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $body['twoFactorChallenge'], 'code' => $this->codeNow($secret)]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($signedIn));
+        self::assertIsString($signedIn['accessToken'] ?? null);
+        self::assertArrayHasKey('account', $signedIn);
+    }
+
+    #[Test]
+    public function googleSignInIsStoppedAtTheSameChallenge(): void
+    {
+        $this->turnedOn();
+        self::service(EntityManagerInterface::class)->persist(new ProviderIdentity($this->fresh(), IdentityProvider::Google, 'g-folake'));
+        self::service(EntityManagerInterface::class)->flush();
+
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $body = $this->call('POST', '/api/auth/oauth/google', ['idToken' => $this->googleToken('g-folake')]);
+
+        self::assertSame(202, $this->statusCode(), Json\encode($body));
+        self::assertIsString($body['twoFactorChallenge'] ?? null);
+        self::assertArrayNotHasKey('accessToken', $body);
+    }
+
+    #[Test]
+    public function aCodeCannotBeReplayedInsideItsOwnWindow(): void
+    {
+        $secret = $this->turnedOn()['secret'];
+        self::mockTime('+30 seconds');
+        $code = $this->codeNow($secret);
+
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $this->challenge(), 'code' => $code]);
+        self::assertSame(200, $this->statusCode());
+
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $this->challenge(), 'code' => $code]);
+        self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type'], 'refused as a wrong code is');
+    }
+
+    #[Test]
+    public function aRecoveryCodeWorksOnceAndThenSaysItWasUsed(): void
+    {
+        $recovery = $this->turnedOn()['codes'][0];
+
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $this->challenge(), 'recoveryCode' => Str\uppercase($recovery)]);
+        self::assertSame(200, $this->statusCode(), 'typed in either case');
+
+        $this->authenticated();
+        self::assertSame(['on' => true, 'recoveryCodesLeft' => 9], $this->call('GET', '/api/auth/two-factor'));
+
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $this->challenge(), 'recoveryCode' => $recovery]);
+        self::assertSame(ErrorCode::RecoveryCodeUsed->type(), $this->last()['type']);
+    }
+
+    #[Test]
+    public function newCodesReplaceEveryOldOneAndAnOldOneReadsAsWrong(): void
+    {
+        $codes = $this->turnedOn()['codes'];
+        $old = $codes[0];
+
+        $this->authenticated();
+        $new = Type\vec(Type\string())->coerce($this->call('POST', '/api/auth/two-factor/recovery-codes', ['code' => $codes[1]])['recoveryCodes']);
+        self::assertCount(10, $new);
+        self::assertNotContains($old, $new);
+
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $this->challenge(), 'recoveryCode' => $old]);
+        self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type'], 'not "replaced": that would say it was once real');
+    }
+
+    /** Checked in one request: the test kernel resets the limiter's storage between requests. */
+    /** Changing a factor takes the current one, or a stolen session could mint codes past it. */
+    #[Test]
+    public function newCodesNeedTheCurrentFactor(): void
+    {
+        $codes = $this->turnedOn()['codes'];
+        $this->authenticated();
+
+        $this->call('POST', '/api/auth/two-factor/recovery-codes', ['code' => '000000']);
+        self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type']);
+
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $this->challenge(), 'recoveryCode' => $codes[0]]);
+        self::assertSame(200, $this->statusCode(), 'the old codes still work: nothing was replaced');
+    }
+
+    /** Forty bits is too few for a bare SHA-256: each is a salted slow hash (NIST SP 800-63B 5.1.2.2). */
+    #[Test]
+    public function recoveryCodesAreKeptAsSaltedSlowHashes(): void
+    {
+        $codes = $this->turnedOn()['codes'];
+        $stored = Type\vec(Type\string())->coerce(self::service(EntityManagerInterface::class)->getConnection()->fetchFirstColumn('SELECT code_hash FROM recovery_codes'));
+
+        self::assertCount(10, $stored);
+        self::assertNotContains(\hash('sha256', Str\replace($codes[0], '-', '')), $stored);
+        self::assertStringStartsWith('$', $stored[0], 'a password_hash string, with its algorithm and salt');
+        self::assertCount(10, Vec\unique($stored));
+    }
+
+    #[Test]
+    public function fiveWrongCodesPauseCodeEntryAndSayUntilWhen(): void
+    {
+        $secret = $this->turnedOn()['secret'];
+        $factor = Type\instance_of(TwoFactorFactor::class)->coerce(self::service(TwoFactorFactorRepository::class)->findActiveFor($this->fresh()));
+        $check = self::service(SecondFactorCheck::class);
+
+        foreach (Vec\range(1, 4) as $_) {
+            self::assertSame(ErrorCode::TwoFactorCodeInvalid, $this->refusal(static fn () => $check->passCode($factor, '000000'))->errorCode);
+        }
+
+        $paused = $this->refusal(static fn () => $check->passCode($factor, '000000'));
+        self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
+        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', $paused->getMessage());
+        self::assertArrayHasKey('Retry-After', $paused->headers);
+
+        self::mockTime('+30 seconds');
+        $code = $this->codeNow($secret);
+        self::assertSame(ErrorCode::TooManyAttempts, $this->refusal(static fn () => $check->passCode($factor, $code))->errorCode, 'a right code waits out the pause too');
+    }
+
+    #[Test]
+    public function turningItOffNeedsACodeAndEmailsTheAddress(): void
+    {
+        $recovery = $this->turnedOn()['codes'][0];
+        $this->authenticated();
+
+        $this->call('POST', '/api/auth/two-factor/disable', ['code' => 'not-a-code']);
+        self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type']);
+
+        $this->call('POST', '/api/auth/two-factor/disable', ['code' => $recovery]);
+        self::assertSame(204, $this->statusCode());
+
+        $email = Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()));
+        self::assertSame(self::ADDRESS, $email->getTo()[0]->getAddress());
+        self::assertStringContainsString('turned off', (string) $email->getTextBody());
+
+        self::assertSame(200, $this->login()[0], 'the next sign-in asks for no code');
+    }
+
+    #[Test]
+    public function aChallengeLastsFiveMinutes(): void
+    {
+        $secret = $this->turnedOn()['secret'];
+        $challenge = $this->challenge();
+
+        self::mockTime('+6 minutes');
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => $this->codeNow($secret)]);
+
+        self::assertSame(401, $this->statusCode());
+        self::assertSame(ErrorCode::TwoFactorChallengeInvalid->type(), $this->last()['type']);
+    }
+
+    #[Test]
+    public function theStoredSecretIsUnreadableWithoutTheKey(): void
+    {
+        $secret = $this->turnedOn()['secret'];
+        $stored = Type\string()->coerce(self::service(EntityManagerInterface::class)->getConnection()->fetchOne('SELECT encrypted_secret FROM two_factor_factors'));
+
+        self::assertStringNotContainsString($secret, $stored);
+        self::assertSame($secret, self::service(SecretBox::class)->open($stored), 'readable with the configured key');
+
+        $this->expectException(LogicException::class);
+        new SecretBox(\base64_encode(Str\repeat("\0", \SODIUM_CRYPTO_SECRETBOX_KEYBYTES)))->open($stored);
+    }
+
+    private function refusal(callable $attempt): ApiException
+    {
+        try {
+            $attempt();
+        } catch (ApiException $e) {
+            return $e;
+        }
+
+        self::fail('the code was accepted');
+    }
+
+    /** @return array{secret: string, codes: list<string>} */
+    private function turnedOn(): array
+    {
+        $this->authenticated();
+        $secret = Type\string()->coerce($this->call('POST', '/api/auth/two-factor/enrol')['secret']);
+        $codes = Type\vec(Type\string())->coerce($this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow($secret)])['recoveryCodes']);
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+
+        return ['secret' => $secret, 'codes' => $codes];
+    }
+
+    private function challenge(): string
+    {
+        [$status, $body] = $this->login();
+        self::assertSame(202, $status);
+
+        return Type\string()->coerce($body['twoFactorChallenge']);
+    }
+
+    /** @return array{0: int, 1: array<string, mixed>} */
+    private function login(): array
+    {
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $body = $this->call('POST', '/api/auth/login', ['email' => self::ADDRESS, 'password' => self::PASSWORD]);
+
+        return [$this->statusCode(), $body];
+    }
+
+    private function codeNow(#[SensitiveParameter] string $secret): string
+    {
+        return TOTP::createFromSecret(Type\non_empty_string()->coerce($secret))->at(Type\uint()->coerce(self::now()));
+    }
+
+    private static function now(): int
+    {
+        return new Clock()->now()->getTimestamp();
+    }
+
+    private function googleToken(string $subject): string
+    {
+        $configured = static fn (string $name): string => Str\trim(Str\split(Type\string()->coerce($_SERVER[$name] ?? $_ENV[$name] ?? ''), ',')[0] ?? '');
+
+        return self::service(TestSigningKeys::class)->sign([
+            'iss' => $configured('OAUTH_GOOGLE_ISSUERS'),
+            'aud' => $configured('OAUTH_GOOGLE_CLIENT_IDS'),
+            'iat' => new Clock()->now()->modify('-1 minute'),
+            'exp' => new Clock()->now()->modify('+1 hour'),
+            'sub' => $subject,
+            'email' => self::ADDRESS,
+            'email_verified' => true,
+        ]);
+    }
+
+    private function account(): User
+    {
+        $user = self::service(UserRegistrar::class)->register(self::ADDRESS, 'Folake', self::PASSWORD)->user;
+        self::onboard($user);
+
+        return $user;
+    }
+
+    private function fresh(): User
+    {
+        return Type\instance_of(User::class)->coerce(self::service(EntityManagerInterface::class)->find(User::class, $this->user->getId()));
+    }
+
+    private function authenticated(): void
+    {
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->fresh()));
+    }
+
+    /**
+     * @param array<string, mixed>|null $body
+     *
+     * @return array<string, mixed>
+     */
+    private function call(string $method, string $path, ?array $body = null): array
+    {
+        $this->client->request($method, $path, server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode($body ?? new stdClass()));
+
+        return $this->last();
+    }
+
+    /** @return array<string, mixed> */
+    private function last(): array
+    {
+        $raw = (string) $this->client->getResponse()->getContent();
+
+        return '' === $raw ? [] : Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($raw));
+    }
+
+    private function statusCode(): int
+    {
+        return $this->client->getResponse()->getStatusCode();
+    }
+}

@@ -27,5 +27,11 @@
     "service_unavailable": "El servicio no está disponible temporalmente.",
     "assistant_unavailable": "El asistente no está disponible.",
     "assistant_busy": "El asistente está ocupado. Inténtelo de nuevo en un momento.",
-    "assistant_refused": "El asistente no ha querido responder a eso."
+    "assistant_refused": "El asistente no ha querido responder a eso.",
+    "two_factor_challenge_invalid": "Vuelva a iniciar sesión.",
+    "two_factor_code_invalid": "Ese código no ha funcionado.",
+    "recovery_code_used": "Ese código de recuperación ya se ha usado.",
+    "two_factor_already_on": "La verificación en dos pasos ya está activada.",
+    "two_factor_not_enrolled": "Primero empiece a configurar la verificación en dos pasos.",
+    "two_factor_off": "La verificación en dos pasos no está activada."
 }

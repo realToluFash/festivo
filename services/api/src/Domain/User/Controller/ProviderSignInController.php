@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
-use App\Domain\User\Http\AccountSerialiser;
-use App\Domain\User\Http\IssuedTokensResponse;
+use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\Provider\ProviderSignIn;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
@@ -14,6 +13,7 @@ use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -23,12 +23,12 @@ final readonly class ProviderSignInController
 {
     public function __construct(
         private ProviderSignIn $providerSignIn,
-        private AccountSerialiser $accountSerialiser,
+        private SignInResponse $signInResponse,
     ) {
     }
 
     #[Route('/api/auth/oauth/{provider}', name: 'auth_oauth_provider', requirements: ['provider' => 'google|apple'], methods: ['POST'])]
-    public function signIn(Request $request, string $provider): IssuedTokensResponse
+    public function signIn(Request $request, string $provider): JsonResponse
     {
         $identityProvider = IdentityProvider::from($provider);
 
@@ -59,11 +59,6 @@ final readonly class ProviderSignInController
             default => throw new ApiException(ErrorCode::BadRequest, 'Send an idToken, or a code with its codeVerifier and redirectUri.'),
         };
 
-        return new IssuedTokensResponse(
-            $result->tokens,
-            $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
-            $request,
-            ['account' => $this->accountSerialiser->serialise($result->user), 'linked' => $result->linked],
-        );
+        return $this->signInResponse->for($result->admission, $result->user, $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body, $request, ['linked' => $result->linked]);
     }
 }

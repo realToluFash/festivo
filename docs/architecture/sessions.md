@@ -291,6 +291,36 @@ the same checks, nonce binding and account paths. What differs is what Apple sen
   the bundle id (iOS). Apple's client secret is not a fixed string but a JWT signed with the
   team's Sign in with Apple key, which expires within six months and has to be issued again.
 
+## Two-factor authentication
+
+An account with two-factor on is never issued tokens by its first factor alone.
+`SignInGate` stands where password sign-in, Google and Apple sign-in let an existing
+account in, and with a factor active it answers `202` with a `twoFactorChallenge` (a
+single-use token kept as its SHA-256, for `TwoFactorChallenge::LIFETIME_MINUTES`, 5)
+and nothing about the account. `POST /api/auth/two-factor/verify` takes the challenge
+with a `code` or a `recoveryCode` and only then issues tokens.
+
+- **Codes** are RFC 6238: six digits, thirty-second steps, SHA-1, a 160-bit secret.
+  A code is accepted **one step either side of now** (`AuthenticatorCodes::DRIFT_STEPS`),
+  so a clock up to thirty seconds out still works. The step a code was accepted for is
+  kept, and a code for that step or an earlier one is refused as a wrong code, so a
+  code cannot be replayed inside its own window.
+- **The secret is encrypted at rest** with libsodium's secretbox, keyed by
+  `TWO_FACTOR_KEY` (32 bytes, base64). It has to be readable to check a code, so it
+  cannot be hashed. The value in `.env` is for development; production sets its own, and
+  changing it strands every enrolled factor.
+- **Attempts** share one budget per account across sign-in, setup and turning it off:
+  five wrong codes in a fixed **fifteen-minute** window (`two_factor_account`) pause
+  code entry until the window ends, and the refusal is `too_many_attempts` with the time.
+  Each check holds a row lock on the factor from the peek to the charge, so parallel
+  requests queue rather than all passing the peek, and a replay sees the newest step.
+- **Setup** stays off until a code from the new secret matches, so a misconfigured app
+  cannot lock anybody out. Activating returns ten recovery codes, shown once. Each is
+  forty bits, so it is kept as a salted slow hash (the password hasher), as NIST SP 800-63B
+  5.1.2.2 asks of look-up secrets under 112 bits. Making new codes takes the current factor
+  and deletes every old one, so an old code is refused exactly as a wrong one is. Turning it off takes an app code or an unused recovery code, and emails
+  the address.
+
 ## What is not built yet
 
 - **Signing in with Apple.** The button is drawn and does nothing until sc-59.

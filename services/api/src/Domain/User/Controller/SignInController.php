@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Controller;
 
 use App\Domain\User\EmailAddressNormaliser;
-use App\Domain\User\Http\AccountSerialiser;
-use App\Domain\User\Http\IssuedTokensResponse;
+use App\Domain\User\Http\SignInResponse;
 use App\Domain\User\UserAuthenticator;
 use App\Enum\ErrorCode;
 use App\Enum\RefreshTokenDelivery;
@@ -14,6 +13,7 @@ use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\RateLimiter\RateLimit;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -23,7 +23,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class SignInController
 {
     public function __construct(
-        private readonly AccountSerialiser $accountSerialiser,
+        private readonly SignInResponse $signInResponse,
         private readonly UserAuthenticator $userAuthenticator,
         private readonly RateLimiterFactoryInterface $signInIpLimiter,
         private readonly RateLimiterFactoryInterface $signInAccountLimiter,
@@ -31,7 +31,7 @@ final class SignInController
     }
 
     #[Route('/api/auth/login', name: 'auth_login', methods: ['POST'])]
-    public function signIn(Request $request): IssuedTokensResponse
+    public function signIn(Request $request): JsonResponse
     {
         $body = Input::body($request, Type\shape([
             'email' => Type\string(),
@@ -61,12 +61,7 @@ final class SignInController
             throw $e;
         }
 
-        return new IssuedTokensResponse(
-            $result->tokens,
-            $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
-            $request,
-            ['account' => $this->accountSerialiser->serialise($result->user)],
-        );
+        return $this->signInResponse->for($result->admission, $result->user, $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body, $request);
     }
 
     /** A peek, not a spend: only a refused password costs anything, so a success spends nothing. */
