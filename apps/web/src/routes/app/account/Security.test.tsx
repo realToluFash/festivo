@@ -489,7 +489,9 @@ describe('signing out everywhere else', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toMatch('2 other devices are signed out.'),
+      expect(screen.getByRole('status').textContent).toMatch(
+        'Your 2 other devices are signed out.',
+      ),
     );
     expect(sent.filter((entry) => entry.call.startsWith('POST'))).toEqual([
       { call: 'POST /api/auth/proof', body: { password: 'a decent passphrase' } },
@@ -631,7 +633,9 @@ describe('signing out everywhere else', () => {
     openSecurity();
 
     await waitFor(() =>
-      expect(screen.getByRole('status').textContent).toMatch('2 other devices are signed out.'),
+      expect(screen.getByRole('status').textContent).toMatch(
+        'Your 2 other devices are signed out.',
+      ),
     );
     expect(sent.filter((entry) => entry.call.startsWith('POST'))).toEqual([
       { call: 'POST /api/auth/proof', body: { provider: 'google', providerSignIn: signIn } },
