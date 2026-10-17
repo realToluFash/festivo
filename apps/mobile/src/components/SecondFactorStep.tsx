@@ -28,6 +28,7 @@ export function SecondFactorStep({
   recoveryIntro,
   submitLabel,
   pausedNote,
+  onLostBoth,
   onVerify,
   onExpired,
 }: {
@@ -36,6 +37,8 @@ export function SecondFactorStep({
   recoveryIntro: string;
   submitLabel: string;
   pausedNote?: string;
+  /** Only where a sign-in asks: the way back in for somebody who has neither (sc-509). */
+  onLostBoth?: () => void;
   onVerify: (factor: SecondFactor) => Promise<void>;
   onExpired: () => void;
 }) {
@@ -206,9 +209,17 @@ export function SecondFactorStep({
           testID="twoFactor.switch"
         />
 
-        <Text size={tokens.typeSmall.size} style={styles.secondary}>
-          {t('twoFactor.lostBoth')}
-        </Text>
+        {onLostBoth == null ? (
+          <Text size={tokens.typeSmall.size} style={styles.secondary}>
+            {t('twoFactor.lostBoth')}
+          </Text>
+        ) : (
+          <QuietButton
+            label={t('twoFactor.lostBoth')}
+            onPress={onLostBoth}
+            testID="twoFactor.lostBoth"
+          />
+        )}
       </View>
     </AuthFrame>
   );

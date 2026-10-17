@@ -34,5 +34,8 @@
     "two_factor_not_enrolled": "Comece primeiro a configurar a autenticação de dois fatores.",
     "two_factor_off": "A autenticação de dois fatores não está ativa.",
     "two_factor_required": "Introduza primeiro o código da sua aplicação de autenticação.",
+    "recovery_nobody_to_approve": "Ninguém na sua organização pode confirmar isto. Contacte o apoio da Soirely.",
+    "recovery_request_invalid": "Esse pedido já não está aberto. Comece de novo no ecrã do código de início de sessão.",
+    "recovery_request_closed": "Este pedido já terminou.",
     "registration_expired": "Comece o registo de novo."
 }

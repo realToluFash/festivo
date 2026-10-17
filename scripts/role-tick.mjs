@@ -23,6 +23,14 @@ const linguist = (locale, heartbeat, sweeps = false) => ({
   sweeps,
 });
 
+// A developer claims a story with its label. A story with neither is developer 1's.
+export const DEVELOPERS = { dev: 'dev1', dev2: 'dev2' };
+
+export function developerOf(labels = []) {
+  const names = labels.map((label) => label.name ?? label);
+  return Object.keys(DEVELOPERS).find((role) => names.includes(DEVELOPERS[role])) ?? 'dev';
+}
+
 export const ROLES = {
   pm: {
     skill: 'soirely-product-manager',
@@ -41,7 +49,15 @@ export const ROLES = {
   dev: {
     skill: 'soirely-developer',
     queue: ['Failed QA', 'In Progress', 'To Do'],
-    filter: NOT_TRANSLATION,
+    filter: `${NOT_TRANSLATION} !label:dev2`,
+    heartbeat: 30,
+    prs: true,
+  },
+  dev2: {
+    skill: 'soirely-developer',
+    invoke: '/soirely-developer dev2',
+    queue: ['Failed QA', 'In Progress', 'To Do'],
+    filter: (state) => (state === 'To Do' ? `${NOT_TRANSLATION} !label:dev1` : 'label:dev2'),
     heartbeat: 30,
     prs: true,
   },
@@ -75,7 +91,10 @@ export const ROLES = {
 };
 
 export function queueQuery(role, state) {
-  return [`state:"${state}"`, ROLES[role].filter].filter(Boolean).join(' ');
+  const { filter } = ROLES[role];
+  return [`state:"${state}"`, typeof filter === 'function' ? filter(state) : filter]
+    .filter(Boolean)
+    .join(' ');
 }
 
 const API = 'https://api.app.shortcut.com';
@@ -96,7 +115,9 @@ export function inboxFor(role, stories) {
     for (const comment of story.comments ?? []) {
       if (comment.deleted) continue;
       const parsed = header(comment.text);
-      if (parsed && parsed.to.includes(role) && parsed.from !== role) {
+      // [dev] means whichever developer's label the story carries.
+      const to = parsed?.to.map((tag) => (tag === 'dev' ? developerOf(story.labels) : tag));
+      if (parsed && to.includes(role) && parsed.from !== role) {
         items.push(`${story.id}#${comment.id}`);
       }
     }
@@ -188,7 +209,7 @@ async function shortcutSnapshot(role, token, cache) {
   for (const story of recent) {
     const cached = cache[story.id];
     stories[story.id] =
-      cached?.updated_at === story.updated_at
+      cached?.updated_at === story.updated_at && cached.labels
         ? cached
         : {
             updated_at: story.updated_at,
@@ -203,10 +224,19 @@ async function shortcutSnapshot(role, token, cache) {
 }
 
 function pick(story) {
-  return { comments: story.comments.map(({ id, text, deleted }) => ({ id, text, deleted })) };
+  return {
+    labels: (story.labels ?? []).map((label) => label.name),
+    comments: story.comments.map(({ id, text, deleted }) => ({ id, text, deleted })),
+  };
 }
 
-function githubSnapshot(role) {
+export function ownedPr(role, branch, stories) {
+  if (!DEVELOPERS[role]) return true;
+  const id = /sc-(\d+)/.exec(branch)?.[1];
+  return developerOf(stories[id]?.labels) === role;
+}
+
+function githubSnapshot(role, stories) {
   const config = ROLES[role];
   const snapshot = {};
   if (config.prs) {
@@ -217,10 +247,11 @@ function githubSnapshot(role) {
         '--state',
         'open',
         '--json',
-        'number,headRefOid,statusCheckRollup',
+        'number,headRefName,headRefOid,statusCheckRollup',
       ]),
     );
     snapshot.prs = prs
+      .filter((pr) => ownedPr(role, pr.headRefName, stories))
       .map((pr) => `#${pr.number}@${pr.headRefOid.slice(0, 7)}:${rollup(pr.statusCheckRollup)}`)
       .filter((pr) => !pr.endsWith(':pending'));
   }
@@ -296,7 +327,11 @@ async function main([role, flag, more]) {
   const token = process.env.SHORTCUT_API_TOKEN;
   const cache = load(cachePath);
   const fromShortcut = token ? await shortcutSnapshot(role, token, cache) : {};
-  const snapshot = { ...fromShortcut, ...githubSnapshot(role), shortcut: Boolean(token) };
+  const snapshot = {
+    ...fromShortcut,
+    ...githubSnapshot(role, fromShortcut.stories ?? cache),
+    shortcut: Boolean(token),
+  };
   if (fromShortcut.stories) save(cachePath, fromShortcut.stories);
 
   if (flag === '--install') {

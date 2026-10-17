@@ -71,11 +71,12 @@ Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in
 and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. A client
 shows the time from `Retry-After`, in the reader's timezone, never a figure of its own.
 
-| Endpoint                       | Budget                                                    | Spent by           |
-| ------------------------------ | --------------------------------------------------------- | ------------------ |
-| `POST /api/auth/register`      | 10 per IP per hour, fixed window                          | every attempt      |
-| `POST /api/auth/login`         | 5 per address and 30 per IP per 15 minutes, fixed windows | a refused password |
-| `POST /api/auth/verify/resend` | one per 60 seconds per address                            | every code sent    |
+| Endpoint                             | Budget                                                    | Spent by              |
+| ------------------------------------ | --------------------------------------------------------- | --------------------- |
+| `POST /api/auth/register`            | 10 per IP per hour, fixed window                          | every attempt         |
+| `POST /api/auth/login`               | 5 per address and 30 per IP per 15 minutes, fixed windows | a refused password    |
+| `POST /api/auth/verify/resend`       | one per 60 seconds per address                            | every code sent       |
+| `POST /api/auth/two-factor/recovery` | 3 per account per 24 hours, rolling                       | every request started |
 
 ## Verifying an address
 
@@ -135,6 +136,41 @@ The details screen (`PATCH /api/auth/complete-profile`) takes the same number as
 optional `phoneCountryCode` and `phoneNumber`, under the same rules. An empty number means
 no phone and removes the primary one. Its shape refusals are against `phoneNumber`,
 alongside the screen's other fields, and nothing is saved or texted until all of them pass.
+
+## Getting back in without the second factor
+
+For a person who has lost both the authenticator and the recovery codes (sc-509). Every
+step is `POST` with a JSON body, so neither the sign-in challenge nor the request's handle
+is ever in a URL.
+
+- `…/two-factor/recovery/opening` and `…/two-factor/recovery` take the sign-in's
+  `challenge`, so only a first factor that passed can ask. The first sends nothing and
+  says whether anybody can answer (`nobody`, with `supportAddress`). It also hands back an
+  open request under a new handle. The second starts a request, ending any earlier one,
+  and sends a code to the verified primary address and one to the verified primary phone
+  if there is one. Nobody to answer is `409 recovery_nobody_to_approve`, before anything
+  is sent. An account with no verified primary address gets the same
+  refusal on purpose: with no address to prove, it ends at support as well, and the onboarding
+  gate means a two-factor account always has one.
+- `…/recovery/state`, `/resend`, `/text-instead`, `/prove` and `/cancel` take the request's
+  `recovery` handle. The codes keep the email table's limits, one cooldown for the pair,
+  and the phone code goes as Verify phone's does (WhatsApp first, sc-750). `/prove` needs
+  both codes: a wrong one is `verification_code_invalid` with a violation on `emailCode`
+  or `phoneCode`, and neither is spent until both match.
+- A proved request ends at **the moment it was proved + 7 × 24 h**. It reads as `expired`
+  from that instant on, whether or not `app:two-factor-recovery:expire` has run yet.
+  `asked` and `expires` are written for the reader by `UserMailer::deadline`, the one
+  format the emails use too: "Saturday, Oct 24 at 14:20 WAT", or "13:20 UTC" with no zone.
+- `GET /api/auth/recovery-requests` lists what the signed-in person may answer: requests
+  from members of an organisation they own (and admin, once sc-66 seeds it), their own
+  included as `own`. `…/{id}/approve` and `…/{id}/turn-down` answer it. One answer closes
+  it, and any later one is `409 recovery_request_closed`. Your own request is `403`.
+- Approval turns two-factor off, spends every recovery code, ends every session, and sets
+  `twoFactorSetupPrompt` on the account until two-factor is on again or
+  `DELETE /api/auth/two-factor/setup-prompt` declines it.
+- `…/recovery/not-me` takes the `request` and `token` from any email's "This wasn't me"
+  link. It cancels every open request and ends every session. The `/cancel` on the waiting
+  screen does the same.
 
 ## Authentication
 

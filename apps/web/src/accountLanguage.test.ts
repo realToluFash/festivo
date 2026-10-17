@@ -17,6 +17,7 @@ const ACCOUNT: Account = {
   complete: true,
   needsOrganisation: false,
   hasPassword: true,
+  twoFactorSetupPrompt: false,
   providers: [],
   emailAddresses: [],
   phoneNumbers: [],

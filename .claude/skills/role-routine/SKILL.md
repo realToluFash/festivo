@@ -28,20 +28,23 @@ is what runs every three minutes, so a quiet tick has to cost almost nothing:
   manager's stale costs. Some runs also die before they finish. So each role wakes after a
   quiet spell anyway, if it has work waiting or is a sweeping role:
 
-| Role                         | Woken by                                                               | Heartbeat                      |
-| ---------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
-| `/soirely-product-manager`   | `[pm]`, new in To Do or Failed QA                                      | 2 hours                        |
-| `/soirely-designer`          | `[ux]`, new in To Do or Failed QA                                      | 2 hours                        |
-| `/soirely-developer`         | `[dev]`, new in Failed QA, In Progress, To Do; a PR's checks finishing | 30 minutes, if work is waiting |
-| `/soirely-qa-tester` (×3)    | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA                | 30 minutes, if work is waiting |
-| `/soirely-tech-lead`         | `[lead]`, new in In Review                                             | 30 minutes, if work is waiting |
-| `/soirely-business-manager`  | `[bm]`, new in Backlog or To Do                                        | 12 hours                       |
-| `/soirely-ops`               | `[ops]`, `main` red                                                    | 6 hours                        |
-| `/soirely-linguist en`       | `[en]`, a translation ticket new in To Do, In Progress or Failed QA    | 2 hours                        |
-| `/soirely-linguist es/fr/pt` | its tag, a translation ticket new in To Do, In Progress or Failed QA   | 30 minutes, if work is waiting |
-| `/soirely-creative`          | `[cd]`                                                                 | 24 hours                       |
+| Role                         | Woken by                                                              | Heartbeat                      |
+| ---------------------------- | --------------------------------------------------------------------- | ------------------------------ |
+| `/soirely-product-manager`   | `[pm]`, new in To Do or Failed QA                                     | 2 hours                        |
+| `/soirely-designer`          | `[ux]`, new in To Do or Failed QA                                     | 2 hours                        |
+| `/soirely-developer` (×2)    | its tag, new in Failed QA, In Progress, To Do; its PR's checks finish | 30 minutes, if work is waiting |
+| `/soirely-qa-tester` (×3)    | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA               | 30 minutes, if work is waiting |
+| `/soirely-tech-lead`         | `[lead]`, new in In Review                                            | 30 minutes, if work is waiting |
+| `/soirely-business-manager`  | `[bm]`, new in Backlog or To Do                                       | 12 hours                       |
+| `/soirely-ops`               | `[ops]`, `main` red                                                   | 6 hours                        |
+| `/soirely-linguist en`       | `[en]`, a translation ticket new in To Do, In Progress or Failed QA   | 2 hours                        |
+| `/soirely-linguist es/fr/pt` | its tag, a translation ticket new in To Do, In Progress or Failed QA  | 30 minutes, if work is waiting |
+| `/soirely-creative`          | `[cd]`                                                                | 24 hours                       |
 
 The other roles' queues leave out stories labelled `translation`, which are the linguists'.
+The two developers share To Do, but see only their own work beyond it: a story labelled
+`dev2` is developer 2's, and any other is developer 1's. A bare `[dev]` comment, and a pull
+request's checks, wake only the developer whose label the story carries.
 A linguist's routine is scheduled per locale, with the locale as its role: `role-tick.mjs fr`.
 
 The check reads Shortcut through `SHORTCUT_API_TOKEN`, the owner's API token from Shortcut,
@@ -61,8 +64,9 @@ that says it is already done.
    the script to `.git/soirely-roles/`, which no branch switch can remove. It also records
    what is waiting now, so the first tick does not redo the run you just finished.
 3. **`CronCreate`** with `cron: "*/3 * * * *"`, `recurring: true`. QA testers 2 and 3 use
-   `"1-59/3 * * * *"` and `"2-59/3 * * * *"`, so the three reach the queue a minute apart.
-   The prompt is below; fill in your role (a tester's is `qa`, `qa2` or `qa3`) and the
+   `"1-59/3 * * * *"` and `"2-59/3 * * * *"`, so the three reach the queue a minute apart,
+   and developer 2 uses `"1-59/3 * * * *"` for the same reason. The prompt is below; fill
+   in your role (a tester's is `qa`, `qa2` or `qa3`, a developer's `dev` or `dev2`) and the
    installed path the previous step printed:
 
    ```text
@@ -114,8 +118,9 @@ watching, so:
 - **An empty run is one line.** If the reason it woke turns out to need nothing, say so and
   finish. Do not go looking for work to justify the wake.
 - **Stay out of each other's checkouts.** The routines run side by side:
-  - Only the developer switches branches in `~/Projects/soirely`.
-  - QA works in `~/Projects/soirely-qa` (its skill, section 4).
+  - Only developer 1 switches branches in `~/Projects/soirely`, and only developer 2 in
+    `~/Projects/soirely-dev2`.
+  - QA tester N works in `~/Projects/soirely-qa<n>` (its skill, section 4).
   - Ops works in its own worktree, `../soirely-ops`.
   - Each linguist works in its own worktree, `../soirely-<locale>`.
   - The tech lead, product manager, designer, business manager and creative director read

@@ -32,6 +32,7 @@ describe('where a sign-in goes next', () => {
         complete: true,
         needsOrganisation: false,
         hasPassword: true,
+        twoFactorSetupPrompt: false,
         emailAddresses: [],
         phoneNumbers: [],
         providers: [],
@@ -42,5 +43,31 @@ describe('where a sign-in goes next', () => {
     expect(next).toBe('/');
     expect(heldChallenge()).toBeNull();
     dropChallenge();
+  });
+
+  it('asks to set two-factor up again first after an approved recovery', () => {
+    const next = nextAfterSignIn({
+      tokens: { accessToken: 'a', refreshExpiresAt: '2026-11-17T12:00:00+00:00', sessionId: 's' },
+      account: {
+        id: 'acc_1',
+        name: 'Folake',
+        businessName: null,
+        countryCode: null,
+        organisationCountry: null,
+        locale: 'en',
+        timezone: null,
+        verified: true,
+        complete: true,
+        needsOrganisation: false,
+        hasPassword: true,
+        twoFactorSetupPrompt: true,
+        emailAddresses: [],
+        phoneNumbers: [],
+        providers: [],
+      },
+      linked: false,
+    });
+
+    expect(next).toBe('/two-factor-again');
   });
 });

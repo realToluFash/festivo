@@ -11,11 +11,14 @@ import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
 import { ForgotPassword } from './public/ForgotPassword.tsx';
 import { Home } from './public/Home.tsx';
+import { LostTwoFactor } from './public/LostTwoFactor.tsx';
 import { NotFound } from './public/NotFound.tsx';
 import { OAuthCallback } from './public/OAuthCallback.tsx';
+import { RecoveryNotMe } from './public/RecoveryNotMe.tsx';
 import { Register } from './public/Register.tsx';
 import { ResetPassword } from './public/ResetPassword.tsx';
 import { SignIn } from './public/SignIn.tsx';
+import { TwoFactorAgain } from './public/TwoFactorAgain.tsx';
 import { TwoFactorSignIn } from './public/TwoFactorSignIn.tsx';
 import { VerifyEmail } from './public/VerifyEmail.tsx';
 import { VerifyPhone } from './public/VerifyPhone.tsx';
@@ -41,6 +44,9 @@ export const routes = [
   { path: '/', element: <Home /> },
   { path: '/sign-in', element: <SignIn /> },
   { path: '/sign-in/code', element: <TwoFactorSignIn /> },
+  { path: '/two-factor/recovery', element: <LostTwoFactor /> },
+  { path: '/two-factor/again', element: <TwoFactorAgain /> },
+  { path: '/two-factor/not-me', element: <RecoveryNotMe /> },
   { path: '/register', element: <Register /> },
   { path: '/forgot-password', element: <ForgotPassword /> },
   { path: '/reset-password', element: <ResetPassword /> },
