@@ -61,6 +61,10 @@ is a dated reversal with a reason, never a quiet difference:
 
 ## 2. Pick the work
 
+**Always on.** A run started by hand ends by scheduling this role's three-minute routine
+(`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
+piece of work, and no waiting on anyone.
+
 **Start with your inbox**: the `role-comments` routine, for comments tagged `[bm]` and
 replies to the ones you asked. Resolve those, then pick the work below.
 

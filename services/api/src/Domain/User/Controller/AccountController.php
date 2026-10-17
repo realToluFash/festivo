@@ -10,12 +10,16 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Exception\ApiException;
+use App\Http\Input;
+use App\Locale\SupportedLocales;
 use App\Repository\RefreshTokenRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
@@ -35,6 +39,27 @@ final class AccountController
     public function me(): JsonResponse
     {
         return new JsonResponse($this->accountSerialiser->serialise($this->user()));
+    }
+
+    /** The language switcher, signed in: the account's language, which every device and every email then follow. */
+    #[Route('/api/auth/locale', name: 'auth_locale', methods: ['PUT'])]
+    public function setLocale(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['locale' => Type\string()]));
+
+        if (!SupportedLocales::supports($body['locale'])) {
+            throw ApiException::validation([[
+                'propertyPath' => 'locale',
+                'message' => 'Choose English, Español, Français or Português.',
+                'code' => ErrorCode::ValidationFailed->value,
+            ]]);
+        }
+
+        $locale = SupportedLocales::narrow($body['locale']);
+        $this->user()->setLocale($locale);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['locale' => $locale]);
     }
 
     #[Route('/api/auth/sessions', name: 'auth_sessions', methods: ['GET'])]

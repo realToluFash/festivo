@@ -8,6 +8,7 @@ import {
 } from '@soirely/api-client';
 import { useSyncExternalStore } from 'react';
 
+import { followAccount } from './accountLanguage.ts';
 import { GATED, SIGNED_OUT, api } from './api.ts';
 
 export interface Session {
@@ -94,6 +95,7 @@ async function askForAccount(): Promise<void> {
 /** The account, with its organisations; one behind the onboarding gate is not asked for them. */
 export async function adoptAccount(account: Account): Promise<void> {
   const organisations = account.verified && account.complete ? await api.organisations() : [];
+  await followAccount(account);
 
   set({ status: 'signedIn', session: sessionFrom(account, organisations) });
 }

@@ -9,6 +9,7 @@ import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { config } from '../src/config.ts';
+import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
 
 /**
@@ -42,6 +43,8 @@ export default function Home() {
       .me()
       .then((signedIn) => {
         if (!live) return;
+
+        void followAccount(signedIn);
 
         // Behind the onboarding gate, the gate's screen opens rather than the app.
         const landing = landingFor(awaiting(signedIn));

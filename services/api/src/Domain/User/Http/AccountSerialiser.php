@@ -32,7 +32,7 @@ final readonly class AccountSerialiser
             'countryCode' => $user->getCountryCode(),
             // Read here because "A few details" is behind the gate /api/orgs sits behind: an invited person's phone starts on it.
             'organisationCountry' => ($this->membershipRepository->findActiveFor($user)[0] ?? null)?->getOrganisation()->getCountryCode(),
-            'locale' => $user->getLocale(),
+            'locale' => $user->storedLanguage(),
             'verified' => $user->isVerified(),
             'complete' => $this->accountCompleteness->isComplete($user),
             'hasPassword' => null !== $user->getPassword(),

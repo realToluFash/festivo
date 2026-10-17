@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
+use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\TwoFactor\SignInGate;
@@ -39,6 +40,9 @@ final readonly class UserAuthenticator
         if (!$this->passwordResolver->verify($user, $password)) {
             throw $this->refuse();
         }
+
+        // An account from before sc-852 learns its language here, as at its next request.
+        AccountLanguage::rememberIfNone($user, $request);
 
         return new SignInResult($user, $this->signInGate->admit($user, $request));
     }

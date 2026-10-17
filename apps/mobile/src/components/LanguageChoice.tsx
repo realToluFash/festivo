@@ -2,7 +2,8 @@ import { LOCALES } from '@soirely/domain';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { currentLocale, setLanguage } from '../i18n/index.ts';
+import { chooseLanguage } from '../accountLanguage.ts';
+import { currentLocale } from '../i18n/index.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 
@@ -22,7 +23,7 @@ export function LanguageChoice() {
           <Pressable
             key={locale.code}
             style={[styles.chip, chosen ? styles.chipChosen : styles.chipPlain]}
-            onPress={() => void setLanguage(locale.code)}
+            onPress={() => void chooseLanguage(locale.code)}
             accessibilityRole="button"
             accessibilityState={{ selected: chosen }}
             accessibilityLabel={locale.nativeName}

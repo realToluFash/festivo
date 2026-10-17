@@ -434,6 +434,11 @@ export class ApiClient {
     return cooldownFrom(await this.post<unknown>('/api/auth/register/resend', { registration }));
   }
 
+  /** The language switcher, signed in: the account's language, which every device and email then follow. */
+  async setLocale(locale: string): Promise<void> {
+    await this.put<unknown>('/api/auth/locale', { locale });
+  }
+
   async me(): Promise<Account> {
     const account = asAccount(await this.get<unknown>('/api/auth/me'));
 

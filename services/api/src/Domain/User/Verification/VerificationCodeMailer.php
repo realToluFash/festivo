@@ -17,7 +17,7 @@ final readonly class VerificationCodeMailer
 
     public function send(EmailAddress $address, string $code): void
     {
-        $locale = $address->getUser()->getLocale();
+        $locale = $this->userMailer->localeFor($address->getUser());
         $minutes = (string) VerificationChallenge::LIFETIME_MINUTES;
 
         $this->userMailer->send($address->getAddress(), $locale, 'verification.subject', [

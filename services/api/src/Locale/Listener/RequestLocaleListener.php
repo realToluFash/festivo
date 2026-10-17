@@ -14,6 +14,9 @@ final class RequestLocaleListener
 {
     public const ATTRIBUTE = '_resolved_locale';
 
+    /** Set only when the request named a supported language itself, so a default is never mistaken for a choice. */
+    public const ASKED = '_asked_locale';
+
     public function __invoke(RequestEvent $event): void
     {
         if (!$event->isMainRequest()) {
@@ -25,6 +28,7 @@ final class RequestLocaleListener
         $explicit = $request->query->get('locale');
         if (\is_string($explicit) && SupportedLocales::supports($explicit)) {
             $this->apply($request, SupportedLocales::narrow($explicit));
+            $request->attributes->set(self::ASKED, SupportedLocales::narrow($explicit));
 
             return;
         }
@@ -34,6 +38,7 @@ final class RequestLocaleListener
             foreach ($this->preferences($header) as $candidate) {
                 if (SupportedLocales::supports($candidate)) {
                     $this->apply($request, SupportedLocales::narrow($candidate));
+                    $request->attributes->set(self::ASKED, SupportedLocales::narrow($candidate));
 
                     return;
                 }

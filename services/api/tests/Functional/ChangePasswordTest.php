@@ -211,11 +211,12 @@ final class ChangePasswordTest extends ApiTestCase
         self::assertStringContainsString('/sign-in', $text);
     }
 
-    /** The send runs after the response, so the language it was asked in is carried to it (as sc-61's is). */
+    /** The account's language, here learnt from a French sign-in, reaches the send after the response (sc-852). */
     #[Test]
-    public function theEmailSpeaksTheLanguageTheChangeWasMadeIn(): void
+    public function theEmailSpeaksTheAccountsLanguage(): void
     {
-        $this->change($this->signIn(), self::OLD_PASSWORD, self::NEW_PASSWORD, ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+        $this->change($this->signIn(), self::OLD_PASSWORD, self::NEW_PASSWORD);
 
         $mail = Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()));
         self::assertSame('Votre mot de passe Soirely a été modifié', $mail->getSubject());
