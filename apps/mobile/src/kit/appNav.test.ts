@@ -1,4 +1,3 @@
-import type { Membership } from '@soirely/api-client';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -10,7 +9,6 @@ import {
   DESTINATION_HREF,
   INTERIM_HREF,
   SECTION_HREF,
-  chooseOrganisation,
   destinationOf,
 } from './appNav.ts';
 
@@ -26,7 +24,8 @@ describe('sign-in lands on the signed-in home', () => {
   it('renders the home there once the account is known, in place of the health placeholder', () => {
     const launch = source(join(APP, 'index.tsx'));
 
-    expect(launch).toMatch(/if \(account != null\) return <SignedInHome \/>;/u);
+    expect(launch).toMatch(/if \(launching === 'signedIn'\) return <SignedInHome \/>;/u);
+    expect(launch).toMatch(/if \(live && loaded\) setLaunching\('signedIn'\);/u);
     expect(launch).not.toMatch(/href="\/security"|href="\/account"/u);
   });
 });
@@ -67,43 +66,8 @@ describe('the interim screens open their Settings page', () => {
 });
 
 describe('"Sign out" on the Settings list', () => {
-  it('signs out with no confirmation, the same way as the "This device" row', () => {
+  it('is wired to the same sign-out as the "This device" row, whose outcome signedIn.test.ts checks', () => {
     expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toContain('onPress={signOutHere}');
     expect(source(join(APP, 'settings', 'security.tsx'))).toContain('onSignOutHere={signOutHere}');
-  });
-
-  it('ends the session and opens sign-in with no banner', () => {
-    const signOut = /export function signOutHere\(\): void \{([\s\S]*?)\n\}/u.exec(
-      source(join(SRC, 'signedIn.ts')),
-    )?.[1];
-
-    expect(signOut).toContain('api.signOut()');
-    expect(signOut).toContain("router.replace('/sign-in')");
-    expect(signOut).not.toContain('signedOut');
-  });
-});
-
-describe('the organisation this device works in', () => {
-  const membership = (id: string): Membership => ({
-    id,
-    name: id,
-    countryCode: 'NG',
-    currency: 'NGN',
-    timezone: 'Africa/Lagos',
-    contactAddress: '',
-    role: { id: 'r', seededAs: 'owner', name: null },
-  });
-
-  it('is the one remembered here', () => {
-    expect(chooseOrganisation([membership('a'), membership('b')], 'b')?.id).toBe('b');
-  });
-
-  it('is the first when the remembered one is gone or none was', () => {
-    expect(chooseOrganisation([membership('a'), membership('b')], 'gone')?.id).toBe('a');
-    expect(chooseOrganisation([membership('a')], null)?.id).toBe('a');
-  });
-
-  it('is none for an account in no organisation', () => {
-    expect(chooseOrganisation([], 'a')).toBeNull();
   });
 });

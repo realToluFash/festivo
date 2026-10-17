@@ -1,5 +1,3 @@
-import type { Membership } from '@soirely/api-client';
-
 export type Destination = 'home' | 'settings';
 
 /** Only what a story has built: Calendar, Guests and Messages each add their own (sc-722, #727). */
@@ -25,12 +23,4 @@ export const INTERIM_HREF = {
 
 export function destinationOf(pathname: string): Destination {
   return pathname === '/settings' || pathname.startsWith('/settings/') ? 'settings' : 'home';
-}
-
-/** The one remembered on this device while the account still belongs to it, else the first. */
-export function chooseOrganisation(
-  organisations: readonly Membership[],
-  remembered: string | null,
-): Membership | null {
-  return organisations.find(({ id }) => id === remembered) ?? organisations[0] ?? null;
 }

@@ -1,7 +1,6 @@
-import { type Membership, type MemberRole, primaryEmailAddress } from '@soirely/api-client';
-import { initials } from '@soirely/domain';
+import { type Membership, primaryEmailAddress } from '@soirely/api-client';
+import { initials, roleName } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type TFunction } from 'i18next';
 import { type ReactNode, createContext, useContext, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,11 +29,6 @@ const ICONS: Record<Destination, readonly [string, string]> = {
     'M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
   ],
 };
-
-/** A seeded role is worded in the reader's language; a role an organisation made keeps its own name. */
-export function roleName(t: TFunction, role: MemberRole): string {
-  return role.seededAs != null ? t(`roles.${role.seededAs}`) : (role.name ?? '');
-}
 
 /** The edges a signed-in screen's own `Screen` insets: the frame's header, rail and tab bar take the rest. */
 export function bodyEdges(kind: LayoutKind): readonly ('top' | 'bottom' | 'left' | 'right')[] {

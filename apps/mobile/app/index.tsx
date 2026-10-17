@@ -1,7 +1,7 @@
-import { type Account, ApiUnreachableError, type Health, awaiting } from '@soirely/api-client';
+import { ApiUnreachableError, type Health, awaiting } from '@soirely/api-client';
 import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api, meAtLaunch } from '../src/api.ts';
@@ -13,7 +13,7 @@ import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
-import { reloadSignedIn } from '../src/signedIn.ts';
+import { launchSignedIn } from '../src/signedIn.ts';
 
 /**
  * Launch: the signed-in home once somebody is in (sc-722), else the health endpoint, rendered.
@@ -24,11 +24,14 @@ import { reloadSignedIn } from '../src/signedIn.ts';
  */
 type State = { kind: 'loading' } | { kind: 'ok'; health: Health } | { kind: 'failed' };
 
+/** Who is launching: nothing is drawn until that is known, so a signed-in person never sees the placeholder. */
+type Launching = 'deciding' | 'signedIn' | 'signedOut';
+
 export default function Home() {
   const { t } = useTranslation();
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [account, setAccount] = useState<Account | null>(null);
+  const [launching, setLaunching] = useState<Launching>('deciding');
 
   // The loading state belongs to the event that causes the reload, not to the
   // effect. Setting it in the effect body made every attempt two renders
@@ -53,8 +56,8 @@ export default function Home() {
         const landing = landingFor(awaiting(signedIn));
         if (landing !== '/') router.replace(landing);
         else
-          void reloadSignedIn().then(() => {
-            if (live) setAccount(signedIn);
+          void launchSignedIn().then((loaded) => {
+            if (live && loaded) setLaunching('signedIn');
           });
         return;
       }
@@ -65,7 +68,7 @@ export default function Home() {
         return;
       }
 
-      if (live) setAccount(null);
+      if (live) setLaunching('signedOut');
       else if (!answer.ended) return;
 
       void launchRoute(answer.ended, {
@@ -101,7 +104,15 @@ export default function Home() {
     };
   }, [attempt]);
 
-  if (account != null) return <SignedInHome />;
+  if (launching === 'signedIn') return <SignedInHome />;
+
+  if (launching === 'deciding') {
+    return (
+      <View style={styles.deciding}>
+        <ActivityIndicator />
+      </View>
+    );
+  }
 
   return (
     <Screen>
@@ -165,6 +176,7 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  deciding: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   panel: { backgroundColor: '#FFFFFF', borderRadius: 10, padding: 16, gap: 8 },
   notice: { backgroundColor: '#FDECEA', borderRadius: 10, padding: 16, gap: 12 },
   row: { flexDirection: 'row', justifyContent: 'space-between' },

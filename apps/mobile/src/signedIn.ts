@@ -1,10 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Account, Membership } from '@soirely/api-client';
+import { chooseOrganisation } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
-import { chooseOrganisation } from './kit/appNav.ts';
 import { tokens } from './tokens.ts';
 
 const REMEMBERED = 'soirely.organisation';
@@ -16,7 +16,6 @@ export interface SignedIn {
 }
 
 let state: SignedIn = { account: null, organisations: [], organisation: null };
-let loading: Promise<void> | null = null;
 /** Set by signing out here, so a frame still on screen does not ask again and earn a "You were signed out". */
 let ended = false;
 const listeners = new Set<() => void>();
@@ -45,20 +44,31 @@ export function useSignedIn(): SignedIn {
 
 /** Read again after something on a screen changed the account, such as a password set or a provider linked. */
 export function reloadSignedIn(): Promise<void> {
+  return launchSignedIn().then(() => {});
+}
+
+/** False when the account could not be read and sign-in has opened instead. */
+export function launchSignedIn(): Promise<boolean> {
   ended = false;
   loading = null;
 
   return load();
 }
 
-function load(): Promise<void> {
+let loading: Promise<boolean> | null = null;
+
+function load(): Promise<boolean> {
   loading ??= Promise.all([api.me(), api.organisations(), remembered()])
     .then(([account, organisations, id]) => {
       set({ account, organisations, organisation: chooseOrganisation(organisations, id) });
+
+      return true;
     })
     .catch(() => {
       loading = null;
       router.replace('/sign-in');
+
+      return false;
     });
 
   return loading;

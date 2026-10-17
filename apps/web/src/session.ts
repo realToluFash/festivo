@@ -7,6 +7,7 @@ import {
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
+import { chooseOrganisation } from '@soirely/domain';
 import { useSyncExternalStore } from 'react';
 
 import { followAccount } from './accountLanguage.ts';
@@ -165,8 +166,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     organisations,
     organisationCountry: account.organisationCountry,
     timezone: account.timezone,
-    organisation:
-      organisations.find((membership) => membership.id === remembered) ?? organisations[0] ?? null,
+    organisation: chooseOrganisation(organisations, remembered),
   };
 }
 

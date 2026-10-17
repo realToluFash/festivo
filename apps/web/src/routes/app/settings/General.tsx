@@ -1,10 +1,9 @@
 import { ApiError, type Membership, type OrganisationChanges } from '@soirely/api-client';
-import { countryChoices, currencyLabel, timezoneLabel } from '@soirely/domain';
+import { countryChoices, currencyLabel, roleName, timezoneLabel } from '@soirely/domain';
 import { type FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
-import { roleName } from '../../../roles.ts';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';

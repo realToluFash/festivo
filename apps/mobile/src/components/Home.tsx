@@ -1,4 +1,5 @@
 import { primaryEmailAddress } from '@soirely/api-client';
+import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -7,7 +8,7 @@ import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { AppFrame, bodyEdges, roleName, useOpenSwitcher } from './AppFrame.tsx';
+import { AppFrame, bodyEdges, useOpenSwitcher } from './AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LinkedNotice } from './LinkedNotice.tsx';
 import { Screen } from './Screen.tsx';
