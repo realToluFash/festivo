@@ -397,6 +397,8 @@
     "lastRefused": "Establezca una contraseña o vincule otra cuenta antes de quitar esta.",
     "providerFailed": "{{provider}} no terminó, así que no ha cambiado nada. Inténtelo de nuevo.",
     "providerRefused": "Esa cuenta de {{provider}} no es la vinculada aquí, o inició sesión hace demasiado tiempo. Inténtelo de nuevo.",
+    "proofExpired_one": "Your {{provider}} sign-in was more than a minute ago, so nothing has changed yet. Continue with {{provider}} again to carry on.",
+    "proofExpired_other": "Your {{provider}} sign-in was more than {{count}} minutes ago, so nothing has changed yet. Continue with {{provider}} again to carry on.",
     "failedTitle": "No se ha cambiado nada",
     "failedBody": "No se ha podido completar. Compruebe su conexión e inténtelo de nuevo.",
     "proveTitle": "Confirme que es usted",

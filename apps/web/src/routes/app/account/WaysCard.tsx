@@ -4,7 +4,13 @@ import {
   type Provider,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import { formatTimeOfDay, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
+import {
+  PROOF_MINUTES,
+  formatTimeOfDay,
+  proveWith,
+  providerRows,
+  type ProviderRow,
+} from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -398,7 +404,10 @@ function Proving({
   const { t } = useTranslation();
   const name = PROVIDER_NAMES[act.provider];
   const via = proveWith(hasPassword, providers, act.provider);
-  const askPassword = via === 'password' && returned == null;
+  // Dropped when the five minutes from the provider's sign-in run out: back to step one, the change kept.
+  const [signIn, setSignIn] = useState(returned);
+  const [expired, setExpired] = useState(false);
+  const askPassword = via === 'password' && signIn == null;
   const viaProvider = via === 'password' ? null : via;
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -440,8 +449,8 @@ function Proving({
       const proof = await api.prove(
         kept != null
           ? { pendingProof: kept }
-          : returned != null && viaProvider != null
-            ? { provider: viaProvider, signIn: returned }
+          : signIn != null && viaProvider != null
+            ? { provider: viaProvider, signIn }
             : { password },
         second,
       );
@@ -451,19 +460,29 @@ function Proving({
       setChecking(false);
       dropProof();
 
-      if (error instanceof ApiError && error.is('two_factor_required') && returned == null) {
+      if (error instanceof ApiError && error.is('two_factor_required') && signIn == null) {
         setCodeAsked(true);
 
         return;
       }
 
-      if (returned != null && error instanceof ApiError)
-        setKept(error.is('proof_required') ? null : (error.problem.pendingProof ?? kept));
+      if (signIn != null && error instanceof ApiError && error.is('proof_required')) {
+        setSignIn(null);
+        setKept(null);
+        setCode('');
+        setRefusal(null);
+        setExpired(true);
+        heading.current?.focus();
+
+        return;
+      }
+
+      if (signIn != null && error instanceof ApiError) setKept(error.problem.pendingProof ?? kept);
       setRefusal(
         provingRefusal(
           error,
           t,
-          returned != null && viaProvider != null ? PROVIDER_NAMES[viaProvider] : null,
+          signIn != null && viaProvider != null ? PROVIDER_NAMES[viaProvider] : null,
         ),
       );
     }
@@ -496,7 +515,21 @@ function Proving({
         </div>
       )}
 
-      {returned != null && viaProvider != null && (
+      {expired && viaProvider != null && (
+        <div className="notice notice-attention" role="status">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <p>
+            {t('waysCard.proofExpired', {
+              provider: PROVIDER_NAMES[viaProvider],
+              count: PROOF_MINUTES,
+            })}
+          </p>
+        </div>
+      )}
+
+      {signIn != null && viaProvider != null && (
         <p className="muted">
           {t('waysCard.providerConfirmed', { provider: PROVIDER_NAMES[viaProvider] })}
         </p>
@@ -528,7 +561,7 @@ function Proving({
           </div>
         )}
 
-        {codeAsked && (askPassword || returned != null) && (
+        {codeAsked && (askPassword || signIn != null) && (
           <div className="field">
             <label htmlFor="ways-code">{t('waysCard.code')}</label>
             <input
@@ -567,7 +600,7 @@ function Proving({
           </div>
         )}
 
-        {askPassword || returned != null ? (
+        {askPassword || signIn != null ? (
           <div className="actions">
             <button className="button button-primary" type="submit" aria-busy={checking}>
               {checking ? t('waysCard.checking') : t('waysCard.continue')}

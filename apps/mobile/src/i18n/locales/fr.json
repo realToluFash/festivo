@@ -397,6 +397,8 @@
     "lastRefused": "Définissez un mot de passe ou associez un autre compte avant de retirer celui-ci.",
     "providerFailed": "{{provider}} n'a pas abouti, rien n'a donc changé. Réessayez.",
     "providerRefused": "Ce compte {{provider}} n'est pas celui lié ici, ou la connexion date de trop longtemps. Réessayez.",
+    "proofExpired_one": "Your {{provider}} sign-in was more than a minute ago, so nothing has changed yet. Continue with {{provider}} again to carry on.",
+    "proofExpired_other": "Your {{provider}} sign-in was more than {{count}} minutes ago, so nothing has changed yet. Continue with {{provider}} again to carry on.",
     "failedTitle": "Rien n'a été modifié",
     "failedBody": "Cela n'a pas abouti. Vérifiez votre connexion et réessayez.",
     "proveTitle": "Confirmez que c'est bien vous",

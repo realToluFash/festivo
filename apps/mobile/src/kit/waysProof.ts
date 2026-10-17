@@ -23,6 +23,11 @@ export function keptProof(error: unknown, kept: string | null): string | null {
   return error instanceof ApiError ? (error.problem.pendingProof ?? kept) : kept;
 }
 
+/** The five minutes from the provider's sign-in ran out at step two: back to step one, the change kept (sc-510). */
+export function keptProofRanOut(error: unknown, sentKept: boolean): boolean {
+  return sentKept && error instanceof ApiError && error.is('proof_required');
+}
+
 /** Where a refused proof is said: a provider's refusal is the trip's, never a password field the screen doesn't show. */
 export function provingRefusal(
   error: unknown,

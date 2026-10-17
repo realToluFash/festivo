@@ -5,7 +5,13 @@ import {
   ProviderCancelled,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import { proofStands, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
+import {
+  PROOF_MINUTES,
+  proofStands,
+  proveWith,
+  providerRows,
+  type ProviderRow,
+} from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +24,7 @@ import {
   type ProvingField,
   codeBeforeTrip,
   keptProof,
+  keptProofRanOut,
   provingRefusal,
   tripRefused,
 } from '../kit/waysProof.ts';
@@ -411,6 +418,7 @@ function Proving({
   const [codeAsked, setCodeAsked] = useState(codeBeforeTrip(via, twoFactorOn));
   const returned = useRef<ProviderSignInAttempt | null>(null);
   const kept = useRef<string | null>(null);
+  const [expired, setExpired] = useState(false);
   const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<{
     field: ProvingField | 'failed';
@@ -435,6 +443,8 @@ function Proving({
 
     setChecking(true);
     setRefusal(null);
+    setExpired(false);
+    const sentKept = kept.current != null;
 
     try {
       if (via !== 'password' && via != null && kept.current == null)
@@ -454,6 +464,16 @@ function Proving({
       if (error instanceof ProviderCancelled) return;
       if (error instanceof ApiError && error.is('two_factor_required')) {
         setCodeAsked(true);
+
+        return;
+      }
+
+      if (via !== 'password' && keptProofRanOut(error, sentKept)) {
+        kept.current = null;
+        returned.current = null;
+        code.current = '';
+        setCodeAsked(codeBeforeTrip(via, twoFactorOn));
+        setExpired(true);
 
         return;
       }
@@ -486,6 +506,14 @@ function Proving({
           ? t('waysCard.proveLink', { provider: name })
           : t('waysCard.proveUnlink', { provider: name })}
       </Text>
+
+      {expired && via !== 'password' && via != null && (
+        <Notice
+          tone="attention"
+          mark="!"
+          body={t('waysCard.proofExpired', { provider: PROVIDER_NAMES[via], count: PROOF_MINUTES })}
+        />
+      )}
 
       {refusal?.field === 'failed' && (
         <Notice

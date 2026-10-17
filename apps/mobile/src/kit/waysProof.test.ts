@@ -2,7 +2,13 @@ import { ApiError } from '@soirely/api-client';
 import { type TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { codeBeforeTrip, keptProof, provingRefusal, tripRefused } from './waysProof.ts';
+import {
+  codeBeforeTrip,
+  keptProof,
+  keptProofRanOut,
+  provingRefusal,
+  tripRefused,
+} from './waysProof.ts';
 
 const t = ((key: string, values?: Record<string, string>) =>
   values == null ? key : `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
@@ -56,5 +62,11 @@ describe('proving it is you, from Security', () => {
     expect(provingRefusal(refusal('proof_required', 403), t, 'Google', 'en').message).toBe(
       'waysCard.providerRefused {"provider":"Google"}',
     );
+  });
+
+  it('goes back to step one only when a kept proof ran out, not on any refusal', () => {
+    expect(keptProofRanOut(refusal('proof_required', 403), true)).toBe(true);
+    expect(keptProofRanOut(refusal('proof_required', 403), false)).toBe(false);
+    expect(keptProofRanOut(refusal('two_factor_code_invalid', 422, 'p-1'), true)).toBe(false);
   });
 });

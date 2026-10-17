@@ -352,6 +352,39 @@ describe('a wrong code after Google', () => {
   });
 });
 
+describe('a kept sign-in that ran out', () => {
+  it('goes back to the first step, the change kept, and says the Google sign-in was too long ago', async () => {
+    signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
+    backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+    const answers = [
+      () => problem('two_factor_code_invalid', 422, { pendingProof: 'kept-1' }),
+      () => problem('proof_required', 403),
+    ];
+    answering({ 'POST /api/auth/proof': () => (answers.shift() ?? answers[0])!() }, true);
+    const leave = vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+
+    open('/oauth/google');
+    fireEvent.change(await screen.findByLabelText('Code', {}, { timeout: 3000 }), {
+      target: { value: '000000' },
+    });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+    await screen.findByText('That code did not work. Check your app and try again.');
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+
+    expect(
+      await screen.findByText(
+        'Your Google sign-in was more than 5 minutes ago, so nothing has changed yet. Continue with Google again to carry on.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByLabelText('Code')).toBeNull();
+    fireEvent.click(ways().getByRole('button', { name: 'Continue with Google' }));
+    await waitFor(() => expect(leave).toHaveBeenCalledOnce());
+    const saved = JSON.parse(sessionStorage.getItem('soirely.google.attempt') ?? '{}');
+    expect(saved.purpose).toEqual({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+  });
+});
+
 describe('unlinking a provider', () => {
   it('asks first, says what remains, then unlinks and says so', async () => {
     signedInAs({ providers: [{ provider: 'google', email: GMAIL }] });
