@@ -59,6 +59,9 @@ function returningFromGoogle(query: string): void {
   window.history.replaceState(null, '', `/oauth/google?${query}`);
 }
 
+// The way back from Google is several round trips, more than waitFor's default second under load.
+const THE_WAY_BACK = { timeout: 3000 };
+
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
@@ -91,15 +94,15 @@ describe('continue with Google', () => {
   it('signs a new account in and lands it on the details screen, with Google named', async () => {
     returningFromGoogle('code=the-code&state=the-state');
     const sent = answering({
-      'POST http://sandbox.test/google/token': () => json({ id_token: 'the.id.token' }),
       'POST http://api.test/api/auth/oauth/google': () =>
         json({ ...ISSUED, account: ACCOUNT, linked: false }),
       'GET http://api.test/api/orgs': () => json({ organisations: [] }),
     });
     at('/oauth/google?code=the-code&state=the-state');
 
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'A few details' })).toBeDefined(),
+    await waitFor(
+      () => expect(screen.getByRole('heading', { level: 1, name: 'A few details' })).toBeDefined(),
+      THE_WAY_BACK,
     );
     expect(screen.getByText('Email confirmed by Google · done')).toBeDefined();
     expect(
@@ -108,31 +111,35 @@ describe('continue with Google', () => {
       ),
     ).toBeDefined();
 
-    const exchange = new URLSearchParams(sent.find((r) => r.url.endsWith('/token'))?.body);
-    expect(exchange.get('code')).toBe('the-code');
-    expect(exchange.get('code_verifier')).toBe('the-verifier');
-
+    // The browser never calls the token endpoint: the API redeems the code with the secret.
+    expect(sent.some((r) => r.url.endsWith('/token'))).toBe(false);
     const signIn = JSON.parse(sent.find((r) => r.url.endsWith('/oauth/google'))?.body ?? '{}') as {
-      idToken: string;
+      code: string;
+      codeVerifier: string;
       nonce: string;
     };
-    expect(signIn).toMatchObject({ idToken: 'the.id.token', nonce: 'the-raw-nonce' });
+    expect(signIn).toMatchObject({
+      code: 'the-code',
+      codeVerifier: 'the-verifier',
+      nonce: 'the-raw-nonce',
+    });
   });
 
   it('says once that Google is now linked, on the screen the person lands on', async () => {
     returningFromGoogle('code=the-code&state=the-state');
     answering({
-      'POST http://sandbox.test/google/token': () => json({ id_token: 'the.id.token' }),
       'POST http://api.test/api/auth/oauth/google': () =>
         json({ ...ISSUED, account: { ...ACCOUNT, providers: [] }, linked: true }),
       'GET http://api.test/api/orgs': () => json({ organisations: [] }),
     });
     at('/oauth/google?code=the-code&state=the-state');
 
-    await waitFor(() =>
-      expect(
-        screen.getByText('Google is now linked to your account. You can sign in with either.'),
-      ).toBeDefined(),
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText('Google is now linked to your account. You can sign in with either.'),
+        ).toBeDefined(),
+      THE_WAY_BACK,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByText(/Google is now linked/)).toBeNull();
@@ -153,7 +160,6 @@ describe('continue with Google', () => {
   it('says Google sign-in did not work when the API refuses the token, and changes nothing', async () => {
     returningFromGoogle('code=the-code&state=the-state');
     answering({
-      'POST http://sandbox.test/google/token': () => json({ id_token: 'the.id.token' }),
       'POST http://api.test/api/auth/oauth/google': () =>
         json(
           { type: 'https://soirely.com/errors/oauth_token_invalid', title: 'No.', status: 401 },

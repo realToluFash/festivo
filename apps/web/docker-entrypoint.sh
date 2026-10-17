@@ -22,7 +22,6 @@ cat > "$TARGET" <<JSON
   "environment": "${SOIRELY_ENVIRONMENT:-unknown}",
   "google": {
     "authorizeUrl": "${SOIRELY_GOOGLE_AUTHORIZE_URL:-}",
-    "tokenUrl": "${SOIRELY_GOOGLE_TOKEN_URL:-}",
     "clientId": "${SOIRELY_GOOGLE_CLIENT_ID:-}"
   }
 }
@@ -50,11 +49,6 @@ if [ -n "$MERCURE_ORIGIN" ]; then
     CONNECT="$CONNECT $MERCURE_ORIGIN"
 fi
 
-# The browser exchanges Google's code at its token endpoint itself, so that host has to be reachable.
-GOOGLE_TOKEN_ORIGIN="$(origin_of "${SOIRELY_GOOGLE_TOKEN_URL:-}")"
-if [ -n "$GOOGLE_TOKEN_ORIGIN" ]; then
-    CONNECT="$CONNECT $GOOGLE_TOKEN_ORIGIN"
-fi
 
 HEADERS=/etc/nginx/soirely-security-headers.conf
 

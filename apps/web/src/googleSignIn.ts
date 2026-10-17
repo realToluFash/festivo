@@ -5,7 +5,6 @@ import {
   authorizationUrl,
   base64Url,
   codeFromCallback,
-  exchangeCode,
   hex,
 } from '@soirely/api-client';
 
@@ -53,7 +52,7 @@ export async function startGoogleSignIn(): Promise<void> {
   );
 }
 
-/** Back from Google: the code exchanged for its ID token, and the API asked who that is. */
+/** Back from Google: the code goes to the API, which redeems it with the secret a browser cannot keep. */
 export async function finishGoogleSignIn(callbackUrl: string): Promise<SignedIn> {
   const google = config().google;
   const saved = sessionStorage.getItem(ATTEMPT);
@@ -62,14 +61,12 @@ export async function finishGoogleSignIn(callbackUrl: string): Promise<SignedIn>
   if (google == null || saved == null) throw new ProviderFailed('no attempt in this tab');
 
   const attempt = JSON.parse(saved) as ProviderAttempt;
-  const code = codeFromCallback(callbackUrl, attempt.state);
-  const idToken = await exchangeCode(google, {
-    code,
+  const signedIn = await api.signInWithProviderCode('google', {
+    code: codeFromCallback(callbackUrl, attempt.state),
     codeVerifier: attempt.codeVerifier,
     redirectUri: redirectUri(),
+    nonce: attempt.nonce,
   });
-
-  const signedIn = await api.signInWithProvider('google', idToken, attempt.nonce);
   if (signedIn.linked) sessionStorage.setItem(LINKED, '1');
 
   return signedIn;

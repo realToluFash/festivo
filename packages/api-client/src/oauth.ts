@@ -62,7 +62,7 @@ export function hex(bytes: Uint8Array): string {
 
 /** The provider's URL, carrying the nonce's SHA-256 (hex) and the verifier's S256 challenge. */
 export function authorizationUrl(
-  endpoints: ProviderEndpoints,
+  endpoints: Pick<ProviderEndpoints, 'authorizeUrl' | 'clientId'>,
   request: { redirectUri: string; state: string; nonceHash: string; codeChallenge: string },
 ): string {
   return `${endpoints.authorizeUrl}?${form({

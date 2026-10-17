@@ -17,7 +17,6 @@ __setConfig({
   environment: 'test',
   google: {
     authorizeUrl: 'http://sandbox.test/google/authorize',
-    tokenUrl: 'http://sandbox.test/google/token',
     clientId: 'soirely-web.test',
   },
 });
