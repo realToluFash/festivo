@@ -10,6 +10,7 @@ use App\Domain\User\TokenIssuer;
 use App\Domain\User\UserRegistrar;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Entity\PendingRegistration;
+use App\Enum\CodeState;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\PendingRegistrationRepository;
@@ -84,9 +85,20 @@ final readonly class PendingRegistrations
         }
     }
 
-    public function secondsUntilResend(#[SensitiveParameter] string $handle): int
+    /** @return array{cooldownSeconds: int, codeState: CodeState} what the screen opens on, in the order a try checks */
+    public function opening(#[SensitiveParameter] string $handle): array
     {
-        return $this->open($handle)->secondsUntilResendAt($this->clock->now());
+        $pending = $this->open($handle);
+        $now = $this->clock->now();
+
+        return [
+            'cooldownSeconds' => $pending->secondsUntilResendAt($now),
+            'codeState' => match (true) {
+                $pending->isCodeExpiredAt($now) => CodeState::Expired,
+                $pending->isExhausted() => CodeState::Exhausted,
+                default => CodeState::Live,
+            },
+        ];
     }
 
     /** @return int|null seconds still to wait, or null once a new code (or the email) is on its way */

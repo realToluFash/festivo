@@ -77,7 +77,9 @@ final class RegisterController
     {
         $handle = Type\string()->coerce($request->query->get('registration', ''));
 
-        return new JsonResponse(['cooldownSeconds' => $this->pendingRegistrations->secondsUntilResend($handle)]);
+        $opening = $this->pendingRegistrations->opening($handle);
+
+        return new JsonResponse(['cooldownSeconds' => $opening['cooldownSeconds'], 'codeState' => $opening['codeState']->value]);
     }
 
     #[Route('/api/auth/register/resend', name: 'auth_register_resend', methods: ['POST'])]

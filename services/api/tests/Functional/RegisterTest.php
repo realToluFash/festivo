@@ -13,6 +13,7 @@ use App\Domain\User\Registration\PendingRegistrations;
 use App\Domain\User\UserRegistrar;
 use App\Entity\RefreshToken;
 use App\Entity\User;
+use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\UserRepository;
@@ -140,6 +141,30 @@ final class RegisterTest extends ApiTestCase
         self::mockTime('+61 minutes');
         $this->resend($handle);
         self::assertSame('You already have a Soirely account', $this->lastMail()->getSubject(), 'and again after it');
+    }
+
+    /** A taken address reads exactly as a new one does, so opening the screen tells nobody which it is. */
+    #[Test]
+    public function theScreenReadsWhetherTheCodeIsLiveExhaustedOrExpired(): void
+    {
+        self::mockTime('2026-10-17 12:00:00');
+        $this->owner('taken@example.com');
+
+        foreach (['fresh@example.com', 'taken@example.com'] as $address) {
+            $handle = Type\string()->coerce($this->register($address, 'Someone', self::GOOD_PASSWORD)['registration']);
+            self::assertSame('live', $this->opening($handle)['codeState'], $address);
+
+            for ($attempt = 0; $attempt < VerificationChallenge::MAXIMUM_ATTEMPTS; ++$attempt) {
+                $this->confirm($handle, '000000');
+            }
+
+            self::assertSame('exhausted', $this->opening($handle)['codeState'], $address);
+            self::assertSame(['cooldownSeconds', 'codeState'], Vec\keys($this->last()));
+        }
+
+        $later = Type\string()->coerce($this->register('later@example.com', 'Later', self::GOOD_PASSWORD)['registration']);
+        self::mockTime('+16 minutes');
+        self::assertSame('expired', $this->opening($later)['codeState']);
     }
 
     #[Test]
@@ -403,6 +428,15 @@ final class RegisterTest extends ApiTestCase
     private function confirm(#[SensitiveParameter] string $handle, #[SensitiveParameter] string $code): array
     {
         $this->client->request('POST', '/api/auth/register/verify', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['registration' => $handle, 'code' => $code]));
+
+        return $this->last();
+    }
+
+    /** @return array<string, mixed> */
+    private function opening(#[SensitiveParameter] string $handle): array
+    {
+        $this->client->request('GET', '/api/auth/register/resend', ['registration' => $handle]);
+        self::assertSame(200, $this->statusCode());
 
         return $this->last();
     }
