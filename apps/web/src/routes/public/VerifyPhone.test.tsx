@@ -314,9 +314,13 @@ describe('change your mobile number', () => {
     expect(sent.filter((request) => request.method === 'PUT')).toEqual([]);
   });
 
-  it("starts on the account's Country when there is no number, ahead of the browser's", async () => {
+  it('starts on the Country from "A few details" when there is no number, ahead of the browser\'s', async () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
-    answering({ 'GET /api/auth/me': () => json({ ...account([]), countryCode: 'GH' }) });
+    // As /me answers once Ghana is chosen: saved to the organisation, never to the account itself.
+    answering({
+      'GET /api/auth/me': () =>
+        json({ ...account([]), countryCode: null, organisationCountry: 'GH' }),
+    });
     at('/phone');
     await screen.findByLabelText('Mobile number');
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { exactZone, matchingZones, zoneLabel } from './timeZones.ts';
+import { exactZone, formerName, matchingZones, zoneLabel } from './timeZones.ts';
 
 const ZONES = [
   { id: 'Africa/Lagos', city: 'Lagos', country: 'Nigeria', offset: '+01:00' },
@@ -68,5 +68,73 @@ describe('the time zone list', () => {
     expect(exactZone(ZONES, 'lagos')?.id).toBe('Africa/Lagos');
     expect(exactZone(ZONES, 'London (UTC+01:00)')?.id).toBe('Europe/London');
     expect(exactZone(ZONES, 'Lon')).toBeNull();
+  });
+});
+
+describe('cities in the reader’s language, and the names a zone once had', () => {
+  const LOCAL = [
+    {
+      id: 'Europe/London',
+      city: 'Londres',
+      ianaCity: 'London',
+      formerNames: ['Belfast', 'GB'],
+      country: 'Royaume-Uni',
+      offset: '+01:00',
+    },
+    {
+      id: 'Asia/Kolkata',
+      city: 'Kolkata',
+      ianaCity: 'Kolkata',
+      formerNames: ['Calcutta'],
+      country: 'India',
+      offset: '+05:30',
+    },
+    {
+      id: 'America/Argentina/Buenos_Aires',
+      city: 'Buenos Aires',
+      ianaCity: 'Buenos Aires',
+      formerNames: [],
+      country: 'Argentina',
+      offset: '-03:00',
+    },
+    {
+      id: 'America/St_Johns',
+      city: 'St. John’s',
+      ianaCity: 'St Johns',
+      formerNames: ['Newfoundland'],
+      country: 'Canada',
+      offset: '-02:30',
+    },
+  ];
+  const ids = (query: string) => matchingZones(LOCAL, query).map((z) => z.id);
+
+  it('finds a city by its local name and by IANA’s, accents ignored', () => {
+    expect(ids('londres')).toEqual(['Europe/London']);
+    expect(ids('London')).toEqual(['Europe/London']);
+    expect(ids('st john')).toEqual(['America/St_Johns']);
+    expect(ids('St Johns')).toEqual(['America/St_Johns']);
+    expect(ids("st. john's")).toEqual(['America/St_Johns']);
+    expect(exactZone(LOCAL, "St. John's")?.id).toBe('America/St_Johns');
+    expect(
+      matchingZones([{ ...LOCAL[3]!, city: 'Saint-Jean de Terre-Neuve' }], 'saint jean'),
+    ).toHaveLength(1);
+  });
+
+  it('finds a zone by a former name, and says which', () => {
+    expect(ids('Calcutta')).toEqual(['Asia/Kolkata']);
+    expect(formerName(LOCAL[1]!, 'calcutta')).toBe('Calcutta');
+  });
+
+  it('shows no former name when the row’s own name, country or offset matched', () => {
+    expect(formerName(LOCAL[2]!, 'Buenos Aires')).toBeNull();
+    expect(formerName(LOCAL[1]!, 'india')).toBeNull();
+    expect(formerName(LOCAL[1]!, 'utc+5:30')).toBeNull();
+    expect(ids('utc+5:30')).toEqual(['Asia/Kolkata']);
+  });
+
+  it('saves a typed city in either spelling, never a typed former name', () => {
+    expect(exactZone(LOCAL, 'london')?.id).toBe('Europe/London');
+    expect(exactZone(LOCAL, 'Londres')?.id).toBe('Europe/London');
+    expect(exactZone(LOCAL, 'Calcutta')).toBeNull();
   });
 });

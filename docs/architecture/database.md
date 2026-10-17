@@ -61,8 +61,8 @@ that never verified any address is released: the new registration deletes that a
 takes it. Such an account owns nothing, and refusing would let a typo keep somebody else's
 address hostage. Only an account with at least one verified address gets the 409 — for any
 of its addresses, verified or not. Accounts that stay unverified are deleted a week after
-registering by `bin/console app:prune-unverified-accounts` (`--dry-run` counts them); like
-the refresh-token prune, nothing schedules it yet.
+registering by `bin/console app:prune-unverified-accounts` (`--dry-run` counts them), which
+runs daily with the other prunes (see "Pruning spent sessions" in `sessions.md`).
 
 ### What is enforced, and where
 

@@ -443,7 +443,9 @@
     "save": "Save time zone",
     "saving": "Saving…",
     "cancel": "Cancel",
-    "saved": "Time zone changed to {{zone}}. Times in your emails now use it."
+    "saved": "Time zone changed to {{zone}}. Times in your emails now use it.",
+    "was": "was {{name}}",
+    "countryWas": "{{country}} · was {{name}}"
   },
   "account": {
     "title": "Your account",
@@ -460,7 +462,7 @@
     "send": "Send the codes",
     "sending": "Sending the codes…",
     "limitedTitle": "Too many requests",
-    "limitedBody": "You can ask 3 times a day. Try again at {{time}}.",
+    "limitedBody": "You can ask 3 times a day. Try again {{when}}.",
     "back": "Back to sign in",
     "nobodyTitle": "Contact Soirely support",
     "nobodyIntro": "Nobody in your organisation can confirm this. Contact Soirely support.",
@@ -527,6 +529,7 @@
     "setupIntro": "Two-factor was turned off to let you back in. Set it up again so a password alone can’t open your account.",
     "setup": "Set up two-factor",
     "notNow": "Not now",
-    "notNowNote": "You can set it up any time in Settings › Security."
+    "notNowNote": "You can set it up any time in Settings › Security.",
+    "limitedBodyLater": "You can ask 3 times a day. Try again later."
   }
 }

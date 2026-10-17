@@ -188,8 +188,13 @@ It never deletes a row that is revoked but not expired. That row is how a replay
 told apart from an unknown one: delete it and a replay no longer revokes the chain, so the
 thief keeps the newest token, and the response looks exactly the same.
 
-**Nothing schedules it yet.** Where it runs (host cron, a scheduled container, or
-Messenger's scheduler) is an open decision on sc-114.
+**It runs once a day, at 03:00 UTC**, from `services/api/config/crontab`, alongside
+`app:prune-unverified-accounts` at 03:10 and `app:prune-pending-registrations` at 03:20.
+The prod image carries [supercronic](https://github.com/aptible/supercronic), pinned by
+version and checksum; every deployed environment runs one more container from that image
+with `supercronic /app/config/crontab` as its command. Each run logs its count, 0 included;
+a run that exits non-zero is logged at `level=error` and the next day's run still happens.
+The local stack schedules none of them: run them by hand there.
 
 ## Ending a session takes effect at once
 
@@ -274,6 +279,28 @@ answers `{signedOut}`, the number of other sessions it ended.
   with the network address and no place, and to reset by "Forgot your password?" if it was
   not them. It links only to sign-in, carries no part of either password, and a failed send
   leaves the change made.
+
+## Signing out everywhere else
+
+`POST /api/auth/sessions/others` takes the `proof` from `POST /api/auth/proof` and the
+caller's own `sessionId`, and answers `{signedOut, thisDevice}` (sc-115). It is the lost
+phone's button: every session but this device's ends at once.
+
+- **The proof comes first**, the same five-minute proof that linking a provider takes: the
+  password or Google or Apple, then the code with two-factor on, an app code or an unused
+  recovery code, which is spent. Without one it is `proof_required` and nothing ends.
+- **Then the limit**: `sign_out_elsewhere_account`, five proved calls per account in a fixed
+  fifteen-minute window. Past it, `429 too_many_attempts` with `Retry-After` and the time
+  in the detail, and nothing ends. The proof is checked before the budget is spent, so
+  whoever holds an unlocked device cannot use up the owner's.
+- **One statement**: `TokenIssuer::revokeAllExcept()` ends every live session but the chain
+  of the one named, and puts each on the revoked-session list, so the other devices are
+  refused on their next request. `signedOut` is the rows it ended; a second call answers 0.
+- **Without a `sessionId` that is this account's**, the caller's session ends as well.
+- **`thisDevice` is the caller's own chain**, the access token's `sid` claim, not the
+  `sessionId` the client named: `true` when that chain was among those ended, and the
+  client signs out. A stale or wrong `sessionId` is told the truth.
+- **One audit entry**, `sessions.signed_out_elsewhere`, carrying the count.
 
 ## Adding a password
 

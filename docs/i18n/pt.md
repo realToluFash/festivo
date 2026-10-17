@@ -15,18 +15,18 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | Portuguese                   | Notes |
-| ------------------------- | ---------------------------- | ----- |
-| Settings                  | Definições                   |       |
-| Organisation              | Organização                  |       |
-| Sign in                   | Iniciar sessão               |       |
-| Sign out                  | Encerrar sessão              |       |
-| Email                     | Endereço de e-mail           |       |
-| Password                  | Palavra-passe                |       |
-| Continue                  | Continuar                    |       |
-| Cancel                    | Cancelar                     |       |
-| Two-factor authentication | Autenticação de dois fatores |       |
-| Recovery code             | Código de recuperação        |       |
+| English                   | Portuguese                   | Notes                                                            |
+| ------------------------- | ---------------------------- | ---------------------------------------------------------------- |
+| Settings                  | Definições                   |                                                                  |
+| Organisation              | Organização                  |                                                                  |
+| Sign in                   | Iniciar sessão               |                                                                  |
+| Sign out                  | Encerrar sessão              | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada" |
+| Email                     | Endereço de e-mail           |                                                                  |
+| Password                  | Palavra-passe                |                                                                  |
+| Continue                  | Continuar                    |                                                                  |
+| Cancel                    | Cancelar                     |                                                                  |
+| Two-factor authentication | Autenticação de dois fatores |                                                                  |
+| Recovery code             | Código de recuperação        |                                                                  |
 
 ## Never translated
 
@@ -36,3 +36,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **17 Oct 2026. A former name is "ex-{{name}}"** (`timeZone.was`, `timeZone.countryWas`):
+  "Índia · ex-Calcutta". Rejected "antes {{name}}" (not a phrase in Portuguese) and
+  "antiga {{name}}" (it has to agree, and the name may be a city, a country code such as GB,
+  or a zone such as US/Eastern). "ex-" agrees with all of them.
+- **17 Oct 2026. Signing out other devices is "encerrar a sessão"**, as in the glossary
+  (`passwordCard.*`, `emails:password.changed.devices`, `devices.*`). The password card
+  said "terminar", which made one action read as two.
+- **17 Oct 2026. "It" in the device dialog is "o dispositivo"** (`devices.signInAgain`):
+  Portuguese drops the subject, and on its own the sentence reads as if the person had to
+  sign in again.

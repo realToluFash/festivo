@@ -715,6 +715,23 @@ h2 {
   color: var(--colorInkSecondary);
 }
 
+/* The card's footer: one action for every row but this device's. */
+.device-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceXl);
+  padding-top: var(--spaceLg);
+  border-top: var(--borderInset);
+}
+
+.device-footer p {
+  flex: 1;
+  min-width: 14rem;
+  margin: 0;
+  font: var(--typeSmall);
+}
+
 .pill-here {
   display: inline-flex;
   align-items: center;
@@ -1659,6 +1676,7 @@ h2 {
 
 .tz-option {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--spaceLg);
   align-items: center;
@@ -1666,6 +1684,11 @@ h2 {
   padding: 0 var(--spaceMd);
   border-radius: var(--radiusSmall);
   cursor: pointer;
+}
+
+.tz-option .muted {
+  margin-left: auto;
+  text-align: right;
 }
 
 .tz-option-active,

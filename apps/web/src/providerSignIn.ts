@@ -23,7 +23,9 @@ const RETURNED = 'soirely.provider.returned';
 
 /** Why Security sent the person to a provider: to confirm it is them, or to choose the account to link. */
 export type ReturnPurpose =
-  { kind: 'prove'; then: { action: 'link' | 'unlink'; provider: Provider } } | { kind: 'link' };
+  | { kind: 'prove'; then: { action: 'link' | 'unlink'; provider: Provider } }
+  | { kind: 'link' }
+  | { kind: 'signOutOthers' };
 
 /** What Security finds on its return: the provider's code to send on, or that it did not finish. */
 export type ProviderReturn = { provider: Provider; purpose: ReturnPurpose } & (
@@ -88,7 +90,7 @@ export async function startProviderSignIn(
       codeChallenge: base64Url(await sha256(attempt.codeVerifier)),
       ...(provider === 'apple'
         ? { scope: 'openid name email', extra: { response_mode: 'form_post' } }
-        : purpose?.kind === 'prove'
+        : purpose?.kind === 'prove' || purpose?.kind === 'signOutOthers'
           ? { extra: REAUTHENTICATE }
           : {}),
     }),
@@ -162,12 +164,19 @@ export function keepProviderReturn(provider: Provider, callbackUrl: string): voi
   sessionStorage.setItem(RETURNED, JSON.stringify(kept));
 }
 
-/** Once: what the provider trip brought back, for Security to finish. */
-export function takeProviderReturn(): ProviderReturn | null {
+/** Once: what the provider trip brought back, for the Security card whose trip it was to finish. */
+export function takeProviderReturn(
+  kinds: readonly ReturnPurpose['kind'][] = ['prove', 'link'],
+): ProviderReturn | null {
   const kept = sessionStorage.getItem(RETURNED);
+  if (kept == null) return null;
+
+  const returned = JSON.parse(kept) as ProviderReturn;
+  if (!kinds.includes(returned.purpose.kind)) return null;
+
   sessionStorage.removeItem(RETURNED);
 
-  return kept == null ? null : (JSON.parse(kept) as ProviderReturn);
+  return returned;
 }
 
 /** The code passed: a provider sign-in it finished may have linked its provider only now. */

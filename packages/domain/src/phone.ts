@@ -72,13 +72,18 @@ export function pickPhoneCountry(code: string): PhoneCountry {
   return { code, picked: true };
 }
 
-/** The phone screens' code (sc-945): the current number's country, the account's Country, the device's region, else blank. */
+/** The phone screens' code (sc-945): the primary number's country, the Country chosen on "A few details", the device, else blank. */
 export function phoneScreenCountry(
-  numberCountry: string | null | undefined,
-  accountCountry: string | null | undefined,
+  account: {
+    /** "A few details" saves its Country to the organisation; the account's own country is never written. */
+    organisationCountry: string | null;
+    phoneNumbers: readonly { primary: boolean; countryCode: string | null }[];
+  },
   deviceCountry: string | null | undefined,
 ): string {
-  return firstCountry(numberCountry, accountCountry, deviceCountry);
+  const numberCountry = account.phoneNumbers.find((phone) => phone.primary)?.countryCode;
+
+  return firstCountry(numberCountry, account.organisationCountry, deviceCountry);
 }
 
 /** Where focus goes when a number is refused: the code when none is chosen, else the number itself. */
