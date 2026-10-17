@@ -1,7 +1,7 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
 import { exactZone, matchingZones, zoneLabel } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -10,11 +10,14 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
+import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** How many rows the list shows at once; the search narrows the rest. */
 const SHOWN = 30;
+
+/** The list scrolls inside this height, so the field and Save stay on screen (Account-*, Tweak `tz`). */
+const LIST_HEIGHT = 264;
 
 /** Your account > Account, the time zone the times sent to this person are written in (sc-868). */
 export function TimeZoneCard({
@@ -122,6 +125,7 @@ function Choosing({
   const [saving, setSaving] = useState(false);
   const input = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
+  const top = useScrolledToTop();
 
   const showingPicked = picked != null && typed === zoneLabel(picked);
   const matches = showingPicked ? [] : matchingZones(zones, typed).slice(0, SHOWN);
@@ -158,33 +162,40 @@ function Choosing({
 
   return (
     <>
-      <Field
-        label={t('timeZone.find')}
-        error={error}
-        help={t('timeZone.help', { now: now ?? t('timeZone.nowUnset') })}
-      >
-        <TextField
-          ref={input}
-          wrong={error != null}
-          editable={!saving}
-          autoFocus
-          autoCapitalize="none"
-          placeholder={t('timeZone.placeholder')}
-          value={typed}
-          onChangeText={(text) => {
-            setTyped(text);
-            setPicked(null);
-            setError(null);
-          }}
-          returnKeyType="done"
-          onSubmitEditing={() => void save()}
-          accessibilityLabel={t('timeZone.find')}
-          testID="timeZone.search"
-        />
-      </Field>
+      <View ref={top}>
+        <Field
+          label={t('timeZone.find')}
+          error={error}
+          help={t('timeZone.help', { now: now ?? t('timeZone.nowUnset') })}
+        >
+          <TextField
+            ref={input}
+            wrong={error != null}
+            editable={!saving}
+            autoFocus
+            autoCapitalize="none"
+            placeholder={t('timeZone.placeholder')}
+            value={typed}
+            onChangeText={(text) => {
+              setTyped(text);
+              setPicked(null);
+              setError(null);
+            }}
+            returnKeyType="done"
+            onSubmitEditing={() => void save()}
+            accessibilityLabel={t('timeZone.find')}
+            testID="timeZone.search"
+          />
+        </Field>
+      </View>
 
       {matches.length > 0 && (
-        <View style={styles.list} accessibilityLabel={t('timeZone.listLabel')}>
+        <ScrollView
+          style={styles.list}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          accessibilityLabel={t('timeZone.listLabel')}
+        >
           {matches.map((zone) => (
             <Pressable
               key={zone.id}
@@ -203,7 +214,7 @@ function Choosing({
               </Text>
             </Pressable>
           ))}
-        </View>
+        </ScrollView>
       )}
 
       {noneMatch && error == null && (
@@ -238,6 +249,7 @@ const styles = StyleSheet.create({
   group: { gap: tokens.spaceXxs },
   secondary: { color: tokens.colorInkSecondary },
   list: {
+    maxHeight: LIST_HEIGHT,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     borderRadius: tokens.radiusField,

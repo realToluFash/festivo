@@ -45,6 +45,22 @@ export function useAboveKeyboard(): RefObject<View | null> {
   return group;
 }
 
+/** For a field that opens a list under it: brings the field to the top of the screen once it mounts. */
+export function useScrolledToTop(): RefObject<View | null> {
+  const scroll = useContext(ScreenScroll);
+  const field = useRef<View>(null);
+
+  useEffect(() => {
+    const content = scroll?.current?.getInnerViewNode();
+    if (field.current == null || content == null) return;
+    field.current.measureLayout(content, (_x, y) => {
+      scroll?.current?.scrollTo({ y: Math.max(0, y - tokens.spaceLg), animated: true });
+    });
+  }, [scroll]);
+
+  return field;
+}
+
 /**
  * The documented way to build a screen. Use this, not a bare View.
  *
