@@ -440,6 +440,7 @@ describe('a browser never holds the refresh token', () => {
     const result = await client.signIn('ada@example.com', 'a decent passphrase');
 
     expect(body).toMatchObject({ email: 'ada@example.com', refreshTokenIn: 'cookie' });
+    if (!('tokens' in result)) throw new Error('expected tokens, not a challenge');
     expect(result.tokens.accessToken).toBe('fresh');
     expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
   });
@@ -456,7 +457,9 @@ describe('a browser never holds the refresh token', () => {
       },
     });
 
-    const { account } = await client.signIn('ada@example.com', 'a decent passphrase');
+    const result = await client.signIn('ada@example.com', 'a decent passphrase');
+    if (!('account' in result)) throw new Error('expected the account, not a challenge');
+    const { account } = result;
 
     expect(account.id).toBe(ACCOUNT.id);
     expect(account.emailAddresses).toHaveLength(ACCOUNT.emailAddresses.length);
@@ -760,7 +763,10 @@ describe('recovering a password', () => {
     });
 
     await client.forgotPassword('folake@ire.events');
-    expect(await client.checkResetLink('t1')).toEqual({ email: 'folake@ire.events' });
+    expect(await client.checkResetLink('t1')).toEqual({
+      email: 'folake@ire.events',
+      twoFactor: false,
+    });
     const signedIn = await client.resetPassword('t1', 'a brand new passphrase');
 
     expect(signedIn.account.id).toBe(ACCOUNT.id);
@@ -1029,5 +1035,55 @@ describe('verifying an address', () => {
 
     expect(await api.verificationCooldown()).toBe(42);
     expect(sent).toEqual(['GET /api/auth/verify/resend']);
+  });
+});
+
+describe('a second factor', () => {
+  test('a challenge saves no tokens and says whose code it is', async () => {
+    const tokens = store(null, null);
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      fetch: async () =>
+        json(
+          {
+            twoFactorChallenge: 'the-challenge',
+            challengeExpiresAt: '2026-10-17T12:05:00+00:00',
+            email: 'ada@example.com',
+          },
+          202,
+        ),
+    });
+
+    const outcome = await client.signIn('ada@example.com', 'a decent passphrase');
+
+    expect(outcome).toEqual({
+      kind: 'twoFactor',
+      challenge: 'the-challenge',
+      expiresAt: '2026-10-17T12:05:00+00:00',
+      email: 'ada@example.com',
+      linked: false,
+    });
+    expect(tokens.saved).toBeNull();
+  });
+
+  test('the code then signs in, and only then are tokens saved', async () => {
+    const tokens = store(null, null);
+    let sent: unknown = null;
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      fetch: async (input, init) => {
+        expect(new URL(String(input)).pathname).toBe('/api/auth/two-factor/verify');
+        sent = JSON.parse(String(init?.body));
+        return issued({ account: ACCOUNT });
+      },
+    });
+
+    const signedIn = await client.verifyTwoFactor('the-challenge', { recoveryCode: 'abcd-efgh' });
+
+    expect(sent).toMatchObject({ challenge: 'the-challenge', recoveryCode: 'abcd-efgh' });
+    expect(signedIn.account.id).toBe(ACCOUNT.id);
+    expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
   });
 });
