@@ -30,6 +30,7 @@ final readonly class AppleAppReturn
         private ProviderSignIn $providerSignIn,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private string $appleReturnUri,
     ) {
     }
 
@@ -44,14 +45,23 @@ final readonly class AppleAppReturn
         $this->entityManager->flush();
     }
 
-    /** The handle for the app, or null when the state is not an app's and the web takes it. */
-    public function receive(#[SensitiveParameter] string $state, #[SensitiveParameter] ?string $code, ?string $appleUser): ?string
+    /**
+     * The App Link's query for a state the app started, spent or not; null only when no app started it.
+     *
+     * @return array{handle: string}|array{error: 'cancelled'|'expired'}|null
+     */
+    public function receive(#[SensitiveParameter] string $state, #[SensitiveParameter] ?string $code, ?string $appleUser): ?array
     {
         $attempt = $this->appleAppAttemptRepository->findOneByStateHash(TokenIssuer::hash($state));
         $now = $this->clock->now();
 
-        if (null === $attempt || !$attempt->isAwaitingAppleAt($now)) {
+        if (null === $attempt) {
             return null;
+        }
+
+        // Posted twice, or too late: still the app's, so its code never goes on to a web URL.
+        if (!$attempt->isAwaitingAppleAt($now)) {
+            return ['error' => 'expired'];
         }
 
         // A cancel or a failure at Apple carries no code: the app is sent back with nothing to exchange.
@@ -59,17 +69,17 @@ final readonly class AppleAppReturn
             $attempt->markUsed($now);
             $this->entityManager->flush();
 
-            return '';
+            return ['error' => 'cancelled'];
         }
 
         $handle = \bin2hex(SecureRandom\bytes(self::HANDLE_BYTES));
         $attempt->received($code, $appleUser, TokenIssuer::hash($handle), $now);
         $this->entityManager->flush();
 
-        return $handle;
+        return ['handle' => $handle];
     }
 
-    /** Once, within its minute, and only with the verifier whose challenge started the attempt. */
+    /** Once, within its minute, with the verifier whose challenge started it, and redeemed at the API's own return route. */
     public function exchange(
         #[SensitiveParameter]
         string $handle,
@@ -77,9 +87,13 @@ final readonly class AppleAppReturn
         string $codeVerifier,
         #[SensitiveParameter]
         ?string $rawNonce,
-        string $redirectUri,
+        ?string $sentRedirectUri = null,
         ?Request $request = null,
     ): ProviderSignInResult {
+        if (null !== $sentRedirectUri && $sentRedirectUri !== $this->appleReturnUri) {
+            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'That sign-in could not be checked.');
+        }
+
         $attempt = '' === $handle ? null : $this->appleAppAttemptRepository->findOneByHandleHash(TokenIssuer::hash($handle));
         $now = $this->clock->now();
         $code = $attempt?->getCode();
@@ -92,7 +106,7 @@ final readonly class AppleAppReturn
         $attempt->markUsed($now);
         $this->entityManager->flush();
 
-        return $this->providerSignIn->signInWithCode(IdentityProvider::Apple, $code, $codeVerifier, $redirectUri, $rawNonce, $request, self::nameFrom($appleUser));
+        return $this->providerSignIn->signInWithCode(IdentityProvider::Apple, $code, $codeVerifier, $this->appleReturnUri, $rawNonce, $request, self::nameFrom($appleUser));
     }
 
     /** RFC 7636 S256: base64url of the SHA-256 of the verifier, unpadded. */

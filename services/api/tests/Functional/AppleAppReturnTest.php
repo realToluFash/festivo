@@ -119,6 +119,47 @@ final class AppleAppReturnTest extends ApiTestCase
     }
 
     #[Test]
+    public function appleRedeemsAtTheConfiguredReturnRouteWhenTheAppSendsNone(): void
+    {
+        $this->exchange($this->returned('app-state'), self::VERIFIER, null);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame([['code' => 'apple-code', 'redirectUri' => self::RETURN_URI]], self::service(TestCodeRedeemer::class)->redeemed);
+    }
+
+    #[Test]
+    public function aHandleExchangeWithAForeignRedirectIsRefused(): void
+    {
+        $this->exchange($this->returned('app-state'), self::VERIFIER, 'https://attacker.example/return');
+
+        self::assertSame(ErrorCode::OAuthTokenInvalid->type(), $this->last()['type']);
+        self::assertSame([], self::service(TestCodeRedeemer::class)->redeemed, "Apple's code was never redeemed");
+    }
+
+    #[Test]
+    public function appleSendingTheSameAppStateTwiceNeverPutsTheCodeInAWebUrl(): void
+    {
+        $this->returned('app-state');
+
+        $this->client->request('POST', '/api/auth/oauth/apple/return', ['code' => 'second-code', 'state' => 'app-state']);
+        $location = (string) $this->client->getResponse()->headers->get('Location');
+
+        self::assertSame(303, $this->client->getResponse()->getStatusCode());
+        self::assertSame('https://soirely.test/oauth/apple/app?error=expired', $location);
+    }
+
+    #[Test]
+    public function anExpiredAppAttemptGoesBackToTheAppWithoutItsCode(): void
+    {
+        $this->start('app-state');
+        self::mockTime('+11 minutes');
+
+        $this->client->request('POST', '/api/auth/oauth/apple/return', ['code' => 'late-code', 'state' => 'app-state']);
+
+        self::assertSame('https://soirely.test/oauth/apple/app?error=expired', $this->client->getResponse()->headers->get('Location'));
+    }
+
+    #[Test]
     public function cancellingAtAppleReturnsToTheAppWithNothingToExchange(): void
     {
         $this->start('app-state');
@@ -148,12 +189,12 @@ final class AppleAppReturnTest extends ApiTestCase
     }
 
     /** @return array<string, mixed> */
-    private function exchange(#[SensitiveParameter] string $handle, #[SensitiveParameter] string $verifier): array
+    private function exchange(#[SensitiveParameter] string $handle, #[SensitiveParameter] string $verifier, ?string $redirectUri = self::RETURN_URI): array
     {
         $this->client->request('POST', '/api/auth/oauth/apple/handle', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode([
             'handle' => $handle,
             'codeVerifier' => $verifier,
-            'redirectUri' => self::RETURN_URI,
+            ...(null === $redirectUri ? [] : ['redirectUri' => $redirectUri]),
         ]));
 
         return $this->last();

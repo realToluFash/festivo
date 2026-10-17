@@ -103,6 +103,9 @@ services:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
             $appleAppLink: '%env(OAUTH_APPLE_APP_LINK)%'
+    App\Domain\User\Provider\AppleAppReturn:
+        arguments:
+            $appleReturnUri: '%env(OAUTH_APPLE_RETURN_URI)%'
     App\Domain\User\Registration\RegistrationMail:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'

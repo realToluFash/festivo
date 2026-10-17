@@ -319,8 +319,10 @@ the same checks, nonce binding and account paths. What differs is what Apple sen
   state, keeps Apple's code, and 303s to the verified App Link `OAUTH_APPLE_APP_LINK` with a
   one-time handle (60 seconds, `AppleAppAttempt::HANDLE_SECONDS`). The app trades the handle
   and its PKCE verifier at `POST /api/auth/oauth/apple/handle`, and the API redeems the code
-  as it does the web's. Neither the code nor tokens travel in the App Link URL. A state the
-  API never saw is the web's, as before.
+  at `OAUTH_APPLE_RETURN_URI`, its own return route; a different `redirectUri` from the client
+  is refused. Neither the code nor tokens travel in the App Link URL. An app state already
+  spent or expired goes back to the App Link with `error=expired` and no code; only a state
+  the API never saw is the web's.
 
 ## Two-factor authentication
 

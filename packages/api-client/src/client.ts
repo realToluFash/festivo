@@ -285,11 +285,11 @@ export class ApiClient {
   }
 
   /** The App Link's one-time handle, with the verifier that started the attempt. */
+  /** No redirect URI: the API redeems Apple's code at its own return route. */
   async exchangeAppleHandle(attempt: {
     handle: string;
     codeVerifier: string;
     nonce: string;
-    redirectUri: string;
   }): Promise<SignInOutcome> {
     return this.signedIn('/api/auth/oauth/apple/handle', attempt, 'AppleAppController');
   }

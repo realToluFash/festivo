@@ -49,12 +49,12 @@ final readonly class AppleAppController
         $body = Input::body($request, Type\shape([
             'handle' => Type\string(),
             'codeVerifier' => Type\string(),
-            'redirectUri' => Type\string(),
+            'redirectUri' => Type\optional(Type\string()),
             'nonce' => Type\optional(Type\nullable(Type\string())),
             'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
         ]));
 
-        $result = $this->appleAppReturn->exchange($body['handle'], $body['codeVerifier'], $body['nonce'] ?? null, $body['redirectUri'], $request);
+        $result = $this->appleAppReturn->exchange($body['handle'], $body['codeVerifier'], $body['nonce'] ?? null, $body['redirectUri'] ?? null, $request);
 
         // Two-factor gates this way in as it gates every other: a challenge, not tokens, until the code passes.
         return $this->signInResponse->for($result->admission, $result->user, $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body, $request, ['linked' => $result->linked]);
