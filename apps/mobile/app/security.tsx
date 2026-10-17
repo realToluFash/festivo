@@ -7,19 +7,22 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../src/api.ts';
 import { QuietButton } from '../src/components/Buttons.tsx';
 import { PasswordCard } from '../src/components/PasswordCard.tsx';
+import { DevicesCard } from '../src/components/DevicesCard.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { TwoFactorCard } from '../src/components/TwoFactorCard.tsx';
 import { WaysCard } from '../src/components/WaysCard.tsx';
 import { type LayoutKind, useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
+import { tokens as sessionTokens } from '../src/tokens.ts';
 
-/** `AppSettings-*` state `security` without its tab and rail, until sc-722; later cards join the stack. */
+/** `AppSettings-*` state `security` without its tab and rail, until sc-722. */
 export default function Security() {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const [account, setAccount] = useState<Account | null>(null);
   const [settingPassword, setSettingPassword] = useState(false);
+  const [sessionsEnded, setSessionsEnded] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -39,6 +42,12 @@ export default function Security() {
   }, []);
 
   const phone = kind === 'phone';
+  const signOutHere = () => {
+    void api.signOut().finally(() => router.replace('/sign-in'));
+  };
+  const endedHere = () => {
+    void Promise.resolve(sessionTokens.clear()).finally(() => router.replace('/sign-in'));
+  };
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
 
   const heading = (
@@ -71,19 +80,29 @@ export default function Security() {
             onAdded={async () => setAccount(await api.me())}
             setting={settingPassword}
             onSetting={setSettingPassword}
+            onChanged={() => setSessionsEnded((n) => n + 1)}
           />
           <WaysCard
             email={email}
             hasPassword={account.hasPassword}
             providers={account.providers}
             kind={kind}
-            onChanged={async () => setAccount(await api.me())}
-            onSetPassword={() => setSettingPassword(true)}
-            onSignedOutHere={() => {
-              void api.signOut().finally(() => router.replace('/sign-in'));
+            onChanged={async () => {
+              setAccount(await api.me());
+              setSessionsEnded((n) => n + 1);
             }}
+            onSetPassword={() => setSettingPassword(true)}
+            onSignedOutHere={signOutHere}
           />
           <TwoFactorCard email={email} kind={kind} />
+          <DevicesCard
+            hasPassword={account.hasPassword}
+            providers={account.providers}
+            kind={kind}
+            reload={sessionsEnded}
+            onSignOutHere={signOutHere}
+            onEndedHere={endedHere}
+          />
         </View>
       )}
     </Screen>

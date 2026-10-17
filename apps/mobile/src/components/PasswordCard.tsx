@@ -41,6 +41,7 @@ export function PasswordCard({
   onAdded,
   setting = false,
   onSetting,
+  onChanged,
 }: {
   email: string;
   hasPassword: boolean;
@@ -50,6 +51,8 @@ export function PasswordCard({
   /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
   setting?: boolean;
   onSetting?: (on: boolean) => void;
+  /** A change signs out every other device, so a list of them is now out of date. */
+  onChanged?: () => void;
 }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'atRest', signedOut: null, added: null });
@@ -118,7 +121,10 @@ export function PasswordCard({
       ) : (
         <Changing
           email={email}
-          onChanged={(signedOut) => setStage({ kind: 'atRest', signedOut, added: null })}
+          onChanged={(signedOut) => {
+            setStage({ kind: 'atRest', signedOut, added: null });
+            onChanged?.();
+          }}
           onCancel={() => setStage({ kind: 'atRest', signedOut: null, added: null })}
         />
       )}
