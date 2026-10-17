@@ -106,6 +106,8 @@ services:
       OAUTH_APPLE_TOKEN_URI: ${OAUTH_APPLE_TOKEN_URI:-http://oidc:8080/apple/token}
       OAUTH_APPLE_WEB_CLIENT_ID: ${OAUTH_APPLE_WEB_CLIENT_ID:-soirely-web}
       OAUTH_APPLE_WEB_CLIENT_SECRET: ${OAUTH_APPLE_WEB_CLIENT_SECRET:-development-secret}
+      # Must equal the return route the app sends Apple; defaults to this stack's own API port.
+      OAUTH_APPLE_RETURN_URI: ${OAUTH_APPLE_RETURN_URI:-http://localhost:${API_PORT:-8080}/api/auth/oauth/apple/return}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis
