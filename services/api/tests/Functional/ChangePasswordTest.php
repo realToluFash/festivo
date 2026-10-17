@@ -211,6 +211,16 @@ final class ChangePasswordTest extends ApiTestCase
         self::assertStringContainsString('/sign-in', $text);
     }
 
+    /** The send runs after the response, so the language it was asked in is carried to it (as sc-61's is). */
+    #[Test]
+    public function theEmailSpeaksTheLanguageTheChangeWasMadeIn(): void
+    {
+        $this->change($this->signIn(), self::OLD_PASSWORD, self::NEW_PASSWORD, ['HTTP_ACCEPT_LANGUAGE' => 'fr']);
+
+        $mail = Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()));
+        self::assertSame('Votre mot de passe Soirely a été modifié', $mail->getSubject());
+    }
+
     /** A decomposed é hashed through the resolver verifies as the composed one, which "sign-in works" with ASCII never proves. */
     #[Test]
     public function theNewPasswordGoesThroughTheSameNormalisationAsSignIn(): void

@@ -19,9 +19,10 @@ final readonly class PasswordChangeMailer
     ) {
     }
 
-    public function sendChanged(User $user, DateTimeImmutable $at, ?string $userAgent, ?string $ipAddress): void
+    /** `$asked` is the language the change was made in: the send runs after the response, which has forgotten it. */
+    public function sendChanged(User $user, DateTimeImmutable $at, ?string $userAgent, ?string $ipAddress, ?string $asked = null): void
     {
-        $locale = $this->userMailer->localeFor($user);
+        $locale = $this->userMailer->localeFor($user, $asked);
 
         $this->userMailer->sendTo($user, 'password.changed.subject', [
             $this->userMailer->line('password.changed.body', $locale, ['{when}' => $this->userMailer->moment($at, $locale)]),

@@ -169,6 +169,15 @@ manual `beginTransaction()`/`commit()`, not `wrapInTransaction()`, which closes 
 EntityManager on the refusal you are about to throw. Test that the lock is taken before the
 check, since the race cannot be seen from one request at a time.
 
+## Emails sent after the response
+
+A send deferred with `AfterResponse::defer()` reads `$request->getLocale()` **before**
+deferring and passes it to `UserMailer::localeFor($user, $asked)`. By the time the send
+runs, the response has forgotten the language, and the email falls back to English for any
+account with no stored language. It has shipped twice: sc-61's recovery email and sc-116's
+password-changed email. Until sc-852 stores every account's language, this is the only thing
+between a French speaker and an English email. Test it with `Accept-Language` set.
+
 ## Realtime
 
 Live updates go over Mercure. Two rules:

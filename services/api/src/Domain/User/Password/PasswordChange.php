@@ -69,7 +69,8 @@ final readonly class PasswordChange
         $at = $this->clock->now();
         $userAgent = $request?->headers->get('User-Agent');
         $ipAddress = $request?->getClientIp();
-        $this->afterResponse->defer(fn () => $this->passwordChangeMailer->sendChanged($user, $at, $userAgent, $ipAddress));
+        $asked = $request?->getLocale();
+        $this->afterResponse->defer(fn () => $this->passwordChangeMailer->sendChanged($user, $at, $userAgent, $ipAddress, $asked));
 
         return $signedOut;
     }
