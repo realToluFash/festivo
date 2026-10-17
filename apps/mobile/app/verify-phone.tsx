@@ -18,7 +18,7 @@ type Status = CodeStatus | { kind: 'verified' };
 
 export default function VerifyPhone() {
   const { t } = useTranslation();
-  const { from } = useLocalSearchParams<{ from?: string }>();
+  const { from, phone: alternative } = useLocalSearchParams<{ from?: string; phone?: string }>();
   const onboarding = from === 'onboarding';
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
@@ -42,7 +42,7 @@ export default function VerifyPhone() {
       });
 
     api
-      .phoneOpening()
+      .phoneOpening(alternative)
       .then(({ cooldownSeconds, codeState, route: sent }) => {
         if (!live) return;
         setCooldown(cooldownSeconds);
@@ -54,7 +54,7 @@ export default function VerifyPhone() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [alternative]);
 
   // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
   useEffect(() => {
@@ -62,13 +62,13 @@ export default function VerifyPhone() {
 
     const watching = setInterval(() => {
       api
-        .phoneOpening()
+        .phoneOpening(alternative)
         .then((opening) => setRoute(opening.route))
         .catch(() => {});
     }, 5000);
 
     return () => clearInterval(watching);
-  }, [wording.watch]);
+  }, [wording.watch, alternative]);
 
   // iOS has no live regions, so a changed line is announced by hand, as Android's live region does.
   useEffect(() => {
@@ -93,8 +93,14 @@ export default function VerifyPhone() {
   if (account === 'none') return <Redirect href="/sign-in" />;
   if (account == null) return null;
 
-  const phone = phoneAwaitingCode(account);
+  // A number added from Settings > Account (sc-113), by its id: verified here, then back there.
+  const phone =
+    alternative == null
+      ? phoneAwaitingCode(account)
+      : (account.phoneNumbers.find((held) => held.id === alternative) ?? null);
+  if (phone == null && alternative != null) return <Redirect href="/settings/account" />;
   if (phone == null) return <Redirect href={onboarding ? '/phone?from=onboarding' : '/phone'} />;
+  const after = alternative == null ? '/' : '/settings/account';
 
   const number = formatPhone(phone.number);
   const verified = status.kind === 'verified' || phone.verified;
@@ -119,7 +125,7 @@ export default function VerifyPhone() {
     setStatus({ kind: 'verifying' });
 
     try {
-      await api.verifyPhone(code);
+      await api.verifyPhone(code, alternative);
       setStatus({ kind: 'verified' });
     } catch (error) {
       setStatus(codeRefusal(error));
@@ -128,9 +134,9 @@ export default function VerifyPhone() {
 
   async function resend(): Promise<void> {
     try {
-      setCooldown(await api.resendPhoneCode());
+      setCooldown(await api.resendPhoneCode(alternative));
       setStatus({ kind: 'entering' });
-      setRoute((await api.phoneOpening()).route);
+      setRoute((await api.phoneOpening(alternative)).route);
     } catch (error) {
       const seconds = retryAfter(error);
 
@@ -159,7 +165,7 @@ export default function VerifyPhone() {
     setTextingFailed(false);
 
     try {
-      await api.textPhoneCodeInstead();
+      await api.textPhoneCodeInstead(alternative);
       setRoute('sms_chosen');
     } catch {
       setTextingFailed(true);
@@ -193,7 +199,7 @@ export default function VerifyPhone() {
       {status.kind === 'verified' || phone.verified ? (
         <PrimaryButton
           label={t('verifyPhone.continue')}
-          onPress={() => router.replace('/')}
+          onPress={() => router.replace(after)}
           testID="verifyPhone.continue"
         />
       ) : (
@@ -223,12 +229,14 @@ export default function VerifyPhone() {
             />
           )}
 
-          <Footnote
-            question={t('verifyPhone.wrongNumber')}
-            action={t('verifyPhone.changeIt')}
-            onPress={() => router.push(onboarding ? '/phone?from=onboarding' : '/phone')}
-            testID="verifyPhone.change"
-          />
+          {alternative == null && (
+            <Footnote
+              question={t('verifyPhone.wrongNumber')}
+              action={t('verifyPhone.changeIt')}
+              onPress={() => router.push(onboarding ? '/phone?from=onboarding' : '/phone')}
+              testID="verifyPhone.change"
+            />
+          )}
 
           {onboarding && (
             <Footnote

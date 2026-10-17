@@ -22,6 +22,8 @@ export function VerifyPhone() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const onboarding = params.get('from') === 'onboarding';
+  // A number added from Settings > Account (sc-113), by its id: verified there, then back to Account.
+  const alternative = params.get('phone') ?? undefined;
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
@@ -43,7 +45,7 @@ export function VerifyPhone() {
       });
 
     api
-      .phoneOpening()
+      .phoneOpening(alternative)
       .then(({ cooldownSeconds, codeState, route: sent }) => {
         if (!live) return;
         setCooldown(cooldownSeconds);
@@ -55,7 +57,7 @@ export function VerifyPhone() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [alternative]);
 
   // While the code is on WhatsApp, the server may hand it to SMS: the line follows within a few seconds.
   useEffect(() => {
@@ -63,13 +65,13 @@ export function VerifyPhone() {
 
     const watching = setInterval(() => {
       api
-        .phoneOpening()
+        .phoneOpening(alternative)
         .then((opening) => setRoute(opening.route))
         .catch(() => {});
     }, 5000);
 
     return () => clearInterval(watching);
-  }, [wording.watch]);
+  }, [wording.watch, alternative]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -82,7 +84,11 @@ export function VerifyPhone() {
   if (account === 'none') return <Navigate to="/sign-in" replace />;
   if (account == null) return <Pending />;
 
-  const phone = phoneAwaitingCode(account);
+  const phone =
+    alternative == null
+      ? phoneAwaitingCode(account)
+      : (account.phoneNumbers.find((held) => held.id === alternative) ?? null);
+  if (phone == null && alternative != null) return <Navigate to="/app/account" replace />;
   if (phone == null)
     return <Navigate to={onboarding ? '/phone?from=onboarding' : '/phone'} replace />;
 
@@ -112,7 +118,7 @@ export function VerifyPhone() {
     setStatus({ kind: 'verifying' });
 
     try {
-      await api.verifyPhone(code);
+      await api.verifyPhone(code, alternative);
       setStatus({ kind: 'verified' });
     } catch (error) {
       setStatus(codeRefusal(error));
@@ -121,9 +127,9 @@ export function VerifyPhone() {
 
   async function resend(): Promise<void> {
     try {
-      setCooldown(await api.resendPhoneCode());
+      setCooldown(await api.resendPhoneCode(alternative));
       setStatus({ kind: 'entering' });
-      setRoute((await api.phoneOpening()).route);
+      setRoute((await api.phoneOpening(alternative)).route);
     } catch (error) {
       const seconds =
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
@@ -140,7 +146,7 @@ export function VerifyPhone() {
 
   async function carryOn(): Promise<void> {
     await refreshAccount();
-    navigate('/app');
+    navigate(alternative == null ? '/app' : '/app/account');
   }
 
   // Saving the details with no number removes the phone, so the gate rests on the email again.
@@ -157,7 +163,7 @@ export function VerifyPhone() {
     setTextingFailed(false);
 
     try {
-      await api.textPhoneCodeInstead();
+      await api.textPhoneCodeInstead(alternative);
       setRoute('sms_chosen');
     } catch {
       setTextingFailed(true);
@@ -303,12 +309,14 @@ export function VerifyPhone() {
             </form>
           )}
 
-          <div className="auth-footnote">
-            <span>{t('verifyPhone.wrongNumber')}</span>
-            <Link className="link-button" to={onboarding ? '/phone?from=onboarding' : '/phone'}>
-              {t('verifyPhone.changeIt')}
-            </Link>
-          </div>
+          {alternative == null && (
+            <div className="auth-footnote">
+              <span>{t('verifyPhone.wrongNumber')}</span>
+              <Link className="link-button" to={onboarding ? '/phone?from=onboarding' : '/phone'}>
+                {t('verifyPhone.changeIt')}
+              </Link>
+            </div>
+          )}
 
           {onboarding && (
             <div className="auth-footnote">
