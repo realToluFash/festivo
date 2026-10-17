@@ -18,6 +18,7 @@ import {
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
@@ -60,7 +61,7 @@ export function PasswordCard({
     setStage(next);
     onSetting?.(next.kind === 'setting');
   };
-  const frame = [styles.card, kind === 'tabletLandscape' ? styles.cardWide : styles.cardNarrow];
+  const frame = cardFrame(kind);
   const first = providers[0]?.provider;
   const provider = first == null ? '' : (PROVIDER_NAMES[first] ?? first);
 
@@ -529,16 +530,6 @@ function Title({ text }: { text: string }) {
 }
 
 const styles = StyleSheet.create({
-  // As Security-* draws the password card, the same frame as the two-factor card beside it.
-  card: {
-    gap: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  cardNarrow: { padding: tokens.spaceXxl },
-  cardWide: { padding: tokens.space3xl, maxWidth: 640 },
   group: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
 });

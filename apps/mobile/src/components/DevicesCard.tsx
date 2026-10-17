@@ -24,6 +24,7 @@ import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
@@ -66,7 +67,7 @@ export function DevicesCard({
   const [attempt, setAttempt] = useState(0);
   const [stage, setStage] = useState<Stage>({ kind: 'list', said: null });
   const [listedFor, setListedFor] = useState(reload);
-  const frame = [styles.card, kind === 'tabletLandscape' ? styles.cardWide : styles.cardNarrow];
+  const frame = cardFrame(kind);
   const here = currentSessionId();
 
   if (listedFor !== reload) {
@@ -597,16 +598,6 @@ function EverywhereElse({
 }
 
 const styles = StyleSheet.create({
-  // The same frame as the cards above it on Security-*.
-  card: {
-    gap: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  cardNarrow: { padding: tokens.spaceXxl },
-  cardWide: { padding: tokens.space3xl, maxWidth: 640 },
   heading: {
     flexDirection: 'row',
     flexWrap: 'wrap',

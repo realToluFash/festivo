@@ -51,6 +51,17 @@ describe('every field carries the caret colour', () => {
   });
 });
 
+describe('the account cards share one frame', () => {
+  it('draws the card frame only in cardFrame.ts', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('cardFrame.ts'))
+      .filter(({ text }) => /padding: tokens\.space3xl, maxWidth: 640\b/u.test(text))
+      .map(({ path }) => path);
+
+    expect(offenders, 'Use cardFrame(kind) from src/components/cardFrame.ts.').toEqual([]);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
