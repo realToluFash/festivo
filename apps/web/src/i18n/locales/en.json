@@ -137,7 +137,7 @@
     "end": "Sign it out",
     "keep": "Keep it signed in",
     "ended": "{{name}} is signed out.",
-    "signInAgain": "It has to sign in again before it can carry on, so check it is not in the middle of an event.",
+    "signInAgain": "It has to sign in again before it can carry on, so first check that nobody is using it at an event.",
     "agent": "{{browser}} on {{platform}}",
     "dayAtTime": "{{day}} at {{time}}",
     "unknownDevice": "A device that did not name itself",
