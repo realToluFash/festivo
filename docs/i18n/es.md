@@ -47,6 +47,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. "Sign out everywhere else" is «Cerrar las demás sesiones».** Shorter than
+  «Cerrar sesión en los demás dispositivos», so it fits the phone button, and it is how
+  Spanish interfaces already say it. The confirm buttons follow `devices.end`: «Cerrar su
+  sesión» / «Cerrar sus sesiones», and «Cerrar las {{count}} sesiones» when this device is
+  among them; "Keep it/them signed in" is «Mantener la sesión» / «Mantener las sesiones».
+  "Nothing was signed out" is «No se ha cerrado ninguna sesión», the perfect because it has
+  just happened; the result lines keep the preterite of `passwordCard.done_*`. A disabled
+  "Try again at {{time}}" button is «Reintentar a las {{time}}», short where a sentence would
+  say «Inténtelo de nuevo» (sc-1193).
+
 - **17 Oct 2026. A picker's search field is «Buscar» and the plural noun.** «Buscar
   monedas», «Buscar zonas horarias», as the country picker's «Buscar países» already says
   (`orgGeneral.searchCurrency`, `orgGeneral.searchTimezone`). The Settings row line follows
