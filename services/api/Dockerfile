@@ -47,8 +47,12 @@ USER 1000:1000
 # --- production -------------------------------------------------------------
 FROM base AS prod
 ENV APP_ENV=prod
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY --from=vendor /app/vendor ./vendor
 COPY . .
+# The vendor stage installs without an autoloader, so it is written here, where
+# the classes it maps have arrived.
+RUN composer dump-autoload --no-dev --classmap-authoritative --no-interaction
 RUN php bin/console cache:warmup --no-interaction || true
 RUN mkdir -p /app/var /data/caddy /config/caddy \
     && chown -R 1000:1000 /app/var /data /config
