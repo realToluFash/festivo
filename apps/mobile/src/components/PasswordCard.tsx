@@ -1,4 +1,4 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown, meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -39,30 +39,39 @@ export function PasswordCard({
   providers,
   kind,
   onAdded,
+  setting = false,
+  onSetting,
 }: {
   email: string;
   hasPassword: boolean;
-  providers: readonly string[];
+  providers: readonly LinkedProvider[];
   kind: LayoutKind;
   onAdded: () => Promise<void>;
+  /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
+  setting?: boolean;
+  onSetting?: (on: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'atRest', signedOut: null, added: null });
+  const open = (next: Stage) => {
+    setStage(next);
+    onSetting?.(next.kind === 'setting');
+  };
   const frame = [styles.card, kind === 'tabletLandscape' ? styles.cardWide : styles.cardNarrow];
-  const first = providers[0] ?? '';
-  const provider = PROVIDER_NAMES[first] ?? first;
+  const first = providers[0]?.provider;
+  const provider = first == null ? '' : (PROVIDER_NAMES[first] ?? first);
 
   if (!hasPassword) {
     return (
       <View style={frame}>
-        {stage.kind === 'setting' ? (
+        {stage.kind === 'setting' || setting ? (
           <Setting
             email={email}
             onAdded={async () => {
               await onAdded();
-              setStage({ kind: 'atRest', signedOut: null, added: provider });
+              open({ kind: 'atRest', signedOut: null, added: provider });
             }}
-            onCancel={() => setStage({ kind: 'atRest', signedOut: null, added: null })}
+            onCancel={() => open({ kind: 'atRest', signedOut: null, added: null })}
           />
         ) : (
           <>
@@ -72,7 +81,7 @@ export function PasswordCard({
             </Text>
             <SecondaryButton
               label={t('passwordCard.set')}
-              onPress={() => setStage({ kind: 'setting' })}
+              onPress={() => open({ kind: 'setting' })}
               testID="password.set"
             />
           </>

@@ -10,6 +10,7 @@ import { PasswordCard } from '../src/components/PasswordCard.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { TwoFactorCard } from '../src/components/TwoFactorCard.tsx';
+import { WaysCard } from '../src/components/WaysCard.tsx';
 import { type LayoutKind, useLayout } from '../src/layout/useLayout.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -18,6 +19,7 @@ export default function Security() {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const [account, setAccount] = useState<Account | null>(null);
+  const [settingPassword, setSettingPassword] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -67,6 +69,19 @@ export default function Security() {
             providers={account.providers}
             kind={kind}
             onAdded={async () => setAccount(await api.me())}
+            setting={settingPassword}
+            onSetting={setSettingPassword}
+          />
+          <WaysCard
+            email={email}
+            hasPassword={account.hasPassword}
+            providers={account.providers}
+            kind={kind}
+            onChanged={async () => setAccount(await api.me())}
+            onSetPassword={() => setSettingPassword(true)}
+            onSignedOutHere={() => {
+              void api.signOut().finally(() => router.replace('/sign-in'));
+            }}
           />
           <TwoFactorCard email={email} kind={kind} />
         </View>

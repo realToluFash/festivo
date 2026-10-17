@@ -44,11 +44,14 @@ export function SecondaryButton({
   label,
   onPress,
   off = false,
+  accessibilityLabel,
   testID,
 }: {
   label: string;
   onPress: () => void;
   off?: boolean;
+  /** When the visible label leans on its row, as "Unlink" does beside "Google". */
+  accessibilityLabel?: string;
   testID: string;
 }) {
   return (
@@ -56,6 +59,7 @@ export function SecondaryButton({
       style={[styles.secondary, off && styles.secondaryOff]}
       onPress={onPress}
       disabled={off}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ disabled: off }}
       testID={testID}
