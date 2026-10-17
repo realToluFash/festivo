@@ -19,6 +19,10 @@ __setConfig({
     authorizeUrl: 'http://sandbox.test/google/authorize',
     clientId: 'soirely-web.test',
   },
+  apple: {
+    authorizeUrl: 'http://sandbox.test/apple/authorize',
+    clientId: 'soirely-web.test',
+  },
 });
 
 await initI18n();

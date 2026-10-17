@@ -81,18 +81,27 @@ services:
     # and every client (web, iOS, Android) has its own id as the token's audience.
     App\Integrations\OpenIdConnect\HttpSigningKeys:
         arguments:
-            $googleJwksUri: '%env(OAUTH_GOOGLE_JWKS_URI)%'
+            $googleJwksUris: '%env(OAUTH_GOOGLE_JWKS_URI)%'
+            $appleJwksUris: '%env(OAUTH_APPLE_JWKS_URIS)%'
     App\Integrations\OpenIdConnect\OpenIdTokenVerifier:
         arguments:
             $googleIssuers: '%env(OAUTH_GOOGLE_ISSUERS)%'
             $googleClientIds: '%env(OAUTH_GOOGLE_CLIENT_IDS)%'
+            $appleIssuers: '%env(OAUTH_APPLE_ISSUERS)%'
+            $appleClientIds: '%env(OAUTH_APPLE_CLIENT_IDS)%'
     App\Integrations\OpenIdConnect\HttpCodeRedeemer:
         arguments:
             $googleRedemptionEndpoint: '%env(OAUTH_GOOGLE_TOKEN_URI)%'
             $googleWebClientId: '%env(OAUTH_GOOGLE_WEB_CLIENT_ID)%'
             $googleWebClientSecret: '%env(OAUTH_GOOGLE_WEB_CLIENT_SECRET)%'
+            $appleRedemptionEndpoint: '%env(OAUTH_APPLE_TOKEN_URI)%'
+            $appleWebClientId: '%env(OAUTH_APPLE_WEB_CLIENT_ID)%'
+            $appleWebClientSecret: '%env(OAUTH_APPLE_WEB_CLIENT_SECRET)%'
     App\Domain\User\Interfaces\CodeRedeemerInterface: '@App\Integrations\OpenIdConnect\HttpCodeRedeemer'
     App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Integrations\OpenIdConnect\HttpSigningKeys'
+    App\Domain\User\Controller\AppleReturnController:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\Interfaces\IdTokenVerifierInterface: '@App\Integrations\OpenIdConnect\OpenIdTokenVerifier'
 
     # The assistant's adapter is chosen by ASSISTANT_PROVIDER rather than by a

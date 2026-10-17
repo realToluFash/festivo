@@ -8,6 +8,7 @@ use App\Enum\IdentityProvider;
 use Psl\Type;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /** The provider's published key set, cached for an hour and fetched again on demand. */
@@ -18,7 +19,8 @@ final readonly class HttpSigningKeys implements SigningKeysInterface
     public function __construct(
         private HttpClientInterface $httpClient,
         private CacheInterface $cache,
-        private string $googleJwksUri,
+        private string $googleJwksUris,
+        private string $appleJwksUris,
     ) {
     }
 
@@ -39,13 +41,31 @@ final readonly class HttpSigningKeys implements SigningKeysInterface
         return Type\dict(Type\string(), Type\string())->coerce($keys)[$keyId] ?? null;
     }
 
-    /** @return array<string, string> PEM by key id, RSA signing keys only */
+    /** @return array<string, string> PEM by key id, RSA signing keys only, from every set configured */
     private function fetch(IdentityProvider $provider): array
     {
-        $uri = match ($provider) {
-            IdentityProvider::Google => $this->googleJwksUri,
-        };
+        $uris = ConfiguredList::of(match ($provider) {
+            IdentityProvider::Google => $this->googleJwksUris,
+            IdentityProvider::Apple => $this->appleJwksUris,
+        });
 
+        $keys = [];
+
+        // One set out of reach (Apple's, from a development machine offline) must not take the others with it.
+        foreach ($uris as $uri) {
+            try {
+                $keys = [...$keys, ...$this->fetchSet($uri)];
+            } catch (ExceptionInterface) {
+                continue;
+            }
+        }
+
+        return $keys;
+    }
+
+    /** @return array<string, string> */
+    private function fetchSet(string $uri): array
+    {
         $set = Type\shape([
             'keys' => Type\vec(Type\shape([
                 'kty' => Type\string(),

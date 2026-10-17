@@ -22,6 +22,8 @@ export interface Config {
   environment: string;
   /** Google's authorization endpoint and this client's id; the API redeems the code, so no token endpoint. */
   google: { authorizeUrl: string; clientId: string } | null;
+  /** Apple's, the same way: the code is redeemed by the API. */
+  apple: { authorizeUrl: string; clientId: string } | null;
 }
 
 const CONFIG_URL = '/config.json';
@@ -85,6 +87,7 @@ function parse(raw: unknown): Config {
     mercureUrl: typeof candidate.mercureUrl === 'string' ? candidate.mercureUrl : '',
     environment: typeof candidate.environment === 'string' ? candidate.environment : 'unknown',
     google: providerFrom(candidate.google),
+    apple: providerFrom(candidate.apple),
   };
 }
 

@@ -1,11 +1,16 @@
-import { ProviderCancelled, awaiting } from '@soirely/api-client';
+import { type Provider, ProviderCancelled, awaiting } from '@soirely/api-client';
+import {
+  AppleAuthenticationButton,
+  AppleAuthenticationButtonStyle,
+  AppleAuthenticationButtonType,
+} from 'expo-apple-authentication';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
-import { signInWithGoogle } from '../googleSignIn.ts';
+import { PROVIDER_NAMES, signInWithProvider } from '../providerSignIn.ts';
 import { landingFor } from '../landing.ts';
 import { brand } from '../theme/brand.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -48,15 +53,15 @@ export function ProviderButtons({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
-  async function google(): Promise<void> {
+  async function continueWith(provider: Provider): Promise<void> {
     setBusy(true);
 
     try {
-      const { account } = await signInWithGoogle();
+      const { account } = await signInWithProvider(provider);
       router.replace(landingFor(awaiting(account)));
     } catch (error) {
-      // Closing Google is not a failure, so it says nothing; anything else says Google did not work.
-      if (!(error instanceof ProviderCancelled)) onFailed('Google');
+      // Closing the provider is not a failure, so it says nothing; anything else says it did not work.
+      if (!(error instanceof ProviderCancelled)) onFailed(PROVIDER_NAMES[provider]);
     } finally {
       setBusy(false);
     }
@@ -66,7 +71,7 @@ export function ProviderButtons({
     <View style={styles.group}>
       <Pressable
         style={[styles.button, styles.google]}
-        onPress={() => void google()}
+        onPress={() => void continueWith('google')}
         disabled={busy}
         accessibilityRole="button"
         accessibilityState={{ busy, disabled: busy }}
@@ -78,16 +83,30 @@ export function ProviderButtons({
         </Text>
       </Pressable>
 
-      <Pressable
-        style={[styles.button, styles.apple]}
-        accessibilityRole="button"
-        testID="signIn.apple"
-      >
-        <AppleMark />
-        <Text size={tokens.typeButton.size} weight="medium" style={styles.appleText}>
-          {t('signIn.withApple', { provider: 'Apple' })}
-        </Text>
-      </Pressable>
+      {/* Apple's own button on iOS, as its rules ask; elsewhere the same black style, drawn. */}
+      {Platform.OS === 'ios' ? (
+        <AppleAuthenticationButton
+          buttonType={AppleAuthenticationButtonType.CONTINUE}
+          buttonStyle={AppleAuthenticationButtonStyle.BLACK}
+          cornerRadius={tokens.sizeHitPhonePrimary / 2}
+          style={styles.button}
+          onPress={() => void continueWith('apple')}
+        />
+      ) : (
+        <Pressable
+          style={[styles.button, styles.apple]}
+          onPress={() => void continueWith('apple')}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityState={{ busy, disabled: busy }}
+          testID="signIn.apple"
+        >
+          <AppleMark />
+          <Text size={tokens.typeButton.size} weight="medium" style={styles.appleText}>
+            {t('signIn.withApple', { provider: 'Apple' })}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

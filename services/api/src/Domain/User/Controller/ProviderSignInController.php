@@ -27,9 +27,11 @@ final readonly class ProviderSignInController
     ) {
     }
 
-    #[Route('/api/auth/oauth/google', name: 'auth_oauth_google', methods: ['POST'])]
-    public function google(Request $request): IssuedTokensResponse
+    #[Route('/api/auth/oauth/{provider}', name: 'auth_oauth_provider', requirements: ['provider' => 'google|apple'], methods: ['POST'])]
+    public function signIn(Request $request, string $provider): IssuedTokensResponse
     {
+        $identityProvider = IdentityProvider::from($provider);
+
         // The app sends the ID token it got with PKCE; the web sends its code, which only the API can redeem.
         $body = Input::body($request, Type\shape([
             'idToken' => Type\optional(Type\string()),
@@ -37,6 +39,7 @@ final readonly class ProviderSignInController
             'codeVerifier' => Type\optional(Type\string()),
             'redirectUri' => Type\optional(Type\string()),
             'nonce' => Type\optional(Type\nullable(Type\string())),
+            'name' => Type\optional(Type\nullable(Type\string())),
             'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
         ]));
 
@@ -44,14 +47,15 @@ final readonly class ProviderSignInController
 
         $result = match (true) {
             isset($body['code'], $body['codeVerifier'], $body['redirectUri']) => $this->providerSignIn->signInWithCode(
-                IdentityProvider::Google,
+                $identityProvider,
                 $body['code'],
                 $body['codeVerifier'],
                 $body['redirectUri'],
                 $nonce,
                 $request,
+                $body['name'] ?? null,
             ),
-            isset($body['idToken']) => $this->providerSignIn->signIn(IdentityProvider::Google, $body['idToken'], $nonce, $request),
+            isset($body['idToken']) => $this->providerSignIn->signIn($identityProvider, $body['idToken'], $nonce, $request, $body['name'] ?? null),
             default => throw new ApiException(ErrorCode::BadRequest, 'Send an idToken, or a code with its codeVerifier and redirectUri.'),
         };
 

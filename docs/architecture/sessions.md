@@ -248,6 +248,29 @@ and keeping the nonce itself, which they give the API. What they send differs:
   cannot stay in. Otherwise a new account, with the address already verified and no
   password. A token whose address the provider did not verify is refused.
 
+## Signing in with Apple
+
+`POST /api/auth/oauth/apple` is the Google endpoint with Apple's issuer, keys and client ids:
+the same checks, nonce binding and account paths. What differs is what Apple sends.
+
+- **The name comes once.** Apple puts no name in its ID token and hands the client one only
+  on the very first authorisation, so the client sends it as `name`. It fills a blank name
+  and never overwrites a stored one, so a later sign-in without it changes nothing.
+- **On web Apple answers with `form_post`** whenever the name or email is asked for, which a
+  page cannot receive. It posts to `POST /api/auth/oauth/apple/return`, which sends the
+  browser on, with a 303, to the web's `/oauth/apple` carrying `code`, `state` and `user`.
+  The target is the configured web origin, never one read from the request. The web then
+  hands the code to the API, as for Google.
+- **On iOS the native sheet** gives an ID token signed by the real Apple, so development
+  trusts Apple's issuer and keys and Expo Go's bundle id beside the sandbox's.
+- **Revoking and coming back** keeps Apple's `sub`, so it is the same account, not a second.
+  A private-relay address is an address like any other.
+- **Production values:** `OAUTH_APPLE_ISSUERS` is `https://appleid.apple.com`,
+  `OAUTH_APPLE_JWKS_URIS` is `https://appleid.apple.com/auth/keys`, `OAUTH_APPLE_TOKEN_URI`
+  is `https://appleid.apple.com/auth/token`, and the client ids are the Services ID (web) and
+  the bundle id (iOS). Apple's client secret is not a fixed string but a JWT signed with the
+  team's Sign in with Apple key, which expires within six months and has to be issued again.
+
 ## What is not built yet
 
 - **Signing in with Apple.** The button is drawn and does nothing until sc-59.

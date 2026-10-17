@@ -41,7 +41,11 @@ export function CompleteProfile() {
 
   // Only the gate it is behind: an unverified account verifies first, a complete one is let in.
   const landing = landingFor(state.session.awaiting);
-  const byGoogle = state.session.providers.includes('google');
+  const provider = state.session.providers.includes('google')
+    ? 'Google'
+    : state.session.providers.includes('apple')
+      ? 'Apple'
+      : null;
   if (landing !== '/complete-profile') return <Navigate to={landing} replace />;
 
   async function signOut(): Promise<void> {
@@ -57,8 +61,8 @@ export function CompleteProfile() {
           <span className="step-mark" aria-hidden="true">
             ✓
           </span>
-          {byGoogle
-            ? t('verifyEmail.step1Google', { provider: 'Google' })
+          {provider != null
+            ? t('verifyEmail.step1Google', { provider })
             : t('verifyEmail.step1Done')}
         </li>
         <li className="step step-now">
@@ -76,14 +80,14 @@ export function CompleteProfile() {
         <p>{t('completeProfile.intro')}</p>
       </div>
 
-      {byGoogle && (
+      {provider != null && (
         <div className="notice notice-quiet" role="status">
           <span className="mark mark-info" aria-hidden="true">
             i
           </span>
           <p>
             {t('completeProfile.providerConfirmed', {
-              provider: 'Google',
+              provider,
               email: state.session.email,
             })}
           </p>

@@ -100,6 +100,12 @@ services:
       OAUTH_GOOGLE_TOKEN_URI: ${OAUTH_GOOGLE_TOKEN_URI:-http://oidc:8080/google/token}
       OAUTH_GOOGLE_WEB_CLIENT_ID: ${OAUTH_GOOGLE_WEB_CLIENT_ID:-soirely-web}
       OAUTH_GOOGLE_WEB_CLIENT_SECRET: ${OAUTH_GOOGLE_WEB_CLIENT_SECRET:-development-secret}
+      OAUTH_APPLE_ISSUERS: ${OAUTH_APPLE_ISSUERS:-http://localhost:8089/apple,http://oidc:8080/apple,https://appleid.apple.com}
+      OAUTH_APPLE_JWKS_URIS: ${OAUTH_APPLE_JWKS_URIS:-http://oidc:8080/apple/jwks,https://appleid.apple.com/auth/keys}
+      OAUTH_APPLE_CLIENT_IDS: ${OAUTH_APPLE_CLIENT_IDS:-soirely-web,soirely-app,com.soirely.app,host.exp.Exponent}
+      OAUTH_APPLE_TOKEN_URI: ${OAUTH_APPLE_TOKEN_URI:-http://oidc:8080/apple/token}
+      OAUTH_APPLE_WEB_CLIENT_ID: ${OAUTH_APPLE_WEB_CLIENT_ID:-soirely-web}
+      OAUTH_APPLE_WEB_CLIENT_SECRET: ${OAUTH_APPLE_WEB_CLIENT_SECRET:-development-secret}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis
@@ -232,6 +238,8 @@ services:
       # The local sign-in sandbox (service `oidc`) stands in for Google.
       SOIRELY_GOOGLE_AUTHORIZE_URL: ${SOIRELY_GOOGLE_AUTHORIZE_URL:-http://localhost:8089/google/authorize}
       SOIRELY_GOOGLE_CLIENT_ID: ${SOIRELY_GOOGLE_CLIENT_ID:-soirely-web}
+      SOIRELY_APPLE_AUTHORIZE_URL: ${SOIRELY_APPLE_AUTHORIZE_URL:-http://localhost:8089/apple/authorize}
+      SOIRELY_APPLE_CLIENT_ID: ${SOIRELY_APPLE_CLIENT_ID:-soirely-web}
     ports:
       - '${WEB_PORT:-5173}:80'
     healthcheck:

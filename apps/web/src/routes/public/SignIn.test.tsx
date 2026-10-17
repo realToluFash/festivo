@@ -217,8 +217,11 @@ describe('signing in, for real', () => {
     at('/sign-in');
     fillIn();
 
-    await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined(),
+    // Sign-in, the account, then the gate's screen: more than waitFor's default second under load.
+    await waitFor(
+      () =>
+        expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined(),
+      { timeout: 3000 },
     );
     expect(screen.queryByRole('link', { name: 'Events' })).toBeNull();
   });

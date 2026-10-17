@@ -22,6 +22,10 @@ final readonly class HttpCodeRedeemer implements CodeRedeemerInterface
         private string $googleWebClientId,
         #[SensitiveParameter]
         private string $googleWebClientSecret,
+        private string $appleRedemptionEndpoint,
+        private string $appleWebClientId,
+        #[SensitiveParameter]
+        private string $appleWebClientSecret,
     ) {
     }
 
@@ -35,6 +39,7 @@ final readonly class HttpCodeRedeemer implements CodeRedeemerInterface
     ): string {
         [$tokenUri, $clientId, $secret] = match ($provider) {
             IdentityProvider::Google => [$this->googleRedemptionEndpoint, $this->googleWebClientId, $this->googleWebClientSecret],
+            IdentityProvider::Apple => [$this->appleRedemptionEndpoint, $this->appleWebClientId, $this->appleWebClientSecret],
         };
 
         try {
