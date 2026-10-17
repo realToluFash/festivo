@@ -143,6 +143,9 @@ services:
     App\Domain\User\Controller\TwoFactorRecoveryController:
         arguments:
             $supportAddress: '%env(SUPPORT_EMAIL)%'
+    App\Domain\User\TwoFactor\Recovery\RecoveryView:
+        arguments:
+            $supportAddress: '%env(SUPPORT_EMAIL)%'
     App\Domain\User\TwoFactor\SecretBox:
         arguments:
             $twoFactorKey: '%env(TWO_FACTOR_KEY)%'

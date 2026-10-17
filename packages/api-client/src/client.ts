@@ -62,6 +62,7 @@ export interface RecoveryState {
   email: string;
   phone: string | null;
   organisations: string[];
+  supportAddress: string;
   askedAt: string | null;
   asked: string | null;
   expiresAt: string | null;
@@ -1255,6 +1256,7 @@ function asRecoveryState(raw: unknown): RecoveryState | null {
     email: candidate.email,
     phone: optionalString(candidate.phone),
     organisations: strings(candidate.organisations),
+    supportAddress: optionalString(candidate.supportAddress) ?? '',
     askedAt: optionalString(candidate.askedAt),
     asked: optionalString(candidate.asked),
     expiresAt: optionalString(candidate.expiresAt),

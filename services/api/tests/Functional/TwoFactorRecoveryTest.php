@@ -191,8 +191,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     #[Test]
     public function nobodyToApproveIsSaidBeforeAnyCodeIsSent(): void
     {
-        self::em()->remove(Type\instance_of(Membership::class)->coerce(self::em()->getRepository(Membership::class)->findOneBy(['user' => $this->approver])));
-        self::em()->flush();
+        $this->leaves($this->approver);
         $challenge = $this->challenge();
 
         self::assertTrue($this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $challenge])['nobody']);
@@ -200,6 +199,37 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         $this->call('POST', '/api/auth/two-factor/recovery', ['challenge' => $challenge]);
         self::assertSame(ErrorCode::RecoveryNobodyToApprove->type(), $this->last()['type']);
         self::assertSame([], self::getMailerMessages());
+    }
+
+    #[Test]
+    public function nobodyToApproveAtTheStartCreatesNothingAndCountsNothing(): void
+    {
+        $this->leaves($this->approver);
+
+        foreach (Vec\range(1, 4) as $_) {
+            $this->call('POST', '/api/auth/two-factor/recovery', ['challenge' => $this->challenge()]);
+            self::assertSame(ErrorCode::RecoveryNobodyToApprove->type(), $this->last()['type']);
+        }
+
+        self::assertSame([], self::em()->getRepository(TwoFactorRecovery::class)->findAll());
+        $this->join($this->approver, SeededRole::Owner);
+        self::em()->flush();
+        $this->start();
+    }
+
+    #[Test]
+    public function anApproverWhoLeavesBeforeTheProofLeavesNobodyWaitingSevenDays(): void
+    {
+        $handle = $this->start();
+        $code = $this->emailCode();
+        $this->leaves($this->approver);
+
+        $this->prove($handle, $code);
+
+        self::assertSame(ErrorCode::RecoveryNobodyToApprove->type(), $this->last()['type']);
+        self::assertSame([], $this->mailsTo('bisi@example.com', 'Folake Adeyemi asked to get back into their account'));
+        self::assertSame('cancelled', $this->state($handle)['status']);
+        self::assertSame(['two_factor_recovery.started', 'two_factor_recovery.nobody_to_approve'], $this->audited());
     }
 
     #[Test]
@@ -481,8 +511,15 @@ final class TwoFactorRecoveryTest extends ApiTestCase
 
     private function join(User $user, SeededRole $as): void
     {
-        $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => $as]));
-        self::em()->persist(new Membership($this->organisation, $user, $role, MembershipStatus::Active));
+        $organisation = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, $this->organisation->getId()));
+        $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $as]));
+        self::em()->persist(new Membership($organisation, $this->fresh($user), $role, MembershipStatus::Active));
+    }
+
+    private function leaves(User $user): void
+    {
+        self::em()->remove(Type\instance_of(Membership::class)->coerce(self::em()->getRepository(Membership::class)->findOneBy(['user' => $user])));
+        self::em()->flush();
     }
 
     private function fresh(User $user): User

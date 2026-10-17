@@ -28,6 +28,7 @@ final readonly class RecoveryView
         private PhoneCodeDispatch $phoneCodeDispatch,
         private UserMailer $userMailer,
         private ClockInterface $clock,
+        private string $supportAddress,
     ) {
     }
 
@@ -57,6 +58,7 @@ final readonly class RecoveryView
             'email' => $recovery->getEmailAddress()->getAddress(),
             'phone' => $phone?->getNumber(),
             'organisations' => self::names($this->recoveryApprovers->organisationsOf($user)),
+            'supportAddress' => $this->supportAddress,
             ...$this->times($recovery, $user, $asked),
             'codes' => TwoFactorRecoveryStatus::Proving === $status ? [
                 'state' => $this->codeState($recovery)->value,

@@ -17,6 +17,7 @@ use App\Repository\TwoFactorFactorRepository;
 use App\Repository\TwoFactorRecoveryRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Type;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -102,13 +103,13 @@ final readonly class RecoveryDecisions
             throw ApiException::forbidden('Somebody else has to answer your own request.');
         }
 
-        return $this->entityManager->wrapInTransaction(function () use ($recovery, $approver, $answer, $effect): TwoFactorRecovery {
+        $decided = $this->entityManager->wrapInTransaction(function () use ($recovery, $approver, $answer, $effect): TwoFactorRecovery|ApiException {
             $this->entityManager->refresh($recovery, LockMode::PESSIMISTIC_WRITE);
             $now = $this->clock->now();
             $status = $recovery->statusAt($now);
 
             if (TwoFactorRecoveryStatus::Waiting !== $status) {
-                throw new ApiException(ErrorCode::RecoveryRequestClosed, 'This request has already ended.', [], null, [], ['requestStatus' => $status->value]);
+                return new ApiException(ErrorCode::RecoveryRequestClosed, 'This request has already ended.', [], null, [], ['requestStatus' => $status->value]);
             }
 
             $effect($recovery);
@@ -125,6 +126,12 @@ final readonly class RecoveryDecisions
 
             return $recovery;
         });
+
+        if ($decided instanceof ApiException) {
+            throw $decided;
+        }
+
+        return Type\instance_of(TwoFactorRecovery::class)->coerce($decided);
     }
 
     private function mayAnswer(User $approver, TwoFactorRecovery $recovery): bool

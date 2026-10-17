@@ -79,7 +79,7 @@ final readonly class TwoFactorRecoveryMailer
                 $this->line('twoFactorRecovery.fact.asked', $locale, ['{when}' => $this->when($recovery->getProvedAt(), $approver, $locale)]),
                 $this->line('twoFactorRecovery.fact.expires', $locale, ['{when}' => $this->when($recovery->getExpiresAt(), $approver, $locale)]),
             ], "\n"),
-            $this->line('twoFactorRecovery.approver.review', $locale, ['{link}' => $this->origin() . '/app/settings']),
+            $this->line('twoFactorRecovery.approver.review', $locale, ['{link}' => $this->origin() . '/app/settings#requests']),
             $this->line('twoFactorRecovery.approver.after', $locale),
             $this->line('twoFactorRecovery.approver.footer', $locale, ['{organisation}' => $organisation->getName()]),
         ], ['{name}' => $user->getName()]);

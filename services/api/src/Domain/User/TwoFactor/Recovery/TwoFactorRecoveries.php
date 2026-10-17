@@ -86,42 +86,47 @@ final readonly class TwoFactorRecoveries
     /** @return array{0: TwoFactorRecovery, 1: string} the request and its handle, the codes sent */
     public function start(User $user): array
     {
-        return Type\shape([0 => Type\instance_of(TwoFactorRecovery::class), 1 => Type\string()])->coerce(
-            $this->entityManager->wrapInTransaction(function () use ($user): array {
-                // Under the account's row lock, so two starts at once count against the same 3 a day.
-                $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
-                $now = $this->clock->now();
+        // A refusal is returned, not thrown, out of the transaction: a throw there closes the entity manager.
+        $started = $this->entityManager->wrapInTransaction(function () use ($user): array|ApiException {
+            // Under the account's row lock, so two starts at once count against the same 3 a day.
+            $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
+            $now = $this->clock->now();
+            $email = $user->getPrimaryEmailAddress();
 
-                if ([] === $this->recoveryApprovers->for($user)) {
-                    throw new ApiException(ErrorCode::RecoveryNobodyToApprove, 'Nobody in your organisation can confirm this. Contact Soirely support.');
-                }
+            if ([] === $this->recoveryApprovers->for($user) || null === $email || !$email->isVerified()) {
+                return new ApiException(ErrorCode::RecoveryNobodyToApprove, 'Nobody in your organisation can confirm this. Contact Soirely support.');
+            }
 
-                $this->refuseOverLimit($user);
-                $email = $user->getPrimaryEmailAddress();
+            $limit = $this->overLimit($user);
 
-                if (null === $email || !$email->isVerified()) {
-                    throw new ApiException(ErrorCode::RecoveryNobodyToApprove, 'Nobody in your organisation can confirm this. Contact Soirely support.');
-                }
+            if (null !== $limit) {
+                return $limit;
+            }
 
-                foreach ($this->twoFactorRecoveryRepository->findOpenFor($user) as $earlier) {
-                    $earlier->close(TwoFactorRecoveryStatus::Cancelled, $now);
-                    $this->audit('two_factor_recovery.replaced', $earlier, Actor::User, $user);
-                }
+            foreach ($this->twoFactorRecoveryRepository->findOpenFor($user) as $earlier) {
+                $earlier->close(TwoFactorRecoveryStatus::Cancelled, $now);
+                $this->audit('two_factor_recovery.replaced', $earlier, Actor::User, $user);
+            }
 
-                $phone = $user->getPrimaryPhoneNumber();
-                $phone = null !== $phone && $phone->isVerified() ? $phone : null;
-                $phone?->forgetCodesByText();
+            $phone = $user->getPrimaryPhoneNumber();
+            $phone = null !== $phone && $phone->isVerified() ? $phone : null;
+            $phone?->forgetCodesByText();
 
-                $handle = self::handle();
-                $recovery = new TwoFactorRecovery($user, TokenIssuer::hash($handle), $email, $phone);
-                $this->entityManager->persist($recovery);
-                $this->audit('two_factor_recovery.started', $recovery, Actor::User, $user);
-                $this->sendCodes($recovery);
-                $this->entityManager->flush();
+            $handle = self::handle();
+            $recovery = new TwoFactorRecovery($user, TokenIssuer::hash($handle), $email, $phone);
+            $this->entityManager->persist($recovery);
+            $this->audit('two_factor_recovery.started', $recovery, Actor::User, $user);
+            $this->sendCodes($recovery);
+            $this->entityManager->flush();
 
-                return [$recovery, $handle];
-            }),
-        );
+            return [$recovery, $handle];
+        });
+
+        if ($started instanceof ApiException) {
+            throw $started;
+        }
+
+        return Type\shape([0 => Type\instance_of(TwoFactorRecovery::class), 1 => Type\string()])->coerce($started);
     }
 
     public function find(#[SensitiveParameter] string $handle): TwoFactorRecovery
@@ -183,7 +188,10 @@ final readonly class TwoFactorRecoveries
 
         $refusal = $this->entityManager->wrapInTransaction(function () use ($recovery, $emailCode, $phoneCode): ?ApiException {
             $this->entityManager->refresh($recovery, LockMode::PESSIMISTIC_WRITE);
-            $this->proving($recovery);
+
+            if (TwoFactorRecoveryStatus::Proving !== $recovery->statusAt($this->clock->now())) {
+                return new ApiException(ErrorCode::RecoveryRequestClosed, 'This request is past its codes.', [], null, [], ['requestStatus' => $recovery->statusAt($this->clock->now())->value]);
+            }
             $pairs = ['emailCode' => [$recovery->getEmailAddress(), $emailCode]];
             $phone = $recovery->getPhoneNumber();
 
@@ -221,6 +229,15 @@ final readonly class TwoFactorRecoveries
 
             foreach ($live as $challenge) {
                 $challenge->setRevokedAt($now);
+            }
+
+            // The last approver may have left since it started: nobody is told of a request nobody can answer.
+            if ([] === $this->recoveryApprovers->for($recovery->getUser())) {
+                $recovery->close(TwoFactorRecoveryStatus::Cancelled, $now);
+                $this->audit('two_factor_recovery.nobody_to_approve', $recovery, Actor::System, null);
+                $this->entityManager->flush();
+
+                return new ApiException(ErrorCode::RecoveryNobodyToApprove, 'Nobody in your organisation can confirm this. Contact Soirely support.');
             }
 
             $recovery->proved($now);
@@ -299,13 +316,13 @@ final readonly class TwoFactorRecoveries
     }
 
     /** On the rows' own clock, as `created_at` is written, like a code's cooldown. */
-    private function refuseOverLimit(User $user): void
+    private function overLimit(User $user): ?ApiException
     {
         $started = $this->twoFactorRecoveryRepository->startedSince($user, new DateTimeImmutable('-24 hours'));
 
-        if (Iter\count($started) >= TwoFactorRecovery::PER_DAY) {
-            throw ApiException::tooManyAttempts('You can ask 3 times a day.', $started[Iter\count($started) - TwoFactorRecovery::PER_DAY]->modify('+24 hours'));
-        }
+        return Iter\count($started) >= TwoFactorRecovery::PER_DAY
+            ? ApiException::tooManyAttempts('You can ask 3 times a day.', $started[Iter\count($started) - TwoFactorRecovery::PER_DAY]->modify('+24 hours'))
+            : null;
     }
 
     private function audit(string $action, TwoFactorRecovery $recovery, Actor $actor, ?User $by): void
