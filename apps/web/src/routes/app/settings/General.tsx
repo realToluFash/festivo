@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { roleName } from '../../../roles.ts';
+import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
 
@@ -32,6 +33,8 @@ export function General() {
         <h1>{t('orgGeneral.title')}</h1>
         <p>{t('orgGeneral.intro')}</p>
       </div>
+
+      <RecoveryRequestsCard />
 
       <section className="card settings-card" aria-labelledby="organisation-title">
         <h2 id="organisation-title">{t('orgGeneral.section')}</h2>

@@ -54,6 +54,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $detailsSavedAt = null;
 
+    /** Two-factor was turned off by an approved recovery (sc-509): asked to set it up again until it is, or declined. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $twoFactorSetupPrompt = false;
+
     /** @var Collection<int, EmailAddress> */
     #[ORM\OneToMany(targetEntity: EmailAddress::class, mappedBy: 'user', cascade: ['persist', 'remove'], orphanRemoval: true)]
     private Collection $emailAddresses;
@@ -134,6 +138,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setTimezone(?string $timezone): void
     {
         $this->timezone = $timezone;
+    }
+
+    public function hasTwoFactorSetupPrompt(): bool
+    {
+        return $this->twoFactorSetupPrompt;
+    }
+
+    public function setTwoFactorSetupPrompt(bool $prompt): void
+    {
+        $this->twoFactorSetupPrompt = $prompt;
     }
 
     public function setPassword(?string $passwordHash): void

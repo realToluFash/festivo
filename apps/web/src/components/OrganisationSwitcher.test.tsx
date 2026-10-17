@@ -91,6 +91,7 @@ describe('switching organisation', () => {
       complete: true,
       needsOrganisation: false,
       hasPassword: true,
+      twoFactorSetupPrompt: false,
       providers: [],
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
       phoneNumbers: [],

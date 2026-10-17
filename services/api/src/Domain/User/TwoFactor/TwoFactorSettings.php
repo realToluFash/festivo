@@ -82,6 +82,7 @@ final readonly class TwoFactorSettings
 
         $this->secondFactorCheck->passCode($factor, $code);
         $factor->activate($this->clock->now());
+        $user->setTwoFactorSetupPrompt(false);
         $codes = $this->recoveryCodes->issueFor($user);
         $this->entityManager->flush();
 

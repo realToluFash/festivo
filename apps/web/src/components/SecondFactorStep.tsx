@@ -22,6 +22,7 @@ export function SecondFactorStep({
   recoveryIntro,
   submitLabel,
   pausedNote,
+  onLostBoth,
   onVerify,
   onExpired,
 }: {
@@ -29,6 +30,8 @@ export function SecondFactorStep({
   recoveryIntro: string;
   submitLabel: string;
   pausedNote?: string;
+  /** Only where a sign-in asks: the way back in for somebody who has neither (sc-509). */
+  onLostBoth?: () => void;
   onVerify: (factor: SecondFactor) => Promise<void>;
   onExpired: () => void;
 }) {
@@ -194,7 +197,13 @@ export function SecondFactorStep({
         {mode === 'app' ? t('twoFactor.useRecovery') : t('twoFactor.useApp')}
       </button>
 
-      <p className="auth-footnote">{t('twoFactor.lostBoth')}</p>
+      {onLostBoth == null ? (
+        <p className="auth-footnote">{t('twoFactor.lostBoth')}</p>
+      ) : (
+        <button className="link-button" type="button" onClick={onLostBoth}>
+          {t('twoFactor.lostBoth')}
+        </button>
+      )}
     </>
   );
 }

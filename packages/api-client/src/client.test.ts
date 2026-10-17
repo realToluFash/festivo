@@ -940,6 +940,7 @@ const ACCOUNT = {
   complete: true,
   needsOrganisation: false,
   hasPassword: true,
+  twoFactorSetupPrompt: false,
   providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
@@ -1193,5 +1194,87 @@ describe('a second factor', () => {
     expect(sent).toMatchObject({ challenge: 'the-challenge', recoveryCode: 'abcd-efgh' });
     expect(signedIn.account.id).toBe(ACCOUNT.id);
     expect(tokens.saved).toMatchObject({ accessToken: 'fresh' });
+  });
+});
+
+describe('getting back in without the second factor', () => {
+  const WAITING = {
+    status: 'waiting',
+    email: 'folake@ire.events',
+    phone: '+2348035550142',
+    organisations: ['Ìrè Events'],
+    askedAt: '2026-10-17T13:20:00+00:00',
+    asked: 'Saturday, Oct 17 at 14:20 WAT',
+    expiresAt: '2026-10-24T13:20:00+00:00',
+    expires: 'Saturday, Oct 24 at 14:20 WAT',
+    codes: null,
+  };
+
+  test('sends both codes with the handle, and never a session token', async () => {
+    const sent: { path: string; body: unknown; auth: string | null }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('stale', null),
+      fetch: async (input, init) => {
+        sent.push({
+          path: new URL(String(input)).pathname,
+          body: JSON.parse(String(init?.body)),
+          auth: new Headers(init?.headers).get('Authorization'),
+        });
+
+        return json({ state: WAITING });
+      },
+    });
+
+    const state = await client.proveRecovery('handle', '481920', '305117');
+
+    expect(state.expires).toBe('Saturday, Oct 24 at 14:20 WAT');
+    expect(sent).toEqual([
+      {
+        path: '/api/auth/two-factor/recovery/prove',
+        body: { recovery: 'handle', emailCode: '481920', phoneCode: '305117' },
+        auth: null,
+      },
+    ]);
+  });
+
+  test('reads the start screen, and an open request to carry on with', async () => {
+    const proving = {
+      ...WAITING,
+      status: 'proving',
+      codes: { state: 'live', cooldownSeconds: 42, route: 'whatsapp' },
+    };
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async () =>
+        json({
+          email: 'folake@ire.events',
+          phone: null,
+          organisations: ['Ìrè Events'],
+          nobody: false,
+          supportAddress: 'support@soirely.com',
+          recovery: 'resumed',
+          state: proving,
+        }),
+    });
+
+    const opening = await client.recoveryOpening('challenge');
+
+    expect(opening.open?.recovery).toBe('resumed');
+    expect(opening.open?.state.codes).toEqual({
+      state: 'live',
+      cooldownSeconds: 42,
+      route: 'whatsapp',
+    });
+    expect(opening.supportAddress).toBe('support@soirely.com');
+  });
+
+  test('refuses a step it cannot read, naming where to look', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async () => json({ state: { status: 'odd' } }),
+    });
+
+    await expect(client.recoveryState('handle')).rejects.toThrow(/RecoveryView/);
   });
 });

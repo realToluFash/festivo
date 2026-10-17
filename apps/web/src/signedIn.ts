@@ -14,5 +14,13 @@ export async function landAfterSignIn(
   }
 
   await adoptAccount(outcome.account);
-  navigate(landingFor(awaiting(outcome.account)), { replace: true });
+  // Two-factor was turned off to let them back in (sc-509): asked to set it up again before anything else.
+  navigate(
+    outcome.account.twoFactorSetupPrompt
+      ? '/two-factor/again'
+      : landingFor(awaiting(outcome.account)),
+    {
+      replace: true,
+    },
+  );
 }

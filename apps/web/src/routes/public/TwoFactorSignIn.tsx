@@ -28,6 +28,7 @@ export function TwoFactorSignIn() {
             navigate,
           )
         }
+        onLostBoth={() => navigate('/two-factor/recovery', { state: challenge })}
         onExpired={() => navigate('/sign-in', { replace: true })}
       />
     </AuthPage>
