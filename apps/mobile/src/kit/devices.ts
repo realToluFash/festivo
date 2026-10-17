@@ -1,5 +1,11 @@
 import { type DeviceSession, proofRefusal } from '@soirely/api-client';
-import { formatDay, formatTimeOfDay, readableAgent } from '@soirely/domain';
+import {
+  type AppDevice,
+  appDevice,
+  formatDay,
+  formatTimeOfDay,
+  readableAgent,
+} from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 export type EverywhereRefusal =
@@ -7,8 +13,19 @@ export type EverywhereRefusal =
   | { kind: 'limited'; until: Date | null }
   | { kind: 'failed'; message: string };
 
+const APP_NAMES = {
+  iPhone: 'devices.appIPhone',
+  iPad: 'devices.appIPad',
+  phone: 'devices.appAndroidPhone',
+  tablet: 'devices.appAndroidTablet',
+} as const satisfies Record<AppDevice, string>;
+
 /** As the device described itself; a string Soirely cannot read is shown as it came (sc-55). */
 export function deviceName(device: DeviceSession, t: TFunction): string {
+  const app = appDevice(device.userAgent);
+
+  if (app != null) return t(APP_NAMES[app]);
+
   const parts = readableAgent(device.userAgent);
 
   if (parts != null)

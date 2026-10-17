@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\User\TwoFactor\Recovery;
 
-use App\Domain\User\Mail\ReadableAgent;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
 use App\Entity\TwoFactorRecovery;
@@ -43,14 +42,14 @@ final readonly class TwoFactorRecoveryMailer
     {
         $user = $recovery->getUser();
         $locale = $this->userMailer->localeFor($user);
-        $agent = ReadableAgent::of($userAgent);
+        $device = $this->userMailer->agentName($userAgent, $locale);
 
         $this->userMailer->sendToEveryVerified($user, 'twoFactorRecovery.started.subject', [
             $this->line('twoFactorRecovery.started.heading', $locale),
             $this->line('twoFactorRecovery.started.body', $locale),
             Str\join(Vec\filter_nulls([
                 $this->line('twoFactorRecovery.fact.when', $locale, ['{when}' => $this->when($recovery->getProvedAt(), $user, $locale)]),
-                null === $agent ? null : $this->line('twoFactorRecovery.fact.device', $locale, ['{device}' => $this->line('twoFactorRecovery.device', $locale, ['{browser}' => $agent->browser, '{platform}' => $agent->platform])]),
+                null === $device ? null : $this->line('twoFactorRecovery.fact.device', $locale, ['{device}' => $device]),
                 $this->line('twoFactorRecovery.fact.expiresIfNobody', $locale, ['{when}' => $this->when($recovery->getExpiresAt(), $user, $locale)]),
             ]), "\n"),
             $this->line('twoFactorRecovery.started.after', $locale),

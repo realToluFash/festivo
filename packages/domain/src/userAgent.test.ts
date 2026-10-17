@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { readableAgent } from './userAgent.ts';
+import { appDevice, appUserAgent, readableAgent } from './userAgent.ts';
 
 describe('reading a user agent', () => {
   const cases: [string, string, string, string][] = [
@@ -58,5 +58,55 @@ describe('reading a user agent', () => {
     expect(readableAgent(null)).toBeNull();
     expect(readableAgent(undefined)).toBeNull();
     expect(readableAgent('   ')).toBeNull();
+  });
+});
+
+describe("the app's own user agent", () => {
+  it('names the OS and the device class, and reads back as the same device', () => {
+    const cases: [Parameters<typeof appUserAgent>[0], string, string][] = [
+      [
+        { version: '1.4.0', platform: 'ios', osName: 'iOS', osVersion: '18.1', tablet: false },
+        'Soirely/1.4.0 (iOS 18.1; iPhone)',
+        'iPhone',
+      ],
+      [
+        { version: '1.4.0', platform: 'ios', osName: 'iPadOS', osVersion: '18.1', tablet: true },
+        'Soirely/1.4.0 (iPadOS 18.1; iPad)',
+        'iPad',
+      ],
+      [
+        {
+          version: '1.4.0',
+          platform: 'android',
+          osName: 'POCO/vayu_eea',
+          osVersion: '15',
+          tablet: false,
+        },
+        'Soirely/1.4.0 (Android 15; phone)',
+        'phone',
+      ],
+      [
+        { version: '1.4.0', platform: 'android', osName: null, osVersion: '15', tablet: true },
+        'Soirely/1.4.0 (Android 15; tablet)',
+        'tablet',
+      ],
+    ];
+
+    for (const [parts, agent, device] of cases) {
+      expect(appUserAgent(parts)).toBe(agent);
+      expect(appDevice(agent)).toBe(device);
+      expect(readableAgent(agent)).toBeNull();
+    }
+  });
+
+  it('reads only the whole format, never a Soirely prefix with something else after it', () => {
+    expect(appDevice('Soirely/1.0 (+https://soirely.com)')).toBeNull();
+    expect(appDevice('Soirely/1.4.0 (Android 15; watch)')).toBeNull();
+    expect(appDevice('Soirely/1.4.0 (iOS 18.1; iPhone) extra')).toBeNull();
+    expect(appDevice('Soirely-QA/1.0 (iOS 18.1; iPhone)')).toBeNull();
+    expect(
+      appDevice('Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) Safari/604.1'),
+    ).toBeNull();
+    expect(appDevice(null)).toBeNull();
   });
 });
