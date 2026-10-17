@@ -28,7 +28,7 @@ final readonly class AccountSerialiser
             'name' => $user->getName(),
             'businessName' => $user->getBusinessName(),
             'countryCode' => $user->getCountryCode(),
-            'locale' => $user->getLocale(),
+            'locale' => $user->storedLanguage(),
             'verified' => $user->isVerified(),
             'complete' => $this->accountCompleteness->isComplete($user),
             'hasPassword' => null !== $user->getPassword(),

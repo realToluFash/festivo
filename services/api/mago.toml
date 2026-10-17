@@ -214,7 +214,8 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:repositor
 # ── Product scopes ──────────────────────────────────────────────────────────────
 
 # The details screen founds the account's organisation (sc-57), through the
-# organisation scope's own step rather than by writing its tables.
+# organisation scope's own step rather than by writing its tables. The account's
+# language is one of SupportedLocales (sc-852), as AI's and Address's are.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\User\\"
 permit = [
@@ -225,6 +226,7 @@ permit = [
     "@layer:domain_organisation",
     "@layer:repository",
     "@layer:audit",
+    "@layer:locale",
 ]
 
 # Organisations read the user scope's vocabulary (EmailAddressNormaliser for a

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
+use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\RegistrationResult;
 use App\Domain\User\Password\NewPasswordRules;
@@ -91,9 +92,11 @@ final readonly class UserRegistrar
     /**
      * The account a sign-up's code just proved: its address verified, its password the one typed then.
      */
-    public function registerConfirmed(string $email, string $name, string $passwordHash, ?Request $request = null): RegistrationResult
+    public function registerConfirmed(string $email, string $name, string $passwordHash, ?Request $request = null, ?string $locale = null): RegistrationResult
     {
         $user = new User(Str\trim($name), $passwordHash, AccountOrigin::SelfRegistered);
+        // The language the sign-up was started in, which the code may well be entered from another device.
+        $user->setLocale(null === $locale ? null : AccountLanguage::fromRequest($locale));
         $address = new EmailAddress($user, Type\non_empty_string()->assert($email), isPrimary: true);
         $address->setVerifiedAt(new DateTimeImmutable());
 
@@ -162,6 +165,8 @@ final readonly class UserRegistrar
     private function persist(User $user, ?Request $request): RegistrationResult
     {
         $address = $user->getPrimaryEmailAddress();
+
+        AccountLanguage::rememberIfNone($user, $request);
 
         try {
             $tokens = $this->entityManager->wrapInTransaction(function () use ($user, $address, $request): IssuedTokens {

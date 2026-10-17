@@ -67,7 +67,7 @@ final readonly class PendingRegistrations
                 ?? throw new ApiException(ErrorCode::RegistrationExpired, 'Start registering again.');
             $this->check($pending, $code);
 
-            $result = $this->userRegistrar->registerConfirmed($pending->getEmail(), $pending->getName(), (string) $pending->getPasswordHash(), $request);
+            $result = $this->userRegistrar->registerConfirmed($pending->getEmail(), $pending->getName(), (string) $pending->getPasswordHash(), $request, $pending->getLocale());
             $this->entityManager->remove($pending);
             $this->entityManager->flush();
             $connection->commit();

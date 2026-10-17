@@ -7,6 +7,7 @@ namespace App\Domain\User\Controller;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\Http\IssuedTokensResponse;
+use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Registration\PendingRegistrations;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
@@ -45,7 +46,7 @@ final class RegisterController
             'password' => Type\string(),
         ]));
 
-        $handle = $this->pendingRegistrations->start($body['email'], $body['name'], $body['password'], $request->getLocale());
+        $handle = $this->pendingRegistrations->start($body['email'], $body['name'], $body['password'], AccountLanguage::askedIn($request));
 
         return new JsonResponse(
             ['registration' => $handle, 'email' => EmailAddressNormaliser::normalise($body['email'])],

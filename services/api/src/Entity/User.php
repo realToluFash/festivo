@@ -111,7 +111,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->countryCode = $countryCode;
     }
 
-    public function getLocale(): ?string
+    /** Only AccountLanguage (and /me) read this: every sender asks AccountLanguage::of() instead (sc-852). */
+    public function storedLanguage(): ?string
     {
         return $this->locale;
     }

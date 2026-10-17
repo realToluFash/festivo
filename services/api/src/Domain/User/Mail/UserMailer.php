@@ -21,6 +21,7 @@ final readonly class UserMailer
     public function __construct(
         private MailerInterface $mailer,
         private TranslatorInterface $translator,
+        private AccountLanguage $accountLanguage,
         private string $mailFrom,
     ) {
     }
@@ -54,7 +55,7 @@ final readonly class UserMailer
     /** The account's own language, or else the one the request that led to this email was made in. */
     public function localeFor(User $user, ?string $asked = null): string
     {
-        return $user->getLocale() ?? $asked ?? $this->translator->getLocale();
+        return $this->accountLanguage->of($user, $asked);
     }
 
     /** A moment as the reader writes it, in UTC, since a stored instant has no timezone of its own. */
