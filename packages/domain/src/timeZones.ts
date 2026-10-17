@@ -14,24 +14,37 @@ function folded(text: string): string {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/** By city, country, zone name or offset ("utc+01", "+01:00"); every zone for an empty search. */
+/** "utc+1", "+5:30" or "gmt−3" as a sign, hours and maybe minutes; null for any other text. */
+function offsetQuery(
+  query: string,
+): { sign: string; hours: string; minutes: string | null } | null {
+  const match = /^(?:utc|gmt)?([+-])(\d{1,2})(?::?(\d{2}))?$/.exec(
+    query.replace(/\s/g, '').replace(/\u2212/g, '-'),
+  );
+  if (match === null) return null;
+
+  return { sign: match[1]!, hours: match[2]!.padStart(2, '0'), minutes: match[3] ?? null };
+}
+
+/** An offset query matches by offset alone ("+5" the hour, "+5:30" exactly); text matches a label only from its start. */
 export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: string): Z[] {
   const wanted = folded(query);
   if (wanted === '') return [...zones];
 
-  // "utc+1" and "+1" are how people write "+01:00".
-  const compact = wanted
-    .replace(/\s/g, '')
-    .replace(
-      /^(utc)?([+-])(\d)(?!\d)/,
-      (_m, _utc: string | undefined, sign: string, hour: string) => `utc${sign}0${hour}`,
+  const offset = offsetQuery(wanted);
+  if (offset !== null) {
+    const prefix = `${offset.sign}${offset.hours}:${offset.minutes ?? ''}`;
+
+    return zones.filter((zone) =>
+      offset.minutes === null ? zone.offset.startsWith(prefix) : zone.offset === prefix,
     );
+  }
 
   return zones.filter(
     (zone) =>
-      [zone.city, zone.country, zone.id.replace(/_/g, ' '), zoneLabel(zone)].some((text) =>
+      [zone.city, zone.country, zone.id.replace(/_/g, ' ')].some((text) =>
         folded(text).includes(wanted),
-      ) || `utc${zone.offset}`.startsWith(compact.startsWith('utc') ? compact : `utc${compact}`),
+      ) || folded(zoneLabel(zone)).startsWith(wanted),
   );
 }
 

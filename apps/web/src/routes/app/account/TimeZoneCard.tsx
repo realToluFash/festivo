@@ -21,7 +21,13 @@ export function TimeZoneCard({
   const [zones, setZones] = useState<TimeZoneOption[]>([]);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  const [refocus, setRefocus] = useState(false);
   const changeButton = useRef<HTMLButtonElement>(null);
+
+  // Change is back in the page only once the edit has ended (WCAG 2.4.3).
+  useEffect(() => {
+    if (!editing && refocus) changeButton.current?.focus();
+  }, [editing, refocus]);
 
   useEffect(() => {
     let live = true;
@@ -54,11 +60,11 @@ export function TimeZoneCard({
             await onSaved();
             setEditing(false);
             setSaved(zoneLabel(zone));
-            changeButton.current?.focus();
+            setRefocus(true);
           }}
           onCancel={() => {
             setEditing(false);
-            queueMicrotask(() => changeButton.current?.focus());
+            setRefocus(true);
           }}
         />
       ) : (
@@ -75,6 +81,7 @@ export function TimeZoneCard({
               ref={changeButton}
               onClick={() => {
                 setSaved(null);
+                setRefocus(false);
                 setEditing(true);
               }}
             >
