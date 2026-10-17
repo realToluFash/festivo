@@ -418,7 +418,8 @@ function Proving({
   } | null>(null);
   const [checking, setChecking] = useState(false);
   // The API's kept proof after a refused code: Google's or Apple's sign-in is single-use (RFC 6749 §4.1.2).
-  const [kept, setKept] = useState<string | null>(null);
+  const kept = useRef<string | null>(null);
+  const arrival = useRef<Promise<void> | null>(null);
   // Turned on in the two-factor card since this page loaded: the API says so, and the field appears.
   const [codeAsked, setCodeAsked] = useState(twoFactorOn);
   const passwordInput = useRef<HTMLInputElement>(null);
@@ -437,19 +438,22 @@ function Proving({
         : document.getElementById('ways-code')?.focus(),
   );
 
-  useEffect(() => heading.current?.focus(), []);
-
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     if (checking || !checks.passes({ password, code })) return;
 
+    // A code typed while the sign-in is still being exchanged waits for its kept proof.
+    await arrival.current;
+    await send(codeAsked ? code.trim() : undefined);
+  }
+
+  async function send(second: string | undefined): Promise<void> {
     setChecking(true);
-    const second = codeAsked ? code.trim() : undefined;
 
     try {
       const proof = await api.prove(
-        kept != null
-          ? { pendingProof: kept }
+        kept.current != null
+          ? { pendingProof: kept.current }
           : signIn != null && viaProvider != null
             ? { provider: viaProvider, signIn }
             : { password },
@@ -461,7 +465,8 @@ function Proving({
       setChecking(false);
       dropProof();
 
-      if (error instanceof ApiError && error.is('two_factor_required') && signIn == null) {
+      if (error instanceof ApiError && error.is('two_factor_required')) {
+        if (signIn != null) kept.current = error.problem.pendingProof ?? kept.current;
         setCodeAsked(true);
 
         return;
@@ -469,7 +474,7 @@ function Proving({
 
       if (signIn != null && error instanceof ApiError && error.is('proof_required')) {
         setSignIn(null);
-        setKept(null);
+        kept.current = null;
         setCode('');
         setRefusal(null);
         setExpired(true);
@@ -478,7 +483,8 @@ function Proving({
         return;
       }
 
-      if (signIn != null && error instanceof ApiError) setKept(error.problem.pendingProof ?? kept);
+      if (signIn != null && error instanceof ApiError)
+        kept.current = error.problem.pendingProof ?? kept.current;
       setRefusal(
         provingRefusal(
           error,
@@ -488,6 +494,18 @@ function Proving({
       );
     }
   }
+
+  // Google's or Apple's sign-in is exchanged the moment it returns: the five minutes count from it, not the code.
+  const exchanged = useRef(false);
+
+  useEffect(() => {
+    heading.current?.focus();
+    if (signIn == null || exchanged.current) return;
+    exchanged.current = true;
+    arrival.current = send(undefined);
+    // Once, on arrival: what came back from the provider is taken then and never again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const passwordError =
     checks.errors.password ?? (refusal?.field === 'password' ? refusal.message : null);

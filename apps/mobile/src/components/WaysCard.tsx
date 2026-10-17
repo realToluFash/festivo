@@ -463,7 +463,9 @@ function Proving({
       setChecking(false);
 
       if (error instanceof ProviderCancelled) return;
+      // The sign-in passed and waits for its code: the retry sends the API's kept proof, dated from the sign-in.
       if (error instanceof ApiError && error.is('two_factor_required')) {
+        kept.current = via === 'password' ? null : keptProof(error, kept.current);
         setCodeAsked(true);
 
         return;
