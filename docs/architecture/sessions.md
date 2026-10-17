@@ -237,6 +237,30 @@ address (keyed on what was typed) and per IP, and a refusal states a time.
   lifetime, until sc-117 ends them at once.
 - **Two-factor** (sc-60) will ask for the code before this device is signed in.
 
+## Changing a password
+
+`PATCH /api/auth/password` takes `currentPassword`, `newPassword` and the caller's own
+`sessionId` (the client holds it; the access token does not carry one until sc-117). It
+answers `{signedOut}`, the number of other sessions it ended.
+
+- **The current password comes first.** A wrong one is `invalid_credentials` and changes
+  nothing. It is a guessing surface like sign-in, so it has the same kind of limit:
+  `password_change_account`, five wrong current passwords per account in a fixed
+  fifteen-minute window, peeked before the check and spent only by a wrong one. Past it,
+  `too_many_attempts` with `Retry-After`, even for the right password.
+- **The new one** is held to `NewPasswordRules`, registration's and the reset's, on the
+  `newPassword` field, and hashed through `PasswordResolver`. One the same as the current
+  password is `password_unchanged`, checked before the breach corpus is asked.
+- **Every other session ends, this one stays**: `TokenIssuer::revokeAllExcept()` revokes
+  every live refresh token but the chain of the session named, in the same transaction as
+  the new hash. A `sessionId` that is not this account's keeps nothing. Other devices keep
+  working until their access token expires (see the fifteen minutes above).
+- **The primary address is emailed** after the response (`AfterResponse`): when, and the
+  device as the devices card reads it (`ReadableAgent`, the PHP twin of `readableAgent()`)
+  with the network address and no place, and to reset by "Forgot your password?" if it was
+  not them. It links only to sign-in, carries no part of either password, and a failed send
+  leaves the change made.
+
 ## Registering
 
 A password sign-up does not sign in, and does not make the account. `POST /api/auth/register`

@@ -17,6 +17,7 @@ function signedIn(organisation = IRE): void {
     awaiting: null,
     providers: [],
     needsOrganisation: false,
+    hasPassword: true,
     organisation,
     organisations: [organisation],
   };

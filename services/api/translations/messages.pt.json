@@ -18,6 +18,7 @@
     "validation.password_breached": "Esta palavra-passe apareceu numa fuga de dados conhecida. Escolha outra.",
     "validation.password_too_long": "Isso excede os {count} caracteres.",
     "validation.password_too_short": "Utilize pelo menos {count} caracteres.",
+    "validation.password_unchanged": "Essa já é a sua palavra-passe. Escolha uma diferente.",
     "validation.phone_invalid": "Esse não é um número de telemóvel de {country}. Verifique-o e tente novamente.",
     "validation.phone_required": "Indique o seu número de telemóvel.",
     "validation.phone_too_long": "Esse número parece demasiado longo para {country}. Verifique-o e tente novamente.",

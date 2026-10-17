@@ -24,5 +24,13 @@
     "alreadyRegistered.body": "Alguien ha intentado crear una cuenta de Soirely con esta dirección. Usted ya tiene una. Inicie sesión, o restablezca su contraseña si la ha olvidado.",
     "alreadyRegistered.signIn": "Iniciar sesión:",
     "alreadyRegistered.reset": "Restablecer su contraseña:",
-    "alreadyRegistered.ignore": "Si no ha sido usted, puede ignorar este correo."
+    "alreadyRegistered.ignore": "Si no ha sido usted, puede ignorar este correo.",
+    "password.changed.subject": "Se cambió su contraseña de Soirely",
+    "password.changed.body": "La contraseña de esta cuenta de Soirely se cambió el {when}.",
+    "password.changed.where": "El dispositivo: {device}.",
+    "password.changed.devices": "Se cerró la sesión en sus otros dispositivos. Pueden seguir funcionando hasta 15 minutos mientras eso les llega.",
+    "password.changed.notYou": "Si no fue usted, restablezca su contraseña ahora: elija «¿Olvidó su contraseña?» al iniciar sesión, con esta dirección. Eso cierra la sesión en todos los dispositivos, incluido el de quien la cambió.",
+    "password.device.agent": "{browser} en {platform}",
+    "password.device.unknown": "Un dispositivo que no se identificó",
+    "password.device.from": "{device}, desde {address}"
 }

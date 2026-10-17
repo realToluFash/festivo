@@ -14,6 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psl\SecureRandom;
 use Psl\Str;
+use Psl\Type;
 use SensitiveParameter;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -70,6 +71,32 @@ final readonly class TokenIssuer
             ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
             ->setParameter('user', $user)
             ->execute();
+    }
+
+    /**
+     * Every session but the one named, if it is this account's: the shared piece for sc-115 and sc-116.
+     *
+     * @return int how many live sessions ended
+     */
+    public function revokeAllExcept(User $user, ?Uuid $keep): int
+    {
+        $kept = null === $keep ? null : $this->entityManager->find(RefreshToken::class, $keep);
+        $chain = null !== $kept && $kept->getUser()->getId()->equals($user->getId()) ? $kept->getChainId() : null;
+
+        $query = $this->entityManager
+            ->createQuery(
+                'UPDATE ' . RefreshToken::class . ' t SET t.revokedAt = :now'
+                . ' WHERE t.user = :user AND t.revokedAt IS NULL AND t.expiresAt > :now'
+                . (null === $chain ? '' : ' AND t.chainId <> :chain'),
+            )
+            ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
+            ->setParameter('user', $user);
+
+        if (null !== $chain) {
+            $query->setParameter('chain', $chain, UuidType::NAME);
+        }
+
+        return Type\int()->coerce($query->execute());
     }
 
     /** SHA-256, not a password hash: 256 bits of randomness has nothing to brute-force. */

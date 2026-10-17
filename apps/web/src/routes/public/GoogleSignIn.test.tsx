@@ -15,6 +15,7 @@ const ACCOUNT = {
   verified: true,
   complete: false,
   needsOrganisation: true,
+  hasPassword: true,
   emailAddresses: [{ id: 'a1', address: 'organiser@example.com', verified: true, primary: true }],
   phoneNumbers: [],
   providers: ['google'],

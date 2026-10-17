@@ -24,5 +24,13 @@
     "alreadyRegistered.body": "Quelqu'un a essayé de créer un compte Soirely avec cette adresse. Vous en avez déjà un. Connectez-vous, ou réinitialisez votre mot de passe si vous l'avez oublié.",
     "alreadyRegistered.signIn": "Se connecter :",
     "alreadyRegistered.reset": "Réinitialiser votre mot de passe :",
-    "alreadyRegistered.ignore": "Si ce n'était pas vous, vous pouvez ignorer cet e-mail."
+    "alreadyRegistered.ignore": "Si ce n'était pas vous, vous pouvez ignorer cet e-mail.",
+    "password.changed.subject": "Votre mot de passe Soirely a été modifié",
+    "password.changed.body": "Le mot de passe de ce compte Soirely a été modifié le {when}.",
+    "password.changed.where": "L'appareil : {device}.",
+    "password.changed.devices": "Vos autres appareils ont été déconnectés. Ils peuvent continuer à fonctionner jusqu'à 15 minutes, le temps que cela leur parvienne.",
+    "password.changed.notYou": "Si ce n'était pas vous, réinitialisez votre mot de passe dès maintenant : choisissez « Mot de passe oublié ? » sur la page de connexion, avec cette adresse. Cela déconnecte tous les appareils, y compris celui de la personne qui l'a modifié.",
+    "password.device.agent": "{browser} sur {platform}",
+    "password.device.unknown": "Un appareil qui ne s'est pas nommé",
+    "password.device.from": "{device}, depuis {address}"
 }

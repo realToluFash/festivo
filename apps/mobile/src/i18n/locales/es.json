@@ -316,5 +316,32 @@
   "security": {
     "title": "Seguridad",
     "back": "Atrás"
+  },
+  "passwordCard": {
+    "title": "Contraseña",
+    "intro": "Se usa con su correo para iniciar sesión. Cambiarla cierra la sesión en sus otros dispositivos; este sigue conectado.",
+    "change": "Cambiar contraseña",
+    "none": "Inicia sesión con {{provider}}, así que no hay contraseña que cambiar.",
+    "formTitle": "Cambiar su contraseña",
+    "current": "Contraseña actual",
+    "forgot": "¿La olvidó?",
+    "new": "Nueva contraseña",
+    "currentBlank": "Introduzca su contraseña actual.",
+    "newBlank": "Introduzca una nueva contraseña.",
+    "wrongCurrent": "Esa no es su contraseña actual. Inténtelo de nuevo o restablézcala por correo.",
+    "same": "Esa ya es su contraseña. Elija otra diferente.",
+    "pausedTitle": "Demasiados intentos",
+    "pausedBody": "Inténtelo de nuevo a las {{time}}. No se cambió nada.",
+    "pausedSoon": "Espere un momento y vuelva a intentarlo. No se cambió nada.",
+    "signsOut": "Al guardar se cierra la sesión en sus otros dispositivos; este sigue conectado. Pueden seguir funcionando hasta 15 minutos mientras eso les llega.",
+    "emailed": "Enviaremos un correo a {{email}} para avisar del cambio.",
+    "save": "Guardar nueva contraseña",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "done_zero": "Contraseña cambiada. No había otro dispositivo conectado.",
+    "done_one": "Contraseña cambiada. Se cerró la sesión en su otro dispositivo; puede seguir funcionando hasta 15 minutos mientras eso le llega, y después tendrá que volver a iniciar sesión.",
+    "done_other": "Contraseña cambiada. Se cerró la sesión en sus {{count}} otros dispositivos; pueden seguir funcionando hasta 15 minutos mientras eso les llega, y después tendrán que volver a iniciar sesión.",
+    "failedTitle": "No se cambió nada",
+    "failedBody": "No se pudo guardar su contraseña. Compruebe su conexión e inténtelo de nuevo."
   }
 }

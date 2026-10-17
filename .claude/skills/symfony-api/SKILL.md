@@ -157,6 +157,18 @@ a client has no translation for.
 falling back to English because the key was never added is a regression that passes every
 test. See `locale-parity`.
 
+## Attempt budgets
+
+An endpoint that checks a secret (a password, a code) spends a rate-limit budget only on a
+wrong one, so it peeks first and charges after the check. **Hold a per-account row lock from
+the peek to the charge**: `SELECT … FOR UPDATE` on the account's row, in one transaction.
+Without it, requests sent together all pass the peek before any of them pays, and "five per
+window" bounds nothing; a slow hash in the middle makes the gap wide. It has shipped twice:
+`SecondFactorCheck::guarded()` (sc-60) and `PasswordChange` (sc-116) are the pattern. Use a
+manual `beginTransaction()`/`commit()`, not `wrapInTransaction()`, which closes the
+EntityManager on the refusal you are about to throw. Test that the lock is taken before the
+check, since the race cannot be seen from one request at a time.
+
 ## Realtime
 
 Live updates go over Mercure. Two rules:

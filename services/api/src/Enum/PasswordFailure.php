@@ -20,4 +20,7 @@ enum PasswordFailure: string
      * answering it needs a network call.
      */
     case Breached = 'password_breached';
+
+    /** A change to the password already set: refused, so nothing reports success and changes nothing. */
+    case Unchanged = 'password_unchanged';
 }

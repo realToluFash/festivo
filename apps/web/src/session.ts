@@ -20,6 +20,8 @@ export interface Session {
   awaiting: Awaiting | null;
   /** The providers that vouch for this account, such as Google. */
   providers: readonly string[];
+  /** False for an account that has only ever signed in with Google or Apple. */
+  hasPassword: boolean;
   needsOrganisation: boolean;
   /** The one this device is working in; null for an account in no organisation. */
   organisation: Membership | null;
@@ -151,6 +153,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     complete: account.complete,
     awaiting: awaiting(account),
     providers: account.providers,
+    hasPassword: account.hasPassword,
     needsOrganisation: account.needsOrganisation,
     organisations,
     organisation:

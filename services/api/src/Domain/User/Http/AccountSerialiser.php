@@ -31,6 +31,7 @@ final readonly class AccountSerialiser
             'locale' => $user->getLocale(),
             'verified' => $user->isVerified(),
             'complete' => $this->accountCompleteness->isComplete($user),
+            'hasPassword' => null !== $user->getPassword(),
             'needsOrganisation' => $this->accountCompleteness->needsOrganisation($user),
             'emailAddresses' => Vec\map($user->getEmailAddresses(), static fn (EmailAddress $address): array => [
                 'id' => $address->getId()->toRfc4122(),

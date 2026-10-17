@@ -400,5 +400,32 @@
     "keepItOn": "La garder activée",
     "failedTitle": "La double authentification n'a pas pu se charger",
     "failedBody": "Un problème est survenu de notre côté. Réessayez dans un instant."
+  },
+  "passwordCard": {
+    "title": "Mot de passe",
+    "intro": "Utilisé avec votre e-mail pour vous connecter. Le modifier déconnecte vos autres appareils ; celui-ci reste connecté.",
+    "change": "Modifier le mot de passe",
+    "none": "Vous vous connectez avec {{provider}}, il n'y a donc pas de mot de passe à modifier.",
+    "formTitle": "Modifier votre mot de passe",
+    "current": "Mot de passe actuel",
+    "forgot": "Oublié ?",
+    "new": "Nouveau mot de passe",
+    "currentBlank": "Saisissez votre mot de passe actuel.",
+    "newBlank": "Saisissez un nouveau mot de passe.",
+    "wrongCurrent": "Ce n'est pas votre mot de passe actuel. Réessayez, ou réinitialisez-le par e-mail.",
+    "same": "C'est déjà votre mot de passe. Choisissez-en un autre.",
+    "pausedTitle": "Trop de tentatives",
+    "pausedBody": "Réessayez à {{time}}. Rien n'a été modifié.",
+    "pausedSoon": "Patientez un instant, puis réessayez. Rien n'a été modifié.",
+    "signsOut": "L'enregistrement déconnecte vos autres appareils ; celui-ci reste connecté. Ils peuvent continuer à fonctionner jusqu'à 15 minutes, le temps que cela leur parvienne.",
+    "emailed": "Nous enverrons un e-mail à {{email}} pour l'indiquer.",
+    "save": "Enregistrer le nouveau mot de passe",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "done_zero": "Mot de passe modifié. Aucun autre appareil n'était connecté.",
+    "done_one": "Mot de passe modifié. Votre autre appareil est déconnecté ; il peut continuer à fonctionner jusqu'à 15 minutes, le temps que cela lui parvienne, puis il devra se reconnecter.",
+    "done_other": "Mot de passe modifié. Vos {{count}} autres appareils sont déconnectés ; ils peuvent continuer à fonctionner jusqu'à 15 minutes, le temps que cela leur parvienne, puis ils devront se reconnecter.",
+    "failedTitle": "Rien n'a été modifié",
+    "failedBody": "Votre mot de passe n'a pas pu être enregistré. Vérifiez votre connexion et réessayez."
   }
 }

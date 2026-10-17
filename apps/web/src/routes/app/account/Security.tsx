@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Pending } from '../../../components/Pending.tsx';
+import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { forgetSession, useSession } from '../../../session.ts';
@@ -78,6 +79,17 @@ export function Security() {
         <h1>{t('account.title')}</h1>
         <p>{session.email}</p>
       </div>
+
+      <PasswordCard
+        email={session.email}
+        hasPassword={session.hasPassword}
+        providers={session.providers}
+        onChanged={() => {
+          setEnded(null);
+          setDevices({ kind: 'loading' });
+          setAttempt((n) => n + 1);
+        }}
+      />
 
       <TwoFactorCard email={session.email} onBusy={setSettingUp} />
 

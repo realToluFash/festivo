@@ -22,6 +22,7 @@ function account(phoneNumbers: unknown[] = [PHONE]) {
     verified: false,
     complete: false,
     needsOrganisation: true,
+    hasPassword: true,
     emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
     phoneNumbers,
   };

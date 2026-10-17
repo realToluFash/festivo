@@ -15,6 +15,7 @@ const ACCOUNT = {
   verified: true,
   complete: false,
   needsOrganisation: true,
+  hasPassword: true,
   emailAddresses: [
     { id: 'a1', address: 'x7k2p9@privaterelay.appleid.com', verified: true, primary: true },
   ],
