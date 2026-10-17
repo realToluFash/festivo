@@ -45,6 +45,13 @@ export interface CodeOpening {
   codeState: CodeState;
 }
 
+/** How a phone's code went (sc-750); null for a code from before there was a choice, which was texted. */
+export type PhoneCodeRoute = 'whatsapp' | 'sms_fallback' | 'sms_chosen' | 'sms_only';
+
+export interface PhoneCodeOpening extends CodeOpening {
+  route: PhoneCodeRoute | null;
+}
+
 /** A password sign-up waiting on its emailed code; `registration` is its one-day handle. */
 export interface PendingRegistration {
   registration: string;
@@ -478,8 +485,25 @@ export class ApiClient {
   }
 
   /** Reads the cooldown and the code's state without spending either, as the email's opening does. */
-  async phoneOpening(): Promise<CodeOpening> {
-    return openingFrom(await this.get<unknown>('/api/auth/verify/phone/resend'));
+  async phoneOpening(): Promise<PhoneCodeOpening> {
+    const answer = await this.get<{ route?: unknown }>('/api/auth/verify/phone/resend');
+    const route = answer?.route;
+
+    return {
+      ...openingFrom(answer),
+      route:
+        route === 'whatsapp' ||
+        route === 'sms_fallback' ||
+        route === 'sms_chosen' ||
+        route === 'sms_only'
+          ? route
+          : null,
+    };
+  }
+
+  /** "Text it to me instead": the same code once by SMS, and later codes for this number by text. */
+  async textPhoneCodeInstead(): Promise<void> {
+    await this.post<unknown>('/api/auth/verify/phone/text-instead');
   }
 
   async resendPhoneCode(): Promise<number> {

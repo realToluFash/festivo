@@ -16,3 +16,4 @@ export * from './regions.ts';
 export * from './initials.ts';
 export * from './phone.ts';
 export * from './forms.ts';
+export * from './phoneCodeRoute.ts';
