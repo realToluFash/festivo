@@ -237,11 +237,7 @@ final readonly class LinkedContacts
         $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
     }
 
-    /**
-     * A promotion that committed while this one waited for the lock has moved the flag, so the rows are read again under it.
-     *
-     * @param list<EmailAddress|PhoneNumber> $rows
-     */
+    /** @param list<EmailAddress|PhoneNumber> $rows read again under the lock: a promotion that committed meanwhile moved the flag */
     private function reread(array $rows): void
     {
         foreach ($rows as $row) {
