@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { thisDeviceFirst } from './devices.ts';
+import { othersOf, thisDeviceFirst } from './devices.ts';
 
 const newest = { id: 'newest' };
 const here = { id: 'here' };
@@ -13,5 +13,14 @@ describe('the devices list', () => {
 
   it('keeps the order it was given when this device is not in it', () => {
     expect(thisDeviceFirst([newest, here, oldest], null)).toEqual([newest, here, oldest]);
+  });
+
+  it('counts the others and keeps this device when it is in the list', () => {
+    expect(othersOf([newest, here, oldest], 'here')).toEqual({ count: 2, sessionId: 'here' });
+  });
+
+  it('counts every session and keeps none when this device is not in the list', () => {
+    expect(othersOf([newest, oldest], 'here')).toEqual({ count: 2, sessionId: null });
+    expect(othersOf([newest, here], null)).toEqual({ count: 2, sessionId: null });
   });
 });

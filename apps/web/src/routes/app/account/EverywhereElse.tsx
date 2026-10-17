@@ -1,4 +1,9 @@
-import { ApiError, type LinkedProvider, type ProviderSignInAttempt } from '@soirely/api-client';
+import {
+  ApiError,
+  type LinkedProvider,
+  type ProviderSignInAttempt,
+  proofRefusal,
+} from '@soirely/api-client';
 import { formatTimeOfDay } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
@@ -15,7 +20,6 @@ import {
   type ProviderReturn,
   startProviderSignIn,
 } from '../../../providerSignIn.ts';
-import { proofRefusal } from '../../../recentProof.ts';
 
 type Field = 'password' | 'code';
 

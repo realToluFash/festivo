@@ -1,9 +1,9 @@
-import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { proofRefusal } from './recentProof.ts';
+import { ApiError } from './problem.ts';
+import { proofRefusal } from './proofRefusal.ts';
 
-function refused(code: string, headers?: HeadersInit): ApiError {
+function refused(code: string, headers?: Record<string, string>): ApiError {
   return new ApiError(
     { type: `https://soirely.com/errors/${code}`, title: code, status: 422 },
     headers == null ? undefined : new Response(null, { status: 429, headers }),
