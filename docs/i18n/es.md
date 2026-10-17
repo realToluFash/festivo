@@ -41,11 +41,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Never translated
 
 - Soirely
+- iPhone, iPad, Android
 - A person's name or title: Chief, Alhaji, Dr., Mrs.
 
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **18 Oct 2026. The app as a device is «Aplicación de Soirely en …».** «Aplicación de
+  Soirely en iPhone», «… en iPad», «… en un móvil Android», «… en una tableta Android»
+  (`devices.app*`, `password.device.app*`). «Aplicación» rather than «app» for the formal
+  register; the article before «móvil» and «tableta» because they name a kind of device,
+  where iPhone and iPad are names. «Móvil», never «teléfono» or «celular» (sc-1283).
 
 - **18 Oct 2026. "Sign out everywhere else" is «Cerrar las demás sesiones».** Shorter than
   «Cerrar sesión en los demás dispositivos», so it fits the phone button, and it is how
