@@ -51,6 +51,16 @@ describe('every field carries the caret colour', () => {
   });
 });
 
+describe('changing the layout keeps the form', () => {
+  // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
+  it('is one tree at every size in AuthFrame', () => {
+    const frame = sources(['src/components']).find(({ path }) => path.endsWith('AuthFrame.tsx'));
+
+    expect(frame, 'AuthFrame.tsx').toBeDefined();
+    expect(frame?.text.match(/<Screen\b/gu)?.length, 'one <Screen>, not one per layout').toBe(1);
+  });
+});
+
 describe('a screen is a composition of the kit', () => {
   it('takes its fields from the kit, never a bare TextInput', () => {
     const offenders = sources(['app'])

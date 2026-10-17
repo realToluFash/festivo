@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { useLayout } from '../layout/useLayout.ts';
+import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
 import { Screen } from './Screen.tsx';
@@ -75,46 +75,30 @@ export function AuthFrame({
     </View>
   );
 
-  if (kind === 'tabletLandscape') {
-    return (
-      <Screen style={styles.page} contentStyle={styles.landscapeContent}>
-        <View style={styles.landscapeLeft}>
-          {brand}
-          <View style={styles.landscapeSaying}>{saying}</View>
-          <LanguageChoice />
-        </View>
-        <View style={styles.landscapeRight}>
-          <View style={[styles.card, styles.cardFill]}>{children}</View>
-        </View>
-      </Screen>
-    );
-  }
-
-  if (kind === 'tabletPortrait') {
-    return (
-      <Screen style={styles.page} contentStyle={styles.portraitContent}>
-        {brand}
-        <View style={styles.centred}>
-          <View style={styles.card}>
-            {saying}
-            {children}
-          </View>
-          <View style={styles.tabletLanguage}>
-            <LanguageChoice />
-          </View>
-        </View>
-      </Screen>
-    );
-  }
+  // One tree at every size, so rotating or entering split view restyles the form and never remounts it:
+  // what was typed, the focus and Show or Hide survive. Only the heading moves, beside or above the form.
+  const landscape = kind === 'tabletLandscape';
+  const phone = kind === 'phone';
 
   return (
-    <Screen style={styles.page} contentStyle={styles.phoneContent}>
-      {phoneTop ?? brand}
-      {saying}
-      {atFoot && <View style={styles.spacer} />}
-      {children}
-      {!atFoot && <View style={styles.spacer} />}
-      <LanguageChoice />
+    <Screen style={styles.page} contentStyle={CONTENT[kind]}>
+      <View style={landscape ? styles.landscapeLeft : undefined}>
+        {phone ? (phoneTop ?? brand) : brand}
+        {landscape && <View style={styles.landscapeSaying}>{saying}</View>}
+        {landscape && <LanguageChoice />}
+      </View>
+      <View style={MAIN[kind]}>
+        <View style={CARD[kind]}>
+          {!landscape && saying}
+          {phone && atFoot && <View style={styles.spacer} />}
+          <View style={styles.form}>{children}</View>
+        </View>
+        {!landscape && (
+          <View style={phone ? undefined : styles.tabletLanguage}>
+            <LanguageChoice />
+          </View>
+        )}
+      </View>
     </Screen>
   );
 }
@@ -150,6 +134,9 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccent,
   },
   spacer: { flex: 1 },
+  form: { gap: tokens.spaceXl },
+  phoneMain: { flexGrow: 1, gap: tokens.spaceXl },
+  phoneCard: { flexGrow: 1, gap: tokens.spaceXl },
   centred: { alignItems: 'center', gap: tokens.space3xl },
   tabletLanguage: { width: CARD_WIDTH, maxWidth: '100%' },
   landscapeLeft: { flex: 1, gap: tokens.space3xl },
@@ -167,3 +154,21 @@ const styles = StyleSheet.create({
   },
   cardFill: { width: '100%' },
 });
+
+const CONTENT = {
+  phone: styles.phoneContent,
+  tabletPortrait: styles.portraitContent,
+  tabletLandscape: styles.landscapeContent,
+} as const;
+
+const MAIN = {
+  phone: styles.phoneMain,
+  tabletPortrait: styles.centred,
+  tabletLandscape: styles.landscapeRight,
+} as const;
+
+const CARD: Record<LayoutKind, StyleProp<ViewStyle>> = {
+  phone: styles.phoneCard,
+  tabletPortrait: styles.card,
+  tabletLandscape: [styles.card, styles.cardFill],
+};

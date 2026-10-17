@@ -1,6 +1,7 @@
 import { Text as RNText, StyleSheet, type TextProps as RNTextProps } from 'react-native';
 
 import { WEIGHTS, type WeightName } from '../theme/fonts.ts';
+import { tokens } from '../theme/tokens.ts';
 
 /**
  * Text with a weight, and without the two shapes that crash on web.
@@ -35,6 +36,6 @@ export function Text({ weight = 'regular', size = 16, muted = false, style, ...r
 }
 
 const styles = StyleSheet.create({
-  base: { color: '#16141F' },
-  muted: { color: '#5D5873' },
+  base: { color: tokens.colorInk },
+  muted: { color: tokens.colorInkSecondary },
 });
