@@ -1,5 +1,5 @@
 import { type Account, ApiError } from '@soirely/api-client';
-import { deviceCountry, formatPhone, phoneLengthProblem } from '@soirely/domain';
+import { deviceRegion, formatPhone, phoneLengthProblem } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -42,7 +42,10 @@ export default function ChangePhone() {
   if (account == null) return null;
 
   const current = account.phoneNumbers.find((phone) => phone.primary) ?? null;
-  const device = deviceCountry(getLocales().map((locale) => locale.languageTag));
+  const device = deviceRegion(
+    getLocales()[0]?.regionCode ?? null,
+    getLocales().map((locale) => locale.languageTag),
+  );
 
   return (
     <AuthFrame
@@ -66,7 +69,7 @@ export default function ChangePhone() {
         {current != null && <Notice tone="quiet" mark="i" body={t('verifyPhone.changeNotice')} />}
 
         <NumberForm
-          initialCountry={current?.countryCode ?? device ?? 'NG'}
+          initialCountry={current?.countryCode ?? device ?? ''}
           onTexted={() =>
             router.replace(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')
           }
@@ -98,7 +101,10 @@ function NumberForm({
   const [sending, setSending] = useState(false);
 
   async function send(): Promise<void> {
-    const problem = phoneProblemMessage(phoneLengthProblem(number, country), country, t);
+    const problem =
+      country === ''
+        ? t('forms.countryBlank')
+        : phoneProblemMessage(phoneLengthProblem(number, country), country, t);
 
     if (problem != null) {
       setError(problem);

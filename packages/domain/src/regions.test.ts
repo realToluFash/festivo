@@ -5,6 +5,7 @@ import {
   countryChoices,
   currencyLabel,
   deviceCountry,
+  deviceRegion,
   timezoneLabel,
 } from './regions.ts';
 
@@ -40,5 +41,22 @@ describe('regions', () => {
     expect(deviceCountry(['pt'])).toBe('BR');
     expect(deviceCountry(['not a tag'])).toBeNull();
     expect(deviceCountry([])).toBeNull();
+  });
+});
+
+describe("the device's country", () => {
+  it("takes the phone's Region setting over its language's country", () => {
+    expect(deviceRegion('NG', ['en-US'])).toBe('NG');
+    expect(deviceRegion('gb', ['en-US'])).toBe('GB');
+  });
+
+  it("falls back to the language's country with no Region, or one the list does not offer", () => {
+    expect(deviceRegion(null, ['en-US'])).toBe('US');
+    expect(deviceRegion('XX', ['pt-BR'])).toBe('BR');
+  });
+
+  it('assumes no country when nothing names one', () => {
+    expect(deviceRegion(null, ['es-419'])).toBeNull();
+    expect(deviceRegion(null, [])).toBeNull();
   });
 });

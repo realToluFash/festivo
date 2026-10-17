@@ -1,6 +1,6 @@
 import { ApiError, type Account, awaiting } from '@soirely/api-client';
 import {
-  deviceCountry,
+  deviceRegion,
   followCountry,
   phoneLengthProblem,
   pickPhoneCountry,
@@ -100,7 +100,11 @@ function Details({ account }: { account: Account }) {
   const [name, setName] = useState(account.name);
   const [organisationName, setOrganisationName] = useState('');
   const [countryCode, setCountryCode] = useState(
-    () => deviceCountry(getLocales().map((locale) => locale.languageTag)) ?? 'NG',
+    () =>
+      deviceRegion(
+        getLocales()[0]?.regionCode ?? null,
+        getLocales().map((locale) => locale.languageTag),
+      ) ?? '',
   );
   const [phone, setPhone] = useState(() =>
     startingPhoneCountry(
@@ -129,8 +133,12 @@ function Details({ account }: { account: Account }) {
     if (asksForOrganisation && organisationName.trim() === '') {
       checked.organisationName = t('completeProfile.organisationBlank');
     }
+    // Nothing named a country, so the field started blank: the person chooses rather than us guessing.
+    if (asksForOrganisation && countryCode === '') checked.countryCode = t('forms.countryBlank');
     // Optional: an empty field is no phone, so only a typed number is checked.
-    if (phoneNumber.trim() !== '') {
+    if (phoneNumber.trim() !== '' && phoneCountryCode === '') {
+      checked.phoneNumber = t('forms.countryBlank');
+    } else if (phoneNumber.trim() !== '') {
       const problem = phoneProblemMessage(
         phoneLengthProblem(phoneNumber, phoneCountryCode),
         phoneCountryCode,
