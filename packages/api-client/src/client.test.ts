@@ -1157,6 +1157,38 @@ describe("the account's time zone", () => {
   });
 });
 
+describe('the device a sign-in comes from', () => {
+  test('sends the install identifier when the client has one, and nothing when it has not', async () => {
+    const sent: (string | null)[] = [];
+    const fetch = async (_input: string | URL | Request, init?: RequestInit) => {
+      sent.push(new Headers(init?.headers).get('X-Device-Id'));
+
+      return json({ accessToken: 'a', expiresIn: 900, refreshToken: 'r', account: ACCOUNT });
+    };
+    const app = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      device: () => '1b4e28ba-2fa1-41d2-883f-0016d3cca427',
+      fetch,
+    });
+    const web = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      fetch,
+    });
+
+    await app.signIn('folake@ire.events', 'a decent passphrase');
+    await app.confirmRegistration('reg', '123456');
+    await web.signIn('folake@ire.events', 'a decent passphrase');
+
+    expect(sent).toEqual([
+      '1b4e28ba-2fa1-41d2-883f-0016d3cca427',
+      '1b4e28ba-2fa1-41d2-883f-0016d3cca427',
+      null,
+    ]);
+  });
+});
+
 describe('the sessions an account has', () => {
   const SESSION = {
     id: '018f3a4c-0000-7c3d-9e1f-2a3b4c5d6e7f',

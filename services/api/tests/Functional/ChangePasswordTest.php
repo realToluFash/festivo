@@ -212,6 +212,15 @@ final class ChangePasswordTest extends ApiTestCase
         self::assertStringContainsString('/sign-in', $text);
     }
 
+    #[Test]
+    public function aDeviceItCannotReadIsNamedAsTheDevicesCardNamesIt(): void
+    {
+        $this->change($this->signIn(), self::OLD_PASSWORD, self::NEW_PASSWORD, ['HTTP_USER_AGENT' => 'Soirely/1.0 CFNetwork/1568 Darwin/24.1.0', 'REMOTE_ADDR' => '197.210.78.3']);
+
+        $mail = Type\instance_of(Email::class)->coerce(Iter\last(self::getMailerMessages()));
+        self::assertStringContainsString('The device: Soirely/1.0 CFNetwork/1568 Darwin/24.1.0, from 197.210.78.3.', (string) $mail->getTextBody());
+    }
+
     /** The account's language, here learnt from a French sign-in, reaches the send after the response (sc-852). */
     #[Test]
     public function theEmailSpeaksTheAccountsLanguage(): void

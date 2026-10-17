@@ -15,7 +15,7 @@ use SensitiveParameter;
  */
 final readonly class PasswordPolicy
 {
-    public const int MINIMUM_LENGTH = 12;
+    public const int MINIMUM_LENGTH = 15;
 
     /** Far above NIST's required 64, and only so a megabyte cannot be handed to a slow hash. */
     public const int MAXIMUM_LENGTH = 4096;
