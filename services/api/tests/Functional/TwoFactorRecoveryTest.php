@@ -233,6 +233,47 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         }
     }
 
+    /** sc-1658: the start and waiting screens name only the organisations in which somebody was asked. */
+    #[Test]
+    public function anOrganisationWithNoOtherApproverIsNotNamed(): void
+    {
+        self::service(OrganisationFounder::class)->found($this->fresh($this->person), 'Ọ̀rẹ́ Studio', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+
+        self::assertSame(['Ìrè Events'], $this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()])['organisations']);
+        self::assertSame(['Ìrè Events'], $this->state($this->proved())['organisations']);
+    }
+
+    #[Test]
+    public function theSoleOwnersOwnOrganisationIsNotNamedButTheOtherIs(): void
+    {
+        $this->leaves($this->approver);
+        $hall = self::service(OrganisationFounder::class)->found($this->fresh($this->approver), 'Bisi Hall', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+        $this->join($this->person, SeededRole::Owner, $hall);
+        self::em()->flush();
+
+        self::assertSame(['Bisi Hall'], $this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()])['organisations']);
+        self::assertSame(['Bisi Hall'], $this->state($this->proved())['organisations']);
+    }
+
+    #[Test]
+    public function anOrganisationLeftWithNobodyElseDropsOffTheWaitingScreen(): void
+    {
+        $tunde = $this->account('tunde@example.com', 'Tunde Bello');
+        $hall = self::service(OrganisationFounder::class)->found($tunde, 'Tunde Hall', 'NG', 'Africa/Lagos');
+        self::em()->flush();
+        $this->join($this->person, SeededRole::Owner, $hall);
+        self::em()->flush();
+
+        $handle = $this->proved();
+        self::assertSame(['Ìrè Events', 'Tunde Hall'], $this->state($handle)['organisations'], 'oldest membership first');
+
+        $this->leaves($tunde);
+
+        self::assertSame(['Ìrè Events'], $this->state($handle)['organisations']);
+    }
+
     #[Test]
     public function textItToMeInsteadLastsOnlyTheRequestsOwnCodes(): void
     {
@@ -593,9 +634,9 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         return $user;
     }
 
-    private function join(User $user, SeededRole $as): void
+    private function join(User $user, SeededRole $as, ?Organisation $to = null): void
     {
-        $organisation = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, $this->organisation->getId()));
+        $organisation = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, ($to ?? $this->organisation)->getId()));
         $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $as]));
         self::em()->persist(new Membership($organisation, $this->fresh($user), $role, MembershipStatus::Active));
     }
