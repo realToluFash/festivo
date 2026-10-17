@@ -1672,3 +1672,73 @@ h2 {
 .tz-option:hover {
   background: var(--colorInset);
 }
+
+/* ── Ways to sign in (sc-510) ─────────────────────────────────────────────── */
+
+.ways-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.way {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+  padding: var(--spaceLg) 0;
+  border-top: var(--borderInset);
+}
+
+.way-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--sizeAvatar);
+  height: var(--sizeAvatar);
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
+}
+
+.way-detail {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 10rem;
+}
+
+.way-name {
+  font: var(--typeRowTitle);
+}
+
+.way-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin: 0;
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.way-state-on {
+  font-weight: 600;
+  color: var(--colorAccentText);
+}
+
+.way-address {
+  overflow-wrap: anywhere;
+}
+
+.way-last {
+  display: flex;
+  flex: 1 1 100%;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  align-items: flex-start;
+}

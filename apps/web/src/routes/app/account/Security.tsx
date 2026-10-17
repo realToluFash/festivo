@@ -10,6 +10,7 @@ import { AccountSections } from '../../../components/AccountSections.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
+import { WaysCard } from './WaysCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { forgetSession, refreshAccount, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
@@ -28,6 +29,7 @@ export function Security() {
   const [ended, setEnded] = useState<string | null>(null);
   const [endFailed, setEndFailed] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
+  const [settingPassword, setSettingPassword] = useState(false);
 
   // The loading state belongs to the event that asks for a reload, not to the effect.
   useEffect(() => {
@@ -93,6 +95,23 @@ export function Security() {
           setAttempt((n) => n + 1);
         }}
         onAdded={() => refreshAccount()}
+        setting={settingPassword}
+        onSetting={setSettingPassword}
+      />
+
+      <WaysCard
+        email={session.email}
+        hasPassword={session.hasPassword}
+        providers={session.providers}
+        onChanged={() => refreshAccount()}
+        onSetPassword={() => {
+          setSettingPassword(true);
+          document.getElementById('password-title')?.scrollIntoView({ block: 'start' });
+        }}
+        onSignedOutHere={() => {
+          forgetSession();
+          navigate('/sign-in');
+        }}
       />
 
       <TwoFactorCard email={session.email} onBusy={setSettingUp} />

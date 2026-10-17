@@ -16,6 +16,7 @@ use App\Entity\EmailAddress;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
+use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
 use App\Repository\EmailAddressRepository;
 use DateTimeImmutable;
@@ -73,7 +74,7 @@ final readonly class UserRegistrar
     }
 
     /** No password and no code: the provider vouched for the address, and the name is theirs if they gave one. */
-    public function registerFromProvider(string $email, ?string $name, ?Request $request = null): RegistrationResult
+    public function registerFromProvider(string $email, ?string $name, ?Request $request = null, ?IdentityProvider $provider = null): RegistrationResult
     {
         $normalised = EmailAddressNormaliser::normalise($email);
 
@@ -87,7 +88,7 @@ final readonly class UserRegistrar
         $address = new EmailAddress($user, Type\non_empty_string()->assert($normalised), isPrimary: true);
         $address->setVerifiedAt(new DateTimeImmutable());
 
-        return $this->persist($user, $request);
+        return $this->persist($user, $request, $provider);
     }
 
     /**
@@ -163,7 +164,7 @@ final readonly class UserRegistrar
         }
     }
 
-    private function persist(User $user, ?Request $request): RegistrationResult
+    private function persist(User $user, ?Request $request, ?IdentityProvider $signedInWith = null): RegistrationResult
     {
         $address = $user->getPrimaryEmailAddress();
 
@@ -171,13 +172,13 @@ final readonly class UserRegistrar
         AccountTimeZone::rememberIfNone($user, $request);
 
         try {
-            $tokens = $this->entityManager->wrapInTransaction(function () use ($user, $address, $request): IssuedTokens {
+            $tokens = $this->entityManager->wrapInTransaction(function () use ($user, $address, $request, $signedInWith): IssuedTokens {
                 if (null !== $address) {
                     $this->releaseFromUnverifiedHolder($address->getAddress());
                 }
 
                 $this->entityManager->persist($user);
-                $tokens = $this->tokenIssuer->issueFor($user, $request);
+                $tokens = $this->tokenIssuer->issueFor($user, $request, $signedInWith);
                 $this->entityManager->flush();
 
                 return $tokens;

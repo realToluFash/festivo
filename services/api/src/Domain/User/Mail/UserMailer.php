@@ -135,4 +135,17 @@ final readonly class UserMailer
     {
         return $this->translator->trans($key, $parameters, self::DOMAIN, $locale);
     }
+
+    /** As the devices card words a row: no place, and no claim that either part was checked. */
+    public function device(?string $userAgent, ?string $ipAddress, string $locale): string
+    {
+        $agent = ReadableAgent::of($userAgent);
+        $named = null === $agent
+            ? $this->line('password.device.unknown', $locale)
+            : $this->line('password.device.agent', $locale, ['{browser}' => $agent->browser, '{platform}' => $agent->platform]);
+
+        return null === $ipAddress || '' === $ipAddress
+            ? $named
+            : $this->line('password.device.from', $locale, ['{device}' => $named, '{address}' => $ipAddress]);
+    }
 }

@@ -3,7 +3,12 @@ import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 
 import { Pending } from '../../components/Pending.tsx';
-import { PROVIDER_NAMES, finishProviderSignIn } from '../../providerSignIn.ts';
+import {
+  PROVIDER_NAMES,
+  finishProviderSignIn,
+  keepProviderReturn,
+  returnPurpose,
+} from '../../providerSignIn.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 
 /** Where a provider sends the person back: signed in and on to where the account belongs, or back to sign-in. */
@@ -15,6 +20,14 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
     // The attempt is spent on first use, so a second run would only ever fail.
     if (started.current) return;
     started.current = true;
+
+    // Security's own trip, to confirm it is you or to choose the account to link: it finishes there.
+    if (returnPurpose(provider) != null) {
+      keepProviderReturn(provider, window.location.href);
+      navigate('/app/account/security', { replace: true });
+
+      return;
+    }
 
     finishProviderSignIn(provider, window.location.href)
       .then((outcome) => landAfterSignIn(outcome, navigate))

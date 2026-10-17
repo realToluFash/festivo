@@ -70,11 +70,8 @@ export default function CompleteProfile() {
 
   if (account == null) return null;
 
-  const provider = account.providers.includes('google')
-    ? 'Google'
-    : account.providers.includes('apple')
-      ? 'Apple'
-      : undefined;
+  const vouched = (name: string) => account.providers.some((p) => p.provider === name);
+  const provider = vouched('google') ? 'Google' : vouched('apple') ? 'Apple' : undefined;
   const primaryEmail = account.emailAddresses.find((address) => address.primary)?.address ?? '';
 
   return (

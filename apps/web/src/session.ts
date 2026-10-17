@@ -2,6 +2,7 @@ import {
   type Account,
   ApiUnreachableError,
   type Awaiting,
+  type LinkedProvider,
   type Membership,
   awaiting,
   primaryEmailAddress,
@@ -19,8 +20,8 @@ export interface Session {
   complete: boolean;
   /** The gate it is behind, or null once it is through both. */
   awaiting: Awaiting | null;
-  /** The providers that vouch for this account, such as Google. */
-  providers: readonly string[];
+  /** The providers that vouch for this account, such as Google, each with its address. */
+  providers: readonly LinkedProvider[];
   /** False for an account that has only ever signed in with Google or Apple. */
   hasPassword: boolean;
   needsOrganisation: boolean;

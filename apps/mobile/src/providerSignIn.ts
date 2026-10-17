@@ -1,5 +1,6 @@
 import {
   type Provider,
+  type ProviderSignInAttempt,
   type SignInOutcome,
   type SignedIn,
   ProviderCancelled,
@@ -46,8 +47,14 @@ function remember(provider: Provider, outcome: SignInOutcome): SignInOutcome {
   return outcome;
 }
 
+/** What a provider vouched for, before anything is done with it; `name` is Apple's first-time one. */
+interface Ran {
+  attempt: ProviderSignInAttempt;
+  name?: string;
+}
+
 /** The system browser with the code flow and PKCE, the code redeemed here as a native client may. */
-async function signInInBrowser(provider: Provider): Promise<SignInOutcome> {
+async function inBrowser(provider: Provider, reauthenticate = false): Promise<Ran> {
   const redirectUri = `soirely://oauth/${provider}`;
   const state = random();
   const nonce = random();
@@ -59,7 +66,11 @@ async function signInInBrowser(provider: Provider): Promise<SignInOutcome> {
       state,
       nonceHash: hex(await sha256(nonce)),
       codeChallenge: base64Url(await sha256(codeVerifier)),
-      ...(provider === 'apple' ? { scope: 'openid name email', extra: {} } : {}),
+      ...(provider === 'apple'
+        ? { scope: 'openid name email', extra: {} }
+        : reauthenticate
+          ? { extra: { prompt: 'login', max_age: '0' } }
+          : {}),
     }),
     redirectUri,
   );
@@ -72,11 +83,11 @@ async function signInInBrowser(provider: Provider): Promise<SignInOutcome> {
     redirectUri,
   });
 
-  return remember(provider, await api.signInWithProvider(provider, idToken, nonce));
+  return { attempt: { idToken, nonce } };
 }
 
 /** Apple's own sheet: the nonce goes in as its hash, and the name comes back on the first time only. */
-async function signInWithAppleSheet(): Promise<SignInOutcome> {
+async function appleSheet(): Promise<Ran> {
   const nonce = random();
 
   let credential;
@@ -97,14 +108,11 @@ async function signInWithAppleSheet(): Promise<SignInOutcome> {
     .filter((part): part is string => part != null && part.trim() !== '')
     .join(' ');
 
-  return remember(
-    'apple',
-    await api.signInWithProvider('apple', credential.identityToken, nonce, name),
-  );
+  return { attempt: { idToken: credential.identityToken, nonce }, name };
 }
 
 /** Android: Apple answers the API by form_post, and a one-time handle returns by App Link, in Custom Tabs. */
-async function signInWithAppleOnAndroid(appLink: string): Promise<SignInOutcome> {
+async function appleOnAndroid(appLink: string): Promise<Ran> {
   const redirectUri = `${config.apiBaseUrl}/api/auth/oauth/apple/return`;
   const state = random();
   const nonce = random();
@@ -134,23 +142,42 @@ async function signInWithAppleOnAndroid(appLink: string): Promise<SignInOutcome>
   if (outcome == null) throw new ProviderFailed('the App Link carried no handle');
   if ('cancelled' in outcome) throw new ProviderCancelled();
 
-  return remember(
-    'apple',
-    await api.exchangeAppleHandle({ handle: outcome.handle, codeVerifier, nonce }),
-  );
+  return { attempt: { handle: outcome.handle, codeVerifier, nonce } };
 }
 
 /** On iOS Apple is the system sheet, as App Store review expects; elsewhere both run in the browser. */
-export async function signInWithProvider(provider: Provider): Promise<SignInOutcome> {
+async function run(provider: Provider, reauthenticate = false): Promise<Ran> {
   if (provider === 'apple' && Platform.OS === 'ios' && (await isAvailableAsync())) {
-    return signInWithAppleSheet();
+    return appleSheet();
   }
 
   if (provider === 'apple' && Platform.OS === 'android' && config.apple.appLink != null) {
-    return signInWithAppleOnAndroid(config.apple.appLink);
+    return appleOnAndroid(config.apple.appLink);
   }
 
-  return signInInBrowser(provider);
+  return inBrowser(provider, reauthenticate);
+}
+
+export async function signInWithProvider(provider: Provider): Promise<SignInOutcome> {
+  const { attempt, name } = await run(provider);
+
+  const outcome =
+    'handle' in attempt
+      ? await api.exchangeAppleHandle(attempt)
+      : 'idToken' in attempt
+        ? await api.signInWithProvider(provider, attempt.idToken, attempt.nonce, name)
+        : null;
+  if (outcome == null) throw new ProviderFailed('a code the app cannot redeem');
+
+  return remember(provider, outcome);
+}
+
+/** Security's own run, never a sign-in: `reauthenticate` when confirming it is you, so Google asks again. */
+export async function confirmWithProvider(
+  provider: Provider,
+  reauthenticate = false,
+): Promise<ProviderSignInAttempt> {
+  return (await run(provider, reauthenticate)).attempt;
 }
 
 /** The code passed: a provider sign-in it finished may have linked its provider only now. */

@@ -37,7 +37,7 @@ final class AppleSignInTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         self::assertSame('Ada Lovelace', $this->account($body)['name']);
-        self::assertSame(['apple'], $this->account($body)['providers']);
+        self::assertSame([['provider' => 'apple', 'email' => 'apple-person@example.com']], $this->account($body)['providers']);
     }
 
     #[Test]

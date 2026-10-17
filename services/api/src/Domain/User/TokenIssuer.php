@@ -7,6 +7,7 @@ namespace App\Domain\User;
 use App\Domain\User\Model\IssuedTokens;
 use App\Entity\RefreshToken;
 use App\Entity\User;
+use App\Enum\IdentityProvider;
 use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -36,10 +37,10 @@ final readonly class TokenIssuer
     ) {
     }
 
-    /** The caller flushes. */
-    public function issueFor(User $user, ?Request $request = null): IssuedTokens
+    /** The caller flushes. `$signedInWith` is the provider the sign-in came through, null for a password. */
+    public function issueFor(User $user, ?Request $request = null, ?IdentityProvider $signedInWith = null): IssuedTokens
     {
-        return $this->issue($user, null, $request);
+        return $this->issue($user, null, $request, $signedInWith);
     }
 
     /** The caller flushes, so the revocation and the new row commit together. */
@@ -47,7 +48,7 @@ final readonly class TokenIssuer
     {
         $used->setRevokedAt(new DateTimeImmutable());
 
-        return $this->issue($used->getUser(), $used->getChainId(), $request);
+        return $this->issue($used->getUser(), $used->getChainId(), $request, $used->getSignedInWith());
     }
 
     /** All of them, since revoking one leaves the thief the newest. Bypasses the UnitOfWork: loaded tokens go stale. */
@@ -71,6 +72,24 @@ final readonly class TokenIssuer
             ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
             ->setParameter('user', $user)
             ->execute();
+    }
+
+    /**
+     * Every session that a sign-in through this provider started: unlinking it signs those devices out.
+     *
+     * @return int how many live sessions ended
+     */
+    public function revokeSignedInWith(User $user, IdentityProvider $provider): int
+    {
+        return Type\int()->coerce($this->entityManager
+            ->createQuery(
+                'UPDATE ' . RefreshToken::class . ' t SET t.revokedAt = :now'
+                . ' WHERE t.user = :user AND t.signedInWith = :provider AND t.revokedAt IS NULL AND t.expiresAt > :now',
+            )
+            ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
+            ->setParameter('user', $user)
+            ->setParameter('provider', $provider->value)
+            ->execute());
     }
 
     /**
@@ -105,7 +124,7 @@ final readonly class TokenIssuer
         return \hash('sha256', $plain);
     }
 
-    private function issue(User $user, ?Uuid $chainId, ?Request $request): IssuedTokens
+    private function issue(User $user, ?Uuid $chainId, ?Request $request, ?IdentityProvider $signedInWith): IssuedTokens
     {
         $plain = \bin2hex(SecureRandom\bytes(self::REFRESH_BYTES));
 
@@ -116,6 +135,7 @@ final readonly class TokenIssuer
             $chainId,
             self::truncate($request?->headers->get('User-Agent')),
             $request?->getClientIp(),
+            $signedInWith,
         );
 
         $this->entityManager->persist($token);

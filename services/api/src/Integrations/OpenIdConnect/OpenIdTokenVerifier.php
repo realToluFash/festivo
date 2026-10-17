@@ -10,6 +10,7 @@ use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
 use DateInterval;
+use DateTimeImmutable;
 use Lcobucci\JWT\Encoding\JoseEncoder;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
@@ -78,7 +79,17 @@ final readonly class OpenIdTokenVerifier implements IdTokenVerifierInterface
             \is_string($email) ? $email : null,
             true === $claims->get('email_verified') || 'true' === $claims->get('email_verified'),
             \is_string($name) && '' !== Str\trim($name) ? Str\trim($name) : null,
+            self::authenticatedAt($claims->get('auth_time'), $claims->get('iat')),
         );
+    }
+
+    private static function authenticatedAt(mixed $authTime, mixed $issuedAt): ?DateTimeImmutable
+    {
+        if (\is_int($authTime) || (\is_string($authTime) && \ctype_digit($authTime))) {
+            return new DateTimeImmutable('@' . $authTime);
+        }
+
+        return $issuedAt instanceof DateTimeImmutable ? $issuedAt : null;
     }
 
     private function parse(#[SensitiveParameter] string $idToken): UnencryptedToken

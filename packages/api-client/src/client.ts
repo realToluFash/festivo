@@ -113,6 +113,24 @@ export type SecondFactor = { code: string } | { recoveryCode: string };
 
 export type Provider = 'google' | 'apple';
 
+/** A provider on the account, and the address it vouched for: null for one linked before that was kept. */
+export interface LinkedProvider {
+  provider: Provider;
+  email: string | null;
+}
+
+/** A provider sign-in run while signed in: an app's ID token, the web's code, or Android's Apple handle. */
+export type ProviderSignInAttempt =
+  | { idToken: string; nonce: string }
+  | { code: string; codeVerifier: string; redirectUri: string; nonce: string }
+  | { handle: string; codeVerifier: string; nonce: string };
+
+/** What changing how somebody signs in asks for: this client's proof, good until `expiresAt`. */
+export interface RecentProof {
+  proof: string;
+  expiresAt: string;
+}
+
 /** One IANA zone as Settings > Account lists it. */
 export interface TimeZoneOption {
   id: string;
@@ -162,8 +180,8 @@ export interface Account {
   needsOrganisation: boolean;
   /** False for an account that has only ever signed in with Google or Apple. */
   hasPassword: boolean;
-  /** The providers that vouch for this account, such as Google. */
-  providers: string[];
+  /** The providers that vouch for this account, such as Google, each with its address. */
+  providers: LinkedProvider[];
   /** Two-factor was turned off by an approved recovery: asked to set it up again (sc-509). */
   twoFactorSetupPrompt: boolean;
   emailAddresses: LinkedAddress[];
@@ -391,6 +409,55 @@ export class ApiClient {
       { ...rest, ...(name == null || name === '' ? {} : { name }) },
       'ProviderSignInController',
     );
+  }
+
+  /** The password or a linked provider, then `code` when two-factor is on: proof for the next five minutes. */
+  async prove(
+    first: { password: string } | { provider: Provider; signIn: ProviderSignInAttempt },
+    code?: string,
+  ): Promise<RecentProof> {
+    const body = await this.post<{ proof?: unknown; expiresAt?: unknown }>('/api/auth/proof', {
+      ...('password' in first
+        ? { password: first.password }
+        : { provider: first.provider, providerSignIn: first.signIn }),
+      ...(code == null ? {} : { code }),
+    });
+
+    return {
+      proof: typeof body.proof === 'string' ? body.proof : '',
+      expiresAt: typeof body.expiresAt === 'string' ? body.expiresAt : '',
+    };
+  }
+
+  /** Refused as `provider_taken` when that provider account is another Soirely account's. */
+  async linkProvider(
+    provider: Provider,
+    proof: string,
+    signIn: ProviderSignInAttempt,
+  ): Promise<LinkedProvider> {
+    const body = await this.post<{ email?: unknown }>(`/api/auth/providers/${provider}`, {
+      proof,
+      providerSignIn: signIn,
+    });
+
+    return { provider, email: typeof body.email === 'string' ? body.email : null };
+  }
+
+  /** Refused as `last_sign_in_method` for the last way in; `thisDevice` says this session was one signed out. */
+  async unlinkProvider(
+    provider: Provider,
+    proof: string,
+    sessionId: string | null,
+  ): Promise<{ signedOut: number; thisDevice: boolean }> {
+    const body = await this.post<{ signedOut?: unknown; thisDevice?: unknown }>(
+      `/api/auth/providers/${provider}/unlink`,
+      { proof, sessionId },
+    );
+
+    return {
+      signedOut: typeof body.signedOut === 'number' ? body.signedOut : 0,
+      thisDevice: body.thisDevice === true,
+    };
   }
 
   /** The same answer whether or not the address has an account; what happens next is only in the inbox. */
@@ -1082,11 +1149,20 @@ function asAccount(raw: unknown): Account | null {
     hasPassword: candidate.hasPassword === true,
     twoFactorSetupPrompt: candidate.twoFactorSetupPrompt === true,
     providers: Array.isArray(candidate.providers)
-      ? candidate.providers.filter((provider): provider is string => typeof provider === 'string')
+      ? candidate.providers.flatMap(asLinkedProvider)
       : [],
     emailAddresses,
     phoneNumbers,
   };
+}
+
+function asLinkedProvider(raw: unknown): LinkedProvider[] {
+  const candidate = raw as Record<string, unknown> | null;
+  const provider = candidate?.provider;
+
+  if (provider !== 'google' && provider !== 'apple') return [];
+
+  return [{ provider, email: typeof candidate?.email === 'string' ? candidate.email : null }];
 }
 
 function asOrganisation(raw: unknown): Organisation | null {

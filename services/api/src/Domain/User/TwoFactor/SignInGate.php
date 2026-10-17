@@ -44,7 +44,7 @@ final readonly class SignInGate
         if (null === $this->twoFactorFactorRepository->findActiveFor($user)) {
             $this->link($user, $link);
 
-            return $this->issue($user, $request);
+            return $this->issue($user, $request, $link);
         }
 
         $plain = \bin2hex(SecureRandom\bytes(self::CHALLENGE_BYTES));
@@ -86,9 +86,11 @@ final readonly class SignInGate
         $challenge->markUsed($now);
         $provider = $challenge->getLinkProvider();
         $subject = $challenge->getLinkSubject();
-        $linked = $this->link($user, null === $provider || null === $subject ? null : new ProviderLink($provider, $subject));
+        // A link waits on the code only for sc-58's matching address, so the primary is the one the provider vouched for.
+        $link = null === $provider || null === $subject ? null : new ProviderLink($provider, $subject, $user->getPrimaryEmailAddress()?->getAddress());
+        $linked = $this->link($user, $link);
 
-        return new TwoFactorSignInResult($user, $this->issue($user, $request), $linked);
+        return new TwoFactorSignInResult($user, $this->issue($user, $request, $link), $linked);
     }
 
     /** False when there is nothing to link, or a sign-in that passed first already linked it. */
@@ -98,14 +100,14 @@ final readonly class SignInGate
             return false;
         }
 
-        $this->entityManager->persist(new ProviderIdentity($user, $link->provider, $link->subject));
+        $this->entityManager->persist(new ProviderIdentity($user, $link->provider, $link->subject, $link->email));
 
         return true;
     }
 
-    private function issue(User $user, ?Request $request): IssuedTokens
+    private function issue(User $user, ?Request $request, ?ProviderLink $link): IssuedTokens
     {
-        $tokens = $this->tokenIssuer->issueFor($user, $request);
+        $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider);
         $this->entityManager->flush();
 
         return $tokens;

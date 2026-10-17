@@ -1,4 +1,4 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import {
   cleanCode,
   codeProblem,
@@ -33,40 +33,45 @@ export function PasswordCard({
   providers,
   onChanged,
   onAdded,
+  setting = false,
+  onSetting,
 }: {
   email: string;
   hasPassword: boolean;
-  providers: readonly string[];
+  providers: readonly LinkedProvider[];
   onChanged: () => void;
   onAdded: () => void | Promise<void>;
+  /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
+  setting?: boolean;
+  onSetting?: (on: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'at-rest', signedOut: null, added: null });
-  const first = providers[0];
-  const provider = first === 'google' || first === 'apple' ? PROVIDER_NAMES[first] : (first ?? '');
+  const open = (next: Stage) => {
+    setStage(next);
+    onSetting?.(next.kind === 'setting');
+  };
+  const first = providers[0]?.provider;
+  const provider = first == null ? '' : PROVIDER_NAMES[first];
 
   if (!hasPassword) {
     return (
       <section className="card" aria-labelledby="password-title">
-        {stage.kind === 'setting' ? (
+        {stage.kind === 'setting' || setting ? (
           <Setting
             email={email}
             onAdded={async () => {
               await onAdded();
-              setStage({ kind: 'at-rest', signedOut: null, added: provider });
+              open({ kind: 'at-rest', signedOut: null, added: provider });
             }}
-            onCancel={() => setStage({ kind: 'at-rest', signedOut: null, added: null })}
+            onCancel={() => open({ kind: 'at-rest', signedOut: null, added: null })}
           />
         ) : (
           <>
             <h2 id="password-title">{t('passwordCard.title')}</h2>
             <p>{t('passwordCard.setRest', { provider })}</p>
             <div className="actions">
-              <button
-                className="button"
-                type="button"
-                onClick={() => setStage({ kind: 'setting' })}
-              >
+              <button className="button" type="button" onClick={() => open({ kind: 'setting' })}>
                 {t('passwordCard.set')}
               </button>
             </div>

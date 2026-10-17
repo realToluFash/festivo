@@ -977,6 +977,92 @@ describe('who is signed in', () => {
   });
 });
 
+describe('the ways an account signs in', () => {
+  function client(response: Response, sent: { path: string; body: unknown }[] = []) {
+    return new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('live', null),
+      fetch: async (url, init) => {
+        sent.push({
+          path: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return response;
+      },
+    });
+  }
+
+  test('reads each provider with the address it vouched for, and drops one it does not know', async () => {
+    const account = await client(
+      json({
+        ...ACCOUNT,
+        providers: [
+          { provider: 'google', email: 'folake.adeyemi@gmail.com' },
+          { provider: 'apple', email: null },
+          { provider: 'facebook', email: 'x@example.com' },
+        ],
+      }),
+    ).me();
+
+    expect(account.providers).toEqual([
+      { provider: 'google', email: 'folake.adeyemi@gmail.com' },
+      { provider: 'apple', email: null },
+    ]);
+  });
+
+  test('proves it is you with the password, then the code', async () => {
+    const sent: { path: string; body: unknown }[] = [];
+    const proof = await client(
+      json({ proof: 'p-1', expiresAt: '2026-10-17T12:05:00+00:00' }),
+      sent,
+    ).prove({ password: 'a decent passphrase' }, '123456');
+
+    expect(proof).toEqual({ proof: 'p-1', expiresAt: '2026-10-17T12:05:00+00:00' });
+    expect(sent).toEqual([
+      { path: 'POST /api/auth/proof', body: { password: 'a decent passphrase', code: '123456' } },
+    ]);
+  });
+
+  test('or with a linked provider, its sign-in sent as it came', async () => {
+    const sent: { path: string; body: unknown }[] = [];
+
+    await client(json({ proof: 'p-1', expiresAt: '' }), sent).prove({
+      provider: 'google',
+      signIn: { idToken: 'id', nonce: 'n' },
+    });
+
+    expect(sent[0]?.body).toEqual({
+      provider: 'google',
+      providerSignIn: { idToken: 'id', nonce: 'n' },
+    });
+  });
+
+  test('links and unlinks with the proof, naming this session', async () => {
+    const sent: { path: string; body: unknown }[] = [];
+
+    const linked = await client(
+      json({ provider: 'apple', email: 'x7k2m9@privaterelay.appleid.com' }, 201),
+      sent,
+    ).linkProvider('apple', 'p-1', { handle: 'h', codeVerifier: 'v', nonce: 'n' });
+    const unlinked = await client(json({ signedOut: 2, thisDevice: true }), sent).unlinkProvider(
+      'apple',
+      'p-1',
+      's-1',
+    );
+
+    expect(linked).toEqual({ provider: 'apple', email: 'x7k2m9@privaterelay.appleid.com' });
+    expect(unlinked).toEqual({ signedOut: 2, thisDevice: true });
+    expect(sent).toEqual([
+      {
+        path: 'POST /api/auth/providers/apple',
+        body: { proof: 'p-1', providerSignIn: { handle: 'h', codeVerifier: 'v', nonce: 'n' } },
+      },
+      { path: 'POST /api/auth/providers/apple/unlink', body: { proof: 'p-1', sessionId: 's-1' } },
+    ]);
+  });
+});
+
 describe("the account's time zone", () => {
   test('sends the device zone on every request, and reads the list', async () => {
     const headers: (string | null)[] = [];

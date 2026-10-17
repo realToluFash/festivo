@@ -1,0 +1,175 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\User\SignInMethods;
+
+use App\Audit\Auditor;
+use App\Domain\User\Provider\ProviderClaims;
+use App\Domain\User\TokenIssuer;
+use App\Entity\ProviderIdentity;
+use App\Entity\RefreshToken;
+use App\Entity\User;
+use App\Enum\Actor;
+use App\Enum\ErrorCode;
+use App\Enum\IdentityProvider;
+use App\Http\AfterResponse;
+use App\Http\Exception\ApiException;
+use App\Repository\ProviderIdentityRepository;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
+use Psl\Vec;
+use Psr\Clock\ClockInterface;
+use SensitiveParameter;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Uid\Uuid;
+use Throwable;
+
+/** Settings > Security, Ways to sign in: Google or Apple bound on purpose, or removed, but never the last way in (sc-510). */
+final readonly class ProviderLinking
+{
+    public function __construct(
+        private ProviderIdentityRepository $providerIdentityRepository,
+        private RecentProof $recentProof,
+        private TokenIssuer $tokenIssuer,
+        private Auditor $auditor,
+        private SignInMethodMailer $signInMethodMailer,
+        private AfterResponse $afterResponse,
+        private EntityManagerInterface $entityManager,
+        private ClockInterface $clock,
+    ) {
+    }
+
+    /** Any address the provider vouches for, matching or not: a work Google account on a personal sign-up is the point. */
+    public function link(
+        User $user,
+        IdentityProvider $provider,
+        ProviderClaims $claims,
+        #[SensitiveParameter]
+        ?string $proof,
+        ?Request $request = null,
+    ): ProviderIdentity {
+        $this->recentProof->require($user, $proof);
+        $connection = $this->entityManager->getConnection();
+        $connection->beginTransaction();
+
+        try {
+            $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
+            $held = $this->providerIdentityRepository->findOneBySubject($provider, $claims->subject);
+
+            // The same account linked again changes nothing, so nothing is recorded or emailed.
+            if (null !== $held && $held->getUser()->getId()->equals($user->getId())) {
+                $connection->commit();
+
+                return $held;
+            }
+
+            if (null !== $held) {
+                throw self::taken($provider);
+            }
+
+            if (null !== $this->linkedTo($user, $provider)) {
+                throw new ApiException(ErrorCode::Conflict, 'Unlink the account linked now before linking another.');
+            }
+
+            $identity = new ProviderIdentity($user, $provider, $claims->subject, $claims->verifiedEmail());
+            $this->entityManager->persist($identity);
+            $this->record($user, 'provider.linked', $provider);
+            $this->entityManager->flush();
+            $connection->commit();
+        } catch (UniqueConstraintViolationException $e) {
+            $connection->rollBack();
+
+            throw self::taken($provider, $e);
+        } catch (Throwable $e) {
+            $connection->rollBack();
+
+            throw $e;
+        }
+
+        $this->tell($user, $provider, $identity->getEmail(), $request, linked: true);
+
+        return $identity;
+    }
+
+    /**
+     * Never the last way in: with no password and no other provider, it stays (sc-113's rule for the last address).
+     *
+     * @return array{signedOut: int, thisDevice: bool} the sessions that sign-ins through it started, now ended
+     */
+    public function unlink(
+        User $user,
+        IdentityProvider $provider,
+        #[SensitiveParameter]
+        ?string $proof,
+        ?Uuid $session = null,
+        ?Request $request = null,
+    ): array {
+        $this->recentProof->require($user, $proof);
+        $connection = $this->entityManager->getConnection();
+        $connection->beginTransaction();
+
+        try {
+            $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
+            $all = $this->providerIdentityRepository->findBy(['user' => $user]);
+            [$removed, $kept] = Vec\partition($all, static fn (ProviderIdentity $identity): bool => $identity->getProvider() === $provider);
+
+            if ([] === $removed) {
+                throw ApiException::notFound('That provider is not linked.');
+            }
+
+            if (null === $user->getPassword() && [] === $kept) {
+                throw new ApiException(ErrorCode::LastSignInMethod, 'Set a password or link another account before removing this one.');
+            }
+
+            // sc-69 refuses here too, when an organisation requires Google or Apple and this is the member's last one.
+            foreach ($removed as $identity) {
+                $this->entityManager->remove($identity);
+            }
+
+            $this->record($user, 'provider.unlinked', $provider);
+            $this->entityManager->flush();
+            $here = null === $session ? null : $this->entityManager->find(RefreshToken::class, $session);
+            $thisDevice = null !== $here && $here->getUser()->getId()->equals($user->getId()) && $here->getSignedInWith() === $provider && $here->isUsable();
+            $signedOut = $this->tokenIssuer->revokeSignedInWith($user, $provider);
+            $connection->commit();
+        } catch (Throwable $e) {
+            $connection->rollBack();
+
+            throw $e;
+        }
+
+        $this->tell($user, $provider, Iter\first($removed)?->getEmail(), $request, linked: false);
+
+        return ['signedOut' => $signedOut, 'thisDevice' => $thisDevice];
+    }
+
+    private function linkedTo(User $user, IdentityProvider $provider): ?ProviderIdentity
+    {
+        return $this->providerIdentityRepository->findOneBy(['user' => $user, 'provider' => $provider]);
+    }
+
+    private function record(User $user, string $action, IdentityProvider $provider): void
+    {
+        $this->auditor->record($action, 'Account', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['provider' => [null, $provider->value]]);
+    }
+
+    private function tell(User $user, IdentityProvider $provider, ?string $vouchedFor, ?Request $request, bool $linked): void
+    {
+        $at = $this->clock->now();
+        $userAgent = $request?->headers->get('User-Agent');
+        $ipAddress = $request?->getClientIp();
+        $asked = $request?->getLocale();
+
+        $this->afterResponse->defer($linked
+            ? fn () => $this->signInMethodMailer->sendLinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked)
+            : fn () => $this->signInMethodMailer->sendUnlinked($user, $provider, $vouchedFor, $at, $userAgent, $ipAddress, $asked));
+    }
+
+    private static function taken(IdentityProvider $provider, ?Throwable $previous = null): ApiException
+    {
+        return new ApiException(ErrorCode::ProviderTaken, 'That account is already linked to another Soirely account.', [], $previous, [], ['provider' => $provider->value]);
+    }
+}

@@ -20,7 +20,7 @@ const ACCOUNT = {
   hasPassword: true,
   emailAddresses: [{ id: 'a1', address: 'organiser@example.com', verified: true, primary: true }],
   phoneNumbers: [],
-  providers: ['google'],
+  providers: [{ provider: 'google', email: null }],
 };
 
 const ISSUED = { accessToken: 'access', expiresIn: 900, refreshTokenExpiresIn: 2592000 };

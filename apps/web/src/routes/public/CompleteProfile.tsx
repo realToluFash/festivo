@@ -48,11 +48,8 @@ export function CompleteProfile() {
 
   // Only the gate it is behind: an unverified account verifies first, a complete one is let in.
   const landing = landingFor(state.session.awaiting);
-  const provider = state.session.providers.includes('google')
-    ? 'Google'
-    : state.session.providers.includes('apple')
-      ? 'Apple'
-      : null;
+  const vouched = (name: string) => state.session.providers.some((p) => p.provider === name);
+  const provider = vouched('google') ? 'Google' : vouched('apple') ? 'Apple' : null;
   if (landing !== '/complete-profile') return <Navigate to={landing} replace />;
 
   async function signOut(): Promise<void> {
