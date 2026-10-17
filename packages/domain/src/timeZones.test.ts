@@ -113,6 +113,11 @@ describe('cities in the reader’s language, and the names a zone once had', () 
     expect(ids('London')).toEqual(['Europe/London']);
     expect(ids('st john')).toEqual(['America/St_Johns']);
     expect(ids('St Johns')).toEqual(['America/St_Johns']);
+    expect(ids("st. john's")).toEqual(['America/St_Johns']);
+    expect(exactZone(LOCAL, "St. John's")?.id).toBe('America/St_Johns');
+    expect(
+      matchingZones([{ ...LOCAL[3]!, city: 'Saint-Jean de Terre-Neuve' }], 'saint jean'),
+    ).toHaveLength(1);
   });
 
   it('finds a zone by a former name, and says which', () => {

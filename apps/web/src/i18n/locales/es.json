@@ -480,7 +480,8 @@
     "saving": "Guardando…",
     "cancel": "Cancelar",
     "saved": "Zona horaria cambiada a {{zone}}. Las horas de sus correos ya la usan.",
-    "was": "antes {{name}}"
+    "was": "antes {{name}}",
+    "countryWas": "{{country}} · antes {{name}}"
   },
   "lostTwoFactor": {
     "startTitle": "Vuelva a entrar sin su aplicación de autenticación",

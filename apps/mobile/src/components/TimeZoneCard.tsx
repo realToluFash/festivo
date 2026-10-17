@@ -133,9 +133,11 @@ function Choosing({
   const rowDetail = (zone: TimeZoneOption): string => {
     const was = formerName(zone, typed);
 
-    return was == null
-      ? zone.country
-      : [zone.country, t('timeZone.was', { name: was })].filter(Boolean).join(' · ');
+    if (was == null) return zone.country;
+
+    return zone.country === ''
+      ? t('timeZone.was', { name: was })
+      : t('timeZone.countryWas', { country: zone.country, name: was });
   };
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
 

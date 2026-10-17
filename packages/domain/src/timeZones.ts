@@ -14,8 +14,15 @@ export function zoneLabel(zone: ZoneRow): string {
   return `${zone.city} (UTC${zone.offset})`;
 }
 
+/** Accents, case and the punctuation CLDR's cities carry (Saint-Jean, St. John’s) never decide a match. */
 function folded(text: string): string {
-  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[-.'’]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /** "utc+1", "+5:30" or "gmt−3" as a sign, hours and maybe minutes; null for any other text. */
@@ -43,7 +50,7 @@ export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: str
   const wanted = folded(query);
   if (wanted === '') return [...zones];
 
-  const offset = offsetQuery(wanted);
+  const offset = offsetQuery(query.toLowerCase().trim());
   if (offset !== null) {
     const prefix = `${offset.sign}${offset.hours}:${offset.minutes ?? ''}`;
 
@@ -58,7 +65,13 @@ export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: str
 /** The former name a row was found by, to show as "was Calcutta"; null when its own name, country or offset matched. */
 export function formerName(zone: ZoneRow, query: string): string | null {
   const wanted = folded(query);
-  if (wanted === '' || offsetQuery(wanted) !== null || ownNameMatches(zone, wanted)) return null;
+  if (
+    wanted === '' ||
+    offsetQuery(query.toLowerCase().trim()) !== null ||
+    ownNameMatches(zone, wanted)
+  ) {
+    return null;
+  }
 
   return (zone.formerNames ?? []).find((name) => folded(name).includes(wanted)) ?? null;
 }

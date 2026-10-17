@@ -393,7 +393,8 @@
     "saving": "Saving…",
     "cancel": "Cancel",
     "saved": "Time zone changed to {{zone}}. Times in your emails now use it.",
-    "was": "was {{name}}"
+    "was": "was {{name}}",
+    "countryWas": "{{country}} · was {{name}}"
   },
   "account": {
     "title": "Your account",
