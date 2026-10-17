@@ -1,5 +1,5 @@
 import { awaiting } from '@soirely/api-client';
-import { meetsPasswordLength, PASSWORD_MINIMUM_LENGTH } from '@soirely/domain';
+import { meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
@@ -12,6 +12,7 @@ import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { Field, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
+import { PasswordRule } from '../src/components/PasswordRule.tsx';
 import { OrRule, ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
@@ -223,10 +224,9 @@ function Form({
           checks.errors.email == null && fields.email === 'taken'
             ? [
                 { label: t('register.signIn'), onPress: toSignIn, testID: 'register.taken.signIn' },
-                // Recovery is sc-61; until it exists, both ways out start at sign-in.
                 {
                   label: t('register.resetPassword'),
-                  onPress: toSignIn,
+                  onPress: () => router.push('/forgot-password'),
                   testID: 'register.taken.reset',
                 },
               ]
@@ -278,33 +278,7 @@ function Form({
         />
       </Field>
 
-      <View style={styles.ruleInset}>
-        <Text size={tokens.typeLabel.size} weight="semibold" style={styles.ruleHeading}>
-          {t('register.ruleHeading')}
-        </Text>
-        <View style={styles.rule} testID={lengthMet ? 'register.ruleMet' : 'register.ruleNotYet'}>
-          <View style={[styles.ruleMark, lengthMet && styles.ruleMarkMet]}>
-            {lengthMet && (
-              <Text size={tokens.typeMeta.size} weight="bold" style={styles.onAccent}>
-                ✓
-              </Text>
-            )}
-          </View>
-          <Text size={tokens.typeBodyPhone.size} style={styles.ruleText}>
-            {t('register.ruleLength', { count: PASSWORD_MINIMUM_LENGTH })}
-          </Text>
-          <Text
-            size={tokens.typeSmall.size}
-            weight="semibold"
-            style={lengthMet ? styles.accentText : styles.secondary}
-          >
-            {lengthMet ? t('register.ruleMet') : t('register.ruleNotYet')}
-          </Text>
-        </View>
-        <Text size={tokens.typeSmall.size} style={styles.secondary}>
-          {t('register.ruleNote')}
-        </Text>
-      </View>
+      <PasswordRule met={lengthMet} testID="register" />
 
       <PrimaryButton
         label={busy ? t('register.submitting') : t('register.submit')}
@@ -357,36 +331,4 @@ const styles = StyleSheet.create({
   onAccent: { color: tokens.colorInkOnDark },
   providers: { gap: tokens.spaceMd, paddingTop: tokens.spaceSm },
   form: { gap: tokens.spaceXl },
-  ruleInset: {
-    gap: tokens.spaceSm,
-    paddingVertical: tokens.spaceLg,
-    paddingHorizontal: tokens.spaceLg,
-    borderRadius: tokens.radiusInset,
-    borderWidth: 1,
-    borderColor: tokens.colorInsetBorder,
-    backgroundColor: tokens.colorInset,
-  },
-  ruleHeading: {
-    color: tokens.colorInkSecondary,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  rule: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceMd,
-    minHeight: tokens.space3xl,
-  },
-  ruleMark: {
-    width: tokens.sizeMark,
-    height: tokens.sizeMark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.sizeMark / 2,
-    borderWidth: 1.5,
-    borderColor: tokens.colorMarkEmpty,
-    backgroundColor: tokens.colorCard,
-  },
-  ruleMarkMet: { borderColor: tokens.colorAccent, backgroundColor: tokens.colorAccent },
-  ruleText: { flex: 1 },
 });

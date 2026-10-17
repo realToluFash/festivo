@@ -269,6 +269,9 @@ describe('signing in, for real', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/Too many tries/));
     expect(screen.getByRole('alert').textContent).toMatch(/\d{2}:\d{2}/);
     expect(screen.getByRole('button', { name: /Try again at/ })).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Reset your password' }).getAttribute('href')).toBe(
+      '/forgot-password',
+    );
   });
 
   it('lifts the lock on the minute it named, keeping the address and clearing the password', async () => {
@@ -284,7 +287,7 @@ describe('signing in, for real', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toMatch(
-        /Too many tries\s*Try again at 14:35\.$/,
+        /Too many tries\s*Try again at 14:35\./,
       ),
     );
 

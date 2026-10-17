@@ -16,6 +16,7 @@ import { currentLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { landingFor } from '../src/landing.ts';
+import { useLayout } from '../src/layout/useLayout.ts';
 
 type Status =
   | { kind: 'ready' }
@@ -82,6 +83,7 @@ function Credentials({
   onProviderFailed: (provider: string) => void;
 }) {
   const { t } = useTranslation();
+  const { kind } = useLayout();
   const email = useRef<TextInput>(null);
   const password = useRef<TextInput>(null);
 
@@ -145,6 +147,11 @@ function Credentials({
           mark="!"
           title={t('signIn.lockedTitle')}
           body={t('signIn.lockedBody', { time: status.retryAt })}
+          action={{
+            label: t('signIn.lockedReset'),
+            onPress: () => router.push('/forgot-password'),
+            testID: 'signIn.locked.reset',
+          }}
         />
       )}
 
@@ -181,6 +188,11 @@ function Credentials({
 
       <Field
         label={t('signIn.password')}
+        labelAction={{
+          label: kind === 'phone' ? t('recovery.forgotShort') : t('recovery.forgot'),
+          onPress: () => router.push('/forgot-password'),
+          testID: 'signIn.forgot',
+        }}
         error={checks.errors.password ?? (status.kind === 'refused' ? t('signIn.refused') : null)}
       >
         <PasswordField

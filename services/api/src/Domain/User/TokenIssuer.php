@@ -62,6 +62,16 @@ final readonly class TokenIssuer
             ->execute();
     }
 
+    /** Every session the account has, on every device: a new password means nobody stays in on the old one. */
+    public function revokeAllFor(User $user): void
+    {
+        $this->entityManager
+            ->createQuery('UPDATE ' . RefreshToken::class . ' t SET t.revokedAt = :now WHERE t.user = :user AND t.revokedAt IS NULL')
+            ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
+            ->setParameter('user', $user)
+            ->execute();
+    }
+
     /** SHA-256, not a password hash: 256 bits of randomness has nothing to brute-force. */
     public static function hash(string $plain): string
     {

@@ -1,0 +1,129 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domain\User\Recovery;
+
+use App\Domain\User\Model\SignInResult;
+use App\Domain\User\Password\NewPasswordRules;
+use App\Domain\User\Password\PasswordResolver;
+use App\Domain\User\TokenIssuer;
+use App\Entity\PasswordResetToken;
+use App\Entity\ProviderIdentity;
+use App\Entity\User;
+use App\Enum\ErrorCode;
+use App\Http\Exception\ApiException;
+use App\Repository\PasswordResetTokenRepository;
+use App\Repository\ProviderIdentityRepository;
+use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Psl\SecureRandom;
+use Psl\Str;
+use Psl\Vec;
+use Psr\Clock\ClockInterface;
+use SensitiveParameter;
+use Symfony\Component\HttpFoundation\Request;
+
+/** Forgotten password to a new one: a single-use link, every session ended, and this device signed in. */
+final readonly class PasswordRecovery
+{
+    private const int TOKEN_BYTES = 32;
+
+    public function __construct(
+        private UserRepository $userRepository,
+        private PasswordResetTokenRepository $passwordResetTokenRepository,
+        private ProviderIdentityRepository $providerIdentityRepository,
+        private NewPasswordRules $newPasswordRules,
+        private PasswordResolver $passwordResolver,
+        private TokenIssuer $tokenIssuer,
+        private RecoveryMailer $recoveryMailer,
+        private EntityManagerInterface $entityManager,
+        private ClockInterface $clock,
+    ) {
+    }
+
+    /** Says nothing either way: what happens next is only ever in the inbox, so the caller cannot tell. */
+    public function request(string $email): void
+    {
+        $user = $this->userRepository->findOneByPrimaryEmailAddress($email);
+
+        if (null === $user) {
+            return;
+        }
+
+        if (null === $user->getPassword()) {
+            $this->recoveryMailer->sendHowYouSignIn($user, $this->providerNames($user));
+
+            return;
+        }
+
+        $plain = \bin2hex(SecureRandom\bytes(self::TOKEN_BYTES));
+        $this->entityManager->persist(new PasswordResetToken($user, TokenIssuer::hash($plain), $this->clock->now()));
+        $this->entityManager->flush();
+
+        $this->recoveryMailer->sendLink($user, $plain);
+    }
+
+    /** Whose link this is, so the page can say "For <address>", or why it no longer works. */
+    public function check(#[SensitiveParameter] string $token): User
+    {
+        return $this->usable($token)->getUser();
+    }
+
+    public function reset(#[SensitiveParameter] string $token, #[SensitiveParameter] string $password, ?Request $request = null): SignInResult
+    {
+        $reset = $this->usable($token);
+        $violations = $this->newPasswordRules->violations($password);
+
+        // A refused password leaves the link usable and the old password in place.
+        if ([] !== $violations) {
+            throw ApiException::validation($violations);
+        }
+
+        $user = $reset->getUser();
+        $now = $this->clock->now();
+
+        $user->setPassword($this->passwordResolver->hash($password));
+        $reset->markUsed($now);
+        $this->entityManager->flush();
+
+        $this->passwordResetTokenRepository->spendAllFor($user, $now);
+        $this->tokenIssuer->revokeAllFor($user);
+        $tokens = $this->tokenIssuer->issueFor($user, $request);
+        $this->entityManager->flush();
+
+        $this->recoveryMailer->sendChanged($user, $now);
+
+        return new SignInResult($user, $tokens);
+    }
+
+    private function usable(#[SensitiveParameter] string $token): PasswordResetToken
+    {
+        $reset = '' === $token ? null : $this->passwordResetTokenRepository->findOneByHash(TokenIssuer::hash($token));
+
+        if (null === $reset) {
+            throw new ApiException(ErrorCode::ResetLinkInvalid, 'That reset link is not one Soirely sent.');
+        }
+
+        if ($reset->isUsed()) {
+            throw new ApiException(ErrorCode::ResetLinkUsed, 'This link has already been used.');
+        }
+
+        if ($reset->isExpiredAt($this->clock->now())) {
+            throw new ApiException(ErrorCode::ResetLinkExpired, 'This link has expired.');
+        }
+
+        return $reset;
+    }
+
+    /** @return list<string> */
+    private function providerNames(User $user): array
+    {
+        $names = Vec\map(
+            $this->providerIdentityRepository->findBy(['user' => $user]),
+            static fn (ProviderIdentity $identity): string => Str\capitalize($identity->getProvider()->value),
+        );
+
+        return [] === $names ? ['Google', 'Apple'] : Vec\unique($names);
+    }
+}

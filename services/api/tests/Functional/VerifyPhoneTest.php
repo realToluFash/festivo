@@ -292,7 +292,7 @@ final class VerifyPhoneTest extends ApiTestCase
     private function phones(): array
     {
         self::service(EntityManagerInterface::class)->clear();
-        $rows = self::service(PhoneNumberRepository::class)->findBy(['user' => $this->user->getId()]);
+        $rows = self::service(PhoneNumberRepository::class)->findBy(['user' => $this->user->getId()], ['isPending' => 'ASC', 'number' => 'ASC']);
         $described = [];
 
         foreach ($rows as $row) {

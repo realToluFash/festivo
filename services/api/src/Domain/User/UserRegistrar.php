@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
-use App\Domain\User\Interfaces\BreachedPasswordCheckerInterface;
 use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\RegistrationResult;
-use App\Domain\User\Password\PasswordPolicy;
+use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeMailer;
@@ -15,7 +14,6 @@ use App\Entity\EmailAddress;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
-use App\Enum\PasswordFailure;
 use App\Http\Exception\ApiException;
 use App\Repository\EmailAddressRepository;
 use DateTimeImmutable;
@@ -33,7 +31,7 @@ final readonly class UserRegistrar
     public function __construct(
         private EmailAddressRepository $emailAddressRepository,
         private PasswordResolver $passwordResolver,
-        private BreachedPasswordCheckerInterface $breachedPasswordChecker,
+        private NewPasswordRules $newPasswordRules,
         private TokenIssuer $tokenIssuer,
         private VerificationCodeIssuer $verificationCodeIssuer,
         private VerificationCodeMailer $verificationCodeMailer,
@@ -127,23 +125,7 @@ final readonly class UserRegistrar
             $violations[] = $this->violation('name', 'validation.name_required', ErrorCode::ValidationFailed->value);
         }
 
-        $failures = PasswordPolicy::check($password);
-
-        // The corpus is asked only once the length rule passes. There is no
-        // reason to spend a network call on a password that is already refused.
-        if ([] === $failures && $this->breachedPasswordChecker->isBreached($password)) {
-            $failures[] = PasswordFailure::Breached;
-        }
-
-        foreach ($failures as $failure) {
-            $violations[] = $this->violation('password', 'validation.' . $failure->value, $failure->value, [
-                '{count}' => match ($failure) {
-                    PasswordFailure::TooShort => (string) PasswordPolicy::MINIMUM_LENGTH,
-                    PasswordFailure::TooLong => (string) PasswordPolicy::MAXIMUM_LENGTH,
-                    PasswordFailure::Breached => '',
-                },
-            ]);
-        }
+        $violations = [...$violations, ...$this->newPasswordRules->violations($password)];
 
         if ([] !== $violations) {
             throw ApiException::validation($violations);

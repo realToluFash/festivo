@@ -4,5 +4,17 @@
     "verification.body": "Saisissez ce code dans Soirely pour prouver que l'adresse est la vôtre.",
     "verification.expiry": "Il est valable {minutes} minutes, et une seule fois.",
     "verification.ignore": "Si vous n'avez pas créé de compte Soirely, vous pouvez ignorer ce message.",
-    "verification.text": "Votre code Soirely est {code}. Il est valable {minutes} minutes."
+    "verification.text": "Votre code Soirely est {code}. Il est valable {minutes} minutes.",
+    "recovery.link.subject": "Choisissez un nouveau mot de passe Soirely",
+    "recovery.link.heading": "Choisissez un nouveau mot de passe",
+    "recovery.link.body": "Quelqu'un a demandé à réinitialiser le mot de passe de ce compte Soirely. Ouvrez ce lien pour en choisir un nouveau :",
+    "recovery.link.expiry": "Il fonctionne pendant {minutes} minutes, et une seule fois.",
+    "recovery.link.ignore": "Si vous n'avez rien demandé, ignorez cet e-mail. Votre mot de passe ne change pas.",
+    "recovery.provider.subject": "Comment vous vous connectez à Soirely",
+    "recovery.provider.body": "Quelqu'un a demandé à réinitialiser le mot de passe de ce compte Soirely, mais il n'en a pas : vous vous connectez avec {providers}. Utilisez ce bouton sur l'écran de connexion.",
+    "recovery.provider.ignore": "Si vous n'avez rien demandé, vous pouvez ignorer cet e-mail.",
+    "recovery.changed.subject": "Votre mot de passe Soirely a été changé",
+    "recovery.changed.body": "Le mot de passe de ce compte Soirely a été changé le {when}. Tous les autres appareils ont été déconnectés.",
+    "recovery.changed.notYou": "Si ce n'était pas vous, réinitialisez votre mot de passe tout de suite.",
+    "recovery.or": " ou "
 }

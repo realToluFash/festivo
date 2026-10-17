@@ -12,6 +12,7 @@ export const CONTROL_TEXT_SIZE = 16;
 export function Field({
   label,
   pill,
+  labelAction,
   error,
   errorActions,
   help,
@@ -19,6 +20,7 @@ export function Field({
 }: {
   label: string;
   pill?: string | undefined;
+  labelAction?: FieldAction | undefined;
   error?: string | null | undefined;
   errorActions?: readonly FieldAction[] | undefined;
   help?: string | undefined;
@@ -36,6 +38,18 @@ export function Field({
               {pill}
             </Text>
           </View>
+        )}
+        {labelAction != null && (
+          <Pressable
+            style={[styles.action, styles.trailing]}
+            onPress={labelAction.onPress}
+            accessibilityRole="link"
+            testID={labelAction.testID}
+          >
+            <Text size={tokens.typeSmall.size} weight="semibold" style={styles.accent}>
+              {labelAction.label}
+            </Text>
+          </Pressable>
         )}
       </View>
       {children}
@@ -156,6 +170,7 @@ const styles = StyleSheet.create({
   accent: { color: tokens.colorAccentText },
   actions: { flexDirection: 'row', flexWrap: 'wrap', columnGap: tokens.spaceXl },
   action: { minHeight: tokens.sizeHit, justifyContent: 'center' },
+  trailing: { marginLeft: 'auto' },
   input: fieldStyles.input,
   wrong: fieldStyles.wrong,
   code: {

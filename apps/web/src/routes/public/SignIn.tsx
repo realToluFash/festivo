@@ -124,6 +124,9 @@ export function SignIn() {
           <div className="notice-body">
             <p className="notice-title">{t('signIn.lockedTitle')}</p>
             <p>{t('signIn.lockedBody', { time: status.retryAt })}</p>
+            <Link className="link-button" to="/forgot-password">
+              {t('signIn.lockedReset')}
+            </Link>
           </div>
         </div>
       )}
@@ -168,6 +171,9 @@ export function SignIn() {
         <div className="field">
           <div className="field-heading">
             <label htmlFor="password">{t('signIn.password')}</label>
+            <Link className="link-button" to="/forgot-password">
+              {t('recovery.forgot')}
+            </Link>
           </div>
           <PasswordField
             id="password"

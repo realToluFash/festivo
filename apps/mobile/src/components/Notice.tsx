@@ -1,6 +1,7 @@
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
+import type { FieldAction } from './Field.tsx';
 import { Text } from './Text.tsx';
 
 export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
@@ -10,12 +11,14 @@ export function Notice({
   mark,
   title,
   body,
+  action,
   heading = false,
 }: {
   tone: NoticeTone;
   mark: string;
   title?: string;
   body: string;
+  action?: FieldAction | undefined;
   /** The notice is the screen's message, so its title is the screen's heading. */
   heading?: boolean;
 }) {
@@ -57,6 +60,18 @@ export function Notice({
           </Text>
         )}
         <Text size={tokens.typeBodyPhone.size}>{body}</Text>
+        {action != null && (
+          <Pressable
+            style={styles.action}
+            onPress={action.onPress}
+            accessibilityRole="link"
+            testID={action.testID}
+          >
+            <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
+              {action.label}
+            </Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -79,6 +94,8 @@ const styles = StyleSheet.create({
   broken: { backgroundColor: tokens.colorBrokenTint, borderColor: tokens.colorBroken },
   done: { backgroundColor: tokens.colorAccentTint, borderColor: tokens.colorAccentTintBorder },
   body: { flex: 1, gap: tokens.spaceHair },
+  action: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
+  accent: { color: tokens.colorAccentText },
 
   mark: {
     width: tokens.sizePill,

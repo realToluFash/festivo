@@ -21,6 +21,9 @@ enum ErrorCode: string
     case InvalidCredentials = 'invalid_credentials';
     case InvalidRefreshToken = 'invalid_refresh_token';
     case OAuthTokenInvalid = 'oauth_token_invalid';
+    case ResetLinkInvalid = 'reset_link_invalid';
+    case ResetLinkUsed = 'reset_link_used';
+    case ResetLinkExpired = 'reset_link_expired';
     case Forbidden = 'forbidden';
     case PermissionRequired = 'permission_required';
     case AccountUnverified = 'account_unverified';
@@ -45,7 +48,8 @@ enum ErrorCode: string
             self::BadRequest => 400,
             self::ValidationFailed => 422,
             self::MethodNotAllowed => 405,
-            self::NotFound => 404,
+            self::NotFound, self::ResetLinkInvalid => 404,
+            self::ResetLinkUsed, self::ResetLinkExpired => 410,
             self::Conflict, self::EmailTaken, self::PhoneTaken => 409,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid => 401,
