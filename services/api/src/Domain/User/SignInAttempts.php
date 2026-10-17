@@ -17,15 +17,13 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 /** Sign-in's budgets per address (sc-838) under an advisory lock; never per IP, so one venue's Wi-Fi never queues. */
 final readonly class SignInAttempts
 {
-    private GuardedAttempt $guardedAttempt;
-
     public function __construct(
         private UserAuthenticator $userAuthenticator,
         private EntityManagerInterface $entityManager,
         private RateLimiterFactoryInterface $signInIpLimiter,
         private RateLimiterFactoryInterface $signInAccountLimiter,
+        private GuardedAttempt $guardedAttempt,
     ) {
-        $this->guardedAttempt = new GuardedAttempt($entityManager);
     }
 
     public function signIn(string $email, #[SensitiveParameter] string $password, ?Request $request = null): SignInResult

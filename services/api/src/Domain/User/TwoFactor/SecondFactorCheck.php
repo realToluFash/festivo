@@ -26,6 +26,7 @@ final readonly class SecondFactorCheck
         private RateLimiterFactoryInterface $twoFactorAccountLimiter,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private GuardedAttempt $guardedAttempt,
     ) {
     }
 
@@ -79,7 +80,7 @@ final readonly class SecondFactorCheck
     /** @param callable(): ?WrongSecret $check the wrong code that spends the budget is refused as the pause itself */
     private function guarded(TwoFactorFactor $factor, callable $check): void
     {
-        new GuardedAttempt($this->entityManager)->attempt(
+        $this->guardedAttempt->attempt(
             fn () => $this->entityManager->refresh($factor, LockMode::PESSIMISTIC_WRITE),
             fn (): array => [$this->twoFactorAccountLimiter->create($factor->getUser()->getId()->toRfc4122())],
             $check,

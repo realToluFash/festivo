@@ -34,6 +34,7 @@ final readonly class PasswordChange
         private TranslatorInterface $translator,
         private ClockInterface $clock,
         private RateLimiterFactoryInterface $passwordChangeAccountLimiter,
+        private GuardedAttempt $guardedAttempt,
     ) {
     }
 
@@ -47,7 +48,7 @@ final readonly class PasswordChange
         ?Uuid $keepSession = null,
         ?Request $request = null,
     ): int {
-        $signedOut = new GuardedAttempt($this->entityManager)->attempt(
+        $signedOut = $this->guardedAttempt->attempt(
             fn () => $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE),
             fn (): array => [$this->passwordChangeAccountLimiter->create($user->getId()->toRfc4122())],
             function () use ($user, $current, $new, $keepSession): int|WrongSecret {

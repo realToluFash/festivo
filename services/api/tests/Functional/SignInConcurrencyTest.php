@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Attempts\GuardedAttempt;
 use App\Domain\User\SignInAttempts;
 use App\Domain\User\UserAuthenticator;
 use App\Enum\ErrorCode;
@@ -91,7 +92,7 @@ final class SignInConcurrencyTest extends FunctionalTestCase
     private function refusal(string $email): ?ErrorCode
     {
         $limit = static fn (string $id, int $count): RateLimiterFactory => new RateLimiterFactory(['id' => $id, 'policy' => 'fixed_window', 'limit' => $count, 'interval' => '15 minutes'], new InMemoryStorage());
-        $attempts = new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $limit('ip', 30), $limit('account', 5));
+        $attempts = new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $limit('ip', 30), $limit('account', 5), new GuardedAttempt(self::em()));
 
         try {
             $attempts->signIn($email, 'not the password at all', Request::create('/api/auth/login', server: ['REMOTE_ADDR' => self::VENUE_WIFI]));

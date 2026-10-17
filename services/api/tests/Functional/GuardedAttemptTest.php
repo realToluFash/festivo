@@ -104,16 +104,18 @@ final class GuardedAttemptTest extends FunctionalTestCase
         self::em()->clear();
         self::assertSame('Counted', self::em()->find(User::class, $user->getId())?->getName());
 
-        $level = self::em()->getConnection()->getTransactionNestingLevel();
-
         try {
-            $this->attempt(static fn () => null, static fn (): array => [self::budget(5)], static function (): never {
+            $this->attempt(static fn () => null, static fn (): array => [self::budget(5)], static function () use ($user): never {
+                self::em()->find(User::class, $user->getId())?->setName('Lost');
+                self::em()->flush();
+
                 throw new RuntimeException('The database went away.');
             });
         } catch (RuntimeException) {
         }
 
-        self::assertSame($level, self::em()->getConnection()->getTransactionNestingLevel(), 'its transaction is rolled back, not left open');
+        self::em()->clear();
+        self::assertSame('Counted', self::em()->find(User::class, $user->getId())?->getName(), 'what the failed attempt wrote is gone');
     }
 
     /**
