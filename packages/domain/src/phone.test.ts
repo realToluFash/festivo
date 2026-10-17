@@ -71,11 +71,27 @@ describe('a number with no country', () => {
 });
 
 describe('the phone screens', () => {
-  it('start on the number’s country, then the account’s Country, then the device, else blank', () => {
-    expect(phoneScreenCountry('GB', 'GH', 'NG')).toBe('GB');
-    expect(phoneScreenCountry(null, 'GH', 'NG')).toBe('GH');
-    expect(phoneScreenCountry(undefined, null, 'NG')).toBe('NG');
-    expect(phoneScreenCountry(null, '', null)).toBe('');
+  const gb = { primary: true, countryCode: 'GB' };
+
+  it('start on the number’s country, then the Country from "A few details", then the device, else blank', () => {
+    expect(phoneScreenCountry({ organisationCountry: 'GH', phoneNumbers: [gb] }, 'NG')).toBe('GB');
+    expect(phoneScreenCountry({ organisationCountry: 'GH', phoneNumbers: [] }, 'NG')).toBe('GH');
+    expect(phoneScreenCountry({ organisationCountry: null, phoneNumbers: [] }, 'NG')).toBe('NG');
+    expect(phoneScreenCountry({ organisationCountry: '', phoneNumbers: [] }, null)).toBe('');
+  });
+
+  it('read the Country where "A few details" saves it, as /me returns an account with Ghana chosen', () => {
+    const account = { countryCode: null, organisationCountry: 'GH', phoneNumbers: [] };
+
+    expect(phoneScreenCountry(account, 'NG')).toBe('GH');
+  });
+
+  it('take a number that is not the primary for nothing', () => {
+    const pending = { primary: false, countryCode: 'GB' };
+
+    expect(phoneScreenCountry({ organisationCountry: 'GH', phoneNumbers: [pending] }, 'NG')).toBe(
+      'GH',
+    );
   });
 
   it('focus the code when none is chosen, and the number otherwise', () => {
