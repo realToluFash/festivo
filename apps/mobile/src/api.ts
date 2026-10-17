@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 
 import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
+import { installId } from './installId.ts';
 import { landingFor } from './landing.ts';
 import { signedOutHold } from './signedOutHold.ts';
 import { tokens } from './tokens.ts';
@@ -21,6 +22,7 @@ export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
   locale: () => currentLocale(),
   timeZone: () => getCalendars()[0]?.timeZone ?? null,
+  device: () => installId(),
   tokens,
   // Stated rather than defaulted: the web client states the opposite deliberately.
   refreshTokenIn: 'body',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
+use App\Domain\User\Device\KnownDevices;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\RegistrationResult;
@@ -36,6 +37,7 @@ final readonly class UserRegistrar
         private PasswordResolver $passwordResolver,
         private NewPasswordRules $newPasswordRules,
         private TokenIssuer $tokenIssuer,
+        private KnownDevices $knownDevices,
         private VerificationCodeIssuer $verificationCodeIssuer,
         private VerificationCodeMailer $verificationCodeMailer,
         private EntityManagerInterface $entityManager,
@@ -186,6 +188,10 @@ final readonly class UserRegistrar
         } catch (UniqueConstraintViolationException $e) {
             // A registration landing after the read above: the constraint is the real guard.
             throw self::taken($e);
+        }
+
+        if (null !== $request) {
+            $this->knownDevices->remember($user, $request);
         }
 
         if (null !== $address && !$address->isVerified()) {

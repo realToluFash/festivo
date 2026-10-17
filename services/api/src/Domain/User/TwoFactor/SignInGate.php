@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\TwoFactor;
 
+use App\Domain\User\Device\KnownDevices;
 use App\Domain\User\Model\IssuedChallenge;
 use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\Model\ProviderLink;
@@ -34,6 +35,7 @@ final readonly class SignInGate
         private ProviderIdentityRepository $providerIdentityRepository,
         private SecondFactorCheck $secondFactorCheck,
         private TokenIssuer $tokenIssuer,
+        private KnownDevices $knownDevices,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -109,6 +111,10 @@ final readonly class SignInGate
     {
         $tokens = $this->tokenIssuer->issueFor($user, $request, $link?->provider);
         $this->entityManager->flush();
+
+        if (null !== $request) {
+            $this->knownDevices->signedIn($user, $request);
+        }
 
         return $tokens;
     }
