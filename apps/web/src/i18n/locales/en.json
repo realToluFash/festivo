@@ -163,6 +163,7 @@
     "exhaustedBody": "That code no longer works. Send a new one to carry on.",
     "wrongAddress": "Not your address?",
     "wrongAddressBody": "and create your account again with the right one.",
+    "registerAgain": "Register again with the right one",
     "signOut": "Sign out",
     "doneTitle": "Email verified",
     "doneBody": "{{address}} is confirmed. Next, a few details so your team knows who is who.",

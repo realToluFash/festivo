@@ -69,6 +69,7 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
         dropRegistration();
         navigate('/register');
       }}
+      registersAgain
     />
   );
 }
@@ -118,6 +119,7 @@ function CodeScreen({
   onExpired,
   carryOn,
   wrongAddress,
+  registersAgain = false,
 }: {
   address: string;
   alreadyVerified: boolean;
@@ -127,6 +129,8 @@ function CodeScreen({
   onExpired: () => void;
   carryOn: () => void | Promise<void>;
   wrongAddress: () => void | Promise<void>;
+  /** A sign-up has no session to sign out of: it starts again at Register. */
+  registersAgain?: boolean;
 }) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
@@ -349,9 +353,9 @@ function CodeScreen({
           <div className="auth-footnote">
             <span>{t('verifyEmail.wrongAddress')}</span>
             <button className="link-button" type="button" onClick={() => void wrongAddress()}>
-              {t('verifyEmail.signOut')}
+              {registersAgain ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
             </button>
-            <span>{t('verifyEmail.wrongAddressBody')}</span>
+            {!registersAgain && <span>{t('verifyEmail.wrongAddressBody')}</span>}
           </div>
         </>
       )}
