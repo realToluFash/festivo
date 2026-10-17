@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Controller;
 
 use App\Domain\User\Http\AccountSerialiser;
+use App\Domain\User\SignOutEverywhereElse;
 use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Domain\User\TimeZone\TimeZoneList;
 use App\Domain\User\TokenIssuer;
@@ -39,6 +40,7 @@ final class AccountController
         private readonly EntityManagerInterface $entityManager,
         private readonly TranslatorInterface $translator,
         private readonly ClockInterface $clock,
+        private readonly SignOutEverywhereElse $signOutEverywhereElse,
     ) {
     }
 
@@ -113,6 +115,24 @@ final class AccountController
                 'expiresAt' => $session->getExpiresAt()->format(\DATE_ATOM),
             ]),
         ]);
+    }
+
+    /** With the proof from `/api/auth/proof` and the caller's own `sessionId`; without it, this device ends too. */
+    #[Route('/api/auth/sessions/others', name: 'auth_sessions_others_end', methods: ['POST'])]
+    public function endOthers(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape([
+            'proof' => Type\optional(Type\nullable(Type\string())),
+            'sessionId' => Type\optional(Type\nullable(Type\string())),
+        ]));
+
+        $session = $body['sessionId'] ?? null;
+
+        return new JsonResponse($this->signOutEverywhereElse->signOut(
+            $this->user(),
+            $body['proof'] ?? null,
+            null !== $session && Uuid::isValid($session) ? Uuid::fromString($session) : null,
+        ));
     }
 
     #[Route('/api/auth/sessions/{id}', name: 'auth_session_end', methods: ['DELETE'])]

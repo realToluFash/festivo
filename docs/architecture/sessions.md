@@ -275,6 +275,26 @@ answers `{signedOut}`, the number of other sessions it ended.
   not them. It links only to sign-in, carries no part of either password, and a failed send
   leaves the change made.
 
+## Signing out everywhere else
+
+`POST /api/auth/sessions/others` takes the `proof` from `POST /api/auth/proof` and the
+caller's own `sessionId`, and answers `{signedOut, thisDevice}` (sc-115). It is the lost
+phone's button: every session but this device's ends at once.
+
+- **The proof comes first**, the same five-minute proof that linking a provider takes: the
+  password or Google or Apple, then the code with two-factor on, an app code or an unused
+  recovery code, which is spent. Without one it is `proof_required` and nothing ends.
+- **Then the limit**: `sign_out_elsewhere_account`, five proved calls per account in a fixed
+  fifteen-minute window. Past it, `429 too_many_attempts` with `Retry-After` and the time
+  in the detail, and nothing ends. The proof is checked before the budget is spent, so
+  whoever holds an unlocked device cannot use up the owner's.
+- **One statement**: `TokenIssuer::revokeAllExcept()` ends every live session but the chain
+  of the one named, and puts each on the revoked-session list, so the other devices are
+  refused on their next request. `signedOut` is the rows it ended; a second call answers 0.
+- **Without a `sessionId` that is this account's**, the caller's session ends as well, and
+  `thisDevice` is `true`: the client signs out.
+- **One audit entry**, `sessions.signed_out_elsewhere`, carrying the count.
+
 ## Adding a password
 
 An account made with Google or Apple has no password (`hasPassword: false`), and adds one
