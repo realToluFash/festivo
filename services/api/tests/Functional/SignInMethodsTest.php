@@ -141,7 +141,8 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertNotNull(self::em()->find(RefreshToken::class, $byGoogle)?->getRevokedAt());
         self::assertNull(self::em()->find(RefreshToken::class, $byPassword)?->getRevokedAt());
 
-        self::assertNotNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'provider.unlinked']));
+        $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'provider.unlinked']);
+        self::assertSame(['provider' => ['google', null]], $entry?->changes(), 'before and after: it was there, and now is not');
     }
 
     #[Test]

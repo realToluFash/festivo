@@ -76,7 +76,7 @@ final readonly class ProviderLinking
 
             $identity = new ProviderIdentity($user, $provider, $claims->subject, $claims->verifiedEmail());
             $this->entityManager->persist($identity);
-            $this->record($user, 'provider.linked', $provider);
+            $this->record($user, 'provider.linked', [null, $provider->value]);
             $this->entityManager->flush();
             $connection->commit();
         } catch (UniqueConstraintViolationException $e) {
@@ -129,7 +129,7 @@ final readonly class ProviderLinking
                 $this->entityManager->remove($identity);
             }
 
-            $this->record($user, 'provider.unlinked', $provider);
+            $this->record($user, 'provider.unlinked', [$provider->value, null]);
             $this->entityManager->flush();
             $here = null === $session ? null : $this->entityManager->find(RefreshToken::class, $session);
             $thisDevice = null !== $here && $here->getUser()->getId()->equals($user->getId()) && $here->getSignedInWith() === $provider && $here->isUsable();
@@ -151,9 +151,10 @@ final readonly class ProviderLinking
         return $this->providerIdentityRepository->findOneBy(['user' => $user, 'provider' => $provider]);
     }
 
-    private function record(User $user, string $action, IdentityProvider $provider): void
+    /** @param array{0: ?string, 1: ?string} $change the provider before and after, as the Auditor stores every change */
+    private function record(User $user, string $action, array $change): void
     {
-        $this->auditor->record($action, 'Account', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['provider' => [null, $provider->value]]);
+        $this->auditor->record($action, 'Account', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['provider' => $change]);
     }
 
     private function tell(User $user, IdentityProvider $provider, ?string $vouchedFor, ?Request $request, bool $linked): void
