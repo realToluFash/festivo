@@ -10,6 +10,7 @@ import {
   INTERIM_HREF,
   SECTION_HREF,
   destinationOf,
+  settingsGroups,
 } from './appNav.ts';
 
 const APP = join(import.meta.dirname, '..', '..', 'app');
@@ -69,5 +70,25 @@ describe('"Sign out" on the Settings list', () => {
   it('is wired to the same sign-out as the "This device" row, whose outcome signedIn.test.ts checks', () => {
     expect(source(join(SRC, 'components', 'SettingsList.tsx'))).toContain('onPress={signOutHere}');
     expect(source(join(APP, 'settings', 'security.tsx'))).toContain('onSignOutHere={signOutHere}');
+  });
+});
+
+describe('the Settings list', () => {
+  it('has an Organisation row below Security, under its own heading', () => {
+    expect(settingsGroups(true)).toEqual([
+      { heading: 'yourAccount', sections: ['account', 'security'] },
+      { heading: 'organisationHeading', sections: ['organisation'] },
+    ]);
+  });
+
+  it('leaves the Organisation row out while the account is in no organisation', () => {
+    expect(settingsGroups(false)).toEqual([
+      { heading: 'yourAccount', sections: ['account', 'security'] },
+    ]);
+  });
+
+  it('opens the Organisation page under Settings', () => {
+    expect(SECTION_HREF.organisation).toBe('/settings/organisation');
+    expect(destinationOf(SECTION_HREF.organisation)).toBe('settings');
   });
 });

@@ -627,10 +627,14 @@
     "accountLine": "Your name, email addresses and phone numbers",
     "security": "Security",
     "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
+    "organisationHeading": "Organisation",
+    "organisation": "Organisation",
+    "organisationLine": "{{name}} · name, contact address, currency, time zone",
     "signedInAs": "Signed in as {{email}}",
     "signOut": "Sign out",
     "choose": "Choose a section",
-    "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices."
+    "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices.",
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
   },
   "switcher": {
     "yourRole": "Your role · {{role}}",
@@ -647,5 +651,24 @@
     "event_manager": "Event manager",
     "coordinator": "Coordinator",
     "read_only": "Read-only"
+  },
+  "orgGeneral": {
+    "intro": "The name your team and guests see, and the defaults every new event starts with.",
+    "name": "Name",
+    "country": "Country",
+    "contact": "Contact address",
+    "currency": "Currency",
+    "timezone": "Time zone",
+    "defaultsNote": "Currency and time zone: new events start with these. Events you already have keep theirs.",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "Saved. Everyone in {{name}} sees the new details on their next screen.",
+    "nameBlank": "Enter the organisation's name.",
+    "contactBlank": "Enter a contact email address.",
+    "contactInvalid": "That doesn't look like an email address. Check it has an @ and a domain.",
+    "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
+    "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
+    "searchCurrency": "Search currencies",
+    "searchTimezone": "Search time zones"
   }
 }
