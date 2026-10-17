@@ -9,7 +9,7 @@ name: soirely
 
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17.11-alpine3.24
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-soirely}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-soirely}
@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.11-alpine3.21
     command: ['redis-server', '--appendonly', 'yes']
     ports:
       - '${REDIS_PORT:-6379}:6379'
@@ -150,7 +150,7 @@ services:
   # Docker Hub, and an unavailable base image is a stack that cannot be brought
   # up on a new machine. Scoped to S3 so this is not the whole of AWS.
   storage:
-    image: localstack/localstack:4
+    image: localstack/localstack:4.14.0
     environment:
       SERVICES: s3
       AWS_DEFAULT_REGION: ${STORAGE_REGION:-us-east-1}

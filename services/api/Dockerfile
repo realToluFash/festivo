@@ -1,7 +1,7 @@
 # FrankenPHP: one container rather than nginx plus php-fpm. It is what Symfony
 # recommends now, and a second container existing only to pass requests to the
 # first is a moving part with no job here.
-FROM dunglas/frankenphp:1-php8.4 AS base
+FROM dunglas/frankenphp:1.13.0-php8.4.26 AS base
 
 # bcmath is a hard requirement of azjezz/psl, which every boundary in this
 # service coerces through. Listed with the rest rather than as a special case,
