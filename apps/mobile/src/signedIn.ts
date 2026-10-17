@@ -82,6 +82,18 @@ export function switchOrganisation(id: string): void {
   void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
 }
 
+export function replaceOrganisation(saved: Membership): void {
+  const organisations = state.organisations.map((membership) =>
+    membership.id === saved.id ? saved : membership,
+  );
+
+  set({
+    ...state,
+    organisations,
+    organisation: state.organisation?.id === saved.id ? saved : state.organisation,
+  });
+}
+
 /** "Sign out" on the Settings list and on the "This device" row: no confirmation, straight to sign-in. */
 export function signOutHere(): void {
   void api.signOut().finally(() => {

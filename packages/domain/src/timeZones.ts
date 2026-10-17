@@ -3,8 +3,10 @@ export interface ZoneRow {
   /** In the reader's language, from CLDR (sc-986); `ianaCity` is IANA's own spelling, which search also finds. */
   city: string;
   ianaCity?: string;
-  /** tzdata's `backward` links to the zone, such as Calcutta for Kolkata. */
-  formerNames?: readonly string[];
+  /** tzdata's `backward` links to the zone (Calcutta, Zaporozhye, GB), which search finds. */
+  aliases?: readonly string[];
+  /** The one link that is a name the city once had, CLDR's own key for the zone (sc-1562). */
+  formerName?: string | null;
   country: string;
   offset: string;
 }
@@ -59,10 +61,14 @@ export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: str
     );
   }
 
-  return zones.filter((zone) => ownNameMatches(zone, wanted) || formerName(zone, query) != null);
+  return zones.filter(
+    (zone) =>
+      ownNameMatches(zone, wanted) ||
+      (zone.aliases ?? []).some((alias) => folded(alias).includes(wanted)),
+  );
 }
 
-/** The former name a row was found by, to show as "was Calcutta"; null when its own name, country or offset matched. */
+/** The former name a row was found by, to show as "was Calcutta"; null when its own name, country, offset or another alias matched. */
 export function formerName(zone: ZoneRow, query: string): string | null {
   const wanted = folded(query);
   if (
@@ -73,7 +79,9 @@ export function formerName(zone: ZoneRow, query: string): string | null {
     return null;
   }
 
-  return (zone.formerNames ?? []).find((name) => folded(name).includes(wanted)) ?? null;
+  const former = zone.formerName ?? null;
+
+  return former !== null && folded(former).includes(wanted) ? former : null;
 }
 
 /** The zone a typed text names exactly, by its label or either spelling of its city; never by a former name. */

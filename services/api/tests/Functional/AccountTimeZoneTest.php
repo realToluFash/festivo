@@ -141,7 +141,7 @@ final class AccountTimeZoneTest extends ApiTestCase
         self::assertSame('+01:00', $byId('Europe/London')['offset'] ?? null, "today's offset, summer time included");
     }
 
-    /** sc-986: CLDR's city in the reader's language, IANA's spelling beside it, and tzdata's former names. */
+    /** sc-986 and sc-1562: CLDR's city in the reader's language, IANA's spelling beside it, tzdata's links, and CLDR's former name. */
     #[Test]
     public function citiesReadInTheLanguageAndKeepTheirFormerNames(): void
     {
@@ -150,7 +150,8 @@ final class AccountTimeZoneTest extends ApiTestCase
             'id' => Type\string(),
             'city' => Type\string(),
             'ianaCity' => Type\string(),
-            'formerNames' => Type\vec(Type\string()),
+            'aliases' => Type\vec(Type\string()),
+            'formerName' => Type\nullable(Type\string()),
         ], true))->coerce($list['timezones']);
         $fr = $rows($this->call('GET', '/api/auth/timezones', null, $user, language: 'fr'));
         $en = $rows($this->call('GET', '/api/auth/timezones', null, $user, language: 'en'));
@@ -160,12 +161,34 @@ final class AccountTimeZoneTest extends ApiTestCase
         self::assertSame('Saint-Jean de Terre-Neuve', $row($fr, 'America/St_Johns')['city'] ?? null);
         self::assertSame('St. John’s', $row($en, 'America/St_Johns')['city'] ?? null, 'CLDR’s English, not IANA’s St Johns');
         self::assertSame('Lagos', $row($fr, 'Africa/Lagos')['city'] ?? null, 'no CLDR city: IANA’s');
-        self::assertContains('Calcutta', $row($en, 'Asia/Kolkata')['formerNames'] ?? []);
-        self::assertContains('Saigon', $row($en, 'Asia/Ho_Chi_Minh')['formerNames'] ?? []);
-        self::assertSame([], $row($en, 'America/Argentina/Buenos_Aires')['formerNames'] ?? null, 'a link with the row’s own city is never a former name');
+        self::assertContains('Calcutta', $row($en, 'Asia/Kolkata')['aliases'] ?? []);
+        self::assertSame('Calcutta', $row($en, 'Asia/Kolkata')['formerName'] ?? null);
+        self::assertSame('Saigon', $row($en, 'Asia/Ho_Chi_Minh')['formerName'] ?? null);
+        self::assertSame('Kiev', $row($en, 'Europe/Kyiv')['formerName'] ?? null);
+        $buenosAires = $row($en, 'America/Argentina/Buenos_Aires');
+        self::assertSame([], $buenosAires['aliases'] ?? null, 'a link with the row’s own city is never an alias');
+        self::assertArrayHasKey('formerName', $buenosAires);
+        self::assertNull($buenosAires['formerName'], 'nor a former name');
+
+        $links = [
+            'Europe/Kyiv' => ['Zaporozhye', 'Uzhgorod'],
+            'America/Sao_Paulo' => ['East'],
+            'America/New_York' => ['Eastern'],
+            'America/Toronto' => ['Eastern'],
+            'Europe/London' => ['GB'],
+        ];
+
+        foreach ($links as $id => $names) {
+            foreach ($names as $name) {
+                self::assertContains($name, $row($en, $id)['aliases'] ?? [], "{$name} still finds {$id}");
+                self::assertNotSame($name, $row($en, $id)['formerName'] ?? null, "{$name} is a link, not a name {$id} once had");
+            }
+        }
 
         self::assertSame(['timezone' => 'Asia/Kolkata'], $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Asia/Calcutta'], $user), 'returned as the current id');
         self::assertSame('Asia/Kolkata', $this->fresh($user)->getTimezone(), 'only the current IANA id is ever stored');
+        self::assertSame(['timezone' => 'Europe/Kyiv'], $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Europe/Zaporozhye'], $user), 'a merged zone is returned as the zone it joined');
+        self::assertSame('Europe/Kyiv', $this->fresh($user)->getTimezone());
     }
 
     private function moment(User $user, string $locale): string

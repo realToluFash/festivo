@@ -38,6 +38,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. The email-address refusal is one sentence everywhere** (`orgGeneral.contactInvalid`
+  and `forms.emailShape`, web and app): "Isso não parece um endereço de e-mail. Confirme que tem
+  um @ e um domínio." The English of all four keys is the same, so the Portuguese is too;
+  "Verifique se tem" was the odd one out.
+- **17 Oct 2026. A settings section's line names its contents with "Em … estão"**
+  (`settings.chooseLine`, `settings.chooseLineWithOrganisation`): "Em Organização estão as
+  definições de {{name}}." A search field's placeholder is "Pesquisar" plus the plural noun
+  (`orgGeneral.searchCurrency`, `searchTimezone`).
 - **17 Oct 2026. A status mark agrees with "o pedido"** (`lostTwoFactor.*Mark`): "Substituído",
   as "Cancelado", "Confirmado", "Recusado". The daily limit is "um dos 3 pedidos que pode fazer
   por dia" (`replacedNote`), echoing `limitedBody`, "Pode pedir 3 vezes por dia".
@@ -61,7 +69,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or a zone such as US/Eastern). "ex-" agrees with all of them.
 - **17 Oct 2026. Signing out other devices is "encerrar a sessão"**, as in the glossary
   (`passwordCard.*`, `emails:password.changed.devices`, `devices.*`). The password card
-  said "terminar", which made one action read as two.
+  said "terminar", which made one action read as two. Since sc-1677 every sign-out on
+  screens, in emails and in `errors:` says "encerrar": "encerra a sessão", "a sessão foi
+  encerrada nos dispositivos…", "todas as sessões foram encerradas", "a sessão continua
+  encerrada". "Terminar" stays only for a request that ends or expires ("o pedido terminou")
+  and for the Finish button.
 - **17 Oct 2026. "It" in the device dialog is "o dispositivo"** (`devices.signInAgain`):
   Portuguese drops the subject, and on its own the sentence reads as if the person had to
   sign in again.

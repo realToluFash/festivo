@@ -7,7 +7,7 @@ import {
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { chooseOrganisation } from '@soirely/domain';
+import { chooseOrganisation, roleHolds } from '@soirely/domain';
 import { useSyncExternalStore } from 'react';
 
 import { followAccount } from './accountLanguage.ts';
@@ -64,9 +64,8 @@ export function useSession(): Session {
   return current.session;
 }
 
-/** What the member's role holds in the open organisation (sc-66): a control it cannot use is not rendered. */
 export function can(session: Session, permission: string): boolean {
-  return session.organisation?.permissions.includes(permission) ?? false;
+  return session.organisation != null && roleHolds(session.organisation.role, permission);
 }
 
 export async function restoreSession(): Promise<void> {

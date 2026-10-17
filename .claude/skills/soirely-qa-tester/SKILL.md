@@ -266,7 +266,7 @@ With no MCP, fall back to a script — `npx playwright` with a `page.goto`,
 ### The app — Maestro, on simulators
 
 ```sh
-node .qa/bin/qa-env.mjs ios                              # the bundler, in Expo Go, on the QA phone and iPad
+node .qa/bin/qa-env.mjs ios [--ipad]                     # the bundler, in Expo Go, on the QA phone (or iPad); shuts the other
 node .qa/bin/qa-env.mjs maestro sign-in EMAIL=… PASSWORD=…        # one flow, on the phone
 node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the tablet
 ```

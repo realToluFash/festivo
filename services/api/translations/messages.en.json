@@ -21,7 +21,7 @@
     "validation.code_app_required": "Enter the 6-digit code from your app.",
     "validation.code_email_required": "Enter the 6-digit code from the email.",
     "validation.code_text_required": "Enter the 6-digit code from the text.",
-    "validation.contact_address_invalid": "That doesn't look like an email address. Check it has an @ and a domain.",
+    "validation.contact_address_invalid": "That does not look like an email address. Check it has an @ and a domain.",
     "validation.contact_address_required": "Enter a contact email address.",
     "validation.country_invalid": "Choose a country.",
     "validation.currency_invalid": "Choose a currency.",

@@ -34,7 +34,7 @@ describe('every field carries the caret colour', () => {
 
     expect(
       offenders,
-      'Spread FIELD_DEFAULTS, CODE_PROPS or passwordProps() from src/kit/fields.ts.',
+      'Spread FIELD_DEFAULTS, codeProps() or passwordProps() from src/kit/fields.ts.',
     ).toEqual([]);
   });
 
@@ -144,7 +144,7 @@ function textInputs(text: string): { line: number; markup: string }[] {
 
 function caretSet(markup: string): boolean {
   return (
-    /\{\.\.\.(FIELD_DEFAULTS|CODE_PROPS|passwordProps\()/u.test(markup) ||
+    /\{\.\.\.(FIELD_DEFAULTS|codeProps\(|passwordProps\()/u.test(markup) ||
     /\bcursorColor=/u.test(markup)
   );
 }

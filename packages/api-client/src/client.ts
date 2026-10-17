@@ -136,7 +136,8 @@ export interface TimeZoneOption {
   id: string;
   city: string;
   ianaCity: string;
-  formerNames: string[];
+  aliases: string[];
+  formerName: string | null;
   country: string;
   /** Its offset now, such as `+01:00`. */
   offset: string;
@@ -699,9 +700,10 @@ export class ApiClient {
           .map((zone) => ({
             ...zone,
             ianaCity: typeof zone.ianaCity === 'string' ? zone.ianaCity : zone.city,
-            formerNames: Array.isArray(zone.formerNames)
-              ? zone.formerNames.filter((name: unknown): name is string => typeof name === 'string')
+            aliases: Array.isArray(zone.aliases)
+              ? zone.aliases.filter((name: unknown): name is string => typeof name === 'string')
               : [],
+            formerName: typeof zone.formerName === 'string' ? zone.formerName : null,
           }))
       : [];
   }
