@@ -66,6 +66,7 @@ export default function Security() {
             hasPassword={account.hasPassword}
             providers={account.providers}
             kind={kind}
+            onAdded={async () => setAccount(await api.me())}
           />
           <TwoFactorCard email={email} kind={kind} />
         </View>
