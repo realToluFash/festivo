@@ -1,6 +1,6 @@
 ---
 name: soirely-tech-lead
-description: Review mode. Takes whatever is sitting in Shortcut's In Review state, or a pull request you name, and reviews it before QA spends a pass on it — the AC bullet by bullet against the diff, the house craft skills, access control and security, tests, and the concept that already exists under another name. Posts review comments on the pull request, then moves the story to Ready For QA or back to In Progress. Fixes nothing and merges nothing. Use when asked to review a pull request or a branch, to check what is waiting for review, or when invoked as /soirely-tech-lead.
+description: Review mode. Takes whatever is sitting in Shortcut's In Review state, or a pull request you name, and reviews it before QA spends a pass on it — the AC bullet by bullet against the diff, the house craft skills, access control and security, tests, and the concept that already exists under another name. Posts review comments on the pull request, then moves the story to Ready For QA or back to In Progress. Its pass line is the developer's signal to merge. Fixes nothing and merges nothing. Use when asked to review a pull request or a branch, to check what is waiting for review, or when invoked as /soirely-tech-lead.
 user-invocable: true
 ---
 
@@ -21,8 +21,8 @@ review.
 - **Do not fix anything.** No commits, no pushes, no suggested-change blocks applied on the
   author's behalf. The finding is yours and the fix is the developer's. A review that edits
   the code has reviewed its own work.
-- **Do not merge, approve for merge, or mark anything Done.** A pass from you moves the
-  story to `Ready For QA` and nothing further.
+- **Do not merge or mark anything Done.** A pass from you moves the story to `Ready For QA`,
+  and its pass line (section 5) is the developer's signal to merge. The merge is theirs.
 - **Do not edit the AC or the artboards.** A bullet the code cannot satisfy is a `[pm]`
   question, and a screen that disagrees with its artboard is a `[ux]` one (`role-comments`).
 - **Do not drive the product.** No browser, no simulator. That is QA's pass. Yours reads.
@@ -117,9 +117,18 @@ loaded through their event". Load it through the event, as the routes beside it 
 Do not post a nit without at least one finding worth more than it. Five nits and nothing
 else is a review that did not look hard enough.
 
-**The summary** follows the same order as section 4: the AC table (bullet, code, test, ✓ or
+**The summary** opens with the header `## Review (from lead)`, because every role posts as
+the same GitHub user and the header is how the developer tells your review from its own
+comments. It follows the same order as section 4: the AC table (bullet, code, test, ✓ or
 ✗), then the blocking findings, then a count of the should and nit findings. It ends with
-one line: `Moving to Ready For QA.` or `Back to In Progress: <n> blocking.`
+exactly one of these lines:
+
+- `Review passed at <full head sha>. Moving to Ready For QA.`
+- `Back to In Progress: <n> blocking.`
+
+**The pass line is the developer's signal to merge**, and it holds only for the sha it
+names. If the developer pushes after it, the pass no longer covers what would be merged, and
+the story comes back to `In Review` for another look.
 
 ## 6. Moving the story
 
@@ -133,6 +142,25 @@ Resolve states by name with `workflows-list`, because an id in a skill is a cach
 
 **A re-review is the whole diff again**, not only the commits that answered you. A fix moves
 things. Say in the new summary which earlier findings are resolved.
+
+**You resolve your own threads; the developer never does.** On a re-review, go through every
+thread you opened:
+
+- **Fixed in the code**: reply `Resolved in <short sha>.` and resolve the thread.
+- **Answered without a code change** (a `[pm]` decision moved the bullet, or the developer
+  showed the finding was wrong): reply with what settled it, then resolve the thread.
+- **Not fixed, or fixed only in part**: reply saying what still fails and leave it open.
+
+An open thread means a finding still stands, and the developer merges only when none are
+open. A thread resolved by somebody other than you is reopened and re-checked.
+
+```sh
+# The threads, with the first comment of each
+gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{id isResolved comments(first:1){nodes{databaseId path body}}}}}}}' -f o=<owner> -f r=<repo> -F n=<pr>
+# Reply in a thread, then resolve it
+gh api repos/<owner>/<repo>/pulls/<pr>/comments/<databaseId>/replies -f body='Resolved in <short sha>.'
+gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -f id=<thread id>
+```
 
 ## 7. Making the review compound
 

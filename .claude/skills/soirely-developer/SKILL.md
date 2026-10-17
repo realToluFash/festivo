@@ -1,6 +1,6 @@
 ---
 name: soirely-developer
-description: Development mode. Takes whatever is sitting in Shortcut's Failed QA state, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, a draft pull request, nothing merged and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
+description: Development mode. Takes whatever is sitting in Shortcut's Failed QA state, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, an open pull request, merged only once the tech lead's review passes it, and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
 user-invocable: true
 ---
 
@@ -14,9 +14,9 @@ what to pick up, in what order, and what has to be true before you hand it on.
 
 ## 1. The three things this mode must not do
 
-- **Do not merge, and do not mark anything Done.** Open the pull request as a draft, report
-  the number, stop. An instruction to merge covers the pull requests open at that moment
-  and never the next one.
+- **Do not merge before the lead has passed it, and never mark anything Done.** Merging is
+  section 9, and it has exactly one trigger: the lead's pass line for the head you would
+  merge. Without it, a merge is not yours to make.
 - **Do not QA your own work.** No browser, no simulator, unless the user asks for one. The
   checks in section 6 are the standard here; driving the product is the QA agent's pass and
   it exists so that the person who built a thing is not the person who signs it off.
@@ -136,8 +136,11 @@ gh run watch "$(gh run list --branch "$(git branch --show-current)" --limit 1 --
 ## 7. Hand it over
 
 1. **Commits** per outcome — `making-commits`. Stage named paths; never `git add -A`.
-2. **A draft pull request** — `create-pr`. Never `gh pr ready`.
-3. **Reply to every review comment and every QA finding**, in its thread.
+2. **An open pull request, not a draft** — `create-pr`. A draft cannot be merged, and the
+   lead's pass (section 9) is meant to be the last step before the merge.
+3. **Reply to every review comment and every QA finding**, in its thread: what you changed
+   and the commit, or why you did not. **Do not resolve the lead's threads.** The lead
+   resolves each one after checking the fix (section 9).
 4. **Move the story to `In Review`** (`500000009`), resolved by name, once the pull request
    is open and its checks are green. That is the handover to `/soirely-tech-lead`, who
    reviews it and moves it on to `Ready For QA` for QA, or back to you with `[dev]`
@@ -156,3 +159,33 @@ goal; a correct system is.
 The counterpart: **say what you did not finish.** A story delivered with one bullet left is
 honest and useful. A story reported as done with one bullet quietly missing costs somebody a
 QA pass to discover.
+
+## 9. After the lead's review: merging
+
+The lead (`/soirely-tech-lead`) reviews on the pull request. Every role posts as the same
+GitHub user, so the lead's summary is the review whose body opens with
+`## Review (from lead)`, and only its **last line** decides what happens next:
+
+| The lead's last line                              | What you do                                                                                                            |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `Back to In Progress: <n> blocking.`              | Answer each finding in its thread (section 7), fix, push, and hand it back to `In Review`. Do not resolve the threads. |
+| `Review passed at <sha>. Moving to Ready For QA.` | Merge, if every condition below holds.                                                                                 |
+
+**Merge only when all of these hold**, and check each one rather than assuming it:
+
+1. The newest `## Review (from lead)` ends in the pass line, and **its sha is the pull
+   request's head** (`gh pr view <n> --json headRefOid`). A push after the pass voids it:
+   move the story back to `In Review` and wait for the lead.
+2. **No review thread is open.** The lead resolves each thread after checking the fix; an
+   open one is a finding that still stands, whatever your reply in it says.
+3. **CI is green on that head**, and GitHub reports the pull request `MERGEABLE`.
+
+```sh
+gh pr view <n> --json headRefOid,mergeable,reviews --jq '{head: .headRefOid, mergeable, lead: ([.reviews[] | select(.body | startswith("## Review (from lead)"))] | last | .body | split("\n") | last)}'
+gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{isResolved}}}}}' -f o=<owner> -f r=<repo> -F n=<n> --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)] | length'
+gh pr checks <n>
+gh pr merge <n> --merge
+```
+
+After the merge, post `[qa] (from dev)` on the story naming the merge commit, so QA tests
+what landed. Leave the story's state to the lead and QA, and never mark it Done.
