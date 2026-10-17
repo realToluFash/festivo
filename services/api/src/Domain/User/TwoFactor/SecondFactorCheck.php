@@ -77,7 +77,7 @@ final readonly class SecondFactorCheck
             : $this->passRecoveryCode($factor, $trimmed);
     }
 
-    /** @param callable(): ?WrongSecret $check the wrong code that spends the budget is refused as the pause itself */
+    /** @param callable(): ?WrongSecret $check */
     private function guarded(TwoFactorFactor $factor, callable $check): void
     {
         $this->guardedAttempt->attempt(
@@ -85,7 +85,6 @@ final readonly class SecondFactorCheck
             fn (): array => [$this->twoFactorAccountLimiter->create($factor->getUser()->getId()->toRfc4122())],
             $check,
             'Too many wrong codes.',
-            lastWrongPauses: true,
         );
     }
 }

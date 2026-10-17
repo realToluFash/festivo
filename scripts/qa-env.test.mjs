@@ -10,6 +10,7 @@ import {
   QA_PORTS,
   qaConfig,
   renderQaEnv,
+  simulatorFor,
   TESTERS,
   testerOf,
 } from './qa-env.mjs';
@@ -87,6 +88,16 @@ describe('what checkout was asked for', () => {
     [undefined, { kind: 'branch', name: 'main' }],
   ])('%s', (arg, expected) => {
     expect(parseTarget(arg)).toEqual(expected);
+  });
+});
+
+describe('the simulator ios opens', () => {
+  it.each([
+    [[], { open: 'phone', shut: 'ipad' }],
+    [['--phone'], { open: 'phone', shut: 'ipad' }],
+    [['--ipad'], { open: 'ipad', shut: 'phone' }],
+  ])('%j opens one and shuts the other', (args, expected) => {
+    expect(simulatorFor(args)).toEqual(expected);
   });
 });
 
