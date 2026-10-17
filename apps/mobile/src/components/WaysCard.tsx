@@ -14,7 +14,12 @@ import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
-import { type ProvingField, codeBeforeTrip, provingRefusal } from '../kit/waysProof.ts';
+import {
+  type ProvingField,
+  codeBeforeTrip,
+  provingRefusal,
+  tripRefused,
+} from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
@@ -450,8 +455,8 @@ function Proving({
         return;
       }
 
-      // A provider refused or too old is the trip's, so the next Continue goes to the provider again.
-      if (via !== 'password') returned.current = null;
+      // Only a refused trip is made again: after a wrong code the next Continue re-sends the kept sign-in.
+      if (via !== 'password' && tripRefused(error)) returned.current = null;
       setRefusal(
         provingRefusal(
           error,

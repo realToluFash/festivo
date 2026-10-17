@@ -2,7 +2,7 @@ import { ApiError } from '@soirely/api-client';
 import { type TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
 
-import { codeBeforeTrip, provingRefusal } from './waysProof.ts';
+import { codeBeforeTrip, provingRefusal, tripRefused } from './waysProof.ts';
 
 const t = ((key: string, values?: Record<string, string>) =>
   values == null ? key : `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
@@ -24,7 +24,7 @@ describe('proving it is you, from Security', () => {
   it('says a refused provider proof on the screen, not on a password field it does not show', () => {
     expect(provingRefusal(refusal('invalid_credentials', 401), t, 'Google', 'en')).toEqual({
       field: 'failed',
-      message: 'waysCard.providerFailed {"provider":"Google"}',
+      message: 'waysCard.providerRefused {"provider":"Google"}',
     });
     expect(provingRefusal(refusal('invalid_credentials', 401), t, null, 'en')).toEqual({
       field: 'password',
@@ -33,5 +33,12 @@ describe('proving it is you, from Security', () => {
     expect(provingRefusal(refusal('two_factor_code_invalid', 422), t, 'Apple', 'en').field).toBe(
       'code',
     );
+  });
+
+  it('keeps the provider’s sign-in across a wrong code, and makes the trip again only when the trip was refused', () => {
+    expect(tripRefused(refusal('two_factor_code_invalid', 422))).toBe(false);
+    expect(tripRefused(refusal('recovery_code_used', 422))).toBe(false);
+    expect(tripRefused(new TypeError('offline'))).toBe(false);
+    expect(tripRefused(refusal('invalid_credentials', 401))).toBe(true);
   });
 });

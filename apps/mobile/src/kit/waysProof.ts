@@ -9,6 +9,11 @@ export function codeBeforeTrip(via: ReturnType<typeof proveWith>, twoFactorOn: b
   return twoFactorOn && via === 'password';
 }
 
+/** A refusal of the trip itself (the wrong account, or a sign-in too old): only then is it made again. */
+export function tripRefused(error: unknown): boolean {
+  return error instanceof ApiError && error.is('invalid_credentials');
+}
+
 /** Where a refused proof is said: a provider's refusal is the trip's, never a password field the screen doesn't show. */
 export function provingRefusal(
   error: unknown,
@@ -31,7 +36,7 @@ export function provingRefusal(
   if (error instanceof ApiError && error.is('invalid_credentials')) {
     return providerName == null
       ? { field: 'password', message: t('waysCard.passwordWrong') }
-      : { field: 'failed', message: t('waysCard.providerFailed', { provider: providerName }) };
+      : { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
   }
 
   if (
