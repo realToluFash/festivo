@@ -17,6 +17,7 @@ const FOLAKE: Session = {
   hasPassword: true,
   organisation: null,
   organisations: [],
+  organisationCountry: null,
   timezone: null,
 };
 
@@ -25,6 +26,7 @@ const ACCOUNT = {
   name: 'Folake Adeyemi',
   businessName: null,
   countryCode: null,
+  organisationCountry: null,
   locale: 'en',
   timezone: null,
   verified: true,
@@ -129,6 +131,28 @@ describe('a few details', () => {
       phoneNumber: '',
     });
     expect(typeof (saved?.body as { timezone?: unknown }).timezone).toBe('string');
+  });
+
+  it('starts the phone code on the Country, follows it, and stays once picked by hand', () => {
+    answering({});
+    at('/complete-profile');
+
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'NG' } });
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('NG');
+
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('GH');
+
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: 'KE' } });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'NG' } });
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('KE');
+  });
+
+  it("starts an invited person's phone code on the organisation's country, not the browser's", () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-GB']);
+    at('/complete-profile', { ...FOLAKE, needsOrganisation: false, organisationCountry: 'GH' });
+
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('GH');
   });
 
   it('marks the mobile optional and checks a typed one for its country before sending', () => {
@@ -237,6 +261,7 @@ describe('a few details', () => {
       hasPassword: true,
       organisation,
       organisations: [organisation],
+      organisationCountry: null,
       timezone: null,
     });
 

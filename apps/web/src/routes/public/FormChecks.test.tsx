@@ -18,6 +18,7 @@ const UNVERIFIED: Session = {
   hasPassword: true,
   organisation: membership(),
   organisations: [membership()],
+  organisationCountry: null,
   timezone: null,
 };
 

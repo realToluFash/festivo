@@ -47,6 +47,7 @@ const FOLAKE: Session = {
   hasPassword: true,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
+  organisationCountry: null,
   timezone: null,
 };
 
@@ -525,6 +526,7 @@ describe('adding a password to a Google account', () => {
           name: 'Folake Ire',
           businessName: null,
           countryCode: null,
+          organisationCountry: null,
           locale: 'en',
           timezone: null,
           verified: true,

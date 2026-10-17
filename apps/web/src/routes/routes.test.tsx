@@ -19,6 +19,7 @@ const ADA: Session = {
   hasPassword: true,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
+  organisationCountry: null,
   timezone: null,
 };
 
@@ -184,6 +185,7 @@ describe('the application tree', () => {
           name: 'Ada Okonkwo',
           businessName: 'Okonkwo Events',
           countryCode: 'NG',
+          organisationCountry: null,
           locale: 'en',
           timezone: null,
           verified: true,

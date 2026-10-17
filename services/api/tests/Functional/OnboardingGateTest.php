@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\Onboarding\OnboardingGate;
 use App\Domain\User\UserRegistrar;
 use App\Domain\User\Verification\RecordingTextMessageSender;
@@ -63,6 +64,51 @@ final class OnboardingGateTest extends ApiTestCase
         $this->signIn($this->registered('both@example.com'));
 
         self::assertSame(ErrorCode::AccountUnverified->type(), $this->call('GET', '/api/auth/sessions')['type']);
+    }
+
+    /** One title for the gate (RFC 9457 §3.1.3), and a detail that names what is unverified. */
+    #[Test]
+    public function theGatesDetailNamesWhatIsUnverified(): void
+    {
+        $user = $this->registered('which@example.com');
+        $this->signIn($user);
+        $email = $this->call('GET', '/api/orgs');
+        self::assertSame('Verify your account to carry on.', $email['title']);
+        self::assertSame('Verify your email address to carry on.', $email['detail'], 'an unverified email, no phone');
+
+        $phone = new PhoneNumber($user, '+2348035550142', isPrimary: true, countryCode: 'NG');
+        self::em()->persist($phone);
+        self::em()->flush();
+        $this->signIn($user);
+
+        $both = $this->call('GET', '/api/orgs');
+        self::assertSame('Verify your account to carry on.', $both['title']);
+        self::assertSame('Verify your email address to carry on.', $both['detail'], 'both unverified: the email first');
+
+        // Each request reboots the kernel, so the account is read afresh before its email is verified.
+        $user = Type\instance_of(User::class)->coerce(self::em()->find(User::class, $user->getId()));
+        $this->verify($user);
+        $this->signIn($user);
+
+        $onlyPhone = $this->call('GET', '/api/orgs');
+        self::assertSame('Verify your account to carry on.', $onlyPhone['title']);
+        self::assertSame('Verify your mobile number to carry on.', $onlyPhone['detail']);
+
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+        self::assertSame('Vérifiez votre numéro de portable pour continuer.', $this->call('GET', '/api/orgs')['detail']);
+    }
+
+    #[Test]
+    public function aMissingCountryIsOneViolationOnCountryAlone(): void
+    {
+        $user = $this->registered('nocountry@example.com');
+        $this->verify($user);
+        $this->signIn($user);
+
+        $body = $this->call('PATCH', '/api/auth/complete-profile', ['name' => 'Person', 'organisationName' => 'Ire Events', 'timezone' => 'Africa/Lagos']);
+
+        self::assertSame(422, $this->client->getResponse()->getStatusCode());
+        self::assertSame(['countryCode'], \array_column(Type\vec(Type\dict(Type\string(), Type\string()))->coerce($body['violations']), 'propertyPath'), 'currency is derived, so it is not a violation');
     }
 
     /** A route nobody exempted is behind the gate: adding an unprotected one takes a deliberate act. */
@@ -217,6 +263,21 @@ final class OnboardingGateTest extends ApiTestCase
         self::assertSame(200, $this->client->getResponse()->getStatusCode());
         self::assertTrue(Type\shape(['complete' => Type\bool()], true)->coerce($body['account'])['complete']);
         self::assertSame([], self::service(MembershipRepository::class)->findActiveFor($invited));
+    }
+
+    /** "A few details" can't read /api/orgs behind the gate, so /me says where an invited person's number starts. */
+    #[Test]
+    public function theAccountSaysItsOrganisationsCountryBehindTheGate(): void
+    {
+        $invited = self::service(UserRegistrar::class)->registerFromInvitation('invited@example.com', 'Invited', self::PASSWORD)->user;
+        self::service(EntityManagerInterface::class)->flush();
+        $this->signIn($invited);
+        self::assertNull($this->call('GET', '/api/auth/me')['organisationCountry'], 'in no organisation yet');
+
+        self::service(OrganisationFounder::class)->found($invited, 'Ìrè Events', 'GH', 'Africa/Accra');
+        self::service(EntityManagerInterface::class)->flush();
+
+        self::assertSame('GH', $this->call('GET', '/api/auth/me')['organisationCountry']);
     }
 
     #[Test]

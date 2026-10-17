@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\TwoFactor\TwoFactorMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\User;
@@ -36,6 +37,25 @@ final class AccountLanguageTest extends ApiTestCase
     {
         parent::setUp();
         $this->client->disableReboot();
+    }
+
+    /** CLDR's date and wording per language, always on a 24-hour clock, and labelled UTC. */
+    #[Test]
+    #[DataProvider('momentsInEachLanguage')]
+    public function emailTimesAreTwentyFourHourInEveryLanguage(string $locale, string $expected): void
+    {
+        $user = self::service(UserRegistrar::class)->register($locale . '@example.com', 'Someone', self::PASSWORD)->user;
+
+        self::assertSame($expected, self::service(UserMailer::class)->moment(new DateTimeImmutable('2026-10-17 15:05:00 UTC'), $user, $locale));
+    }
+
+    /** @return iterable<string, array{0: string, 1: string}> */
+    public static function momentsInEachLanguage(): iterable
+    {
+        yield 'en' => ['en', 'October 17, 2026 at 15:05 UTC'];
+        yield 'es' => ['es', '17 de octubre de 2026, 15:05 UTC'];
+        yield 'fr' => ['fr', '17 octobre 2026 à 15:05 UTC'];
+        yield 'pt' => ['pt', '17 de outubro de 2026 às 15:05 UTC'];
     }
 
     #[Test]

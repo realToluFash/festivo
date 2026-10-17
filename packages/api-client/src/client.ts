@@ -104,6 +104,8 @@ export interface Account {
   name: string;
   businessName: string | null;
   countryCode: string | null;
+  /** The country of the organisation it belongs to, readable behind the onboarding gate. */
+  organisationCountry: string | null;
   locale: string | null;
   /** An IANA zone; null until a device has said one, while times reach the person in UTC. */
   timezone: string | null;
@@ -897,6 +899,8 @@ function asAccount(raw: unknown): Account | null {
     name: candidate.name,
     businessName: typeof candidate.businessName === 'string' ? candidate.businessName : null,
     countryCode: typeof candidate.countryCode === 'string' ? candidate.countryCode : null,
+    organisationCountry:
+      typeof candidate.organisationCountry === 'string' ? candidate.organisationCountry : null,
     locale: typeof candidate.locale === 'string' ? candidate.locale : null,
     timezone: typeof candidate.timezone === 'string' ? candidate.timezone : null,
     verified: candidate.verified === true,

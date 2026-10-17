@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { callingCode, formatPhone, phoneLengthProblem } from './phone.ts';
+import {
+  callingCode,
+  followCountry,
+  formatPhone,
+  phoneLengthProblem,
+  pickPhoneCountry,
+  startingPhoneCountry,
+} from './phone.ts';
 
 describe('the phone check before sending', () => {
   it('needs a number', () => {
@@ -31,5 +38,24 @@ describe('the phone check before sending', () => {
   it('shows a stored number as people read it', () => {
     expect(formatPhone('+2348035550142')).toBe('+234 803 555 0142');
     expect(formatPhone('not a number')).toBe('not a number');
+  });
+});
+
+describe('the phone code on "A few details"', () => {
+  it('follows a changed Country, then stays once picked by hand', () => {
+    let phone = startingPhoneCountry('GB', null, 'US');
+    expect(phone.code).toBe('GB');
+
+    phone = followCountry(phone, 'NG');
+    expect(phone.code).toBe('NG');
+
+    phone = pickPhoneCountry('GH');
+    phone = followCountry(phone, 'KE');
+    expect(phone.code).toBe('GH');
+  });
+
+  it('starts on the organisation, then the device, with no Country on the screen', () => {
+    expect(startingPhoneCountry(null, 'NG', 'GB').code).toBe('NG');
+    expect(startingPhoneCountry(null, null, 'GB').code).toBe('GB');
   });
 });

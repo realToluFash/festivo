@@ -26,6 +26,8 @@ export interface Session {
   needsOrganisation: boolean;
   /** The one this device is working in; null for an account in no organisation. */
   organisation: Membership | null;
+  /** The organisation's country from `/me`, which the gate lets through where `/api/orgs` is not. */
+  organisationCountry: string | null;
   organisations: readonly Membership[];
   /** The account's IANA zone; null while times reach the person in UTC (sc-868). */
   timezone: string | null;
@@ -160,6 +162,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     hasPassword: account.hasPassword,
     needsOrganisation: account.needsOrganisation,
     organisations,
+    organisationCountry: account.organisationCountry,
     timezone: account.timezone,
     organisation:
       organisations.find((membership) => membership.id === remembered) ?? organisations[0] ?? null,
