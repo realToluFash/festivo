@@ -40,6 +40,33 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. Adding a payment already made (sc-88, `AddPaid-*`).** Title "Add a payment
+  already made", button "Add as paid", kept as drawn: the title says what the person did, the
+  button what happens. Refusals: "Choose the vendor it was paid to."; "Enter what it was
+  for."; "Shorten the description to {{count}} characters or fewer." (the house over-limit
+  shape; "description" because the field is the payment's description everywhere else it
+  shows); and "The date paid cannot be before the quote from {{vendor}} on {{date}}. Choose
+  that date or a later one." (also the server's detail for sc-87's payment dated before the
+  quote). Won over the drawn "before Bloom Lagos's quote of Monday, Sep 1": a possessive on a
+  name breaks on names ending in s and cannot be carried into es, fr or pt, and it said what
+  was wrong but not what to do. `{{date}}` comes from `Intl.DateTimeFormat` in the event's
+  time zone; in en-GB that reads "Monday 1 September", never "Monday, Sep 1".
+- **17 Oct 2026. "Shorten the reference to {{count}} characters or fewer."** (sc-88,
+  Reference, refused on Mark paid at 101 after trimming). The house shape for a text field
+  over its limit: "Shorten the {field} to {{count}} characters or fewer.", so the cancel
+  reason (200) reads the same. The limit is a `{{count}}` slot, not a number in the words, so
+  the copy cannot drift from the rule. Won over "The reference can be at most 100
+  characters", which states the rule without saying what to do, and over "Reference is too
+  long", which says neither the limit nor the fix.
+- **17 Oct 2026. "Enter the amount as a number above 0, like {{example}}."** (sc-88, Amount
+  paid). One message for every currency, with one slot. The code builds `{{example}}` with
+  `Intl.NumberFormat` in the viewer's locale at the event currency's ISO 4217 minor unit, from
+  3500 when it has none and 3500.5 otherwise: "3,500" for JPY, XOF and CLP, "3,500.50" for GBP, EUR, USD and BRL, "3,500.500" for
+  KWD and BHD, and "3.500,50" in es, fr and pt. No currency symbol: the field shows it as its
+  prefix. Won over a variant per decimal count, which is three keys in four locales for one
+  rule and makes the person count decimal places, and over the drawn "like 3,500 or
+  3,500.50", which promises decimals a zero-decimal currency refuses and writes a number into
+  the string. The example shows the rule; the words never name a decimal count.
 - **17 Oct 2026. Marking paid refused (sc-88, shown on sc-1331's "Due now" sheet).**
   "{{name}} has already marked this paid, so nothing has changed." (no name: "This has already
   been marked paid, so nothing has changed."); "This payment has been cancelled, so it cannot be
