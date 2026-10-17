@@ -7,10 +7,10 @@
     "subtitle": "A noite, a partir do seu bolso.",
     "openSignIn": "Iniciar sessão",
     "openLayouts": "Demonstração de disposições",
-    "signedIn": "You’re signed in",
-    "signedInTo": "You’re signed in to {{name}}",
-    "openSettings": "Open Settings",
-    "switchOrganisation": "Switch organisation"
+    "signedIn": "Tem sessão iniciada",
+    "signedInTo": "Tem sessão iniciada em {{name}}",
+    "openSettings": "Abrir Definições",
+    "switchOrganisation": "Mudar de organização"
   },
   "status": {
     "title": "Estado do serviço",
@@ -606,37 +606,37 @@
     "retry": "Tente novamente"
   },
   "frame": {
-    "home": "Home",
-    "settings": "Settings",
-    "organisation": "Organisation"
+    "home": "Início",
+    "settings": "Definições",
+    "organisation": "Organização"
   },
   "settings": {
-    "title": "Settings",
-    "sections": "Settings sections",
-    "yourAccount": "Your account",
-    "account": "Account",
-    "accountLine": "Your name, email addresses and phone numbers",
-    "security": "Security",
-    "securityLine": "Password, ways to sign in, two-factor, signed-in devices",
-    "signedInAs": "Signed in as {{email}}",
-    "signOut": "Sign out",
-    "choose": "Choose a section",
-    "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices."
+    "title": "Definições",
+    "sections": "Secções das definições",
+    "yourAccount": "A sua conta",
+    "account": "Conta",
+    "accountLine": "O seu nome, endereços de e-mail e números de telefone",
+    "security": "Segurança",
+    "securityLine": "Palavra-passe, formas de iniciar sessão, dois fatores, dispositivos com sessão iniciada",
+    "signedInAs": "Sessão iniciada como {{email}}",
+    "signOut": "Encerrar sessão",
+    "choose": "Escolha uma secção",
+    "chooseLine": "Em Conta estão os seus dados e as formas de contacto. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada."
   },
   "switcher": {
-    "yourRole": "Your role · {{role}}",
-    "heading": "Your organisations",
-    "current": "Current",
-    "remembered": "Soirely remembers your choice on this device.",
-    "label": "Organisation: {{name}}, your role {{role}}",
-    "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
-    "close": "Close"
+    "yourRole": "A sua função · {{role}}",
+    "heading": "As suas organizações",
+    "current": "Atual",
+    "remembered": "O Soirely lembra a sua escolha neste dispositivo.",
+    "label": "Organização: {{name}}, a sua função {{role}}",
+    "labelSwitch": "Organização: {{name}}, a sua função {{role}}. Mudar de organização",
+    "close": "Fechar"
   },
   "roles": {
-    "owner": "Owner",
-    "administrator": "Administrator",
-    "event_manager": "Event manager",
-    "coordinator": "Coordinator",
-    "read_only": "Read-only"
+    "owner": "Proprietário",
+    "administrator": "Administrador",
+    "event_manager": "Gestor de eventos",
+    "coordinator": "Coordenador",
+    "read_only": "Só leitura"
   }
 }
