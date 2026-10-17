@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cleanCode, codeProblem, emailProblem } from './forms.ts';
+import { cleanCode, codeProblem, emailProblem, keyInGroups } from './forms.ts';
 
 describe('an email checked before it is sent', () => {
   it('is there', () => {
@@ -31,5 +31,12 @@ describe('a code checked before it is sent', () => {
     expect(cleanCode(' 184 231 ')).toBe('184231');
     expect(codeProblem('184 231')).toBeNull();
     expect(codeProblem('   ')).toBe('blank');
+  });
+});
+
+describe('an authenticator key', () => {
+  it('is shown in groups of four', () => {
+    expect(keyInGroups('JBSWY3DPEHPK3PXP')).toBe('JBSW Y3DP EHPK 3PXP');
+    expect(keyInGroups('ABCDEF')).toBe('ABCD EF');
   });
 });

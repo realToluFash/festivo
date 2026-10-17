@@ -10,6 +10,7 @@ import { FieldError } from '../../components/FieldError.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { Pending } from '../../components/Pending.tsx';
+import { SecondFactorStep } from '../../components/SecondFactorStep.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { adoptAccount, landingFor } from '../../session.ts';
 
@@ -21,6 +22,7 @@ type Status =
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
   | { kind: 'done'; email: string; account: Account }
+  | { kind: 'code'; email: string }
   | { kind: 'used' }
   | { kind: 'expired' }
   | { kind: 'invalid' };
@@ -46,8 +48,9 @@ export function ResetPassword() {
 
     api
       .checkResetLink(token)
-      .then(({ email }) => {
-        if (live) setStatus({ kind: 'ready', email });
+      .then(({ email, twoFactor }) => {
+        // With two-factor on the code comes first, and nothing changes until it passes.
+        if (live) setStatus({ kind: twoFactor ? 'code' : 'ready', email });
       })
       .catch((error: unknown) => {
         if (live) setStatus({ kind: deadFrom(error) ?? 'invalid' });
@@ -114,6 +117,33 @@ export function ResetPassword() {
             {t('recovery.signIn')}
           </Link>
         </div>
+      </AuthPage>
+    );
+  }
+
+  if (status.kind === 'code') {
+    const email = status.email;
+
+    return (
+      <AuthPage>
+        <SecondFactorStep
+          intro={t('recovery.codeIntro', { email })}
+          recoveryIntro={t('recovery.codeRecoveryIntro')}
+          submitLabel={t('recovery.continueToPassword')}
+          pausedNote={t('recovery.nothingChanged')}
+          onVerify={async (factor) => {
+            try {
+              await api.passResetCode(token, factor);
+            } catch (error) {
+              const dead = deadFrom(error);
+              if (dead == null) throw error;
+              setStatus({ kind: dead });
+              return;
+            }
+            setStatus({ kind: 'ready', email });
+          }}
+          onExpired={() => setStatus({ kind: 'expired' })}
+        />
       </AuthPage>
     );
   }

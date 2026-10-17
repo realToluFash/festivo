@@ -218,6 +218,48 @@ describe('setting a new password from the link', () => {
     );
   });
 
+  it('with two-factor on, asks for the code before the new password, and changes nothing first', async () => {
+    const sent = answering({
+      'POST /api/auth/password/reset/check': () =>
+        json({ email: 'folake@ire.events', twoFactor: true }),
+      'POST /api/auth/password/reset/code': () => new Response(null, { status: 204 }),
+      'POST /api/auth/password/reset': () =>
+        json({
+          accessToken: 'a',
+          refreshExpiresAt: '2026-11-17T12:00:00+00:00',
+          sessionId: 's',
+          account: ACCOUNT,
+        }),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    at('/reset-password?token=t1');
+
+    await screen.findByRole('heading', { level: 1, name: 'Enter your code' });
+    expect(screen.getByText(/Nothing changes until it passes\./)).toBeDefined();
+    expect(screen.queryByLabelText('New password')).toBeNull();
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
+
+    fireEvent.change(await screen.findByLabelText('New password'), {
+      target: { value: 'a brand new passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Set password and sign in' }));
+
+    await waitFor(
+      () =>
+        expect(screen.getByRole('heading', { level: 1, name: 'Password changed' })).toBeDefined(),
+      { timeout: 3000 },
+    );
+    expect(sent.map((request) => request.path)).toEqual([
+      '/api/auth/password/reset/check',
+      '/api/auth/password/reset/code',
+      '/api/auth/password/reset',
+      '/api/orgs',
+    ]);
+    expect(sent[1]?.body).toEqual({ token: 't1', code: '123456' });
+  });
+
   it.each([
     ['reset_link_used', 410, 'This link has already been used'],
     ['reset_link_expired', 410, 'This link has expired'],

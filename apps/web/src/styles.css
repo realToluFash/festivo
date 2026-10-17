@@ -1419,3 +1419,89 @@ h2 {
   min-height: var(--sizeHit);
   margin-left: auto;
 }
+
+/* ── Two-factor, in Settings > Security ──────────────────────────────────── */
+
+/* Off is an empty ring beside the word, so the state never rests on colour. */
+.mark-off {
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+  border: var(--borderMark) var(--colorInkSecondary);
+}
+
+.two-factor-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxl);
+  margin: 0;
+  padding-left: var(--spaceXl);
+}
+
+.two-factor-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.two-factor-steps p {
+  margin: 0;
+}
+
+.two-factor-qr {
+  align-self: flex-start;
+  padding: var(--spaceSm);
+  background: var(--colorCard);
+  border: var(--borderCard);
+  border-radius: var(--radiusInset);
+}
+
+.two-factor-key,
+.recovery-codes {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.two-factor-key {
+  font-weight: 600;
+}
+
+.two-factor-codes-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+}
+
+.two-factor-codes-row p {
+  margin: 0;
+}
+
+.recovery-codes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm) var(--spaceXxl);
+  margin: 0;
+  padding: var(--spaceLg);
+  list-style: none;
+  background: var(--colorInset);
+  border-radius: var(--radiusInset);
+}
+
+.recovery-codes li {
+  flex: 1 1 40%;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+  accent-color: var(--colorAccent);
+}

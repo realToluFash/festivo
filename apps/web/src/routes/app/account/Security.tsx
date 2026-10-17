@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { Pending } from '../../../components/Pending.tsx';
+import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { forgetSession, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
@@ -24,6 +25,7 @@ export function Security() {
   const [checking, setChecking] = useState<DeviceSession | null>(null);
   const [ended, setEnded] = useState<string | null>(null);
   const [endFailed, setEndFailed] = useState(false);
+  const [settingUp, setSettingUp] = useState(false);
 
   // The loading state belongs to the event that asks for a reload, not to the effect.
   useEffect(() => {
@@ -77,7 +79,9 @@ export function Security() {
         <p>{session.email}</p>
       </div>
 
-      <section className="card" aria-labelledby="devices-title">
+      <TwoFactorCard email={session.email} onBusy={setSettingUp} />
+
+      <section className="card" aria-labelledby="devices-title" hidden={settingUp}>
         {checking == null ? (
           <>
             <div className="card-heading">
