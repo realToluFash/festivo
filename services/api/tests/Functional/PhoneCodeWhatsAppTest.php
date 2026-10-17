@@ -101,13 +101,11 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         self::assertSame('whatsapp', $this->opening()['route']);
         self::assertSame([], $this->texts());
 
-        // Delivered to a WhatsApp account is not delivered to the person: they may still ask for a text.
         $this->call('POST', '/api/auth/verify/phone/text-instead');
         self::assertSame(['route' => 'sms_chosen'], $this->last());
         self::assertSame($this->whatsAppCode(), $this->textedCode());
     }
 
-    /** A code that can no longer be used is never texted: no paid SMS for a dead code. */
     #[Test]
     public function anExpiredOrExhaustedCodeIsNeverTexted(): void
     {
@@ -133,7 +131,6 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         self::assertSame([], $this->texts(), 'expired');
     }
 
-    /** A late report about an old code acts on that code, never on the one sent since. */
     #[Test]
     public function aLateFailureForAReplacedCodeLeavesTheNewOneAlone(): void
     {
@@ -149,7 +146,6 @@ final class PhoneCodeWhatsAppTest extends ApiTestCase
         self::assertSame('whatsapp', $this->opening()['route']);
     }
 
-    /** The code is kept only while it is live on WhatsApp: used, it is gone. */
     #[Test]
     public function aUsedCodeIsNoLongerKept(): void
     {
