@@ -81,7 +81,9 @@ did not ask for.
    under a new word. A duplicate is blocking, however clean it looks.
 4. **The decisions already made.** In billing, limits apply at creation and a live event
    stays live. A migration is a nowdoc and never a drop-and-create standing in for a rename.
-   Every user-facing string ships in all four locales. A cross-stack change lands as one pull
+   Every user-facing string has a key in all four locales, with English in the other three
+   until the linguists' ticket translates it. That English is expected, not a finding. A
+   cross-stack change lands as one pull
    request in the documented order. The `docs/architecture/` file for the area is the rule.
 5. **Tests that would fail.** A test that passes with the feature deleted is not a test.
    Read each new assertion and ask what breaking change would turn it red. Mocks checked
