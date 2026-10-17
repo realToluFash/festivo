@@ -21,6 +21,8 @@ interface Extra {
   appleAuthorizeUrl?: string;
   appleTokenUrl?: string;
   appleClientId?: string;
+  appleServicesId?: string;
+  appleAppLink?: string;
 }
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
@@ -44,5 +46,9 @@ export const config = {
     authorizeUrl: extra.appleAuthorizeUrl ?? `${SANDBOX}/apple/authorize`,
     tokenUrl: extra.appleTokenUrl ?? `${SANDBOX}/apple/token`,
     clientId: extra.appleClientId ?? 'soirely-app',
+    /** Android only: the web's Services ID, which the API redeems Apple's form_post code with. */
+    servicesId: extra.appleServicesId ?? 'soirely-web',
+    /** The verified https App Link Apple's form_post comes back by; unset, Android keeps the sandbox path. */
+    appLink: extra.appleAppLink === '' ? undefined : extra.appleAppLink,
   },
 } as const;

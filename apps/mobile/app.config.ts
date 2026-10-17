@@ -13,6 +13,12 @@ import type { ExpoConfig } from 'expo/config';
  * What is NOT acceptable in either is a literal in a source file. See the
  * README for pointing a device on the same network at a development machine.
  */
+// Apple's answer on Android comes back by this https link, which Android opens in the app only once
+// assetlinks.json on the same host has verified it (autoVerify). Absent in development.
+const appleAppLink = process.env.EXPO_PUBLIC_APPLE_APP_LINK?.startsWith('https://')
+  ? new URL(process.env.EXPO_PUBLIC_APPLE_APP_LINK)
+  : null;
+
 const config: ExpoConfig = {
   name: 'Soirely',
   slug: 'soirely',
@@ -33,6 +39,20 @@ const config: ExpoConfig = {
   },
   android: {
     package: 'com.soirely.app',
+    ...(appleAppLink == null
+      ? {}
+      : {
+          intentFilters: [
+            {
+              action: 'VIEW',
+              autoVerify: true,
+              data: [
+                { scheme: 'https', host: appleAppLink.host, pathPrefix: appleAppLink.pathname },
+              ],
+              category: ['BROWSABLE', 'DEFAULT'],
+            },
+          ],
+        }),
     // There is deliberately NO edge-to-edge flag here. This SDK has none — the
     // toggle was removed because Android now enforces edge to edge, so the
     // layout always owns the area behind the system bars.
@@ -70,6 +90,8 @@ const config: ExpoConfig = {
     appleAuthorizeUrl: process.env.EXPO_PUBLIC_APPLE_AUTHORIZE_URL,
     appleTokenUrl: process.env.EXPO_PUBLIC_APPLE_TOKEN_URL,
     appleClientId: process.env.EXPO_PUBLIC_APPLE_CLIENT_ID,
+    appleServicesId: process.env.EXPO_PUBLIC_APPLE_SERVICES_ID,
+    appleAppLink: process.env.EXPO_PUBLIC_APPLE_APP_LINK,
   },
 };
 

@@ -3,6 +3,7 @@ import {
   type SignInOutcome,
   ProviderCancelled,
   ProviderFailed,
+  appleAppLinkOutcome,
   authorizationUrl,
   base64Url,
   codeFromCallback,
@@ -98,10 +99,51 @@ async function signInWithAppleSheet(): Promise<SignInOutcome> {
   );
 }
 
+/** Android: Apple answers the API by form_post, and a one-time handle returns by App Link, in Custom Tabs. */
+async function signInWithAppleOnAndroid(appLink: string): Promise<SignInOutcome> {
+  const redirectUri = `${config.apiBaseUrl}/api/auth/oauth/apple/return`;
+  const state = random();
+  const nonce = random();
+  const codeVerifier = random();
+  const codeChallenge = base64Url(await sha256(codeVerifier));
+
+  await api.startAppleAttempt(state, codeChallenge);
+
+  const result = await openAuthSessionAsync(
+    authorizationUrl(
+      { ...config.apple, clientId: config.apple.servicesId },
+      {
+        redirectUri,
+        state,
+        nonceHash: hex(await sha256(nonce)),
+        codeChallenge,
+        scope: 'openid name email',
+        extra: { response_mode: 'form_post' },
+      },
+    ),
+    appLink,
+  );
+
+  if (result.type !== 'success') throw new ProviderCancelled();
+
+  const outcome = appleAppLinkOutcome(result.url);
+  if (outcome == null) throw new ProviderFailed('the App Link carried no handle');
+  if ('cancelled' in outcome) throw new ProviderCancelled();
+
+  return remember(
+    'apple',
+    await api.exchangeAppleHandle({ handle: outcome.handle, codeVerifier, nonce, redirectUri }),
+  );
+}
+
 /** On iOS Apple is the system sheet, as App Store review expects; elsewhere both run in the browser. */
 export async function signInWithProvider(provider: Provider): Promise<SignInOutcome> {
   if (provider === 'apple' && Platform.OS === 'ios' && (await isAvailableAsync())) {
     return signInWithAppleSheet();
+  }
+
+  if (provider === 'apple' && Platform.OS === 'android' && config.apple.appLink != null) {
+    return signInWithAppleOnAndroid(config.apple.appLink);
   }
 
   return signInInBrowser(provider);

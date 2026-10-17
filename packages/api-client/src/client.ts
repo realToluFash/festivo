@@ -273,6 +273,21 @@ export class ApiClient {
     );
   }
 
+  /** Android starts Apple here, so the API can tell Apple's form_post for the app from the web's. */
+  async startAppleAttempt(state: string, codeChallenge: string): Promise<void> {
+    await this.post('/api/auth/oauth/apple/attempts', { state, codeChallenge });
+  }
+
+  /** The App Link's one-time handle, with the verifier that started the attempt. */
+  async exchangeAppleHandle(attempt: {
+    handle: string;
+    codeVerifier: string;
+    nonce: string;
+    redirectUri: string;
+  }): Promise<SignInOutcome> {
+    return this.signedIn('/api/auth/oauth/apple/handle', attempt, 'AppleAppController');
+  }
+
   /** The web's way in: its code and PKCE verifier, which only the API can redeem, with the secret it holds. */
   async signInWithProviderCode(
     provider: Provider,
