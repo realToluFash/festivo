@@ -5,15 +5,7 @@ import {
   ProviderCancelled,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import {
-  formatTimeOfDay,
-  lockLiftsAt,
-  proofStands,
-  proveWith,
-  providerRows,
-  type ProviderRow,
-} from '@soirely/domain';
-import { type TFunction } from 'i18next';
+import { proofStands, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +14,7 @@ import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
+import { type ProvingField, codeBeforeTrip, provingRefusal } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
@@ -409,7 +402,9 @@ function Proving({
   const code = useRef('');
   const passwordInput = useRef<TextInput>(null);
   const codeInput = useRef<TextInput>(null);
-  const [codeAsked, setCodeAsked] = useState(twoFactorOn);
+  // With a provider, the code is asked for when it returns, never before the trip (a code lapses in 30 seconds).
+  const [codeAsked, setCodeAsked] = useState(codeBeforeTrip(via, twoFactorOn));
+  const returned = useRef<ProviderSignInAttempt | null>(null);
   const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<{
     field: ProvingField | 'failed';
@@ -436,23 +431,35 @@ function Proving({
     setRefusal(null);
 
     try {
+      if (via !== 'password' && via != null)
+        returned.current ??= await confirmWithProvider(via, true);
+
       const first =
-        via === 'password' || via == null
+        via === 'password' || via == null || returned.current == null
           ? { password: password.current }
-          : { provider: via, signIn: await confirmWithProvider(via, true) };
+          : { provider: via, signIn: returned.current };
       held = await api.prove(first, codeAsked ? code.current.trim() : undefined);
       onProved();
     } catch (error) {
       setChecking(false);
 
       if (error instanceof ProviderCancelled) return;
-      if (error instanceof ApiError && error.is('two_factor_required') && via === 'password') {
+      if (error instanceof ApiError && error.is('two_factor_required')) {
         setCodeAsked(true);
 
         return;
       }
 
-      setRefusal(provingRefusal(error, t));
+      // A provider refused or too old is the trip's, so the next Continue goes to the provider again.
+      if (via !== 'password') returned.current = null;
+      setRefusal(
+        provingRefusal(
+          error,
+          t,
+          via === 'password' || via == null ? null : PROVIDER_NAMES[via],
+          currentLocale(),
+        ),
+      );
     }
   }
 
@@ -540,7 +547,7 @@ function Proving({
           label={
             checking
               ? t('waysCard.checking')
-              : via === 'password' || via == null
+              : via === 'password' || via == null || codeAsked
                 ? t('waysCard.continue')
                 : t('waysCard.continueWith', { provider: PROVIDER_NAMES[via] })
           }
@@ -553,8 +560,6 @@ function Proving({
     </>
   );
 }
-
-type ProvingField = 'password' | 'code';
 
 /** Says which way in remains, and that the devices it signed in are signed out. */
 function Confirming({
@@ -613,33 +618,6 @@ function refused(error: unknown, provider: Provider): Said {
     return { kind: 'last', provider };
 
   return { kind: 'failed' };
-}
-
-function provingRefusal(
-  error: unknown,
-  t: TFunction,
-): { field: ProvingField | 'failed'; message: string } {
-  if (error instanceof ApiError && error.is('too_many_attempts')) {
-    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
-
-    return {
-      field: 'failed',
-      message:
-        liftsAt == null
-          ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) }),
-    };
-  }
-
-  if (error instanceof ApiError && error.is('invalid_credentials'))
-    return { field: 'password', message: t('waysCard.passwordWrong') };
-  if (
-    error instanceof ApiError &&
-    (error.is('two_factor_code_invalid') || error.is('recovery_code_used'))
-  )
-    return { field: 'code', message: t('waysCard.codeWrong') };
-
-  return { field: 'failed', message: t('waysCard.failedBody') };
 }
 
 const styles = StyleSheet.create({
