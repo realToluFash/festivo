@@ -8,7 +8,6 @@ use DateTimeImmutable;
 use DateTimeZone;
 use IntlTimeZone;
 use Locale;
-use Psl\Dict;
 use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
@@ -50,16 +49,22 @@ final class TimeZoneList
         return Str\replace(Iter\last(Str\split($id, '/')) ?? $id, '_', ' ');
     }
 
-    /** @return array<string, list<string>> by the zone each `backward` link now names */
+    /** @var array<string, list<string>>|null tzdata's, so the same for every request this process answers */
+    private static ?array $formers = null;
+
+    /** @return array<string, list<string>> by the zone each `backward` link now names, resolved as a PUT resolves it */
     private static function formerNames(): array
     {
-        $current = Dict\flip(DateTimeZone::listIdentifiers());
+        if (null !== self::$formers) {
+            return self::$formers;
+        }
+
         $formers = [];
 
         foreach (DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC) as $link) {
-            $target = IntlTimeZone::getIanaID($link) ?: null;
+            $target = AccountTimeZone::canonical($link);
 
-            if (isset($current[$link]) || null === $target || !isset($current[$target])) {
+            if (null === $target || $target === $link) {
                 continue;
             }
 
@@ -68,7 +73,7 @@ final class TimeZoneList
             $formers[$target] = Iter\contains($known, $name) ? $known : [...$known, $name];
         }
 
-        return $formers;
+        return self::$formers = $formers;
     }
 
     /** @return array<string, string> CLDR's exemplar city by ICU's zone key, for exactly this locale */

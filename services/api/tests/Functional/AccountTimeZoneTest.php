@@ -164,7 +164,7 @@ final class AccountTimeZoneTest extends ApiTestCase
         self::assertContains('Saigon', $row($en, 'Asia/Ho_Chi_Minh')['formerNames'] ?? []);
         self::assertSame([], $row($en, 'America/Argentina/Buenos_Aires')['formerNames'] ?? null, 'a link with the row’s own city is never a former name');
 
-        $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Asia/Calcutta'], $user);
+        self::assertSame(['timezone' => 'Asia/Kolkata'], $this->call('PUT', '/api/auth/timezone', ['timezone' => 'Asia/Calcutta'], $user), 'returned as the current id');
         self::assertSame('Asia/Kolkata', $this->fresh($user)->getTimezone(), 'only the current IANA id is ever stored');
     }
 
