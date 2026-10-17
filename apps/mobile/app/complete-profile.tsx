@@ -146,7 +146,6 @@ function Details({ account }: { account: Account }) {
     if (Object.keys(checked).length > 0) {
       setErrors(checked);
 
-      // The picker is no text field: its refusal gets the screen reader's focus, and no keyboard opens.
       if (checked.name == null && checked.organisationName == null && checked.countryCode != null) {
         focusPicker(countryPicker);
 
