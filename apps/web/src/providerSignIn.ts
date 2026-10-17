@@ -1,6 +1,8 @@
 import {
   type Provider,
   type ProviderAttempt,
+  type ProviderSignInAttempt,
+  ProviderCancelled,
   type SignedIn,
   type SignInOutcome,
   ProviderFailed,
@@ -17,6 +19,18 @@ import { config } from './config.ts';
 
 const LINKED = 'soirely.provider.linked';
 const LINKING = 'soirely.provider.linking';
+const RETURNED = 'soirely.provider.returned';
+
+/** Why Security sent the person to a provider: to confirm it is them, or to choose the account to link. */
+export type ReturnPurpose =
+  { kind: 'prove'; then: { action: 'link' | 'unlink'; provider: Provider } } | { kind: 'link' };
+
+/** What Security finds on its return: the provider's code to send on, or that it did not finish. */
+export type ProviderReturn = { provider: Provider; purpose: ReturnPurpose } & (
+  { signIn: ProviderSignInAttempt } | { failed: 'cancelled' | 'failed' }
+);
+
+type SavedAttempt = ProviderAttempt & { purpose?: ReturnPurpose };
 
 /** How each provider is named on screen. */
 export const PROVIDER_NAMES: Record<Provider, string> = { google: 'Google', apple: 'Apple' };
@@ -48,11 +62,19 @@ function redirectUri(provider: Provider): string {
 }
 
 /** Leaves for the provider, keeping in this tab what only this tab may finish with. */
-export async function startProviderSignIn(provider: Provider): Promise<void> {
+export async function startProviderSignIn(
+  provider: Provider,
+  purpose?: ReturnPurpose,
+): Promise<void> {
   const endpoints = config()[provider];
   if (endpoints == null) throw new ProviderFailed('not configured');
 
-  const attempt: ProviderAttempt = { state: random(), nonce: random(), codeVerifier: random() };
+  const attempt: SavedAttempt = {
+    state: random(),
+    nonce: random(),
+    codeVerifier: random(),
+    ...(purpose == null ? {} : { purpose }),
+  };
   sessionStorage.setItem(attemptKey(provider), JSON.stringify(attempt));
 
   browser.leaveFor(
@@ -94,6 +116,53 @@ export async function finishProviderSignIn(
   else if (outcome.linked) sessionStorage.setItem(LINKED, PROVIDER_NAMES[provider]);
 
   return outcome;
+}
+
+/** The trip Security started, if this callback is one: it is not a sign-in, and nothing is sent from here. */
+export function returnPurpose(provider: Provider): ReturnPurpose | null {
+  const saved = sessionStorage.getItem(attemptKey(provider));
+
+  return saved == null ? null : ((JSON.parse(saved) as SavedAttempt).purpose ?? null);
+}
+
+/** Back from Security's trip: keeps the provider's code for Security, which sends it with the proof. */
+export function keepProviderReturn(provider: Provider, callbackUrl: string): void {
+  const saved = sessionStorage.getItem(attemptKey(provider));
+  sessionStorage.removeItem(attemptKey(provider));
+  if (saved == null) return;
+
+  const attempt = JSON.parse(saved) as SavedAttempt;
+  if (attempt.purpose == null) return;
+
+  let kept: ProviderReturn;
+  try {
+    kept = {
+      provider,
+      purpose: attempt.purpose,
+      signIn: {
+        code: codeFromCallback(callbackUrl, attempt.state),
+        codeVerifier: attempt.codeVerifier,
+        redirectUri: redirectUri(provider),
+        nonce: attempt.nonce,
+      },
+    };
+  } catch (error) {
+    kept = {
+      provider,
+      purpose: attempt.purpose,
+      failed: error instanceof ProviderCancelled ? 'cancelled' : 'failed',
+    };
+  }
+
+  sessionStorage.setItem(RETURNED, JSON.stringify(kept));
+}
+
+/** Once: what the provider trip brought back, for Security to finish. */
+export function takeProviderReturn(): ProviderReturn | null {
+  const kept = sessionStorage.getItem(RETURNED);
+  sessionStorage.removeItem(RETURNED);
+
+  return kept == null ? null : (JSON.parse(kept) as ProviderReturn);
 }
 
 /** The code passed: a provider sign-in it finished may have linked its provider only now. */

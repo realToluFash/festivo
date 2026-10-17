@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -81,6 +81,11 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+/** The Password card alone: Ways to sign in offers Set a password too. */
+function passwordCard() {
+  return within(screen.getByRole('region', { name: 'Password' }));
 }
 
 function openSecurity() {
@@ -488,7 +493,7 @@ describe('changing the password', () => {
   it('offers a Google-only account a password, and says why', () => {
     __setSessionState({
       status: 'signedIn',
-      session: { ...FOLAKE, hasPassword: false, providers: ['google'] },
+      session: { ...FOLAKE, hasPassword: false, providers: [{ provider: 'google', email: null }] },
     });
     answering({ 'GET /api/auth/sessions': () => json(SESSIONS) });
 
@@ -499,7 +504,7 @@ describe('changing the password', () => {
         'You sign in with Google. Add a password so you can also sign in with your email if you ever lose that Google account.',
       ),
     ).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Set a password' })).toBeDefined();
+    expect(passwordCard().getByRole('button', { name: 'Set a password' })).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Change password' })).toBeNull();
   });
 });
@@ -508,7 +513,7 @@ describe('adding a password to a Google account', () => {
   beforeEach(() => {
     __setSessionState({
       status: 'signedIn',
-      session: { ...FOLAKE, hasPassword: false, providers: ['google'] },
+      session: { ...FOLAKE, hasPassword: false, providers: [{ provider: 'google', email: null }] },
     });
   });
 
@@ -529,7 +534,7 @@ describe('adding a password to a Google account', () => {
           complete: true,
           needsOrganisation: false,
           hasPassword: true,
-          providers: ['google'],
+          providers: [{ provider: 'google', email: null }],
           emailAddresses: [
             { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
           ],
@@ -539,7 +544,7 @@ describe('adding a password to a Google account', () => {
     });
 
     openSecurity();
-    fireEvent.click(screen.getByRole('button', { name: 'Set a password' }));
+    fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Send a new code in 1:00' })).toBeDefined(),
@@ -584,7 +589,7 @@ describe('adding a password to a Google account', () => {
     });
 
     openSecurity();
-    fireEvent.click(screen.getByRole('button', { name: 'Set a password' }));
+    fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
 
     expect(screen.getByText('Enter the 6-digit code from the email.')).toBeDefined();

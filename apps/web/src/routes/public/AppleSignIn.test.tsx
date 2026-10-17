@@ -20,7 +20,7 @@ const ACCOUNT = {
     { id: 'a1', address: 'x7k2p9@privaterelay.appleid.com', verified: true, primary: true },
   ],
   phoneNumbers: [],
-  providers: ['apple'],
+  providers: [{ provider: 'apple', email: null }],
 };
 
 const ISSUED = { accessToken: 'access', expiresIn: 900, refreshTokenExpiresIn: 2592000 };
