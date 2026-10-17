@@ -209,7 +209,9 @@ by the same steps, and run the same check before moving it back to `Ready For QA
   Wherever this skill says `[dev]`, tag the developer who built the string: `[dev2]` when the
   feature story carries the `dev2` label, `[dev]` when it carries `dev1` or no label. A
   translation ticket carries neither, so a bare `[dev]` on one reaches developer 1 whoever
-  built the feature. Look up the feature story under **Covers** and use its label.
+  built the feature. Under **Covers**, find the feature story the key came from and use its
+  label. A ticket can cover stories from both developers, so a comment about keys from both
+  is addressed to both, `[dev] [dev2]`.
 - **Business manager `[bm]`**: the cost of an SMS that grew a segment, and a plan or price name.
 - **Creative director `[cd]`**: wording that an idea depends on.
 - **The other linguists**: a shared term, through the `[en]` editor.
