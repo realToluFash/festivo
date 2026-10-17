@@ -27,7 +27,7 @@ final readonly class PasswordChangeMailer
         $locale = $this->userMailer->localeFor($user, $asked);
 
         $this->userMailer->sendTo($user, 'password.changed.subject', [
-            $this->userMailer->line('password.changed.body', $locale, ['{when}' => $this->userMailer->moment($at, $locale)]),
+            $this->userMailer->line('password.changed.body', $locale, ['{when}' => $this->userMailer->moment($at, $user, $locale)]),
             $this->userMailer->line('password.changed.where', $locale, ['{device}' => $this->device($userAgent, $ipAddress, $locale)]),
             $this->userMailer->line('password.changed.devices', $locale),
             $this->userMailer->line('password.changed.notYou', $locale),
@@ -54,7 +54,7 @@ final readonly class PasswordChangeMailer
         $locale = $this->userMailer->localeFor($user, $asked);
 
         $this->userMailer->sendTo($user, 'password.added.subject', [
-            $this->userMailer->line('password.added.body', $locale, ['{when}' => $this->userMailer->moment($at, $locale)]),
+            $this->userMailer->line('password.added.body', $locale, ['{when}' => $this->userMailer->moment($at, $user, $locale)]),
             $this->userMailer->line('password.changed.where', $locale, ['{device}' => $this->device($userAgent, $ipAddress, $locale)]),
             $this->userMailer->line('password.added.notYou', $locale),
             Str\trim_right($this->webOrigin, '/') . '/sign-in',

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\User\Controller;
 
 use App\Domain\User\Http\AccountSerialiser;
+use App\Domain\User\TimeZone\AccountTimeZone;
+use App\Domain\User\TimeZone\TimeZoneList;
 use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -17,12 +19,14 @@ use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[Authenticated]
 final class AccountController
@@ -32,6 +36,8 @@ final class AccountController
         private readonly Security $security,
         private readonly RefreshTokenRepository $refreshTokenRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly TranslatorInterface $translator,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -60,6 +66,33 @@ final class AccountController
         $this->entityManager->flush();
 
         return new JsonResponse(['locale' => $locale]);
+    }
+
+    /** Settings > Account: the zone the times sent to this person are written in. Only an IANA zone is saved. */
+    #[Route('/api/auth/timezone', name: 'auth_timezone', methods: ['PUT'])]
+    public function setTimezone(Request $request): JsonResponse
+    {
+        $body = Input::body($request, Type\shape(['timezone' => Type\string()]));
+
+        if (!AccountTimeZone::isKnown($body['timezone'])) {
+            throw ApiException::validation([[
+                'propertyPath' => 'timezone',
+                'message' => $this->translator->trans('validation.timezone_unknown'),
+                'code' => ErrorCode::ValidationFailed->value,
+            ]]);
+        }
+
+        $this->user()->setTimezone($body['timezone']);
+        $this->entityManager->flush();
+
+        return new JsonResponse(['timezone' => $body['timezone']]);
+    }
+
+    /** Every IANA zone, named in the request's language, with its offset now: the list Settings > Account searches. */
+    #[Route('/api/auth/timezones', name: 'auth_timezones', methods: ['GET'])]
+    public function timezones(Request $request): JsonResponse
+    {
+        return new JsonResponse(['timezones' => TimeZoneList::at($this->clock->now(), $request->getLocale())]);
     }
 
     #[Route('/api/auth/sessions', name: 'auth_sessions', methods: ['GET'])]

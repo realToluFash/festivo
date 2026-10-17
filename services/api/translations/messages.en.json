@@ -24,5 +24,6 @@
     "validation.phone_too_long": "That number looks too long for {country}. Check it and try again.",
     "validation.phone_too_short": "That number looks too short for {country}. Check it and try again.",
     "validation.recovery_code_required": "Enter one of your recovery codes.",
-    "validation.timezone_invalid": "Choose a time zone."
+    "validation.timezone_invalid": "Choose a time zone.",
+    "validation.timezone_unknown": "That time zone isn't one we know, so nothing was saved. Choose one from the list."
 }
