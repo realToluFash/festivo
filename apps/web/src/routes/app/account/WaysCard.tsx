@@ -3,6 +3,7 @@ import {
   type LinkedProvider,
   type Provider,
   type ProviderSignInAttempt,
+  proofRefusal,
 } from '@soirely/api-client';
 import {
   PROOF_MINUTES,
@@ -27,7 +28,7 @@ import {
   startProviderSignIn,
   takeProviderReturn,
 } from '../../../providerSignIn.ts';
-import { dropProof, heldProof, holdProof, proofRefusal } from '../../../recentProof.ts';
+import { dropProof, heldProof, holdProof } from '../../../recentProof.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 

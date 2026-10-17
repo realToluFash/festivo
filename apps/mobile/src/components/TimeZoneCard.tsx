@@ -8,6 +8,7 @@ import { api } from '../api.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
@@ -33,7 +34,7 @@ export function TimeZoneCard({
   const [zones, setZones] = useState<TimeZoneOption[]>([]);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
-  const frame = [styles.card, kind === 'tabletLandscape' ? styles.cardWide : styles.cardNarrow];
+  const frame = cardFrame(kind);
 
   useEffect(() => {
     let live = true;
@@ -247,15 +248,6 @@ function Choosing({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    gap: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  cardNarrow: { padding: tokens.spaceXxl },
-  cardWide: { padding: tokens.space3xl, maxWidth: 640 },
   group: { gap: tokens.spaceXxs },
   secondary: { color: tokens.colorInkSecondary },
   list: {

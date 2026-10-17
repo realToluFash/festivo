@@ -31,6 +31,7 @@ import {
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
@@ -78,7 +79,7 @@ export function WaysCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'list', said: null });
   const [twoFactorOn, setTwoFactorOn] = useState(false);
-  const frame = [styles.card, kind === 'tabletLandscape' ? styles.cardWide : styles.cardNarrow];
+  const frame = cardFrame(kind);
   const rows = providerRows(hasPassword, providers);
 
   useEffect(() => {
@@ -658,15 +659,6 @@ function refused(error: unknown, provider: Provider): Said {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    gap: tokens.spaceLg,
-    borderRadius: tokens.radiusCardPhone,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  cardNarrow: { padding: tokens.spaceXxl },
-  cardWide: { padding: tokens.space3xl, maxWidth: 640 },
   group: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   on: { color: tokens.colorAccentText },

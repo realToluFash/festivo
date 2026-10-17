@@ -1,5 +1,5 @@
-import { ApiError } from '@soirely/api-client';
-import { formatTimeOfDay, lockLiftsAt, type proveWith } from '@soirely/domain';
+import { ApiError, proofRefusal } from '@soirely/api-client';
+import { formatTimeOfDay, type proveWith } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 export type ProvingField = 'password' | 'code';
@@ -35,32 +35,23 @@ export function provingRefusal(
   providerName: string | null,
   locale: string,
 ): { field: ProvingField | 'failed'; message: string } {
-  if (error instanceof ApiError && error.is('too_many_attempts')) {
-    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
+  const refusal = proofRefusal(error, providerName == null);
 
+  if (refusal.kind === 'limited')
     return {
       field: 'failed',
       message:
-        liftsAt == null
+        refusal.until == null
           ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, locale) }),
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, locale) }),
     };
-  }
-
-  if (
-    error instanceof ApiError &&
-    (error.is('invalid_credentials') || error.is('proof_required'))
-  ) {
-    return providerName == null
-      ? { field: 'password', message: t('waysCard.passwordWrong') }
-      : { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
-  }
-
-  if (
-    error instanceof ApiError &&
-    (error.is('two_factor_code_invalid') || error.is('recovery_code_used'))
-  )
-    return { field: 'code', message: t('waysCard.codeWrong') };
+  if (refusal.kind === 'field')
+    return {
+      field: refusal.field,
+      message: refusal.field === 'password' ? t('waysCard.passwordWrong') : t('waysCard.codeWrong'),
+    };
+  if (refusal.kind === 'trip')
+    return { field: 'failed', message: t('waysCard.providerRefused', { provider: providerName }) };
 
   return { field: 'failed', message: t('waysCard.failedBody') };
 }
