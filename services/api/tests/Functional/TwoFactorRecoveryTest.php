@@ -27,6 +27,7 @@ use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use OTPHP\TOTP;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\TestWith;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
@@ -89,6 +90,18 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(['Somebody asked to get into your account without two-factor'], $this->headingsTo(self::ADDRESS, 'A request to get into your Soirely account'));
         self::assertStringContainsString('proved their email address with a code. They have no verified phone.', $this->mailTo('bisi@example.com', 'Folake Adeyemi asked to get back into their account'));
         self::assertSame([], $this->mailsTo(self::ADDRESS, 'Folake Adeyemi asked to get back into their account'), 'never to the person');
+    }
+
+    /** The started email names the device as the devices card names its row, the app included (sc-1242). */
+    #[Test]
+    #[TestWith(['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Device: Chrome on macOS'])]
+    #[TestWith(['Soirely/1.4.0 (iOS 18.1; iPhone)', 'Device: Soirely app on iPhone'])]
+    public function theStartedEmailNamesTheDevice(string $userAgent, string $line): void
+    {
+        $this->client->setServerParameter('HTTP_USER_AGENT', $userAgent);
+        $this->proved();
+
+        self::assertStringContainsString($line, $this->mailTo(self::ADDRESS, 'A request to get into your Soirely account'));
     }
 
     #[Test]

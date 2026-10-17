@@ -139,10 +139,7 @@ final readonly class UserMailer
     /** The device as the devices card names its row (sc-55): readable when it can be, else the user agent as it came. */
     public function named(?string $userAgent, string $locale): string
     {
-        $agent = ReadableAgent::of($userAgent);
-
-        return match (true) {
-            null !== $agent => $this->line('password.device.agent', $locale, ['{browser}' => $agent->browser, '{platform}' => $agent->platform]),
+        return $this->agentName($userAgent, $locale) ?? match (true) {
             null === $userAgent || '' === Str\trim($userAgent) => $this->line('password.device.unknown', $locale),
             default => Str\trim($userAgent),
         };
