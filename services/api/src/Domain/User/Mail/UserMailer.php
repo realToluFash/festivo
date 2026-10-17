@@ -7,6 +7,7 @@ namespace App\Domain\User\Mail;
 use App\Entity\User;
 use DateTimeImmutable;
 use IntlDateFormatter;
+use Psl\Regex;
 use Psl\Str;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Address;
@@ -61,7 +62,29 @@ final readonly class UserMailer
     /** A moment as the reader writes it, in UTC, since a stored instant has no timezone of its own. */
     public function moment(DateTimeImmutable $at, string $locale): string
     {
-        return (IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, 'UTC')?->format($at) ?: $at->format('Y-m-d H:i')) . ' UTC';
+        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, 'UTC');
+
+        if (null === $formatter) {
+            return $at->format('Y-m-d H:i') . ' UTC';
+        }
+
+        $formatter->setPattern(self::twentyFourHour($formatter->getPattern()));
+
+        return ($formatter->format($at) ?: $at->format('Y-m-d H:i')) . ' UTC';
+    }
+
+    /** CLDR's date and wording for the locale, on a 24-hour clock: its short time is 12-hour in en. Quoted text is left alone. */
+    private static function twentyFourHour(string $pattern): string
+    {
+        return Str\trim(Regex\replace_with(
+            $pattern,
+            '/\'[^\']*\'|[hK]+|[\s\x{00A0}\x{202F}]*a+/u',
+            static fn (array $found): string => match (true) {
+                Str\starts_with($found[0], "'") => $found[0],
+                Regex\matches($found[0], '/^[hK]+$/') => 'HH',
+                default => '',
+            },
+        ));
     }
 
     /** @param array<string, string> $parameters */
