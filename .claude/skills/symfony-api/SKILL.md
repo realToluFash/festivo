@@ -159,23 +159,27 @@ test. See `locale-parity`.
 
 ## Attempt budgets
 
-An endpoint that checks a secret (a password, a code) spends a rate-limit budget only on a
-wrong one, so it peeks first and charges after the check. **Hold a per-account row lock from
-the peek to the charge**: `SELECT … FOR UPDATE` on the account's row, in one transaction.
-Without it, requests sent together all pass the peek before any of them pays, and "five per
-window" bounds nothing; a slow hash in the middle makes the gap wide. It has shipped twice:
-`SecondFactorCheck::guarded()` (sc-60) and `PasswordChange` (sc-116) are the pattern. Use a
-manual `beginTransaction()`/`commit()`, not `wrapInTransaction()`, which closes the
-EntityManager on the refusal you are about to throw. Test that the lock is taken before the
-check, since the race cannot be seen from one request at a time.
+An endpoint that checks a secret (a password, a code) against a rate-limit budget goes
+through **`GuardedAttempt::attempt()`** (`App\Domain\User\Attempts`, sc-943), and never
+writes the sequence itself. It peeks every budget, checks, and charges each once only for a
+wrong secret, all inside one transaction under the caller's lock, so requests sent together
+queue instead of all passing the peek before any of them pays. Four places once had their
+own copy, and the copies had already drifted.
 
-A budget keyed on something with no row to lock, such as sign-in's address (known or not),
-takes a Postgres advisory transaction lock on the key instead (`pg_advisory_xact_lock`,
-`SignInAttempts`, sc-838). Lock per account or address, **never per IP**: one venue's Wi-Fi
-is one IP, and a per-IP lock queues every guest behind every other guest's hash, so the IP
-budget may overshoot by what is in flight (sc-838's decision). `SignInConcurrencyTest` shows
-how to prove a lock: real processes started at one instant against one shared Redis, failing
-if any started late.
+- **The lock is the caller's:** a row lock (`refresh(..., PESSIMISTIC_WRITE)`) on the account
+  or factor, or a Postgres advisory lock on the key when there is no row (sign-in's address,
+  `SignInAttempts`). **Never per IP**: one venue's Wi-Fi is one IP, and a per-IP lock queues
+  every guest behind every other guest's hash, so an IP budget may overshoot by what is in
+  flight (sc-838's decision).
+- **Budgets are read after the lock** (a callable), and the check returns `WrongSecret` for a
+  wrong one: the refusal the person sees. Anything the wrong try changed (a code's own count)
+  is committed before the refusal is thrown; any other exception rolls back.
+- `lastWrongPauses` makes the wrong try that spends a budget answer as the pause itself, as
+  two-factor does. Nothing else uses it.
+
+Test the guard where it can be seen: `GuardedAttemptTest` for the order and the charges, and
+`SignInConcurrencyTest` for real concurrency, real processes started at one instant against
+one shared Redis, failing if any started late, and `pg_locks` for what a waiting attempt holds.
 
 ## Emails sent after the response
 
