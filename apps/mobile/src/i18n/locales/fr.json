@@ -462,7 +462,7 @@
     "send": "Envoyer les codes",
     "sending": "Envoi des codes…",
     "limitedTitle": "Trop de demandes",
-    "limitedBody": "Vous pouvez le demander 3 fois par jour. Réessayez à {{time}}.",
+    "limitedBody": "Vous pouvez le demander 3 fois par jour. Réessayez à partir du {{when}}.",
     "back": "Retour à la connexion",
     "nobodyTitle": "Contactez l'assistance Soirely",
     "nobodyIntro": "Personne dans votre organisation ne peut le confirmer. Contactez l'assistance Soirely.",
@@ -529,6 +529,7 @@
     "setupIntro": "La double authentification a été désactivée pour vous permettre de revenir. Configurez-la à nouveau pour qu'un mot de passe seul ne suffise pas à ouvrir votre compte.",
     "setup": "Configurer la double authentification",
     "notNow": "Pas maintenant",
-    "notNowNote": "Vous pouvez la configurer à tout moment dans Paramètres › Sécurité."
+    "notNowNote": "Vous pouvez la configurer à tout moment dans Paramètres › Sécurité.",
+    "limitedBodyLater": "Vous pouvez le demander 3 fois par jour. Réessayez plus tard."
   }
 }

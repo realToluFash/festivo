@@ -586,7 +586,7 @@
     "send": "Envoyer les codes",
     "sending": "Envoi des codes…",
     "limitedTitle": "Trop de demandes",
-    "limitedBody": "Vous pouvez le demander 3 fois par jour. Réessayez à {{time}}.",
+    "limitedBody": "Vous pouvez le demander 3 fois par jour. Réessayez à partir du {{when}}.",
     "back": "Retour à la connexion",
     "nobodyTitle": "Contactez l'assistance Soirely",
     "nobodyIntro": "Personne dans votre organisation ne peut le confirmer. Contactez l'assistance Soirely.",
@@ -659,7 +659,8 @@
     "notMeButton": "Annuler et me déconnecter partout",
     "notMeDoneTitle": "Annulé et déconnecté",
     "notMeDone": "Toute demande en attente est annulée et toutes les sessions sont déconnectées. Si quelqu'un d'autre connaît votre mot de passe, changez-le à votre prochaine connexion.",
-    "notMeBroken": "Ce lien ne fonctionne pas. Ouvrez-le à nouveau depuis le dernier e-mail concernant votre compte."
+    "notMeBroken": "Ce lien ne fonctionne pas. Ouvrez-le à nouveau depuis le dernier e-mail concernant votre compte.",
+    "limitedBodyLater": "Vous pouvez le demander 3 fois par jour. Réessayez plus tard."
   },
   "recoveryRequests": {
     "cardTitle": "Demandes pour revenir",

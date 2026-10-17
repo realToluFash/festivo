@@ -71,6 +71,13 @@ Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in
 and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. A client
 shows the time from `Retry-After`, in the reader's timezone, never a figure of its own.
 
+A limit that can last past the day it was hit also names its instant for the reader, by
+`UserMailer::deadline`: the `detail` reads "Try again Sunday, Oct 18 at 17:09 WAT." (or
+"UTC" with no zone), and the same words come as a `retryAt` member. A client quotes
+`retryAt` as it is, and falls back to `Retry-After` only when it is absent. `Retry-After`
+stays in seconds either way (RFC 9110 §10.2.3). Today only
+`POST /api/auth/two-factor/recovery` carries `retryAt`.
+
 | Endpoint                             | Budget                                                    | Spent by              |
 | ------------------------------------ | --------------------------------------------------------- | --------------------- |
 | `POST /api/auth/register`            | 10 per IP per hour, fixed window                          | every attempt         |
@@ -156,7 +163,11 @@ is ever in a URL.
   `recovery` handle. The codes keep the email table's limits, one cooldown for the pair,
   and the phone code goes as Verify phone's does (WhatsApp first, sc-750). `/prove` needs
   both codes: a wrong one is `verification_code_invalid` with a violation on `emailCode`
-  or `phoneCode`, and neither is spent until both match.
+  or `phoneCode`, and neither is spent until both match. Once the request is proved,
+  `/prove`, `/resend` and `/text-instead` are `409 recovery_request_proved`: it is waiting
+  for an answer, so a client opens its waiting screen. `409 recovery_request_closed` is
+  only for one that has ended (approved, turned down, expired or cancelled). Both carry
+  `requestStatus`.
 - A proved request ends at **the moment it was proved + 7 × 24 h**. It reads as `expired`
   from that instant on, whether or not `app:two-factor-recovery:expire` has run yet.
   `asked` and `expires` are written for the reader by `UserMailer::deadline`, the one

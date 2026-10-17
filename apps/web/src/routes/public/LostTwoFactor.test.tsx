@@ -233,6 +233,29 @@ describe('getting back in without the authenticator', () => {
     expect(sessionStorage.getItem('soirely.twoFactorRecovery')).toBeNull();
   });
 
+  it('opens the waiting screen when the codes were already proved on another device', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery': () =>
+        json(
+          {
+            recovery: 'handle',
+            state: { ...PROVING, codes: { ...PROVING.codes, cooldownSeconds: 0 } },
+          },
+          201,
+        ),
+      'POST /api/auth/two-factor/recovery/resend': () => problem('recovery_request_proved', 409),
+      'POST /api/auth/two-factor/recovery/state': () => json({ state: WAITING }),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter both codes' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send new codes' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Waiting for your organisation' }),
+    ).toBeDefined();
+  });
+
   it('sends nobody codes when nobody can answer', async () => {
     await atTheStart({
       'POST /api/auth/two-factor/recovery/opening': () => json({ ...OPENING, nobody: true }),
@@ -249,12 +272,19 @@ describe('getting back in without the authenticator', () => {
   it('says when a fourth request today can be made', async () => {
     await atTheStart({
       'POST /api/auth/two-factor/recovery': () =>
-        problem('too_many_attempts', 429, {}, { 'Retry-After': '600' }),
+        problem(
+          'too_many_attempts',
+          429,
+          { retryAt: 'Sunday, Oct 18 at 17:09 WAT' },
+          { 'Retry-After': '600' },
+        ),
     });
     fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
 
     expect(await screen.findByText('Too many requests')).toBeDefined();
-    expect(screen.getByText(/You can ask 3 times a day\. Try again at/)).toBeDefined();
+    expect(
+      screen.getByText('You can ask 3 times a day. Try again Sunday, Oct 18 at 17:09 WAT.'),
+    ).toBeDefined();
     expect(
       (screen.getByRole('button', { name: 'Send the codes' }) as HTMLButtonElement).disabled,
     ).toBe(true);

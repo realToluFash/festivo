@@ -462,7 +462,7 @@
     "send": "Enviar los códigos",
     "sending": "Enviando los códigos…",
     "limitedTitle": "Demasiadas solicitudes",
-    "limitedBody": "Puede pedirlo 3 veces al día. Vuelva a intentarlo a las {{time}}.",
+    "limitedBody": "Puede pedirlo 3 veces al día. Vuelva a intentarlo a partir del {{when}}.",
     "back": "Volver a iniciar sesión",
     "nobodyTitle": "Póngase en contacto con el soporte de Soirely",
     "nobodyIntro": "Nadie de su organización puede confirmarlo. Póngase en contacto con el soporte de Soirely.",
@@ -529,6 +529,7 @@
     "setupIntro": "Se desactivó la verificación en dos pasos para que pudiera volver a entrar. Configúrela de nuevo para que una contraseña sola no abra su cuenta.",
     "setup": "Configurar la verificación en dos pasos",
     "notNow": "Ahora no",
-    "notNowNote": "Puede configurarla en cualquier momento en Ajustes › Seguridad."
+    "notNowNote": "Puede configurarla en cualquier momento en Ajustes › Seguridad.",
+    "limitedBodyLater": "Puede pedirlo 3 veces al día. Vuelva a intentarlo más tarde."
   }
 }

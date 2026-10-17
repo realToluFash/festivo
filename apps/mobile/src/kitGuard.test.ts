@@ -61,6 +61,22 @@ describe('changing the layout keeps the form', () => {
   });
 });
 
+describe('the app runs on Hermes', () => {
+  // Hermes lacks these: a screen that calls one without its polyfill crashes on open (sc-509 QA, #1113).
+  const POLYFILLED = { ListFormat: 'intl-listformat', DisplayNames: 'intl-displaynames' } as const;
+
+  it('polyfills every Intl API it calls that Hermes lacks', () => {
+    const polyfills = readFileSync(join(import.meta.dirname, 'intl.ts'), 'utf8');
+    const missing = Object.entries(POLYFILLED).filter(
+      ([api, pkg]) =>
+        sources(['src', 'app']).some(({ text }) => text.includes(`Intl.${api}`)) &&
+        !polyfills.includes(`@formatjs/${pkg}/polyfill.js`),
+    );
+
+    expect(missing.map(([api]) => api)).toEqual([]);
+  });
+});
+
 describe('a screen is a composition of the kit', () => {
   it('takes its fields from the kit, never a bare TextInput', () => {
     const offenders = sources(['app'])
