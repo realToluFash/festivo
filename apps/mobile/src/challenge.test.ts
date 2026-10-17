@@ -32,6 +32,7 @@ describe('where a sign-in goes next', () => {
         complete: true,
         needsOrganisation: false,
         hasPassword: true,
+        twoFactorSetupPrompt: false,
         emailAddresses: [],
         phoneNumbers: [],
         providers: [],
