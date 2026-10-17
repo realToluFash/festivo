@@ -44,16 +44,18 @@ describe('the QA .env', () => {
   it('points nothing a browser reaches at a development port', () => {
     const developmentPorts = [...example.matchAll(/^[A-Z_]+_PORT=(\d+)/gm)].map(([, p]) => p);
 
-    for (const [key, value] of Object.entries(values)) {
-      if (
-        !/^https?:\/\//.test(value) ||
-        /^https?:\/\/(postgres|redis|mercure|storage|mailpit|smocker)\b/.test(value)
-      )
-        continue;
-      for (const port of developmentPorts) {
-        expect(value, key).not.toMatch(new RegExp(`:${port}\\b`));
+    for (const [key, list] of Object.entries(values)) {
+      for (const value of list.split(/[ ,]/)) {
+        if (
+          !/^https?:\/\//.test(value) ||
+          /^https?:\/\/(postgres|redis|mercure|storage|mailpit|smocker|oidc)\b/.test(value)
+        )
+          continue;
+        for (const port of developmentPorts) {
+          expect(value, key).not.toMatch(new RegExp(`:${port}\\b`));
+        }
+        expect(value, key).not.toContain('localhost');
       }
-      expect(value, key).not.toContain('localhost');
     }
   });
 
@@ -72,6 +74,51 @@ describe('the QA .env', () => {
   it('carries every override', () => {
     for (const [key, value] of Object.entries(QA_OVERRIDES)) {
       expect(values[key], key).toBe(String(value));
+    }
+  });
+});
+
+// compose.yaml reads the .env, and its defaults name the development stack. An override it
+// never reads leaves the default in force, which is how the sign-in sandbox once stayed on
+// the developer's port for every QA stack.
+describe('the QA .env against compose.yaml', () => {
+  const compose = readFileSync(new URL('../compose.yaml', import.meta.url), 'utf8');
+  const readByTheHarness = ['COMPOSE_PROJECT_NAME', 'MAILPIT_URL', 'METRO_PORT'];
+
+  it('sets only what compose reads', () => {
+    for (const key of Object.keys(QA_OVERRIDES)) {
+      if (readByTheHarness.includes(key)) continue;
+      expect(compose, `compose.yaml never reads ${key}`).toMatch(new RegExp(`\\$\\{${key}[:}]`));
+    }
+  });
+
+  it('overrides every default that reaches the development stack', () => {
+    const defaults = [...compose.matchAll(/\$\{([A-Z][A-Z0-9_]*):-([^}]*)/g)];
+    const local = defaults.filter(([, , value]) => value.includes('localhost'));
+
+    expect(local.length).toBeGreaterThan(5);
+    for (const [, key] of local) {
+      expect(QA_OVERRIDES, `${key} keeps its development default`).toHaveProperty(key);
+    }
+  });
+
+  it('sends every sign-in to its own sandbox', () => {
+    for (const tester of TESTERS) {
+      const { ports, overrides, app } = qaConfig(tester);
+      const sandbox = `http://127.0.0.1:${ports.OIDC_PORT}/`;
+      const signIn = [
+        overrides.SOIRELY_GOOGLE_AUTHORIZE_URL,
+        overrides.SOIRELY_APPLE_AUTHORIZE_URL,
+        app.EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL,
+        app.EXPO_PUBLIC_GOOGLE_TOKEN_URL,
+        app.EXPO_PUBLIC_APPLE_AUTHORIZE_URL,
+        app.EXPO_PUBLIC_APPLE_TOKEN_URL,
+      ];
+
+      for (const url of signIn) expect(url).toMatch(new RegExp(`^${sandbox}`));
+      expect(overrides.OAUTH_GOOGLE_ISSUERS.split(',')).toContain(`${sandbox}google`);
+      expect(overrides.OAUTH_APPLE_ISSUERS.split(',')).toContain(`${sandbox}apple`);
+      expect(app.EXPO_PUBLIC_API_URL).toBe(`http://127.0.0.1:${ports.API_PORT}`);
     }
   });
 });
