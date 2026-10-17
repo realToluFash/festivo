@@ -20,11 +20,11 @@ use SensitiveParameter;
 final readonly class ScriptedBreachedPasswordChecker implements BreachedPasswordCheckerInterface
 {
     public const array KNOWN = [
-        'password1234',
-        'qwertyuiop123',
-        'iloveyou1234',
-        'administrator',
-        'letmein12345',
+        'password1234567',
+        'qwertyuiop12345',
+        'iloveyou1234567',
+        'administrator12',
+        'letmein12345678',
     ];
 
     public function isBreached(#[SensitiveParameter] string $password): bool

@@ -139,7 +139,7 @@ describe('setting a new password from the link', () => {
 
     await waitFor(() => expect(screen.getByText('For folake@ire.events.')).toBeDefined());
     expect(screen.getByText(/signs you out on every other device/)).toBeDefined();
-    expect(screen.getByText('At least 12 characters')).toBeDefined();
+    expect(screen.getByText('At least 15 characters')).toBeDefined();
   });
 
   it('sends nothing for a blank or short password', async () => {
