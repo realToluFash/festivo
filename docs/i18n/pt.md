@@ -84,3 +84,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. "It" in the device dialog is "o dispositivo"** (`devices.signInAgain`):
   Portuguese drops the subject, and on its own the sentence reads as if the person had to
   sign in again.
+- **18 Oct 2026. A moment in a sentence is "a {when}"** (`emails:password.changed.body`,
+  `password.added.body`, `recovery.changed.body`, `twoFactor.off.body`): "foi alterada a
+  18 de outubro de 2026 às 14:30". European Portuguese dates a day with "a"; "em {when}" is
+  the Brazilian habit, and two password emails disagreed. A label keeps the colon
+  ("Quando: {when}"), and a range keeps "até" / "a partir de".
