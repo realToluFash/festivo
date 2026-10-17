@@ -91,5 +91,14 @@
     "twoFactorRecovery.openSecurity": "Abrir Seguridad: {link}",
     "twoFactorRecovery.notMe": "No he sido yo: {link}",
     "twoFactorRecovery.notMeNote": "Cancela cualquier solicitud pendiente y cierra todas las sesiones.",
-    "twoFactorRecovery.footer": "Recibe este correo por un cambio en cómo se inicia sesión en su cuenta de Soirely."
+    "twoFactorRecovery.footer": "Recibe este correo por un cambio en cómo se inicia sesión en su cuenta de Soirely.",
+    "newDevice.subject": "New sign-in to Soirely",
+    "newDevice.body": "Your Soirely account was signed in to on a device it hasn't seen before.",
+    "newDevice.when": "When: {when}",
+    "newDevice.device": "Device: {device}",
+    "newDevice.address": "Network address: {address}",
+    "newDevice.review": "Review your devices:",
+    "newDevice.notYou": "If this wasn't you, change your password and sign out the devices you don't recognise.",
+    "newDevice.notYouNoPassword": "If this wasn't you, sign out the devices you don't recognise from Security.",
+    "newDevice.why": "You're getting this because a new device signed in to your Soirely account."
 }

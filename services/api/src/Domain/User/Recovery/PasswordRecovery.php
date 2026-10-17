@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Recovery;
 
+use App\Domain\User\Device\KnownDevices;
 use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordResolver;
@@ -38,6 +39,7 @@ final readonly class PasswordRecovery
         private NewPasswordRules $newPasswordRules,
         private PasswordResolver $passwordResolver,
         private TokenIssuer $tokenIssuer,
+        private KnownDevices $knownDevices,
         private RecoveryMailer $recoveryMailer,
         private TwoFactorFactorRepository $twoFactorFactorRepository,
         private SecondFactorCheck $secondFactorCheck,
@@ -128,6 +130,10 @@ final readonly class PasswordRecovery
         $this->tokenIssuer->revokeAllFor($user);
         $tokens = $this->tokenIssuer->issueFor($user, $request);
         $this->entityManager->flush();
+
+        if (null !== $request) {
+            $this->knownDevices->remember($user, $request);
+        }
 
         $this->recoveryMailer->sendChanged($user, $now);
 

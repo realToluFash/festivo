@@ -7,9 +7,10 @@ import { StatusBar } from 'expo-status-bar';
 
 import { Text } from '../src/components/Text.tsx';
 import { initI18n } from '../src/i18n/index.ts';
+import { loadInstallId } from '../src/installId.ts';
 
 /**
- * The root. Localisation is awaited before anything renders.
+ * The root. Localisation, and the install identifier every sign-in carries, are awaited before anything renders.
  *
  * Rendering first and translating afterwards shows a French reader a flash of
  * English, which is brief and reads as a broken product rather than as loading.
@@ -23,7 +24,7 @@ export default function RootLayout() {
   useEffect(() => {
     let live = true;
 
-    initI18n()
+    Promise.all([initI18n(), loadInstallId()])
       .then(() => {
         if (live) setState('ready');
       })
