@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Attempts\GuardedAttempt;
 use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordChangeMailer;
 use App\Domain\User\Password\PasswordResolver;
@@ -247,6 +248,7 @@ final class SetPasswordTest extends ApiTestCase
             $em,
             new Clock(),
             $budget,
+            new GuardedAttempt($em),
         );
     }
 

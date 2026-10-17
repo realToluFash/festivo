@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Attempts\GuardedAttempt;
 use App\Domain\User\Password\NewPasswordRules;
 use App\Domain\User\Password\PasswordChange;
 use App\Domain\User\Password\PasswordChangeMailer;
@@ -247,6 +248,7 @@ final class ChangePasswordTest extends ApiTestCase
             self::service(TranslatorInterface::class),
             new NativeClock(),
             $budget ?? new RateLimiterFactory(['id' => 'change', 'policy' => 'fixed_window', 'limit' => 5, 'interval' => '15 minutes'], new InMemoryStorage()),
+            new GuardedAttempt($em ?? self::em()),
         );
     }
 

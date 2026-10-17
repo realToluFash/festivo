@@ -38,6 +38,7 @@ final readonly class PasswordSetting
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private RateLimiterFactoryInterface $passwordSetAccountLimiter,
+        private GuardedAttempt $guardedAttempt,
     ) {
     }
 
@@ -71,7 +72,7 @@ final readonly class PasswordSetting
     /** @return string the one-time step-up token `set()` needs, so the pass is this client's, not the account's */
     public function passCode(User $user, #[SensitiveParameter] string $code): string
     {
-        return new GuardedAttempt($this->entityManager)->attempt(
+        return $this->guardedAttempt->attempt(
             fn () => $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE),
             fn (): array => [$this->passwordSetAccountLimiter->create($user->getId()->toRfc4122())],
             fn (): string|WrongSecret => $this->check($user, $code),
