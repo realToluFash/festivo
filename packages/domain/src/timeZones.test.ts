@@ -50,6 +50,15 @@ describe('the time zone list', () => {
     expect(ids('01:00')).toEqual([]);
   });
 
+  it('still finds a picked label as it is edited, without matching the offset inside it', () => {
+    const ids = (query: string) => matchingZones(ZONES, query).map((z) => z.id);
+
+    expect(ids('Lagos (UTC+01:00)')).toEqual(['Africa/Lagos']);
+    expect(ids('Lagos (UTC+01:0')).toEqual(['Africa/Lagos']);
+    expect(ids('(utc+1')).toEqual([]);
+    expect(ids('utc+1')).not.toContain('Australia/Sydney');
+  });
+
   it('lists everything for an empty search, and nothing for no match', () => {
     expect(matchingZones(ZONES, '  ')).toHaveLength(ZONES.length);
     expect(matchingZones(ZONES, 'Lagso')).toEqual([]);

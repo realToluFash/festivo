@@ -26,7 +26,7 @@ function offsetQuery(
   return { sign: match[1]!, hours: match[2]!.padStart(2, '0'), minutes: match[3] ?? null };
 }
 
-/** An offset query matches by offset alone ("+5" the hour, "+5:30" exactly); text never the label's offset. */
+/** An offset query matches by offset alone ("+5" the hour, "+5:30" exactly); text matches a label only from its start. */
 export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: string): Z[] {
   const wanted = folded(query);
   if (wanted === '') return [...zones];
@@ -40,10 +40,11 @@ export function matchingZones<Z extends ZoneRow>(zones: readonly Z[], query: str
     );
   }
 
-  return zones.filter((zone) =>
-    [zone.city, zone.country, zone.id.replace(/_/g, ' ')].some((text) =>
-      folded(text).includes(wanted),
-    ),
+  return zones.filter(
+    (zone) =>
+      [zone.city, zone.country, zone.id.replace(/_/g, ' ')].some((text) =>
+        folded(text).includes(wanted),
+      ) || folded(zoneLabel(zone)).startsWith(wanted),
   );
 }
 
