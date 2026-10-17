@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit;
 
 use App\Domain\User\Password\PasswordPolicy;
+use App\Domain\User\Password\ScriptedBreachedPasswordChecker;
 use App\Enum\PasswordFailure;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -32,7 +33,9 @@ final class PasswordPolicyTest extends TestCase
     /** @return iterable<string, array{string, string}> */
     public static function acceptable(): iterable
     {
-        yield 'exactly the minimum' => ['abcdefghijkl', '12 characters is the floor, not 13'];
+        yield 'exactly the minimum' => ['abcdefghijklmno', '15 characters is the floor, not 16 (NIST SP 800-63B-4 §3.1.1.2)'];
+
+        yield 'sixty-four characters' => [Str\repeat('a', 64), 'A verifier SHALL permit at least 64'];
 
         yield 'all lower case, no digit, no symbol' => [
             'correcthorsebatterystaple',
@@ -51,7 +54,7 @@ final class PasswordPolicyTest extends TestCase
 
         yield 'non-latin script' => ['пароль из слов двенадцать', 'Every printable character is allowed'];
 
-        yield 'emoji' => ['🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉', 'Twelve characters, whatever they are'];
+        yield 'emoji' => ['🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉', 'Fifteen characters, whatever they are'];
 
         yield 'at the maximum' => [Str\repeat('a', PasswordPolicy::MAXIMUM_LENGTH), 'The cap is inclusive'];
     }
@@ -59,7 +62,16 @@ final class PasswordPolicyTest extends TestCase
     #[Test]
     public function itRefusesSomethingShorterThanTheMinimum(): void
     {
-        self::assertSame([PasswordFailure::TooShort], PasswordPolicy::check(Str\repeat('a', 11)));
+        self::assertSame([PasswordFailure::TooShort], PasswordPolicy::check(Str\repeat('a', 14)));
+    }
+
+    /** A scripted breached password the length rule refuses never reaches the corpus, and its test proves nothing. */
+    #[Test]
+    public function everyScriptedBreachedPasswordIsLongEnoughToReachTheCorpus(): void
+    {
+        foreach (ScriptedBreachedPasswordChecker::KNOWN as $known) {
+            self::assertSame([], PasswordPolicy::check($known), $known);
+        }
     }
 
     #[Test]
@@ -93,15 +105,15 @@ final class PasswordPolicyTest extends TestCase
     /**
      * NFKC, so the same password typed on two keyboards is the same password.
      *
-     * Twelve composed accented characters and the twenty-four code points that
+     * Fifteen composed accented characters and the thirty code points that
      * decompose to them have to behave identically, or somebody can set a
      * password on one device and be refused on another with a correct one.
      */
     #[Test]
     public function aDecomposedPasswordIsTheSameAsItsComposedForm(): void
     {
-        $composed = Str\repeat("\u{00e9}", 12);
-        $decomposed = Str\repeat("e\u{0301}", 12);
+        $composed = Str\repeat("\u{00e9}", 15);
+        $decomposed = Str\repeat("e\u{0301}", 15);
 
         self::assertNotSame($composed, $decomposed, 'precondition: different byte sequences');
         self::assertSame($composed, PasswordPolicy::normalise($decomposed), 'normalisation collapses them');
@@ -109,19 +121,19 @@ final class PasswordPolicyTest extends TestCase
     }
 
     /**
-     * The other direction of the same rule: eleven decomposed characters are
-     * eleven characters, not twenty-two, so they are still too short.
+     * The other direction of the same rule: fourteen decomposed characters are
+     * fourteen characters, not twenty-eight, so they are still too short.
      */
     #[Test]
     public function normalisationDoesNotLetAShortPasswordThrough(): void
     {
-        self::assertSame([PasswordFailure::TooShort], PasswordPolicy::check(Str\repeat("e\u{0301}", 11)));
+        self::assertSame([PasswordFailure::TooShort], PasswordPolicy::check(Str\repeat("e\u{0301}", 14)));
     }
 
     #[Test]
     public function malformedTextIsRefusedForItsLengthRatherThanThrowing(): void
     {
-        $broken = "\xC3\x28" . Str\repeat('a', 11);
+        $broken = "\xC3\x28" . Str\repeat('a', 14);
 
         self::assertSame([], PasswordPolicy::check($broken), 'long enough, and normalisation declined to touch it');
     }

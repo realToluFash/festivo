@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Domain\User\Attempts\GuardedAttempt;
 use App\Domain\User\Controller\SignInController;
 use App\Domain\User\Http\SignInResponse;
+use App\Domain\User\Password\PasswordResolver;
 use App\Domain\User\SignInAttempts;
 use App\Domain\User\UserAuthenticator;
 use App\Domain\User\UserRegistrar;
@@ -51,6 +52,19 @@ final class SignInTest extends ApiTestCase
     }
 
     /** The gate is decided from this response, so it must not need a second request to /me. */
+    /** NIST SP 800-63B-4 forbids forcing a change without evidence of compromise, so a raised minimum binds only the next one set. */
+    #[Test]
+    public function aPasswordSetUnderTheOldTwelveCharacterRuleStillSignsIn(): void
+    {
+        $user = $this->account('twelve@example.com');
+        $user->setPassword(self::service(PasswordResolver::class)->hash('twelve chars'));
+        self::em()->flush();
+
+        $this->signIn('twelve@example.com', 'twelve chars');
+
+        self::assertSame(200, $this->client->getResponse()->getStatusCode());
+    }
+
     #[Test]
     public function itReturnsTheAccountAsMeDoes(): void
     {
