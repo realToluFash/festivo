@@ -372,6 +372,23 @@ export class ApiClient {
     return { signedOut: typeof body.signedOut === 'number' ? body.signedOut : 0 };
   }
 
+  /** A Google or Apple account adding a password: a code to the primary address first. Answers the cooldown. */
+  async startSettingPassword(): Promise<number> {
+    return cooldownFrom(await this.post<unknown>('/api/auth/password/set/start'));
+  }
+
+  /** Answers the one-time step-up token that only this client can then set the password with. */
+  async passPasswordCode(code: string): Promise<string> {
+    const body = await this.post<{ stepUp?: unknown }>('/api/auth/password/set/code', { code });
+
+    return typeof body.stepUp === 'string' ? body.stepUp : '';
+  }
+
+  /** Only with the token a passed code gave this client; no session ends, since nothing was replaced. */
+  async setPassword(newPassword: string, stepUp: string): Promise<void> {
+    await this.post<undefined>('/api/auth/password/set', { newPassword, stepUp });
+  }
+
   /** Signed in as sign-in is: the same tokens, the same account. */
   /** The same answer for every address, so it says nothing of who has an account; no session yet. */
   async register(email: string, name: string, password: string): Promise<PendingRegistration> {
