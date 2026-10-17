@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { QuietButton } from '../src/components/Buttons.tsx';
+import { PasswordCard } from '../src/components/PasswordCard.tsx';
 import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { TwoFactorCard } from '../src/components/TwoFactorCard.tsx';
@@ -60,6 +61,12 @@ export default function Security() {
       {phone ? <View style={styles.phoneHeader}>{heading}</View> : heading}
       {account != null && (
         <View style={CARDS[kind]}>
+          <PasswordCard
+            email={email}
+            hasPassword={account.hasPassword}
+            providers={account.providers}
+            kind={kind}
+          />
           <TwoFactorCard email={email} kind={kind} />
         </View>
       )}

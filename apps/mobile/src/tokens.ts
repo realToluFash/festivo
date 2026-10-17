@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 const REFRESH_KEY = 'soirely.refreshToken';
 
 let accessToken: string | null = null;
+let sessionId: string | null = null;
 let refreshToken: string | null = null;
 let read = false;
 
@@ -21,6 +22,7 @@ export const tokens: TokenStore = {
 
   save: async (issued: IssuedTokens) => {
     accessToken = issued.accessToken;
+    sessionId = issued.sessionId;
 
     if (issued.refreshToken == null) return;
 
@@ -32,12 +34,18 @@ export const tokens: TokenStore = {
 
   clear: async () => {
     accessToken = null;
+    sessionId = null;
     refreshToken = null;
     read = true;
 
     await forget();
   },
 };
+
+/** The session this device is in, renewed by every refresh: a password change keeps it signed in. */
+export function currentSessionId(): string | null {
+  return sessionId;
+}
 
 /** No keystore on web, and a device can refuse one: memory for the launch rather than a failure. */
 async function usable(): Promise<boolean> {

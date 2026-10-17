@@ -316,5 +316,32 @@
   "security": {
     "title": "Security",
     "back": "Back"
+  },
+  "passwordCard": {
+    "title": "Password",
+    "intro": "Used with your email to sign in. Changing it signs out your other devices; this one stays signed in.",
+    "change": "Change password",
+    "none": "You sign in with {{provider}}, so there is no password to change.",
+    "formTitle": "Change your password",
+    "current": "Current password",
+    "forgot": "Forgot it?",
+    "new": "New password",
+    "currentBlank": "Enter your current password.",
+    "newBlank": "Enter a new password.",
+    "wrongCurrent": "That is not your current password. Try again, or reset it by email.",
+    "same": "That is already your password. Choose a different one.",
+    "pausedTitle": "Too many tries",
+    "pausedBody": "Try again at {{time}}. Nothing was changed.",
+    "pausedSoon": "Wait a moment, then try again. Nothing was changed.",
+    "signsOut": "Saving signs out your other devices; this one stays signed in. They may keep working for up to 15 minutes while that reaches them.",
+    "emailed": "We will email {{email}} to say it was changed.",
+    "save": "Save new password",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "done_zero": "Password changed. No other device was signed in.",
+    "done_one": "Password changed. Your other device is signed out; it may keep working for up to 15 minutes while that reaches it, then it has to sign in again.",
+    "done_other": "Password changed. Your {{count}} other devices are signed out; they may keep working for up to 15 minutes while that reaches them, then they have to sign in again.",
+    "failedTitle": "Nothing was changed",
+    "failedBody": "Your password could not be saved. Check your connection and try again."
   }
 }
