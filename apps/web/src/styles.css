@@ -1521,6 +1521,77 @@ h2 {
   }
 }
 
+/* ── Your account's sections, and the time zone (sc-868) ─────────────────── */
+
+.account-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.account-section {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border-radius: var(--radiusPill);
+  color: var(--colorInkSecondary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.account-section[aria-current='page'] {
+  background: var(--colorInset);
+  color: var(--colorInk);
+}
+
+.tz-current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+}
+
+.tz-current-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 12rem;
+}
+
+.tz-current-label {
+  font: var(--typeRowTitle);
+}
+
+.tz-list {
+  max-width: 28rem;
+  max-height: 16.5rem;
+  margin: 0;
+  padding: var(--spaceXxs);
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--colorBorder);
+  border-radius: var(--radiusField);
+  background: var(--colorCard);
+}
+
+.tz-option {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spaceLg);
+  align-items: center;
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border-radius: var(--radiusSmall);
+  cursor: pointer;
+}
+
+.tz-option-active,
+.tz-option:hover {
+  background: var(--colorInset);
+}
+
 /* ── Ways to sign in (sc-510) ─────────────────────────────────────────────── */
 
 .ways-list {

@@ -30,6 +30,8 @@ export interface Session {
   /** The organisation's country from `/me`, which the gate lets through where `/api/orgs` is not. */
   organisationCountry: string | null;
   organisations: readonly Membership[];
+  /** The account's IANA zone; null while times reach the person in UTC (sc-868). */
+  timezone: string | null;
 }
 
 export type SessionState =
@@ -162,6 +164,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     needsOrganisation: account.needsOrganisation,
     organisations,
     organisationCountry: account.organisationCountry,
+    timezone: account.timezone,
     organisation:
       organisations.find((membership) => membership.id === remembered) ?? organisations[0] ?? null,
   };

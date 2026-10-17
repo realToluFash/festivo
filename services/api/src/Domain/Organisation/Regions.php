@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation;
 
-use DateTimeZone;
 use NumberFormatter;
 use Psl\Iter;
 use Psl\Regex;
@@ -35,11 +34,6 @@ final class Regions
     {
         return Regex\matches($code, '/^[A-Z]{3}$/')
             && Iter\contains_key(self::table('ICUDATA-curr', 'Currencies'), $code);
-    }
-
-    public static function isTimezone(string $identifier): bool
-    {
-        return Iter\contains(DateTimeZone::listIdentifiers(), $identifier);
     }
 
     /** @return array<array-key, mixed> */

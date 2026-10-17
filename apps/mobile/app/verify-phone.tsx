@@ -9,7 +9,7 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
-import { type CodeStatus, codeRefusal, retryAfter } from '../src/kit/code.ts';
+import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
 
 type Status = CodeStatus | { kind: 'verified' };
 
@@ -35,9 +35,11 @@ export default function VerifyPhone() {
       });
 
     api
-      .phoneCooldown()
-      .then((seconds) => {
-        if (live) setCooldown(seconds);
+      .phoneOpening()
+      .then(({ cooldownSeconds, codeState }) => {
+        if (!live) return;
+        setCooldown(cooldownSeconds);
+        setStatus((now) => (now.kind === 'verified' ? now : openingStatus(now, codeState)));
       })
       .catch(() => {});
 

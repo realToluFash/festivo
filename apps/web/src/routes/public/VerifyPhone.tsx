@@ -43,9 +43,14 @@ export function VerifyPhone() {
       });
 
     api
-      .phoneCooldown()
-      .then((seconds) => {
-        if (live) setCooldown(seconds);
+      .phoneOpening()
+      .then(({ cooldownSeconds, codeState }) => {
+        if (!live) return;
+        setCooldown(cooldownSeconds);
+        // A spent code opens on its banner, so the screen never invites a try it knows is refused.
+        if (codeState !== 'live') {
+          setStatus((now) => (now.kind === 'entering' ? { kind: codeState } : now));
+        }
       })
       .catch(() => {});
 

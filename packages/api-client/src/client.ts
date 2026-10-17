@@ -84,6 +84,15 @@ export interface RecentProof {
   expiresAt: string;
 }
 
+/** One IANA zone as Settings > Account lists it. */
+export interface TimeZoneOption {
+  id: string;
+  city: string;
+  country: string;
+  /** Its offset now, such as `+01:00`. */
+  offset: string;
+}
+
 export interface Health {
   status: string;
   checks: Record<string, { status: string; error?: string }>;
@@ -116,6 +125,8 @@ export interface Account {
   /** The country of the organisation it belongs to, readable behind the onboarding gate. */
   organisationCountry: string | null;
   locale: string | null;
+  /** An IANA zone; null until a device has said one, while times reach the person in UTC. */
+  timezone: string | null;
   verified: boolean;
   complete: boolean;
   /** The details screen asks for an organisation: a self-registered account in none. */
@@ -188,6 +199,8 @@ export interface ClientOptions {
   refreshTokenIn?: RefreshTokenDelivery;
   /** The reader's language, for the API's own locale negotiation. */
   locale?: () => string | null;
+  /** The device's IANA zone, which sets an account's own until it has one (sc-868). */
+  timeZone?: () => string | null;
   /** Called when refresh fails and the session is over. */
   onSignedOut?: () => void;
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
@@ -502,6 +515,26 @@ export class ApiClient {
   }
 
   /** The language switcher, signed in: the account's language, which every device and email then follow. */
+  /** Refused with a `timezone` violation for a zone IANA doesn't list; nothing is saved then. */
+  async setTimezone(timezone: string): Promise<void> {
+    await this.put<unknown>('/api/auth/timezone', { timezone });
+  }
+
+  /** Every IANA zone, named in the reader's language, with its offset now. */
+  async timezones(): Promise<TimeZoneOption[]> {
+    const body = await this.get<{ timezones?: unknown }>('/api/auth/timezones');
+
+    return Array.isArray(body.timezones)
+      ? body.timezones.filter(
+          (zone): zone is TimeZoneOption =>
+            typeof zone?.id === 'string' &&
+            typeof zone.city === 'string' &&
+            typeof zone.country === 'string' &&
+            typeof zone.offset === 'string',
+        )
+      : [];
+  }
+
   async setLocale(locale: string): Promise<void> {
     await this.put<unknown>('/api/auth/locale', { locale });
   }
@@ -544,9 +577,9 @@ export class ApiClient {
     return phone;
   }
 
-  async phoneCooldown(): Promise<number> {
-    return (await this.get<{ cooldownSeconds: number }>('/api/auth/verify/phone/resend'))
-      .cooldownSeconds;
+  /** Reads the cooldown and the code's state without spending either, as the email's opening does. */
+  async phoneOpening(): Promise<CodeOpening> {
+    return openingFrom(await this.get<unknown>('/api/auth/verify/phone/resend'));
   }
 
   async resendPhoneCode(): Promise<number> {
@@ -675,6 +708,8 @@ export class ApiClient {
 
     const locale = this.options.locale?.();
     if (locale != null && locale !== '') headers['Accept-Language'] = locale;
+    const timeZone = this.options.timeZone?.();
+    if (timeZone != null && timeZone !== '') headers['X-Timezone'] = timeZone;
 
     if (!init.anonymous && this.options.tokens != null) {
       const token = await this.options.tokens.access();
@@ -934,6 +969,7 @@ function asAccount(raw: unknown): Account | null {
     organisationCountry:
       typeof candidate.organisationCountry === 'string' ? candidate.organisationCountry : null,
     locale: typeof candidate.locale === 'string' ? candidate.locale : null,
+    timezone: typeof candidate.timezone === 'string' ? candidate.timezone : null,
     verified: candidate.verified === true,
     complete: candidate.complete === true,
     needsOrganisation: candidate.needsOrganisation === true,

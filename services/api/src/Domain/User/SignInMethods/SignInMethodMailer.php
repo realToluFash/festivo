@@ -37,7 +37,7 @@ final readonly class SignInMethodMailer
         $paragraphs = [
             $this->userMailer->line($key . '.body', $locale, $name),
             ...(null === $vouchedFor ? [] : [$this->userMailer->line('provider.account', $locale, [...$name, '{address}' => $vouchedFor])]),
-            $this->userMailer->line('provider.when', $locale, ['{when}' => $this->userMailer->moment($at, $locale)]),
+            $this->userMailer->line('provider.when', $locale, ['{when}' => $this->userMailer->moment($at, $user, $locale)]),
             $this->userMailer->line('password.changed.where', $locale, ['{device}' => $this->userMailer->device($userAgent, $ipAddress, $locale)]),
             $this->userMailer->line('provider.security', $locale) . ' ' . Str\trim_right($this->webOrigin, '/') . '/app/account/security',
             $this->userMailer->line($key . '.notYou', $locale, $name),

@@ -25,6 +25,7 @@ const FOLAKE: Session = {
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
   organisationCountry: null,
+  timezone: null,
 };
 
 const ACCOUNT = {

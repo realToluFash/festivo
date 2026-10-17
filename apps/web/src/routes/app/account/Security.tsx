@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
+import { AccountSections } from '../../../components/AccountSections.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
@@ -81,6 +82,8 @@ export function Security() {
         <h1>{t('account.title')}</h1>
         <p>{session.email}</p>
       </div>
+
+      <AccountSections />
 
       <PasswordCard
         email={session.email}

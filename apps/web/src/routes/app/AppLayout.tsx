@@ -89,7 +89,7 @@ function Shell() {
           <NavLink to="/app/events">{t('nav.events')}</NavLink>
           <NavLink to="/app/guests">{t('nav.guests')}</NavLink>
           <NavLink to="/app/settings">{t('nav.settings')}</NavLink>
-          <NavLink to="/app/account/security">{t('nav.account')}</NavLink>
+          <NavLink to="/app/account">{t('nav.account')}</NavLink>
         </nav>
 
         <div className="shell-account">

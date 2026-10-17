@@ -414,5 +414,29 @@
     "confirmEmailed": "Nous écrivons à chaque adresse vérifiée de votre compte pour signaler que {{provider}} a été dissocié.",
     "confirmUnlink": "Dissocier {{provider}}",
     "keep": "Le garder associé"
+  },
+  "timeZone": {
+    "title": "Fuseau horaire",
+    "intro": "Les heures des e-mails et SMS que Soirely vous envoie sont écrites dans ce fuseau.",
+    "unset": "Non défini : les heures vous arrivent en UTC",
+    "change": "Modifier",
+    "find": "Trouvez votre fuseau horaire",
+    "help": "Tapez une ville, un pays ou un décalage, puis choisissez dans la liste. Actuellement : {{now}}.",
+    "nowUnset": "non défini, les heures vous arrivent donc en UTC",
+    "placeholder": "Lagos, Ghana ou UTC+01",
+    "listLabel": "Fuseaux horaires",
+    "noneMatch": "Aucun fuseau ne correspond à « {{typed}} ». Essayez une ville, un pays ou un décalage comme UTC+01.",
+    "choose": "Choisissez un fuseau horaire dans la liste.",
+    "chooseNoMatch": "Choisissez un fuseau horaire dans la liste. Rien ne correspond à « {{typed}} ».",
+    "refused": "Nous ne connaissons pas ce fuseau horaire, rien n'a donc été enregistré. Choisissez-en un dans la liste.",
+    "failed": "Votre fuseau horaire n'a pas pu être enregistré. Vérifiez votre connexion et réessayez.",
+    "save": "Enregistrer le fuseau",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "saved": "Fuseau horaire changé pour {{zone}}. Les heures de vos e-mails l'utilisent désormais."
+  },
+  "account": {
+    "title": "Votre compte",
+    "back": "Retour"
   }
 }

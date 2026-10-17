@@ -20,6 +20,7 @@ function account(phoneNumbers: unknown[] = [PHONE]) {
     countryCode: null,
     organisationCountry: null,
     locale: 'en',
+    timezone: null,
     verified: false,
     complete: false,
     needsOrganisation: true,
@@ -84,6 +85,32 @@ describe('check your messages', () => {
     expect(screen.getByLabelText('Code from the text').getAttribute('autocomplete')).toBe(
       'one-time-code',
     );
+  });
+
+  it('opens on the banner when the code is already spent or expired, and on the field while it is live', async () => {
+    for (const [codeState, title] of [
+      ['exhausted', 'Too many wrong tries'],
+      ['expired', 'That code has expired'],
+    ] as const) {
+      answering({
+        'GET /api/auth/me': () => json(account()),
+        'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0, codeState }),
+      });
+      const view = at('/verify-phone');
+
+      expect(await screen.findByText(title)).toBeDefined();
+      expect(screen.queryByLabelText('Code from the text')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Send a new code' })).toBeDefined();
+      view.unmount();
+      vi.restoreAllMocks();
+    }
+
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0, codeState: 'live' }),
+    });
+    at('/verify-phone');
+    expect(await screen.findByLabelText('Code from the text')).toBeDefined();
   });
 
   it('checks the code is six digits before sending', async () => {

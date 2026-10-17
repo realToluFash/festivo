@@ -20,6 +20,7 @@ export const GATED = 'soirely:gated';
 export const api = new ApiClient({
   baseUrl: () => config().apiBaseUrl,
   locale: () => currentLocale(),
+  timeZone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
   tokens,
   refreshTokenIn: 'cookie',
   onSignedOut: () => {

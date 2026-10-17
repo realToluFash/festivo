@@ -12,17 +12,36 @@ import {
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const NOT_TRANSLATION = '!label:translation';
+const TRANSLATION_QUEUE = ['To Do', 'In Progress', 'Failed QA'];
+const linguist = (locale, heartbeat, sweeps = false) => ({
+  skill: 'soirely-linguist',
+  invoke: `/soirely-linguist ${locale}`,
+  queue: TRANSLATION_QUEUE,
+  filter: 'label:translation',
+  heartbeat,
+  sweeps,
+});
+
 export const ROLES = {
   pm: {
     skill: 'soirely-product-manager',
     queue: ['To Do', 'Failed QA'],
+    filter: NOT_TRANSLATION,
     heartbeat: 120,
     sweeps: true,
   },
-  ux: { skill: 'soirely-designer', queue: ['To Do', 'Failed QA'], heartbeat: 120, sweeps: true },
+  ux: {
+    skill: 'soirely-designer',
+    queue: ['To Do', 'Failed QA'],
+    filter: NOT_TRANSLATION,
+    heartbeat: 120,
+    sweeps: true,
+  },
   dev: {
     skill: 'soirely-developer',
     queue: ['Failed QA', 'In Progress', 'To Do'],
+    filter: NOT_TRANSLATION,
     heartbeat: 30,
     prs: true,
   },
@@ -31,11 +50,21 @@ export const ROLES = {
   bm: {
     skill: 'soirely-business-manager',
     queue: ['Backlog', 'To Do'],
+    filter: NOT_TRANSLATION,
     heartbeat: 720,
     sweeps: true,
   },
   ops: { skill: 'soirely-ops', queue: [], heartbeat: 360, sweeps: true, main: true },
+  en: linguist('en', 120, true),
+  es: linguist('es', 30),
+  fr: linguist('fr', 30),
+  pt: linguist('pt', 30),
+  cd: { skill: 'soirely-creative', queue: [], heartbeat: 1440, sweeps: true },
 };
+
+export function queueQuery(role, state) {
+  return [`state:"${state}"`, ROLES[role].filter].filter(Boolean).join(' ');
+}
 
 const API = 'https://api.app.shortcut.com';
 const INBOX_DAYS = 14;
@@ -98,9 +127,9 @@ export function decide({ role, previous, snapshot, now }) {
 }
 
 export function brief(role, reasons, script) {
-  const { skill } = ROLES[role];
+  const { skill, invoke = `/${skill}` } = ROLES[role];
   return [
-    `Run the /${skill} skill as an unattended routine run (.claude/skills/role-routine, section 3).`,
+    `Run \`${invoke}\` as an unattended routine run (.claude/skills/role-routine, section 3).`,
     `Why this run woke: ${reasons.join('; ')}.`,
     'Start with those, then the skill’s usual order. Nobody is watching: never wait for an answer.',
     `As your last step run \`node ${script} ${role} --done\`, adding \`--more\` if work you could do now is still waiting.`,
@@ -137,7 +166,7 @@ async function shortcutSnapshot(role, token, cache) {
   const config = ROLES[role];
   const queue = [];
   for (const state of config.queue) {
-    for (const story of await search(`state:"${state}"`, token))
+    for (const story of await search(queueQuery(role, state), token))
       queue.push(`sc-${story.id}:${state}`);
   }
 
@@ -227,7 +256,7 @@ function load(path) {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {};
 }
 
-// Seven sessions share stories.json, so a write lands whole or not at all.
+// Every role's session shares stories.json, so a write lands whole or not at all.
 function save(path, value) {
   writeFileSync(`${path}.${process.pid}`, JSON.stringify(value));
   renameSync(`${path}.${process.pid}`, path);
