@@ -15,25 +15,25 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | Spanish                   | Notes |
-| ------------------------- | ------------------------- | ----- |
-| Settings                  | Configuración             |       |
-| Organisation              | Organización              |       |
-| Sign in                   | Iniciar sesión            |       |
-| Sign out                  | Cerrar sesión             |       |
-| Email                     | Correo electrónico        |       |
-| Password                  | Contraseña                |       |
-| Continue                  | Continuar                 |       |
-| Cancel                    | Cancelar                  |       |
-| Two-factor authentication | Verificación en dos pasos |       |
-| Recovery code             | Código de recuperación    |       |
-| Home (tab)                | Inicio                    | Settled, sc-1420 |
-| Account (Settings row)    | Cuenta                    | Settled, sc-1420; the screen title stays «Su cuenta» |
-| Security                  | Seguridad                 | Settled, sc-1420 |
-| Signed-in devices         | Dispositivos con sesión abierta | Settled, sc-1420 |
-| Switch organisation       | Cambiar de organización   | Settled, sc-1420 |
-| Your role                 | Su función                | Settled, web switcher |
-| Owner / Administrator / Event manager / Coordinator / Read-only | Propietario / Administrador / Gestor de eventos / Coordinador / Solo lectura | Settled; app and web say the same |
+| English                                                         | Spanish                                                                      | Notes                                                |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Settings                                                        | Configuración                                                                |                                                      |
+| Organisation                                                    | Organización                                                                 |                                                      |
+| Sign in                                                         | Iniciar sesión                                                               |                                                      |
+| Sign out                                                        | Cerrar sesión                                                                |                                                      |
+| Email                                                           | Correo electrónico                                                           |                                                      |
+| Password                                                        | Contraseña                                                                   |                                                      |
+| Continue                                                        | Continuar                                                                    |                                                      |
+| Cancel                                                          | Cancelar                                                                     |                                                      |
+| Two-factor authentication                                       | Verificación en dos pasos                                                    |                                                      |
+| Recovery code                                                   | Código de recuperación                                                       |                                                      |
+| Home (tab)                                                      | Inicio                                                                       | Settled, sc-1420                                     |
+| Account (Settings row)                                          | Cuenta                                                                       | Settled, sc-1420; the screen title stays «Su cuenta» |
+| Security                                                        | Seguridad                                                                    | Settled, sc-1420                                     |
+| Signed-in devices                                               | Dispositivos con sesión abierta                                              | Settled, sc-1420                                     |
+| Switch organisation                                             | Cambiar de organización                                                      | Settled, sc-1420                                     |
+| Your role                                                       | Su función                                                                   | Settled, web switcher                                |
+| Owner / Administrator / Event manager / Coordinator / Read-only | Propietario / Administrador / Gestor de eventos / Coordinador / Solo lectura | Settled; app and web say the same                    |
 
 ## Never translated
 
