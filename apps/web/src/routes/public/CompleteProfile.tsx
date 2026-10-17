@@ -139,7 +139,8 @@ function Details({
   const locale = currentLocale();
   const countries = useMemo(() => countryChoices(locale), [locale]);
   const [values, setValues] = useState(() => {
-    const country = deviceCountry(navigator.languages) ?? countries[0]?.code ?? '';
+    // A browser exposes no Region setting, so its languages decide, and nothing named means blank.
+    const country = deviceCountry(navigator.languages) ?? '';
 
     return {
       name,
@@ -161,6 +162,7 @@ function Details({
   const nameInput = useRef<HTMLInputElement>(null);
   const organisationInput = useRef<HTMLInputElement>(null);
   const phoneInput = useRef<HTMLInputElement>(null);
+  const countryInput = useRef<HTMLSelectElement>(null);
 
   function change(field: Exclude<Field, 'timezone'>, value: string): void {
     setValues((previous) => {
@@ -194,8 +196,13 @@ function Details({
     if (needsOrganisation && values.organisationName.trim() === '') {
       checked.organisationName = t('completeProfile.organisationBlank');
     }
+    if (needsOrganisation && values.countryCode === '') {
+      checked.countryCode = t('forms.countryBlank');
+    }
     // Optional: an empty field is no phone, so only a typed number is checked.
-    if (values.phoneNumber.trim() !== '') {
+    if (values.phoneNumber.trim() !== '' && values.phoneCountryCode === '') {
+      checked.phoneNumber = t('forms.countryBlank');
+    } else if (values.phoneNumber.trim() !== '') {
       const problem = phoneProblemMessage(
         phoneLengthProblem(values.phoneNumber, values.phoneCountryCode),
         values.phoneCountryCode,
@@ -211,7 +218,9 @@ function Details({
           ? nameInput
           : checked.organisationName != null
             ? organisationInput
-            : phoneInput;
+            : checked.countryCode != null
+              ? countryInput
+              : phoneInput;
       first.current?.focus();
       return;
     }
@@ -321,12 +330,14 @@ function Details({
             <select
               className={errors.countryCode == null ? 'input' : 'input input-wrong'}
               id="country"
+              ref={countryInput}
               value={values.countryCode}
               disabled={saving}
               aria-invalid={errors.countryCode != null}
               aria-describedby={errors.countryCode == null ? undefined : 'country-error'}
               onChange={(event) => change('countryCode', event.target.value)}
             >
+              <option value="" disabled hidden />
               {countries.map(({ code, name: countryName }) => (
                 <option key={code} value={code}>
                   {countryName}

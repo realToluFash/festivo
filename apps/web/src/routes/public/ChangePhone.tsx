@@ -63,7 +63,7 @@ export function ChangePhone() {
       )}
 
       <NumberForm
-        initialCountry={current?.countryCode ?? deviceCountry(navigator.languages) ?? 'NG'}
+        initialCountry={current?.countryCode ?? deviceCountry(navigator.languages) ?? ''}
         onTexted={() => navigate(onboarding ? '/verify-phone?from=onboarding' : '/verify-phone')}
       />
 
@@ -92,7 +92,10 @@ function NumberForm({
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    const problem = phoneProblemMessage(phoneLengthProblem(number, country), country, t);
+    const problem =
+      country === ''
+        ? t('forms.countryBlank')
+        : phoneProblemMessage(phoneLengthProblem(number, country), country, t);
 
     if (problem != null) {
       setError(problem);

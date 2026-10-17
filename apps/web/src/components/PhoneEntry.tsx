@@ -46,6 +46,7 @@ export function PhoneEntry({
             disabled={disabled}
             onChange={(event) => onCountry(event.target.value)}
           >
+            <option value="" disabled hidden />
             {countries.map(({ code, name }) => (
               <option key={code} value={code}>
                 {`${callingCode(code) ?? ''} ${name}`}

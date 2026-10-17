@@ -86,6 +86,28 @@ describe('a few details', () => {
     expect(screen.getByText('Signed in as folake@ire.events.')).toBeDefined();
   });
 
+  it('starts blank when the browser names no country, and refuses it blank before sending', () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-419']);
+    const sent = answering({});
+    at('/complete-profile');
+
+    expect((screen.getByLabelText('Country') as HTMLSelectElement).value).toBe('');
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('');
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), {
+      target: { value: 'Ìrè Events' },
+    });
+    fireEvent.change(screen.getByLabelText(/Mobile number/), { target: { value: '803 555 0142' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }));
+
+    expect(screen.getAllByText('Choose a country.')).toHaveLength(2);
+    expect(document.activeElement).toBe(screen.getByLabelText('Country'));
+    expect(sent.filter((request) => request.method !== 'GET')).toEqual([]);
+
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('GH');
+  });
+
   it('does not ask an invited account for an organisation', () => {
     at('/complete-profile', { ...FOLAKE, needsOrganisation: false });
 
