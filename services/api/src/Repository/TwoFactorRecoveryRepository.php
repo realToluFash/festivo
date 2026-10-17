@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Membership;
 use App\Entity\TwoFactorRecovery;
+use App\Entity\TwoFactorRecoveryHandle;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
@@ -24,9 +25,12 @@ final class TwoFactorRecoveryRepository extends ServiceEntityRepository
         parent::__construct($registry, TwoFactorRecovery::class);
     }
 
-    public function findOneByHash(string $tokenHash): ?TwoFactorRecovery
+    /** The request a device's handle holds, by the handle's hash. */
+    public function findOneByHandle(string $tokenHash): ?TwoFactorRecovery
     {
-        return $this->findOneBy(['tokenHash' => $tokenHash]);
+        $handle = $this->getEntityManager()->getRepository(TwoFactorRecoveryHandle::class)->findOneBy(['tokenHash' => $tokenHash]);
+
+        return $handle?->getRecovery();
     }
 
     /** @return list<TwoFactorRecovery> still being proved, or waiting on an answer */

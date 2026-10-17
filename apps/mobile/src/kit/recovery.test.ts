@@ -1,7 +1,12 @@
 import { ApiError } from '@soirely/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { recoveryCodeProblems, startRefusal, wrongRecoveryCodes } from './recovery.ts';
+import {
+  recoveryCodeProblems,
+  replacedElsewhere,
+  startRefusal,
+  wrongRecoveryCodes,
+} from './recovery.ts';
 
 function refusal(
   code: string,
@@ -50,5 +55,13 @@ describe('the two codes of a request to get back in', () => {
     expect(startRefusal(refusal('recovery_nobody_to_approve', 409))).toBe('nobody');
     expect(startRefusal(refusal('two_factor_challenge_invalid', 401))).toBe('signIn');
     expect(startRefusal(new TypeError('offline'))).toBe('failed');
+  });
+});
+
+describe('a request replaced on another device', () => {
+  it('is told apart from every other refusal', () => {
+    expect(replacedElsewhere(refusal('recovery_request_replaced', 409))).toBe(true);
+    expect(replacedElsewhere(refusal('recovery_request_proved', 409))).toBe(false);
+    expect(replacedElsewhere(new TypeError('offline'))).toBe(false);
   });
 });

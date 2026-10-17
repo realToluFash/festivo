@@ -21,6 +21,7 @@ type View =
   | { kind: 'start'; opening: RecoveryOpening; limitedUntil: string | null; sending: boolean }
   | { kind: 'nobody'; supportAddress: string }
   | { kind: 'request'; recovery: string; state: RecoveryState }
+  | { kind: 'replaced' }
   | { kind: 'signIn' }
   | { kind: 'failed' };
 
@@ -36,6 +37,7 @@ export function LostTwoFactor() {
       try {
         return { kind: 'request', recovery: held, state: await api.recoveryState(held) };
       } catch (refusal) {
+        if (replacedElsewhere(refusal)) return { kind: 'replaced' };
         if (!(refusal instanceof ApiError && refusal.is('recovery_request_invalid')))
           return { kind: 'failed' };
 
@@ -78,6 +80,25 @@ export function LostTwoFactor() {
   const reload = (): void => {
     void load().then(setView);
   };
+
+  /** "Start again" from a replaced request: the start screen, never the newer request another device holds. */
+  async function startAgain(): Promise<void> {
+    if (challenge == null) {
+      setView({ kind: 'signIn' });
+      return;
+    }
+
+    try {
+      const opening = await api.recoveryOpening(challenge);
+      setView({ kind: 'start', opening, limitedUntil: null, sending: false });
+    } catch (refusal) {
+      setView(
+        refusal instanceof ApiError && refusal.is('two_factor_challenge_invalid')
+          ? { kind: 'signIn' }
+          : { kind: 'failed' },
+      );
+    }
+  }
 
   async function start(opening: RecoveryOpening): Promise<void> {
     if (challenge == null) {
@@ -123,6 +144,7 @@ export function LostTwoFactor() {
         />
       )}
       {view.kind === 'nobody' && <Nobody supportAddress={view.supportAddress} />}
+      {view.kind === 'replaced' && <Replaced onStartAgain={() => void startAgain()} />}
       {view.kind === 'request' && (
         <Request
           recovery={view.recovery}
@@ -135,6 +157,10 @@ export function LostTwoFactor() {
           onAskAgain={() => {
             dropRecovery();
             reload();
+          }}
+          onReplaced={() => {
+            dropRecovery();
+            setView({ kind: 'replaced' });
           }}
         />
       )}
@@ -170,6 +196,30 @@ interface Mark {
   tone: 'attention' | 'done' | 'broken' | 'ended';
   glyph: string;
   word: string;
+}
+
+/** A newer request was started on another device (pm #1267): its codes went there, so this one starts again. */
+function Replaced({ onStartAgain }: { onStartAgain: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <Heading
+        title={t('lostTwoFactor.replacedTitle')}
+        intro={t('lostTwoFactor.replacedIntro')}
+        mark={{ tone: 'ended', glyph: '–', word: t('lostTwoFactor.replacedMark') }}
+      />
+      <p className="muted">{t('lostTwoFactor.replacedNote')}</p>
+      <button className="button button-primary" type="button" onClick={onStartAgain}>
+        {t('lostTwoFactor.startAgain')}
+      </button>
+      <BackToSignIn />
+    </>
+  );
+}
+
+function replacedElsewhere(refusal: unknown): boolean {
+  return refusal instanceof ApiError && refusal.is('recovery_request_replaced');
 }
 
 function BackToSignIn() {
@@ -301,12 +351,14 @@ function Request({
   onState,
   onNobody,
   onAskAgain,
+  onReplaced,
 }: {
   recovery: string;
   state: RecoveryState;
   onState: (state: RecoveryState) => void;
   onNobody: () => void;
   onAskAgain: () => void;
+  onReplaced: () => void;
 }) {
   const supportAddress = state.supportAddress;
   const { t } = useTranslation();
@@ -323,14 +375,24 @@ function Request({
       api
         .recoveryState(recovery)
         .then(onState)
-        .catch(() => {});
+        .catch((refusal: unknown) => {
+          if (replacedElsewhere(refusal)) onReplaced();
+        });
     }, 20_000);
 
     return () => clearInterval(watching);
-  }, [waiting, recovery, onState]);
+  }, [waiting, recovery, onState, onReplaced]);
 
   if (state.status === 'proving') {
-    return <Codes recovery={recovery} state={state} onState={onState} onNobody={onNobody} />;
+    return (
+      <Codes
+        recovery={recovery}
+        state={state}
+        onState={onState}
+        onNobody={onNobody}
+        onReplaced={onReplaced}
+      />
+    );
   }
 
   if (waiting) {
@@ -357,7 +419,9 @@ function Request({
               api
                 .cancelRecovery(recovery)
                 .then(onState)
-                .catch(() => {});
+                .catch((refusal: unknown) => {
+                  if (replacedElsewhere(refusal)) onReplaced();
+                });
             }}
           >
             {t('lostTwoFactor.cancel')}
@@ -443,11 +507,13 @@ function Codes({
   state,
   onState,
   onNobody,
+  onReplaced,
 }: {
   recovery: string;
   state: RecoveryState;
   onState: (state: RecoveryState) => void;
   onNobody: () => void;
+  onReplaced: () => void;
 }) {
   const { t } = useTranslation();
   const codes = state.codes;
@@ -477,11 +543,13 @@ function Codes({
       api
         .recoveryState(recovery)
         .then(onState)
-        .catch(() => {});
+        .catch((refusal: unknown) => {
+          if (replacedElsewhere(refusal)) onReplaced();
+        });
     }, 5000);
 
     return () => clearInterval(watching);
-  }, [wording.watch, recovery, onState]);
+  }, [wording.watch, recovery, onState, onReplaced]);
 
   const blank: Record<Field, string> = {
     emailCode: t('lostTwoFactor.emailBlank'),
@@ -537,6 +605,11 @@ function Codes({
     } catch (refusal) {
       setAsking(false);
 
+      if (replacedElsewhere(refusal)) {
+        onReplaced();
+        return;
+      }
+
       // The last approver left while the codes were out: the request is cancelled, nobody is told.
       if (refusal instanceof ApiError && refusal.is('recovery_nobody_to_approve')) {
         onNobody();
@@ -579,6 +652,11 @@ function Codes({
       setCooldown(next.codes?.cooldownSeconds ?? 0);
       onState(next);
     } catch (refusal) {
+      if (replacedElsewhere(refusal)) {
+        onReplaced();
+        return;
+      }
+
       // Proved from another device meanwhile: the request is waiting, so its screen opens.
       if (refusal instanceof ApiError && refusal.is('recovery_request_proved')) {
         onState(await api.recoveryState(recovery).catch(() => state));
@@ -599,6 +677,11 @@ function Codes({
     try {
       onState(await api.textRecoveryCodeInstead(recovery));
     } catch (refusal) {
+      if (replacedElsewhere(refusal)) {
+        onReplaced();
+        return;
+      }
+
       if (refusal instanceof ApiError && refusal.is('recovery_request_proved')) {
         onState(await api.recoveryState(recovery).catch(() => state));
         return;

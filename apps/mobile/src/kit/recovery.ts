@@ -50,3 +50,8 @@ export function startRefusal(refusal: unknown): StartRefusal {
 
   return refusal.is('two_factor_challenge_invalid') ? 'signIn' : 'failed';
 }
+
+/** A newer request took over on another device: every step says so, and this one starts again (pm #1267). */
+export function replacedElsewhere(refusal: unknown): boolean {
+  return refusal instanceof ApiError && refusal.is('recovery_request_replaced');
+}

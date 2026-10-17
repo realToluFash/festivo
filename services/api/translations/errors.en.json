@@ -41,5 +41,6 @@
     "recovery_request_invalid": "That request isn't open any more. Start again from the sign-in code screen.",
     "recovery_request_closed": "This request has already ended.",
     "recovery_request_proved": "This request is already waiting for an answer.",
+    "recovery_request_replaced": "A newer request was started on another device.",
     "registration_expired": "Start registering again."
 }

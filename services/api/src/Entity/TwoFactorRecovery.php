@@ -15,7 +15,6 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'two_factor_recoveries')]
-#[ORM\UniqueConstraint(name: 'uniq_two_factor_recovery_hash', columns: ['token_hash'])]
 #[ORM\Index(name: 'idx_two_factor_recovery_user', columns: ['user_id', 'created_at'])]
 #[ORM\Index(name: 'idx_two_factor_recovery_status', columns: ['status', 'expires_at'])]
 class TwoFactorRecovery
@@ -32,9 +31,6 @@ class TwoFactorRecovery
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private User $user;
-
-    #[ORM\Column(type: Types::STRING, length: 64)]
-    private string $tokenHash;
 
     #[ORM\ManyToOne(targetEntity: EmailAddress::class)]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
@@ -60,11 +56,10 @@ class TwoFactorRecovery
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $decidedBy = null;
 
-    public function __construct(User $user, string $tokenHash, EmailAddress $emailAddress, ?PhoneNumber $phoneNumber)
+    public function __construct(User $user, EmailAddress $emailAddress, ?PhoneNumber $phoneNumber)
     {
         $this->id = Uuid::v7();
         $this->user = $user;
-        $this->tokenHash = $tokenHash;
         $this->emailAddress = $emailAddress;
         $this->phoneNumber = $phoneNumber;
     }
@@ -77,11 +72,6 @@ class TwoFactorRecovery
     public function getUser(): User
     {
         return $this->user;
-    }
-
-    public function setTokenHash(string $tokenHash): void
-    {
-        $this->tokenHash = $tokenHash;
     }
 
     public function getEmailAddress(): EmailAddress

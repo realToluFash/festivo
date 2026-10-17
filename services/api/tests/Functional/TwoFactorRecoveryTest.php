@@ -332,7 +332,8 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     {
         $first = $this->start();
         $this->start();
-        self::assertSame('cancelled', $this->state($first)['status'], 'starting again ends the one before');
+        $this->call('POST', '/api/auth/two-factor/recovery/state', ['recovery' => $first]);
+        self::assertSame(ErrorCode::RecoveryRequestReplaced->type(), $this->last()['type'], 'starting again ends the one before');
         $this->start();
 
         $this->call('POST', '/api/auth/two-factor/recovery', ['challenge' => $this->challenge()]);
@@ -365,6 +366,40 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertIsString($opening['recovery']);
         self::assertSame('proving', Type\shape(['status' => Type\string()], true)->coerce($opening['state'])['status']);
         self::assertSame('proving', $this->state(Type\string()->coerce($opening['recovery']))['status']);
+    }
+
+    /** pm #1267: the request is the account's and the handle the device's, so opening it elsewhere leaves this one working. */
+    #[Test]
+    public function aSecondDeviceOpeningTheRequestLeavesTheFirstOnesHandleWorking(): void
+    {
+        $first = $this->start();
+        $code = $this->emailCode();
+        $second = Type\string()->coerce($this->call('POST', '/api/auth/two-factor/recovery/opening', ['challenge' => $this->challenge()])['recovery']);
+
+        self::assertNotSame($first, $second);
+        self::assertSame('proving', $this->state($first)['status']);
+        self::assertSame('waiting', $this->prove($second, $code)['status']);
+
+        self::assertSame('waiting', $this->state($first)['status'], 'the first device sees the waiting screen too');
+        $this->call('POST', '/api/auth/two-factor/recovery/resend', ['recovery' => $first]);
+        self::assertSame(ErrorCode::RecoveryRequestProved->type(), $this->last()['type']);
+    }
+
+    #[Test]
+    public function aRequestReplacedOnAnotherDeviceSaysSoOnEveryStep(): void
+    {
+        $first = $this->start();
+        $this->start();
+
+        foreach (['state', 'resend', 'text-instead', 'cancel'] as $step) {
+            $body = $this->call('POST', '/api/auth/two-factor/recovery/' . $step, ['recovery' => $first]);
+            self::assertSame(409, $this->statusCode(), $step);
+            self::assertSame(ErrorCode::RecoveryRequestReplaced->type(), $body['type'], $step);
+            self::assertSame('A newer request was started on another device. Start again to ask from here.', $body['detail'], $step);
+        }
+
+        $this->call('POST', '/api/auth/two-factor/recovery/prove', ['recovery' => $first, 'emailCode' => '000000']);
+        self::assertSame(ErrorCode::RecoveryRequestReplaced->type(), $this->last()['type']);
     }
 
     #[Test]

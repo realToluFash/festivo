@@ -154,7 +154,9 @@ is ever in a URL.
 - `…/two-factor/recovery/opening` and `…/two-factor/recovery` take the sign-in's
   `challenge`, so only a first factor that passed can ask. The first sends nothing and
   says whether anybody can answer (`nobody`, with `supportAddress`). It also hands back an
-  open request under a new handle. The second starts a request, ending any earlier one,
+  open request under a handle of this device's own: the request is the account's and the
+  handle the device's (`two_factor_recovery_handles`), so another device's handle keeps
+  working. The second starts a request, ending any earlier one as `replaced`,
   and sends a code to the verified primary address and one to the verified primary phone
   if there is one. Nobody to answer is `409 recovery_nobody_to_approve`, before anything
   is sent. An account with no verified primary address gets the same
@@ -167,8 +169,10 @@ is ever in a URL.
   or `phoneCode`, and neither is spent until both match. Once the request is proved,
   `/prove`, `/resend` and `/text-instead` are `409 recovery_request_proved`: it is waiting
   for an answer, so a client opens its waiting screen. `409 recovery_request_closed` is
-  only for one that has ended (approved, turned down, expired or cancelled). Both carry
-  `requestStatus`.
+  only for one that has ended (approved, turned down, expired or cancelled). Every step
+  from the handle of a request a newer one replaced is `409 recovery_request_replaced`
+  ("A newer request was started on another device. Start again to ask from here."). All
+  three carry `requestStatus`.
 - A proved request ends at **the moment it was proved + 7 × 24 h**. It reads as `expired`
   from that instant on, whether or not `app:two-factor-recovery:expire` has run yet.
   `asked` and `expires` are written for the reader by `UserMailer::deadline`, the one
