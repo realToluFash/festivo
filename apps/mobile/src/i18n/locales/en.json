@@ -202,7 +202,7 @@
   },
   "forms": {
     "emailBlank": "Enter your email address.",
-    "emailShape": "That doesn't look like an email address. Check it has an @ and a domain.",
+    "emailShape": "That does not look like an email address. Check it has an @ and a domain.",
     "countryBlank": "Choose a country."
   },
   "oauth": {
@@ -665,7 +665,7 @@
     "saved": "Saved. Everyone in {{name}} sees the new details on their next screen.",
     "nameBlank": "Enter the organisation's name.",
     "contactBlank": "Enter a contact email address.",
-    "contactInvalid": "That doesn't look like an email address. Check it has an @ and a domain.",
+    "contactInvalid": "That does not look like an email address. Check it has an @ and a domain.",
     "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
     "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
     "searchCurrency": "Search currencies",
