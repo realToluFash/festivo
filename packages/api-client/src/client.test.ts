@@ -737,6 +737,41 @@ function health(body: unknown, status = 200): Response {
   });
 }
 
+describe('recovering a password', () => {
+  test('asks for a link, checks it, and resets with it, signing in', async () => {
+    const sent: { path: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store(null, null),
+      fetch: async (input, init) => {
+        const path = new URL(String(input)).pathname;
+        sent.push({ path, body: JSON.parse(String(init?.body)) });
+
+        if (path === '/api/auth/password/forgot') return new Response('{}', { status: 202 });
+        if (path === '/api/auth/password/reset/check') {
+          return new Response(JSON.stringify({ email: 'folake@ire.events' }), { status: 200 });
+        }
+
+        return new Response(
+          JSON.stringify({ accessToken: 'a', expiresIn: 900, refreshToken: 'r', account: ACCOUNT }),
+          { status: 200 },
+        );
+      },
+    });
+
+    await client.forgotPassword('folake@ire.events');
+    expect(await client.checkResetLink('t1')).toEqual({ email: 'folake@ire.events' });
+    const signedIn = await client.resetPassword('t1', 'a brand new passphrase');
+
+    expect(signedIn.account.id).toBe(ACCOUNT.id);
+    expect(sent.map((request) => request.path)).toEqual([
+      '/api/auth/password/forgot',
+      '/api/auth/password/reset/check',
+      '/api/auth/password/reset',
+    ]);
+  });
+});
+
 describe('the number a code is waiting on', () => {
   const phone = (number: string, primary: boolean, pending: boolean) => ({
     id: number,
