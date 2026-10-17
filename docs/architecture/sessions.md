@@ -219,6 +219,12 @@ token in hand working for its fifteen minutes (`JWT_TOKEN_TTL=900`, which
   at once, mid-event.
 - **A token with no `sid`** has nothing to look up and is not refused. Every token the API
   issues carries one.
+- **This device is the session the caller holds, never one it names.** Whatever answers
+  about the caller's own session, such as `thisDevice`, reads `CallerSession` (the `sid`
+  claim). A `sessionId` in the body may choose what to keep, never who the caller is.
+  Signing out everywhere else (sc-115) and unlinking a provider (sc-510) both follow it,
+  and with no `sid` both answer `thisDevice: true`, since the caller cannot be told it
+  stays in.
 
 ## Where a native client keeps its half
 

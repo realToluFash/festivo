@@ -377,7 +377,6 @@ describe('unlinking a provider', () => {
     ).toBeDefined();
     expect(sent.find((s) => s.call === 'POST /api/auth/providers/google/unlink')?.body).toEqual({
       proof: 'the-proof',
-      sessionId: HERE,
     });
   });
 

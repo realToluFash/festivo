@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Model\IssuedTokens;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
@@ -131,15 +132,15 @@ final class SignInMethodsTest extends ApiTestCase
         $byGoogle = $this->session(IdentityProvider::Google);
         $byPassword = $this->session(null);
 
-        $body = $this->call('POST', '/api/auth/providers/google/unlink', ['proof' => $proof, 'sessionId' => $byGoogle->toRfc4122()]);
+        $body = $this->call('POST', '/api/auth/providers/google/unlink', ['proof' => $proof], bearer: $byGoogle->accessToken);
 
         self::assertSame(200, $this->statusCode(), Json\encode($body));
-        self::assertSame(['signedOut' => 1, 'thisDevice' => true], $body);
+        self::assertSame(['signedOut' => 1, 'thisDevice' => true], $body, 'the caller holds the Google session, so it is signed out');
         self::assertSame('Google is no longer linked to your Soirely account', Iter\last($this->mails())?->getSubject());
         self::assertSame([], $this->call('GET', '/api/auth/me')['providers']);
         self::em()->clear();
-        self::assertNotNull(self::em()->find(RefreshToken::class, $byGoogle)?->getRevokedAt());
-        self::assertNull(self::em()->find(RefreshToken::class, $byPassword)?->getRevokedAt());
+        self::assertNotNull(self::em()->find(RefreshToken::class, $byGoogle->sessionId)?->getRevokedAt());
+        self::assertNull(self::em()->find(RefreshToken::class, $byPassword->sessionId)?->getRevokedAt());
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'provider.unlinked']);
         self::assertSame(['provider' => ['google', null]], $entry?->changes(), 'before and after: it was there, and now is not');
@@ -158,6 +159,20 @@ final class SignInMethodsTest extends ApiTestCase
         $text = (string) Iter\last($this->mails())?->getTextBody();
         self::assertStringContainsString("If this wasn't you, unlink Apple from Security and sign out any devices you don't recognise.", $text);
         self::assertStringNotContainsString('change your password', $text);
+    }
+
+    /** As sign out everywhere else (#114): this device is the session the caller holds, never one it names. */
+    #[Test]
+    public function thisDeviceIsTheSessionTheCallerHolds(): void
+    {
+        $proof = $this->provedByPassword();
+        $this->link(IdentityProvider::Google, 'g-work', 'folake.adeyemi@gmail.com', $proof);
+        $byGoogle = $this->session(IdentityProvider::Google);
+        $byPassword = $this->session(null);
+
+        $body = $this->call('POST', '/api/auth/providers/google/unlink', ['proof' => $proof, 'sessionId' => $byGoogle->sessionId->toRfc4122()], bearer: $byPassword->accessToken);
+
+        self::assertSame(['signedOut' => 1, 'thisDevice' => false], $body, 'naming the Google session does not make it this one');
     }
 
     /** The lead's scenario on #117: Google at T, the right code at T+4, and the change at T+6 is refused. */
@@ -387,13 +402,13 @@ final class SignInMethodsTest extends ApiTestCase
         return $this->call('POST', '/api/auth/providers/' . $provider->value, ['proof' => $proof, 'providerSignIn' => ['idToken' => $token]]);
     }
 
-    private function session(?IdentityProvider $signedInWith): Uuid
+    private function session(?IdentityProvider $signedInWith): IssuedTokens
     {
         $user = Type\instance_of(User::class)->coerce(self::em()->find(User::class, $this->user->getId()));
         $tokens = self::service(TokenIssuer::class)->issueFor($user, null, $signedInWith);
         self::em()->flush();
 
-        return $tokens->sessionId;
+        return $tokens;
     }
 
     private function addressOf(string $address, bool $verified): void
@@ -448,13 +463,13 @@ final class SignInMethodsTest extends ApiTestCase
      *
      * @return array<string, mixed>
      */
-    private function call(string $method, string $path, ?array $body = null, ?User $as = null): array
+    private function call(string $method, string $path, ?array $body = null, ?User $as = null, ?string $bearer = null): array
     {
         $who = self::em()->find(User::class, ($as ?? $this->current ?? $this->user)->getId());
         $this->client->request($method, $path, server: [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_USER_AGENT' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14.5; rv:131.0) Gecko/20100101 Firefox/131.0',
-            'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create(Type\instance_of(User::class)->coerce($who)),
+            'HTTP_AUTHORIZATION' => 'Bearer ' . ($bearer ?? self::service(JWTTokenManagerInterface::class)->create(Type\instance_of(User::class)->coerce($who))),
         ], content: Json\encode($body ?? new stdClass()));
 
         return $this->last();

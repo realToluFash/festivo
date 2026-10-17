@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\User\CallerSession;
 use App\Domain\User\Provider\ProviderAssertion;
 use App\Domain\User\SignInMethods\ProviderLinking;
 use App\Domain\User\SignInMethods\RecentProof;
@@ -20,7 +21,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Uid\Uuid;
 
 /** Settings > Security, Ways to sign in: prove it is you, then link or unlink Google or Apple. */
 #[Authenticated]
@@ -32,6 +32,7 @@ final readonly class SignInMethodsController
         private ProviderLinking $providerLinking,
         private ProviderAssertion $providerAssertion,
         private CodeField $codeField,
+        private CallerSession $callerSession,
     ) {
     }
 
@@ -83,16 +84,13 @@ final readonly class SignInMethodsController
     {
         $body = Input::body($request, Type\shape([
             'proof' => Type\optional(Type\nullable(Type\string())),
-            'sessionId' => Type\optional(Type\nullable(Type\string())),
         ]));
-
-        $session = $body['sessionId'] ?? null;
 
         return new JsonResponse($this->providerLinking->unlink(
             $this->user(),
             IdentityProvider::from($provider),
             $body['proof'] ?? null,
-            null !== $session && Uuid::isValid($session) ? Uuid::fromString($session) : null,
+            $this->callerSession->chain(),
             $request,
         ));
     }

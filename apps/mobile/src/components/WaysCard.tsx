@@ -23,7 +23,6 @@ import {
 } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { currentSessionId } from '../tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -149,7 +148,7 @@ export function WaysCard({
     setStage({ kind: 'working' });
 
     try {
-      const { thisDevice } = await api.unlinkProvider(provider, proof, currentSessionId());
+      const { thisDevice } = await api.unlinkProvider(provider, proof);
 
       if (thisDevice) {
         onSignedOutHere();

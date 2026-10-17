@@ -454,11 +454,10 @@ export class ApiClient {
   async unlinkProvider(
     provider: Provider,
     proof: string,
-    sessionId: string | null,
   ): Promise<{ signedOut: number; thisDevice: boolean }> {
     const body = await this.post<{ signedOut?: unknown; thisDevice?: unknown }>(
       `/api/auth/providers/${provider}/unlink`,
-      { proof, sessionId },
+      { proof },
     );
 
     return {

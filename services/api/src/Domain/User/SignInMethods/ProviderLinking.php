@@ -8,7 +8,6 @@ use App\Audit\Auditor;
 use App\Domain\User\Provider\ProviderClaims;
 use App\Domain\User\TokenIssuer;
 use App\Entity\ProviderIdentity;
-use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
@@ -97,6 +96,8 @@ final readonly class ProviderLinking
     /**
      * Never the last way in: with no password and no other provider, it stays (sc-113's rule for the last address).
      *
+     * @param Uuid|null $caller the chain the access token carries (CallerSession)
+     *
      * @return array{signedOut: int, thisDevice: bool} the sessions that sign-ins through it started, now ended
      */
     public function unlink(
@@ -104,7 +105,7 @@ final readonly class ProviderLinking
         IdentityProvider $provider,
         #[SensitiveParameter]
         ?string $proof,
-        ?Uuid $session = null,
+        ?Uuid $caller = null,
         ?Request $request = null,
     ): array {
         $this->recentProof->require($user, $proof);
@@ -131,9 +132,7 @@ final readonly class ProviderLinking
 
             $this->record($user, 'provider.unlinked', [$provider->value, null]);
             $this->entityManager->flush();
-            $here = null === $session ? null : $this->entityManager->find(RefreshToken::class, $session);
-            $thisDevice = null !== $here && $here->getUser()->getId()->equals($user->getId()) && $here->getSignedInWith() === $provider && $here->isUsable();
-            $signedOut = $this->tokenIssuer->revokeSignedInWith($user, $provider);
+            $ended = $this->tokenIssuer->revokeSignedInWith($user, $provider);
             $connection->commit();
         } catch (Throwable $e) {
             $connection->rollBack();
@@ -143,7 +142,11 @@ final readonly class ProviderLinking
 
         $this->tell($user, $provider, Iter\first($removed)?->getEmail(), $request, linked: false);
 
-        return ['signedOut' => $signedOut, 'thisDevice' => $thisDevice];
+        // The session the caller holds, never one it names (sessions.md); no chain cannot be told it stays in.
+        return [
+            'signedOut' => Iter\count($ended),
+            'thisDevice' => null === $caller || Iter\any($ended, static fn (Uuid $chain): bool => $chain->equals($caller)),
+        ];
     }
 
     private function linkedTo(User $user, IdentityProvider $provider): ?ProviderIdentity

@@ -94,9 +94,10 @@ final readonly class TokenIssuer
      *
      * @return int how many live sessions ended
      */
-    public function revokeSignedInWith(User $user, IdentityProvider $provider): int
+    /** @return list<Uuid> the chains of the live sessions it ended */
+    public function revokeSignedInWith(User $user, IdentityProvider $provider): array
     {
-        return $this->revokeLive($user, null, $provider);
+        return $this->endLive($user, null, $provider);
     }
 
     /**

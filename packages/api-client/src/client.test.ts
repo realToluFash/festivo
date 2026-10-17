@@ -1059,7 +1059,6 @@ describe('the ways an account signs in', () => {
     const unlinked = await client(json({ signedOut: 2, thisDevice: true }), sent).unlinkProvider(
       'apple',
       'p-1',
-      's-1',
     );
 
     expect(linked).toEqual({ provider: 'apple', email: 'x7k2m9@privaterelay.appleid.com' });
@@ -1069,7 +1068,7 @@ describe('the ways an account signs in', () => {
         path: 'POST /api/auth/providers/apple',
         body: { proof: 'p-1', providerSignIn: { handle: 'h', codeVerifier: 'v', nonce: 'n' } },
       },
-      { path: 'POST /api/auth/providers/apple/unlink', body: { proof: 'p-1', sessionId: 's-1' } },
+      { path: 'POST /api/auth/providers/apple/unlink', body: { proof: 'p-1' } },
     ]);
   });
 });

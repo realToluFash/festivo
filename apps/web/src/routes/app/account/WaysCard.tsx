@@ -22,7 +22,6 @@ import {
   takeProviderReturn,
 } from '../../../providerSignIn.ts';
 import { dropProof, heldProof, holdProof, proofRefusal } from '../../../recentProof.ts';
-import { currentSessionId } from '../../../tokens.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -150,7 +149,7 @@ export function WaysCard({
     setStage({ kind: 'working' });
 
     try {
-      const { thisDevice } = await api.unlinkProvider(provider, proof, currentSessionId());
+      const { thisDevice } = await api.unlinkProvider(provider, proof);
 
       if (thisDevice) {
         onSignedOutHere();
