@@ -19,5 +19,10 @@
     "recovery.or": " ou ",
     "twoFactor.off.subject": "La double authentification a été désactivée",
     "twoFactor.off.body": "La double authentification de votre compte Soirely a été désactivée le {when}. La connexion ne demande plus que votre mot de passe, Google ou Apple.",
-    "twoFactor.off.notYou": "Si ce n'était pas vous, réinitialisez votre mot de passe et réactivez la double authentification dans Paramètres > Sécurité."
+    "twoFactor.off.notYou": "Si ce n'était pas vous, réinitialisez votre mot de passe et réactivez la double authentification dans Paramètres > Sécurité.",
+    "alreadyRegistered.subject": "Vous avez déjà un compte Soirely",
+    "alreadyRegistered.body": "Quelqu'un a essayé de créer un compte Soirely avec cette adresse. Vous en avez déjà un. Connectez-vous, ou réinitialisez votre mot de passe si vous l'avez oublié.",
+    "alreadyRegistered.signIn": "Se connecter :",
+    "alreadyRegistered.reset": "Réinitialiser votre mot de passe :",
+    "alreadyRegistered.ignore": "Si ce n'était pas vous, vous pouvez ignorer cet e-mail."
 }

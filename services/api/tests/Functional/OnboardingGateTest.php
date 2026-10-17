@@ -124,9 +124,9 @@ final class OnboardingGateTest extends ApiTestCase
     #[Test]
     public function logoutAndRefreshNeedNoGate(): void
     {
-        $this->client->request('POST', '/api/auth/register', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode([
+        self::service(UserRegistrar::class)->register('public@example.com', 'Public', self::PASSWORD);
+        $this->client->request('POST', '/api/auth/login', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode([
             'email' => 'public@example.com',
-            'name' => 'Public',
             'password' => self::PASSWORD,
         ]));
         $refresh = Type\shape(['refreshToken' => Type\string()], true)->coerce($this->decode())['refreshToken'];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\UserRegistrar;
 use App\Domain\User\Verification\ContactVerifier;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeResender;
@@ -17,7 +18,9 @@ use App\Tests\ApiTestCase;
 use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
 use Psl\Str;
@@ -309,8 +312,9 @@ final class VerifyEmailTest extends ApiTestCase
     {
         $token = $this->register('second@example.com');
         $this->endCooldownFor('second@example.com');
+        $before = Iter\count(self::getMailerMessages());
         $this->client->request('POST', '/api/auth/verify/resend', server: $this->authenticated($token));
-        self::assertCount(1, self::getMailerMessages());
+        self::assertCount($before + 1, self::getMailerMessages());
 
         $this->client->request('POST', '/api/auth/verify/resend', server: $this->authenticated($token));
 
@@ -379,20 +383,12 @@ final class VerifyEmailTest extends ApiTestCase
         return $this->body();
     }
 
+    /** An account that has not verified its address yet, as one made before sc-512, signed in. */
     private function register(string $address): string
     {
-        $this->client->request(
-            'POST',
-            '/api/auth/register',
-            server: ['CONTENT_TYPE' => 'application/json'],
-            content: Json\encode([
-                'email' => $address,
-                'name' => 'Ada Lovelace',
-                'password' => self::PASSWORD,
-            ]),
-        );
+        $user = self::service(UserRegistrar::class)->register($address, 'Ada Lovelace', self::PASSWORD)->user;
 
-        return Type\string()->coerce($this->body()['accessToken']);
+        return self::service(JWTTokenManagerInterface::class)->create($user);
     }
 
     /** @return array<string, string> */

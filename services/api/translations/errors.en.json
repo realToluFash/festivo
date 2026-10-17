@@ -4,7 +4,6 @@
     "method_not_allowed": "That action is not available here.",
     "not_found": "We could not find what you asked for.",
     "conflict": "That conflicts with something that already exists.",
-    "email_taken": "That email address is already registered.",
     "phone_taken": "This number is already verified on another Soirely account.",
     "unsupported_media_type": "That format is not supported.",
     "unauthenticated": "Please sign in to continue.",
@@ -34,5 +33,6 @@
     "two_factor_already_on": "Two-factor is already on.",
     "two_factor_not_enrolled": "Start setting up two-factor first.",
     "two_factor_off": "Two-factor is not on.",
-    "two_factor_required": "Enter the code from your authenticator app first."
+    "two_factor_required": "Enter the code from your authenticator app first.",
+    "registration_expired": "Start registering again."
 }

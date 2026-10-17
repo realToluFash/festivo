@@ -13,7 +13,6 @@ enum ErrorCode: string
     case MethodNotAllowed = 'method_not_allowed';
     case NotFound = 'not_found';
     case Conflict = 'conflict';
-    case EmailTaken = 'email_taken';
     case PhoneTaken = 'phone_taken';
     case UnsupportedMediaType = 'unsupported_media_type';
 
@@ -24,6 +23,7 @@ enum ErrorCode: string
     case ResetLinkInvalid = 'reset_link_invalid';
     case ResetLinkUsed = 'reset_link_used';
     case ResetLinkExpired = 'reset_link_expired';
+    case RegistrationExpired = 'registration_expired';
     case TwoFactorChallengeInvalid = 'two_factor_challenge_invalid';
     case Forbidden = 'forbidden';
     case PermissionRequired = 'permission_required';
@@ -57,8 +57,8 @@ enum ErrorCode: string
             self::ValidationFailed => 422,
             self::MethodNotAllowed => 405,
             self::NotFound, self::ResetLinkInvalid => 404,
-            self::ResetLinkUsed, self::ResetLinkExpired => 410,
-            self::Conflict, self::EmailTaken, self::PhoneTaken, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
+            self::ResetLinkUsed, self::ResetLinkExpired, self::RegistrationExpired => 410,
+            self::Conflict, self::PhoneTaken, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid => 401,
             self::Forbidden, self::PermissionRequired, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired => 403,

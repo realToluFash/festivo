@@ -4,7 +4,6 @@
     "method_not_allowed": "Cette action n'est pas disponible ici.",
     "not_found": "Nous n'avons pas trouvé ce que vous avez demandé.",
     "conflict": "Cela entre en conflit avec un élément existant.",
-    "email_taken": "Cette adresse e-mail est déjà enregistrée.",
     "phone_taken": "Ce numéro est déjà vérifié sur un autre compte Soirely.",
     "unsupported_media_type": "Ce format n'est pas pris en charge.",
     "unauthenticated": "Veuillez vous connecter pour continuer.",
@@ -34,5 +33,6 @@
     "two_factor_already_on": "La double authentification est déjà activée.",
     "two_factor_not_enrolled": "Commencez d'abord à configurer la double authentification.",
     "two_factor_off": "La double authentification n'est pas activée.",
-    "two_factor_required": "Saisissez d'abord le code de votre application d'authentification."
+    "two_factor_required": "Saisissez d'abord le code de votre application d'authentification.",
+    "registration_expired": "Recommencez l'inscription."
 }
