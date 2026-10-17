@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Http\Access\Policy\Authenticated;
+use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
@@ -30,17 +31,19 @@ final class VerificationController
         private readonly VerificationCodeResender $verificationCodeResender,
         private readonly VerificationCodeMailer $verificationCodeMailer,
         private readonly ResendCooldown $resendCooldown,
+        private readonly CodeField $codeField,
     ) {
     }
 
     #[Route('/api/auth/verify/email', name: 'auth_verify_email', methods: ['POST'])]
     public function verifyEmail(Request $request): JsonResponse
     {
-        $body = Input::body($request, Type\shape(['code' => Type\string()]));
+        $body = Input::body($request, Type\shape(['code' => Type\optional(Type\mixed())]));
+        $code = $this->codeField->required($body, 'code', CodeField::FROM_EMAIL);
 
         $address = $this->address();
 
-        $refusal = $this->contactVerifier->attempt($address, $body['code']);
+        $refusal = $this->contactVerifier->attempt($address, $code);
 
         if (null !== $refusal) {
             throw $refusal;

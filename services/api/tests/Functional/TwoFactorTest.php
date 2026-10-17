@@ -137,6 +137,36 @@ final class TwoFactorTest extends ApiTestCase
         self::assertSame($this->user->getId()->toRfc4122(), $identities->findOneBySubject(IdentityProvider::Google, 'g-new')?->getUser()->getId()->toRfc4122());
     }
 
+    /** Each refusal in the words of the screen that sends it, and none of them spends a try. */
+    #[Test]
+    public function aCodeSentAsANumberIsAFieldErrorEverywhereTwoFactorAsksForOne(): void
+    {
+        $secret = $this->turnedOn()['secret'];
+        $challenge = $this->challenge();
+
+        $refused = [
+            ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => 123456], 'code', 'Enter the 6-digit code from your app.', false],
+            ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'recoveryCode' => 12345], 'recoveryCode', 'Enter one of your recovery codes.', false],
+            ['/api/auth/two-factor/disable', ['code' => 123456], 'code', 'Enter a code from your app, or a recovery code.', true],
+            ['/api/auth/two-factor/recovery-codes', ['code' => null], 'code', 'Enter a code from your app, or a recovery code.', true],
+            ['/api/auth/two-factor/disable', [], 'code', 'Enter a code from your app, or a recovery code.', true],
+        ];
+
+        foreach ($refused as [$path, $body, $field, $message, $signedIn]) {
+            $signedIn ? $this->authenticated() : $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+            $answer = $this->call('POST', $path, $body);
+
+            self::assertSame(422, $this->statusCode(), $path . ' ' . Json\encode($answer));
+            self::assertSame([['propertyPath' => $field, 'message' => $message, 'code' => 'validation_failed']], $answer['violations'], $path);
+        }
+
+        // Five refusals: had any spent a try, the budget of five would be gone and this would be paused.
+        self::mockTime('+30 seconds');
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
+        $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => $this->codeNow($secret)]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
     #[Test]
     public function aCodeCannotBeReplayedInsideItsOwnWindow(): void
     {

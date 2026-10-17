@@ -12,6 +12,7 @@ use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\Policy\PublicAccess;
+use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use Psl\Type;
@@ -28,6 +29,7 @@ final class RegisterController
         private readonly AccountSerialiser $accountSerialiser,
         private readonly PendingRegistrations $pendingRegistrations,
         private readonly RateLimiterFactoryInterface $registrationLimiter,
+        private readonly CodeField $codeField,
     ) {
     }
 
@@ -57,11 +59,12 @@ final class RegisterController
     {
         $body = Input::body($request, Type\shape([
             'registration' => Type\string(),
-            'code' => Type\string(),
+            'code' => Type\optional(Type\mixed()),
             'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
         ]));
+        $code = $this->codeField->required($body, 'code', CodeField::FROM_EMAIL);
 
-        $result = $this->pendingRegistrations->verify($body['registration'], $body['code'], $request);
+        $result = $this->pendingRegistrations->verify($body['registration'], $code, $request);
 
         return new IssuedTokensResponse(
             $result->tokens,

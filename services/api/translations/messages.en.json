@@ -3,6 +3,10 @@
     "actor.api_client": "API client",
     "actor.system": "System",
     "actor.user": "Account holder",
+    "validation.code_app_or_recovery_required": "Enter a code from your app, or a recovery code.",
+    "validation.code_app_required": "Enter the 6-digit code from your app.",
+    "validation.code_email_required": "Enter the 6-digit code from the email.",
+    "validation.code_text_required": "Enter the 6-digit code from the text.",
     "validation.contact_address_invalid": "That doesn't look like an email address. Check it has an @ and a domain.",
     "validation.contact_address_required": "Enter a contact email address.",
     "validation.country_invalid": "Choose a country.",
@@ -18,5 +22,6 @@
     "validation.phone_required": "Enter your mobile number.",
     "validation.phone_too_long": "That number looks too long for {country}. Check it and try again.",
     "validation.phone_too_short": "That number looks too short for {country}. Check it and try again.",
+    "validation.recovery_code_required": "Enter one of your recovery codes.",
     "validation.timezone_invalid": "Choose a time zone."
 }

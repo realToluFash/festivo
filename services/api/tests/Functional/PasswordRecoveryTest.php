@@ -15,6 +15,7 @@ use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\AfterResponse;
+use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Repository\PasswordResetTokenRepository;
 use App\Tests\ApiTestCase;
@@ -194,6 +195,7 @@ final class PasswordRecoveryTest extends ApiTestCase
             self::service(SignInResponse::class),
             self::serviceById('limiter.password_reset_address', RateLimiterFactoryInterface::class),
             self::serviceById('limiter.password_reset_ip', RateLimiterFactoryInterface::class),
+            self::service(CodeField::class),
         );
         $sent = self::serviceById('mailer.message_logger_listener', MessageLoggerListener::class);
         $before = Iter\count($sent->getEvents()->getMessages());
@@ -232,7 +234,7 @@ final class PasswordRecoveryTest extends ApiTestCase
         $open = self::serviceById('limiter.password_reset_ip', RateLimiterFactoryInterface::class);
 
         foreach ([[new RefusingRateLimiterFactory(), $open], [$open, new RefusingRateLimiterFactory()]] as [$address, $ip]) {
-            $controller = new PasswordRecoveryController(self::service(PasswordRecovery::class), self::service(AfterResponse::class), self::service(SignInResponse::class), $address, $ip);
+            $controller = new PasswordRecoveryController(self::service(PasswordRecovery::class), self::service(AfterResponse::class), self::service(SignInResponse::class), $address, $ip, self::service(CodeField::class));
 
             try {
                 $controller->forgot(Request::create('/api/auth/password/forgot', 'POST', content: Json\encode(['email' => 'anybody@example.com'])));

@@ -19,6 +19,7 @@ use DateTimeImmutable;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -344,6 +345,33 @@ final class VerifyEmailTest extends ApiTestCase
 
         self::assertSame(0, $this->body()['cooldownSeconds']);
         self::assertCount(0, self::getMailerMessages(), 'reading the cooldown sent a code');
+    }
+
+    /** A code is typed text: a number would lose a leading zero, so it is refused rather than coerced. */
+    #[Test]
+    #[DataProvider('codesThatAreNotText')]
+    public function aCodeThatIsNotAStringIsAFieldErrorAndCostsNoAttempt(string $body): void
+    {
+        $token = $this->register('shape@example.com');
+
+        $this->client->request('POST', '/api/auth/verify/email', server: $this->authenticated($token), content: $body);
+
+        self::assertSame(422, $this->client->getResponse()->getStatusCode());
+        self::assertSame('https://soirely.com/errors/validation_failed', $this->body()['type']);
+        self::assertSame(
+            [['propertyPath' => 'code', 'message' => 'Enter the 6-digit code from the email.', 'code' => 'validation_failed']],
+            $this->body()['violations'],
+        );
+        self::assertSame(0, $this->challengeFor('shape@example.com')?->getAttempts(), 'a refused shape spent a try');
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function codesThatAreNotText(): iterable
+    {
+        yield 'a number' => ['{"code": 123456}'];
+        yield 'an array' => ['{"code": ["123456"]}'];
+        yield 'null' => ['{"code": null}'];
+        yield 'missing' => ['{}'];
     }
 
     #[Test]

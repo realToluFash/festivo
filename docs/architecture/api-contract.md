@@ -99,6 +99,12 @@ them, so "Check your email" opens on the right banner without spending a try. No
 or a verified address, reads as `live`. A taken address's sign-up reads exactly as a new
 one's.
 
+**A code is always a JSON string.** A number (which would lose a leading zero), an array,
+`null` or a missing field is a `422 validation_failed` against that field, in the words its
+screen uses ("Enter the 6-digit code from the email.", "…from the text.", "…from your app.",
+"Enter one of your recovery codes."), and costs no attempt. `App\Http\CodeField` reads every
+code this way: email, phone, sign-up, two-factor and the reset's code step.
+
 At most one code is live per address, by a partial unique index on unrevoked challenges, and
 resends and tries for one address take its row lock, so requests sent at once are answered
 in turn: one resend sends a code and the rest get its cooldown, and the fifth wrong try is

@@ -15,6 +15,7 @@ use App\Entity\RefreshToken;
 use App\Entity\User;
 use App\Entity\VerificationChallenge;
 use App\Enum\ErrorCode;
+use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
@@ -165,6 +166,18 @@ final class RegisterTest extends ApiTestCase
         $later = Type\string()->coerce($this->register('later@example.com', 'Later', self::GOOD_PASSWORD)['registration']);
         self::mockTime('+16 minutes');
         self::assertSame('expired', $this->opening($later)['codeState']);
+    }
+
+    #[Test]
+    public function aCodeSentAsANumberIsAFieldErrorAndCostsNoAttempt(): void
+    {
+        $handle = Type\string()->coerce($this->register('number@example.com', 'Number', self::GOOD_PASSWORD)['registration']);
+
+        $this->client->request('POST', '/api/auth/register/verify', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['registration' => $handle, 'code' => 123456]));
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([['propertyPath' => 'code', 'message' => 'Enter the 6-digit code from the email.', 'code' => 'validation_failed']], $this->last()['violations']);
+        self::assertSame(0, self::em()->getConnection()->fetchOne('SELECT attempts FROM pending_registrations WHERE email = ?', ['number@example.com']), 'a refused shape spent a try');
     }
 
     #[Test]
@@ -404,6 +417,7 @@ final class RegisterTest extends ApiTestCase
             self::service(AccountSerialiser::class),
             self::service(PendingRegistrations::class),
             new RefusingRateLimiterFactory(),
+            self::service(CodeField::class),
         );
 
         try {

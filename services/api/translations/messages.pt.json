@@ -3,6 +3,10 @@
     "actor.api_client": "Cliente da API",
     "actor.system": "Sistema",
     "actor.user": "Titular da conta",
+    "validation.code_app_or_recovery_required": "Introduza um código da sua aplicação ou um código de recuperação.",
+    "validation.code_app_required": "Introduza o código de 6 dígitos da sua aplicação.",
+    "validation.code_email_required": "Introduza o código de 6 dígitos do e-mail.",
+    "validation.code_text_required": "Introduza o código de 6 dígitos do SMS.",
     "validation.contact_address_invalid": "Isso não parece um endereço de e-mail. Verifique se tem um @ e um domínio.",
     "validation.contact_address_required": "Indique um e-mail de contacto.",
     "validation.country_invalid": "Escolha um país.",
@@ -18,5 +22,6 @@
     "validation.phone_required": "Indique o seu número de telemóvel.",
     "validation.phone_too_long": "Esse número parece demasiado longo para {country}. Verifique-o e tente novamente.",
     "validation.phone_too_short": "Esse número parece demasiado curto para {country}. Verifique-o e tente novamente.",
+    "validation.recovery_code_required": "Introduza um dos seus códigos de recuperação.",
     "validation.timezone_invalid": "Escolha um fuso horário."
 }
