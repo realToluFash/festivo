@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\Onboarding\OnboardingGate;
 use App\Domain\User\UserRegistrar;
 use App\Domain\User\Verification\RecordingTextMessageSender;
@@ -254,6 +255,21 @@ final class OnboardingGateTest extends ApiTestCase
         self::assertSame(200, $this->client->getResponse()->getStatusCode());
         self::assertTrue(Type\shape(['complete' => Type\bool()], true)->coerce($body['account'])['complete']);
         self::assertSame([], self::service(MembershipRepository::class)->findActiveFor($invited));
+    }
+
+    /** "A few details" can't read /api/orgs behind the gate, so /me says where an invited person's number starts. */
+    #[Test]
+    public function theAccountSaysItsOrganisationsCountryBehindTheGate(): void
+    {
+        $invited = self::service(UserRegistrar::class)->registerFromInvitation('invited@example.com', 'Invited', self::PASSWORD)->user;
+        self::service(EntityManagerInterface::class)->flush();
+        $this->signIn($invited);
+        self::assertNull($this->call('GET', '/api/auth/me')['organisationCountry'], 'in no organisation yet');
+
+        self::service(OrganisationFounder::class)->found($invited, 'Ìrè Events', 'GH', 'Africa/Accra');
+        self::service(EntityManagerInterface::class)->flush();
+
+        self::assertSame('GH', $this->call('GET', '/api/auth/me')['organisationCountry']);
     }
 
     #[Test]

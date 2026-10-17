@@ -104,7 +104,9 @@ export function CompleteProfile() {
       <Details
         name={state.session.name}
         needsOrganisation={state.session.needsOrganisation}
-        organisationCountry={state.session.organisation?.countryCode ?? null}
+        organisationCountry={
+          state.session.organisation?.countryCode ?? state.session.organisationCountry
+        }
         onSaved={(verificationNeeded) =>
           navigate(verificationNeeded ? '/verify-phone?from=onboarding' : '/app', {
             replace: true,

@@ -17,6 +17,7 @@ const FOLAKE: Session = {
   hasPassword: true,
   organisation: null,
   organisations: [],
+  organisationCountry: null,
 };
 
 const ACCOUNT = {
@@ -24,6 +25,7 @@ const ACCOUNT = {
   name: 'Folake Adeyemi',
   businessName: null,
   countryCode: null,
+  organisationCountry: null,
   locale: 'en',
   verified: true,
   complete: true,
@@ -144,6 +146,13 @@ describe('a few details', () => {
     expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('KE');
   });
 
+  it("starts an invited person's phone code on the organisation's country, not the browser's", () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-GB']);
+    at('/complete-profile', { ...FOLAKE, needsOrganisation: false, organisationCountry: 'GH' });
+
+    expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('GH');
+  });
+
   it('marks the mobile optional and checks a typed one for its country before sending', () => {
     const sent = answering({});
     at('/complete-profile', { ...FOLAKE, needsOrganisation: false });
@@ -250,6 +259,7 @@ describe('a few details', () => {
       hasPassword: true,
       organisation,
       organisations: [organisation],
+      organisationCountry: null,
     });
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });

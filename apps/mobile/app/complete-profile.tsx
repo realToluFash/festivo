@@ -102,7 +102,13 @@ function Details({ account }: { account: Account }) {
   const [countryCode, setCountryCode] = useState(
     () => deviceCountry(getLocales().map((locale) => locale.languageTag)) ?? 'NG',
   );
-  const [phone, setPhone] = useState(() => startingPhoneCountry(countryCode, null, countryCode));
+  const [phone, setPhone] = useState(() =>
+    startingPhoneCountry(
+      account.needsOrganisation ? countryCode : null,
+      account.organisationCountry,
+      countryCode,
+    ),
+  );
   const phoneCountryCode = phone.code;
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errors, setErrors] = useState<Errors>({});

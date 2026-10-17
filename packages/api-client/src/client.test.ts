@@ -933,6 +933,7 @@ const ACCOUNT = {
   name: 'Folake Ire',
   businessName: 'Ire Events',
   countryCode: 'NG',
+  organisationCountry: null,
   locale: 'en',
   verified: true,
   complete: true,
