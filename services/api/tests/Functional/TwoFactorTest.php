@@ -150,6 +150,8 @@ final class TwoFactorTest extends ApiTestCase
             ['/api/auth/two-factor/disable', ['code' => 123456], 'code', 'Enter a code from your app, or a recovery code.', true],
             ['/api/auth/two-factor/recovery-codes', ['code' => null], 'code', 'Enter a code from your app, or a recovery code.', true],
             ['/api/auth/two-factor/disable', [], 'code', 'Enter a code from your app, or a recovery code.', true],
+            ['/api/auth/two-factor/verify', ['challenge' => $challenge], 'code', 'Enter the 6-digit code from your app.', false],
+            ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => null, 'recoveryCode' => null], 'code', 'Enter the 6-digit code from your app.', false],
         ];
 
         foreach ($refused as [$path, $body, $field, $message, $signedIn]) {
@@ -160,7 +162,7 @@ final class TwoFactorTest extends ApiTestCase
             self::assertSame([['propertyPath' => $field, 'message' => $message, 'code' => 'validation_failed']], $answer['violations'], $path);
         }
 
-        // Five refusals: had any spent a try, the budget of five would be gone and this would be paused.
+        // Seven refusals: had any spent a try, the budget of five would be gone and this would be paused.
         self::mockTime('+30 seconds');
         $this->client->setServerParameter('HTTP_AUTHORIZATION', '');
         $this->call('POST', '/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => $this->codeNow($secret)]);
@@ -313,6 +315,12 @@ final class TwoFactorTest extends ApiTestCase
         $this->call('POST', '/api/auth/refresh', ['refreshToken' => $refreshToken]);
         self::assertSame(200, $this->statusCode(), 'and no session was ended');
         $refreshToken = Type\string()->coerce($this->last()['refreshToken'] ?? null);
+
+        foreach ([['token' => $token], ['token' => $token, 'code' => null, 'recoveryCode' => null]] as $neither) {
+            $this->call('POST', '/api/auth/password/reset/code', $neither);
+            self::assertSame(422, $this->statusCode(), 'neither code sent is a field error, not a bad request');
+            self::assertSame([['propertyPath' => 'code', 'message' => 'Enter the 6-digit code from your app.', 'code' => 'validation_failed']], $this->last()['violations']);
+        }
 
         $this->call('POST', '/api/auth/password/reset/code', ['token' => $token, 'code' => '000000']);
         self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type']);

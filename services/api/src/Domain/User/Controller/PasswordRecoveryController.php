@@ -82,6 +82,11 @@ final readonly class PasswordRecoveryController
         $code = $this->codeField->optional($body, 'code', CodeField::FROM_APP);
         $recoveryCode = $this->codeField->optional($body, 'recoveryCode', CodeField::RECOVERY);
 
+        // Neither sent is the app's code missing, the field the screen asks for first.
+        if (null === $code && null === $recoveryCode) {
+            $code = $this->codeField->required($body, 'code', CodeField::FROM_APP);
+        }
+
         $this->passwordRecovery->passSecondFactor($body['token'], $code, $recoveryCode);
 
         return new Response(null, Response::HTTP_NO_CONTENT);
