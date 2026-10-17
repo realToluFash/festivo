@@ -14,6 +14,9 @@ enum ErrorCode: string
     case NotFound = 'not_found';
     case Conflict = 'conflict';
     case PhoneTaken = 'phone_taken';
+    case OwnerRoleFixed = 'owner_role_fixed';
+    case SeededRoleKept = 'seeded_role_kept';
+    case LastOwner = 'last_owner';
     case ProviderTaken = 'provider_taken';
     case LastSignInMethod = 'last_sign_in_method';
     case UnsupportedMediaType = 'unsupported_media_type';
@@ -68,6 +71,7 @@ enum ErrorCode: string
             self::ResetLinkUsed, self::ResetLinkExpired, self::RegistrationExpired => 410,
             self::Conflict, self::PhoneTaken, self::ProviderTaken, self::LastSignInMethod, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
             self::RecoveryNobodyToApprove, self::RecoveryRequestClosed, self::RecoveryRequestProved, self::RecoveryRequestReplaced => 409,
+            self::OwnerRoleFixed, self::SeededRoleKept, self::LastOwner => 409,
             self::RecoveryRequestInvalid => 404,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid => 401,

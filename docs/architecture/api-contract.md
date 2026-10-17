@@ -188,6 +188,30 @@ is ever in a URL.
   link. It cancels every open request and ends every session. The `/cancel` on the waiting
   screen does the same.
 
+## Roles and permissions
+
+An organisation's roles (sc-66). Every organisation is created with five, in this order:
+Owner, Administrator, Event manager, Coordinator and Read-only (`seededAs`). Their
+permissions are defaults written once at creation, then the organisation's to change.
+
+- `GET /api/orgs/{id}/permissions`, for any active member: the caller's effective
+  permissions. `GET /api/orgs` carries the same list on each membership, so a client
+  renders only the controls it can use.
+- `GET /api/orgs/{id}/roles` (`members.read`): every role with `permissions`, `holders`,
+  `fixed` (Owner) and `removable` (a custom role), and `areas`, the registry grouped as
+  the grid draws it.
+- `POST …/roles` (`members.manage`) makes a custom role from `name` and `permissions`;
+  `PATCH …/roles/{roleId}` changes either; `DELETE …/roles/{roleId}` removes a custom one.
+- Owner refuses an edit or a delete with `409 owner_role_fixed`. A seeded role can be
+  edited but not renamed (`422` on `name`) or removed (`409 seeded_role_kept`).
+- A role name is trimmed, required, at most 40 characters, and unique in the organisation
+  ignoring case, the seeded labels included: a clash is a violation on `name` with code
+  `role_name_taken`. An unknown permission is a violation on `permissions`.
+- Deleting a role that people hold needs `replacement`, a role in the same organisation,
+  or it is `422` on `replacement`; its holders move to it first.
+- A role id from another organisation is `404`. Demoting the last active owner is
+  `409 last_owner` (`RoleAssignment`).
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.

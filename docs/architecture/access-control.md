@@ -16,12 +16,12 @@ every one of them names a policy.**
 
 ## The four policies
 
-| Attribute                       | Who gets through                                                        |
-| ------------------------------- | ----------------------------------------------------------------------- |
-| `#[PublicAccess]`               | anybody, signed in or not                                               |
-| `#[Authenticated]`              | any signed-in account                                                   |
-| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it  |
-| `#[InEvent(permission)]`        | an active member of the organisation that owns the event in `{eventId}` |
+| Attribute                       | Who gets through                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `#[PublicAccess]`               | anybody, signed in or not                                                                              |
+| `#[Authenticated]`              | any signed-in account                                                                                  |
+| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it; with `null`, any active member |
+| `#[InEvent(permission)]`        | an active member of the organisation that owns the event in `{eventId}`                                |
 
 All four live in `App\Http\Access\Policy`. One goes on the controller class or on the
 method; the method's wins, and two on the same level is refused at boot. A route that
@@ -30,6 +30,12 @@ because API Platform's routes have no controller of ours to carry one.
 
 A permission is a case of `App\Enum\Permission`. A policy takes the enum, not a string, so
 a permission that is not in the registry cannot be asked for: it does not compile.
+
+Each case names its **area** (a row of the roles screen's grid, `PermissionArea`) and the
+**seeded roles it starts on** (`defaultRoles()`). Areas hold a `read` and a `manage`
+permission, and `budget.margin` sits beside Budget's. `PermissionRegistryTest` fails for a
+permission that names no default role. A story that adds one names its defaults, and a
+migration grants it once to those seeded roles in every existing organisation (sc-66).
 
 ## When it is checked
 
@@ -92,8 +98,8 @@ The listener asks two interfaces:
 - `EventDirectoryInterface::organisationOf($eventId)`: the event's organisation, or null.
 
 `App\Domain\Organisation\MembershipDirectory` answers the first from the `memberships`
-table: only an `active` membership counts. Until sc-66 gives roles their permissions,
-Owner is the only role, and it holds everything.
+table: only an `active` membership counts, and it grants what the member's role holds as
+the organisation last set it (`roles.permissions`). Owner holds everything.
 
 Until events exist, `NoEvents` answers that no event exists, so every event route refuses,
 which is the direction a gap should fail in.

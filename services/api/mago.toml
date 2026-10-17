@@ -230,7 +230,8 @@ permit = [
 ]
 
 # Organisations read the user scope's vocabulary (EmailAddressNormaliser for a
-# contact address); the user scope does not reach back.
+# contact address); the user scope does not reach back. A role's changes go to the
+# audit trail (sc-66), as an account's do.
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
@@ -240,6 +241,7 @@ permit = [
     "@layer:domain_organisation",
     "@layer:domain_user",
     "@layer:repository",
+    "@layer:audit",
 ]
 
 # ── Integrations ────────────────────────────────────────────────────────────────
