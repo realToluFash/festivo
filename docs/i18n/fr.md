@@ -36,12 +36,23 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Never translated
 
 - Soirely
+- iPhone, iPad, Android
 - A person's name or title: Chief, Alhaji, Dr., Mrs.
 
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The app as a device is « Application Soirely sur … ».** « Application
+  Soirely sur iPhone », « … sur iPad », « … sur un téléphone Android », « … sur une
+  tablette Android » (`devices.app*`, `password.device.app*`). « sur » as in `devices.agent`
+  (« Safari sur iPhone »); « Application » rather than « appli » for the register; the
+  article before « téléphone » and « tablette » because they name a kind of device, where
+  iPhone and iPad are names (sc-1283).
+- **18 Oct 2026. A device name is never the subject of an agreeing participle.** Device
+  names are masculine (« Safari sur iPhone ») or feminine (« Application Soirely … »), so
+  `devices.ended` reads « Appareil déconnecté : {{name}}. », agreeing with « Appareil »
+  rather than « {{name}} est déconnecté » (sc-1283).
 - **18 Oct 2026. "Sign out everywhere else" is « Déconnecter les autres appareils »**
   (`devices.everywhere`, its title with « ? »). The device is what is signed out, as in
   `devices.signOut`; « partout ailleurs » reads as places. Its confirm buttons follow the
