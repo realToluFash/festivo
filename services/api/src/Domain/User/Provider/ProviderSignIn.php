@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Provider;
 
+use App\Domain\User\Interfaces\CodeRedeemerInterface;
 use App\Domain\User\Interfaces\IdTokenVerifierInterface;
 use App\Domain\User\Model\ProviderSignInResult;
 use App\Domain\User\TokenIssuer;
@@ -23,12 +24,30 @@ final readonly class ProviderSignIn
 {
     public function __construct(
         private IdTokenVerifierInterface $idTokenVerifier,
+        private CodeRedeemerInterface $codeRedeemer,
         private ProviderIdentityRepository $providerIdentityRepository,
         private UserRepository $userRepository,
         private UserRegistrar $userRegistrar,
         private TokenIssuer $tokenIssuer,
         private EntityManagerInterface $entityManager,
     ) {
+    }
+
+    /** The web's way in: its code redeemed by the API, then the same checks and paths as a token. */
+    public function signInWithCode(
+        IdentityProvider $provider,
+        #[SensitiveParameter]
+        string $code,
+        #[SensitiveParameter]
+        string $codeVerifier,
+        string $redirectUri,
+        #[SensitiveParameter]
+        ?string $rawNonce,
+        ?Request $request = null,
+    ): ProviderSignInResult {
+        $idToken = $this->codeRedeemer->redeem($provider, $code, $codeVerifier, $redirectUri);
+
+        return $this->signIn($provider, $idToken, $rawNonce, $request);
     }
 
     public function signIn(

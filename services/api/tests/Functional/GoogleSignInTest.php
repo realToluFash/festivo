@@ -12,6 +12,7 @@ use App\Enum\IdentityProvider;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Fixtures\OpenIdConnect\TestCodeRedeemer;
 use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -176,6 +177,47 @@ final class GoogleSignInTest extends ApiTestCase
         self::assertSame($fetches + 1, $this->keys()->fetches);
     }
 
+    /** The web's flow: the API redeems the code with the browser's verifier, then the same checks run. */
+    #[Test]
+    public function aWebClientsCodeIsRedeemedByTheApiAndSignsIn(): void
+    {
+        $this->redeemer()->issue('the-code', 'the-verifier', $this->token(['sub' => 'g-web', 'nonce' => \hash('sha256', 'raw')]));
+
+        $body = $this->signInWithCode('the-code', 'the-verifier', 'raw');
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertIsString($body['accessToken'] ?? null);
+        self::assertSame([['code' => 'the-code', 'redirectUri' => 'http://localhost:5173/oauth/google']], $this->redeemer()->redeemed);
+    }
+
+    #[Test]
+    public function aCodeWithTheWrongVerifierIsRefused(): void
+    {
+        $this->redeemer()->issue('the-code', 'the-verifier', $this->token(['sub' => 'g-web']));
+
+        $this->signInWithCode('the-code', 'somebody-elses-verifier', null);
+
+        $this->assertRefused();
+    }
+
+    #[Test]
+    public function aRedeemedTokenIsStillBoundToItsNonce(): void
+    {
+        $this->redeemer()->issue('the-code', 'the-verifier', $this->token(['sub' => 'g-web', 'nonce' => \hash('sha256', 'raw')]));
+
+        $this->signInWithCode('the-code', 'the-verifier', 'not the raw nonce');
+
+        $this->assertRefused();
+    }
+
+    #[Test]
+    public function aRequestWithNeitherATokenNorACodeIsABadRequest(): void
+    {
+        $this->client->request('POST', '/api/auth/oauth/google', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['nonce' => 'x']));
+
+        self::assertSame(400, $this->statusCode());
+    }
+
     #[Test]
     public function somethingThatIsNotATokenIsRefused(): void
     {
@@ -214,6 +256,26 @@ final class GoogleSignInTest extends ApiTestCase
         $value = Type\string()->coerce($_SERVER[$name] ?? $_ENV[$name] ?? '');
 
         return Str\trim(Str\split($value, ',')[0] ?? '');
+    }
+
+    private function redeemer(): TestCodeRedeemer
+    {
+        return self::service(TestCodeRedeemer::class);
+    }
+
+    /** @return array<string, mixed> */
+    private function signInWithCode(string $code, #[SensitiveParameter] string $verifier, #[SensitiveParameter] ?string $nonce): array
+    {
+        $this->client->request('POST', '/api/auth/oauth/google', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode([
+            'code' => $code,
+            'codeVerifier' => $verifier,
+            'redirectUri' => 'http://localhost:5173/oauth/google',
+            'nonce' => $nonce,
+        ]));
+
+        $raw = (string) $this->client->getResponse()->getContent();
+
+        return '' === $raw ? [] : Type\dict(Type\string(), Type\mixed())->coerce(Json\decode($raw));
     }
 
     private function keys(): TestSigningKeys

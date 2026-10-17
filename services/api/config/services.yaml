@@ -86,6 +86,12 @@ services:
         arguments:
             $googleIssuers: '%env(OAUTH_GOOGLE_ISSUERS)%'
             $googleClientIds: '%env(OAUTH_GOOGLE_CLIENT_IDS)%'
+    App\Integrations\OpenIdConnect\HttpCodeRedeemer:
+        arguments:
+            $googleRedemptionEndpoint: '%env(OAUTH_GOOGLE_TOKEN_URI)%'
+            $googleWebClientId: '%env(OAUTH_GOOGLE_WEB_CLIENT_ID)%'
+            $googleWebClientSecret: '%env(OAUTH_GOOGLE_WEB_CLIENT_SECRET)%'
+    App\Domain\User\Interfaces\CodeRedeemerInterface: '@App\Integrations\OpenIdConnect\HttpCodeRedeemer'
     App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Integrations\OpenIdConnect\HttpSigningKeys'
     App\Domain\User\Interfaces\IdTokenVerifierInterface: '@App\Integrations\OpenIdConnect\OpenIdTokenVerifier'
 
@@ -125,6 +131,9 @@ when@test:
         App\Tests\Fixtures\OpenIdConnect\TestSigningKeys:
             public: true
         App\Integrations\OpenIdConnect\SigningKeysInterface: '@App\Tests\Fixtures\OpenIdConnect\TestSigningKeys'
+        App\Tests\Fixtures\OpenIdConnect\TestCodeRedeemer:
+            public: true
+        App\Domain\User\Interfaces\CodeRedeemerInterface: '@App\Tests\Fixtures\OpenIdConnect\TestCodeRedeemer'
 
         # No test sends a text; what would have been sent is kept for the test to read.
         App\Domain\User\Verification\RecordingTextMessageSender:
