@@ -838,6 +838,22 @@ export class ApiClient {
     return organisation;
   }
 
+  /** Every session but `sessionId`'s, with a proof; `thisDevice` says this one ended too and the client is signed out. */
+  async signOutEverywhereElse(
+    proof: string,
+    sessionId: string | null,
+  ): Promise<{ signedOut: number; thisDevice: boolean }> {
+    const body = await this.post<{ signedOut?: unknown; thisDevice?: unknown }>(
+      '/api/auth/sessions/others',
+      { proof, sessionId },
+    );
+
+    return {
+      signedOut: typeof body.signedOut === 'number' ? body.signedOut : 0,
+      thisDevice: body.thisDevice === true,
+    };
+  }
+
   async endSession(id: string): Promise<void> {
     await this.delete(`/api/auth/sessions/${encodeURIComponent(id)}`);
   }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\TwoFactor\Recovery;
 
 use App\Audit\Auditor;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\TokenIssuer;
 use App\Domain\User\Verification\ContactVerifier;
 use App\Domain\User\Verification\PhoneCodeDispatch;
@@ -50,6 +51,7 @@ final readonly class TwoFactorRecoveries
         private TwoFactorRecoveryMailer $twoFactorRecoveryMailer,
         private TokenIssuer $tokenIssuer,
         private Auditor $auditor,
+        private UserMailer $userMailer,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -188,8 +190,10 @@ final readonly class TwoFactorRecoveries
         $refusal = $this->entityManager->wrapInTransaction(function () use ($recovery, $emailCode, $phoneCode): ?ApiException {
             $this->entityManager->refresh($recovery, LockMode::PESSIMISTIC_WRITE);
 
-            if (TwoFactorRecoveryStatus::Proving !== $recovery->statusAt($this->clock->now())) {
-                return new ApiException(ErrorCode::RecoveryRequestClosed, 'This request is past its codes.', [], null, [], ['requestStatus' => $recovery->statusAt($this->clock->now())->value]);
+            $past = $this->pastItsCodes($recovery);
+
+            if (null !== $past) {
+                return $past;
             }
             $pairs = ['emailCode' => [$recovery->getEmailAddress(), $emailCode]];
             $phone = $recovery->getPhoneNumber();
@@ -307,11 +311,23 @@ final readonly class TwoFactorRecoveries
 
     private function proving(TwoFactorRecovery $recovery): void
     {
+        $refusal = $this->pastItsCodes($recovery);
+
+        if (null !== $refusal) {
+            throw $refusal;
+        }
+    }
+
+    /** Proved and waiting is not ended: it says so with its own type, so a screen can open on the waiting state (#1121). */
+    private function pastItsCodes(TwoFactorRecovery $recovery): ?ApiException
+    {
         $status = $recovery->statusAt($this->clock->now());
 
-        if (TwoFactorRecoveryStatus::Proving !== $status) {
-            throw new ApiException(ErrorCode::RecoveryRequestClosed, 'This request is past its codes.', [], null, [], ['requestStatus' => $status->value]);
-        }
+        return match ($status) {
+            TwoFactorRecoveryStatus::Proving => null,
+            TwoFactorRecoveryStatus::Waiting => new ApiException(ErrorCode::RecoveryRequestProved, 'This request is already waiting for an answer.', [], null, [], ['requestStatus' => $status->value]),
+            default => new ApiException(ErrorCode::RecoveryRequestClosed, 'This request has already ended.', [], null, [], ['requestStatus' => $status->value]),
+        };
     }
 
     /** On the rows' own clock, as `created_at` is written, like a code's cooldown. */
@@ -319,9 +335,17 @@ final readonly class TwoFactorRecoveries
     {
         $started = $this->twoFactorRecoveryRepository->startedSince($user, new DateTimeImmutable('-24 hours'));
 
-        return Iter\count($started) >= TwoFactorRecovery::PER_DAY
-            ? ApiException::tooManyAttempts('You can ask 3 times a day.', $started[Iter\count($started) - TwoFactorRecovery::PER_DAY]->modify('+24 hours'))
-            : null;
+        if (Iter\count($started) < TwoFactorRecovery::PER_DAY) {
+            return null;
+        }
+
+        $locale = $this->userMailer->localeFor($user);
+
+        return ApiException::tooManyAttemptsUntil(
+            'You can ask 3 times a day.',
+            $started[Iter\count($started) - TwoFactorRecovery::PER_DAY]->modify('+24 hours'),
+            fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $user, $locale),
+        );
     }
 
     private function audit(string $action, TwoFactorRecovery $recovery, Actor $actor, ?User $by): void

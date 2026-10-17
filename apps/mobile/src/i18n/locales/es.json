@@ -342,14 +342,14 @@
     "pausedTitle": "Demasiados intentos",
     "pausedBody": "Inténtelo de nuevo a las {{time}}. No se cambió nada.",
     "pausedSoon": "Espere un momento y vuelva a intentarlo. No se cambió nada.",
-    "signsOut": "Al guardar se cierra la sesión en sus otros dispositivos; este sigue conectado. Pueden seguir funcionando hasta 15 minutos mientras eso les llega.",
+    "signsOut": "Al guardar se cierra la sesión en sus otros dispositivos; este sigue conectado.",
     "emailed": "Enviaremos un correo a {{email}} para avisar del cambio.",
     "save": "Guardar nueva contraseña",
     "saving": "Guardando…",
     "cancel": "Cancelar",
     "done_zero": "Contraseña cambiada. No había otro dispositivo conectado.",
-    "done_one": "Contraseña cambiada. Se cerró la sesión en su otro dispositivo; puede seguir funcionando hasta 15 minutos mientras eso le llega, y después tendrá que volver a iniciar sesión.",
-    "done_other": "Contraseña cambiada. Se cerró la sesión en sus {{count}} otros dispositivos; pueden seguir funcionando hasta 15 minutos mientras eso les llega, y después tendrán que volver a iniciar sesión.",
+    "done_one": "Contraseña cambiada. Se cerró la sesión en su otro dispositivo.",
+    "done_other": "Contraseña cambiada. Se cerró la sesión en sus {{count}} otros dispositivos.",
     "failedTitle": "No se cambió nada",
     "failedBody": "No se pudo guardar su contraseña. Compruebe su conexión e inténtelo de nuevo.",
     "setRest": "Inicia sesión con {{provider}}. Añada una contraseña para poder iniciar sesión también con su correo si algún día pierde esa cuenta de {{provider}}.",
@@ -462,7 +462,7 @@
     "send": "Enviar los códigos",
     "sending": "Enviando los códigos…",
     "limitedTitle": "Demasiadas solicitudes",
-    "limitedBody": "Puede pedirlo 3 veces al día. Vuelva a intentarlo a las {{time}}.",
+    "limitedBody": "Puede pedirlo 3 veces al día. Vuelva a intentarlo a partir del {{when}}.",
     "back": "Volver a iniciar sesión",
     "nobodyTitle": "Póngase en contacto con el soporte de Soirely",
     "nobodyIntro": "Nadie de su organización puede confirmarlo. Póngase en contacto con el soporte de Soirely.",
@@ -529,6 +529,7 @@
     "setupIntro": "Se desactivó la verificación en dos pasos para que pudiera volver a entrar. Configúrela de nuevo para que una contraseña sola no abra su cuenta.",
     "setup": "Configurar la verificación en dos pasos",
     "notNow": "Ahora no",
-    "notNowNote": "Puede configurarla en cualquier momento en Ajustes › Seguridad."
+    "notNowNote": "Puede configurarla en cualquier momento en Ajustes › Seguridad.",
+    "limitedBodyLater": "Puede pedirlo 3 veces al día. Vuelva a intentarlo más tarde."
   }
 }

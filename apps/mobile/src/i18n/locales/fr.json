@@ -342,14 +342,14 @@
     "pausedTitle": "Trop de tentatives",
     "pausedBody": "Réessayez à {{time}}. Rien n'a été modifié.",
     "pausedSoon": "Patientez un instant, puis réessayez. Rien n'a été modifié.",
-    "signsOut": "L'enregistrement déconnecte vos autres appareils ; celui-ci reste connecté. Ils peuvent continuer à fonctionner jusqu'à 15 minutes, le temps que cela leur parvienne.",
+    "signsOut": "L'enregistrement déconnecte vos autres appareils ; celui-ci reste connecté.",
     "emailed": "Nous enverrons un e-mail à {{email}} pour l'indiquer.",
     "save": "Enregistrer le nouveau mot de passe",
     "saving": "Enregistrement…",
     "cancel": "Annuler",
     "done_zero": "Mot de passe modifié. Aucun autre appareil n'était connecté.",
-    "done_one": "Mot de passe modifié. Votre autre appareil est déconnecté ; il peut continuer à fonctionner jusqu'à 15 minutes, le temps que cela lui parvienne, puis il devra se reconnecter.",
-    "done_other": "Mot de passe modifié. Vos {{count}} autres appareils sont déconnectés ; ils peuvent continuer à fonctionner jusqu'à 15 minutes, le temps que cela leur parvienne, puis ils devront se reconnecter.",
+    "done_one": "Mot de passe modifié. Votre autre appareil est déconnecté.",
+    "done_other": "Mot de passe modifié. Vos {{count}} autres appareils sont déconnectés.",
     "failedTitle": "Rien n'a été modifié",
     "failedBody": "Votre mot de passe n'a pas pu être enregistré. Vérifiez votre connexion et réessayez.",
     "setRest": "Vous vous connectez avec {{provider}}. Ajoutez un mot de passe pour pouvoir aussi vous connecter avec votre e-mail si vous perdez un jour ce compte {{provider}}.",
@@ -462,7 +462,7 @@
     "send": "Envoyer les codes",
     "sending": "Envoi des codes…",
     "limitedTitle": "Trop de demandes",
-    "limitedBody": "Vous pouvez le demander 3 fois par jour. Réessayez à {{time}}.",
+    "limitedBody": "Vous pouvez le demander 3 fois par jour. Réessayez à partir du {{when}}.",
     "back": "Retour à la connexion",
     "nobodyTitle": "Contactez l'assistance Soirely",
     "nobodyIntro": "Personne dans votre organisation ne peut le confirmer. Contactez l'assistance Soirely.",
@@ -529,6 +529,7 @@
     "setupIntro": "La double authentification a été désactivée pour vous permettre de revenir. Configurez-la à nouveau pour qu'un mot de passe seul ne suffise pas à ouvrir votre compte.",
     "setup": "Configurer la double authentification",
     "notNow": "Pas maintenant",
-    "notNowNote": "Vous pouvez la configurer à tout moment dans Paramètres › Sécurité."
+    "notNowNote": "Vous pouvez la configurer à tout moment dans Paramètres › Sécurité.",
+    "limitedBodyLater": "Vous pouvez le demander 3 fois par jour. Réessayez plus tard."
   }
 }

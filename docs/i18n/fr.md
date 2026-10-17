@@ -36,3 +36,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **17 Oct 2026. Signing out is immediate; no delay is promised.** "Vos autres appareils
+  ont été déconnectés." (password card, password-changed email). Since sc-117 an ended
+  session stops at once, so no string may say a device "peut continuer à fonctionner".
+- **17 Oct 2026. "Il devra se reconnecter pour continuer"** for a device the person signs
+  out (`devices.signInAgain`). The device is the subject, as in `devices.ended`; "assurez-vous
+  qu'il ne sert pas pendant un événement en cours" rather than "au milieu d'un événement",
+  which reads as being physically in one.
+- **17 Oct 2026. "Code" stays "Code"** as a field label (`twoFactor.code`,
+  `waysCard.code`): it is the French word, listed in `same-as-english.json`.

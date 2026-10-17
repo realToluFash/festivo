@@ -28,7 +28,7 @@
     "password.changed.subject": "A sua palavra-passe da Soirely foi alterada",
     "password.changed.body": "A palavra-passe desta conta Soirely foi alterada em {when}.",
     "password.changed.where": "O dispositivo: {device}.",
-    "password.changed.devices": "A sessão foi terminada nos seus outros dispositivos. Podem continuar a funcionar até 15 minutos enquanto isso lhes chega.",
+    "password.changed.devices": "A sessão foi encerrada em todos os outros dispositivos.",
     "password.changed.notYou": "Se não foi você, reponha a sua palavra-passe agora: escolha «Esqueceu-se da palavra-passe?» no início de sessão, com este endereço. Isso termina a sessão em todos os dispositivos, incluindo o de quem a alterou.",
     "password.device.agent": "{browser} em {platform}",
     "password.device.unknown": "Um dispositivo que não se identificou",

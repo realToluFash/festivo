@@ -98,7 +98,7 @@ final class RevokedSessionTest extends ApiTestCase
 
         $ended = self::service(TokenIssuer::class)->revokeAllExcept($user, Uuid::fromString(Type\string()->coerce($laptop['sessionId'])));
 
-        self::assertSame(3, $ended, "registering's own session, the phone's and the tablet's");
+        self::assertCount(3, $ended, "registering's own session, the phone's and the tablet's");
         self::assertSame(401, $this->me($phone['accessToken']));
         self::assertSame(401, $this->me($tablet['accessToken']));
         self::assertSame(200, $this->me($laptop['accessToken']));

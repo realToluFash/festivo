@@ -36,3 +36,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **17 Oct 2026. A device's state, not its timing.** Signed-out devices are described as
+  done: «Se cerró la sesión en sus otros dispositivos.» with no delay or "hasta 15 minutos",
+  matching the English (sc-117). When the subject is a device that must sign in again, use
+  the impersonal «En ese dispositivo habrá que volver a iniciar sesión», never «tendrá que»,
+  which reads as if _usted_ had to (`devices.signInAgain`).
+- **17 Oct 2026. One sentence for "every other device has been signed out".** In an email
+  it is «Se ha cerrado la sesión en todos los demás dispositivos.», the perfect tense for a
+  report that has just happened, and identical in the password-changed and recovery emails
+  (`password.changed.devices`, `recovery.changed.body`). On screen, where the person has
+  just pressed Save, the preterite «Se cerró la sesión en sus otros dispositivos» stays
+  (`passwordCard.done_*`).

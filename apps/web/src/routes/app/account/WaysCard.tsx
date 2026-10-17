@@ -4,13 +4,7 @@ import {
   type Provider,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import {
-  formatTimeOfDay,
-  lockLiftsAt,
-  proveWith,
-  providerRows,
-  type ProviderRow,
-} from '@soirely/domain';
+import { formatTimeOfDay, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +21,7 @@ import {
   startProviderSignIn,
   takeProviderReturn,
 } from '../../../providerSignIn.ts';
-import { dropProof, heldProof, holdProof } from '../../../recentProof.ts';
+import { dropProof, heldProof, holdProof, proofRefusal } from '../../../recentProof.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
@@ -98,7 +92,7 @@ export function WaysCard({
 
   /** Back from a provider trip Security started, once two-factor's state is known. */
   async function finish(back: ProviderReturn, codeNeeded: boolean): Promise<void> {
-    if ('failed' in back) return;
+    if ('failed' in back || back.purpose.kind === 'signOutOthers') return;
 
     if (back.purpose.kind === 'link') {
       await link(back.provider, back.signIn);
@@ -681,25 +675,21 @@ function provingRefusal(
   error: unknown,
   t: TFunction,
 ): { field: ProvingField | 'failed'; message: string } {
-  if (error instanceof ApiError && error.is('too_many_attempts')) {
-    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
+  const refusal = proofRefusal(error);
 
+  if (refusal.kind === 'limited')
     return {
       field: 'failed',
       message:
-        liftsAt == null
+        refusal.until == null
           ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) }),
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, currentLocale()) }),
     };
-  }
-
-  if (error instanceof ApiError && error.is('invalid_credentials'))
-    return { field: 'password', message: t('waysCard.passwordWrong') };
-  if (
-    error instanceof ApiError &&
-    (error.is('two_factor_code_invalid') || error.is('recovery_code_used'))
-  )
-    return { field: 'code', message: t('waysCard.codeWrong') };
+  if (refusal.kind === 'field')
+    return {
+      field: refusal.field,
+      message: refusal.field === 'password' ? t('waysCard.passwordWrong') : t('waysCard.codeWrong'),
+    };
 
   return { field: 'failed', message: t('waysCard.failedBody') };
 }
