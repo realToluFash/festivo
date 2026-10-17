@@ -145,6 +145,21 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertSame(['provider' => ['google', null]], $entry?->changes(), 'before and after: it was there, and now is not');
     }
 
+    /** The password the default line points at is not there to change. */
+    #[Test]
+    public function anAccountWithNoPasswordIsToldWhatItCanDo(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $user->getPrimaryEmailAddress()?->setVerifiedAt(new DateTimeImmutable());
+        self::em()->flush();
+
+        $this->link(IdentityProvider::Apple, 'a-kemi', 'kemi@icloud.com', $this->provedByGoogle());
+
+        $text = (string) Iter\last($this->mails())?->getTextBody();
+        self::assertStringContainsString("If this wasn't you, unlink Apple from Security and sign out any devices you don't recognise.", $text);
+        self::assertStringNotContainsString('change your password', $text);
+    }
+
     #[Test]
     public function theLastWayInCanNeverBeRemoved(): void
     {

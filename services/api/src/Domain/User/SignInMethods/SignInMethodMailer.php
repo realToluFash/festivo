@@ -40,7 +40,7 @@ final readonly class SignInMethodMailer
             $this->userMailer->line('provider.when', $locale, ['{when}' => $this->userMailer->moment($at, $user, $locale)]),
             $this->userMailer->line('password.changed.where', $locale, ['{device}' => $this->userMailer->device($userAgent, $ipAddress, $locale)]),
             $this->userMailer->line('provider.security', $locale) . ' ' . Str\trim_right($this->webOrigin, '/') . '/app/account/security',
-            $this->userMailer->line($key . '.notYou', $locale, $name),
+            $this->userMailer->line($key . (null === $user->getPassword() ? '.notYouNoPassword' : '.notYou'), $locale, $name),
             $this->userMailer->line('provider.why', $locale),
         ];
 
