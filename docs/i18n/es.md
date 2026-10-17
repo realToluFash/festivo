@@ -44,6 +44,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. A minute count in the API catalogue takes no agreement.** The API's
+  catalogues have no ICU plural, so `{minutes}` sits where the plural reads right at 5:
+  «en los últimos {minutes} minutos» (`messages:proof.required`). "Continue with {provider}
+  again" is «Vuelva a iniciar sesión con {{provider}}», which names what happens rather than
+  quoting the button (`waysCard.proofExpired_*`). The provider emails' "If this wasn't you"
+  stays «Si no fue usted», as their `notYou` siblings say it (sc-1315).
+
 - **17 Oct 2026. "You're signed in" is «Ha iniciado sesión».** On the app's Home
   (`home.signedIn`, `home.signedInTo`: «Ha iniciado sesión en {{name}}»). The English
   contraction is warmth; Spanish carries it in the plain perfect, still _usted_, and «en»
