@@ -634,7 +634,7 @@
     "signOut": "Encerrar sessão",
     "choose": "Escolha uma secção",
     "chooseLine": "Em Conta estão os seus dados e as formas de contacto. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada.",
-    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds {{name}}’s own settings."
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
   },
   "switcher": {
     "yourRole": "A sua função · {{role}}",

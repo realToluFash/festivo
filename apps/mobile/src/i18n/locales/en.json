@@ -634,7 +634,7 @@
     "signOut": "Sign out",
     "choose": "Choose a section",
     "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices.",
-    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds {{name}}’s own settings."
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
   },
   "switcher": {
     "yourRole": "Your role · {{role}}",

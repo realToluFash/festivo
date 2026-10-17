@@ -634,7 +634,7 @@
     "signOut": "Cerrar sesión",
     "choose": "Elija una sección",
     "chooseLine": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta.",
-    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds {{name}}’s own settings."
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
   },
   "switcher": {
     "yourRole": "Su función · {{role}}",

@@ -634,7 +634,7 @@
     "signOut": "Se déconnecter",
     "choose": "Choisissez une section",
     "chooseLine": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés.",
-    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds {{name}}’s own settings."
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
   },
   "switcher": {
     "yourRole": "Votre rôle · {{role}}",
