@@ -20,7 +20,6 @@ import { AppleMark, GoogleMark } from './ProviderSignIn.tsx';
 
 type ProvingField = 'password' | 'code';
 
-/** The password or a linked provider, and the code when two-factor is on; blank fields are caught here. */
 /** "Confirm it's you" for every change to how an account signs in: the password or a provider, then the code. */
 export function ConfirmItsYou({
   idPrefix,
