@@ -47,6 +47,10 @@ class PhoneNumber implements VerifiableContact
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $isPending = false;
 
+    /** Chose "Text it to me instead": every later code for this number is texted too (sc-750). */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $codesByText = false;
+
     public function __construct(User $user, string $number, bool $isPrimary = false, ?string $countryCode = null)
     {
         $this->id = Uuid::v7();
@@ -111,5 +115,15 @@ class PhoneNumber implements VerifiableContact
     public function isVerified(): bool
     {
         return null !== $this->verifiedAt;
+    }
+
+    public function wantsCodesByText(): bool
+    {
+        return $this->codesByText;
+    }
+
+    public function chooseCodesByText(): void
+    {
+        $this->codesByText = true;
     }
 }

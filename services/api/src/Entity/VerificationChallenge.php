@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\PhoneCodeRoute;
 use App\Enum\VerificationChannel;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -53,6 +54,17 @@ class VerificationChallenge
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $revokedAt = null;
+
+    /** How a phone's code went; null for an email, and for a phone's code from before sc-750. */
+    #[ORM\Column(type: Types::STRING, length: 16, nullable: true, enumType: PhoneCodeRoute::class)]
+    private ?PhoneCodeRoute $route = null;
+
+    #[ORM\Column(type: Types::STRING, length: 128, nullable: true)]
+    private ?string $whatsAppMessageId = null;
+
+    /** The code itself, sealed, only while WhatsApp may still need SMS to take over with the same one. */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $sealedCode = null;
 
     public function __construct(
         EmailAddress|PhoneNumber $subject,
@@ -125,5 +137,46 @@ class VerificationChallenge
     public function isExpired(): bool
     {
         return $this->expiresAt <= new DateTimeImmutable();
+    }
+
+    public function getRoute(): ?PhoneCodeRoute
+    {
+        return $this->route;
+    }
+
+    public function getWhatsAppMessageId(): ?string
+    {
+        return $this->whatsAppMessageId;
+    }
+
+    public function getSealedCode(): ?string
+    {
+        return $this->sealedCode;
+    }
+
+    public function sentByWhatsApp(string $messageId, string $sealedCode): void
+    {
+        $this->route = PhoneCodeRoute::WhatsApp;
+        $this->whatsAppMessageId = $messageId;
+        $this->sealedCode = $sealedCode;
+    }
+
+    /** By text, for good: the sealed code is no longer needed. */
+    public function texted(PhoneCodeRoute $route): void
+    {
+        $this->route = $route;
+        $this->sealedCode = null;
+    }
+
+    /** Delivered on WhatsApp: no text will follow, so the code is no longer kept. */
+    public function deliveredByWhatsApp(): void
+    {
+        $this->sealedCode = null;
+    }
+
+    /** On WhatsApp and not yet known to have arrived, so a text may still take over. */
+    public function awaitsWhatsApp(): bool
+    {
+        return PhoneCodeRoute::WhatsApp === $this->route && null !== $this->sealedCode;
     }
 }

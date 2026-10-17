@@ -82,7 +82,7 @@ final readonly class PrimaryPhoneSetter
 
         $issued = $this->verificationCodeIssuer->issueFor($next);
         $this->entityManager->flush();
-        $this->verificationCodeSender->send($next, $issued->code);
+        $this->verificationCodeSender->send($next, $issued);
 
         return $next;
     }

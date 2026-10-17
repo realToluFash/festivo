@@ -77,6 +77,24 @@ services:
             $from: '%env(SMS_FROM)%'
     App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Integrations\Twilio\TwilioTextMessageSender'
 
+    # Phone codes by WhatsApp first (sc-750). The order is configuration: switch WhatsApp off, or list the
+    # countries that stay SMS-only, without a release.
+    App\Integrations\Meta\WhatsAppCloudSender:
+        arguments:
+            $apiBase: '%env(WHATSAPP_API_BASE)%'
+            $phoneNumberId: '%env(WHATSAPP_PHONE_NUMBER_ID)%'
+            $accessToken: '%env(WHATSAPP_ACCESS_TOKEN)%'
+            $template: '%env(WHATSAPP_CODE_TEMPLATE)%'
+    App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Integrations\Meta\WhatsAppCloudSender'
+    App\Domain\User\Verification\PhoneCodeChannels:
+        arguments:
+            $whatsAppEnabled: '%env(bool:WHATSAPP_ENABLED)%'
+            $smsOnlyCountries: '%env(PHONE_CODES_SMS_ONLY_COUNTRIES)%'
+    App\Domain\User\Controller\WhatsAppWebhookController:
+        arguments:
+            $verifyToken: '%env(WHATSAPP_WEBHOOK_VERIFY_TOKEN)%'
+            $appSecret: '%env(WHATSAPP_APP_SECRET)%'
+
     # Google today, Apple with sc-59. Issuers and client ids are lists: Google signs as two issuers,
     # and every client (web, iOS, Android) has its own id as the token's audience.
     App\Integrations\OpenIdConnect\HttpSigningKeys:
@@ -164,6 +182,16 @@ when@test:
         App\Domain\User\Verification\RecordingTextMessageSender:
             public: true
         App\Domain\User\Interfaces\TextMessageSenderInterface: '@App\Domain\User\Verification\RecordingTextMessageSender'
+        App\Domain\User\Verification\RecordingWhatsAppSender:
+            public: true
+        App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Domain\User\Verification\RecordingWhatsAppSender'
+        # Pinned off, as the container's environment wins over .env.test: codes are texted in the
+        # suite as before sc-750, and the WhatsApp tests replace this with WhatsApp first.
+        App\Domain\User\Verification\PhoneCodeChannels:
+            public: true
+            arguments:
+                $whatsAppEnabled: false
+                $smsOnlyCountries: 'US'
 
         # Re-declared in full, not merged: a `when@test` definition REPLACES the
         # autowired one, so every argument has to be named or it is lost. Pinned

@@ -7,11 +7,13 @@ namespace App\Repository;
 use App\Entity\EmailAddress;
 use App\Entity\VerifiableContact;
 use App\Entity\VerificationChallenge;
+use App\Enum\PhoneCodeRoute;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\Persistence\ManagerRegistry;
 use Psl\Str;
+use Psl\Type;
 
 /** @extends ServiceEntityRepository<VerificationChallenge> */
 final class VerificationChallengeRepository extends ServiceEntityRepository
@@ -59,5 +61,17 @@ final class VerificationChallengeRepository extends ServiceEntityRepository
     private static function field(VerifiableContact $contact): string
     {
         return $contact instanceof EmailAddress ? 'emailAddress' : 'phoneNumber';
+    }
+
+    /** @return list<VerificationChallenge> live codes still on WhatsApp, sent before the given moment */
+    public function findAwaitingWhatsAppSince(DateTimeImmutable $before): array
+    {
+        return Type\vec(Type\instance_of(VerificationChallenge::class))->coerce($this->createQueryBuilder('c')
+            ->where('c.route = :route AND c.sealedCode IS NOT NULL AND c.createdAt <= :before AND c.expiresAt > :now AND c.revokedAt IS NULL')
+            ->setParameter('route', PhoneCodeRoute::WhatsApp->value)
+            ->setParameter('before', $before, Types::DATETIME_IMMUTABLE)
+            ->setParameter('now', new DateTimeImmutable(), Types::DATETIME_IMMUTABLE)
+            ->getQuery()
+            ->getResult());
     }
 }
