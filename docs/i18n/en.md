@@ -40,6 +40,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **17 Oct 2026. "That does not look like an email address. Check it has an @ and a domain."**
+  (`orgGeneral.contactInvalid` and `forms.emailShape`, web and app, and the API's
+  `validation.contact_address_invalid`; sc-1585). The house rule: no contractions in an error body.
+  Kept "look like" over "That is not an email address", which is blunter and reads as an accusation.
+  The web keys are pinned by tests, so that half is with [dev2] on sc-1585.
 - **17 Oct 2026. Dates on screens follow the locale (CLDR), the owner's call (sc-87,
   #1700).** `{{date}}` and every date a screen shows come from `Intl.DateTimeFormat` with the
   reader's locale, in the event's time zone: en-GB "Tuesday 23 September", en-US "Tuesday,
