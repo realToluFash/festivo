@@ -83,7 +83,7 @@ describe('asking for a reset link', () => {
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
     expect(
-      screen.getByText("That doesn't look like an email address. Check it has an @ and a domain."),
+      screen.getByText('That does not look like an email address. Check it has an @ and a domain.'),
     ).toBeDefined();
 
     expect(sent).toEqual([]);
