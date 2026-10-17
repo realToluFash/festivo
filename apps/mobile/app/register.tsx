@@ -1,4 +1,3 @@
-import { awaiting } from '@soirely/api-client';
 import { meetsPasswordLength } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
@@ -7,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { api } from '../src/api.ts';
+import { holdRegistration } from '../src/pendingRegistration.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { Field, TextField } from '../src/components/Field.tsx';
@@ -24,7 +24,6 @@ import {
   registrationRefusal,
 } from '../src/registration.ts';
 import { tokens } from '../src/theme/tokens.ts';
-import { landingFor } from '../src/landing.ts';
 
 export default function Register() {
   const { kind } = useLayout();
@@ -45,9 +44,10 @@ export default function Register() {
     setStatus({ kind: 'submitting' });
 
     try {
-      const { account } = await api.register(email, name, password);
+      // Every address gets this same answer, so where it goes next says nothing either.
+      await holdRegistration(await api.register(email, name, password));
 
-      router.replace(landingFor(awaiting(account)));
+      router.push('/verify-email');
     } catch (error) {
       setStatus(registrationRefusal(error, currentLocale()));
     }
@@ -174,8 +174,6 @@ function Form({
     onSubmit(typed.current.name.trim(), typed.current.email.trim(), typed.current.password);
   };
 
-  const toSignIn = () => router.replace('/sign-in');
-
   return (
     <View style={styles.form}>
       {status.kind === 'rateLimited' && (
@@ -220,18 +218,6 @@ function Form({
       <Field
         label={t('register.email')}
         error={checks.errors.email ?? refusalWords(fields.email, t)}
-        errorActions={
-          checks.errors.email == null && fields.email === 'taken'
-            ? [
-                { label: t('register.signIn'), onPress: toSignIn, testID: 'register.taken.signIn' },
-                {
-                  label: t('register.resetPassword'),
-                  onPress: () => router.push('/forgot-password'),
-                  testID: 'register.taken.reset',
-                },
-              ]
-            : undefined
-        }
       >
         <TextField
           ref={email}
@@ -296,7 +282,6 @@ function refusalWords(
   t: (key: string) => string,
 ): string | null {
   if (error == null) return null;
-  if (error === 'taken') return t('register.taken');
   if (error === 'breached') return t('register.breached');
 
   return error.message;
