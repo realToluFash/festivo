@@ -20,6 +20,7 @@ function signedIn(organisation = IRE): void {
     hasPassword: true,
     organisation,
     organisations: [organisation],
+    timezone: null,
   };
 
   __setSessionState({ status: 'signedIn', session });

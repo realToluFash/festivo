@@ -27,6 +27,8 @@ export interface Session {
   /** The one this device is working in; null for an account in no organisation. */
   organisation: Membership | null;
   organisations: readonly Membership[];
+  /** The account's IANA zone; null while times reach the person in UTC (sc-868). */
+  timezone: string | null;
 }
 
 export type SessionState =
@@ -158,6 +160,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     hasPassword: account.hasPassword,
     needsOrganisation: account.needsOrganisation,
     organisations,
+    timezone: account.timezone,
     organisation:
       organisations.find((membership) => membership.id === remembered) ?? organisations[0] ?? null,
   };

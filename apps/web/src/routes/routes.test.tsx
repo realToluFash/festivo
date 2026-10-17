@@ -19,6 +19,7 @@ const ADA: Session = {
   hasPassword: true,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
+  timezone: null,
 };
 
 /**

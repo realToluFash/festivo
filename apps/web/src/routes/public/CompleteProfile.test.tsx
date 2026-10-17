@@ -17,6 +17,7 @@ const FOLAKE: Session = {
   hasPassword: true,
   organisation: null,
   organisations: [],
+  timezone: null,
 };
 
 const ACCOUNT = {
@@ -236,6 +237,7 @@ describe('a few details', () => {
       hasPassword: true,
       organisation,
       organisations: [organisation],
+      timezone: null,
     });
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });

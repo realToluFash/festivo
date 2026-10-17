@@ -27,6 +27,7 @@ function inTwo(): void {
       hasPassword: true,
       organisation: IRE,
       organisations: [IRE, OKAFOR],
+      timezone: null,
     },
   });
 }
@@ -111,6 +112,7 @@ describe('switching organisation', () => {
         hasPassword: true,
         organisation: IRE,
         organisations: [IRE],
+        timezone: null,
       },
     });
     at('/app');

@@ -19,6 +19,7 @@ const FOLAKE: Session = {
   hasPassword: true,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
+  timezone: null,
 };
 
 function answering(answers: Record<string, () => Response>, seen: string[] = []) {

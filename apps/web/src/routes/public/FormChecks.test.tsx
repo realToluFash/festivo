@@ -18,6 +18,7 @@ const UNVERIFIED: Session = {
   hasPassword: true,
   organisation: membership(),
   organisations: [membership()],
+  timezone: null,
 };
 
 function at(path: string) {

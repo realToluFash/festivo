@@ -47,6 +47,7 @@ const FOLAKE: Session = {
   hasPassword: true,
   organisation: MEMBERSHIP,
   organisations: [MEMBERSHIP],
+  timezone: null,
 };
 
 interface Call {
