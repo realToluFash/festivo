@@ -46,6 +46,18 @@ export const ROLES = {
     prs: true,
   },
   qa: { skill: 'soirely-qa-tester', queue: ['Ready For QA'], heartbeat: 30 },
+  qa2: {
+    skill: 'soirely-qa-tester',
+    invoke: '/soirely-qa-tester qa2',
+    queue: ['Ready For QA'],
+    heartbeat: 30,
+  },
+  qa3: {
+    skill: 'soirely-qa-tester',
+    invoke: '/soirely-qa-tester qa3',
+    queue: ['Ready For QA'],
+    heartbeat: 30,
+  },
   lead: { skill: 'soirely-tech-lead', queue: ['In Review'], heartbeat: 30 },
   bm: {
     skill: 'soirely-business-manager',
@@ -73,9 +85,9 @@ const MINUTE = 60_000;
 
 export function header(text) {
   const first = String(text ?? '').split('\n', 1)[0];
-  const match = /^\s*((?:\[[a-z]+\]\s*)+)\(from ([a-z]+)\)/.exec(first);
+  const match = /^\s*((?:\[[a-z0-9]+\]\s*)+)\(from ([a-z0-9]+)\)/.exec(first);
   if (!match) return null;
-  return { to: [...match[1].matchAll(/\[([a-z]+)\]/g)].map((m) => m[1]), from: match[2] };
+  return { to: [...match[1].matchAll(/\[([a-z0-9]+)\]/g)].map((m) => m[1]), from: match[2] };
 }
 
 export function inboxFor(role, stories) {

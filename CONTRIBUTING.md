@@ -47,12 +47,14 @@ None of these run in CI, deliberately: they need a simulator, a browser and a pe
 an agent in QA mode. `.claude/skills/soirely-qa-tester` is what a pass does with them, how
 the report is written, and where it is posted.
 
-An agent in QA mode does not use them here. `just qa-env setup` makes a second stack for
-it: a worktree at `../soirely-qa` on the pushed head of the pull request under test, its own
-containers and database, every port moved up by 10000, and its own simulators. A developer
-running the suite and a QA pass stopping the API to test the offline state then never meet.
-Run `/soirely-qa-tester` from the main checkout as usual; it does its work in
-`../soirely-qa`, through `node .qa/bin/qa-env.mjs`.
+An agent in QA mode does not use them here. There are three QA testers, and
+`just qa-env setup --tester N` makes a stack for tester N. Each stack is a worktree at
+`../soirely-qa`, `../soirely-qa2` or `../soirely-qa3` on the pushed head of the pull request
+under test, with its own containers and database, every port moved up by N×10000, and its
+own simulators. A developer running the suite and a QA pass stopping the API to test the
+offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`, `… qa2` or
+`… qa3` from the main checkout as usual; each does its work in its own worktree, through
+`node .qa/bin/qa-env.mjs`.
 
 ## The shape of the work
 

@@ -33,7 +33,7 @@ is what runs every three minutes, so a quiet tick has to cost almost nothing:
 | `/soirely-product-manager`   | `[pm]`, new in To Do or Failed QA                                      | 2 hours                        |
 | `/soirely-designer`          | `[ux]`, new in To Do or Failed QA                                      | 2 hours                        |
 | `/soirely-developer`         | `[dev]`, new in Failed QA, In Progress, To Do; a PR's checks finishing | 30 minutes, if work is waiting |
-| `/soirely-qa-tester`         | `[qa]`, new in Ready For QA                                            | 30 minutes, if work is waiting |
+| `/soirely-qa-tester` (×3)    | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA                | 30 minutes, if work is waiting |
 | `/soirely-tech-lead`         | `[lead]`, new in In Review                                             | 30 minutes, if work is waiting |
 | `/soirely-business-manager`  | `[bm]`, new in Backlog or To Do                                        | 12 hours                       |
 | `/soirely-ops`               | `[ops]`, `main` red                                                    | 6 hours                        |
@@ -60,8 +60,10 @@ that says it is already done.
 2. **`node scripts/role-tick.mjs <role> --install`**, from the checkout you are in. It copies
    the script to `.git/soirely-roles/`, which no branch switch can remove. It also records
    what is waiting now, so the first tick does not redo the run you just finished.
-3. **`CronCreate`** with `cron: "*/3 * * * *"`, `recurring: true` and this prompt, with your
-   role tag and the installed path the previous step printed:
+3. **`CronCreate`** with `cron: "*/3 * * * *"`, `recurring: true`. QA testers 2 and 3 use
+   `"1-59/3 * * * *"` and `"2-59/3 * * * *"`, so the three reach the queue a minute apart.
+   The prompt is below; fill in your role (a tester's is `qa`, `qa2` or `qa3`) and the
+   installed path the previous step printed:
 
    ```text
    Soirely <role> routine tick. Run `node <path> <role>` and nothing else.
