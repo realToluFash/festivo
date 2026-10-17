@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { setLanguage } from '../../../i18n/index.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { tokens } from '../../../tokens.ts';
@@ -212,5 +213,118 @@ describe("the account's time zone", () => {
         ),
       ).toBeDefined(),
     );
+  });
+});
+
+const ZONES_FR = [
+  { id: 'Africa/Lagos', city: 'Lagos', country: 'Nigéria', offset: '+01:00' },
+  { id: 'Europe/London', city: 'Londres', country: 'Royaume-Uni', offset: '+01:00' },
+  {
+    id: 'Asia/Kolkata',
+    city: 'Calcutta',
+    ianaCity: 'Kolkata',
+    aliases: ['Kolkata'],
+    country: 'Inde',
+    offset: '+05:30',
+  },
+];
+
+function answeringByLanguage(french: Promise<Response> | null = null): string[] {
+  const asked: string[] = [];
+
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const call = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    if (call !== 'GET /api/auth/timezones') throw new Error(`Nothing stubbed for ${call}`);
+
+    const language = new Headers(init?.headers).get('Accept-Language') ?? '';
+    asked.push(language);
+
+    if (language !== 'fr') return json({ timezones: ZONES });
+
+    return french ?? json({ timezones: ZONES_FR });
+  });
+
+  return asked;
+}
+
+/** The header's language picker is a combobox too, and this one's label changes with the language. */
+function zoneInput(): HTMLInputElement {
+  return document.getElementById('tz-input') as HTMLInputElement;
+}
+
+describe('the time zone list after a language change', () => {
+  afterEach(async () => {
+    await act(() => setLanguage(null));
+  });
+
+  it('names the current zone in the new language with the card closed', async () => {
+    const asked = answeringByLanguage();
+    open({ timezone: 'Asia/Kolkata' });
+    expect(await screen.findByText('Kolkata (UTC+05:30)')).toBeDefined();
+
+    await act(() => setLanguage('fr'));
+
+    expect(await screen.findByText('Calcutta (UTC+05:30)')).toBeDefined();
+    expect(asked).toEqual(['en', 'fr']);
+  });
+
+  it('keeps the query and the rows shown until the new rows arrive, then shows those', async () => {
+    let release: (response: Response) => void = () => {};
+    answeringByLanguage(new Promise((resolve) => (release = resolve)));
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.change(zoneInput(), { target: { value: 'calcutta' } });
+    expect(screen.getByRole('option', { name: /Kolkata \(UTC\+05:30\)/ }).textContent).toContain(
+      'India · was Calcutta',
+    );
+
+    await act(() => setLanguage('fr'));
+
+    expect(screen.getByLabelText('Trouvez votre fuseau horaire')).toBe(zoneInput());
+    expect(screen.getByRole('option', { name: /Kolkata/ })).toBeDefined();
+    expect(screen.queryByRole('status')).toBeNull();
+
+    await act(async () => release(json({ timezones: ZONES_FR })));
+
+    const row = await screen.findByRole('option', { name: /Calcutta \(UTC\+05:30\)/ });
+    expect(row.textContent).toContain('Inde');
+    expect(row.textContent).not.toContain('anciennement');
+    expect(zoneInput().value).toBe('calcutta');
+
+    await act(() => setLanguage('en'));
+
+    expect(
+      (await screen.findByRole('option', { name: /Kolkata \(UTC\+05:30\)/ })).textContent,
+    ).toContain('India · was Calcutta');
+  });
+
+  it('keeps the rows shown when the new list cannot be fetched, and saves nothing', async () => {
+    answeringByLanguage(Promise.resolve(json({ type: 'x', title: 'x', status: 500 }, 500)));
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.change(zoneInput(), { target: { value: 'calcutta' } });
+
+    await act(() => setLanguage('fr'));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls).toHaveLength(2));
+
+    expect(screen.getByRole('option', { name: /Kolkata \(UTC\+05:30\)/ })).toBeDefined();
+    expect(vi.mocked(fetch).mock.calls.some(([, init]) => (init?.method ?? 'GET') !== 'GET')).toBe(
+      false,
+    );
+  });
+
+  it('reads a picked zone in the new language', async () => {
+    answeringByLanguage();
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.change(zoneInput(), { target: { value: 'united kingdom' } });
+    fireEvent.click(screen.getByRole('option', { name: /London \(UTC\+01:00\)/ }));
+
+    await act(() => setLanguage('fr'));
+
+    await waitFor(() => expect(zoneInput().value).toBe('Londres (UTC+01:00)'));
   });
 });
