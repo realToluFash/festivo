@@ -64,14 +64,11 @@ final readonly class UserMailer
         return $this->accountLanguage->of($user, $asked);
     }
 
-    /** The one way a time is written for a person (sc-868): their zone, else UTC, 24-hour, labelled "WAT" or "UTC+04:00". */
+    /** A time for a person (sc-868), in the zone and with the label `deadline()` shares: their zone, else UTC, "WAT" or "UTC+04:00". */
     public function moment(DateTimeImmutable $at, User $user, string $locale): string
     {
-        $zone = new DateTimeZone($user->getTimezone() ?? 'UTC');
-        $local = $at->setTimezone($zone);
-        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, $zone->getName());
-        $abbreviation = $local->format('T');
-        $label = Regex\matches($abbreviation, '/^[+-]/') ? 'UTC' . $local->format('P') : $abbreviation;
+        [$local, $label] = self::local($at, $user);
+        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, $local->getTimezone()->getName());
 
         if (null === $formatter) {
             return $local->format('Y-m-d H:i') . ' ' . $label;
@@ -82,20 +79,27 @@ final readonly class UserMailer
         return ($formatter->format($local) ?: $local->format('Y-m-d H:i')) . ' ' . $label;
     }
 
-    /** A deadline as the screens write it (sc-509): "Saturday, Oct 24 at 14:20 WAT", in the reader's zone, else UTC. */
+    /** A deadline as the screens write it (sc-509): "Saturday, Oct 24 at 14:20 WAT". */
     public function deadline(DateTimeImmutable $at, User $user, string $locale): string
     {
-        $zone = new DateTimeZone($user->getTimezone() ?? 'UTC');
-        $local = $at->setTimezone($zone);
+        [$local, $label] = self::local($at, $user);
         $pattern = new IntlDatePatternGenerator($locale)->getBestPattern('EEEEMMMd') ?: 'EEEE, MMM d';
-        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $zone->getName(), null, $pattern);
-        $abbreviation = $local->format('T');
+        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);
 
         return $this->line('time.dateAt', $locale, [
             '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),
             '{time}' => $local->format('H:i'),
-            '{zone}' => Regex\matches($abbreviation, '/^[+-]/') ? 'UTC' . $local->format('P') : $abbreviation,
+            '{zone}' => $label,
         ]);
+    }
+
+    /** @return array{0: DateTimeImmutable, 1: string} the moment in the reader's zone, and the zone as it is labelled */
+    private static function local(DateTimeImmutable $at, User $user): array
+    {
+        $local = $at->setTimezone(new DateTimeZone($user->getTimezone() ?? 'UTC'));
+        $abbreviation = $local->format('T');
+
+        return [$local, Regex\matches($abbreviation, '/^[+-]/') ? 'UTC' . $local->format('P') : $abbreviation];
     }
 
     /**

@@ -149,7 +149,9 @@ is ever in a URL.
   open request under a new handle. The second starts a request, ending any earlier one,
   and sends a code to the verified primary address and one to the verified primary phone
   if there is one. Nobody to answer is `409 recovery_nobody_to_approve`, before anything
-  is sent.
+  is sent. An account with no verified primary address gets the same
+  refusal on purpose: with no address to prove, it ends at support as well, and the onboarding
+  gate means a two-factor account always has one.
 - `…/recovery/state`, `/resend`, `/text-instead`, `/prove` and `/cancel` take the request's
   `recovery` handle. The codes keep the email table's limits, one cooldown for the pair,
   and the phone code goes as Verify phone's does (WhatsApp first, sc-750). `/prove` needs
