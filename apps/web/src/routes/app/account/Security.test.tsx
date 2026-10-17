@@ -428,7 +428,7 @@ describe('signing out everywhere else', () => {
 
     expect(await screen.findByRole('button', { name: 'Sign out everywhere else' })).toBeDefined();
     expect(
-      screen.getByText('Every device except this one. Asks for your password first.'),
+      screen.getByText('Every device except this one. Asks you to confirm it is you first.'),
     ).toBeDefined();
   });
 
