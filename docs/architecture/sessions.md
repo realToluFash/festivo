@@ -188,8 +188,13 @@ It never deletes a row that is revoked but not expired. That row is how a replay
 told apart from an unknown one: delete it and a replay no longer revokes the chain, so the
 thief keeps the newest token, and the response looks exactly the same.
 
-**Nothing schedules it yet.** Where it runs (host cron, a scheduled container, or
-Messenger's scheduler) is an open decision on sc-114.
+**It runs once a day, at 03:00 UTC**, from `services/api/config/crontab`, alongside
+`app:prune-unverified-accounts` at 03:10 and `app:prune-pending-registrations` at 03:20.
+The prod image carries [supercronic](https://github.com/aptible/supercronic), pinned by
+version and checksum; every deployed environment runs one more container from that image
+with `supercronic /app/config/crontab` as its command. Each run logs its count, 0 included;
+a run that exits non-zero is logged at `level=error` and the next day's run still happens.
+The local stack schedules none of them: run them by hand there.
 
 ## Ending a session takes effect at once
 
