@@ -310,6 +310,13 @@
     "turnItOff": "Desactivarla",
     "keepItOn": "Mantenerla activada",
     "failedTitle": "No se pudo cargar la verificación en dos pasos",
-    "failedBody": "Algo ha fallado por nuestra parte. Vuelva a intentarlo en un momento."
+    "failedBody": "Algo ha fallado por nuestra parte. Vuelva a intentarlo en un momento.",
+    "phoneSetupTitle": "Añada Soirely a su aplicación de autenticación",
+    "phoneCantScan": "Escanee el código desde otra pantalla o introduzca esta clave en la aplicación.",
+    "phoneKeepElsewhere": "Guárdelos en otro lugar que no sea este teléfono."
+  },
+  "security": {
+    "title": "Seguridad",
+    "back": "Atrás"
   }
 }

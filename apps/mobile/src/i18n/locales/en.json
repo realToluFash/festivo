@@ -310,6 +310,13 @@
     "turnItOff": "Turn it off",
     "keepItOn": "Keep it on",
     "failedTitle": "Two-factor did not load",
-    "failedBody": "Something went wrong on our side. Try again in a moment."
+    "failedBody": "Something went wrong on our side. Try again in a moment.",
+    "phoneSetupTitle": "Add Soirely to your authenticator app",
+    "phoneCantScan": "Scan the code from another screen, or enter this key in the app.",
+    "phoneKeepElsewhere": "Keep them somewhere other than this phone."
+  },
+  "security": {
+    "title": "Security",
+    "back": "Back"
   }
 }

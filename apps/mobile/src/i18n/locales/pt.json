@@ -310,6 +310,13 @@
     "turnItOff": "Desativar",
     "keepItOn": "Manter ativa",
     "failedTitle": "Não foi possível carregar a autenticação de dois fatores",
-    "failedBody": "Algo correu mal do nosso lado. Tente novamente daqui a pouco."
+    "failedBody": "Algo correu mal do nosso lado. Tente novamente daqui a pouco.",
+    "phoneSetupTitle": "Adicione o Soirely à sua aplicação de autenticação",
+    "phoneCantScan": "Leia o código a partir de outro ecrã ou introduza esta chave na aplicação.",
+    "phoneKeepElsewhere": "Guarde-os noutro sítio que não este telemóvel."
+  },
+  "security": {
+    "title": "Segurança",
+    "back": "Voltar"
   }
 }

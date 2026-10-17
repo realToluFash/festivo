@@ -310,6 +310,13 @@
     "turnItOff": "La désactiver",
     "keepItOn": "La garder activée",
     "failedTitle": "La double authentification n'a pas pu se charger",
-    "failedBody": "Un problème est survenu de notre côté. Réessayez dans un instant."
+    "failedBody": "Un problème est survenu de notre côté. Réessayez dans un instant.",
+    "phoneSetupTitle": "Ajoutez Soirely à votre application d'authentification",
+    "phoneCantScan": "Scannez le code depuis un autre écran, ou saisissez cette clé dans l'application.",
+    "phoneKeepElsewhere": "Conservez-les ailleurs que sur ce téléphone."
+  },
+  "security": {
+    "title": "Sécurité",
+    "back": "Retour"
   }
 }
