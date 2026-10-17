@@ -74,12 +74,20 @@ final class OnboardingGateTest extends ApiTestCase
         $this->signIn($user);
         $email = $this->call('GET', '/api/orgs');
         self::assertSame('Verify your account to carry on.', $email['title']);
-        self::assertSame('Verify your email address to carry on.', $email['detail'], 'the email first, phone or no phone');
+        self::assertSame('Verify your email address to carry on.', $email['detail'], 'an unverified email, no phone');
 
-        $this->verify($user);
         $phone = new PhoneNumber($user, '+2348035550142', isPrimary: true, countryCode: 'NG');
         self::em()->persist($phone);
         self::em()->flush();
+        $this->signIn($user);
+
+        $both = $this->call('GET', '/api/orgs');
+        self::assertSame('Verify your account to carry on.', $both['title']);
+        self::assertSame('Verify your email address to carry on.', $both['detail'], 'both unverified: the email first');
+
+        // Each request reboots the kernel, so the account is read afresh before its email is verified.
+        $user = Type\instance_of(User::class)->coerce(self::em()->find(User::class, $user->getId()));
+        $this->verify($user);
         $this->signIn($user);
 
         $onlyPhone = $this->call('GET', '/api/orgs');
