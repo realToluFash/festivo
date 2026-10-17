@@ -6,6 +6,8 @@ namespace App\Domain\User\Provider;
 
 use App\Domain\User\Interfaces\CodeRedeemerInterface;
 use App\Domain\User\Interfaces\IdTokenVerifierInterface;
+use App\Domain\User\Model\IssuedTokens;
+use App\Domain\User\Model\ProviderLink;
 use App\Domain\User\Model\ProviderSignInResult;
 use App\Domain\User\TwoFactor\SignInGate;
 use App\Domain\User\UserRegistrar;
@@ -83,11 +85,17 @@ final readonly class ProviderSignIn
         $owner = $this->userRepository->findOneByPrimaryEmailAddress($claims->email);
 
         if (null !== $owner && true === $owner->getPrimaryEmailAddress()?->isVerified()) {
+            $admission = $this->signInGate->admit($owner, $request, new ProviderLink($provider, $claims->subject));
+
+            if (!$admission instanceof IssuedTokens) {
+                // Nothing linked or named yet, and nothing said about linking, until the code passes.
+                return new ProviderSignInResult($owner, $admission, false);
+            }
+
             self::fillBlankName($owner, $name);
-            $this->entityManager->persist(new ProviderIdentity($owner, $provider, $claims->subject));
             $this->entityManager->flush();
 
-            return new ProviderSignInResult($owner, $this->signInGate->admit($owner, $request), true);
+            return new ProviderSignInResult($owner, $admission, true);
         }
 
         $registered = $this->userRegistrar->registerFromProvider($claims->email, $name, $request);

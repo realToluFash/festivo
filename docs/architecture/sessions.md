@@ -288,6 +288,9 @@ and keeping the nonce itself, which they give the API. What they send differs:
   never did is released, as registration releases it, so a password typed by somebody else
   cannot stay in. Otherwise a new account, with the address already verified and no
   password. A token whose address the provider did not verify is refused.
+- **Linking waits for the second factor.** With two-factor on, the challenge carries the
+  provider and `sub`, and the `provider_identities` row is written only when its code
+  passes; the `202` says nothing about linking, and `two-factor/verify` answers `linked`.
 
 ## Signing in with Apple
 

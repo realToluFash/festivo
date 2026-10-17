@@ -32,7 +32,8 @@ final readonly class SignInResponse
             return new IssuedTokensResponse($admission, $delivery, $request, ['account' => $this->accountSerialiser->serialise($user)] + $alongside);
         }
 
-        return new JsonResponse($alongside + [
+        // Nothing alongside a challenge: whatever it would say waits on the code.
+        return new JsonResponse([
             'twoFactorChallenge' => $admission->token,
             'challengeExpiresAt' => $admission->expiresAt->format(\DATE_ATOM),
             'email' => $user->getPrimaryEmailAddress()?->getAddress(),

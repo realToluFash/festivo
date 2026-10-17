@@ -14,7 +14,7 @@ use Psl\Type;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 
-/** The second half of a sign-in that was answered with a challenge: the code, then the tokens. */
+/** The second half of a sign-in that was answered with a challenge: the code, then the tokens and `linked`. */
 #[PublicAccess]
 final readonly class TwoFactorSignInController
 {
@@ -40,7 +40,7 @@ final readonly class TwoFactorSignInController
             $result->tokens,
             $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
             $request,
-            ['account' => $this->accountSerialiser->serialise($result->user)],
+            ['account' => $this->accountSerialiser->serialise($result->user), 'linked' => $result->linked],
         );
     }
 }

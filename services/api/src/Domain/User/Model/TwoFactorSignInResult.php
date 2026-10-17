@@ -12,6 +12,8 @@ final readonly class TwoFactorSignInResult
     public function __construct(
         public User $user,
         public IssuedTokens $tokens,
+        /** The challenge carried a Google or Apple identity, linked now that its code passed. */
+        public bool $linked = false,
     ) {
     }
 }
