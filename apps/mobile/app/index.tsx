@@ -10,6 +10,8 @@ import { Screen } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { config } from '../src/config.ts';
 import { landingFor } from '../src/landing.ts';
+import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
+import { resumeSignUp } from '../src/resumeSignUp.ts';
 
 /**
  * The health endpoint, rendered.
@@ -52,8 +54,19 @@ export default function Home() {
         if (!live) return;
 
         // Still signed in, so the answer is not sign-in.
-        if (error instanceof ApiUnreachableError) router.replace('/unreachable');
-        else setAccount(null);
+        if (error instanceof ApiUnreachableError) {
+          router.replace('/unreachable');
+          return;
+        }
+
+        setAccount(null);
+        void resumeSignUp({
+          held: heldRegistration,
+          open: (registration) => api.registrationOpening(registration),
+          drop: dropRegistration,
+        }).then((resumed) => {
+          if (live && resumed != null) router.replace(resumed);
+        });
       });
 
     return () => {
