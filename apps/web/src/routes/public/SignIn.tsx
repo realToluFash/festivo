@@ -64,6 +64,9 @@ export function SignIn() {
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
+    // Busy looks busy rather than disabled, as on register; a second press while signing in does nothing.
+    if (busy) return;
+
     const typed = new FormData(event.currentTarget);
     const values = {
       email: String(typed.get('email') ?? '').trim(),
@@ -192,7 +195,7 @@ export function SignIn() {
           )}
         </div>
 
-        <button className="button button-primary" type="submit" disabled={busy || locked}>
+        <button className="button button-primary" type="submit" disabled={locked} aria-busy={busy}>
           {locked
             ? t('signIn.lockedUntil', { time: status.retryAt })
             : busy
