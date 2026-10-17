@@ -36,6 +36,15 @@ export interface TwoFactorChallenge {
 
 export type SignInOutcome = SignedIn | TwoFactorChallenge;
 
+/** What a try on the current code would meet, read without spending one. */
+export type CodeState = 'live' | 'expired' | 'exhausted';
+
+/** What "Check your email" opens on: the resend countdown, and whether the code is still worth typing. */
+export interface CodeOpening {
+  cooldownSeconds: number;
+  codeState: CodeState;
+}
+
 /** A password sign-up waiting on its emailed code; `registration` is its one-day handle. */
 export interface PendingRegistration {
   registration: string;
@@ -378,8 +387,8 @@ export class ApiClient {
     );
   }
 
-  async registrationCooldown(registration: string): Promise<number> {
-    return cooldownFrom(
+  async registrationOpening(registration: string): Promise<CodeOpening> {
+    return openingFrom(
       await this.get<unknown>('/api/auth/register/resend', { query: { registration } }),
     );
   }
@@ -452,9 +461,9 @@ export class ApiClient {
     return cooldownFrom(await this.post<unknown>('/api/auth/verify/resend'));
   }
 
-  /** Reads the cooldown without spending it, so a screen opens already counting down. */
-  async verificationCooldown(): Promise<number> {
-    return cooldownFrom(await this.get<unknown>('/api/auth/verify/resend'));
+  /** Reads the cooldown and the code's state without spending either, so the screen opens on the truth. */
+  async verificationOpening(): Promise<CodeOpening> {
+    return openingFrom(await this.get<unknown>('/api/auth/verify/resend'));
   }
 
   async sessions(): Promise<DeviceSession[]> {
@@ -961,6 +970,18 @@ function asIssuedTokens(raw: unknown, delivery: RefreshTokenDelivery): IssuedTok
     refreshExpiresAt:
       typeof candidate.refreshExpiresAt === 'string' ? candidate.refreshExpiresAt : '',
     sessionId: typeof candidate.sessionId === 'string' ? candidate.sessionId : '',
+  };
+}
+
+function openingFrom(answer: unknown): CodeOpening {
+  const state =
+    typeof answer === 'object' && answer != null
+      ? (answer as Record<string, unknown>).codeState
+      : null;
+
+  return {
+    cooldownSeconds: cooldownFrom(answer),
+    codeState: state === 'expired' || state === 'exhausted' ? state : 'live',
   };
 }
 

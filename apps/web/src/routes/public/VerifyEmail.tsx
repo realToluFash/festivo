@@ -1,4 +1,10 @@
-import { type Account, ApiError, type PendingRegistration, awaiting } from '@soirely/api-client';
+import {
+  type Account,
+  ApiError,
+  type CodeOpening,
+  type PendingRegistration,
+  awaiting,
+} from '@soirely/api-client';
 import { cleanCode, codeProblem, formatCountdown } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -44,7 +50,7 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
     <CodeScreen
       address={pending.email}
       alreadyVerified={false}
-      cooldown={() => api.registrationCooldown(pending.registration)}
+      opening={() => api.registrationOpening(pending.registration)}
       verify={async (code) => {
         const signedIn = await api.confirmRegistration(pending.registration, code);
         dropRegistration();
@@ -83,7 +89,7 @@ function ForSession() {
     <CodeScreen
       address={state.session.email}
       alreadyVerified={state.session.verified}
-      cooldown={() => api.verificationCooldown()}
+      opening={() => api.verificationOpening()}
       verify={async (code) => {
         await api.verifyEmail(code);
       }}
@@ -106,7 +112,7 @@ function ForSession() {
 function CodeScreen({
   address,
   alreadyVerified,
-  cooldown: readCooldown,
+  opening: readOpening,
   verify,
   resend: sendAgain,
   onExpired,
@@ -115,7 +121,7 @@ function CodeScreen({
 }: {
   address: string;
   alreadyVerified: boolean;
-  cooldown: () => Promise<number>;
+  opening: () => Promise<CodeOpening>;
   verify: (code: string) => Promise<void>;
   resend: () => Promise<number>;
   onExpired: () => void;
@@ -138,7 +144,7 @@ function CodeScreen({
   );
 
   // Read once, when the screen opens: the source is fixed for the screen's life.
-  const firstCooldown = useRef(readCooldown);
+  const firstOpening = useRef(readOpening);
 
   useEffect(() => {
     if (alreadyVerified) return;
@@ -146,10 +152,15 @@ function CodeScreen({
     let live = true;
 
     // A failed read leaves the button enabled; a press then learns the time from the 429.
-    firstCooldown
+    firstOpening
       .current()
-      .then((seconds) => {
-        if (live) setCooldown(seconds);
+      .then(({ cooldownSeconds, codeState }) => {
+        if (!live) return;
+        setCooldown(cooldownSeconds);
+        // A spent code opens on its banner, so the screen never invites a try it knows is refused.
+        if (codeState !== 'live') {
+          setStatus((now) => (now.kind === 'entering' ? { kind: codeState } : now));
+        }
       })
       .catch(() => {});
 

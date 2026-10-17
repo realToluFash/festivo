@@ -93,6 +93,12 @@ this table is their contract:
 A client counts down from `cooldownSeconds` or `Retry-After` and never from a number of its
 own.
 
+The same `GET` (and a sign-up's `GET /api/auth/register/resend?registration=…`) also
+answers `codeState`: `live`, `expired` or `exhausted`, checked in the order a try checks
+them, so "Check your email" opens on the right banner without spending a try. No live code,
+or a verified address, reads as `live`. A taken address's sign-up reads exactly as a new
+one's.
+
 At most one code is live per address, by a partial unique index on unrevoked challenges, and
 resends and tries for one address take its row lock, so requests sent at once are answered
 in turn: one resend sends a code and the rest get its cooldown, and the fifth wrong try is

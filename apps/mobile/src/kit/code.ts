@@ -1,4 +1,4 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, type CodeState } from '@soirely/api-client';
 
 export type CodeStatus =
   | { kind: 'entering' }
@@ -7,6 +7,11 @@ export type CodeStatus =
   | { kind: 'expired' }
   | { kind: 'exhausted' }
   | { kind: 'failed' };
+
+/** Where the screen opens: on the field while the code is live, else on its banner, before anyone types. */
+export function openingStatus(now: CodeStatus, state: CodeState): CodeStatus {
+  return state === 'live' || now.kind !== 'entering' ? now : { kind: state };
+}
 
 /** What a refused code means to the person, the same for an email and a phone. */
 export function codeRefusal(error: unknown): CodeStatus {

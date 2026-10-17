@@ -347,6 +347,33 @@ final class VerifyEmailTest extends ApiTestCase
     }
 
     #[Test]
+    public function theScreenReadsWhetherTheCodeIsLiveExhaustedOrExpired(): void
+    {
+        $token = $this->register('opens@example.com');
+        $code = $this->codeFor('opens@example.com');
+        self::assertSame('live', $this->opening($token)['codeState']);
+
+        for ($attempt = 0; $attempt < VerificationChallenge::MAXIMUM_ATTEMPTS; ++$attempt) {
+            $this->verify($token, '000000');
+        }
+
+        self::assertSame('exhausted', $this->opening($token)['codeState']);
+        $this->verify($token, $code);
+        self::assertSame('https://soirely.com/errors/verification_code_exhausted', $this->body()['type'], 'reading it spent no try, and the try agrees');
+
+        $challenge = $this->challengeFor('opens@example.com');
+        self::assertNotNull($challenge);
+        $this->entityManager()->getConnection()->executeStatement(
+            'UPDATE verification_challenges SET expires_at = :past WHERE id = :id',
+            ['past' => new DateTimeImmutable('-1 minute')->format('Y-m-d H:i:s'), 'id' => $challenge->getId()->toRfc4122()],
+        );
+        $this->entityManager()->clear();
+
+        self::assertSame('expired', $this->opening($token)['codeState'], 'expiry is checked first, as a try checks it');
+        self::assertCount(0, self::getMailerMessages(), 'reading it sent no code');
+    }
+
+    #[Test]
     public function aVerifiedAddressHasNoCooldown(): void
     {
         $token = $this->register('done@example.com');
@@ -371,6 +398,15 @@ final class VerifyEmailTest extends ApiTestCase
     }
 
     /** @return array<string, mixed> */
+    /** @return array<string, mixed> */
+    private function opening(#[SensitiveParameter] string $token): array
+    {
+        $this->client->request('GET', '/api/auth/verify/resend', server: $this->authenticated($token));
+        self::assertSame(200, $this->client->getResponse()->getStatusCode());
+
+        return $this->body();
+    }
+
     private function verify(#[SensitiveParameter] string $token, string $code): array
     {
         $this->client->request(

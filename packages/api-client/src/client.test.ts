@@ -1050,11 +1050,20 @@ describe('verifying an address', () => {
     expect(await api.resendVerification()).toBe(0);
   });
 
-  test('the cooldown is read with a GET, which spends nothing', async () => {
-    const { api, sent } = client(json({ cooldownSeconds: 42 }));
+  test('the cooldown and the code state are read with a GET, which spends nothing', async () => {
+    const { api, sent } = client(json({ cooldownSeconds: 42, codeState: 'exhausted' }));
 
-    expect(await api.verificationCooldown()).toBe(42);
+    expect(await api.verificationOpening()).toEqual({
+      cooldownSeconds: 42,
+      codeState: 'exhausted',
+    });
     expect(sent).toEqual(['GET /api/auth/verify/resend']);
+  });
+
+  test('a code state it does not know reads as live, so the field still shows', async () => {
+    const { api } = client(json({ cooldownSeconds: 0, codeState: 'something-new' }));
+
+    expect(await api.verificationOpening()).toEqual({ cooldownSeconds: 0, codeState: 'live' });
   });
 });
 

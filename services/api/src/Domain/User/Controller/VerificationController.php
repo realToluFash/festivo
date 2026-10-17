@@ -54,11 +54,16 @@ final class VerificationController
         ]);
     }
 
-    /** Read when the screen opens, so a cooldown started elsewhere is already counting down. */
+    /** Read when the screen opens: a cooldown started elsewhere already counting down, and a spent code shown as spent. */
     #[Route('/api/auth/verify/resend', name: 'auth_verify_resend_cooldown', methods: ['GET'])]
     public function cooldown(): JsonResponse
     {
-        return new JsonResponse(['cooldownSeconds' => $this->resendCooldown->secondsLeftFor($this->address())]);
+        $address = $this->address();
+
+        return new JsonResponse([
+            'cooldownSeconds' => $this->resendCooldown->secondsLeftFor($address),
+            'codeState' => $this->contactVerifier->codeState($address)->value,
+        ]);
     }
 
     #[Route('/api/auth/verify/resend', name: 'auth_verify_resend', methods: ['POST'])]

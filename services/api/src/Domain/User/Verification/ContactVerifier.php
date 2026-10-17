@@ -6,6 +6,7 @@ namespace App\Domain\User\Verification;
 
 use App\Entity\VerifiableContact;
 use App\Entity\VerificationChallenge;
+use App\Enum\CodeState;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\VerificationChallengeRepository;
@@ -38,6 +39,19 @@ final readonly class ContactVerifier
 
             return null;
         });
+    }
+
+    /** Checked in the order a try checks: expiry first, then the attempts. No live code reads as live. */
+    public function codeState(VerifiableContact $contact): CodeState
+    {
+        $challenge = $this->verificationChallengeRepository->findLiveFor($contact);
+
+        return match (true) {
+            null === $challenge || $contact->isVerified() => CodeState::Live,
+            $challenge->isExpired() => CodeState::Expired,
+            $challenge->isExhausted() => CodeState::Exhausted,
+            default => CodeState::Live,
+        };
     }
 
     public function verify(VerifiableContact $contact, string $code): void
