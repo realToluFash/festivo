@@ -396,9 +396,11 @@ describe('verifying a number added from Settings > Account', () => {
       screen.getByText('+234 701 555 0188 is verified and is now your primary number.'),
     ).toBeDefined();
     expect(screen.queryByText(/It stays an alternative number/)).toBeNull();
-    expect(screen.getAllByRole('link', { name: 'Back to Account' })[0]?.getAttribute('href')).toBe(
-      '/app/account?verified=p2',
-    );
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Back to Account' })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/app/account?verified=p2']);
   });
 
   it('keeps the onboarding steps and Continue to Soirely during sign-up', async () => {
