@@ -25,13 +25,14 @@ export async function resumeSignUp(store: {
   }
 }
 
-/** After launch's `me()` is refused: a live held sign-up wins, else an ended session says so on sign-in. */
+/** After launch's `me()` is refused: a live held sign-up wins only on launch, an ended session says so anywhere. */
 export async function launchRoute(
   ended: boolean,
   store: Parameters<typeof resumeSignUp>[0],
+  onLaunch: () => boolean,
 ): Promise<'/verify-email' | '/sign-in?signedOut=1' | null> {
   const resumed = await resumeSignUp(store);
-  if (resumed != null) return resumed;
+  if (resumed != null) return onLaunch() ? resumed : null;
 
   return ended ? '/sign-in?signedOut=1' : null;
 }
