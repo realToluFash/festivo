@@ -31,7 +31,16 @@ type Stage =
 const QR_SIZE = 168;
 
 /** Settings > Security, the two-factor card, in the app. */
-export function TwoFactorCard({ email, kind }: { email: string; kind: LayoutKind }) {
+export function TwoFactorCard({
+  email,
+  kind,
+  recount,
+}: {
+  email: string;
+  kind: LayoutKind;
+  /** Changes when another card spent a code, so the unused count is asked for again. */
+  recount: number;
+}) {
   const phone = kind === 'phone';
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
@@ -53,6 +62,22 @@ export function TwoFactorCard({ email, kind }: { email: string; kind: LayoutKind
       live = false;
     };
   }, [attempt]);
+
+  useEffect(() => {
+    if (recount === 0) return;
+    let live = true;
+
+    api
+      .twoFactorStatus()
+      .then((status) => {
+        if (live) setStage((now) => (now.kind === 'atRest' ? { kind: 'atRest', status } : now));
+      })
+      .catch(() => {});
+
+    return () => {
+      live = false;
+    };
+  }, [recount]);
 
   function reload(): void {
     setStage({ kind: 'loading' });

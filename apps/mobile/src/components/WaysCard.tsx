@@ -67,6 +67,7 @@ export function WaysCard({
   onChanged,
   onSetPassword,
   onSignedOutHere,
+  onCodeSpent,
 }: {
   email: string;
   hasPassword: boolean;
@@ -75,6 +76,8 @@ export function WaysCard({
   onChanged: () => Promise<void>;
   onSetPassword: () => void;
   onSignedOutHere: () => void;
+  /** A two-factor or recovery code was accepted, so the two-factor card's count may be stale. */
+  onCodeSpent: () => void;
 }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'list', said: null });
@@ -181,6 +184,7 @@ export function WaysCard({
           providers={providers}
           twoFactorOn={twoFactorOn}
           onProved={() => void proceed(stage.act)}
+          onCodeSpent={onCodeSpent}
           onCancel={() => setStage({ kind: 'list', said: null })}
         />
       </View>
@@ -398,6 +402,7 @@ function Proving({
   providers,
   twoFactorOn,
   onProved,
+  onCodeSpent,
   onCancel,
 }: {
   act: Act;
@@ -406,6 +411,7 @@ function Proving({
   providers: readonly LinkedProvider[];
   twoFactorOn: boolean;
   onProved: () => void;
+  onCodeSpent: () => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -458,6 +464,7 @@ function Proving({
             ? { password: password.current }
             : { provider: via, signIn: returned.current };
       held = await api.prove(first, codeAsked ? code.current.trim() : undefined);
+      if (codeAsked) onCodeSpent();
       onProved();
     } catch (error) {
       setChecking(false);
