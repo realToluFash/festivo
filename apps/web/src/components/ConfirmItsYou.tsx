@@ -30,6 +30,7 @@ export function ConfirmItsYou({
   purpose,
   note,
   onProved,
+  onCodeSpent,
   onCancel,
 }: {
   idPrefix: string;
@@ -41,6 +42,8 @@ export function ConfirmItsYou({
   purpose: ReturnPurpose;
   note?: ReactNode;
   onProved: (proof: string) => void;
+  /** A two-factor or recovery code was accepted, so a count of unused codes may be stale. */
+  onCodeSpent?: () => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -96,6 +99,7 @@ export function ConfirmItsYou({
         second,
       );
       holdProof(proof);
+      if (second != null) onCodeSpent?.();
       onProved(proof.proof);
     } catch (error) {
       setChecking(false);

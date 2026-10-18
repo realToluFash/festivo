@@ -37,6 +37,7 @@ export function EverywhereElse({
   returned,
   onDone,
   onKeep,
+  onCodeSpent,
 }: {
   count: number;
   sessionId: string | null;
@@ -45,6 +46,7 @@ export function EverywhereElse({
   returned: ProviderReturn | null;
   onDone: (result: { signedOut: number; thisDevice: boolean }) => void;
   onKeep: () => void;
+  onCodeSpent: () => void;
 }) {
   const { t } = useTranslation();
   const provider = hasPassword ? null : (providers[0]?.provider ?? null);
@@ -91,6 +93,7 @@ export function EverywhereElse({
         signIn != null && returned != null ? { provider: returned.provider, signIn } : { password },
         second,
       );
+      if (second != null) onCodeSpent();
       onDone(await api.signOutEverywhereElse(proof, sessionId));
     } catch (error) {
       setWorking(false);

@@ -22,6 +22,8 @@ export default function Security() {
   const { account } = useSignedIn();
   const [settingPassword, setSettingPassword] = useState(false);
   const [sessionsEnded, setSessionsEnded] = useState(0);
+  const [codesSpent, setCodesSpent] = useState(0);
+  const codeSpent = () => setCodesSpent((n) => n + 1);
 
   const phone = kind === 'phone';
   const email = account == null ? '' : (primaryEmailAddress(account) ?? '');
@@ -68,8 +70,9 @@ export default function Security() {
                 }}
                 onSetPassword={() => setSettingPassword(true)}
                 onSignedOutHere={signOutHere}
+                onCodeSpent={codeSpent}
               />
-              <TwoFactorCard email={email} kind={kind} />
+              <TwoFactorCard email={email} kind={kind} recount={codesSpent} />
               <DevicesCard
                 hasPassword={account.hasPassword}
                 providers={account.providers}
@@ -77,6 +80,7 @@ export default function Security() {
                 reload={sessionsEnded}
                 onSignOutHere={signOutHere}
                 onEndedHere={endedHere}
+                onCodeSpent={codeSpent}
               />
             </View>
           )}

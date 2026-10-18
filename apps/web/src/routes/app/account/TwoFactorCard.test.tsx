@@ -50,7 +50,7 @@ function problem(code: string, status: number): Response {
 }
 
 function card(onBusy = vi.fn()) {
-  render(<TwoFactorCard email="folake@ire.events" onBusy={onBusy} />);
+  render(<TwoFactorCard email="folake@ire.events" onBusy={onBusy} recount={0} />);
 
   return onBusy;
 }

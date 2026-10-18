@@ -39,6 +39,7 @@ export function ConfirmItsYou({
   twoFactorOn,
   note,
   onProved,
+  onCodeSpent,
   onCancel,
 }: {
   idPrefix: string;
@@ -47,6 +48,8 @@ export function ConfirmItsYou({
   twoFactorOn: boolean;
   note?: ReactNode;
   onProved: (proof: string) => void;
+  /** A two-factor or recovery code was accepted, so a count of unused codes may be stale. */
+  onCodeSpent?: () => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -93,6 +96,7 @@ export function ConfirmItsYou({
       const first = firstFactor(via, kept.current, returned.current, password.current);
       const proved = await api.prove(first, codeAsked ? code.current.trim() : undefined);
       holdProof(proved);
+      if (codeAsked) onCodeSpent?.();
       onProved(proved.proof);
     } catch (error) {
       setChecking(false);

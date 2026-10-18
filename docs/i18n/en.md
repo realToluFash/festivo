@@ -16,20 +16,22 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| Term                      | Notes                                                                                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Settings                  |                                                                                                                          |
-| Organisation              |                                                                                                                          |
-| Sign in                   |                                                                                                                          |
-| Sign out                  |                                                                                                                          |
-| Email                     |                                                                                                                          |
-| Password                  |                                                                                                                          |
-| Continue                  |                                                                                                                          |
-| Cancel                    |                                                                                                                          |
-| Two-factor authentication |                                                                                                                          |
-| Recovery code             |                                                                                                                          |
-| Carry on                  | Settled 17 Oct 2026: "… to carry on" is the house phrase for resuming (20 strings). Not "continue", which is the button. |
-| Signed out (a device)     | Settled 17 Oct 2026: "is signed out" for the state, "has been signed out" in emails. Never "logged out".                 |
+| Term                          | Notes                                                                                                                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Settings                      |                                                                                                                                                                                                                                                              |
+| Organisation                  |                                                                                                                                                                                                                                                              |
+| Sign in                       |                                                                                                                                                                                                                                                              |
+| Sign out                      |                                                                                                                                                                                                                                                              |
+| Email                         |                                                                                                                                                                                                                                                              |
+| Password                      |                                                                                                                                                                                                                                                              |
+| Continue                      |                                                                                                                                                                                                                                                              |
+| Cancel                        |                                                                                                                                                                                                                                                              |
+| Two-factor authentication     |                                                                                                                                                                                                                                                              |
+| Recovery code                 |                                                                                                                                                                                                                                                              |
+| Carry on                      | Settled 17 Oct 2026: "… to carry on" is the house phrase for resuming (20 strings). Not "continue", which is the button.                                                                                                                                     |
+| Signed out (a device)         | Settled 17 Oct 2026: "is signed out" for the state, "has been signed out" in emails. Never "logged out".                                                                                                                                                     |
+| Phone number, mobile number   | Settled 18 Oct 2026: "phone number" for any number on the account (card, list, add button, cap), which may be a landline; "mobile number" only for the field we text a code to (`contacts.phoneLabel`, `verifyPhone.numberLabel`).                           |
+| Alternative (address, number) | Settled 18 Oct 2026: any address or number on the account that is not primary, verified or not. The card's plural is "Other addresses" / "Other numbers"; one of them is "an alternative address" or "an alternative number". Never "secondary" or "backup". |
 
 ## Never translated
 
@@ -40,6 +42,58 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Verifying an alternative from Account (sc-2304, sc-2244, `VerifyEmail-*` and
+  `VerifyPhone-*` with `from` = `account`, `Account-*` `verified_alt`).** Settled as ux drew
+  it. The headings are sign-up's "Email verified" and "Number verified". The body: "{{address}}
+  is verified. It stays an alternative address until you make it primary in Account." and
+  "{{number}} is verified. It stays an alternative number until you make it primary in
+  Account."; when verifying makes the number primary (sc-2244), "{{number}} is verified and is
+  now your primary number.", the shape of `contacts.promotedPhone`. Account's done line is the
+  short "{{address}} is verified." / "{{number}} is verified.", because the person has just
+  read the long one. The way out is "Back to Account", on the top link and the button alike;
+  the link's arrow is the component's icon, hidden from screen readers, never a character in
+  the string. "Not your address?" and "Wrong number?" link to "Remove it in Account", the
+  shape of "Wrong number? Change it". An address and a number are always two keys, never one
+  key with the noun in a slot: "it" and "verified" agree with the noun in es and fr
+  (dirección and adresse are feminine, número and numéro masculine). "Alternative" won over
+  "other", the card's plural ("Other addresses can reach you"), because "an other address" is
+  not English and "one of your other addresses" is wrong when there is only one; and over
+  "secondary" or "backup", which rank it or promise it can recover the account.
+- **18 Oct 2026. A role's line for a viewer who cannot edit roles (sc-2251,
+  `rolesScreen.describeSeededReadOnly`, `describeCustomReadOnly`).** Shown to anyone without
+  `members.manage`. Seeded: "Built in, so it cannot be removed. Someone who can change
+  {{area}} decides what it holds.", where `{{area}}` is the grid's own label for the members
+  area, so it reads "… change Members and roles …". Custom: "Made by {{name}}.", `{{name}}`
+  the organisation. Neither line names an action the screen has hidden. Won over the drawn
+  "Someone who can manage roles", because the screen never says "manage" and the viewer
+  cannot find it on the grid. The grid calls it Members and roles at Change, and the locked
+  row already says "someone who can change {{area}}". The area is a slot, never typed into
+  the string, so the line cannot drift if the label is renamed.
+- **18 Oct 2026. The re-proof's step two after a provider sign-in (sc-2197, `Security-*`
+  `reproof_code`).** The status box reads "Signed in with {{provider}}", and the address that
+  provider vouched for goes alone on a second line. Neither line takes a full stop. Under the
+  code field: "A wrong code doesn't send you back to {{provider}}. Your {{provider}} sign-in
+  lasts {{count}} minutes.", and the `_one` form ends "… lasts a minute.". `{{count}}` is the
+  proof window, as in `waysCard.proofExpired_*`. "Lasts" won over the drawn "counts for",
+  an idiom that does not carry into es, fr or pt, and "Your {{provider}} sign-in lasts" pairs
+  with the expired line, "Your {{provider}} sign-in was more than {{count}} minutes ago". The
+  provider is named again rather than "your sign-in there", because every other language needs
+  a noun to point back to. The contraction stays because this is a hint, not an error.
+  Step one's `waysCard.proveLink` and `proveUnlink` count the same window: "… You won't be
+  asked again for {{count}} minutes.", and the `_one` form ends "… for a minute.", so no
+  locale keeps a literal 5 (pm folded them into sc-2197, #2280).
+
+- **18 Oct 2026. The Roles refusals (sc-66, sc-2150, `messages:roles.*`).** Error bodies
+  take no contractions: "Owner is built in and cannot be changed or removed. It always has
+  everything." ("changed", not "edited", as the screen's grid says "change"). A built-in role
+  says what is still allowed: "Built-in roles cannot be renamed. You can still change what this
+  one holds." and "Built-in roles cannot be removed, but you can change what they hold. If
+  nobody needs this one, leave it unassigned." "Someone", not "somebody", as in the locked row.
+  An unknown permission is a stale page: "Soirely has no permission by that name. Reload the
+  page and try again." Over the limit, the house phrase "Shorten the name to {count}
+  characters or fewer." is wanted over "That is longer than {count} characters.", which says
+  what is wrong but not what to do; the API test pins the old text, so that change waits on
+  [dev] (sc-2150). Translate it in the wanted shape.
 - **18 Oct 2026. Primary and other addresses (sc-113, `contacts.*`, `Account-*`).** The
   primary signs in; any other address or number only reaches the person: "Other addresses can
   reach you, but they cannot sign you in." / "Other numbers can reach you too." Never write a
