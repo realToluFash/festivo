@@ -42,7 +42,7 @@ export default function Organisation() {
           </Text>
           {organisation != null && (
             <View style={styles.cards}>
-              {roleHolds(organisation.role, 'organisation.manage') ? (
+              {roleHolds(organisation, 'organisation.manage') ? (
                 <EditableDetails key={organisation.id} organisation={organisation} kind={kind} />
               ) : (
                 <ReadOnlyDetails organisation={organisation} kind={kind} />

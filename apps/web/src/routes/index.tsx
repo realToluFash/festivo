@@ -5,6 +5,7 @@ import { Security } from './app/account/Security.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
 import { General } from './app/settings/General.tsx';
+import { Roles } from './app/settings/Roles.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
@@ -67,6 +68,7 @@ export const routes = [
       { path: 'account', element: <Account /> },
       { path: 'account/security', element: <Security /> },
       { path: 'settings', element: <General /> },
+      { path: 'settings/roles', element: <Roles /> },
     ],
   },
   {

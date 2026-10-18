@@ -30,6 +30,7 @@ const organisation = {
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },
+  permissions: ['organisation.manage'],
 };
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));

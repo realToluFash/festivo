@@ -207,8 +207,24 @@ export interface MemberRole {
   name: string | null;
 }
 
+/** A role on Settings > Roles (sc-66): Owner is `fixed`, and only a custom role is `removable`. */
+export interface OrganisationRole extends MemberRole {
+  fixed: boolean;
+  removable: boolean;
+  permissions: string[];
+  holders: number;
+}
+
+/** Every role, and every registered permission grouped by area, in the order the grid shows them. */
+export interface RolesCatalogue {
+  roles: OrganisationRole[];
+  areas: { area: string; permissions: string[] }[];
+}
+
 export interface Membership extends Organisation {
   role: MemberRole;
+  /** What this role holds here, every registered one for Owner (sc-66): what a client may show. */
+  permissions: string[];
 }
 
 export type OrganisationChanges = Partial<Omit<Organisation, 'id'>>;
@@ -911,6 +927,66 @@ export class ApiClient {
     return organisation;
   }
 
+  async roles(organisationId: string): Promise<RolesCatalogue> {
+    const raw = await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/roles`);
+    const catalogue = asRolesCatalogue(raw);
+
+    if (catalogue == null) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/roles in a shape this client does not know. Check RolesController in services/api.',
+      );
+    }
+
+    return catalogue;
+  }
+
+  /** Refused `validation_failed` on `name`, or `role_name_taken` for a name the organisation already has. */
+  async createRole(
+    organisationId: string,
+    role: { name: string; permissions: string[] },
+  ): Promise<OrganisationRole> {
+    return this.role(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/roles`, role),
+    );
+  }
+
+  async updateRole(
+    organisationId: string,
+    roleId: string,
+    changes: { name?: string; permissions?: string[] },
+  ): Promise<OrganisationRole> {
+    return this.role(
+      await this.patch<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/roles/${encodeURIComponent(roleId)}`,
+        changes,
+      ),
+    );
+  }
+
+  /** Its holders move to `replacement`, which the API requires while anybody holds it. */
+  async deleteRole(
+    organisationId: string,
+    roleId: string,
+    replacement: string | null,
+  ): Promise<void> {
+    await this.request<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/roles/${encodeURIComponent(roleId)}`,
+      { method: 'DELETE', body: { replacement } },
+    );
+  }
+
+  private role(raw: unknown): OrganisationRole {
+    const role = asOrganisationRole(raw);
+
+    if (role == null) {
+      throw new Error(
+        'The API answered a role in a shape this client does not know. Check RolesController in services/api.',
+      );
+    }
+
+    return role;
+  }
+
   /** Every session but `sessionId`'s, with a proof; `thisDevice` says this one ended too and the client is signed out. */
   async signOutEverywhereElse(
     proof: string,
@@ -1268,6 +1344,60 @@ function asLinkedProvider(raw: unknown): LinkedProvider[] {
   return [{ provider, email: typeof candidate?.email === 'string' ? candidate.email : null }];
 }
 
+function stringList(raw: unknown): string[] | null {
+  return Array.isArray(raw) && raw.every((one) => typeof one === 'string') ? raw : null;
+}
+
+function asOrganisationRole(raw: unknown): OrganisationRole | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const role = raw as Record<string, unknown>;
+  const permissions = stringList(role.permissions);
+
+  if (
+    typeof role.id !== 'string' ||
+    typeof role.fixed !== 'boolean' ||
+    typeof role.removable !== 'boolean' ||
+    typeof role.holders !== 'number' ||
+    permissions == null
+  )
+    return null;
+
+  return {
+    id: role.id,
+    seededAs: typeof role.seededAs === 'string' ? role.seededAs : null,
+    name: typeof role.name === 'string' ? role.name : null,
+    fixed: role.fixed,
+    removable: role.removable,
+    permissions,
+    holders: role.holders,
+  };
+}
+
+function asRolesCatalogue(raw: unknown): RolesCatalogue | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { roles, areas } = raw as Record<string, unknown>;
+
+  if (!Array.isArray(roles) || !Array.isArray(areas)) return null;
+
+  const parsedRoles = roles.map(asOrganisationRole);
+  const parsedAreas = areas.map((entry: unknown) => {
+    const { area, permissions } = (entry ?? {}) as Record<string, unknown>;
+    const held = stringList(permissions);
+
+    return typeof area === 'string' && held != null ? { area, permissions: held } : null;
+  });
+
+  if (parsedRoles.some((role) => role == null) || parsedAreas.some((area) => area == null))
+    return null;
+
+  return {
+    roles: parsedRoles as OrganisationRole[],
+    areas: parsedAreas as RolesCatalogue['areas'],
+  };
+}
+
 function asOrganisation(raw: unknown): Organisation | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
@@ -1292,6 +1422,8 @@ function asMembership(raw: unknown): Membership | null {
 
   if (organisation == null || typeof role?.id !== 'string') return null;
 
+  const permissions = (raw as Record<string, unknown>).permissions;
+
   return {
     ...organisation,
     role: {
@@ -1299,6 +1431,9 @@ function asMembership(raw: unknown): Membership | null {
       seededAs: typeof role.seededAs === 'string' ? role.seededAs : null,
       name: typeof role.name === 'string' ? role.name : null,
     },
+    permissions: Array.isArray(permissions)
+      ? permissions.filter((one): one is string => typeof one === 'string')
+      : [],
   };
 }
 

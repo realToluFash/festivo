@@ -81,11 +81,11 @@ final readonly class AccessListener
     }
 
     /** Not a member reads as not found: a 403 would confirm the organisation or event exists. */
-    private function require(User $user, Uuid $organisationId, Permission $permission): void
+    private function require(User $user, Uuid $organisationId, ?Permission $permission): void
     {
         $grants = $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound();
 
-        if (!$grants->holds($permission)) {
+        if (null !== $permission && !$grants->holds($permission)) {
             throw new ApiException(
                 ErrorCode::PermissionRequired,
                 Str\format('This needs the %s permission.', $permission->value),

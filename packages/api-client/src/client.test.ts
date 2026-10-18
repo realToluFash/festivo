@@ -651,6 +651,52 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.name).toBe('Ìrè Events Ltd');
   });
 
+  test('roles are read with the grid, and a removed role names where its people go', async () => {
+    const sent: { method: string | undefined; path: string; body: unknown }[] = [];
+    const door = {
+      id: 'role_6',
+      seededAs: null,
+      name: 'Door team',
+      fixed: false,
+      removable: true,
+      permissions: ['events.read'],
+      holders: 2,
+    };
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async (input, init) => {
+        sent.push({
+          method: init?.method,
+          path: new URL(String(input)).pathname,
+          body: init?.body == null ? null : JSON.parse(String(init.body)),
+        });
+
+        if (init?.method === 'DELETE') return new Response(null, { status: 204 });
+        if (init?.method === 'GET')
+          return json({ roles: [door], areas: [{ area: 'events', permissions: ['events.read'] }] });
+
+        return json(door);
+      },
+    });
+
+    const catalogue = await client.roles('org_1');
+    await client.updateRole('org_1', 'role_6', { permissions: ['events.read'] });
+    await client.deleteRole('org_1', 'role_6', 'role_5');
+
+    expect(catalogue.roles[0]?.name).toBe('Door team');
+    expect(catalogue.areas).toEqual([{ area: 'events', permissions: ['events.read'] }]);
+    expect(sent.slice(1)).toEqual([
+      {
+        method: 'PATCH',
+        path: '/api/orgs/org_1/roles/role_6',
+        body: { permissions: ['events.read'] },
+      },
+      { method: 'DELETE', path: '/api/orgs/org_1/roles/role_6', body: { replacement: 'role_5' } },
+    ]);
+  });
+
   test('setting a phone sends the country and the number as typed, and says a code went out', async () => {
     let sent: { method?: string | undefined; path: string; body: unknown } | null = null;
 

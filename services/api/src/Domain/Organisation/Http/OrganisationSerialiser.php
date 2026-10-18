@@ -6,6 +6,8 @@ namespace App\Domain\Organisation\Http;
 
 use App\Entity\Membership;
 use App\Entity\Organisation;
+use App\Enum\Permission;
+use Psl\Vec;
 
 final readonly class OrganisationSerialiser
 {
@@ -33,6 +35,8 @@ final readonly class OrganisationSerialiser
                 'seededAs' => $role->getSeededAs()?->value,
                 'name' => $role->getName(),
             ],
+            // The same as GET /api/orgs/{id}/permissions, so a client hides what it cannot use without asking twice.
+            'permissions' => Vec\map($role->getPermissions(), static fn (Permission $permission): string => $permission->value),
         ];
     }
 }

@@ -13,6 +13,7 @@ use App\Enum\SeededRole;
 use Doctrine\ORM\EntityManagerInterface;
 use LogicException;
 use Psl\Str;
+use Psl\Vec;
 
 /** The step sc-57's details screen calls: a new organisation, its seeded roles, and its founder as Owner. */
 final readonly class OrganisationFounder
@@ -46,11 +47,14 @@ final readonly class OrganisationFounder
             $fields['timezone'],
             $fields['contactAddress'],
         );
-        $owners = Role::seeded($organisation, SeededRole::Owner);
-
         $this->entityManager->persist($organisation);
-        $this->entityManager->persist($owners);
-        $this->entityManager->persist(new Membership($organisation, $owner, $owners, MembershipStatus::Active));
+        $roles = Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): Role => Role::seeded($organisation, $seeded));
+
+        foreach ($roles as $role) {
+            $this->entityManager->persist($role);
+        }
+
+        $this->entityManager->persist(new Membership($organisation, $owner, $roles[0], MembershipStatus::Active));
 
         return $organisation;
     }

@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
+import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
 
@@ -33,6 +34,7 @@ export function General() {
 
   return (
     <div className="settings">
+      <SettingsSections />
       <div className="settings-heading">
         <h1>{t('orgGeneral.title')}</h1>
         <p>{t('orgGeneral.intro')}</p>

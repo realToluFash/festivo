@@ -11,6 +11,7 @@ const organisation: Membership = {
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },
+  permissions: ['organisation.manage'],
 };
 
 function refusal(

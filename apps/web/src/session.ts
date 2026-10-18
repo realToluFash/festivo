@@ -65,7 +65,7 @@ export function useSession(): Session {
 }
 
 export function can(session: Session, permission: string): boolean {
-  return session.organisation != null && roleHolds(session.organisation.role, permission);
+  return session.organisation != null && roleHolds(session.organisation, permission);
 }
 
 export async function restoreSession(): Promise<void> {
