@@ -103,8 +103,17 @@ final class RolesTest extends ApiTestCase
 
         $this->as($admin, 'POST', $this->path('roles'), ['name' => 'Accounts', 'permissions' => ['billing.manage']]);
         self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+        self::assertNotContains('Accounts', Vec\map($this->roles(), static fn (array $role): mixed => $role['name']));
 
-        $this->as($admin, 'PATCH', $this->path('roles/' . $this->seeded(SeededRole::Coordinator)), ['permissions' => ['events.read']]);
+        $coordinator = $this->seeded(SeededRole::Coordinator);
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $coordinator), ['permissions' => ['events.read', 'billing.read', 'billing.manage']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($admin, 'PATCH', $this->path('roles/' . $coordinator), ['permissions' => ['events.read', 'billing.read']]);
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+        self::assertContains('billing.manage', $this->permissionsOf($coordinator));
+
+        $this->as($admin, 'PATCH', $this->path('roles/' . $coordinator), ['permissions' => ['events.read', 'events.manage', 'billing.read', 'billing.manage']]);
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
 
         $this->as($this->owner, 'PATCH', $this->path('roles/' . $administrator), ['permissions' => $raised]);
@@ -266,6 +275,20 @@ final class RolesTest extends ApiTestCase
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => $seeded]);
 
         return Type\instance_of(Role::class)->coerce($role)->getId()->toRfc4122();
+    }
+
+    /** @return list<array<array-key, mixed>> */
+    private function roles(): array
+    {
+        return Type\vec(Type\dict(Type\array_key(), Type\mixed()))->coerce($this->as($this->owner, 'GET', $this->path('roles'))['roles']);
+    }
+
+    /** @return list<string> */
+    private function permissionsOf(string $roleId): array
+    {
+        $role = Iter\first(Vec\filter($this->roles(), static fn (array $role): bool => $roleId === $role['id']));
+
+        return Type\vec(Type\string())->coerce($role['permissions'] ?? null);
     }
 
     private function path(string $rest): string
