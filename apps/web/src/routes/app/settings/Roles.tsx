@@ -5,6 +5,7 @@ import {
   type RolesCatalogue,
 } from '@soirely/api-client';
 import {
+  LOCALE_CODES,
   MARGIN,
   ROLE_NAME_MAXIMUM,
   levelOf,
@@ -244,8 +245,8 @@ function Editing({
   const [nameError, setNameError] = useState<string | null>(null);
   const [status, setStatus] = useState<'editing' | 'saving' | 'failed'>('editing');
   const title = role == null ? '' : roleName(t, role);
-  // The API compares with the seeded roles' English labels, so a name is checked against both.
-  const english = i18next.getFixedT('en');
+  // The API refuses a seeded role's label in every language (sc-2301), whatever the caller reads.
+  const everyLanguage = LOCALE_CODES.map((locale) => i18next.getFixedT(locale));
   const dirty = creating || !sameGrant(grant, startingGrant);
   const areas = catalogue.areas.map((entry) => entry.area);
   // A caller changes only what they hold (sc-66): a row with nothing left to pick is locked.
@@ -274,7 +275,7 @@ function Editing({
     if (creating) {
       const problem = roleNameProblem(
         typed,
-        catalogue.roles.flatMap((one) => [roleName(t, one), roleName(english, one)]),
+        catalogue.roles.flatMap((one) => everyLanguage.map((word) => roleName(word, one))),
       );
 
       if (problem != null) {

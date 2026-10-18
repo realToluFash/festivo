@@ -9,11 +9,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { LOCALES, ROOT, type Surface } from './surfaces.ts';
+import { LOCALES, ROOT, type Surface, type WordCopy } from './surfaces.ts';
 
 export type Catalogue = Record<string, unknown>;
 
-export function load(surface: Surface, locale: string): Catalogue {
+export function load(surface: Pick<Surface, 'catalogues' | 'file'>, locale: string): Catalogue {
   const path = join(ROOT, surface.catalogues, surface.file(locale));
 
   return JSON.parse(readFileSync(path, 'utf8')) as Catalogue;
@@ -167,4 +167,48 @@ export function pluralFamilies(surface: Surface): IncompletePlural[] {
   }
 
   return incomplete;
+}
+
+export interface WordDrift {
+  locale: string;
+  word: string;
+  /** What each copy reads, by the copy's name; null where it has no such word. */
+  readings: Record<string, string | null>;
+}
+
+/** A word one copy lacks, or reads differently from the others, in any locale. */
+export function wordDrift(
+  copies: readonly WordCopy[],
+  read: (copy: WordCopy, locale: string) => Catalogue = load,
+): WordDrift[] {
+  return LOCALES.flatMap((locale) => {
+    const found = copies.map((copy) => wordsUnder(stringsOf(read(copy, locale)), copy.under));
+    const words = [...new Set(found.flatMap((each) => [...each.keys()]))].sort();
+
+    return words.flatMap((word) => {
+      const readings = found.map((each) => each.get(word) ?? null);
+
+      return new Set(readings).size === 1
+        ? []
+        : [
+            {
+              locale,
+              word,
+              readings: Object.fromEntries(
+                copies.map((copy, index) => [copy.name, readings[index] ?? null]),
+              ),
+            },
+          ];
+    });
+  });
+}
+
+function wordsUnder(strings: Map<string, string>, under: string): Map<string, string> {
+  const prefix = `${under}.`;
+
+  return new Map(
+    [...strings]
+      .filter(([key]) => key.startsWith(prefix))
+      .map(([key, text]) => [key.slice(prefix.length), text]),
+  );
 }
