@@ -721,7 +721,7 @@
     "holders_other": "{{count}} people",
     "nameLabel": "Role name",
     "nameBlank": "Give the role a name.",
-    "nameTooLong": "Keep the name to {{most}} characters.",
+    "nameTooLong": "Shorten the name to {{most}} characters or fewer.",
     "nameTaken": "A role with that name already exists.",
     "describeOwner": "Everything, including whatever Soirely adds later.",
     "describeSeeded": "Built in, so it cannot be removed. What it holds is yours to change.",
