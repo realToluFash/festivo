@@ -69,12 +69,10 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function open(session: Partial<Session> = {}) {
+function open(session: Partial<Session> = {}, at = '/app/account') {
   __setSessionState({ status: 'signedIn', session: { ...FOLAKE, ...session } });
 
-  return render(
-    <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/account'] })} />,
-  );
+  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [at] })} />);
 }
 
 beforeEach(() => {
@@ -323,5 +321,27 @@ describe('email addresses and phone numbers', () => {
     await waitFor(() =>
       expect(sent.some((s) => s.call === 'PATCH /api/auth/phones/p2/primary')).toBe(true),
     );
+  });
+});
+
+describe('back from verifying an address or number', () => {
+  it('says the row is verified, once, and leaves it an alternative', async () => {
+    answering({ 'GET /api/auth/me': () => json(ME) });
+    const { container } = open({}, '/app/account?verified=e2');
+
+    expect(await screen.findByText('folake.adeyemi@gmail.com is verified.')).toBeDefined();
+    expect(container.querySelectorAll('.notice-done')).toHaveLength(1);
+  });
+
+  it('says nothing for a row that is not verified', async () => {
+    const unverified = {
+      ...ME,
+      emailAddresses: [ME.emailAddresses[0], { ...ME.emailAddresses[1], verified: false }],
+    };
+    answering({ 'GET /api/auth/me': () => json(unverified) });
+    open({}, '/app/account?verified=e2');
+
+    await screen.findByText('folake.adeyemi@gmail.com');
+    expect(screen.queryByText('folake.adeyemi@gmail.com is verified.')).toBeNull();
   });
 });

@@ -10,6 +10,7 @@ import {
   contactsLeft,
   formatPhone,
   formatTimeOfDay,
+  justVerified,
   listedContacts,
   lockLiftsAt,
   phoneLengthProblem,
@@ -17,7 +18,7 @@ import {
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { takeProviderReturn } from '../../../providerSignIn.ts';
@@ -54,6 +55,13 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   const [twoFactorOn, setTwoFactorOn] = useState<boolean | null>(null);
   // Back from Google or Apple, started by "Make primary": once, on arrival.
   const [returned] = useState(() => takeProviderReturn(['makePrimary']));
+  // Back from a verify screen, with the row it verified: once, on arrival.
+  const [params, setParams] = useSearchParams();
+  const [verified] = useState(() => params.get('verified'));
+
+  useEffect(() => {
+    if (params.has('verified')) setParams({}, { replace: true });
+  }, [params, setParams]);
 
   async function reload(): Promise<void> {
     setAccount(await api.me());
@@ -99,6 +107,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
         kind="email"
         rows={account.emailAddresses.map((held) => ({ ...held, shown: held.address }))}
         country={account.organisationCountry ?? ''}
+        verified={verified}
         confirming={confirming}
         onChanged={reload}
         onPrimaryChanged={async () => {
@@ -110,6 +119,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
         kind="phone"
         rows={account.phoneNumbers.map((held) => ({ ...held, shown: formatPhone(held.number) }))}
         country={account.organisationCountry ?? ''}
+        verified={verified}
         onChanged={reload}
         onPrimaryChanged={reload}
       />
@@ -121,6 +131,7 @@ function ContactsCard({
   kind,
   rows: all,
   country,
+  verified,
   confirming,
   onChanged,
   onPrimaryChanged,
@@ -128,6 +139,7 @@ function ContactsCard({
   kind: Kind;
   rows: Row[];
   country: string;
+  verified: string | null;
   confirming?: Confirming;
   onChanged: () => Promise<void>;
   onPrimaryChanged: () => Promise<void>;
@@ -140,12 +152,26 @@ function ContactsCard({
   );
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [adding, setAdding] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  const [arrived, setArrived] = useState(verified);
   const doneLine = useRef<HTMLDivElement>(null);
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
+  const arrival = justVerified(rows, arrived);
+  const done =
+    said ??
+    (arrival == null
+      ? null
+      : email
+        ? t('contacts.verifiedDone', { address: arrival.shown })
+        : t('contacts.verifiedDonePhone', { number: arrival.shown }));
 
   useEffect(() => doneLine.current?.focus(), [done]);
+
+  function setDone(line: string | null): void {
+    setArrived(null);
+    setSaid(line);
+  }
 
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
     setRowError(null);

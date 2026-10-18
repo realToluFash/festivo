@@ -37,3 +37,11 @@ export function listedContacts<T extends ContactFacts>(rows: readonly T[]): T[] 
 export function contactsLeft(rows: readonly ContactFacts[]): number {
   return Math.max(0, CONTACTS_MOST - listedContacts(rows).length);
 }
+
+/** The row a verify screen sent Account back for, while it is listed and verified. */
+export function justVerified<T extends ContactFacts & { id: string }>(
+  rows: readonly T[],
+  id: string | null | undefined,
+): T | null {
+  return listedContacts(rows).find((row) => row.id === id && row.verified) ?? null;
+}

@@ -5,6 +5,7 @@ import {
   contactsLeft,
   formatPhone,
   formatTimeOfDay,
+  justVerified,
   listedContacts,
   lockLiftsAt,
   phoneLengthProblem,
@@ -47,10 +48,13 @@ type Asking = { id: string; what: 'promote' | 'prove' | 'remove' } | null;
 export function ContactsCards({
   account,
   kind: layout,
+  verified,
   onChanged,
 }: {
   account: Account;
   kind: LayoutKind;
+  /** The row a verify screen came back for, so its card says it is verified. */
+  verified: string | null;
   onChanged: () => Promise<void>;
 }) {
   const [twoFactorOn, setTwoFactorOn] = useState(false);
@@ -77,6 +81,7 @@ export function ContactsCards({
         layout={layout}
         rows={account.emailAddresses.map((held) => ({ ...held, shown: held.address }))}
         country={account.organisationCountry ?? ''}
+        verified={verified}
         confirming={{
           via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
           twoFactorOn,
@@ -88,6 +93,7 @@ export function ContactsCards({
         layout={layout}
         rows={account.phoneNumbers.map((held) => ({ ...held, shown: formatPhone(held.number) }))}
         country={account.organisationCountry ?? ''}
+        verified={verified}
         onChanged={onChanged}
       />
     </>
@@ -99,6 +105,7 @@ function ContactsCard({
   layout,
   rows: all,
   country,
+  verified,
   confirming,
   onChanged,
 }: {
@@ -106,6 +113,7 @@ function ContactsCard({
   layout: LayoutKind;
   rows: Row[];
   country: string;
+  verified: string | null;
   /** How the person proves it is them before an address becomes the one signing in. */
   confirming?: { via: 'password' | Provider | null; twoFactorOn: boolean };
   onChanged: () => Promise<void>;
@@ -116,9 +124,23 @@ function ContactsCard({
   const [asking, setAsking] = useState<Asking>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [adding, setAdding] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  const [arrived, setArrived] = useState(verified);
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
+  const arrival = justVerified(rows, arrived);
+  const done =
+    said ??
+    (arrival == null
+      ? null
+      : email
+        ? t('contacts.verifiedDone', { address: arrival.shown })
+        : t('contacts.verifiedDonePhone', { number: arrival.shown }));
+
+  function setDone(line: string | null): void {
+    setArrived(null);
+    setSaid(line);
+  }
 
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
     setRowError(null);

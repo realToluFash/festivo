@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { CONTACTS_MOST, contactActions, contactsLeft, listedContacts } from './contacts.ts';
+import {
+  CONTACTS_MOST,
+  contactActions,
+  contactsLeft,
+  justVerified,
+  listedContacts,
+} from './contacts.ts';
 
 describe('alternative addresses and numbers', () => {
   it('offers Make primary only on a verified row that is not the primary', () => {
@@ -33,5 +39,25 @@ describe('alternative addresses and numbers', () => {
     expect(contactsLeft([primary, { verified: false, primary: false }])).toBe(0);
     expect(contactsLeft([primary, pending])).toBe(1);
     expect(listedContacts([primary, pending])).toEqual([primary]);
+  });
+});
+
+describe('the row a verify screen came back for', () => {
+  const rows = [
+    { id: 'e1', verified: true, primary: true },
+    { id: 'e2', verified: true, primary: false },
+    { id: 'e3', verified: false, primary: false },
+    { id: 'p9', verified: true, primary: false, pending: true },
+  ];
+
+  it('is the listed row with that id once it is verified', () => {
+    expect(justVerified(rows, 'e2')).toEqual(rows[1]);
+  });
+
+  it('is nothing for a row still unverified, one not listed, or no id', () => {
+    expect(justVerified(rows, 'e3')).toBeNull();
+    expect(justVerified(rows, 'p9')).toBeNull();
+    expect(justVerified(rows, 'gone')).toBeNull();
+    expect(justVerified(rows, null)).toBeNull();
   });
 });
