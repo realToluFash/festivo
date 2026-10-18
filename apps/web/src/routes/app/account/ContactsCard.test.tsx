@@ -428,7 +428,7 @@ describe('a refusal shows the account as it is now', () => {
 
   it('keeps the form open after a limit refusal, with the count and line another tab left', async () => {
     const one = { ...ME, emailAddresses: [ME.emailAddresses[0]] };
-    const { release } = refusing('POST /api/auth/emails', 'address_limit_reached', one, ME);
+    const { sent, release } = refusing('POST /api/auth/emails', 'address_limit_reached', one, ME);
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add an email address' }));
@@ -436,11 +436,12 @@ describe('a refusal shows the account as it is now', () => {
       target: { value: 'folake.work@ire.events' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add address' }));
+    await waitFor(() => expect(sent.filter((s) => s.call === 'GET /api/auth/me')).toHaveLength(2));
+    const reason = 'An account holds 2 email addresses. Remove one to add another.';
+    expect(screen.queryByText(reason)).toBeNull();
     release();
 
-    expect(
-      await screen.findByText('An account holds 2 email addresses. Remove one to add another.'),
-    ).toBeDefined();
+    expect(await screen.findByText(reason)).toBeDefined();
     const emails = screen.getByRole('region', { name: 'Email addresses' });
     expect(within(emails).getByText('2 of 2')).toBeDefined();
     expect(within(emails).getByText('folake.adeyemi@gmail.com')).toBeDefined();
@@ -458,7 +459,12 @@ describe('a refusal shows the account as it is now', () => {
   });
 
   it('does the same for a number', async () => {
-    const { release } = refusing('POST /api/auth/phones', 'address_limit_reached', ME, TWO_PHONES);
+    const { sent, release } = refusing(
+      'POST /api/auth/phones',
+      'address_limit_reached',
+      ME,
+      TWO_PHONES,
+    );
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Add a phone number' }));
@@ -466,11 +472,12 @@ describe('a refusal shows the account as it is now', () => {
       target: { value: '701 555 0199' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add number' }));
+    await waitFor(() => expect(sent.filter((s) => s.call === 'GET /api/auth/me')).toHaveLength(2));
+    const reason = 'An account holds 2 phone numbers. Remove one to add another.';
+    expect(screen.queryByText(reason)).toBeNull();
     release();
 
-    expect(
-      await screen.findByText('An account holds 2 phone numbers. Remove one to add another.'),
-    ).toBeDefined();
+    expect(await screen.findByText(reason)).toBeDefined();
     const phones = screen.getByRole('region', { name: 'Phone numbers' });
     expect(within(phones).getByText('2 of 2')).toBeDefined();
     expect(within(phones).getByText('+234 701 555 0188')).toBeDefined();
