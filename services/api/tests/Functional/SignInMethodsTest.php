@@ -291,6 +291,7 @@ final class SignInMethodsTest extends ApiTestCase
 
         $this->call('POST', '/api/auth/proof', ['password' => self::PASSWORD]);
         self::assertSame(ErrorCode::TwoFactorRequired->type(), $this->last()['type']);
+        self::assertArrayNotHasKey('providerEmail', $this->last());
 
         $this->call('POST', '/api/auth/proof', ['password' => self::PASSWORD, 'code' => '000000']);
         self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $this->last()['type']);
@@ -320,6 +321,59 @@ final class SignInMethodsTest extends ApiTestCase
 
         $this->call('POST', '/api/auth/proof', ['pendingProof' => $pending, 'code' => $this->codeNow()]);
         self::assertSame(ErrorCode::ProofRequired->type(), $this->last()['type'], 'spent once it passes');
+    }
+
+    /** sc-2197: step two names the account the provider vouched for, never the account's own address. */
+    #[Test]
+    public function askedForTheCodeAfterGoogleItSaysWhichAddressGoogleVouchedFor(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $body = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', 'Kemi.Adeyemi@Gmail.com')]]);
+
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $body['type']);
+        self::assertIsString($body['pendingProof'] ?? null);
+        self::assertSame('Kemi.Adeyemi@Gmail.com', $body['providerEmail'] ?? null, 'as Google wrote it, not kemi@example.com');
+    }
+
+    #[Test]
+    public function anAppleRelayAddressIsSaidAsAppleGaveIt(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Apple]);
+        $this->twoFactorFor($user);
+
+        $body = $this->call('POST', '/api/auth/proof', ['provider' => 'apple', 'providerSignIn' => ['idToken' => $this->appleToken('a-kemi', 'x7k2m9@privaterelay.appleid.com')]]);
+
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $body['type']);
+        self::assertSame('x7k2m9@privaterelay.appleid.com', $body['providerEmail'] ?? null);
+    }
+
+    #[Test]
+    public function aSignInWithNoAddressSaysNone(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $body = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', null)]]);
+
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $body['type']);
+        self::assertArrayNotHasKey('providerEmail', $body, 'nothing filled in from the account');
+    }
+
+    #[Test]
+    public function onlyTheAnswerAskingForTheCodeAfterAProviderCarriesTheAddress(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $wrong = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', 'kemi@gmail.com')], 'code' => '000000']);
+        self::assertSame(ErrorCode::TwoFactorCodeInvalid->type(), $wrong['type']);
+        self::assertArrayNotHasKey('providerEmail', $wrong);
+
+        $again = $this->call('POST', '/api/auth/proof', ['pendingProof' => $wrong['pendingProof']]);
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $again['type']);
+        self::assertArrayNotHasKey('providerEmail', $again, 'a retry sends no sign-in, so it vouches for nothing');
     }
 
     #[Test]
@@ -433,7 +487,7 @@ final class SignInMethodsTest extends ApiTestCase
         return TOTP::createFromSecret(self::SECRET)->at(Type\uint()->coerce(new Clock()->now()->getTimestamp()));
     }
 
-    private function googleToken(string $subject, string $email, string $signedIn = '-1 minute'): string
+    private function googleToken(string $subject, ?string $email, string $signedIn = '-1 minute'): string
     {
         return $this->signed('GOOGLE', $subject, $email, $signedIn);
     }
@@ -443,7 +497,7 @@ final class SignInMethodsTest extends ApiTestCase
         return $this->signed('APPLE', $subject, $email);
     }
 
-    private function signed(string $provider, string $subject, string $email, string $signedIn = '-1 minute'): string
+    private function signed(string $provider, string $subject, ?string $email, string $signedIn = '-1 minute'): string
     {
         $configured = static fn (string $name): string => Str\trim(Str\split(Type\string()->coerce($_SERVER[$name] ?? $_ENV[$name] ?? ''), ',')[0] ?? '');
 
@@ -453,8 +507,7 @@ final class SignInMethodsTest extends ApiTestCase
             'iat' => new Clock()->now()->modify($signedIn),
             'exp' => new Clock()->now()->modify('+1 hour'),
             'sub' => $subject,
-            'email' => $email,
-            'email_verified' => true,
+            ...null === $email ? [] : ['email' => $email, 'email_verified' => true],
         ]);
     }
 

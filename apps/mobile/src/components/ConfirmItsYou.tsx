@@ -15,10 +15,13 @@ import { useFormChecks } from '../kit/formChecks.ts';
 import {
   type ProvingField,
   codeBeforeTrip,
+  codeHelp,
   firstFactor,
   keptOnceCodeAsked,
   keptProofRanOut,
   provingRefusal,
+  type SignedIn,
+  signedInWith,
   tripRefused,
 } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
@@ -62,6 +65,7 @@ export function ConfirmItsYou({
   const returned = useRef<ProviderSignInAttempt | null>(null);
   const kept = useRef<string | null>(null);
   const [expired, setExpired] = useState(false);
+  const [signedIn, setSignedIn] = useState<SignedIn | null>(null);
   const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<{
     field: ProvingField | 'failed';
@@ -102,6 +106,7 @@ export function ConfirmItsYou({
       setChecking(false);
 
       if (error instanceof ProviderCancelled) return;
+      setSignedIn((now) => signedInWith(via, error, now));
       // The sign-in passed and waits for its code: the retry sends the API's kept proof, dated from the sign-in.
       if (error instanceof ApiError && error.is('two_factor_required')) {
         kept.current = keptOnceCodeAsked(via, error, kept.current);
@@ -137,6 +142,7 @@ export function ConfirmItsYou({
   const passwordError =
     checks.errors.password ?? (refusal?.field === 'password' ? refusal.message : null);
   const codeError = checks.errors.code ?? (refusal?.field === 'code' ? refusal.message : null);
+  const stepTwo = signedIn != null && via !== 'password' && via != null ? via : null;
 
   return (
     <>
@@ -152,6 +158,13 @@ export function ConfirmItsYou({
           tone="attention"
           mark="!"
           body={t('waysCard.proofExpired', { provider: PROVIDER_NAMES[via], count: PROOF_MINUTES })}
+        />
+      )}
+
+      {stepTwo != null && (
+        <SignedInWith
+          email={signedIn?.email ?? null}
+          title={t('waysCard.signedInWith', { provider: PROVIDER_NAMES[stepTwo] })}
         />
       )}
 
@@ -189,7 +202,11 @@ export function ConfirmItsYou({
 
       <View {...aboveKeyboard} style={styles.group}>
         {codeAsked && (
-          <Field label={t('waysCard.code')} error={codeError} help={t('waysCard.codeHelp')}>
+          <Field
+            label={t('waysCard.code')}
+            error={codeError}
+            help={codeHelp(t, stepTwo == null ? null : PROVIDER_NAMES[stepTwo])}
+          >
             <CodeField
               ref={codeInput}
               takesRecoveryCode
@@ -213,7 +230,7 @@ export function ConfirmItsYou({
 
         {note}
 
-        {via !== 'password' && via != null && (
+        {via !== 'password' && via != null && stepTwo == null && (
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[via] })}
           </Text>
@@ -237,7 +254,50 @@ export function ConfirmItsYou({
   );
 }
 
+function SignedInWith({ title, email }: { title: string; email: string | null }) {
+  return (
+    <View style={styles.signedIn} accessible accessibilityLiveRegion="polite">
+      <View style={styles.doneMark}>
+        <Text size={tokens.typePill.size} weight="bold" style={styles.doneInk}>
+          {tokens.marks.done.glyph}
+        </Text>
+      </View>
+      <View style={styles.signedInBody}>
+        <Text size={tokens.typeRowTitle.size} weight="bold" style={styles.accent}>
+          {title}
+        </Text>
+        {email != null && (
+          <Text size={tokens.typeSmall.size} style={styles.secondary}>
+            {email}
+          </Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
+  accent: { color: tokens.colorAccentText },
+  signedIn: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: tokens.spaceMd,
+    padding: tokens.spaceLg,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    backgroundColor: tokens.colorInset,
+    borderColor: tokens.colorInsetBorder,
+  },
+  signedInBody: { flex: 1, gap: tokens.spaceHair },
+  doneMark: {
+    width: tokens.sizePill,
+    height: tokens.sizePill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: tokens.sizePill / 2,
+    backgroundColor: tokens.marks.done.fill,
+  },
+  doneInk: { color: tokens.marks.done.ink },
 });

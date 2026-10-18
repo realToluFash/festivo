@@ -412,6 +412,83 @@ describe('a wrong code after Google', () => {
   });
 });
 
+describe('step two after Google (sc-2197)', () => {
+  function signedInBox(): HTMLElement {
+    const box = screen.getByText('Signed in with Google').closest<HTMLElement>('[role="status"]');
+    if (box == null) throw new Error('no status box');
+
+    return box;
+  }
+
+  async function backAtStepTwo(answers: (() => Response)[]): Promise<Sent[]> {
+    signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
+    backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+    const sent = answering(
+      { 'POST /api/auth/proof': () => (answers.shift() ?? answers[0])!() },
+      true,
+    );
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    open('/oauth/google');
+    await screen.findByText('Signed in with Google', {}, { timeout: 3000 });
+
+    return sent;
+  }
+
+  it('names the Google sign-in and the address Google vouched for, not the account’s own', async () => {
+    await backAtStepTwo([
+      () =>
+        problem('two_factor_required', 403, {
+          pendingProof: 'kept-1',
+          providerEmail: 'Folake.Adeyemi@gmail.com',
+        }),
+    ]);
+
+    expect(within(signedInBox()).getByText('Folake.Adeyemi@gmail.com')).toBeDefined();
+    expect(within(signedInBox()).queryByText('folake@ire.events')).toBeNull();
+    expect(
+      screen.getByText(
+        "A wrong code doesn't send you back to Google. Your Google sign-in lasts 5 minutes.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByLabelText('Code').getAttribute('aria-describedby')).toBe(
+      'ways-code-help ways-code-kept',
+    );
+    expect(screen.queryByText("Google confirmed it's you. Enter the code to carry on.")).toBeNull();
+  });
+
+  it('says the sign-in alone when Google gave no address', async () => {
+    await backAtStepTwo([() => problem('two_factor_required', 403, { pendingProof: 'kept-1' })]);
+
+    expect(signedInBox().querySelectorAll('p')).toHaveLength(1);
+    expect(within(signedInBox()).queryByText('folake@ire.events')).toBeNull();
+  });
+
+  it('keeps step two, the box and the address after a wrong code', async () => {
+    await backAtStepTwo([
+      () =>
+        problem('two_factor_required', 403, {
+          pendingProof: 'kept-1',
+          providerEmail: GMAIL,
+        }),
+      () => problem('two_factor_code_invalid', 422, { pendingProof: 'kept-1' }),
+    ]);
+
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '000000' } });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+
+    expect(
+      await screen.findByText('That code did not work. Check your app and try again.'),
+    ).toBeDefined();
+    expect(within(signedInBox()).getByText(GMAIL)).toBeDefined();
+    expect(screen.getByLabelText('Code')).toBeDefined();
+    expect(
+      screen.getByText(
+        "A wrong code doesn't send you back to Google. Your Google sign-in lasts 5 minutes.",
+      ),
+    ).toBeDefined();
+  });
+});
+
 describe('a kept sign-in that ran out', () => {
   it('goes back to the first step, the change kept, and says the Google sign-in was too long ago', async () => {
     signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
@@ -439,6 +516,7 @@ describe('a kept sign-in that ran out', () => {
       ),
     ).toBeDefined();
     expect(screen.queryByLabelText('Code')).toBeNull();
+    expect(screen.queryByText('Signed in with Google')).toBeNull();
     expect(sent.filter((s) => s.call === 'POST /api/auth/proof').map((s) => s.body)).toEqual([
       { provider: 'google', providerSignIn: expect.objectContaining({ code: 'the-code' }) },
       { pendingProof: 'kept-1', code: '123456' },

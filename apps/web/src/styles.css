@@ -2057,6 +2057,16 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.signed-in .notice-title {
+  color: var(--colorAccentText);
+}
+
+.signed-in-address {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+  overflow-wrap: anywhere;
+}
+
 .way-last {
   display: flex;
   flex: 1 1 100%;
