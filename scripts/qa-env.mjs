@@ -2,9 +2,20 @@
 // A separate stack for QA. How to use it: .claude/skills/soirely-qa-tester, section 4.
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  createWriteStream,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 
 const DEVELOPMENT_PORTS = {
@@ -84,7 +95,25 @@ export function qaConfig(tester = 1) {
     phone: { name: `${label} iPhone`, type: 'iPhone 17 Pro' },
     ipad: { name: `${label} iPad`, type: 'iPad Pro 13-inch (M5)' },
   };
-  return { tester, project, ports, urls, overrides, app, simulators, chromePort: 9221 + tester };
+  const avd = label.replace(/ /g, '_');
+  const emulators = {
+    phone: { name: `${avd}_Phone`, device: 'pixel_8' },
+    tablet: { name: `${avd}_Tablet`, device: 'pixel_tablet' },
+  };
+  // Inside 5554–5584, the only consoles adb finds, and clear of 5554, where one started by hand lands.
+  const emulatorPort = 5570 + 2 * tester;
+  return {
+    tester,
+    project,
+    ports,
+    urls,
+    overrides,
+    app,
+    simulators,
+    emulators,
+    emulatorPort,
+    chromePort: 9221 + tester,
+  };
 }
 
 export const {
@@ -96,6 +125,7 @@ export const {
 } = qaConfig(1);
 
 const EXPO_GO = 'host.exp.Exponent';
+const EXPO_GO_ANDROID = 'host.exp.exponent';
 
 export function renderQaEnv(
   example,
@@ -141,6 +171,49 @@ export function simulatorFor(args) {
   return args.includes('--ipad')
     ? { open: 'ipad', shut: 'phone' }
     : { open: 'phone', shut: 'ipad' };
+}
+
+export function emulatorFor(args) {
+  return args.includes('--tablet')
+    ? { open: 'tablet', shut: 'phone' }
+    : { open: 'phone', shut: 'tablet' };
+}
+
+// An emulator's 127.0.0.1 is itself; reversed, these reach the host's, as on a simulator.
+export function reversedPorts(ports) {
+  const reached = [
+    'METRO_PORT',
+    'API_PORT',
+    'OIDC_PORT',
+    'MERCURE_PORT',
+    'STORAGE_PORT',
+    'MAILPIT_UI_PORT',
+  ];
+  return reached.map((key) => ports[key]);
+}
+
+export function androidSdk(env = process.env, platform = process.platform, home = homedir()) {
+  return (
+    env.ANDROID_HOME ??
+    env.ANDROID_SDK_ROOT ??
+    join(home, platform === 'darwin' ? 'Library/Android/sdk' : 'Android/Sdk')
+  );
+}
+
+export function expoSdkMajor(expoRange) {
+  return /(\d+)\./.exec(expoRange)?.[1];
+}
+
+export function expoGoApk(versions, expoRange) {
+  const major = expoSdkMajor(expoRange);
+  const sdk = (versions.data ?? versions).sdkVersions?.[`${major}.0.0`];
+  if (!sdk?.androidClientUrl) throw new Error(`no Expo Go for Android for SDK ${major}`);
+  return { url: sdk.androidClientUrl, version: sdk.androidClientVersion };
+}
+
+// Android's package is lower case, and every flow, an old commit's included, names iOS's.
+export function forAndroid(flow) {
+  return flow.replace(/\bhost\.exp\.Exponent\b/g, EXPO_GO_ANDROID);
 }
 
 export function branchForStory(id, remoteBranches) {
@@ -238,16 +311,69 @@ function setup() {
   }
 
   step('The simulators');
-  for (const sim of Object.values(CONFIG.simulators)) {
-    if (simulatorId(sim.name)) {
-      console.log(`  ${sim.name}: already there`);
-    } else {
-      const id = capture('xcrun', ['simctl', 'create', sim.name, sim.type]);
-      console.log(id ? `  ${sim.name}: created ${id}` : `  ${sim.name}: could not create one`);
+  if (capture('xcrun', ['--version']) === null) {
+    console.log('  no Xcode here');
+  } else {
+    for (const sim of Object.values(CONFIG.simulators)) {
+      if (simulatorId(sim.name)) {
+        console.log(`  ${sim.name}: already there`);
+      } else {
+        const id = capture('xcrun', ['simctl', 'create', sim.name, sim.type]);
+        console.log(id ? `  ${sim.name}: created ${id}` : `  ${sim.name}: could not create one`);
+      }
     }
   }
 
+  step('The emulators');
+  createEmulators();
+
   checkout(['main']);
+}
+
+function androidTools() {
+  const sdk = androidSdk();
+  // Every tool on the SDK's adb: a second adb of another version kills this one's server,
+  // and the emulator drops offline mid-flow.
+  const vars = {
+    ANDROID_HOME: sdk,
+    ANDROID_SDK_ROOT: sdk,
+    ANDROID_AVD_HOME: process.env.ANDROID_AVD_HOME ?? join(homedir(), '.android/avd'),
+    PATH: `${join(sdk, 'platform-tools')}:${process.env.PATH}`,
+  };
+  return {
+    sdk,
+    adb: join(sdk, 'platform-tools/adb'),
+    emulator: join(sdk, 'emulator/emulator'),
+    avdmanager: join(sdk, 'cmdline-tools/latest/bin/avdmanager'),
+    vars,
+    env: { ...process.env, ...vars },
+  };
+}
+
+function createEmulators() {
+  const tools = androidTools();
+  if (!existsSync(tools.avdmanager)) {
+    console.log(`  no Android SDK command-line tools in ${tools.sdk}`);
+    return;
+  }
+  const image = `system-images;android-35;google_apis_playstore;${process.arch === 'arm64' ? 'arm64-v8a' : 'x86_64'}`;
+  const existing = (capture(tools.emulator, ['-list-avds'], { env: tools.env }) ?? '').split('\n');
+  for (const avd of Object.values(CONFIG.emulators)) {
+    if (existing.includes(avd.name)) {
+      console.log(`  ${avd.name}: already there`);
+      continue;
+    }
+    const created = spawnSync(
+      tools.avdmanager,
+      ['create', 'avd', '-n', avd.name, '-k', image, '-d', avd.device],
+      { input: 'no\n', env: tools.env },
+    );
+    console.log(
+      created.status === 0
+        ? `  ${avd.name}: created in ${tools.vars.ANDROID_AVD_HOME}`
+        : `  ${avd.name}: could not create one. Is the image installed? sdkmanager "${image}"`,
+    );
+  }
 }
 
 function checkout(args) {
@@ -341,7 +467,9 @@ function checkout(args) {
   });
 
   status();
-  console.log('\nA bundler already running is serving the previous checkout. Restart `ios`.');
+  console.log(
+    '\nA bundler already running is serving the previous checkout. Restart `ios` or `android`.',
+  );
 }
 
 function status() {
@@ -364,7 +492,7 @@ QA environment, tester ${CONFIG.tester} — ${root}
   Checked out  ${state.label ?? '?'} — ${head ?? 'no worktree'}
   API          ${CONFIG.urls.api}   ${health === '200' ? 'answering' : 'NOT answering'}
   Web          ${CONFIG.urls.web}
-  App          ${CONFIG.urls.metro}   (node .qa/bin/qa-env.mjs ios)
+  App          ${CONFIG.urls.metro}   (node .qa/bin/qa-env.mjs ios, or android)
   Mailpit      ${CONFIG.urls.mailpit}
   Smocker      ${CONFIG.urls.smocker}
   Postgres     docker compose exec postgres psql -U soirely -d soirely   (from the worktree)`);
@@ -410,12 +538,52 @@ async function ios(args) {
   });
   run('open', ['-a', 'Simulator'], { optional: true });
 
-  const metro = spawn('npx', ['expo', 'start', '--port', String(CONFIG.ports.METRO_PORT)], {
+  const metro = await startBundler(root);
+  for (const udid of devices)
+    run('xcrun', ['simctl', 'openurl', udid, CONFIG.urls.metro], { optional: true });
+  console.log(`\nBundler on ${CONFIG.urls.metro}, open on the ${open}. Leave it running.`);
+
+  await new Promise((done) => metro.on('exit', done));
+}
+
+const pause = (ms) => new Promise((done) => setTimeout(done, ms));
+
+function usesSystemd() {
+  return process.platform === 'linux' && capture('systemd-run', ['--version']) !== null;
+}
+
+// A process over its cap is stopped alone, before systemd-oomd stops the whole desktop session.
+function capped(memory, command, args) {
+  if (!usesSystemd()) return [command, args];
+  return [
+    'systemd-run',
+    ['--user', '--scope', '--quiet', '-p', `MemoryMax=${memory}`, command, ...args],
+  ];
+}
+
+async function startBundler(root, env = process.env) {
+  const [command, args] = capped('4G', 'npx', [
+    'expo',
+    'start',
+    '--port',
+    String(CONFIG.ports.METRO_PORT),
+  ]);
+  const metro = spawn(command, args, {
     cwd: join(root, 'apps/mobile'),
+    detached: true,
     stdio: ['ignore', 'inherit', 'inherit'],
-    env: { ...process.env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa' },
+    env: { ...env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa' },
   });
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => metro.kill(signal));
+  // The whole group: npx dies on a signal and leaves the bundler it started holding the port.
+  const stop = (signal) => {
+    try {
+      process.kill(-metro.pid, signal);
+    } catch (error) {
+      if (error.code !== 'ESRCH') throw error;
+    }
+  };
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => stop(signal));
+  process.on('exit', () => stop('SIGTERM'));
 
   const statusUrl = `http://127.0.0.1:${CONFIG.ports.METRO_PORT}/status`;
   for (let i = 0; i < 120; i++) {
@@ -424,40 +592,221 @@ async function ios(args) {
       () => '',
     );
     if (answer.includes('running')) break;
-    await new Promise((r) => setTimeout(r, 1000));
+    await pause(1000);
   }
-  for (const udid of devices)
-    run('xcrun', ['simctl', 'openurl', udid, CONFIG.urls.metro], { optional: true });
-  console.log(`\nBundler on ${CONFIG.urls.metro}, open on the ${open}. Leave it running.`);
+  return metro;
+}
+
+function emulatorSerial() {
+  return `emulator-${CONFIG.emulatorPort}`;
+}
+
+function adbOut(tools, args) {
+  return capture(tools.adb, ['-s', emulatorSerial(), ...args], { env: tools.env });
+}
+
+function emulatorOnline(tools) {
+  return (capture(tools.adb, ['devices'], { env: tools.env }) ?? '').includes(
+    `${emulatorSerial()}\tdevice`,
+  );
+}
+
+function unitState(unit) {
+  return spawnSync('systemctl', ['--user', 'is-active', unit], { encoding: 'utf8' }).stdout.trim();
+}
+
+async function stopEmulator(tools) {
+  const unit = `${CONFIG.project}-emulator`;
+  adbOut(tools, ['emu', 'kill']);
+  for (let i = 0; i < 60; i++) {
+    const stopping =
+      usesSystemd() && ['active', 'activating', 'deactivating'].includes(unitState(unit));
+    if (!emulatorOnline(tools) && !stopping) return;
+    await pause(1000);
+  }
+  throw new Error(`the emulator on ${emulatorSerial()} did not stop within a minute`);
+}
+
+async function bootEmulator(tools, name) {
+  const running = adbOut(tools, ['emu', 'avd', 'name'])?.split('\n')[0].trim();
+  if (running === name) {
+    console.log(`  ${name}: already running on ${emulatorSerial()}`);
+    return;
+  }
+  if (running) await stopEmulator(tools);
+
+  const args = [
+    '-avd',
+    name,
+    '-port',
+    String(CONFIG.emulatorPort),
+    '-no-window',
+    '-no-audio',
+    '-no-boot-anim',
+    '-gpu',
+    'host',
+    '-no-snapshot-save',
+  ];
+  if (usesSystemd()) {
+    const env = Object.entries(tools.vars).map(([key, value]) => `--setenv=${key}=${value}`);
+    run('systemd-run', [
+      '--user',
+      `--unit=${CONFIG.project}-emulator`,
+      '--collect',
+      '--quiet',
+      '-p',
+      'MemoryMax=6G',
+      ...env,
+      tools.emulator,
+      ...args,
+    ]);
+  } else {
+    const log = openSync(join(qaWorktree(), '.qa/emulator.log'), 'a');
+    spawn(tools.emulator, args, {
+      detached: true,
+      stdio: ['ignore', log, log],
+      env: tools.env,
+    }).unref();
+  }
+
+  for (let i = 0; i < 180; i++) {
+    if (adbOut(tools, ['shell', 'getprop', 'sys.boot_completed']) === '1') {
+      console.log(`  ${name}: booted on ${emulatorSerial()}`);
+      return;
+    }
+    await pause(1000);
+  }
+  throw new Error(`${name} did not boot within three minutes`);
+}
+
+async function ensureAndroidExpoGo(tools, root) {
+  const expo = JSON.parse(readFileSync(join(root, 'apps/mobile/package.json'), 'utf8')).dependencies
+    .expo;
+  const dumped = adbOut(tools, ['shell', 'dumpsys', 'package', EXPO_GO_ANDROID]) ?? '';
+  const installed = /versionName=(\S+)/.exec(dumped)?.[1];
+  if (installed && installed.split('.')[0] === expoSdkMajor(expo)) return false;
+
+  const versions = await fetch('https://api.expo.dev/v2/versions').then((r) => r.json());
+  const apk = expoGoApk(versions, expo);
+  const cache = join(homedir(), '.cache/soirely/expo-go');
+  const file = join(cache, basename(new URL(apk.url).pathname));
+  if (!existsSync(file)) {
+    console.log(`  downloading Expo Go ${apk.version}`);
+    mkdirSync(cache, { recursive: true });
+    const response = await fetch(apk.url);
+    if (!response.ok) throw new Error(`Expo Go download: HTTP ${response.status}`);
+    await pipeline(Readable.fromWeb(response.body), createWriteStream(`${file}.part`));
+    renameSync(`${file}.part`, file);
+  }
+  run(tools.adb, ['-s', emulatorSerial(), 'install', '-r', file], { env: tools.env });
+  return true;
+}
+
+function maestroBin() {
+  if (capture('sh', ['-c', 'command -v maestro']) !== null) return 'maestro';
+  const local = join(homedir(), '.maestro/bin/maestro');
+  return existsSync(local) ? local : null;
+}
+
+// Expo Go lays its developer menu over the app once per install, and hides the app from a flow.
+function dismissExpoGoIntro(tools, root) {
+  const flow = join(root, '.qa/expo-go-intro.yaml');
+  writeFileSync(
+    flow,
+    [
+      `appId: ${EXPO_GO_ANDROID}`,
+      '---',
+      '- extendedWaitUntil:',
+      "    visible: 'Continue'",
+      '    timeout: 180000',
+      '    optional: true',
+      '- tapOn:',
+      "    text: 'Continue'",
+      '    optional: true',
+      '',
+    ].join('\n'),
+  );
+  const binary = maestroBin();
+  const ok =
+    binary !== null &&
+    run(binary, ['--device', emulatorSerial(), 'test', flow], { env: tools.env, optional: true });
+  if (!ok) console.log('  Expo Go shows its developer menu once: tap Continue before a flow runs.');
+}
+
+async function android(args) {
+  const tools = androidTools();
+  if (!existsSync(tools.emulator)) {
+    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
+  }
+  if (args.includes('--stop')) {
+    await stopEmulator(tools);
+    console.log(`Stopped the emulator on ${emulatorSerial()}.`);
+    return;
+  }
+  const root = qaWorktree();
+  assertQaStack(root);
+  const { open } = emulatorFor(args);
+
+  step(`The ${open}`);
+  await bootEmulator(tools, CONFIG.emulators[open].name);
+  const fresh = await ensureAndroidExpoGo(tools, root);
+  for (const port of reversedPorts(CONFIG.ports)) {
+    adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+  }
+
+  step('The bundler');
+  const metro = await startBundler(root, tools.env);
+  adbOut(tools, [
+    'shell',
+    'am',
+    'start',
+    '-a',
+    'android.intent.action.VIEW',
+    '-d',
+    CONFIG.urls.metro,
+    EXPO_GO_ANDROID,
+  ]);
+  if (fresh) dismissExpoGoIntro(tools, root);
+  console.log(
+    `\nBundler on ${CONFIG.urls.metro}, open on the ${open} (${emulatorSerial()}). Leave it running.`,
+  );
 
   await new Promise((done) => metro.on('exit', done));
 }
 
-function maestro(args) {
-  const root = qaWorktree();
+function maestroDevice(args) {
+  if (args.includes('--android')) {
+    if (!emulatorOnline(androidTools())) {
+      throw new Error(`no emulator on ${emulatorSerial()} — run \`android\` first`);
+    }
+    return emulatorSerial();
+  }
   const device = args.includes('--ipad') ? CONFIG.simulators.ipad : CONFIG.simulators.phone;
-  const [flow, ...vars] = args.filter((a) => !a.startsWith('--'));
-  if (!flow) throw new Error('which flow? `maestro sign-in EMAIL=… PASSWORD=…`');
   const udid = simulatorId(device.name);
   if (!udid) throw new Error(`no ${device.name} simulator — run setup`);
+  return udid;
+}
+
+function maestro(args) {
+  const root = qaWorktree();
+  const onAndroid = args.includes('--android');
+  const [flow, ...vars] = args.filter((a) => !a.startsWith('--'));
+  if (!flow) throw new Error('which flow? `maestro sign-in EMAIL=… PASSWORD=…`');
+  const device = maestroDevice(args);
 
   const env = [`METRO_URL=${CONFIG.urls.metro}`, `MAILPIT_URL=${CONFIG.urls.mailpit}`, ...vars];
   const out = join(root, '.qa', flow);
   spawnSync('rm', ['-rf', out]);
   mkdirSync(out, { recursive: true });
 
+  const source = join(root, `apps/mobile/.maestro/${flow}.yaml`);
+  const file = onAndroid ? join(out, `${flow}.yaml`) : source;
+  if (onAndroid) writeFileSync(file, forAndroid(readFileSync(source, 'utf8')));
+
   const ok = run(
-    'maestro',
-    [
-      '--device',
-      udid,
-      'test',
-      '--debug-output',
-      out,
-      ...env.flatMap((e) => ['-e', e]),
-      join(root, `apps/mobile/.maestro/${flow}.yaml`),
-    ],
-    { cwd: root, optional: true },
+    maestroBin() ?? 'maestro',
+    ['--device', device, 'test', '--debug-output', out, ...env.flatMap((e) => ['-e', e]), file],
+    { cwd: root, optional: true, env: onAndroid ? androidTools().env : {} },
   );
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
   console.log(`\nEvidence in ${out}`);
@@ -485,7 +834,7 @@ function chrome() {
   ]);
 }
 
-const COMMANDS = { setup, checkout, status, ios, maestro, account, chrome };
+const COMMANDS = { setup, checkout, status, ios, android, maestro, account, chrome };
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const argv = process.argv.slice(2);

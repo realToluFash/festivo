@@ -19,7 +19,7 @@ almost everything below follows from it.
 | `/soirely-qa-tester qa3` | tester 3 | `[qa3]`, `(from qa3)` | `~/Projects/soirely-qa3`, `soirely-qa3` | API 38080, web 35173  |
 
 Below, **N is your tester number**, and **`soirely-qa<n>` is your worktree and project**:
-`<n>` is empty for tester 1, and `2` or `3` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`.
+`<n>` is empty for tester 1, and `2` or `3` otherwise. Your simulators are `Soirely QA<n> iPhone` and `Soirely QA<n> iPad`, and on a host without Xcode your emulators are `Soirely_QA<n>_Phone` and `Soirely_QA<n>_Tablet`.
 Examples show tester 1's ports; `node .qa/bin/qa-env.mjs status` prints yours. Never touch
 another tester's worktree, stack, simulators or browser.
 
@@ -203,14 +203,14 @@ From inside the worktree, `docker compose …` and `just psql` reach the QA stac
 own, because its `.env` names the project. `docker compose stop api` for the offline case stops **your**
 API, and nobody else's.
 
-| What     | Where                    | For                                      |
-| -------- | ------------------------ | ---------------------------------------- |
-| API      | `http://127.0.0.1:18080` | every request                            |
-| Web      | `http://127.0.0.1:15173` | the built client, rebuilt by `checkout`  |
-| App      | `exp://127.0.0.1:18081`  | `node .qa/bin/qa-env.mjs ios`            |
-| Mailpit  | `http://127.0.0.1:18025` | every email the stack sends              |
-| Smocker  | `http://127.0.0.1:18088` | every SMS it sends                       |
-| Postgres | `just psql`              | confirming what a request actually wrote |
+| What     | Where                    | For                                        |
+| -------- | ------------------------ | ------------------------------------------ |
+| API      | `http://127.0.0.1:18080` | every request                              |
+| Web      | `http://127.0.0.1:15173` | the built client, rebuilt by `checkout`    |
+| App      | `exp://127.0.0.1:18081`  | `node .qa/bin/qa-env.mjs ios` or `android` |
+| Mailpit  | `http://127.0.0.1:18025` | every email the stack sends                |
+| Smocker  | `http://127.0.0.1:18088` | every SMS it sends                         |
+| Postgres | `just psql`              | confirming what a request actually wrote   |
 
 **Name the environment and the commit in the report.**
 `cd ~/Projects/soirely-qa<n> && git rev-parse --short HEAD`, and the PR it came from. A report that does not say what it tested cannot be re-run. The
@@ -280,6 +280,23 @@ node .qa/bin/qa-env.mjs maestro sign-in --ipad EMAIL=… PASSWORD=… # on the t
 `ios` keeps running — start it in the background, and restart it after a `checkout`, or it
 serves the previous commit. Never `just qa-ios` or `just qa-mobile`: those drive the
 developer's bundler and whichever simulator happens to be booted.
+
+**On a host without Xcode, Android instead**, on your emulators `Soirely_QA<n>_Phone` and
+`Soirely_QA<n>_Tablet`:
+
+```sh
+node .qa/bin/qa-env.mjs android [--tablet]               # the bundler, in Expo Go, on the phone (or tablet); stops the other
+node .qa/bin/qa-env.mjs maestro sign-in --android EMAIL=… PASSWORD=…  # one flow, on whichever is running
+node .qa/bin/qa-env.mjs android --stop                   # the emulator, when the pass is done
+```
+
+`android` behaves like `ios`: start it in the background, and restart it after a `checkout`.
+To switch to the tablet, stop it, then run `android --tablet`. Stop the emulator when you
+finish, because it holds several GB of memory on a host every other role shares. The app uses
+the same `127.0.0.1` URLs as on a simulator, and a flow runs unchanged. A screenshot outside a
+flow is `~/Android/Sdk/platform-tools/adb -s <serial> exec-out screencap -p > .qa/<name>.png`. Your
+serial is `emulator-5572`, `emulator-5574` or `emulator-5576` for tester 1, 2 or 3. Use the
+SDK's `adb` and never a bare `adb`: another version knocks the emulator offline.
 
 Flows live in `~/Projects/soirely-qa<n>/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
 and Mailpit as `${MAILPIT_URL}` (the harness passes both), and **target `testID`** rather than

@@ -133,11 +133,13 @@ describe('email addresses and phone numbers', () => {
     expect(screen.getAllByText('Verified')).toHaveLength(3);
     expect(screen.getAllByText('Primary')).toHaveLength(2);
     expect(
-      screen.getByText('You have the most you can add: 2. Remove one to add another.'),
+      screen.getByText('You have 2, the most an account can hold. Remove one to add another.'),
     ).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Add an email address' })).toBeNull();
     expect(
-      screen.getByText('You can add 1 more. Primary included, an account holds 2 numbers.'),
+      screen.getByText(
+        'You can add one more. An account holds up to 2 phone numbers, including the primary.',
+      ),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Add a phone number' })).toBeDefined();
   });
