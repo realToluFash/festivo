@@ -43,6 +43,22 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A role named in a sentence is « le rôle Propriétaire »** (`messages:roles.*`,
+  sc-2150). The name stays a label after « le rôle », so nothing agrees with the person:
+  « C'est la seule personne à avoir le rôle Propriétaire », never « le seul propriétaire »,
+  which assumes a man. On the Roles screen itself the bare label stands, as in `ownerNote`.
+  A role "holds" as « comprend », as in `lockedIntro_*`; "built-in" is « intégré »; "change"
+  is « modifier » and "remove" « supprimer », as the grid and buttons say. "Leave it
+  unassigned" is « ne l'attribuez à aucun membre », which avoids « personne… personne ».
+  A refusal shared with a web key takes the web's French (`nameBlank`, `nameTaken`,
+  `removeNoReplacement`).
+- **18 Oct 2026. A length limit says what to do: « Raccourcissez le nom à {count} caractères
+  maximum. »** (`messages:roles.name_too_long`, after en's "Shorten the name to {count}
+  characters or fewer."). « N caractères maximum » is the form people read in every French
+  form. The API catalogue has no plural family, and the limit (40) is always well above 1.
+- **18 Oct 2026. Menu, Messages, Budget and Organisation stay as they are** on the Roles grid
+  (`web:rolesScreen.area.*`): they are the French words, listed in `same-as-english.json`.
+
 - **18 Oct 2026. The new-device email** (`emails:newDevice.*`): subject « Nouvelle
   connexion à Soirely », short for a phone inbox; the body makes the device the subject,
   « Un appareil qui ne s'était jamais connecté à votre compte Soirely vient de s'y
