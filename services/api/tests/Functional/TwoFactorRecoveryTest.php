@@ -274,6 +274,23 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(['Ìrè Events'], $this->state($handle)['organisations']);
     }
 
+    /** sc-1848: the request stays waiting with nobody left, so a new Owner can still answer it. */
+    #[Test]
+    public function aWaitingRequestWithNobodyLeftSaysSoUntilANewOwnerJoins(): void
+    {
+        $handle = $this->proved();
+        self::assertSame([['Ìrè Events'], false], [$this->state($handle)['organisations'], $this->state($handle)['nobody']]);
+
+        $this->leaves($this->approver);
+        $state = $this->state($handle);
+        self::assertSame(['waiting', [], true], [$state['status'], $state['organisations'], $state['nobody']]);
+
+        $this->join($this->account('tunde@example.com', 'Tunde Bello'), SeededRole::Owner);
+        self::em()->flush();
+        $state = $this->state($handle);
+        self::assertSame(['waiting', ['Ìrè Events'], false], [$state['status'], $state['organisations'], $state['nobody']]);
+    }
+
     #[Test]
     public function textItToMeInsteadLastsOnlyTheRequestsOwnCodes(): void
     {

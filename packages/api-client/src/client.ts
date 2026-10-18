@@ -62,6 +62,8 @@ export interface RecoveryState {
   email: string;
   phone: string | null;
   organisations: string[];
+  /** No organisation has anybody left to answer: the screens show the nobody line, not names. */
+  nobody: boolean;
   supportAddress: string;
   askedAt: string | null;
   asked: string | null;
@@ -1582,6 +1584,7 @@ function asRecoveryState(raw: unknown): RecoveryState | null {
     email: candidate.email,
     phone: optionalString(candidate.phone),
     organisations: strings(candidate.organisations),
+    nobody: candidate.nobody === true,
     supportAddress: optionalString(candidate.supportAddress) ?? '',
     askedAt: optionalString(candidate.askedAt),
     asked: optionalString(candidate.asked),

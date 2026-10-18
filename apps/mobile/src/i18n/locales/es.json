@@ -521,6 +521,7 @@
     "approvedMark": "Confirmada",
     "approvedTitle": "La verificación en dos pasos está desactivada",
     "approvedIntro": "Alguien de {{organisations}} ha confirmado que era usted. Se han cerrado todas sus sesiones. Inicie sesión y vuelva a configurarla.",
+    "approvedIntroNobody": "Somebody in your organisation confirmed it was you. Every session you had has ended. Sign in, then set it up again.",
     "signIn": "Iniciar sesión",
     "turnedDownMark": "Rechazada",
     "turnedDownTitle": "Su solicitud se ha rechazado",
