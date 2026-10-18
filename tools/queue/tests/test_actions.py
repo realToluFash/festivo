@@ -4,7 +4,7 @@ import argparse
 import unittest
 from unittest import mock
 
-from soirely_queue import actions, roles, store
+from soirely_queue import actions, roles, store, sync
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
           "5": "In QA", "6": "Passsed QA", "7": "Failed QA"}
@@ -211,6 +211,21 @@ class Merging(Base):
         store.put_pr(self.db, {**pr("pass", at=OLD[:7]), "state": "merged", "merge_sha": "m"})
         with self.assertRaisesRegex(actions.Refused, "no lead pass covers"):
             actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+
+    def test_to_qa_takes_a_merge_at_the_head_a_pass_carried_to(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.set_meta(self.db, "repository", ["o", "n"])
+        store.put_pr(self.db, pr("pass", at=OLD[:7], carried=OLD[:7]))
+        merged = {**pr("pass", at=OLD[:7]), "state": "merged", "merge_sha": "m" * 40}
+        del merged["carried"]
+        with mock.patch("soirely_queue.github.pull_requests", return_value=[merged]), \
+                mock.patch("soirely_queue.github.main_runs", return_value=[]), \
+                mock.patch("soirely_queue.github.same_change") as same:
+            sync.sync_github(self.db)
+        same.assert_not_called()
+        actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("m" * 40, self.fake.comments[-1][1])
 
     def test_a_passed_merge_lands_at_the_head_and_tells_qa(self):
         self.fake.add(1, "In Review", ["dev2"])

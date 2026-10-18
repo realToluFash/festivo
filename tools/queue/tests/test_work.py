@@ -200,6 +200,23 @@ class Carried(unittest.TestCase):
         self.assertEqual(self.asked, [])
         self.assertEqual(kinds(work.developer_items([story()], [merged])), ["merged-unpassed"])
 
+    def test_a_merged_pull_request_keeps_the_carry_made_while_open(self):
+        before = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
+        merged = pr(state="merged", lead=[verdict("pass", OLD[:7])])
+        kept = work.carried(merged, {}, self.same(False), before)
+        self.assertEqual(kept, OLD[:7])
+        self.assertEqual(self.asked, [])
+        merged["carried"] = kept
+        self.assertEqual(kinds(work.developer_items([story()], [merged])), ["to-qa"])
+
+    def test_a_merged_head_keeps_no_carry_made_at_another_head_or_pass(self):
+        merged = pr(state="merged", lead=[verdict("pass", OLD[:7])])
+        for before in (pr(head="c" * 40, lead=[verdict("pass", OLD[:7])], carried=OLD[:7]),
+                       pr(lead=[verdict("pass", "d" * 7)], carried="d" * 7),
+                       pr(lead=[verdict("pass", OLD[:7])])):
+            self.assertIsNone(work.carried(merged, {}, self.same(True), before))
+        self.assertEqual(self.asked, [])
+
     def test_nothing_to_carry_without_a_pass_or_with_one_at_the_head(self):
         for lead in ([], [verdict("back", OLD)], [verdict("pass", HEAD[:7])]):
             self.assertIsNone(work.carried(pr(lead=lead), {}, self.same(True)))
