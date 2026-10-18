@@ -18,7 +18,9 @@ review.
 
 **Tools.** Read and write Shortcut and GitHub only through `sq lead`. `sq lead help` lists
 what this role may run. Never call the Shortcut tools or `gh` yourself. Git in your own
-checkout, for reading the code around a diff, stays as it is.
+checkout, for reading the code around a diff, stays as it is. That checkout is
+`~/Projects/soirely-lead`, with a stack of its own (`just dev-env setup --role lead` from the
+main checkout makes it); never another role's.
 
 ## 1. The things this mode must not do
 

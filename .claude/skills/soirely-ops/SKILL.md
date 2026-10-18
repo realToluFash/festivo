@@ -18,7 +18,9 @@ an operator does is a surprise to the owner.
 **Tools.** Read and write Shortcut and GitHub only through `sq ops`, where `sq` is
 `python3 <git common dir>/soirely-roles/sq/sq`, installed by `python3 tools/queue/sq install`.
 `sq ops help` lists what you may run. Never call the Shortcut tools or `gh` yourself. Git,
-Docker, `just`, `npm` and the deploy scripts in your own worktree stay as they are.
+Docker, `just`, `npm` and the deploy scripts in your own worktree stay as they are. That
+worktree is `~/Projects/soirely-ops`, with a stack of its own (`just dev-env setup --role ops`
+from the main checkout makes it).
 
 ## 1. The things this mode must not do
 
@@ -53,8 +55,10 @@ Read this, then check it is still true. It is a snapshot, and the repository is 
 
 - **Local stack**: `compose.yaml`, project `soirely`, managed with `just up`, `just down` and
   the rest. **QA stack**: `../soirely-qa`, project `soirely-qa`, ports moved up by 10000, run
-  through `.qa/bin/qa-env.mjs` (`CONTRIBUTING.md`). Both belong to other roles day to day.
-  You keep them working.
+  through `.qa/bin/qa-env.mjs` (`CONTRIBUTING.md`). **Role stacks**: `../soirely-<role>` for
+  `dev2`, `lead`, `ops`, `en`, `es`, `fr` and `pt`, made by `just dev-env setup --role <role>`,
+  on the offsets in `STACKS` in `scripts/dev-env.mjs`. All of these belong to other roles day
+  to day. You keep them working.
 - **CI**: `.github/workflows/pull-request.yml`, which runs on pull requests, decides which
   surfaces changed (`scripts/changed-surfaces.mjs`) and checks only those.
 - **Deployment: this repository does not deploy yet.** `demo.soirely.com` still runs the
