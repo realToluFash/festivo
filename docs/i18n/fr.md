@@ -32,6 +32,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Cancel                    | Annuler                 |                                  |
 | Two-factor authentication | Double authentification | Settled: also "two-factor" alone |
 | Recovery code             | Code de récupération    |                                  |
+| Primary (address, number) | Principale / principal  | Settled 18 Oct: agrees with noun |
+| Other addresses, numbers  | Les autres adresses     | Settled 18 Oct: never secondaire |
+| Phone number              | Numéro de téléphone     | Settled 18 Oct: any number       |
+| Mobile number             | Numéro de portable      | Settled 18 Oct: the SMS field    |
+| Remove (from the account) | Retirer                 | Settled 18 Oct: not Supprimer    |
+| Linked (to an account)    | Associé                 | Settled 18 Oct: as `waysCard`    |
+| Unverified                | À vérifier              | Settled 18 Oct: no agreement     |
+| Account mail              | Les e-mails du compte   | Settled 18 Oct                   |
 
 ## Never translated
 
@@ -43,6 +51,19 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Verifying an alternative from Account** (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, web and app, sc-2594). The body says what did not change:
+  « {{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la
+  définissez comme telle dans Compte. » (« Il … votre numéro principal … le définissez comme
+  tel »), echoing the card's « Définir comme principale » (sc-2149). English's "alternative"
+  has no French twin: « alternative » as an adjective is an anglicism, and « secondaire »
+  ranks it, so the line names what it is not. The done line is « {{address}} est vérifiée. »
+  / « {{number}} est vérifié. », as `doneBody`'s « est confirmée ». "Back to Account" is
+  « Retour à Compte », the shape of « Retour à la connexion », the section a bare label as in
+  « vérifiez Sécurité ». "Remove it in Account" is « La retirer dans Compte » / « Le retirer
+  dans Compte », the infinitive of « Mauvais numéro ? Le changer », with « retirer » as the
+  card says.
 - **18 Oct 2026. The power to change roles is « une personne qui peut modifier {{area}} »**
   (`rolesScreen.lockedLine`, `describeSeededReadOnly`), with « Membres et rôles » standing
   alone as a noun. A read-only twin keeps its editing line's words: « choisit ce qu'il
@@ -64,6 +85,22 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   form. The API catalogue has no plural family, and the limit (40) is always well above 1.
 - **18 Oct 2026. Menu, Messages, Budget and Organisation stay as they are** on the Roles grid
   (`web:rolesScreen.area.*`): they are the French words, listed in `same-as-english.json`.
+- **18 Oct 2026. Primary and other addresses (sc-113, `contacts.*`, `Account-*`).** As in
+  the English: the primary signs in, the others only reach the person, « Les autres adresses
+  servent à vous joindre, mais pas à vous connecter ». « Retirer », not « Supprimer »: the
+  address leaves the account, it is not deleted. The cap reads the same in the card and from
+  the server, « Un compte est limité à {{most}} adresses e-mail », a rule rather than a
+  permission. Where one key serves both cards, write it so it needs no agreement:
+  « À vérifier », « Vous avez retiré {{address}}. », « Soirely ne lui enverra plus rien »,
+  « Ajout effectué. Reste la vérification : … », and the server's « Ces coordonnées ».
+  Where no neutral form reads well (`verified`, `primary`, `makePrimary`, `removeConfirm`,
+  `removeKeep`), the key holds the feminine for addresses and the number gets a key of its
+  own, asked of [dev] on sc-2149. Never « principal·e » or « Vérifié(e) ».
+  The cap's `_one` reads « Vous pouvez encore ajouter une adresse » (« un numéro »), with no
+  `{{count}}`, as the English does. French `one` also covers 0, but the cap line shows only
+  while at least one is left: 0 left shows `capFullEmails`/`capFullPhones` instead
+  (`ContactsCard`, `left > 0`). Do not put `{{count}}` back; the parity check wants the
+  English's slots. New strings take U+00A0 before `: ; ? !`, as sc-2504 settles.
 - **18 Oct 2026. The new-device email** (`emails:newDevice.*`): subject « Nouvelle
   connexion à Soirely », short for a phone inbox; the body makes the device the subject,
   « Un appareil qui ne s'était jamais connecté à votre compte Soirely vient de s'y

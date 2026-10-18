@@ -94,7 +94,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   proprietário", which assumes a man. A role "holds" permissions as "inclui", as on the Roles
   screen. "Leave it unassigned" is "não a atribua a ninguém". A refusal over a length limit says
   what to do: "Encurte o nome para um máximo de {count} caracteres." The API catalogue has no
-  plural, and the limit is always well above 1.
+  plural, and the limit is always well above 1. The Roles screen's own check
+  (`web:rolesScreen.nameTooLong`) says the same sentence with `{{most}}`, so a person who meets
+  the server's check from a stale page reads what the screen would have said.
 
 - **18 Oct 2026. An email's footer is "Está a receber esta mensagem porque…"** (`emails:newDevice.why`,
   as `provider.why`). "Recebeu este e-mail" reads as a past event; the footer explains why it
