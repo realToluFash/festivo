@@ -13,6 +13,10 @@
     "web:devices.everywhereCode",
     "web:nav.organisation",
     "web:orgGeneral.section",
+    "web:rolesScreen.area.budget",
+    "web:rolesScreen.area.menu",
+    "web:rolesScreen.area.messages",
+    "web:rolesScreen.area.organisation",
     "web:twoFactor.code",
     "web:waysCard.code"
   ],
