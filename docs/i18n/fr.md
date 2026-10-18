@@ -43,6 +43,19 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Verifying an alternative from Account** (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, web and app, sc-2594). The body says what did not change:
+  « {{address}} est vérifiée. Elle ne deviendra votre adresse principale que si vous la
+  définissez comme telle dans Compte. » (« Il … votre numéro principal … le définissez comme
+  tel »), echoing the card's « Définir comme principale » (sc-2149). English's "alternative"
+  has no French twin: « alternative » as an adjective is an anglicism, and « secondaire »
+  ranks it, so the line names what it is not. The done line is « {{address}} est vérifiée. »
+  / « {{number}} est vérifié. », as `doneBody`'s « est confirmée ». "Back to Account" is
+  « Retour à Compte », the shape of « Retour à la connexion », the section a bare label as in
+  « vérifiez Sécurité ». "Remove it in Account" is « La retirer dans Compte » / « Le retirer
+  dans Compte », the infinitive of « Mauvais numéro ? Le changer », with « retirer » as the
+  card says.
 - **18 Oct 2026. The power to change roles is « une personne qui peut modifier {{area}} »**
   (`rolesScreen.lockedLine`, `describeSeededReadOnly`), with « Membres et rôles » standing
   alone as a noun. A read-only twin keeps its editing line's words: « choisit ce qu'il
