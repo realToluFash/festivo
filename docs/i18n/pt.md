@@ -51,6 +51,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "A sua conta". "Remove it in Account" is "Removê-lo em Conta", the infinitive of the link
   "Alterá-lo" after "Número errado?". Rejected "Remova-o em Conta": it breaks the link's
   shape on the same screen. "Alternativo" over "secundário", which ranks it.
+- **18 Oct 2026. The power to change an area is "quem pode alterar {{area}}"**
+  (`rolesScreen.lockedLine`, `describeSeededReadOnly`): "Quem pode alterar Membros e funções
+  decide o que inclui." Impersonal, so it agrees with nobody; rejected "alguém que possa
+  alterar", which is longer and says the same power in a second way. A read-only twin keeps
+  its editable line's first sentence and agrees with "a função": "É predefinida…",
+  "Criada por {{name}}." A name that carries its own full stop gets a second one until the
+  renderer drops it (`docs/i18n/en.md`, sc-2251); no line is reworded around it.
 - **18 Oct 2026. A browser session is "Safari no iPhone"** (`devices.agent`, web and app, and
   `emails:password.device.agent`): "{{browser}} no {{platform}}", beside "Aplicação Soirely no
   iPhone" in the same list and the same email line. Every platform the parser names (iPhone,
@@ -87,7 +94,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   proprietário", which assumes a man. A role "holds" permissions as "inclui", as on the Roles
   screen. "Leave it unassigned" is "não a atribua a ninguém". A refusal over a length limit says
   what to do: "Encurte o nome para um máximo de {count} caracteres." The API catalogue has no
-  plural, and the limit is always well above 1.
+  plural, and the limit is always well above 1. The Roles screen's own check
+  (`web:rolesScreen.nameTooLong`) says the same sentence with `{{most}}`, so a person who meets
+  the server's check from a stale page reads what the screen would have said.
 
 - **18 Oct 2026. An email's footer is "Está a receber esta mensagem porque…"** (`emails:newDevice.why`,
   as `provider.why`). "Recebeu este e-mail" reads as a past event; the footer explains why it
