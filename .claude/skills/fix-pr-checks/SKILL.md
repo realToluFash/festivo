@@ -11,6 +11,10 @@ arguments: [pr]
 
 You are getting PR `$pr` to green.
 
+**Tools.** Read and write GitHub only through `sq <your role>` — `sq dev`, `sq dev2` or
+`sq ops`; the examples below say `sq dev`. `sq dev help` lists what you may run. Never call
+`gh` yourself. Git in your own checkout stays as it is.
+
 ## The rule that shapes everything here
 
 **A fix goes into the commit that caused it.** Not on top as `fix: CI`. The branch a
@@ -24,30 +28,29 @@ force-with-lease, wait again.
 ## Step 1: Look
 
 ```bash
-gh pr checks <pr> --watch
-gh pr view <pr> --json headRefName,statusCheckRollup
+sq dev checks <pr>
 ```
+
+It reads the checks live: how many there are, how many failed and how many are still
+pending, and the last 40 lines of each failed log (`--tail N` for more). While any are
+pending, run it again later rather than guessing. `sq dev pr <pr>` gives the branch and
+status.
 
 If no checks appear at all, the PR is probably a draft and the workflow skips drafts. Say
 so rather than waiting indefinitely.
 
 ## Step 2: Diagnose before touching anything
 
-Get the actual failure, not the summary:
-
-```bash
-gh run view <run-id> --log-failed
-```
-
-Then establish **which commit introduced it**. `git log main..HEAD` plus the failing file
+Get the actual failure, not the summary — the failed log's lines that `sq dev checks`
+printed. Then establish **which commit introduced it**. `git log main..HEAD` plus the failing file
 usually settles it; `git log -S'<symbol>' main..HEAD` when it does not.
 
 Three failures worth recognising on sight:
 
-- **Pre-existing.** The same check fails on `main`. Fix it in a separate PR, say so, and do
-  not fold unrelated repair into this branch.
+- **Pre-existing.** The same check fails on `main` (`sq dev runs` lists main's last runs).
+  Fix it in a separate PR, say so, and do not fold unrelated repair into this branch.
 - **Environmental.** A flaky runner, a timeout, a cache miss. Re-run once with
-  `gh run rerun <id> --failed` before changing any code. Do not "fix" a test that is not
+  `sq dev rerun <pr>`, which reruns the failed jobs, before changing any code. Do not "fix" a test that is not
   broken.
 - **Real.** Everything else.
 

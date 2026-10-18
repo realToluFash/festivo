@@ -27,6 +27,11 @@ it is the only thing waiting. A story with neither label, outside `To Do`, preda
 labels and is developer 1's. Sign every comment with your signature, and never touch the
 other developer's checkout, stack or branches.
 
+**Tools.** Read and write Shortcut and GitHub only through `sq <your role>` — `sq dev` for
+developer 1, `sq dev2` for developer 2; the examples below say `sq dev`. `sq dev help` lists
+what you may run. Never call the Shortcut tools or `gh` yourself. Git, npm, `just` and
+docker in your own checkout stay as they are.
+
 ## 1. The three things this mode must not do
 
 - **Do not merge before the lead has passed it, and never mark anything Done.** Merging is
@@ -46,34 +51,36 @@ other developer's checkout, stack or branches.
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.
 
-**Start with your inbox**: the `role-comments` routine, for comments tagged with your tag,
-`[dev]` comments on stories carrying your label, and replies to the ones you asked. Resolve those, then pick the work below.
+**`sq dev next` takes your next piece of work and prints what it needs**, ending in `Next:`
+with the commands to act on it, ids filled in. Your inbox comes first — comments tagged
+with your tag, `[dev]` comments on stories carrying your label, replies to the ones you
+asked (`role-comments`). Then the pull requests waiting on you (a merge, a handover to QA
+or to review, red checks), then the queue below. Something you have already read prints
+as a one-line reference; `--again` prints it in full, only when you truly need it again.
+When the work is finished, `sq dev done <id> --note "…"`; the note is what your next run
+on the story sees.
 
-`/soirely-developer sc-56` (or `… dev2 sc-56`) builds that story, claimed as below. With
-no story named, in this order:
+`/soirely-developer sc-56` (or `… dev2 sc-56`) builds that story: `sq dev claim sc-56`.
+With no story named, `sq dev queue` lists the queue in this order, and `next` takes its
+top:
 
-1. **`Failed QA`** (`500000083`) **with your label**. A failed story outranks anything
-   unstarted: it is built, reviewed, merged or nearly, and wrong — and somebody has already
-   spent a pass proving it. Take the one that has been there longest.
-2. **`In Progress`** (`500000008`) **with your label** — work already started, finished
-   first. Developer 1 also takes unlabelled ones here and in Failed QA, and adds `dev1`.
-3. **`To Do`** (`500000007`) **with no developer label**, top of the list. **Pick by your
-   number**, so two developers reaching the queue together pick different stories: developer
-   2 takes the second if there are at least two, developer 1 the first. Then claim it.
+1. **`Failed QA`** **with your label**. A failed story outranks anything unstarted: it is
+   built, reviewed, merged or nearly, and wrong — and somebody has already spent a pass
+   proving it. The one that has been there longest comes first.
+2. **`In Progress`** **with your label** — work already started, finished first. Developer
+   1 also takes unlabelled ones here and in Failed QA, and the claim adds `dev1`.
+3. **`To Do`** **with no developer label**, top of the list. **By your number**, so two
+   developers reaching the queue together pick different stories: developer 2 takes the
+   second if there are at least two, developer 1 the first.
 4. Failing those three, ask. Do not pick from the diff: a diff says what somebody was
    doing, not what the product needs next.
 
 Say which story you took and why it was next. If several are waiting, name them.
 
-**Claiming a story** is how the other developer knows to leave it alone:
-
-1. **Label it and move it** in one `stories-update`: `labels` is the story's current labels
-   plus yours (the field replaces the set, so leaving one out deletes it), and
-   `workflow_state_id` is `In Progress`.
-2. **Check you won.** Read the story again. If it carries the other developer's label too,
-   `stories-get-history` says whose label was added first, and the earlier one wins. If it
-   is not yours, take your label off again (current labels minus yours), post nothing, and
-   pick again. Two claims a few seconds apart are normal.
+**Claiming a story** is how the other developer knows to leave it alone. `sq dev claim
+sc-N` adds your label, keeping the others, and moves the story to In Progress. The first
+claim recorded wins, and a second is refused with who holds it: pick again, and post
+nothing. Two claims a few seconds apart are normal.
 
 Never remove the other developer's label, and never take yours off a story you have
 started. A story that should change hands is a question for the owner, in your report.
@@ -96,13 +103,18 @@ onto a newer `main` is the same rule applied later: fetch, then `git rebase orig
 
 ## 3. Read before you write
 
-- **The story**, `stories-get-by-id` with `full: true`. The **AC is the contract** — build
-  every bullet and nothing it does not ask for. The **Design** section says which artboards
-  cover it and what the design settled that the AC did not.
-- **Every comment on it.** This is where the QA report lives, and on a Failed QA story it
-  is the whole brief. The dated amendment sections in the description ("Done, 15 Oct",
-  "Reversed, Oct 14") are the decision log — read them before re-litigating anything.
-- **The pull request**, if one is open: `gh pr view <n>`, including its review comments.
+`sq dev next` (and `sq dev claim`) prints the story as you work on it: the AC and the
+latest QA report on a Failed QA story in full, the threads involving you, and its pull
+request. What it leaves as a one-line reference you can open with `sq dev story sc-N
+--section <S>`, `sq dev comments sc-N` and `sq dev pr <n>`.
+
+- **The AC is the contract** — build every bullet and nothing it does not ask for. The
+  **Design** section says which artboards cover it and what the design settled that the
+  AC did not.
+- **The comments** are where the QA report lives, and on a Failed QA story it is the whole
+  brief. The dated amendment sections in the description ("Done, 15 Oct", "Reversed, Oct
+  14") are the decision log — read them before re-litigating anything.
+- **The pull request**, if one is open, with its review threads.
 - **`docs/architecture/`** for the rule behind a behaviour, and the epic for the scope
   boundary.
 
@@ -123,7 +135,9 @@ report's own order and say, per finding, which of these it was:
 | It is outside this story                    | Its own commit if it is one line and in the way; otherwise its own story. Never folded into a feature commit, where it disappears. |
 | The test harness was wrong, not the product | Say so with the evidence. A failing flow is not a failing product until the screenshot says so, and QA's own skill says the same.  |
 
-**Reply to the report in the story**, one line per finding, before you hand it back. A
+**Reply to the report in the story** (`sq dev comment sc-N --reply-to <comment id>`), one
+line per finding, before you hand it back. A `[pm]` or `[ux]` question is `sq dev comment
+sc-N --to pm` (or `ux`). A
 second QA pass that has to diff two reports to find out what you changed is a pass wasted.
 
 **Where the fix goes in history**: if the branch is unmerged, fold each fix into the commit
@@ -186,11 +200,9 @@ because QA tests what is on the remote and never your working tree; and never `c
 a QA worktree or the other developer's checkout, or run `docker compose -p` against any
 project but your own.
 
-Then **CI, on the real head**, and green before the handover:
-
-```sh
-gh run watch "$(gh run list --branch "$(git branch --show-current)" --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
-```
+Then **CI, on the real head**, and green before the handover: `sq dev checks <n>` reads the
+checks live, says how many failed and how many are still pending, and prints each failed
+log's last lines. Nothing pending and nothing failed is green.
 
 ## 7. Hand it over
 
@@ -198,10 +210,11 @@ gh run watch "$(gh run list --branch "$(git branch --show-current)" --limit 1 --
 2. **An open pull request, not a draft** — `create-pr`. A draft cannot be merged, and the
    lead's pass (section 9) is meant to be the last step before the merge.
 3. **Reply to every review comment and every QA finding**, in its thread: what you changed
-   and the commit, or why you did not. **Do not resolve the lead's threads.** The lead
-   resolves each one after checking the fix (section 9).
-4. **Move the story to `In Review`** (`500000009`), resolved by name, once the pull request
-   is open and its checks are green. That is the handover to `/soirely-tech-lead`, who
+   and the commit, or why you did not: `sq dev pr-reply <n> <comment id>` on the pull
+   request, `sq dev comment sc-N --reply-to <comment id>` on the story. **Do not resolve
+   the lead's threads.** The lead resolves each one after checking the fix (section 9).
+4. **Move the story to `In Review`** (`sq dev move sc-N "In Review"`) once the pull
+   request is open and its checks are green. That is the handover to `/soirely-tech-lead`, who
    either passes it, leaving it in `In Review` for you to merge and move on (section 9),
    or sends it back to you with `[dev]` findings on the pull request. See **create-pr**.
 5. **Report**: the story, the PR number, what you did not do, and every assumption you made
@@ -230,24 +243,23 @@ GitHub user, so the lead's summary is the review whose body opens with
 | `Back to In Progress: <n> blocking.`      | Answer each finding in its thread (section 7), fix, push, and hand it back to `In Review`. Do not resolve the threads. |
 | `Review passed at <sha>. Ready to merge.` | Merge, if every condition below holds, then move the story to `Ready For QA`.                                          |
 
-**Merge only when all of these hold**, and check each one rather than assuming it:
+**Merge only when all of these hold**:
 
 1. The newest `## Review (from lead)` ends in the pass line, and **its sha is the pull
-   request's head** (`gh pr view <n> --json headRefOid`). A push after the pass voids it:
-   move the story back to `In Review` and wait for the lead.
+   request's head**. A push after the pass voids it: the story stays in `In Review` and
+   you wait for the lead.
 2. **No review thread is open.** The lead resolves each thread after checking the fix; an
    open one is a finding that still stands, whatever your reply in it says.
 3. **CI is green on that head**, and GitHub reports the pull request `MERGEABLE`.
 
-```sh
-gh pr view <n> --json headRefOid,mergeable,reviews --jq '{head: .headRefOid, mergeable, lead: ([.reviews[] | select(.body | startswith("## Review (from lead)"))] | last | .body | split("\n") | last)}'
-gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{isResolved}}}}}' -f o=<owner> -f r=<repo> -F n=<n> --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved | not)] | length'
-gh pr checks <n>
-gh pr merge <n> --merge
-```
+`sq dev merge <n>` checks every one of these against the live pull request and refuses with
+the reason when one does not hold; it merges only at the head the lead passed. A conflict
+with `main` is refused too: merge `origin/main` into the branch and push, which voids the
+pass, so the story stays in `In Review` for the lead.
 
-**Once it has merged, it is ready for QA, and handing it over is yours.** Move the story to
-`Ready For QA` (`500000087`, resolved by name) and post `[qa] (from <your signature>)` on it
-naming the merge commit, so QA tests what landed. Nobody else makes this move: a passed
-story you merge and leave in `In Review` is a story nobody tests. Never move it before the
-merge, and never mark it Done.
+**Once it has merged, it is ready for QA, and handing it over is yours.** `sq dev merge`
+does it: it moves the story to `Ready For QA` and tells `[qa]` the merge commit, so QA
+tests what landed (`--text` adds anything QA should know). For a pull request that merged
+some other way at the passed head, `sq dev to-qa sc-N` does the same. Nobody else makes
+this move: a passed story you merge and leave in `In Review` is a story nobody tests. Never
+move it before the merge, and never mark it Done.

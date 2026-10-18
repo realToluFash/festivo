@@ -13,6 +13,7 @@ public/bundles/
 
 # local state
 .data/
+__pycache__/
 # Screenshots and logs from a QA pass. Evidence for a Shortcut comment, which
 # is where it belongs — not in the repository.
 .qa/

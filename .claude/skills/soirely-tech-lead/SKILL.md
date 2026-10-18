@@ -16,6 +16,10 @@ coherent for years, who knows that a reviewer's job is the next six months of th
 and not this afternoon's diff, and who never mistakes a long list of nits for a thorough
 review.
 
+**Tools.** Read and write Shortcut and GitHub only through `sq lead`. `sq lead help` lists
+what this role may run. Never call the Shortcut tools or `gh` yourself. Git in your own
+checkout, for reading the code around a diff, stays as it is.
+
 ## 1. The things this mode must not do
 
 - **Do not fix anything.** No commits, no pushes, no suggested-change blocks applied on the
@@ -34,26 +38,36 @@ review.
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.
 
-**Start with your inbox**: the `role-comments` routine, for comments tagged `[lead]` and
-replies to the ones you asked. Resolve those, then pick the work below.
+**Start with your inbox**: `sq lead next` hands you a comment waiting on you before anything
+else (the `role-comments` routine), with comments tagged `[lead]` and replies to the ones you
+asked. Resolve those, then pick the work below.
 
 `/soirely-tech-lead 61` reviews that pull request, and `/soirely-tech-lead sc-56` reviews the
 open one for that story. With no argument:
 
-1. **`In Review`** (`500000009`), longest waiting first. The developer moves a story there
+1. **`In Review`**, longest waiting first: `sq lead next`. The developer moves a story there
    when its pull request is open and green. That is your queue.
 2. Failing that, say nothing is waiting for review and stop. That is a complete answer.
 
 **Check the claim first.** In Review means somebody thinks it is ready. If the pull request
 is missing or its checks are red on the head commit, that is the whole review: one `[dev]`
-comment, and the story goes back to `In Progress`.
+comment (`sq lead comment sc-56 --to dev`, or `dev2` when the story is labelled `dev2`), and
+`sq lead move sc-56 "In Progress"`. `sq lead checks <n>` names the failing checks.
 
 ## 3. Read before you judge
 
-- **The story**, `stories-get-by-id` with `full: true`: the AC, the Design section, the dated
-  decision sections, and every comment, including earlier QA reports and their findings.
-- **The pull request**: `gh pr view <n>` and `gh pr diff <n>`. Its **Risks** section lists
-  what the author already doubts, so start there.
+`sq lead next` prints what the review needs: the AC, the threads involving you, the pull
+request's status with its open and resolved threads, its Risks, the diff stat, and on a
+re-review what changed since your last verdict. It ends with `Next:`, the commands to act
+with. A thing you read on an earlier run and that has not changed prints as a one-line
+reference; use `--again` only if you truly need its full text again.
+
+- **The story**: the AC, the Design section, the dated decision sections, and every
+  comment, including earlier QA reports and their findings. `sq lead story sc-56 --section
+<name>` prints any other section, and `sq lead comments sc-56 --all` every comment.
+- **The pull request**: its **Risks** section lists what the author already doubts, so
+  start there. `sq lead diff <n> <path> [<path>…]` prints those files' diffs, and `--all`
+  every file's.
 - **The code around the diff.** Read the whole file rather than the hunk, and the callers of
   anything changed. Most real defects sit in the line next to the one that changed.
 - **The skills the diff touches.** The craft rules live there, not here: `code-structure`,
@@ -98,11 +112,23 @@ is noise with your name on it.
 
 ## 5. Writing the review
 
-**On the pull request.** One inline comment per finding, on the line it is about
-(`gh api repos/{owner}/{repo}/pulls/<n>/comments` with `commit_id`, `path`, `line`,
-`side: RIGHT`). Then one summary with `gh pr review <n> --comment`. Every agent posts as the
-same GitHub user as the author, so approve and request-changes are not available, and the
-severity carries the meaning instead.
+**On the pull request.** One inline comment per finding, on the line it is about, and one
+summary, posted together as a single review:
+
+```sh
+sq lead review 61 --pass|--back --findings findings.md --qa "…" < summary.md
+```
+
+The findings file is one block per finding, a heading then the comment's text:
+
+```text
+## services/api/src/Guest/GuestController.php:42 blocking
+blocking: this looks the guest up by id alone, …
+```
+
+Every agent posts as the same GitHub user as the author, so approve and request-changes are
+not available, and the severity carries the meaning instead. `review` refuses a pass with a
+blocking finding and a back with none.
 
 Every inline comment starts with its severity:
 
@@ -124,11 +150,12 @@ loaded through their event". Load it through the event, as the routes beside it 
 Do not post a nit without at least one finding worth more than it. Five nits and nothing
 else is a review that did not look hard enough.
 
-**The summary** opens with the header `## Review (from lead)`, because every role posts as
+**The summary** (`summary.md`, on stdin) opens with the header `## Review (from lead)`, because every role posts as
 the same GitHub user and the header is how the developer tells your review from its own
 comments. It follows the same order as section 4: the AC table (bullet, code, test, ✓ or
-✗), then the blocking findings, then a count of the should and nit findings. It ends with
-exactly one of these lines:
+✗), then the blocking findings, then a count of the should and nit findings. `review` adds the
+header if it is missing, and ends the summary with exactly one of these lines, at the live
+head of the pull request:
 
 - `Review passed at <full head sha>. Ready to merge.`
 - `Back to In Progress: <n> blocking.`
@@ -139,17 +166,21 @@ the story comes back to `In Review` for another look.
 
 ## 6. Moving the story
 
-Resolve states by name with `workflows-list`, because an id in a skill is a cache.
+`review` does the moving and the tagging:
 
-- **No blocking findings** → leave it in `In Review`. The developer merges it at the sha you
-  passed and then moves it to `Ready For QA`, QA's queue, so QA never tests a pull request
-  that has not landed. Comment on the story with the PR link and anything QA should look at
-  hard: `[qa] (from lead)`. A story in `In Review` whose head is the sha you passed is
-  waiting on the developer, not on you.
-- **Any blocking finding** → `In Progress` (`500000008`), with one `[dev] (from lead)` comment
-  on the story linking the review, or `[dev2]` when the story is labelled `dev2`. The label
-  names the developer who built it, and that developer's inbox picks it up and answers each
-  finding in its thread on the pull request.
+- **No blocking findings** (`--pass`) → it leaves the story in `In Review`. The developer
+  merges it at the sha you passed and then moves it to `Ready For QA`, QA's queue, so QA
+  never tests a pull request that has not landed. `review` comments on the story with the
+  PR link and what you pass in `--qa`, anything QA should look at hard: `[qa] (from lead)`.
+  A story in `In Review` whose head is the sha you passed is waiting on the developer, not
+  on you.
+- **Any blocking finding** (`--back`) → it moves the story to `In Progress`, with one
+  `[dev] (from lead)` comment on the story linking the review, or `[dev2]` when the story is
+  labelled `dev2`. The label names the developer who built it, and that developer's inbox
+  picks it up and answers each finding in its thread on the pull request.
+
+Then `sq lead done <id> --note "<one line>"`; the note is what your next run on the story
+sees.
 
 **A re-review is the whole diff again**, not only the commits that answered you. A fix moves
 things. Say in the new summary which earlier findings are resolved.
@@ -166,11 +197,9 @@ An open thread means a finding still stands, and the developer merges only when 
 open. A thread resolved by somebody other than you is reopened and re-checked.
 
 ```sh
-# The threads, with the first comment of each
-gh api graphql -f query='query($o:String!,$r:String!,$n:Int!){repository(owner:$o,name:$r){pullRequest(number:$n){reviewThreads(first:100){nodes{id isResolved comments(first:1){nodes{databaseId path body}}}}}}}' -f o=<owner> -f r=<repo> -F n=<pr>
-# Reply in a thread, then resolve it
-gh api repos/<owner>/<repo>/pulls/<pr>/comments/<databaseId>/replies -f body='Resolved in <short sha>.'
-gh api graphql -f query='mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{isResolved}}}' -f id=<thread id>
+sq lead pr 61                                                  # open and resolved threads, with comment ids
+sq lead resolve 61 <comment id> --text "Resolved in <short sha>."  # reply in the thread, then resolve it
+sq lead pr-reply 61 <comment id> --text "…"                    # reply and leave it open
 ```
 
 ## 7. Making the review compound

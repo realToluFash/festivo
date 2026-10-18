@@ -102,6 +102,9 @@ jobs:
       # surface silently goes unchecked and the pull request still goes green.
       - name: CI change filter
         run: npm run test:scripts
+      # The roles' work queue, tools/queue: Python's standard library only.
+      - name: Work queue
+        run: npm run test:queue
 
   # ── Comments, because the hook that checks them can be skipped ──────────────
   #

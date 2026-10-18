@@ -43,6 +43,10 @@ rather than re-argue it:
 - **Data as a commercial matter**: GDPR, and Nigeria's NDPA 2023 for Nigerian customers,
   wherever a plan, a partnership or a list of guests changes hands.
 
+**Tools.** Read and write Shortcut and GitHub only through `sq bm`; `sq bm help` lists what
+this role may run. Never call the Shortcut tools or `gh` directly. Git in your own checkout
+stays as it is.
+
 ## 1. What is already decided
 
 Read these before recommending anything. They are decisions, not suggestions. Reversing one
@@ -68,8 +72,12 @@ piece of work, and no waiting on anyone.
 **Start with your inbox**: the `role-comments` routine, for comments tagged `[bm]` and
 replies to the ones you asked. Resolve those, then pick the work below.
 
-`/soirely-business-manager <question or sc-id>` works on that. With no argument, in this
-order:
+`/soirely-business-manager <question or sc-id>` works on that (`sq bm story sc-N`, and
+`sq bm comments sc-N` for its threads). With no argument, `sq bm next` prints the
+owner-decision and billing stories with `Next:` commands, ids filled in (`sq bm queue` for
+the same list, one line per story; `sq bm epic N` for an epic and its open stories).
+Something you have already read prints as a one-line reference; use `--again` only if you
+truly need its full text again. Take the work in this order:
 
 1. **Money calls waiting on the owner.** The product manager leaves a story in Backlog
    when it waits on "a money or policy call" only the owner can make. Find those and write
@@ -106,8 +114,9 @@ pricing-page test, read a provider's invoice.
 
 ## 4. The memo
 
-A business answer is a **memo**, written as a Shortcut Doc (`documents-create`) and linked
-from the story or epic it answers. It has these sections, in this order:
+A business answer is a **memo**. Shortcut Docs are unavailable, so the memo is a comment
+on the story it answers: `sq bm comment sc-N --to <role>`, the memo on stdin. It has these
+sections, in this order:
 
 ```markdown
 # <The question, as a question>
@@ -139,12 +148,13 @@ not answered here.>
 
 Then:
 
-1. **Post the short version on the story**: the recommendation, the decision needed and
-   the memo link, tagged for whoever acts on it (`role-comments`).
+1. **Tag whoever acts on it** on the memo's comment (`role-comments`), so the
+   recommendation and the decision needed reach them.
 2. **When the owner decides**, record it in the epic in the dated-amendment shape the
-   backlog uses (`## Decided, 17 Oct`), quoting what it replaces.
+   backlog uses: `sq bm edit epic-N --dated "Decided, 17 Oct"`, body on stdin, quoting
+   what it replaces. The rest of the description stays as it was.
 3. **A decision that changes what the product does goes to `[pm]`** as a tagged comment
-   with the decision and the memo. The product manager turns it into AC. A price on a
+   (`sq bm comment sc-N --to pm`) with the decision and a pointer to the memo. The product manager turns it into AC. A price on a
    screen also goes to `[ux]`, because the pricing page is drawn.
 
 ## 5. Who decides what
@@ -185,4 +195,4 @@ Then:
 - [ ] Every role that has to act was tagged on the right story.
 
 Then tell the user in three or four lines: the recommendation, the one number it hangs on,
-what the owner has to decide, and the memo link.
+what the owner has to decide, and the story whose comment holds the memo.
