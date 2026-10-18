@@ -97,13 +97,13 @@
     "twoFactorRecovery.notMe": "Ce n'était pas moi : {link}",
     "twoFactorRecovery.notMeNote": "Annule toute demande en attente et déconnecte toutes les sessions.",
     "twoFactorRecovery.footer": "Vous recevez ce message à cause d'un changement dans la connexion à votre compte Soirely.",
-    "newDevice.subject": "New sign-in to Soirely",
-    "newDevice.body": "Your Soirely account was signed in to on a device it hasn't seen before.",
-    "newDevice.when": "When: {when}",
-    "newDevice.device": "Device: {device}",
-    "newDevice.address": "Network address: {address}",
-    "newDevice.review": "Review your devices:",
-    "newDevice.notYou": "If this wasn't you, change your password and sign out the devices you don't recognise.",
-    "newDevice.notYouNoPassword": "If this wasn't you, sign out the devices you don't recognise from Security.",
-    "newDevice.why": "You're getting this because a new device signed in to your Soirely account."
+    "newDevice.subject": "Nouvelle connexion à Soirely",
+    "newDevice.body": "Un appareil qui ne s'était jamais connecté à votre compte Soirely vient de s'y connecter.",
+    "newDevice.when": "Quand : {when}",
+    "newDevice.device": "Appareil : {device}",
+    "newDevice.address": "Adresse réseau : {address}",
+    "newDevice.review": "Vérifiez vos appareils connectés :",
+    "newDevice.notYou": "Si ce n'était pas vous, changez votre mot de passe et déconnectez les appareils que vous ne reconnaissez pas.",
+    "newDevice.notYouNoPassword": "Si ce n'était pas vous, ouvrez Sécurité et déconnectez les appareils que vous ne reconnaissez pas.",
+    "newDevice.why": "Vous recevez ce message parce qu'un nouvel appareil s'est connecté à votre compte Soirely."
 }

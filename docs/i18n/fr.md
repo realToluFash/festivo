@@ -43,6 +43,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The new-device email** (`emails:newDevice.*`): subject « Nouvelle
+  connexion à Soirely », short for a phone inbox; the body makes the device the subject,
+  « Un appareil qui ne s'était jamais connecté à votre compte Soirely vient de s'y
+  connecter », as the English does since #125. Fact lines follow `twoFactorRecovery.fact.*`
+  (« Quand : », « Appareil : »); "Network address" is « Adresse réseau », not « Adresse
+  IP ». "From Security" becomes an act, « ouvrez Sécurité et déconnectez… », and the
+  footer is « Vous recevez ce message parce que… », as in the other emails (sc-1283).
 - **18 Oct 2026. The app as a device is « Application Soirely sur … ».** « Application
   Soirely sur iPhone », « … sur iPad », « … sur un téléphone Android », « … sur une
   tablette Android » (`devices.app*`, `password.device.app*`). « sur » as in `devices.agent`
