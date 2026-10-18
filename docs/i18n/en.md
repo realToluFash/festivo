@@ -61,6 +61,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   with the expired line, "Your {{provider}} sign-in was more than {{count}} minutes ago". The
   provider is named again rather than "your sign-in there", because every other language needs
   a noun to point back to. The contraction stays because this is a hint, not an error.
+  Step one's `waysCard.proveLink` and `proveUnlink` count the same window: "… You won't be
+  asked again for {{count}} minutes.", and the `_one` form ends "… for a minute.", so no
+  locale keeps a literal 5 (pm folded them into sc-2197, #2280).
 
 - **18 Oct 2026. The Roles refusals (sc-66, sc-2150, `messages:roles.*`).** Error bodies
   take no contractions: "Owner is built in and cannot be changed or removed. It always has
