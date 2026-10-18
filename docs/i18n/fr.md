@@ -53,7 +53,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   A refusal shared with a web key takes the web's French (`nameBlank`, `nameTaken`,
   `removeNoReplacement`).
 - **18 Oct 2026. A length limit says what to do: « Raccourcissez le nom à {count} caractères
-  maximum. »** (`messages:roles.name_too_long`, after en's "Shorten the name to {count}
+  maximum. »** (`messages:roles.name_too_long`, and `web:rolesScreen.nameTooLong` with
+  `{{most}}`, so the screen and the server say one sentence; after en's "Shorten the name to {count}
   characters or fewer."). « N caractères maximum » is the form people read in every French
   form. The API catalogue has no plural family, and the limit (40) is always well above 1.
 - **18 Oct 2026. Menu, Messages, Budget and Organisation stay as they are** on the Roles grid
