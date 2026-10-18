@@ -73,11 +73,16 @@ final class Version20261017220000 extends AbstractMigration
               FROM organisations o
              WHERE NOT EXISTS (SELECT 1 FROM roles r WHERE r.organisation_id = o.id AND r.seeded_as = 'read_only')
             SQL);
+        // The service checks names against the seeded labels too; this holds two custom ones apart under a race.
+        $this->addSql('CREATE UNIQUE INDEX uniq_role_name_per_organisation ON roles (organisation_id, LOWER(name)) WHERE name IS NOT NULL');
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql("DELETE FROM roles WHERE seeded_as IN ('administrator', 'event_manager', 'coordinator', 'read_only')");
+        $held = $this->connection->fetchOne("SELECT COUNT(*) FROM memberships m JOIN roles r ON r.id = m.role_id WHERE r.seeded_as IS DISTINCT FROM 'owner'");
+        $this->abortIf((int) $held > 0, 'Members hold roles this rollback would delete. Move them to Owner by hand first, deliberately.');
+        $this->addSql('DROP INDEX IF EXISTS uniq_role_name_per_organisation');
+        $this->addSql("DELETE FROM roles WHERE seeded_as IS DISTINCT FROM 'owner'");
         $this->addSql('ALTER TABLE roles DROP permissions');
     }
 }
