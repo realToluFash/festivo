@@ -7,11 +7,17 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
+import {
+  BackToAccount,
+  BackToAccountButton,
+  RemoveInAccount,
+} from '../src/components/BackToAccount.tsx';
 import { Footnote, PrimaryButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
+import { rereadAccount } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
 type Status = CodeStatus | { kind: 'verified' };
@@ -19,7 +25,7 @@ type Status = CodeStatus | { kind: 'verified' };
 export default function VerifyPhone() {
   const { t } = useTranslation();
   const { from, phone: alternative } = useLocalSearchParams<{ from?: string; phone?: string }>();
-  const onboarding = from === 'onboarding';
+  const onboarding = from === 'onboarding' && alternative == null;
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
@@ -100,7 +106,6 @@ export default function VerifyPhone() {
       : (account.phoneNumbers.find((held) => held.id === alternative) ?? null);
   if (phone == null && alternative != null) return <Redirect href="/settings/account" />;
   if (phone == null) return <Redirect href={onboarding ? '/phone?from=onboarding' : '/phone'} />;
-  const after = alternative == null ? '/' : '/settings/account';
 
   const number = formatPhone(phone.number);
   const verified = status.kind === 'verified' || phone.verified;
@@ -127,6 +132,8 @@ export default function VerifyPhone() {
     try {
       await api.verifyPhone(code, alternative);
       setStatus({ kind: 'verified' });
+      // Account, under this screen, shows the row verified however it is reached.
+      if (alternative != null) void rereadAccount().catch(() => {});
     } catch (error) {
       setStatus(codeRefusal(error));
     }
@@ -187,19 +194,28 @@ export default function VerifyPhone() {
       saying={
         <>
           {onboarding && <OnboardingSteps at="details" />}
+          {alternative != null && <BackToAccount verified={verified ? alternative : null} />}
           <AuthHeading
             done={verified}
             title={verified ? t('verifyPhone.doneTitle') : t('verifyPhone.title')}
-            intro={verified ? t('verifyPhone.doneBody', { number }) : line}
+            intro={
+              !verified
+                ? line
+                : alternative == null
+                  ? t('verifyPhone.doneBody', { number })
+                  : t('verifyPhone.doneBodyAlternative', { number })
+            }
             introLive={!verified}
           />
         </>
       }
     >
-      {status.kind === 'verified' || phone.verified ? (
+      {verified && alternative != null ? (
+        <BackToAccountButton verified={alternative} />
+      ) : verified ? (
         <PrimaryButton
           label={t('verifyPhone.continue')}
-          onPress={() => router.replace(after)}
+          onPress={() => router.replace('/')}
           testID="verifyPhone.continue"
         />
       ) : (
@@ -229,13 +245,15 @@ export default function VerifyPhone() {
             />
           )}
 
-          {alternative == null && (
+          {alternative == null ? (
             <Footnote
               question={t('verifyPhone.wrongNumber')}
               action={t('verifyPhone.changeIt')}
               onPress={() => router.push(onboarding ? '/phone?from=onboarding' : '/phone')}
               testID="verifyPhone.change"
             />
+          ) : (
+            <RemoveInAccount kind="phone" />
           )}
 
           {onboarding && (

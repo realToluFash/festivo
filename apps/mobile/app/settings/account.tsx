@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -16,6 +17,8 @@ export default function Account() {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { account } = useSignedIn();
+  // Set by a verify screen popping back here; a new value starts the cards afresh, to say so.
+  const { verified } = useLocalSearchParams<{ verified?: string }>();
   const phone = kind === 'phone';
 
   return (
@@ -39,7 +42,13 @@ export default function Account() {
           )}
           {account != null && (
             <View style={styles.cards}>
-              <ContactsCards account={account} kind={kind} onChanged={reloadSignedIn} />
+              <ContactsCards
+                key={verified ?? ''}
+                account={account}
+                kind={kind}
+                verified={verified ?? null}
+                onChanged={reloadSignedIn}
+              />
               <TimeZoneCard timezone={account.timezone} kind={kind} onSaved={reloadSignedIn} />
             </View>
           )}

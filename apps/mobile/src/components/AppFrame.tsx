@@ -241,6 +241,7 @@ function Rail({
 
     return (
       <Pressable
+        key={destination}
         style={[styles.railItem, on && styles.railItemOn]}
         onPress={() => router.navigate(DESTINATION_HREF[destination])}
         accessibilityRole="tab"
