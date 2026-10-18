@@ -138,7 +138,7 @@
     "keep": "Manter a sessão",
     "ended": "{{name}} ficou sem sessão.",
     "signInAgain": "O dispositivo terá de voltar a iniciar sessão para continuar, por isso confirme primeiro que ninguém o está a usar num evento.",
-    "agent": "{{browser}} em {{platform}}",
+    "agent": "{{browser}} no {{platform}}",
     "appIPhone": "Aplicação Soirely no iPhone",
     "appIPad": "Aplicação Soirely no iPad",
     "appAndroidPhone": "Aplicação Soirely num telemóvel Android",
