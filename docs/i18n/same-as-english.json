@@ -1,5 +1,13 @@
 {
-  "es": ["web:app.name", "web:orgGeneral.title", "mobile:app.name", "mobile:home.title"],
+  "es": [
+    "web:app.name",
+    "web:orgGeneral.title",
+    "mobile:app.name",
+    "mobile:home.title",
+    "web:settings.sectionGeneral",
+    "web:settings.sectionRoles",
+    "web:rolesScreen.title"
+  ],
   "fr": [
     "mobile:app.name",
     "mobile:devices.everywhereCode",
