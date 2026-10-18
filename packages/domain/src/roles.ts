@@ -18,8 +18,13 @@ export function levelOf(held: readonly string[], area: string): Level {
   return 'nothing';
 }
 
-/** Change includes reading, and an area set to nothing takes the margin with it. */
-export function withLevel(held: readonly string[], area: string, level: Level): string[] {
+/** Change includes reading where the area has it, and an area set to nothing takes the margin with it. */
+export function withLevel(
+  held: readonly string[],
+  area: string,
+  level: Level,
+  permissions: readonly string[],
+): string[] {
   const others = held.filter(
     (permission) =>
       permission !== `${area}.read` &&
@@ -27,10 +32,32 @@ export function withLevel(held: readonly string[], area: string, level: Level): 
       (level !== 'nothing' || area !== 'budget' || permission !== MARGIN),
   );
 
-  if (level === 'read') return [...others, `${area}.read`];
-  if (level === 'change') return [...others, `${area}.read`, `${area}.manage`];
+  const reading = permissions.includes(`${area}.read`) ? [`${area}.read`] : [];
+
+  if (level === 'read') return [...others, ...reading];
+  if (level === 'change') return [...others, ...reading, `${area}.manage`];
 
   return others;
+}
+
+/** The levels a caller may pick: each change it makes touches only what they hold (sc-66). */
+export function settableLevels(
+  grant: readonly string[],
+  held: readonly string[],
+  area: string,
+  permissions: readonly string[],
+): Level[] {
+  const current = levelOf(grant, area);
+
+  return levelsOf(permissions).filter((level) => {
+    const next = withLevel(grant, area, level, permissions);
+    const changed = [
+      ...grant.filter((permission) => !next.includes(permission)),
+      ...next.filter((permission) => !grant.includes(permission)),
+    ];
+
+    return level === current || changed.every((permission) => held.includes(permission));
+  });
 }
 
 export function withMargin(held: readonly string[], shown: boolean): string[] {

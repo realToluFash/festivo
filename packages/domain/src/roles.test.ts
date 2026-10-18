@@ -5,6 +5,7 @@ import {
   levelsOf,
   roleNameProblem,
   sameGrant,
+  settableLevels,
   whatTheySee,
   withLevel,
   withMargin,
@@ -24,19 +25,31 @@ describe('a role in the permission grid', () => {
     expect(levelsOf(['organisation.manage'])).toEqual(['nothing', 'change']);
   });
 
+  const events = ['events.read', 'events.manage'];
+  const budget = ['budget.read', 'budget.manage', 'budget.margin'];
+
   it('gives reading with change, and takes both away with nothing', () => {
-    expect(withLevel(['guests.read'], 'events', 'change').sort()).toEqual(
+    expect(withLevel(['guests.read'], 'events', 'change', events).sort()).toEqual(
       ['events.manage', 'events.read', 'guests.read'].sort(),
     );
-    expect(withLevel(['events.read', 'events.manage'], 'events', 'read')).toEqual(['events.read']);
-    expect(withLevel(['events.read', 'events.manage'], 'events', 'nothing')).toEqual([]);
+    expect(withLevel(events, 'events', 'read', events)).toEqual(['events.read']);
+    expect(withLevel(events, 'events', 'nothing', events)).toEqual([]);
+  });
+
+  it('gives change alone where the area has no read permission', () => {
+    expect(withLevel([], 'organisation', 'change', ['organisation.manage'])).toEqual([
+      'organisation.manage',
+    ]);
   });
 
   it('takes the margin away with the budget, and keeps it when the budget is only read', () => {
     const held = ['budget.read', 'budget.manage', 'budget.margin'];
 
-    expect(withLevel(held, 'budget', 'nothing')).toEqual([]);
-    expect(withLevel(held, 'budget', 'read').sort()).toEqual(['budget.margin', 'budget.read']);
+    expect(withLevel(held, 'budget', 'nothing', budget)).toEqual([]);
+    expect(withLevel(held, 'budget', 'read', budget).sort()).toEqual([
+      'budget.margin',
+      'budget.read',
+    ]);
     expect(withMargin(['budget.read'], true)).toEqual(['budget.read', 'budget.margin']);
     expect(withMargin(['budget.read', 'budget.margin'], false)).toEqual(['budget.read']);
   });
@@ -69,5 +82,27 @@ describe('a role name', () => {
     expect(roleNameProblem('door TEAM', taken)).toBe('nameTaken');
     expect(roleNameProblem('owner', taken)).toBe('nameTaken');
     expect(roleNameProblem('Venue lead', taken)).toBeNull();
+  });
+});
+
+describe('the levels a caller can set', () => {
+  const billing = ['billing.read', 'billing.manage'];
+  const budget = ['budget.read', 'budget.manage', 'budget.margin'];
+
+  it('offers the levels the caller holds on a row they hold part of', () => {
+    expect(settableLevels([], ['billing.read'], 'billing', billing)).toEqual(['nothing', 'read']);
+  });
+
+  it('offers only the current value when it is above what the caller holds', () => {
+    expect(settableLevels(billing, ['billing.read'], 'billing', billing)).toEqual(['change']);
+  });
+
+  it('keeps Nothing off a budget whose margin the caller does not hold', () => {
+    const held = ['budget.read', 'budget.manage'];
+
+    expect(settableLevels(['budget.read', 'budget.margin'], held, 'budget', budget)).toEqual([
+      'read',
+      'change',
+    ]);
   });
 });
