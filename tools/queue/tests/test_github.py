@@ -164,6 +164,42 @@ class RestCalls(unittest.TestCase):
         self.assertEqual((found["state"], found["mergeCommit"], found["mergeable"]),
                          ("MERGED", MERGED, "UNKNOWN"))
 
+    def compare(self, before, after):
+        old, new = "b" * 40, HEAD
+        fake = FakeGh(routes({f"repos/o/n/compare/main...{old}": {"files": before},
+                              f"repos/o/n/compare/main...{new}": {"files": after}}))
+        with mock.patch("soirely_queue.github.gh", fake):
+            return github.same_change(old, new)
+
+    def test_a_merge_of_main_that_only_moves_the_hunks_is_the_same_change(self):
+        passed = [{"filename": "a.json", "status": "modified", "patch": "@@ -1,2 +1,2 @@\n-x\n+y"}]
+        merged = [{"filename": "a.json", "status": "modified", "patch": "@@ -9,2 +9,2 @@\n-x\n+y"}]
+        self.assertTrue(self.compare(passed, merged))
+
+    def test_an_edit_a_file_or_a_missing_patch_is_another_change(self):
+        passed = [{"filename": "a.json", "status": "modified", "patch": "@@ -1 +1 @@\n-x\n+y"}]
+        edited = [{**passed[0], "patch": "@@ -1 +1 @@\n-x\n+z"}]
+        extra = passed + [{"filename": "b.ts", "status": "modified", "patch": "@@ -1 +1 @@"}]
+        binary = [{"filename": "a.json", "status": "modified"}]
+        for after in (edited, extra, binary, []):
+            self.assertFalse(self.compare(passed, after))
+        self.assertFalse(self.compare(binary, binary))
+
+    def test_no_change_is_never_the_same_change(self):
+        self.assertFalse(self.compare([], []))
+
+    def test_a_sha_github_cannot_compare_is_a_no_and_a_spent_limit_is_raised(self):
+        for error, outcome in ((github.GitHubError("gh api x: Not Found (HTTP 404)"), False),
+                               (github.GitHubError("gh api x: No common ancestor (HTTP 422)"),
+                                False)):
+            with mock.patch("soirely_queue.github.api", side_effect=error):
+                self.assertIs(github.same_change("b" * 40, HEAD), outcome)
+        for error in (github.RateLimited("gh api x: rate limit"),
+                      github.GitHubError("gh api x: Server Error (HTTP 502)")):
+            with mock.patch("soirely_queue.github.api", side_effect=error), \
+                    self.assertRaises(type(error)):
+                github.same_change("b" * 40, HEAD)
+
     def test_merge_sends_the_head_it_was_passed_at_and_deletes_the_branch(self):
         fake = FakeGh(routes({"repos/o/n/pulls/7/merge": {"merged": True},
                               "repos/o/n/git/refs/heads/feature/x": ""}))

@@ -4,7 +4,7 @@ import datetime
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import github, roles, store
+from . import github, roles, store, work
 from .shortcut import Shortcut, slim
 
 FRESH_SECONDS = 60
@@ -71,7 +71,16 @@ def sync_github(db):
     owner, name = store.get_meta(db, "repository") or github.repository()
     store.set_meta(db, "repository", [owner, name])
     known = {pr["number"]: pr for pr in store.prs(db)}
-    store.put_prs(db, github.pull_requests(owner, name, known))
+    prs = github.pull_requests(owner, name, known)
+    cache, kept = store.get_meta(db, "carried", {}), {}
+    for pr in prs:
+        try:
+            pr["carried"] = work.carried(pr, cache, github.same_change)
+        except github.GitHubError:
+            pr["carried"] = None
+        kept.update({key: cache[key] for key in cache if key.endswith(f"..{pr['head_sha']}")})
+    store.set_meta(db, "carried", kept)
+    store.put_prs(db, prs)
     runs = github.main_runs()
     store.set_meta(db, "main_runs", runs)
     store.set_meta(db, "main_run", runs[0] if runs else None)
