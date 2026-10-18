@@ -56,8 +56,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   name goes where the sentence wants it, at the end as well, so "Made by {{name}}." stays. A
   name that carries its own full stop, such as "Galas Ltd." or a guest's "Jr.", gets a second
   one from the string ("… Ltd.."). As in print, only the name's stop should show. Dropping
-  the string's own stop is the renderer's job, asked of [pm] and [dev] in #2562. Until that
-  lands the doubled stop shows, and no line is reworded to avoid it. Won over putting the name
+  the string's own stop is the renderer's job, for every value on web, in the app and in what
+  the API renders: sc-2573, filed from #2562. A value that ends in ".", "!", "?" or "…" takes
+  no full stop from the string after it. Any other character after the value stays, as print
+  keeps an abbreviation's stop before it ("Galas Ltd., Lagos"). Until sc-2573 lands the
+  doubled stop shows, and no line is reworded to avoid it. Won over putting the name
   first ("{{name}} made this role."), which fixes one line of eight and the next string not at
   all, and in es, fr and pt often leaves a participle or adjective to agree with a name of
   unknown gender. Also won over quoting the name, which reads as if the name were in doubt.
