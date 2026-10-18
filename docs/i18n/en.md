@@ -16,20 +16,21 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| Term                      | Notes                                                                                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Settings                  |                                                                                                                          |
-| Organisation              |                                                                                                                          |
-| Sign in                   |                                                                                                                          |
-| Sign out                  |                                                                                                                          |
-| Email                     |                                                                                                                          |
-| Password                  |                                                                                                                          |
-| Continue                  |                                                                                                                          |
-| Cancel                    |                                                                                                                          |
-| Two-factor authentication |                                                                                                                          |
-| Recovery code             |                                                                                                                          |
-| Carry on                  | Settled 17 Oct 2026: "… to carry on" is the house phrase for resuming (20 strings). Not "continue", which is the button. |
-| Signed out (a device)     | Settled 17 Oct 2026: "is signed out" for the state, "has been signed out" in emails. Never "logged out".                 |
+| Term                        | Notes                                                                                                                                                                                                                              |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settings                    |                                                                                                                                                                                                                                    |
+| Organisation                |                                                                                                                                                                                                                                    |
+| Sign in                     |                                                                                                                                                                                                                                    |
+| Sign out                    |                                                                                                                                                                                                                                    |
+| Email                       |                                                                                                                                                                                                                                    |
+| Password                    |                                                                                                                                                                                                                                    |
+| Continue                    |                                                                                                                                                                                                                                    |
+| Cancel                      |                                                                                                                                                                                                                                    |
+| Two-factor authentication   |                                                                                                                                                                                                                                    |
+| Recovery code               |                                                                                                                                                                                                                                    |
+| Carry on                    | Settled 17 Oct 2026: "… to carry on" is the house phrase for resuming (20 strings). Not "continue", which is the button.                                                                                                           |
+| Signed out (a device)       | Settled 17 Oct 2026: "is signed out" for the state, "has been signed out" in emails. Never "logged out".                                                                                                                           |
+| Phone number, mobile number | Settled 18 Oct 2026: "phone number" for any number on the account (card, list, add button, cap), which may be a landline; "mobile number" only for the field we text a code to (`contacts.phoneLabel`, `verifyPhone.numberLabel`). |
 
 ## Never translated
 
