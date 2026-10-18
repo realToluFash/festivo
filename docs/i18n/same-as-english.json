@@ -24,5 +24,11 @@
     "web:twoFactor.code",
     "web:waysCard.code"
   ],
-  "pt": ["web:app.name", "mobile:app.name", "mobile:home.title", "mobile:layouts.itemCount_one"]
+  "pt": [
+    "web:app.name",
+    "mobile:app.name",
+    "mobile:home.title",
+    "mobile:layouts.itemCount_one",
+    "web:rolesScreen.area.menu"
+  ]
 }

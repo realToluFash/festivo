@@ -57,6 +57,17 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   never 1. «General» and «Roles» are the Spanish words, so they are in
   `same-as-english.json` (sc-2150).
 
+- **18 Oct 2026. A phone number is «número de teléfono»; the one we text is «de móvil».**
+  The Account card and its lists, limits and refusals say «Números de teléfono», because an
+  alternative may be a landline; the field we send an SMS code to keeps «Nuevo número de
+  móvil», as the phone screens' «Número de móvil» does. The rule against «teléfono» is for a
+  phone as a device (`devices.app*`), not for a number. "Make primary" is «Hacer
+  principal», short enough for the row button; "Make another one primary first" puts
+  «Antes» first and names the noun, «Antes, haga principal otra dirección» / «… otro
+  número». A key shared by addresses and numbers takes no gender: «Quitar», «Conservar»,
+  «Sin verificar», «Este dato ya está vinculado…», and «Verificado» as the generic status
+  word. "Remove" is «Quitar», never «Eliminar», because the address still exists (sc-2149).
+
 - **18 Oct 2026. The new-device email.** The subject is «Nuevo inicio de sesión en
   Soirely», a noun phrase that fits a phone inbox. The body puts the device first, «Un
   dispositivo que nunca había iniciado sesión en su cuenta de Soirely acaba de hacerlo.»,
