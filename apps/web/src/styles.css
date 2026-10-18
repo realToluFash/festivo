@@ -1709,6 +1709,23 @@ h2 {
   padding-left: calc(var(--sizeMark) + var(--spaceMd));
 }
 
+.roles-back {
+  display: none;
+  align-self: flex-start;
+}
+
+/* Roles-Phone and Roles-TabletPortrait: the list, or one role on its own page. */
+@media (width <= 60rem) {
+  .roles-back {
+    display: inline-flex;
+  }
+
+  .roles[data-open='false'] .roles-detail,
+  .roles[data-open='true'] .roles-list {
+    display: none;
+  }
+}
+
 .roles-replacement:has(input:checked) {
   border: var(--borderSelected);
   background: var(--colorAccentTint);

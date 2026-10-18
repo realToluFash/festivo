@@ -16,7 +16,7 @@ import {
   withLevel,
   withMargin,
 } from '@soirely/domain';
-import { type TFunction } from 'i18next';
+import i18next, { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -91,6 +91,7 @@ export function Roles() {
           organisation={organisation}
           catalogue={load.catalogue}
           manages={can(session, 'members.manage')}
+          held={organisation.permissions}
           onChange={(catalogue) => setLoad({ kind: 'loaded', catalogue })}
         />
       )}
@@ -102,11 +103,13 @@ function RolesLoaded({
   organisation,
   catalogue,
   manages,
+  held,
   onChange,
 }: {
   organisation: Membership;
   catalogue: RolesCatalogue;
   manages: boolean;
+  held: string[];
   onChange: (catalogue: RolesCatalogue) => void;
 }) {
   const { t } = useTranslation();
@@ -115,6 +118,8 @@ function RolesLoaded({
     id: (catalogue.roles.find((role) => !role.fixed) ?? catalogue.roles[0])?.id ?? '',
   }));
   const [saved, setSaved] = useState(false);
+  // At phone and tablet portrait width a role opens on its own page, with ‹ Roles back to the list.
+  const [opened, setOpened] = useState(false);
   const name = (role: OrganisationRole) => roleName(t, role);
   const selected =
     pane.kind === 'new' ? null : (catalogue.roles.find((role) => role.id === pane.id) ?? null);
@@ -122,10 +127,11 @@ function RolesLoaded({
   function open(next: Pane): void {
     setPane(next);
     setSaved(false);
+    setOpened(true);
   }
 
   return (
-    <div className="roles">
+    <div className="roles" data-open={opened}>
       <section className="card roles-list" aria-labelledby="roles-title">
         <div className="roles-list-head">
           <h1 id="roles-title">{t('rolesScreen.title')}</h1>
@@ -163,11 +169,16 @@ function RolesLoaded({
       </section>
 
       <section className="card roles-detail" aria-labelledby="role-title">
+        <button type="button" className="link-button roles-back" onClick={() => setOpened(false)}>
+          <span aria-hidden="true">‹ </span>
+          {t('rolesScreen.title')}
+        </button>
         {pane.kind === 'removing' && selected != null ? (
           <Removing
             organisation={organisation}
             role={selected}
             roles={catalogue.roles}
+            held={held}
             onKeep={() => open({ kind: 'role', id: selected.id })}
             onRemoved={(next) => {
               onChange(next);
@@ -181,6 +192,7 @@ function RolesLoaded({
             role={selected}
             catalogue={catalogue}
             manages={manages}
+            held={held}
             saved={saved}
             onRemove={() => selected != null && open({ kind: 'removing', id: selected.id })}
             onSaved={(role) => {
@@ -207,6 +219,7 @@ function Editing({
   role,
   catalogue,
   manages,
+  held,
   saved,
   onRemove,
   onSaved,
@@ -216,6 +229,7 @@ function Editing({
   role: OrganisationRole | null;
   catalogue: RolesCatalogue;
   manages: boolean;
+  held: string[];
   saved: boolean;
   onRemove: () => void;
   onSaved: (role: OrganisationRole) => void;
@@ -230,8 +244,13 @@ function Editing({
   const [nameError, setNameError] = useState<string | null>(null);
   const [status, setStatus] = useState<'editing' | 'saving' | 'failed'>('editing');
   const title = role == null ? '' : roleName(t, role);
+  // The API compares with the seeded roles' English labels, so a name is checked against both.
+  const english = i18next.getFixedT('en');
   const dirty = creating || !sameGrant(grant, startingGrant);
   const areas = catalogue.areas.map((entry) => entry.area);
+  // A caller changes only what they hold (sc-66): any other row shows its value, with no pills.
+  const settable = (permissions: string[]) =>
+    editable && permissions.every((permission) => held.includes(permission));
 
   function change(next: string[]): void {
     setGrant(next);
@@ -245,7 +264,7 @@ function Editing({
     if (creating) {
       const problem = roleNameProblem(
         typed,
-        catalogue.roles.map((one) => roleName(t, one)),
+        catalogue.roles.flatMap((one) => [roleName(t, one), roleName(english, one)]),
       );
 
       if (problem != null) {
@@ -353,7 +372,7 @@ function Editing({
                   <span className="roles-row-name">{t(`rolesScreen.area.${area}`)}</span>
                   <span className="muted">{t(`rolesScreen.means.${area}`)}</span>
                 </div>
-                {editable ? (
+                {settable(permissions.filter((one) => one !== MARGIN)) ? (
                   <Levels
                     label={t(`rolesScreen.area.${area}`)}
                     options={levelsOf(permissions).map((value) => ({
@@ -375,7 +394,7 @@ function Editing({
                       {t('rolesScreen.marginMeans', { name: organisation.name })}
                     </span>
                   </div>
-                  {editable ? (
+                  {settable([MARGIN]) ? (
                     <Levels
                       label={t('rolesScreen.margin')}
                       options={[
@@ -503,12 +522,14 @@ function Removing({
   organisation,
   role,
   roles,
+  held,
   onKeep,
   onRemoved,
 }: {
   organisation: Membership;
   role: OrganisationRole;
   roles: OrganisationRole[];
+  held: string[];
   onKeep: () => void;
   onRemoved: (catalogue: RolesCatalogue) => void;
 }) {
@@ -517,7 +538,12 @@ function Removing({
   const [missing, setMissing] = useState(false);
   const [status, setStatus] = useState<'asking' | 'removing' | 'failed'>('asking');
   const title = roleName(t, role);
-  const choices = roles.filter((one) => one.id !== role.id && !one.fixed);
+  const choices = roles.filter(
+    (one) =>
+      one.id !== role.id &&
+      !one.fixed &&
+      one.permissions.every((permission) => held.includes(permission)),
+  );
   const chosen = choices.find((one) => one.id === replacement);
 
   async function remove(): Promise<void> {

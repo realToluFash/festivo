@@ -259,6 +259,36 @@ describe('Settings > Roles', () => {
     });
   });
 
+  it('lets an Administrator change only what they hold, and never move people onto Owner', async () => {
+    signedIn(membership({ ...IRE, permissions: ROLES[1]?.permissions ?? [] }));
+    answering();
+    await roles();
+    pick(/^Coordinator/);
+
+    expect(screen.getByRole('group', { name: 'Events' })).toBeDefined();
+    expect(screen.queryByRole('group', { name: 'Billing' })).toBeNull();
+
+    pick(/^Door team/);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+
+    expect(screen.getByLabelText(/^Read-only/)).toBeDefined();
+    expect(screen.queryByLabelText(/^Owner/)).toBeNull();
+    expect(screen.getByLabelText(/^Administrator/)).toBeDefined();
+  });
+
+  it('opens a role on its own page at narrow widths, with Roles to go back', async () => {
+    answering();
+    await roles();
+    const layout = document.querySelector('.roles');
+
+    expect(layout?.getAttribute('data-open')).toBe('false');
+    pick(/^Coordinator/);
+    expect(layout?.getAttribute('data-open')).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
+    expect(layout?.getAttribute('data-open')).toBe('false');
+  });
+
   it('shows a role that can read members the grid, with nothing to change', async () => {
     signedIn(membership({ ...IRE, permissions: ['members.read', 'events.read'] }));
     answering();
