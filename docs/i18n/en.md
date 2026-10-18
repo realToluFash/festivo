@@ -40,6 +40,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A cost line's rate or amount, too many decimals (sc-83, `CostLine`).** Two
+  keys, one per field label: "That has too many decimal places for this event's currency.
+  Enter the rate like {{example}}." on a rated line, and "… Enter the amount like
+  {{example}}." on a `fixed` line, whose field is labelled Amount. `{{example}}` as sc-88's,
+  at the currency's minor unit ("12" for JPY, "12.50" for GBP, "12.500" for KWD). Won over
+  "rate" on every line, because a refusal names the field the person is looking at (as
+  sc-90's "Enter the ceiling like", and sc-88's "Enter the amount in {{currency}}"), and over
+  one key with the field as a slot, because "rate" and "amount" take different articles and
+  genders in es, fr and pt, so a slot would leave them no way to agree.
 - **18 Oct 2026. The budget ceiling's form and warnings (sc-90, `Ceiling`).** Too many
   decimals, one key for every currency: "That has too many decimal places for this event's
   currency. Enter the ceiling like {{example}}.", with `{{example}}` built as sc-88's (from
