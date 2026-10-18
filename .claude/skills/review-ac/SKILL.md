@@ -12,19 +12,25 @@ arguments: [story_id]
 You are reviewing the acceptance criteria on story `$story_id` for completeness, and
 checking whether what was built still matches what was asked for.
 
+**Tools.** Read only through `sq <your role>` — the product manager runs it, so the examples
+use `sq pm`. `sq pm help` lists what the role may run. Never call the Shortcut tools or `gh`
+yourself. A thing you read on an earlier run and that has not changed prints as a one-line
+reference; use `--again` only if you truly need its full text again.
+
 ## Step 1: Gather context
 
-1. `stories-get-by-id` for `$story_id`
-2. `stories-get-history` for how it has changed
-3. The epic it belongs to — the scope boundary and its carried-forward notes both change
-   what the AC ought to cover
-4. Any related or linked stories
+1. `sq pm story sc-$story_id`: the story, its links, related stories and pull requests
+2. `sq pm history sc-$story_id` for how it has changed
+3. The epic it belongs to, `sq pm epic <n>` — the scope boundary and its carried-forward
+   notes both change what the AC ought to cover
+4. Any related or linked stories, `sq pm story sc-<n> --section AC` each
 
 ## Step 2: Gather the pull request
 
-Check the story's external links for GitHub PR URLs. For each:
+For each pull request the story lists:
 
-1. Fetch details and diff with `gh pr view <n>` and `gh pr diff <n>`
+1. `sq pm pr <n>` for its status and body, and `sq pm diff <n>` for the file list, then
+   `sq pm diff <n> <path> [<path>…]` for the files that matter (`--all` for every one)
 2. Note what was actually implemented against what the AC describes
 
 Drift in either direction matters. Code with no AC behind it is unverifiable by QA; AC

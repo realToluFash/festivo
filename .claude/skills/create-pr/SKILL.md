@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: Open a draft pull request for the current branch in the Soirely house format — Description, Risks, References, Evidence of work, Next Steps — filled in from the actual diff, then created once approved. Always a draft; the developer publishes it themselves.
+description: Open a pull request for the current branch in the Soirely house format — Description, Risks, References, Evidence of work, Next Steps — filled in from the actual diff, through `sq <role> pr-create`. Ready for review, never a draft, except for ops.
 disable-model-invocation: true
 user-invocable: true
 argument-hint: [optional note about the change]
@@ -11,16 +11,18 @@ arguments: [note]
 
 You are opening a pull request for the work on the current branch.
 
-**Every PR is created as a draft.** The developer reviews it and marks it ready — that is
-not your call.
+**Every PR opens ready for review, not as a draft.** A draft cannot be merged, and the
+lead's pass is meant to be the last step before the merge. Only ops opens drafts.
 
 `$note` is optional context. The diff is the source of truth; the note tells you what to
 emphasise.
 
-## Prerequisites
+## Tools
 
-Needs the GitHub CLI (`gh`), authenticated. If it is missing or unauthenticated, stop and
-say so rather than working around it.
+Read and write Shortcut and GitHub only through `sq <your role>` — the developer's `sq dev`
+or `sq dev2`, a linguist's `sq en` (and so on), `sq ops`; the examples below say `sq dev`.
+`sq dev help` lists what you may run. Never call the Shortcut tools or `gh` yourself. Git
+in your own checkout stays as it is.
 
 ## Step 1: Preflight
 
@@ -53,8 +55,10 @@ Identify specifically:
 - Any new user-facing string, and whether all four locales carry it
 - Which tests cover the change, and whether they are new
 
-If the branch is named `sc-<id>/<slug>`, the Shortcut story is `<id>`. Fetch it so the
-References section is accurate and the description matches what was asked for. **Flag any
+If the branch is named `sc-<id>/<slug>`, the Shortcut story is `<id>`. Its AC is
+`sq dev story sc-<id> --section AC` — if this run already printed it, that is a one-line
+reference, and the text above is the one to use. Read it so the References section is
+accurate and the description matches what was asked for. **Flag any
 drift between the story's AC and the diff** — that is exactly what a reviewer needs.
 
 ## Step 3: Write the body
@@ -162,51 +166,43 @@ order you discovered things in.
 Follow-up PRs, stories still to raise, work deliberately left out. `None.` if
 self-contained.
 
-## Step 4: Show the draft and wait
+## Step 4: Check the body
 
-**Do not open the PR yet.** Show the title and full body and ask for confirmation. Call
-out anything you inferred rather than knew — especially in Risks, where a wrong assumption
-is worse than a blank.
-
-Only proceed on explicit approval.
+Before opening, read the title and body once more for anything you inferred rather than
+knew — especially in Risks, where a wrong assumption is worse than a blank. Say so in the
+body where it stands, and in your report.
 
 ## Step 5: Open it
 
 ```bash
-gh pr create --draft --base main --head <branch> --title "<title>" --body-file <file>
+sq dev pr-create --head <branch> --title "<title>" < <body file>
 ```
 
-`--draft` is mandatory. Never open a PR ready for review and never run `gh pr ready` — the
-developer decides when it is ready. If `gh` reports the repository does not allow drafts,
-stop and say so rather than falling back to a normal PR.
-
-Write the body to a file rather than passing it inline — the markdown does not survive
-shell quoting intact.
+The base is `main`. Write the body to a file and pass it on stdin rather than inline — the
+markdown does not survive shell quoting intact. `pr-create` refuses `--draft` for every
+role but ops.
 
 Title: a conventional-commit prefix matching the branch's commits, naming the outcome.
 
 ## Step 6: Hand it to review
 
-**Move the story to `In Review`** — `stories-update` with that state's id, resolved by name
-with `workflows-list`. That state is the handover: it is how `/soirely-tech-lead` finds
-work. Once the lead passes it, you merge it and move it on to `Ready For QA` yourself
+**A developer moves the story to `In Review`**: `sq dev move sc-<id> "In Review"`. That
+state is the handover: it is how `/soirely-tech-lead` finds work. Once the lead passes it, you merge it and move it on to `Ready For QA` yourself
 (`soirely-developer`, section 9). A finished story left in `In Progress` is a story nobody
 reviews or tests.
 
 Move it when the work is actually finished — the pull request open and **its checks green**,
-not merely pushed. A story handed over on a red branch wastes somebody's pass on code that
-is about to change.
+not merely pushed (`sq dev checks <n>`: nothing failed, nothing pending). A story handed
+over on a red branch wastes somebody's pass on code that is about to change.
 
 Never move a story to **Done**. That is the user's, after a merge.
 
 ## Step 7: Report
 
-Give the PR number and URL, the base branch, the commit count, and say plainly it is a
-**draft** awaiting review. Remind them it stays a draft until they mark it ready, from the
-PR page or with `gh pr ready <number>`.
+Give the PR number and URL, the base branch, the commit count, and anything you inferred
+rather than knew.
 
-Suggest `/fix-pr-checks <number>` once CI has started. Note that some workflows skip draft
-PRs; if no checks appear, that is why.
+Use `/fix-pr-checks <number>` once CI has started and a check is red.
 
 Say which state the story is in now, so the handover is visible rather than assumed.
 
