@@ -106,7 +106,7 @@ async function atTheStart(answers: Record<string, () => Response>) {
     'heading',
     {
       level: 1,
-      name: /Get back in|Contact Soirely support|Enter both codes|Waiting|Two-factor is off/,
+      name: /Get back in|Contact Soirely support|Enter both codes|Waiting|Two-factor is off|turned down/,
     },
     THE_WAY_IN,
   );
@@ -285,6 +285,26 @@ describe('getting back in without the authenticator', () => {
         'Somebody in your organisation confirmed it was you. Every session you had has ended. Sign in, then set it up again.',
       ),
     ).toBeDefined();
+  });
+
+  it('turned down with nobody left, says nobody can confirm it and keeps its one support link', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({
+          ...OPENING,
+          recovery: 'handle',
+          state: { ...WAITING, status: 'turned_down', organisations: [], nobody: true },
+        }),
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Your request was turned down' }),
+    ).toBeDefined();
+    expect(
+      screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/Ask an owner or admin of/)).toBeNull();
+    expect(screen.getAllByRole('link', { name: 'Email support@soirely.com' })).toHaveLength(1);
   });
 
   it('opens the waiting screen when the codes were already proved on another device', async () => {
