@@ -214,7 +214,7 @@
     "signOut": "Encerrar sessão",
     "doneTitle": "E-mail verificado",
     "doneBody": "{{address}} está confirmado. A seguir, alguns dados para que a sua equipa saiba quem é quem.",
-    "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
+    "doneBodyAlternative": "{{address}} está verificado. Continua a ser um endereço alternativo até o tornar principal em Conta.",
     "continue": "Continuar",
     "failedTitle": "Não funcionou",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
@@ -247,7 +247,7 @@
     "carryOnWithout": "Continuar sem ele",
     "doneTitle": "Número verificado",
     "doneBody": "A Soirely pode contactar o {{number}} se algo correr mal na noite do evento.",
-    "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
+    "doneBodyAlternative": "{{number}} está verificado. Continua a ser um número alternativo até o tornar principal em Conta.",
     "continue": "Continuar para a Soirely",
     "changeTitle": "Altere o seu número de telemóvel",
     "nowVerified": "Atual: {{number}} · verificado",
@@ -857,8 +857,8 @@
     "promoted": "{{address}} é agora o seu endereço principal. A partir de agora, inicie sessão com ele.",
     "promotedPhone": "{{number}} é agora o seu número principal.",
     "removed": "{{address}} foi removido.",
-    "verifiedDone": "{{address}} is verified.",
-    "verifiedDonePhone": "{{number}} is verified.",
+    "verifiedDone": "{{address}} está verificado.",
+    "verifiedDonePhone": "{{number}} está verificado.",
     "verifiedPrimaryPhone": "{{number}} is verified and is now your primary number.",
     "refusedPrimary": "Este é o endereço com que inicia sessão. Torne primeiro outro endereço principal.",
     "refusedPrimaryPhone": "Este é o seu número principal. Torne primeiro outro número principal.",
@@ -868,8 +868,8 @@
     "refusedNotVerifiedPhone": "Verifique este número antes de o tornar principal.",
     "failed": "Não foi possível concluir. Tente novamente.",
     "proveIntro": "Confirme que é você antes de alterar o endereço com que inicia sessão.",
-    "backToAccount": "Back to Account",
-    "removeInAccount": "Remove it in Account",
-    "removeInAccountPhone": "Remove it in Account"
+    "backToAccount": "Voltar a Conta",
+    "removeInAccount": "Removê-lo em Conta",
+    "removeInAccountPhone": "Removê-lo em Conta"
   }
 }
