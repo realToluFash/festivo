@@ -403,7 +403,8 @@ def pr_reply(c, a):
     owner, name = c.repository()
     pr = c.pr(a.pr)
     first = thread_of(pr, a.comment)["comments"][0]["id"]
-    github.reply(owner, name, a.pr, first, a.text)
+    # Signed, so the queue knows whose word a thread ends on.
+    github.reply(owner, name, a.pr, first, f"{a.text.rstrip()} (from {signature(c.role)})")
     sync.sync_github(c.db)
     return f"replied on PR #{a.pr}"
 

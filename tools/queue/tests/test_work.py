@@ -93,6 +93,41 @@ class Review(unittest.TestCase):
         self.assertEqual(work.review_items([story()], [pr(state="merged")]), [])
 
 
+def thread(*texts, resolved=False):
+    return {"id": "T", "resolved": resolved, "outdated": False, "path": "x", "line": 1,
+            "comments": [{"id": 100 + i, "at": "", "text": t} for i, t in enumerate(texts)]}
+
+
+class Threads(unittest.TestCase):
+    passed = [verdict("pass", HEAD[:7])]
+
+    def test_a_reply_on_a_finding_wakes_the_lead_in_any_state(self):
+        for state in ("In Review", "In Progress", "Ready For QA"):
+            items = work.review_items([story(state=state)], [pr(
+                lead=self.passed, threads=[thread("should: x", "Kept as is. (from dev)")])])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("threads", ["lead"])])
+
+    def test_a_finding_with_no_reply_or_the_lead_last_waits(self):
+        for t in (thread("nit: x"), thread("nit: x", "Fixed. (from dev)", "Not yet. (from lead)"),
+                  thread("nit: x", "Fixed. (from dev)", resolved=True)):
+            self.assertEqual(work.review_items([story()], [pr(lead=self.passed, threads=[t])]), [])
+
+    def test_a_thread_the_lead_did_not_start_is_not_its_work(self):
+        t = thread("Why this? (from qa)", "Because. (from dev)")
+        self.assertEqual(work.review_items([story()], [pr(lead=self.passed, threads=[t])]), [])
+
+    def test_a_review_item_already_carries_the_threads(self):
+        items = work.review_items([story()], [pr(threads=[thread("blocking: x", "Done.")])])
+        self.assertEqual([i["kind"] for i in items], ["review"])
+
+    def test_each_new_reply_is_new_work(self):
+        one = work.review_items([story()], [pr(lead=self.passed,
+                                               threads=[thread("nit: x", "a (from dev)")])])
+        two = work.review_items([story()], [pr(lead=self.passed, threads=[
+            thread("nit: x", "a (from dev)", "b (from lead)", "c (from dev)")])])
+        self.assertNotEqual(one[0]["fingerprint"], two[0]["fingerprint"])
+
+
 class Developer(unittest.TestCase):
     def test_a_pass_at_the_head_with_no_open_thread_is_a_merge(self):
         items = work.developer_items([story(labels=["dev2"])],
