@@ -48,6 +48,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The new-device email.** The subject is «Nuevo inicio de sesión en
+  Soirely», a noun phrase that fits a phone inbox. The body puts the device first, «Un
+  dispositivo que nunca había iniciado sesión en su cuenta de Soirely acaba de hacerlo.»,
+  because «acaba de» says "just" without a time adverb. "Network address" is «Dirección de
+  red», not «Dirección IP», as the English chose the plain word. Its facts reuse
+  `twoFactorRecovery.fact.*` («Cuándo:», «Dispositivo:»). "Sign out … from Security" is
+  «vaya a Seguridad y cierre la sesión en …», because «desde Seguridad» at the end reads as
+  if the devices were not recognised from there. «Si no fue usted» as in the provider emails
+  (sc-1283).
+
 - **18 Oct 2026. The app as a device is «Aplicación de Soirely en …».** «Aplicación de
   Soirely en iPhone», «… en iPad», «… en un móvil Android», «… en una tableta Android»
   (`devices.app*`, `password.device.app*`). «Aplicación» rather than «app» for the formal
