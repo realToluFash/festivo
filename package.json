@@ -18,6 +18,7 @@
     "guard:api": "docker compose exec -T api php vendor/bin/mago guard && node scripts/check-migrations.mjs",
     "test": "npm run test:scripts && npm run test:api && npm run test:packages",
     "test:scripts": "vitest run --dir scripts",
+    "test:queue": "python3 -m unittest discover -s tools/queue/tests -t tools/queue",
     "test:db": "node scripts/test-db.mjs",
     "qa:account": "node scripts/qa-account.mjs",
     "test:api": "docker compose exec -T api sh -c \"APP_ENV=test vendor/bin/phpunit\"",

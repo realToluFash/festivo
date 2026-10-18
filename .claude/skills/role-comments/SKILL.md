@@ -108,6 +108,11 @@ thing that unblocks the others.
 Then continue with your own pick-the-work order. An empty inbox is one line, not a reason
 to stop.
 
+**In a routine run, `sq` has done steps 1 and 2.** An inbox work item names the open
+comments, and `sq show <id>` prints their threads with each open one marked. Answer with
+`sq comment sc-<n> --as <you> --reply-to <id>`, which writes the header and puts the reply
+on the thread's root (`role-routine`, section 3).
+
 ## 5. What this is not for
 
 - **Not for the user.** A decision only the user can make — merging, Done, money, a
