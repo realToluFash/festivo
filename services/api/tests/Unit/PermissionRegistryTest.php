@@ -8,17 +8,32 @@ use App\Enum\Permission;
 use App\Enum\SeededRole;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psl\Iter;
 use ValueError;
 
 /** sc-66: a permission nobody holds is a feature nobody can reach, so each one starts somewhere on purpose. */
 final class PermissionRegistryTest extends TestCase
 {
+    /** Kept for Owner on purpose: handing over the organisation's billing is the owner's alone. */
+    private const array OWNER_ONLY = [Permission::BillingManage];
+
     #[Test]
     public function everyPermissionStartsOnASeededRoleBesidesOwnersAll(): void
     {
         foreach (Permission::cases() as $permission) {
-            self::assertNotSame([], $permission->defaultRoles(), $permission->value);
             self::assertContains(SeededRole::Owner, $permission->defaultRoles(), $permission->value);
+
+            if (!Iter\contains(self::OWNER_ONLY, $permission)) {
+                self::assertNotSame([SeededRole::Owner], $permission->defaultRoles(), $permission->value . ' reaches no role but Owner');
+            }
+        }
+    }
+
+    #[Test]
+    public function anOwnerOnlyPermissionIsOneOnPurpose(): void
+    {
+        foreach (self::OWNER_ONLY as $permission) {
+            self::assertSame([SeededRole::Owner], $permission->defaultRoles(), $permission->value);
         }
     }
 
