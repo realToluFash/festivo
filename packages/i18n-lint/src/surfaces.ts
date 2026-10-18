@@ -59,6 +59,38 @@ export const SURFACES: readonly Surface[] = [
 
 export const LOCALES = LOCALE_CODES;
 
+export interface WordCopy extends Pick<Surface, 'name' | 'catalogues' | 'file'> {
+  /** The dotted key the words sit under. */
+  under: string;
+}
+
+/** Words several surfaces keep a copy of: the API refuses a role name by its own (sc-2301). */
+export const SHARED_WORDS: readonly { what: string; copies: readonly WordCopy[] }[] = [
+  {
+    what: 'the seeded roles',
+    copies: [
+      {
+        name: 'apps/web',
+        catalogues: 'apps/web/src/i18n/locales',
+        file: (locale) => `${locale}.json`,
+        under: 'roles',
+      },
+      {
+        name: 'apps/mobile',
+        catalogues: 'apps/mobile/src/i18n/locales',
+        file: (locale) => `${locale}.json`,
+        under: 'roles',
+      },
+      {
+        name: 'services/api (messages)',
+        catalogues: 'services/api/translations',
+        file: (locale) => `messages.${locale}.json`,
+        under: 'seeded_role',
+      },
+    ],
+  },
+];
+
 /**
  * Props whose value a person reads. A literal in one of these is untranslated
  * text, however innocuous it looks.

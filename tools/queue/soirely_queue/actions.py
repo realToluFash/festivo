@@ -452,6 +452,10 @@ def merge(c, a):
                       "the push voids the pass, so the story stays In Review for the lead")
     if live["mergeable"] != "MERGEABLE":
         raise Refused(f"GitHub says {live['mergeable']}; try again in a minute")
+    if live.get("mergeStateStatus") == "BEHIND":
+        raise Refused("main has moved on. Merge origin/main into the branch and push; once its "
+                      "checks are green, a pass carries over if the merge changed nothing of the "
+                      "pull request's own")
     if c.role in R.LINGUISTS:
         mine = R.locale_files(c.role)
         stray = [path for path, _, _ in github.files(a.pr) if path not in mine]
@@ -464,7 +468,8 @@ def merge(c, a):
     if not story or story["state"] != "In Review":
         raise Refused(f"its story is {story['state'] if story else 'unknown'}, not In Review")
     verdict = W.latest_verdict(pr)
-    if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, head)):
+    carried = pr.get("carried") if head == pr["head_sha"] else None
+    if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, head, carried)):
         raise Refused(f"no lead pass covers the head {head[:7]}; wait for the lead's review")
     unresolved = W.open_threads(pr)
     if unresolved:
@@ -484,7 +489,8 @@ def to_qa(c, a):
         raise Refused(f"sc-{story['id']} has no merged pull request")
     pr = merged[-1]
     verdict = W.latest_verdict(pr)
-    if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, pr["head_sha"])):
+    if not (verdict and verdict["verdict"] == "pass"
+            and W.covers(verdict, pr["head_sha"], pr.get("carried"))):
         raise Refused(f"PR #{pr['number']} merged at a head no lead pass covers: ask [lead]")
     hand_to_qa(c, story, pr, pr["merge_sha"], a.text)
     return f"sc-{story['id']} is Ready For QA; QA is told about {pr['merge_sha'][:7]}"
