@@ -48,6 +48,10 @@ create table if not exists claims (
 create table if not exists handled (
   role text not null, comment_id integer not null, primary key (role, comment_id)
 );
+create table if not exists moves (
+  story_id integer not null, state text not null, moved_at text not null, role text not null,
+  primary key (story_id, state, moved_at)
+);
 """
 
 LEASE_MINUTES = 90
@@ -224,6 +228,16 @@ def mark_handled(db, role, comment_ids):
 
 def handled(db):
     return {(row["role"], row["comment_id"]) for row in db.execute("select * from handled")}
+
+
+def mark_move(db, story_id, state, moved_at, role):
+    db.execute("insert or replace into moves (story_id, state, moved_at, role) "
+               "values (?, ?, ?, ?)", (story_id, state, moved_at, role))
+
+
+def moves(db):
+    return {(row["story_id"], row["state"], row["moved_at"]): row["role"]
+            for row in db.execute("select * from moves")}
 
 
 def add_note(db, role, story_id, note, now=None):

@@ -98,7 +98,9 @@ def set_state(c, story, name, check=True):
         froms = " or ".join(allowed) if allowed else "nowhere"
         raise Refused(f"{c.role} moves a story to {state} only from {froms}; "
                       f"sc-{story['id']} is {story['state']}")
-    c.shortcut.update(story["id"], workflow_state_id=state_id)
+    moved = c.shortcut.update(story["id"], workflow_state_id=state_id)
+    if moved and moved.get("moved_at"):
+        store.mark_move(c.db, story["id"], state, moved["moved_at"], c.role)
     return state
 
 

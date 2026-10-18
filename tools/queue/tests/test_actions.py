@@ -4,10 +4,10 @@ import argparse
 import unittest
 from unittest import mock
 
-from soirely_queue import actions, roles, store
+from soirely_queue import actions, cli, roles, store
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
-          "5": "In QA", "6": "Passsed QA", "7": "Failed QA"}
+          "5": "In QA", "6": "Passsed QA", "7": "Failed QA", "8": "Backlog"}
 IDS = {name: int(i) for i, name in STATES.items()}
 HEAD = "a" * 40
 OLD = "b" * 40
@@ -33,6 +33,7 @@ class FakeShortcut:
             self.raw[story_id]["moved_at"] = "t1"
         if "labels" in fields:
             self.raw[story_id]["labels"] = fields["labels"]
+        return self.raw[story_id]
 
     def comment(self, story_id, text, parent_id=None):
         self.comments.append((story_id, text))
@@ -94,6 +95,10 @@ class Base(unittest.TestCase):
     def labels(self, story_id):
         return {label["name"] for label in self.fake.raw[story_id]["labels"]}
 
+    def queue_wakes(self, role):
+        cli.refresh_work(self.db, 10_000_000)
+        return [w["reason"] for w in store.waiting(self.db, role) if w["kind"] == "story"]
+
 
 class Writes(Base):
     def test_a_developer_claim_adds_its_label_and_starts_the_story(self):
@@ -142,6 +147,26 @@ class Writes(Base):
                                             text="Tested on main\nAll good."))
         self.assertEqual(self.state(1), "Passsed QA")
         self.assertEqual(self.labels(1), {"qa passed", "dev1"})
+
+    def test_a_role_s_own_move_wakes_only_the_others(self):
+        self.fake.add(1, "Backlog")
+        actions.move(self.as_("pm"), args(story="sc-1", state="To Do"))
+        self.assertEqual(self.queue_wakes("pm"), [])
+        self.assertEqual(self.queue_wakes("ux"), ["sc-1 moved to To Do"])
+
+    def test_the_same_move_wakes_the_role_when_another_makes_it(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        actions.move(self.as_("dev2"), args(story="sc-1", state="In Progress"))
+        self.assertEqual(self.queue_wakes("dev2"), [])
+
+        self.fake.add(2, "In Review", ["dev2"])
+        actions.move(self.as_("lead"), args(story="sc-2", state="In Progress"))
+        self.assertEqual(self.queue_wakes("dev2"), ["sc-2 moved to In Progress"])
+
+    def test_a_developer_s_claim_does_not_wake_it_again(self):
+        self.fake.add(1, "To Do")
+        actions.claim(self.as_("dev2"), args(story="sc-1"))
+        self.assertEqual(self.queue_wakes("dev2"), [])
 
     def test_the_designer_writes_only_the_design_section(self):
         with self.assertRaisesRegex(actions.Refused, "only the Design"):
