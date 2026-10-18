@@ -38,6 +38,26 @@ export function contactsLeft(rows: readonly ContactFacts[]): number {
   return Math.max(0, CONTACTS_MOST - listedContacts(rows).length);
 }
 
+const LIST_CHANGED_REFUSALS = new Set([
+  'primary_address',
+  'last_verified_address',
+  'address_not_verified',
+  'address_limit_reached',
+  'already_linked',
+]);
+
+/** Another tab or device changed the list (sc-2304): read it again before the reason shows, which a failed read never holds back. */
+export async function rereadAfterRefusal(
+  code: string | null,
+  read: () => Promise<void>,
+): Promise<boolean> {
+  if (code == null || !LIST_CHANGED_REFUSALS.has(code)) return false;
+
+  await read().catch(() => {});
+
+  return true;
+}
+
 /** The row a verify screen sent Account back for, while it is listed and verified. */
 export function justVerified<T extends ContactFacts & { id: string }>(
   rows: readonly T[],

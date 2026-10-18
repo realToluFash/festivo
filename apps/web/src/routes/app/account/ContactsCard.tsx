@@ -15,6 +15,7 @@ import {
   lockLiftsAt,
   phoneLengthProblem,
   refusedPhoneField,
+  rereadAfterRefusal,
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -173,6 +174,15 @@ function ContactsCard({
     setSaid(line);
   }
 
+  /** True for a refusal that said the list had changed, once the list has been read again. */
+  async function rereadFor(refusal: unknown): Promise<boolean> {
+    const changed = await rereadAfterRefusal(codeOf(refusal), onChanged);
+
+    if (changed) setDone(null);
+
+    return changed;
+  }
+
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
     setRowError(null);
     const standing = proof ?? heldProof();
@@ -202,6 +212,7 @@ function ContactsCard({
         await onChanged();
       }
     } catch (refusal) {
+      if (await rereadFor(refusal)) setAsking(null);
       setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
     }
   }
@@ -374,6 +385,7 @@ function ContactsCard({
               setDone(t('contacts.added'));
               await onChanged();
             }}
+            onRefused={rereadFor}
             onCancel={() => setAdding(false)}
           />
         ) : (
@@ -384,6 +396,7 @@ function ContactsCard({
               setDone(t('contacts.added'));
               await onChanged();
             }}
+            onRefused={rereadFor}
             onCancel={() => setAdding(false)}
           />
         )
@@ -414,7 +427,15 @@ function ContactsCard({
   );
 }
 
-function AddEmail({ onAdded, onCancel }: { onAdded: () => Promise<void>; onCancel: () => void }) {
+function AddEmail({
+  onAdded,
+  onRefused,
+  onCancel,
+}: {
+  onAdded: () => Promise<void>;
+  onRefused: (refusal: unknown) => Promise<unknown>;
+  onCancel: () => void;
+}) {
   const { t } = useTranslation();
   const [address, setAddress] = useState('');
   const [refused, setRefused] = useState<string | null>(null);
@@ -439,6 +460,7 @@ function AddEmail({ onAdded, onCancel }: { onAdded: () => Promise<void>; onCance
       await api.addEmailAddress(address.trim());
       await onAdded();
     } catch (refusal) {
+      await onRefused(refusal);
       setSending(false);
       setRefused(addRefusal(refusal, 'email', t));
       field.current?.focus();
@@ -490,10 +512,12 @@ function AddEmail({ onAdded, onCancel }: { onAdded: () => Promise<void>; onCance
 function AddPhone({
   country: initialCountry,
   onAdded,
+  onRefused,
   onCancel,
 }: {
   country: string;
   onAdded: () => Promise<void>;
+  onRefused: (refusal: unknown) => Promise<unknown>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -521,6 +545,7 @@ function AddPhone({
       await api.addPhoneNumber(country, number);
       await onAdded();
     } catch (refusal) {
+      await onRefused(refusal);
       setSending(false);
       setError(addRefusal(refusal, 'phone', t));
     }
@@ -557,6 +582,10 @@ function AddPhone({
 }
 
 type T = ReturnType<typeof useTranslation>['t'];
+
+function codeOf(refusal: unknown): string | null {
+  return refusal instanceof ApiError ? refusal.code : null;
+}
 
 /** The server's answer to a race the screen did not invite: each is a reason with the next step. */
 function rowRefusal(refusal: unknown, kind: Kind, t: T): string {

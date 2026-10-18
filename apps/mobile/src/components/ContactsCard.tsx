@@ -9,6 +9,7 @@ import {
   listedContacts,
   lockLiftsAt,
   phoneLengthProblem,
+  rereadAfterRefusal,
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +23,7 @@ import { emailMessage, useFormChecks } from '../kit/formChecks.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
 import { heldProof } from '../recentProof.ts';
+import { rereadAccount } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -142,6 +144,15 @@ function ContactsCard({
     setSaid(line);
   }
 
+  /** True for a refusal that said the list had changed, once the list has been read again. */
+  async function rereadFor(refusal: unknown): Promise<boolean> {
+    const changed = await rereadAfterRefusal(codeOf(refusal), rereadAccount);
+
+    if (changed) setDone(null);
+
+    return changed;
+  }
+
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
     setRowError(null);
     const standing = proof ?? heldProof();
@@ -170,6 +181,7 @@ function ContactsCard({
       setAsking(null);
       await onChanged();
     } catch (refusal) {
+      if (await rereadFor(refusal)) setAsking(null);
       setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
     }
   }
@@ -326,6 +338,7 @@ function ContactsCard({
             setDone(t('contacts.added'));
             await onChanged();
           }}
+          onRefused={rereadFor}
           onCancel={() => setAdding(false)}
         />
       ) : (
@@ -357,11 +370,13 @@ function Adding({
   kind,
   country: initialCountry,
   onAdded,
+  onRefused,
   onCancel,
 }: {
   kind: Kind;
   country: string;
   onAdded: () => Promise<void>;
+  onRefused: (refusal: unknown) => Promise<unknown>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -392,6 +407,7 @@ function Adding({
       await (email ? api.addEmailAddress(value) : api.addPhoneNumber(country, value));
       await onAdded();
     } catch (refusal) {
+      await onRefused(refusal);
       setSending(false);
       setRefused(addRefusal(refusal, kind, t));
     }
@@ -458,6 +474,10 @@ function Adding({
       />
     </View>
   );
+}
+
+function codeOf(refusal: unknown): string | null {
+  return refusal instanceof ApiError ? refusal.code : null;
 }
 
 /** The server's answer to a race the screen did not invite: each is a reason with the next step. */

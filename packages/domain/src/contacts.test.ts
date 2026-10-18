@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   CONTACTS_MOST,
@@ -6,6 +6,7 @@ import {
   contactsLeft,
   justVerified,
   listedContacts,
+  rereadAfterRefusal,
 } from './contacts.ts';
 
 describe('alternative addresses and numbers', () => {
@@ -39,6 +40,37 @@ describe('alternative addresses and numbers', () => {
     expect(contactsLeft([primary, { verified: false, primary: false }])).toBe(0);
     expect(contactsLeft([primary, pending])).toBe(1);
     expect(listedContacts([primary, pending])).toEqual([primary]);
+  });
+});
+
+describe('a refusal that says the list has changed', () => {
+  it.each([
+    'primary_address',
+    'last_verified_address',
+    'address_not_verified',
+    'address_limit_reached',
+    'already_linked',
+  ])('reads the list again for %s', async (code) => {
+    const read = vi.fn(async () => {});
+
+    expect(await rereadAfterRefusal(code, read)).toBe(true);
+    expect(read).toHaveBeenCalledOnce();
+  });
+
+  it.each(['too_many_attempts', 'validation_failed', 'not_found', null])(
+    'leaves the list alone for %s',
+    async (code) => {
+      const read = vi.fn(async () => {});
+
+      expect(await rereadAfterRefusal(code, read)).toBe(false);
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  it('still lets the reason show when the read fails', async () => {
+    await expect(
+      rereadAfterRefusal('already_linked', () => Promise.reject(new Error('offline'))),
+    ).resolves.toBe(true);
   });
 });
 
