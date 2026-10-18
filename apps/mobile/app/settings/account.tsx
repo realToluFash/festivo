@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
+import { ContactsCards } from '../../src/components/ContactsCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
@@ -10,7 +11,7 @@ import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
 import { reloadSignedIn, useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
-/** Settings > Account in the app: the time zone card (sc-868); the address cards are sc-113's. */
+/** Settings > Account in the app: the address and phone cards (sc-113), then the time zone (sc-868). */
 export default function Account() {
   const { t } = useTranslation();
   const { kind } = useLayout();
@@ -38,6 +39,7 @@ export default function Account() {
           )}
           {account != null && (
             <View style={styles.cards}>
+              <ContactsCards account={account} kind={kind} onChanged={reloadSignedIn} />
               <TimeZoneCard timezone={account.timezone} kind={kind} onSaved={reloadSignedIn} />
             </View>
           )}

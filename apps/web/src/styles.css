@@ -1492,6 +1492,16 @@ h2 {
   flex: 1 1 12rem;
 }
 
+/* ── Email addresses and phone numbers, in Settings > Account ───────────── */
+
+.contacts-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spaceSm);
+}
+
 /* ── A label with a pill beside it ─────────────────────────────────────────── */
 
 .label-row {

@@ -736,20 +736,28 @@ export class ApiClient {
     };
   }
 
-  async verifyPhone(code: string): Promise<LinkedPhone> {
-    const phone = asLinkedPhone(await this.post<unknown>('/api/auth/verify/phone', { code }));
+  /** `phone` names an alternative number (sc-113); without it, the number awaiting its code. */
+  async verifyPhone(code: string, phone?: string): Promise<LinkedPhone> {
+    const verified = asLinkedPhone(
+      await this.post<unknown>('/api/auth/verify/phone', {
+        code,
+        ...(phone == null ? {} : { phone }),
+      }),
+    );
 
-    if (phone == null) {
+    if (verified == null) {
       throw new Error(
         'The API answered /api/auth/verify/phone in a shape this client does not know. Check PhoneController in services/api.',
       );
     }
 
-    return phone;
+    return verified;
   }
 
-  async phoneOpening(): Promise<PhoneCodeOpening> {
-    const answer = await this.get<{ route?: unknown }>('/api/auth/verify/phone/resend');
+  async phoneOpening(phone?: string): Promise<PhoneCodeOpening> {
+    const answer = await this.get<{ route?: unknown }>(
+      `/api/auth/verify/phone/resend${phone == null ? '' : `?phone=${encodeURIComponent(phone)}`}`,
+    );
     const route = answer?.route;
 
     return {
@@ -759,34 +767,89 @@ export class ApiClient {
   }
 
   /** "Text it to me instead": the same code once by SMS, and later codes for this number by text. */
-  async textPhoneCodeInstead(): Promise<void> {
-    await this.post<unknown>('/api/auth/verify/phone/text-instead');
+  async textPhoneCodeInstead(phone?: string): Promise<void> {
+    await this.post<unknown>('/api/auth/verify/phone/text-instead', phone == null ? {} : { phone });
   }
 
-  async resendPhoneCode(): Promise<number> {
-    return (await this.post<{ cooldownSeconds: number }>('/api/auth/verify/phone/resend'))
-      .cooldownSeconds;
+  async resendPhoneCode(phone?: string): Promise<number> {
+    return (
+      await this.post<{ cooldownSeconds: number }>(
+        '/api/auth/verify/phone/resend',
+        phone == null ? {} : { phone },
+      )
+    ).cooldownSeconds;
   }
 
-  async verifyEmail(code: string): Promise<LinkedAddress> {
-    const address = asLinkedAddress(await this.post<unknown>('/api/auth/verify/email', { code }));
+  /** `address` names an alternative (sc-113); without it, the primary. */
+  async verifyEmail(code: string, address?: string): Promise<LinkedAddress> {
+    const verified = asLinkedAddress(
+      await this.post<unknown>('/api/auth/verify/email', {
+        code,
+        ...(address == null ? {} : { address }),
+      }),
+    );
 
-    if (address == null) {
+    if (verified == null) {
       throw new Error(
         'The API answered /api/auth/verify/email in a shape this client does not know. Check VerificationController in services/api.',
       );
     }
 
-    return address;
+    return verified;
   }
 
-  async resendVerification(): Promise<number> {
-    return cooldownFrom(await this.post<unknown>('/api/auth/verify/resend'));
+  async resendVerification(address?: string): Promise<number> {
+    return cooldownFrom(
+      await this.post<unknown>('/api/auth/verify/resend', address == null ? {} : { address }),
+    );
   }
 
   /** Reads the cooldown and the code's state without spending either, so the screen opens on the truth. */
-  async verificationOpening(): Promise<CodeOpening> {
-    return openingFrom(await this.get<unknown>('/api/auth/verify/resend'));
+  async verificationOpening(address?: string): Promise<CodeOpening> {
+    return openingFrom(
+      await this.get<unknown>(
+        `/api/auth/verify/resend${address == null ? '' : `?address=${encodeURIComponent(address)}`}`,
+      ),
+    );
+  }
+
+  /** Linked unverified and not primary, a code sent (sc-113). Refused `already_linked` wherever it is held. */
+  async addEmailAddress(address: string): Promise<LinkedAddress> {
+    return linkedOrThrow(
+      asLinkedAddress(await this.post<unknown>('/api/auth/emails', { address })),
+    );
+  }
+
+  /** With the proof from `prove()`: it changes how the account signs in. Refused `address_not_verified` for an unproved one. */
+  async makeEmailPrimary(id: string, proof: string): Promise<LinkedAddress> {
+    return linkedOrThrow(
+      asLinkedAddress(
+        await this.patch<unknown>(`/api/auth/emails/${encodeURIComponent(id)}/primary`, { proof }),
+      ),
+    );
+  }
+
+  /** Refused `primary_address` for the primary, `last_verified_address` for the one proof of the account. */
+  async removeEmailAddress(id: string): Promise<void> {
+    await this.delete(`/api/auth/emails/${encodeURIComponent(id)}`);
+  }
+
+  async addPhoneNumber(countryCode: string, number: string): Promise<LinkedPhone> {
+    return linkedOrThrow(
+      asLinkedPhone(await this.post<unknown>('/api/auth/phones', { countryCode, number })),
+    );
+  }
+
+  async makePhonePrimary(id: string): Promise<LinkedPhone> {
+    return linkedOrThrow(
+      asLinkedPhone(
+        await this.patch<unknown>(`/api/auth/phones/${encodeURIComponent(id)}/primary`),
+      ),
+    );
+  }
+
+  async removePhoneNumber(id: string): Promise<void> {
+    await this.delete(`/api/auth/phones/${encodeURIComponent(id)}`);
   }
 
   async sessions(): Promise<DeviceSession[]> {
@@ -1468,4 +1531,14 @@ function cooldownFrom(answer: unknown): number {
   const seconds = (answer as Record<string, unknown>).cooldownSeconds;
 
   return typeof seconds === 'number' && Number.isFinite(seconds) ? seconds : 0;
+}
+
+function linkedOrThrow<T>(linked: T | null): T {
+  if (linked == null) {
+    throw new Error(
+      'The API answered an address or number in a shape this client does not know. Check ContactsController in services/api.',
+    );
+  }
+
+  return linked;
 }
