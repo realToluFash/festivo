@@ -11,6 +11,15 @@ label and heading.
 
 The rules every locale shares are in `.claude/skills/locale-parity`.
 
+**A limit checked on screen and by the server says the same sentence in both catalogues.** The
+field's key (`web` or `mobile`) and the API's refusal (`messages` or `errors`) carry the same
+words, with the limit as a slot in each, because a stale page or another client meets the
+server's check instead and must read what the screen would have said. Reword one and the other
+changes in the same pull request; where a test pins the server's text, it waits on [dev] and
+the entry below says so. Over a text limit the sentence is "Shorten the {field} to {{count}}
+characters or fewer." Translate the pair as one sentence. sc-2150 found three pairs that
+differed (`rolesScreen.nameTooLong` against `roles.name_too_long` in en, es and fr).
+
 ## Glossary
 
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
@@ -93,7 +102,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   page and try again." Over the limit, the house phrase "Shorten the name to {count}
   characters or fewer." is wanted over "That is longer than {count} characters.", which says
   what is wrong but not what to do; the API test pins the old text, so that change waits on
-  [dev] (sc-2150). Translate it in the wanted shape.
+  [dev] (sc-2150, PR #187). Translate it in the wanted shape. The Roles screen's own check,
+  `web:rolesScreen.nameTooLong`, says the same: "Shorten the name to {{most}} characters or
+  fewer.", replacing "Keep the name to {{most}} characters."
 - **18 Oct 2026. Primary and other addresses (sc-113, `contacts.*`, `Account-*`).** The
   primary signs in; any other address or number only reaches the person: "Other addresses can
   reach you, but they cannot sign you in." / "Other numbers can reach you too." Never write a
