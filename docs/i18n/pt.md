@@ -39,6 +39,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The power to change an area is "quem pode alterar {{area}}"**
+  (`rolesScreen.lockedLine`, `describeSeededReadOnly`): "Quem pode alterar Membros e funções
+  decide o que inclui." Impersonal, so it agrees with nobody; rejected "alguém que possa
+  alterar", which is longer and says the same power in a second way. A read-only twin keeps
+  its editable line's first sentence and agrees with "a função": "É predefinida…",
+  "Criada por {{name}}." A name that carries its own full stop gets a second one until the
+  renderer drops it (`docs/i18n/en.md`, sc-2251); no line is reworded around it.
 - **18 Oct 2026. A browser session is "Safari no iPhone"** (`devices.agent`, web and app, and
   `emails:password.device.agent`): "{{browser}} no {{platform}}", beside "Aplicação Soirely no
   iPhone" in the same list and the same email line. Every platform the parser names (iPhone,
