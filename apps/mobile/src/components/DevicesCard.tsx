@@ -52,6 +52,7 @@ export function DevicesCard({
   reload,
   onSignOutHere,
   onEndedHere,
+  onCodeSpent,
 }: {
   hasPassword: boolean;
   providers: readonly LinkedProvider[];
@@ -61,6 +62,8 @@ export function DevicesCard({
   onSignOutHere: () => void;
   /** This device's session has already ended on the server, so only the tokens are left to clear. */
   onEndedHere: () => void;
+  /** A two-factor or recovery code was accepted, so the two-factor card's count may be stale. */
+  onCodeSpent: () => void;
 }) {
   const { t } = useTranslation();
   const [devices, setDevices] = useState<Devices>({ kind: 'loading' });
@@ -151,6 +154,7 @@ export function DevicesCard({
           providers={providers}
           onDone={endedElsewhere}
           onKeep={() => setStage({ kind: 'list', said: null })}
+          onCodeSpent={onCodeSpent}
         />
       </View>
     );
@@ -351,6 +355,7 @@ function EverywhereElse({
   providers,
   onDone,
   onKeep,
+  onCodeSpent,
 }: {
   count: number;
   sessionId: string | null;
@@ -358,6 +363,7 @@ function EverywhereElse({
   providers: readonly LinkedProvider[];
   onDone: (result: { signedOut: number; thisDevice: boolean }) => void;
   onKeep: () => void;
+  onCodeSpent: () => void;
 }) {
   const { t } = useTranslation();
   const provider = hasPassword ? null : (providers[0]?.provider ?? null);
@@ -431,6 +437,7 @@ function EverywhereElse({
           ? { password: password.current }
           : { provider, signIn: returned.current };
       const { proof } = await api.prove(first, codeAsked ? code.current.trim() : undefined);
+      if (codeAsked) onCodeSpent();
       onDone(await api.signOutEverywhereElse(proof, sessionId));
     } catch (error) {
       setWorking(false);

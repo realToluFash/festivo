@@ -314,6 +314,61 @@ describe('linking a provider', () => {
       }),
     );
   });
+
+  it('counts the recovery code it spent on the two-factor card, without leaving the page', async () => {
+    let left = 9;
+    answering(
+      {
+        'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: left }),
+        'POST /api/auth/proof': () => {
+          left = 8;
+
+          return json({ proof: 'p', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+        },
+      },
+      true,
+    );
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    open();
+
+    expect(await screen.findByText('9 of 10 unused · each works once')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
+    fireEvent.change(screen.getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+    fireEvent.change(await screen.findByLabelText('Code'), { target: { value: 'abcd-efgh' } });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+
+    expect(await screen.findByText('8 of 10 unused · each works once')).toBeDefined();
+  });
+
+  it('leaves the count as it was when the code is refused', async () => {
+    const sent = answering(
+      {
+        'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 9 }),
+        'POST /api/auth/proof': () => problem('two_factor_code_invalid', 422),
+      },
+      true,
+    );
+    open();
+
+    expect(await screen.findByText('9 of 10 unused · each works once')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Link Google' }));
+    fireEvent.change(screen.getByLabelText('Your password'), {
+      target: { value: 'a decent passphrase' },
+    });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+    fireEvent.change(await screen.findByLabelText('Code'), { target: { value: '000000' } });
+    const asked = () => sent.filter((s) => s.call === 'GET /api/auth/two-factor').length;
+    const before = asked();
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+
+    await waitFor(() => expect(sent.some((s) => s.call === 'POST /api/auth/proof')).toBe(true));
+    expect(await screen.findByLabelText('Code')).toBeDefined();
+    expect(screen.getByText('9 of 10 unused · each works once')).toBeDefined();
+    expect(asked()).toBe(before);
+  });
 });
 
 describe('a wrong code after Google', () => {

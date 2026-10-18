@@ -45,6 +45,8 @@ export function Security() {
     returned != null && !('failed' in returned && returned.failed === 'cancelled'),
   );
   const [everywhereDone, setEverywhereDone] = useState<number | null>(null);
+  const [codesSpent, setCodesSpent] = useState(0);
+  const codeSpent = () => setCodesSpent((n) => n + 1);
 
   // The loading state belongs to the event that asks for a reload, not to the effect.
   useEffect(() => {
@@ -150,9 +152,10 @@ export function Security() {
           forgetSession();
           navigate('/sign-in');
         }}
+        onCodeSpent={codeSpent}
       />
 
-      <TwoFactorCard email={session.email} onBusy={setSettingUp} />
+      <TwoFactorCard email={session.email} onBusy={setSettingUp} recount={codesSpent} />
 
       {/* Not rendered at all during setup: `.card` sets a display, which `hidden` cannot beat. */}
       {!settingUp && (
@@ -165,6 +168,7 @@ export function Security() {
               returned={returned}
               onDone={endedElsewhere}
               onKeep={() => setEverywhere(false)}
+              onCodeSpent={codeSpent}
             />
           ) : checking == null ? (
             <>
