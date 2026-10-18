@@ -184,6 +184,12 @@ class Carried(unittest.TestCase):
         self.assertIsNone(work.carried(passed, cache, self.same(True)))
         self.assertEqual(self.asked, [])
 
+    def test_a_merged_pull_request_carries_nothing(self):
+        merged = pr(state="merged", lead=[verdict("pass", OLD[:7])])
+        self.assertIsNone(work.carried(merged, {}, self.same(True)))
+        self.assertEqual(self.asked, [])
+        self.assertEqual(kinds(work.developer_items([story()], [merged])), ["merged-unpassed"])
+
     def test_nothing_to_carry_without_a_pass_or_with_one_at_the_head(self):
         for lead in ([], [verdict("back", OLD)], [verdict("pass", HEAD[:7])]):
             self.assertIsNone(work.carried(pr(lead=lead), {}, self.same(True)))

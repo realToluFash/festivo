@@ -206,6 +206,12 @@ class Merging(Base):
                 actions.merge(self.as_("dev2"), args(pr=9, text=None))
             merge.assert_not_called()
 
+    def test_to_qa_refuses_a_merge_at_a_head_the_pass_never_saw(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, {**pr("pass", at=OLD[:7]), "state": "merged", "merge_sha": "m"})
+        with self.assertRaisesRegex(actions.Refused, "no lead pass covers"):
+            actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+
     def test_a_passed_merge_lands_at_the_head_and_tells_qa(self):
         self.fake.add(1, "In Review", ["dev2"])
         store.put_pr(self.db, pr("pass"))

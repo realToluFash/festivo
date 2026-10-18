@@ -54,8 +54,8 @@ def carried(pr, cache, same_change):
     """The passed sha whose change the head still makes, as after merging main in. `cache`
     holds each answer by sha pair, since a pair's answer never changes."""
     verdict = latest_verdict(pr)
-    if not verdict or verdict["verdict"] != "pass" or not verdict["sha"] \
-            or covers(verdict, pr["head_sha"]):
+    if pr["state"] != "open" or not verdict or verdict["verdict"] != "pass" \
+            or not verdict["sha"] or covers(verdict, pr["head_sha"]):
         return None
     key = f"{verdict['sha']}..{pr['head_sha']}"
     if key not in cache:

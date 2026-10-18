@@ -181,9 +181,24 @@ class RestCalls(unittest.TestCase):
         edited = [{**passed[0], "patch": "@@ -1 +1 @@\n-x\n+z"}]
         extra = passed + [{"filename": "b.ts", "status": "modified", "patch": "@@ -1 +1 @@"}]
         binary = [{"filename": "a.json", "status": "modified"}]
-        for after in (edited, extra, binary):
+        for after in (edited, extra, binary, []):
             self.assertFalse(self.compare(passed, after))
         self.assertFalse(self.compare(binary, binary))
+
+    def test_no_change_is_never_the_same_change(self):
+        self.assertFalse(self.compare([], []))
+
+    def test_a_sha_github_cannot_compare_is_a_no_and_a_spent_limit_is_raised(self):
+        for error, outcome in ((github.GitHubError("gh api x: Not Found (HTTP 404)"), False),
+                               (github.GitHubError("gh api x: No common ancestor (HTTP 422)"),
+                                False)):
+            with mock.patch("soirely_queue.github.api", side_effect=error):
+                self.assertIs(github.same_change("b" * 40, HEAD), outcome)
+        for error in (github.RateLimited("gh api x: rate limit"),
+                      github.GitHubError("gh api x: Server Error (HTTP 502)")):
+            with mock.patch("soirely_queue.github.api", side_effect=error), \
+                    self.assertRaises(type(error)):
+                github.same_change("b" * 40, HEAD)
 
     def test_merge_sends_the_head_it_was_passed_at_and_deletes_the_branch(self):
         fake = FakeGh(routes({"repos/o/n/pulls/7/merge": {"merged": True},
