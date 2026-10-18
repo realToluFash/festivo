@@ -448,7 +448,9 @@ describe('a refusal shows the account as it is now', () => {
     expect(within(emails).getByText('2 of 2')).toBeDefined();
     expect(within(emails).getByText('folake.adeyemi@gmail.com')).toBeDefined();
     expect(
-      within(emails).getByText('You have the most you can add: 2. Remove one to add another.'),
+      within(emails).getByText(
+        'You have 2, the most an account can hold. Remove one to add another.',
+      ),
     ).toBeDefined();
     expect((screen.getByLabelText('Email address to add') as HTMLInputElement).value).toBe(
       'folake.work@ire.events',

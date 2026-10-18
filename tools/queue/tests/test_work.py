@@ -17,11 +17,12 @@ def comment(id_, text, parent=None, at=None):
             "text": text}
 
 
-def pr(number=7, story_id=1, head=HEAD, checks="green", lead=(), threads=(), state="open"):
+def pr(number=7, story_id=1, head=HEAD, checks="green", lead=(), threads=(), state="open",
+       carried=None):
     return {"number": number, "title": "", "url": "", "state": state, "draft": False,
             "branch": f"feature/sc-{story_id}/x", "story_id": story_id, "head_sha": head,
             "checks": checks, "mergeable": "mergeable", "merged_at": None, "merge_sha": None,
-            "lead": list(lead), "threads": list(threads)}
+            "lead": list(lead), "threads": list(threads), "carried": carried}
 
 
 def verdict(kind, sha, at="2026-10-18T11:00:00Z"):
@@ -77,6 +78,10 @@ class Review(unittest.TestCase):
 
     def test_a_pass_at_the_head_needs_nothing(self):
         self.assertEqual(work.review_items([story()], [pr(lead=[verdict("pass", HEAD[:7])])]), [])
+
+    def test_a_pass_carried_over_a_merge_of_main_needs_nothing(self):
+        carried = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
+        self.assertEqual(work.review_items([story()], [carried]), [])
 
     def test_findings_at_the_head_wait_until_the_story_comes_back(self):
         found = [verdict("back", HEAD, at="2026-10-18T11:00:00Z")]
@@ -134,6 +139,10 @@ class Developer(unittest.TestCase):
                                      [pr(lead=[verdict("pass", HEAD[:7])])])
         self.assertEqual([(i["kind"], i["roles"]) for i in items], [("merge", ["dev2"])])
 
+    def test_a_pass_carried_over_a_merge_of_main_is_a_merge(self):
+        carried = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
+        self.assertEqual(kinds(work.developer_items([story()], [carried])), ["merge"])
+
     def test_an_open_thread_holds_the_merge(self):
         thread = {"id": "T", "resolved": False, "outdated": False, "path": "x", "line": 1,
                   "comments": []}
@@ -150,6 +159,47 @@ class Developer(unittest.TestCase):
                          ["checks-red"])
         self.assertEqual(kinds(work.developer_items([story(state="In Progress")], [pr()])),
                          ["to-review"])
+
+
+class Carried(unittest.TestCase):
+    def setUp(self):
+        self.asked = []
+
+    def same(self, answer):
+        def same_change(before, after):
+            self.asked.append((before, after))
+            return answer
+        return same_change
+
+    def test_a_head_making_the_passed_change_carries_the_pass(self):
+        cache = {}
+        passed = pr(lead=[verdict("pass", OLD[:7])])
+        self.assertEqual(work.carried(passed, cache, self.same(True)), OLD[:7])
+        self.assertEqual(self.asked, [(OLD[:7], HEAD)])
+        self.assertEqual(cache, {f"{OLD[:7]}..{HEAD}": True})
+
+    def test_an_answer_is_asked_once_per_pair(self):
+        cache = {f"{OLD[:7]}..{HEAD}": False}
+        passed = pr(lead=[verdict("pass", OLD[:7])])
+        self.assertIsNone(work.carried(passed, cache, self.same(True)))
+        self.assertEqual(self.asked, [])
+
+    def test_a_merged_pull_request_carries_nothing(self):
+        merged = pr(state="merged", lead=[verdict("pass", OLD[:7])])
+        self.assertIsNone(work.carried(merged, {}, self.same(True)))
+        self.assertEqual(self.asked, [])
+        self.assertEqual(kinds(work.developer_items([story()], [merged])), ["merged-unpassed"])
+
+    def test_nothing_to_carry_without_a_pass_or_with_one_at_the_head(self):
+        for lead in ([], [verdict("back", OLD)], [verdict("pass", HEAD[:7])]):
+            self.assertIsNone(work.carried(pr(lead=lead), {}, self.same(True)))
+        self.assertEqual(self.asked, [])
+
+    def test_only_the_carried_sha_covers(self):
+        passed = verdict("pass", OLD[:7])
+        self.assertTrue(work.covers(passed, HEAD, carried=OLD[:7]))
+        self.assertFalse(work.covers(passed, HEAD, carried="c" * 7))
+        self.assertFalse(work.covers(passed, HEAD))
 
 
 class Queue(unittest.TestCase):
