@@ -288,6 +288,37 @@ final class AlternativeContactsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aVerifiedNumberTakesPrimaryFromAnUnverifiedOneWhichStaysLinked(): void
+    {
+        $added = $this->addPhone('0803 555 0143');
+        $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0144']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->call('GET', '/api/auth/sessions');
+        self::assertSame(ErrorCode::AccountUnverified->type(), $this->last()['type'] ?? null, 'held by the unverified primary');
+
+        $verified = $this->call('POST', '/api/auth/verify/phone', ['phone' => $added, 'code' => $this->codeTo('+2348035550143')]);
+
+        self::assertTrue($verified['primary']);
+        self::assertSame([
+            ['number' => '+2348035550143', 'verified' => true, 'primary' => true],
+            ['number' => '+2348035550144', 'verified' => false, 'primary' => false],
+        ], $this->phones());
+        $this->call('GET', '/api/auth/sessions');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function theOnboardingNumberStaysPrimaryWhenItIsVerified(): void
+    {
+        $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0144']);
+
+        $verified = $this->call('POST', '/api/auth/verify/phone', ['code' => $this->codeTo('+2348035550144')]);
+
+        self::assertTrue($verified['primary']);
+        self::assertSame([['number' => '+2348035550144', 'verified' => true, 'primary' => true]], $this->phones());
+    }
+
+    #[Test]
     public function aNumberVerifiedBesideAPrimaryStaysAnAlternative(): void
     {
         $this->primaryPhone();

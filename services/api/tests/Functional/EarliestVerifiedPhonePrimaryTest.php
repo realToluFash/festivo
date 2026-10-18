@@ -36,7 +36,19 @@ final class EarliestVerifiedPhonePrimaryTest extends FunctionalTestCase
     }
 
     #[Test]
-    public function anAccountWithAPrimaryKeepsIt(): void
+    public function aVerifiedNumberTakesPrimaryFromAnUnverifiedOneWhichStaysLinked(): void
+    {
+        $user = $this->account('unverified-primary@example.com');
+        $this->phone($user, '+2348035550401', null, true);
+        $this->phone($user, '+2348035550402', '2026-10-17 12:00:00');
+
+        $this->migrate();
+
+        self::assertSame(['+2348035550401' => false, '+2348035550402' => true], $this->primaries($user));
+    }
+
+    #[Test]
+    public function anAccountWithAVerifiedPrimaryKeepsIt(): void
     {
         $user = $this->account('has-primary@example.com');
         $this->phone($user, '+2348035550201', '2026-10-18 12:00:00', true);
@@ -56,6 +68,17 @@ final class EarliestVerifiedPhonePrimaryTest extends FunctionalTestCase
         $this->migrate();
 
         self::assertSame(['+2348035550301' => false], $this->primaries($user));
+    }
+
+    #[Test]
+    public function anUnverifiedPrimaryWithNothingVerifiedBesideItStays(): void
+    {
+        $user = $this->account('onboarding@example.com');
+        $this->phone($user, '+2348035550501', null, true);
+
+        $this->migrate();
+
+        self::assertSame(['+2348035550501' => true], $this->primaries($user));
     }
 
     private function migrate(): void

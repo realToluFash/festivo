@@ -11,11 +11,25 @@ final class Version20261018230000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'An account holding verified phone numbers and no primary one has its earliest-verified number as primary.';
+        return 'An account holding verified phone numbers and no verified primary has its earliest-verified number as primary; an unverified primary stays linked.';
     }
 
     public function up(Schema $schema): void
     {
+        $this->addSql(<<<'SQL'
+            UPDATE phone_numbers unverified
+            SET    is_primary = FALSE
+            WHERE  unverified.is_primary
+              AND  unverified.verified_at IS NULL
+              AND  EXISTS (
+                       SELECT 1
+                       FROM   phone_numbers proved
+                       WHERE  proved.user_id = unverified.user_id
+                         AND  proved.verified_at IS NOT NULL
+                         AND  NOT proved.is_pending
+                   )
+            SQL);
+
         $this->addSql(<<<'SQL'
             UPDATE phone_numbers
             SET    is_primary = TRUE

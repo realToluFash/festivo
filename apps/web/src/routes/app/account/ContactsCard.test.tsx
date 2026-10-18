@@ -575,6 +575,27 @@ describe('back from verifying an address or number', () => {
     expect(within(phones).queryByRole('button', { name: /^Remove/ })).toBeNull();
   });
 
+  it('says so too when the number took primary from an unverified one, which stays linked', async () => {
+    const tookOver = {
+      ...ME,
+      phoneNumbers: [
+        { ...ME.phoneNumbers[0], verified: false, primary: false },
+        { ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188' },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(tookOver) });
+    open({}, '/app/account?verified=p2');
+
+    expect(
+      await screen.findByText('+234 701 555 0188 is verified and is now your primary number.'),
+    ).toBeDefined();
+    const phones = screen.getByRole('region', { name: 'Phone numbers' });
+    expect(within(phones).getAllByText('Primary')).toHaveLength(1);
+    expect(within(phones).getByText('Unverified')).toBeDefined();
+    expect(within(phones).getByRole('link', { name: 'Send a code' })).toBeDefined();
+    expect(within(phones).getByRole('button', { name: 'Remove +234 803 555 0142' })).toBeDefined();
+  });
+
   it('keeps the short line for a number verified beside a primary', async () => {
     const twoPhones = {
       ...ME,

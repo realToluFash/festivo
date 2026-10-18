@@ -101,12 +101,12 @@ final readonly class PrimaryPhoneSetter
         }
 
         if (!$phone->isPrimary()) {
-            $this->primaryIfNone($phone);
+            $this->primaryIfNoneVerified($phone);
         }
     }
 
-    /** sc-2244: an account with no primary phone takes the first number it proves. Read under the lock, as two may be proved at once. */
-    private function primaryIfNone(PhoneNumber $phone): void
+    /** sc-2244: the first number proved takes primary from none, or from an unverified one, which stays linked. Read under the lock, as two may be proved at once. */
+    private function primaryIfNoneVerified(PhoneNumber $phone): void
     {
         $user = $phone->getUser();
 
@@ -117,12 +117,16 @@ final readonly class PrimaryPhoneSetter
                 $this->entityManager->refresh($held);
             }
 
-            if (null !== $user->getPrimaryPhoneNumber() || !$phone->isVerified()) {
+            $before = $user->getPrimaryPhoneNumber();
+
+            if (true === $before?->isVerified() || !$phone->isVerified()) {
                 return;
             }
 
+            $before?->setPrimary(false);
+            $this->entityManager->flush();
             $phone->setPrimary(true);
-            $this->auditor->record('phone.primary', 'Account', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['primary' => [null, $phone->getNumber()]]);
+            $this->auditor->record('phone.primary', 'Account', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['primary' => [$before?->getNumber(), $phone->getNumber()]]);
             $this->entityManager->flush();
         });
     }
