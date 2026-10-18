@@ -189,7 +189,7 @@ export function VerifyPhone() {
 
   return (
     <AuthPage>
-      {alternative != null && <BackToAccount verified={verified ? alternative : null} />}
+      {alternative != null && !verified && <BackToAccount />}
 
       {onboarding && (
         <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>

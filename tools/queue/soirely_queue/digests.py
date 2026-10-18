@@ -164,11 +164,10 @@ def linguist(p, db, stories):
     merged = {pr["story_id"] for pr in store.prs(db) if pr["state"] == "merged"}
     p.add(f"Translation tickets ({len(tickets)}):")
     for story in tickets:
-        locale_tasks = [t for t in story["tasks"] if p.role in t["text"].lower().split()]
-        tasks = ", ".join(f"{'✓' if t['done'] else '·'} {t['text']}" for t in locale_tasks)
+        tasks = ", ".join(f"{'✓' if t['done'] else '·'} {t['text']}" for t in story["tasks"])
         covers = [link["object"] for link in story["links"] if link["subject"] == story["id"]]
         waiting = [f"sc-{c}" for c in covers if c not in merged]
-        extra = (tasks or "no task for you")
+        extra = tasks or "no tasks yet"
         if waiting:
             extra += f" · waits on {', '.join(waiting)}"
         p.add(line(story, extra))

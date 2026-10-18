@@ -322,6 +322,30 @@ describe('verifying a number added from Settings > Account', () => {
     expect(sent.some((request) => request.path === '/api/auth/verify/phone/resend')).toBe(true);
   });
 
+  it.each([
+    ['a wrong code', 'verification_code_invalid', /That code does not match/],
+    ['an expired code', 'verification_code_expired', 'That code has expired'],
+    ['too many wrong tries', 'verification_code_exhausted', 'Too many wrong tries'],
+  ])("keeps Account's way back at the top after %s", async (_, code, says) => {
+    answering({
+      'GET /api/auth/me': () => json(SET_UP),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+      'POST /api/auth/verify/phone': () => problem(422, code),
+    });
+    at('/verify-phone?phone=p2');
+    await screen.findByLabelText('Code from the text');
+
+    fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+
+    expect(await screen.findByText(says)).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Back to Account' })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/app/account']);
+  });
+
   it('ends on Back to Account, with the number still an alternative', async () => {
     const sent = answering({
       'GET /api/auth/me': () => json(SET_UP),
@@ -344,7 +368,10 @@ describe('verifying a number added from Settings > Account', () => {
       screen
         .getAllByRole('link', { name: 'Back to Account' })
         .map((link) => link.getAttribute('href')),
-    ).toEqual(['/app/account?verified=p2', '/app/account?verified=p2']);
+    ).toEqual(['/app/account?verified=p2']);
+    expect(screen.getByRole('link', { name: 'Back to Account' }).className).toMatch(
+      /button-primary/,
+    );
     expect(screen.queryByRole('button', { name: 'Continue to Soirely' })).toBeNull();
     expect(sent.find((request) => request.method === 'POST')?.body).toEqual({
       code: '184231',

@@ -75,7 +75,8 @@ def sync_github(db):
     cache, kept = store.get_meta(db, "carried", {}), {}
     for pr in prs:
         try:
-            pr["carried"] = work.carried(pr, cache, github.same_change)
+            pr["carried"] = work.carried(pr, cache, github.same_change,
+                                         known.get(pr["number"]))
         except github.GitHubError:
             pr["carried"] = None
         kept.update({key: cache[key] for key in cache if key.endswith(f"..{pr['head_sha']}")})
