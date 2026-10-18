@@ -721,7 +721,7 @@
     "holders_other": "{{count}} personnes",
     "nameLabel": "Nom du rôle",
     "nameBlank": "Donnez un nom au rôle.",
-    "nameTooLong": "Le nom ne doit pas dépasser {{most}} caractères.",
+    "nameTooLong": "Raccourcissez le nom à {{most}} caractères maximum.",
     "nameTaken": "Un rôle porte déjà ce nom.",
     "describeOwner": "Tout, y compris ce que Soirely ajoutera plus tard.",
     "describeSeeded": "Intégré, il ne peut donc pas être supprimé. C’est vous qui choisissez ce qu’il permet.",
