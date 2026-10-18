@@ -22,7 +22,7 @@ export function TimeZoneCard({
   const locale = currentLocale();
   const [zones, setZones] = useState<TimeZoneOption[]>([]);
   const [editing, setEditing] = useState(false);
-  const [saved, setSaved] = useState<string | null>(null);
+  const [saved, setSaved] = useState<TimeZoneOption | null>(null);
   const [refocus, setRefocus] = useState(false);
   const changeButton = useRef<HTMLButtonElement>(null);
 
@@ -49,6 +49,7 @@ export function TimeZoneCard({
 
   const current = zones.find((zone) => zone.id === timezone);
   const label = timezone == null ? null : current == null ? timezone : zoneLabel(current);
+  const savedZone = saved == null ? null : (zones.find((zone) => zone.id === saved.id) ?? saved);
 
   return (
     <section className="card" aria-labelledby="tz-title">
@@ -62,7 +63,7 @@ export function TimeZoneCard({
           onSaved={async (zone) => {
             await onSaved();
             setEditing(false);
-            setSaved(zoneLabel(zone));
+            setSaved(zone);
             setRefocus(true);
           }}
           onCancel={() => {
@@ -92,12 +93,12 @@ export function TimeZoneCard({
             </button>
           </div>
 
-          {saved != null && (
+          {savedZone != null && (
             <div className="status-done" role="status">
               <span className="mark mark-done" aria-hidden="true">
                 ✓
               </span>
-              <p>{t('timeZone.saved', { zone: saved })}</p>
+              <p>{t('timeZone.saved', { zone: zoneLabel(savedZone) })}</p>
             </div>
           )}
         </>

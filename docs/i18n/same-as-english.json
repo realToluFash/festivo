@@ -1,5 +1,13 @@
 {
-  "es": ["web:app.name", "web:orgGeneral.title", "mobile:app.name", "mobile:home.title"],
+  "es": [
+    "web:app.name",
+    "web:orgGeneral.title",
+    "mobile:app.name",
+    "mobile:home.title",
+    "web:settings.sectionGeneral",
+    "web:settings.sectionRoles",
+    "web:rolesScreen.title"
+  ],
   "fr": [
     "mobile:app.name",
     "mobile:devices.everywhereCode",
@@ -16,5 +24,11 @@
     "web:twoFactor.code",
     "web:waysCard.code"
   ],
-  "pt": ["web:app.name", "mobile:app.name", "mobile:home.title", "mobile:layouts.itemCount_one"]
+  "pt": [
+    "web:app.name",
+    "mobile:app.name",
+    "mobile:home.title",
+    "mobile:layouts.itemCount_one",
+    "web:rolesScreen.area.menu"
+  ]
 }

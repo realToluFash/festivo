@@ -39,6 +39,30 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Other addresses and numbers "servem para contacto"** (`contacts.*`, web and
+  app, and `messages:contacts.*`). The primary "serve para iniciar sessão e recebe o e-mail da
+  conta"; the others "servem para contacto, mas não permitem iniciar sessão". Rejected "podem
+  contactá-lo", whose clitic assumes a man. The card says "Números de telefone", since another
+  number may be a landline; the field we text says "Número de telemóvel". "Stays unverified" is
+  "fica por verificar", and the badge "Não verificado". "Make primary" is "Tornar principal",
+  and a refusal puts "primeiro" before the noun: "Torne primeiro outro endereço principal".
+  "Prove it is yours" agrees with the address, not the person: "confirmar que o endereço é seu".
+
+- **18 Oct 2026. A role named in a sentence is "a função Proprietário"** (`messages:roles.*`).
+  The role's name stays a label after "a função", so nothing agrees with it: "A função
+  Proprietário é predefinida", "a única pessoa com a função Proprietário", never "o único
+  proprietário", which assumes a man. A role "holds" permissions as "inclui", as on the Roles
+  screen. "Leave it unassigned" is "não a atribua a ninguém". A refusal over a length limit says
+  what to do: "Encurte o nome para um máximo de {count} caracteres." The API catalogue has no
+  plural, and the limit is always well above 1.
+
+- **18 Oct 2026. An email's footer is "Está a receber esta mensagem porque…"** (`emails:newDevice.why`,
+  as `provider.why`). "Recebeu este e-mail" reads as a past event; the footer explains why it
+  arrives at all. The brand in a sentence is feminine, "a Soirely": "Novo início de sessão na
+  Soirely" (`newDevice.subject`), as "da Soirely" in the password emails. Sending someone to a
+  section is "vá a Segurança e…" (`newDevice.notYouNoPassword`), as "voltar a Segurança", so
+  the action comes after the place rather than trailing at the end.
+
 - **18 Oct 2026. An app session is "Aplicação Soirely no iPhone"** (`devices.app*`, web and
   app, and `emails:password.device.app*`): "no iPhone", "no iPad", "num telemóvel Android",
   "num tablet Android". "Aplicação", never "app"; "telemóvel", never "celular"; "tablet" is
