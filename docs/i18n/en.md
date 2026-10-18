@@ -16,21 +16,22 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| Term                        | Notes                                                                                                                                                                                                                              |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Settings                    |                                                                                                                                                                                                                                    |
-| Organisation                |                                                                                                                                                                                                                                    |
-| Sign in                     |                                                                                                                                                                                                                                    |
-| Sign out                    |                                                                                                                                                                                                                                    |
-| Email                       |                                                                                                                                                                                                                                    |
-| Password                    |                                                                                                                                                                                                                                    |
-| Continue                    |                                                                                                                                                                                                                                    |
-| Cancel                      |                                                                                                                                                                                                                                    |
-| Two-factor authentication   |                                                                                                                                                                                                                                    |
-| Recovery code               |                                                                                                                                                                                                                                    |
-| Carry on                    | Settled 17 Oct 2026: "… to carry on" is the house phrase for resuming (20 strings). Not "continue", which is the button.                                                                                                           |
-| Signed out (a device)       | Settled 17 Oct 2026: "is signed out" for the state, "has been signed out" in emails. Never "logged out".                                                                                                                           |
-| Phone number, mobile number | Settled 18 Oct 2026: "phone number" for any number on the account (card, list, add button, cap), which may be a landline; "mobile number" only for the field we text a code to (`contacts.phoneLabel`, `verifyPhone.numberLabel`). |
+| Term                          | Notes                                                                                                                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Settings                      |                                                                                                                                                                                                                                                              |
+| Organisation                  |                                                                                                                                                                                                                                                              |
+| Sign in                       |                                                                                                                                                                                                                                                              |
+| Sign out                      |                                                                                                                                                                                                                                                              |
+| Email                         |                                                                                                                                                                                                                                                              |
+| Password                      |                                                                                                                                                                                                                                                              |
+| Continue                      |                                                                                                                                                                                                                                                              |
+| Cancel                        |                                                                                                                                                                                                                                                              |
+| Two-factor authentication     |                                                                                                                                                                                                                                                              |
+| Recovery code                 |                                                                                                                                                                                                                                                              |
+| Carry on                      | Settled 17 Oct 2026: "… to carry on" is the house phrase for resuming (20 strings). Not "continue", which is the button.                                                                                                                                     |
+| Signed out (a device)         | Settled 17 Oct 2026: "is signed out" for the state, "has been signed out" in emails. Never "logged out".                                                                                                                                                     |
+| Phone number, mobile number   | Settled 18 Oct 2026: "phone number" for any number on the account (card, list, add button, cap), which may be a landline; "mobile number" only for the field we text a code to (`contacts.phoneLabel`, `verifyPhone.numberLabel`).                           |
+| Alternative (address, number) | Settled 18 Oct 2026: any address or number on the account that is not primary, verified or not. The card's plural is "Other addresses" / "Other numbers"; one of them is "an alternative address" or "an alternative number". Never "secondary" or "backup". |
 
 ## Never translated
 
@@ -41,6 +42,23 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Verifying an alternative from Account (sc-2304, sc-2244, `VerifyEmail-*` and
+  `VerifyPhone-*` with `from` = `account`, `Account-*` `verified_alt`).** Settled as ux drew
+  it. The headings are sign-up's "Email verified" and "Number verified". The body: "{{address}}
+  is verified. It stays an alternative address until you make it primary in Account." and
+  "{{number}} is verified. It stays an alternative number until you make it primary in
+  Account."; when verifying makes the number primary (sc-2244), "{{number}} is verified and is
+  now your primary number.", the shape of `contacts.promotedPhone`. Account's done line is the
+  short "{{address}} is verified." / "{{number}} is verified.", because the person has just
+  read the long one. The way out is "Back to Account", on the top link and the button alike;
+  the link's arrow is the component's icon, hidden from screen readers, never a character in
+  the string. "Not your address?" and "Wrong number?" link to "Remove it in Account", the
+  shape of "Wrong number? Change it". An address and a number are always two keys, never one
+  key with the noun in a slot: "it" and "verified" agree with the noun in es and fr
+  (dirección and adresse are feminine, número and numéro masculine). "Alternative" won over
+  "other", the card's plural ("Other addresses can reach you"), because "an other address" is
+  not English and "one of your other addresses" is wrong when there is only one; and over
+  "secondary" or "backup", which rank it or promise it can recover the account.
 - **18 Oct 2026. A role's line for a viewer who cannot edit roles (sc-2251,
   `rolesScreen.describeSeededReadOnly`, `describeCustomReadOnly`).** Shown to anyone without
   `members.manage`. Seeded: "Built in, so it cannot be removed. Someone who can change
