@@ -89,7 +89,15 @@ story or pull request, read fresh rather than from the last sync, and says why i
 - **`sync.py`** runs at most once a minute, whichever tick asks first. It does a full pass
   over the queue states every 15 minutes, and otherwise refetches only the stories updated
   since yesterday whose `updated_at` changed. GitHub is one GraphQL query over the open and
-  recently merged pull requests, and the last five runs on main.
+  recently merged pull requests (about 13 points of the 5,000 an hour), and the last five
+  runs on main.
+- **When GraphQL is spent**, the sync reads the same pull requests over REST, which has its
+  own hourly budget, and refetches only those whose `updated_at` or head changed, or whose
+  checks were pending. REST cannot say whether a thread is resolved, so a known thread keeps
+  what the last GraphQL sync saw and a new one counts as open. Reads and writes that REST
+  does as well (`live`, files, diff, merge, pr-create, reviews, replies) always use REST;
+  `checks` falls back to it. Only `resolve` needs GraphQL, and it says so rather than reply
+  and fail. Every `gh` call names the repository, so `sq` works from any directory.
 - **`work.py`** turns the stored stories and pull requests into work items, with no network
   calls. Each item has a fingerprint, such as `lead:review:#176@e9ced78:<moved_at>`, so
   finished work stays finished and a change makes a new item.

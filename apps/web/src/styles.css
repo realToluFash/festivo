@@ -1136,6 +1136,13 @@ h2 {
   cursor: pointer;
 }
 
+.auth-back {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  text-decoration: none;
+}
+
 /* ── Create your account ──────────────────────────────────────────────────── */
 
 .auth-heading {

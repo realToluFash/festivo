@@ -3,13 +3,19 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
+  androidSdk,
   branchForStory,
   COMPOSE_PROJECT,
+  emulatorFor,
+  expoGoApk,
+  expoSdkMajor,
+  forAndroid,
   parseTarget,
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
   renderQaEnv,
+  reversedPorts,
   simulatorFor,
   TESTERS,
   testerOf,
@@ -148,6 +154,103 @@ describe('the simulator ios opens', () => {
   });
 });
 
+describe('the emulator android opens', () => {
+  it.each([
+    [[], { open: 'phone', shut: 'tablet' }],
+    [['--phone'], { open: 'phone', shut: 'tablet' }],
+    [['--tablet'], { open: 'tablet', shut: 'phone' }],
+  ])('%j opens one and shuts the other', (args, expected) => {
+    expect(emulatorFor(args)).toEqual(expected);
+  });
+});
+
+// A port left out is the app on an emulator failing to reach the stack, with the same URL
+// that works on a simulator.
+describe('the ports an emulator is given', () => {
+  it('cover everything the app reaches', () => {
+    for (const tester of TESTERS) {
+      const { ports, urls, overrides, app } = qaConfig(tester);
+      const reached = [
+        ...Object.values(app),
+        urls.metro,
+        overrides.MERCURE_PUBLIC_URL,
+        overrides.STORAGE_PUBLIC_ENDPOINT,
+      ].map((url) => Number(new URL(url.replace(/^exp:/, 'http:')).port));
+
+      for (const port of reached) expect(reversedPorts(ports)).toContain(port);
+    }
+  });
+
+  it('leave the databases on the host', () => {
+    const ports = reversedPorts(QA_PORTS);
+    expect(ports).not.toContain(QA_PORTS.POSTGRES_PORT);
+    expect(ports).not.toContain(QA_PORTS.REDIS_PORT);
+  });
+});
+
+describe('the Android SDK', () => {
+  it('is ANDROID_HOME, then ANDROID_SDK_ROOT', () => {
+    expect(androidSdk({ ANDROID_HOME: '/a', ANDROID_SDK_ROOT: '/b' }, 'linux', '/h')).toBe('/a');
+    expect(androidSdk({ ANDROID_SDK_ROOT: '/b' }, 'linux', '/h')).toBe('/b');
+  });
+
+  it('is where Android Studio puts it, without either', () => {
+    expect(androidSdk({}, 'linux', '/h')).toBe('/h/Android/Sdk');
+    expect(androidSdk({}, 'darwin', '/h')).toBe('/h/Library/Android/sdk');
+  });
+});
+
+describe('Expo Go for Android', () => {
+  const versions = {
+    sdkVersions: {
+      '56.0.0': {
+        androidClientUrl: 'https://x/Expo-Go-56.0.4.apk',
+        androidClientVersion: '56.0.4',
+      },
+      '57.0.0': {
+        androidClientUrl: 'https://x/Expo-Go-57.0.9.apk',
+        androidClientVersion: '57.0.9',
+      },
+    },
+  };
+
+  it('is the one for the SDK the app depends on', () => {
+    expect(expoSdkMajor('~57.0.0')).toBe('57');
+    expect(expoGoApk(versions, '~57.0.0')).toEqual({
+      url: 'https://x/Expo-Go-57.0.9.apk',
+      version: '57.0.9',
+    });
+  });
+
+  it('is found under data as well', () => {
+    expect(expoGoApk({ data: versions }, '^56.0.1').version).toBe('56.0.4');
+  });
+
+  it('is an error for an SDK Expo has no client for', () => {
+    expect(() => expoGoApk(versions, '~58.0.0')).toThrow(/SDK 58/);
+  });
+});
+
+describe('a flow on Android', () => {
+  const flow = [
+    'appId: host.exp.Exponent',
+    '---',
+    '- launchApp:',
+    '    appId: host.exp.Exponent',
+    "- assertVisible: 'host.exp.Exponents'",
+  ].join('\n');
+
+  it("names Android's package wherever it named iOS's", () => {
+    expect(forAndroid(flow)).not.toContain('host.exp.Exponent\n');
+    expect(forAndroid(flow).match(/host\.exp\.exponent$/gm)).toHaveLength(2);
+  });
+
+  it('is left alone otherwise', () => {
+    expect(forAndroid(flow)).toContain("'host.exp.Exponents'");
+    expect(forAndroid(forAndroid(flow))).toBe(forAndroid(flow));
+  });
+});
+
 describe('the branch for a story', () => {
   const remote = [
     '  origin/HEAD -> origin/main',
@@ -182,12 +285,24 @@ describe('the three QA testers', () => {
     expect(configs[0].simulators.phone.name).toBe('Soirely QA iPhone');
   });
 
-  it('each have their own project, simulators and Chrome', () => {
-    for (const key of ['project', 'chromePort']) {
+  it('each have their own project, simulators, emulators and Chrome', () => {
+    for (const key of ['project', 'chromePort', 'emulatorPort']) {
       expect(new Set(configs.map((c) => c[key])).size, key).toBe(TESTERS.length);
     }
-    const names = configs.flatMap((c) => Object.values(c.simulators).map((s) => s.name));
+    const names = configs.flatMap((c) =>
+      [...Object.values(c.simulators), ...Object.values(c.emulators)].map((d) => d.name),
+    );
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('name emulators an AVD can carry, on a console adb finds', () => {
+    expect(configs[1].emulators.phone.name).toBe('Soirely_QA2_Phone');
+    for (const { emulators, emulatorPort } of configs) {
+      for (const { name } of Object.values(emulators)) expect(name).toMatch(/^[A-Za-z0-9._-]+$/);
+      expect(emulatorPort % 2).toBe(0);
+      expect(emulatorPort).toBeGreaterThan(5554);
+      expect(emulatorPort).toBeLessThanOrEqual(5584);
+    }
   });
 
   it('share no port with each other or with development', () => {

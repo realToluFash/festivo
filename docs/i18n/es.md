@@ -59,6 +59,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   the gender of «una», «incluida» and «otra» is why each card has its own key
   (`contacts.cap*`, sc-2149).
 
+- **18 Oct 2026. Who decides, for someone who cannot.** A line shown to a viewer without the
+  power names who has it with `lockedLine`'s words, «alguien que pueda cambiar {{area}}»,
+  and never «Usted»: «Lo que incluye lo decide alguien que pueda cambiar {{area}}» is the
+  twin of «Usted decide lo que incluye». A read-only twin keeps its editable line's first
+  sentence word for word and drops what the viewer cannot do («Creado por {{name}}.»).
+  Rejected «Quien pueda cambiar…», shorter but a second wording for the same power
+  (`rolesScreen.describeSeededReadOnly`, `describeCustomReadOnly`, sc-2472).
+
 - **18 Oct 2026. The Roles refusals speak the Roles screen's words.** «Rol», «predefinido»
   and «eliminar» for a role, because the screen already says «Eliminar rol» and
   «Predefinido»; a server refusal and the screen's own check say the same sentence
