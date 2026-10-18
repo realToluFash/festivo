@@ -52,9 +52,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **18 Oct 2026. The Roles refusals speak the Roles screen's words.** «Rol», «predefinido»
   and «eliminar» for a role, because the screen already says «Eliminar rol» and
   «Predefinido»; a server refusal and the screen's own check say the same sentence
-  (`roles.name_required` = `rolesScreen.nameBlank`). A length limit is «Acorte el nombre a
-  {count} caracteres como máximo», where the plural always reads right, since a limit is
-  never 1. «General» and «Roles» are the Spanish words, so they are in
+  (`roles.name_required` = `rolesScreen.nameBlank`, `roles.name_too_long` =
+  `rolesScreen.nameTooLong`). A length limit is «Acorte el nombre a {count} caracteres como
+  máximo», where the plural always reads right, since a limit is never 1. «General» and «Roles» are the Spanish words, so they are in
   `same-as-english.json` (sc-2150).
 
 - **18 Oct 2026. A phone number is «número de teléfono»; the one we text is «de móvil».**
