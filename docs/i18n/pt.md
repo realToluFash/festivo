@@ -39,6 +39,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A role named in a sentence is "a função Proprietário"** (`messages:roles.*`).
+  The role's name stays a label after "a função", so nothing agrees with it: "A função
+  Proprietário é predefinida", "a única pessoa com a função Proprietário", never "o único
+  proprietário", which assumes a man. A role "holds" permissions as "inclui", as on the Roles
+  screen. "Leave it unassigned" is "não a atribua a ninguém". A refusal over a length limit says
+  what to do: "Encurte o nome para um máximo de {count} caracteres." The API catalogue has no
+  plural, and the limit is always well above 1.
+
 - **18 Oct 2026. An email's footer is "Está a receber esta mensagem porque…"** (`emails:newDevice.why`,
   as `provider.why`). "Recebeu este e-mail" reads as a past event; the footer explains why it
   arrives at all. The brand in a sentence is feminine, "a Soirely": "Novo início de sessão na
