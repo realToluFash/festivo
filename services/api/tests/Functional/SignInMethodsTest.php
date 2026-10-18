@@ -362,6 +362,30 @@ final class SignInMethodsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAddressGoogleMarksUnverifiedIsLeftOut(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $body = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', 'kemi@gmail.com', verified: false)]]);
+
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $body['type']);
+        self::assertArrayNotHasKey('providerEmail', $body);
+    }
+
+    #[Test]
+    public function anAddressGoogleDoesNotMarkAtAllIsLeftOut(): void
+    {
+        $user = $this->providerOnly([IdentityProvider::Google]);
+        $this->twoFactorFor($user);
+
+        $body = $this->call('POST', '/api/auth/proof', ['provider' => 'google', 'providerSignIn' => ['idToken' => $this->googleToken('g-kemi', 'kemi@gmail.com', verified: null)]]);
+
+        self::assertSame(ErrorCode::TwoFactorRequired->type(), $body['type']);
+        self::assertArrayNotHasKey('providerEmail', $body);
+    }
+
+    #[Test]
     public function onlyTheAnswerAskingForTheCodeAfterAProviderCarriesTheAddress(): void
     {
         $user = $this->providerOnly([IdentityProvider::Google]);
@@ -487,9 +511,10 @@ final class SignInMethodsTest extends ApiTestCase
         return TOTP::createFromSecret(self::SECRET)->at(Type\uint()->coerce(new Clock()->now()->getTimestamp()));
     }
 
-    private function googleToken(string $subject, ?string $email, string $signedIn = '-1 minute'): string
+    /** @param bool|null $verified the `email_verified` claim, left out when null */
+    private function googleToken(string $subject, ?string $email, string $signedIn = '-1 minute', ?bool $verified = true): string
     {
-        return $this->signed('GOOGLE', $subject, $email, $signedIn);
+        return $this->signed('GOOGLE', $subject, $email, $signedIn, $verified);
     }
 
     private function appleToken(string $subject, string $email): string
@@ -497,7 +522,7 @@ final class SignInMethodsTest extends ApiTestCase
         return $this->signed('APPLE', $subject, $email);
     }
 
-    private function signed(string $provider, string $subject, ?string $email, string $signedIn = '-1 minute'): string
+    private function signed(string $provider, string $subject, ?string $email, string $signedIn = '-1 minute', ?bool $verified = true): string
     {
         $configured = static fn (string $name): string => Str\trim(Str\split(Type\string()->coerce($_SERVER[$name] ?? $_ENV[$name] ?? ''), ',')[0] ?? '');
 
@@ -507,7 +532,8 @@ final class SignInMethodsTest extends ApiTestCase
             'iat' => new Clock()->now()->modify($signedIn),
             'exp' => new Clock()->now()->modify('+1 hour'),
             'sub' => $subject,
-            ...null === $email ? [] : ['email' => $email, 'email_verified' => true],
+            ...null === $email ? [] : ['email' => $email],
+            ...null === $verified ? [] : ['email_verified' => $verified],
         ]);
     }
 
