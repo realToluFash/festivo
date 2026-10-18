@@ -325,7 +325,7 @@ function ContactsCard({
               count: left,
               most: CONTACTS_MOST,
             })
-          : t('contacts.capFull', { most: CONTACTS_MOST })}
+          : t(email ? 'contacts.capFullEmails' : 'contacts.capFullPhones', { most: CONTACTS_MOST })}
       </Text>
     </View>
   );
