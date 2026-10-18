@@ -134,6 +134,7 @@ final class AccountLanguageTest extends ApiTestCase
 
         self::assertSame(422, $this->client->getResponse()->getStatusCode());
         self::assertSame('locale', $this->last()['violations'][0]['propertyPath'] ?? null);
+        self::assertSame('Choose English, Español, Français or Português.', $this->last()['detail'] ?? null);
         self::assertSame('en', $this->account('folake@example.com')->storedLanguage());
     }
 
