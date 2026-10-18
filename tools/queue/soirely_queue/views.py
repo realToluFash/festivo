@@ -108,7 +108,12 @@ def latest_qa_report(story):
 def pr_status(p, pr, compact=False):
     verdict = W.latest_verdict(pr)
     if verdict:
-        covers = "at the head" if W.covers(verdict, pr["head_sha"]) else "NOT at the head"
+        if W.covers(verdict, pr["head_sha"]):
+            covers = "at the head"
+        elif W.covers(verdict, pr["head_sha"], pr.get("carried")):
+            covers = "at the head, carried over a merge of main"
+        else:
+            covers = "NOT at the head"
         said = f"{verdict['verdict']} at {(verdict['sha'] or '?')[:7]}, {covers}"
     else:
         said = "no lead review"

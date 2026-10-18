@@ -31,7 +31,7 @@ class Role
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Organisation $organisation;
 
-    /** Null for a role the organisation made itself; its label is then `name`. */
+    /** Null for a role the organisation made itself, which then goes by `name`. */
     #[ORM\Column(type: Types::STRING, length: 20, nullable: true, enumType: SeededRole::class)]
     private ?SeededRole $seededAs;
 
@@ -87,12 +87,6 @@ class Role
     public function rename(string $name): void
     {
         $this->name = $name;
-    }
-
-    /** What the role is called on screen: a seeded role's English label, or the name the organisation gave it. */
-    public function label(): string
-    {
-        return $this->seededAs?->label() ?? $this->name ?? '';
     }
 
     /** @return list<Permission> every registered permission for Owner, including ones added later */

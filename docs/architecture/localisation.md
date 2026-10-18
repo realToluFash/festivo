@@ -93,6 +93,11 @@ Each of those is proved to fail by a deliberately-broken fixture under
 `packages/i18n-lint/src/__fixtures__`. A guard nobody has watched fail is a guard nobody
 should trust.
 
+**A word more than one surface keeps its own copy of reads the same in each.** The API
+refuses a custom role named after a seeded role in any language from its own copy of the
+seeded labels, so `SHARED_WORDS` in `surfaces.ts` lists every copy and a test fails, naming
+the locale and each reading, when one of them changes alone.
+
 The server keeps **`ErrorCodeCatalogueTest`** as well, which is not duplication: it walks
 the `ErrorCode` enum — closed, and invisible to anything outside PHP — so it alone can
 catch a _code with no message_ and a _message for a code that no longer exists_.
