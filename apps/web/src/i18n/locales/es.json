@@ -721,7 +721,7 @@
     "holders_other": "{{count}} personas",
     "nameLabel": "Nombre del rol",
     "nameBlank": "Póngale un nombre al rol.",
-    "nameTooLong": "El nombre puede tener como máximo {{most}} caracteres.",
+    "nameTooLong": "Acorte el nombre a {{most}} caracteres como máximo.",
     "nameTaken": "Ya existe un rol con ese nombre.",
     "describeOwner": "Todo, incluido lo que Soirely añada más adelante.",
     "describeSeeded": "Es predefinido, así que no se puede eliminar. Usted decide lo que incluye.",
