@@ -64,6 +64,13 @@ because its `.env` names its own compose project. A developer claims a story by 
 label, `dev1` or `dev2`, so the other leaves it alone; `.claude/skills/soirely-developer`
 has the details.
 
+Every other role that raises pull requests has a stack of its own the same way:
+`just dev-env setup --role <role>` makes `../soirely-<role>` for `lead`, `ops`, `en`, `es`,
+`fr` or `pt`. Only five whole tens of thousands fit under port 65536, so these take the half
+steps: `en` +15000, `es` +25000, `fr` +35000, `lead` +45000, `ops` +50000, `pt` +55000
+(`STACKS` in `scripts/dev-env.mjs`). No two development ports are 5000 apart, so no stack
+can land on another's.
+
 ## The shape of the work
 
 **An epic is a scope of work, not a stack.** "Auth" is one epic covering the Symfony

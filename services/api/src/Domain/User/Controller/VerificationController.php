@@ -16,6 +16,7 @@ use App\Http\Access\Policy\Authenticated;
 use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use Psl\Iter;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -38,10 +39,10 @@ final class VerificationController
     #[Route('/api/auth/verify/email', name: 'auth_verify_email', methods: ['POST'])]
     public function verifyEmail(Request $request): JsonResponse
     {
-        $body = Input::body($request, Type\shape(['code' => Type\optional(Type\mixed())]));
+        $body = Input::body($request, Type\shape(['code' => Type\optional(Type\mixed()), 'address' => Type\optional(Type\string())]));
         $code = $this->codeField->required($body, 'code', CodeField::FROM_EMAIL);
 
-        $address = $this->address();
+        $address = $this->address($body['address'] ?? null);
 
         $refusal = $this->contactVerifier->attempt($address, $code);
 
@@ -59,9 +60,9 @@ final class VerificationController
 
     /** Read when the screen opens: a cooldown started elsewhere already counting down, and a spent code shown as spent. */
     #[Route('/api/auth/verify/resend', name: 'auth_verify_resend_cooldown', methods: ['GET'])]
-    public function cooldown(): JsonResponse
+    public function cooldown(Request $request): JsonResponse
     {
-        $address = $this->address();
+        $address = $this->address($request->query->getString('address') ?: null);
 
         return new JsonResponse([
             'cooldownSeconds' => $this->resendCooldown->secondsLeftFor($address),
@@ -70,9 +71,9 @@ final class VerificationController
     }
 
     #[Route('/api/auth/verify/resend', name: 'auth_verify_resend', methods: ['POST'])]
-    public function resend(): JsonResponse
+    public function resend(Request $request): JsonResponse
     {
-        $address = $this->address();
+        $address = $this->address(self::named($request));
 
         $issued = $this->verificationCodeResender->resend($address);
 
@@ -95,7 +96,8 @@ final class VerificationController
         return new JsonResponse(['cooldownSeconds' => VerificationChallenge::RESEND_COOLDOWN_SECONDS]);
     }
 
-    private function address(): EmailAddress
+    /** The primary, or an alternative this account holds by its id (sc-113); anybody else's answers not_found. */
+    private function address(?string $id): EmailAddress
     {
         $user = $this->security->getUser();
 
@@ -103,12 +105,19 @@ final class VerificationController
             throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
         }
 
-        $address = $user->getPrimaryEmailAddress();
+        $address = null === $id
+            ? $user->getPrimaryEmailAddress()
+            : Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getId()->toRfc4122() === $id);
 
         if (null === $address) {
-            throw ApiException::notFound('This account has no primary email address.');
+            throw ApiException::notFound('That address is not linked to this account.');
         }
 
         return $address;
+    }
+
+    private static function named(Request $request): ?string
+    {
+        return '' === $request->getContent() ? null : Input::body($request, Type\shape(['address' => Type\optional(Type\string())]))['address'] ?? null;
     }
 }

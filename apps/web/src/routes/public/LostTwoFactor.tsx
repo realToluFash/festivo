@@ -11,6 +11,7 @@ import {
   formatCountdown,
   formatPhone,
   recoveryFirstStep,
+  recoveryIntroKey,
 } from '@soirely/domain';
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -408,7 +409,7 @@ function Request({
       <>
         <Heading
           title={t('lostTwoFactor.waitingTitle')}
-          intro={t('lostTwoFactor.waitingIntro', { organisations })}
+          intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
           mark={{ tone: 'attention', glyph: '…', word: t('lostTwoFactor.waitingMark') }}
         />
         <div className="notice notice-quiet">
@@ -418,6 +419,11 @@ function Request({
           </div>
         </div>
         <p>{t('lostTwoFactor.stayOut', { email: state.email })}</p>
+        {state.nobody && supportAddress !== '' && (
+          <a className="button" href={`mailto:${supportAddress}`}>
+            {t('lostTwoFactor.emailSupport', { address: supportAddress })}
+          </a>
+        )}
         <div className="auth-footnote">
           <span>{t('lostTwoFactor.notYou')}</span>
           <button
@@ -445,7 +451,7 @@ function Request({
       <>
         <Heading
           title={t('lostTwoFactor.approvedTitle')}
-          intro={t('lostTwoFactor.approvedIntro', { organisations: anyOf })}
+          intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
           mark={{ tone: 'done', glyph: '✓', word: t('lostTwoFactor.approvedMark') }}
         />
         <button
@@ -467,7 +473,7 @@ function Request({
       <>
         <Heading
           title={t('lostTwoFactor.turnedDownTitle')}
-          intro={t('lostTwoFactor.turnedDownIntro', { organisations: anyOf })}
+          intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
           mark={{ tone: 'broken', glyph: '✕', word: t('lostTwoFactor.turnedDownMark') }}
         />
         {supportAddress !== '' && (

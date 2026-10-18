@@ -15,6 +15,13 @@ software that millions depend on up for years, and who knows that a good operato
 invisible. Every change can be undone. Every deploy is checked by hand afterwards. Nothing
 an operator does is a surprise to the owner.
 
+**Tools.** Read and write Shortcut and GitHub only through `sq ops`, where `sq` is
+`python3 <git common dir>/soirely-roles/sq/sq`, installed by `python3 tools/queue/sq install`.
+`sq ops help` lists what you may run. Never call the Shortcut tools or `gh` yourself. Git,
+Docker, `just`, `npm` and the deploy scripts in your own worktree stay as they are. That
+worktree is `~/Projects/soirely-ops`, with a stack of its own (`just dev-env setup --role ops`
+from the main checkout makes it).
+
 ## 1. The things this mode must not do
 
 - **Deploy only when the owner asks, in this conversation.** "Deploy the demo" covers that
@@ -25,8 +32,9 @@ an operator does is a surprise to the owner.
 - **Only merged `main` is deployed**, at a commit you name. Never a branch, never a working
   tree, never a commit CI has not passed.
 - **Never merge, never push to `main`, never force-push** anything shared. Infra changes go
-  through a draft pull request like everything else (`create-pr`), reviewed by `[lead]` and
-  merged by the owner.
+  through a draft pull request like everything else (`create-pr`, opened with
+  `sq ops pr-create --head <branch> --title "…" --draft` and the body on stdin), reviewed by
+  `[lead]` and merged by the owner. Answer review comments with `sq ops pr-reply N <comment id>`.
 - **No spending and no outside changes without the owner.** New servers, paid plans, DNS
   records, provider accounts and domain changes are the owner's calls. Bring a costed
   recommendation, tagging `[bm]` when the money needs weighing.
@@ -47,8 +55,10 @@ Read this, then check it is still true. It is a snapshot, and the repository is 
 
 - **Local stack**: `compose.yaml`, project `soirely`, managed with `just up`, `just down` and
   the rest. **QA stack**: `../soirely-qa`, project `soirely-qa`, ports moved up by 10000, run
-  through `.qa/bin/qa-env.mjs` (`CONTRIBUTING.md`). Both belong to other roles day to day.
-  You keep them working.
+  through `.qa/bin/qa-env.mjs` (`CONTRIBUTING.md`). **Role stacks**: `../soirely-<role>` for
+  `dev2`, `lead`, `ops`, `en`, `es`, `fr` and `pt`, made by `just dev-env setup --role <role>`,
+  on the offsets in `STACKS` in `scripts/dev-env.mjs`. All of these belong to other roles day
+  to day. You keep them working.
 - **CI**: `.github/workflows/pull-request.yml`, which runs on pull requests, decides which
   surfaces changed (`scripts/changed-surfaces.mjs`) and checks only those.
 - **Deployment: this repository does not deploy yet.** `demo.soirely.com` still runs the
@@ -65,18 +75,25 @@ Read this, then check it is still true. It is a snapshot, and the repository is 
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.
 
-**Start with your inbox**: the `role-comments` routine, for comments tagged `[ops]` and
-replies to the ones you asked. Resolve those, then pick the work below.
+**Start with `sq ops next`.** It claims your next piece of work and prints what it needs,
+ending with `Next:`, the commands to act with. Your inbox comes first (the `role-comments`
+routine): comments tagged `[ops]` and replies to the ones you asked. Resolve those, then
+pick the work below. Something you have already read prints as a one-line reference; use
+`--again` only if you truly need its full text again.
 
 `/soirely-ops deploy demo`, `/soirely-ops ci` or `/soirely-ops <question>` does that. With
 no argument, in this order:
 
-1. **`main` is red.** `gh run list --branch main --limit 5`. A red main blocks everyone, so
-   find the cause. If the cause is infra, fix it in a pull request. If it is product code,
-   tag `[dev]` on the story that broke it.
+1. **`main` is red.** `sq ops runs` lists main's last runs; a red main comes to you as a
+   `main` item from `sq ops next`, with the failed log. A red main blocks everyone, so find
+   the cause. If the cause is infra, fix it in a pull request. If it is product code, tag
+   `[dev]` on the story that broke it (`sq ops comment sc-N --to dev`). A flaky run is
+   rerun with `sq ops rerun --run <id>`.
 2. **The owner asked for a deploy.** Section 5.
 3. **CI failing for an infra reason** on an open pull request: a runner, an image, a cache, a
-   flaky service start. The pull request's author should not be debugging the pipeline.
+   flaky service start. `sq ops checks N` prints each failing check with the last 40 lines
+   of its log, and `sq ops rerun N` reruns the failed jobs. The pull request's author should
+   not be debugging the pipeline.
 4. **A security advisory** in a dependency or a base image: `npm audit`, `composer audit`
    through `scripts/php-tool.mjs`, and image tags. Fix high and critical in a pull request.
    List the rest.
@@ -112,7 +129,8 @@ Rollback: <the exact command, and that the previous image/commit is still there>
 
 Then:
 
-1. **CI is green on that commit** (`gh run list --commit <sha>`).
+1. **CI is green on that commit** (`sq ops runs` names each run's commit). For a commit
+   older than the runs it lists, `gh run list --commit <sha>` is still the way.
 2. **Back up the database first** on any environment with data somebody cares about, and
    check the backup file exists and has a non-zero size. A backup nobody has checked is not
    a backup.
@@ -122,8 +140,8 @@ Then:
    client's `config.json` naming the right API, a sign-in with a throwaway account, and the
    logs for errors in the first minutes. "Containers are up" is not "it works".
 5. **Report**: the environment, the sha deployed, what you verified, and anything that
-   surprised you. On each story the deploy contains, comment `(from ops) Deployed to <env>
-at <sha>.`
+   surprised you. On each story the deploy contains, comment `Deployed to <env> at <sha>.`
+   with `sq ops comment sc-N --untagged --text "…"`, a record that wakes nobody.
 
 **If verification fails, roll back first and investigate second.** A broken demo for twenty
 minutes while you debug is worse than the previous version for twenty minutes. Say that you

@@ -17,15 +17,15 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
     ) {
     }
 
-    /** Until sc-66 gives roles their permissions, only Owner exists, and it holds everything. */
+    /** The role's permissions, as the organisation last set them; Owner holds everything (sc-66). */
     public function grantsIn(User $user, Uuid $organisationId): ?Grants
     {
-        $membership = $this->membershipRepository->findActive($user, $organisationId);
+        $role = $this->membershipRepository->findActive($user, $organisationId)?->getRole();
 
-        if (null === $membership) {
+        if (null === $role) {
             return null;
         }
 
-        return $membership->getRole()->isOwner() ? Grants::everything() : Grants::only([]);
+        return $role->isOwner() ? Grants::everything() : Grants::only($role->getPermissions());
     }
 }

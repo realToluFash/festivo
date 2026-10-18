@@ -41,17 +41,16 @@ describe('roleName', () => {
 });
 
 describe('roleHolds', () => {
-  it('gives the owner every permission', () => {
-    expect(roleHolds({ seededAs: 'owner' }, 'organisation.manage')).toBe(true);
-  });
+  it('holds what the role was given, and nothing else', () => {
+    const coordinator = { permissions: ['events.read', 'events.manage'] };
 
-  it('gives every other role none until sc-66', () => {
-    expect(roleHolds({ seededAs: 'event_manager' }, 'organisation.manage')).toBe(false);
-    expect(roleHolds({ seededAs: null }, 'organisation.manage')).toBe(false);
+    expect(roleHolds(coordinator, 'events.manage')).toBe(true);
+    expect(roleHolds(coordinator, 'organisation.manage')).toBe(false);
+    expect(roleHolds({ permissions: [] }, 'events.read')).toBe(false);
   });
 
   it('holds no unnamed permission', () => {
-    expect(roleHolds({ seededAs: 'owner' }, '')).toBe(false);
+    expect(roleHolds({ permissions: [''] }, '')).toBe(false);
   });
 });
 

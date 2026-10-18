@@ -23,6 +23,11 @@ Below, **N is your tester number**, and **`soirely-qa<n>` is your worktree and p
 Examples show tester 1's ports; `node .qa/bin/qa-env.mjs status` prints yours. Never touch
 another tester's worktree, stack, simulators or browser.
 
+**Tools.** Read and write Shortcut and GitHub only through `sq <your role>` — `sq qa`, `sq qa2`
+or `sq qa3`; examples below use `sq qa`. `sq qa help` lists what this role may run. Never call
+the Shortcut tools or `gh` yourself. Git, Docker, the harness and the simulators in your own
+worktree stay as they are.
+
 ## 1. The two things this mode must not do
 
 - **Do not fix anything.** No edits to `src`, no commits, no pull requests, not even an
@@ -46,8 +51,8 @@ Two more, narrower:
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.
 
-**Start with your inbox**: the `role-comments` routine, for comments tagged with your tag
-and replies to the ones you asked. Tester 1 also answers a bare `[qa]` that names no tester.
+**Start with your inbox**: `sq qa next` hands you a comment waiting on you before anything
+else (the `role-comments` routine), with tagged comments and replies to the ones you asked. Tester 1 also answers a bare `[qa]` that names no tester.
 Resolve those, then pick the work below. **Sign every comment and report as yourself**,
 `(from qa2)`, so a reply finds the tester who did the work.
 
@@ -55,33 +60,31 @@ Resolve those, then pick the work below. **Sign every comment and report as your
 `Ready For QA` state** — the developer puts a story there once the tech lead has passed its
 pull request and it has merged, and that is the handover:
 
-1. `stories-search` with `state: "Ready For QA"`. That is the queue, shared by all three
-   testers.
-   - **Pick by your number**, so three testers reaching the queue together pick different
-     stories. Sort it by `updated`, oldest first, and take story N if there are at least N.
-     Otherwise take the oldest. Name the rest in your first line.
+1. `sq qa next` (or `sq qa queue` to only look). That is the queue, shared by all three
+   testers, oldest first, with the stories already `In QA` and their claims.
+   - **It picks by your number**, so three testers reaching the queue together pick
+     different stories: its `Next:` line names story N if there are at least N, otherwise
+     the oldest. Name the rest in your first line.
    - **Then claim it** (below) before reading anything else about it.
    - **None** — say so plainly and stop. "Nothing is waiting for QA" is a complete answer
      and takes one line; do not go looking for work to do instead.
-2. Failing that, `label: "needs qa"`, which predates the state and may still be on a story.
+2. Failing that, `sq qa find "label:\"needs qa\""`, a label which predates the state and may still be on a story.
 3. Failing that, read the current branch name: `feature/sc-55/…` names its story.
 4. Failing that, ask. Do not guess from the diff; a diff is where the work is, not where
    the specification is.
 
 **Claiming a story** is how the other two know to leave it alone:
 
-1. **Move it to `In QA`** (`stories-update`), straight away.
-2. **Post the claim**, a comment whose whole text is `QA claim: qa<n>`, with no tag, so it
-   wakes nobody.
-3. **Check you won.** Read the story's comments. If another tester's `QA claim:` was posted
-   after the story last entered `Ready For QA` (`stories-get-history`) and before yours,
-   the story is theirs. Post nothing more on it and pick again. Two claims a few seconds
-   apart are normal, and the earlier one wins.
+`sq qa claim sc-55`, straight away. It moves the story to `In QA` and posts
+`QA claim: qa<n>`, with no tag, so it wakes nobody. The first claim recorded wins: if
+another tester got there first it refuses and says who, and you post nothing more on it and
+pick again. On success it prints the story.
 
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
-which means its tester's run died. Any tester may take it over, with a new claim that names
-the old one: `QA claim: qa2, taking over from qa3's of 09:14`. A story named in the
-command (`/soirely-qa-tester qa2 sc-55`) is claimed the same way.
+which means its tester's run died. Any tester may take it over with the same
+`sq qa claim sc-55`: it refuses a claim younger than three hours, and on an older one posts
+`QA claim: qa2, taking over from qa3's of 09:14`. A story named in the command
+(`/soirely-qa-tester qa2 sc-55`) is claimed the same way.
 
 **A `translation` ticket is tested on `main`**, not on a pull request: the linguist moves
 it to `Ready For QA` only once every pull request it depends on is merged.
@@ -92,16 +95,19 @@ plurals at 0, 1, 2 and a large number. A finding is tagged for its locale's ling
 
 **A story in `Ready For QA` is a claim, not a certainty.** It means somebody thinks the work
 is finished. Check that the pull request exists and that its checks are green before
-testing: a red branch is a finding for the author, not an afternoon of QA against code that
+testing (`sq qa pr <n>` for its status, `sq qa checks <n>` for what failed): a red branch is a finding for the author, not an afternoon of QA against code that
 is about to change.
 
-Then read, in this order, before testing anything:
+Then read, in this order, before testing anything. The claim prints the story with its AC
+and Design in full, and `sq qa pr <n> --section Risks` prints the pull request's Risks. A
+thing you read on an earlier run and that has not changed prints as a one-line reference;
+use `--again` only if you truly need its full text again.
 
-- **The story** (`stories-get-by-id` with `full: true`). The **AC** is the specification.
-  The **Design** section says which artboards cover it and what the design settled that
-  the AC did not.
-- **The pull request**, if there is one: `gh pr view <n>`. Its **Risks** section is a list
-  of things the author already doubts, and every one of them is a test.
+- **The story**. The **AC** is the specification. The **Design** section says which
+  artboards cover it and what the design settled that the AC did not. `sq qa story sc-55
+--section <name>` prints any other section, and `sq qa comments sc-55` its threads.
+- **The pull request**, if there is one. Its **Risks** section is a list of things the
+  author already doubts, and every one of them is a test.
 - **The artboards**, when the story names them — `.claude/skills/screen-from-design`
   explains where the design lives. A screen that does not match the design fails, even
   when it satisfies the AC.
@@ -384,42 +390,44 @@ The conventions that matter:
 
 ## 8. Posting it
 
-In this order, because a comment that names a screenshot nobody uploaded is a dead end:
+One command, with the report verbatim on stdin:
 
-1. **Upload the evidence** — `stories-upload-file` per screenshot, to the story.
-2. **Post the comment** — `stories-create-comment`, the report verbatim.
-3. **Tag what needs another role** — one comment per Outstanding item that someone else
-   has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a missing state on
-   an artboard, `[dev]` for a question about the build. See `role-comments`.
-4. **Move the story** — `stories-update` with the `workflow_state_id` of **Passed QA** or
-   **Failed QA**. A story you claimed always leaves `In QA`, whichever way the pass went.
-   Leaving it there means the other testers treat it as taken until the claim goes stale.
+```sh
+cd ~/Projects/soirely-qa && sq qa report sc-55 passed --files .qa/web-sign-in.png .qa/mobile-signed-in.png < .qa/report.md
+```
 
-The Standard workflow (`500000005`) today:
+It uploads the screenshots first, because a comment that names a screenshot nobody uploaded
+is a dead end, then posts the report, moves the story to **Passsed QA** or **Failed QA**
+(three s's — Shortcut's spelling), and sets `qa passed` or `qa failed`, dropping `needs qa`
+on a pass and keeping every other label. A story you claimed always leaves `In QA`,
+whichever way the pass went. Leaving it there means the other testers treat it as taken
+until the claim goes stale. It refuses a story you have not claimed.
 
-| State            | Id          | Who moves it there                                     |
-| ---------------- | ----------- | ------------------------------------------------------ |
-| In Progress      | `500000008` | the branch, when work starts                           |
-| In Review        | `500000009` | the developer, when the PR is open and green           |
-| **Ready For QA** | `500000087` | **the developer, after the lead's pass and the merge** |
-| **In QA**        | `500000194` | **you, when you claim it**                             |
-| **Passsed QA**   | `500000084` | **you** (three s's — Shortcut's spelling)              |
-| **Failed QA**    | `500000083` | **you**                                                |
-| Done             | `500000010` | the user, after a merge. Never you.                    |
+Then **tag what needs another role** — one `sq qa comment sc-55 --to <role>` per Outstanding
+item that someone else has to decide or fix: `[pm]` for an undecided behaviour, `[ux]` for a
+missing state on an artboard, `[dev]` for a question about the build. See `role-comments`.
+Finish with `sq qa done <id> --note "<one line>"`; the note is what your next run on the
+story sees.
 
-**Resolve them by name anyway**, with `workflows-list`, at the time of posting — an id in a
-skill file is a cache, and the typo above is the reason to read rather than retype. If a
-state has gone missing:
+| State            | Who moves it there                                     |
+| ---------------- | ------------------------------------------------------ |
+| In Progress      | the branch, when work starts                           |
+| In Review        | the developer, when the PR is open and green           |
+| **Ready For QA** | **the developer, after the lead's pass and the merge** |
+| **In QA**        | **you, when you claim it**                             |
+| **Passsed QA**   | **you**                                                |
+| **Failed QA**    | **you**                                                |
+| Done             | the user, after a merge. Never you.                    |
+
+If `report` says a state has gone missing, the screenshots and the report are already
+posted, so do not post them again:
 
 - leave the story in the state it is in,
-- label it `qa passed` or `qa failed` with `stories-update` — both labels exist already, so
-  use those two spellings rather than creating a third,
+- label it with `sq qa label sc-55 --add "qa passed" --remove "needs qa"` (or
+  `--add "qa failed"`) — both labels exist already, so use those two spellings rather than
+  creating a third; the other labels are kept,
 - and say in your reply to the user that the state does not exist and that adding it is
   **Settings → Workflows** in Shortcut.
-
-**`stories-update` replaces the whole label set.** Read the story's labels first and pass
-the union, minus `needs qa` when it passed. Passing one label deletes the others, silently,
-and nothing fails.
 
 Never move a story to **Done** — that is the user's, after a merge — and never merge
 anything.

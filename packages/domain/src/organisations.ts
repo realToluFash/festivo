@@ -16,9 +16,12 @@ export function roleName(
   return role.seededAs != null ? word(`roles.${role.seededAs}`) : (role.name ?? '');
 }
 
-/** Owner holds every permission; until sc-66 gives other roles theirs, nobody else holds any. */
-export function roleHolds(role: { seededAs: string | null }, permission: string): boolean {
-  return permission !== '' && role.seededAs === 'owner';
+/** What the member's role holds in this organisation, as the API lists it (sc-66): a control it cannot use is not shown. */
+export function roleHolds(
+  membership: { permissions: readonly string[] },
+  permission: string,
+): boolean {
+  return permission !== '' && membership.permissions.includes(permission);
 }
 
 export type OrganisationField = 'name' | 'countryCode' | 'contactAddress' | 'currency' | 'timezone';

@@ -278,6 +278,66 @@ describe('verifying an email address', () => {
   });
 });
 
+describe('verifying an address added from Settings > Account', () => {
+  it('sends its id with the code, offers no sign-out, and goes back to Account', async () => {
+    const sent: { path: string; body: unknown }[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const { pathname, search } = new URL(String(input));
+      sent.push({
+        path: `${init?.method ?? 'GET'} ${pathname}${search}`,
+        body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+      });
+      if (pathname === '/api/auth/me')
+        return json({
+          id: 'acc_1',
+          name: 'Folake Ire',
+          businessName: null,
+          countryCode: null,
+          organisationCountry: 'NG',
+          locale: 'en',
+          timezone: null,
+          verified: true,
+          complete: true,
+          needsOrganisation: false,
+          hasPassword: true,
+          providers: [],
+          emailAddresses: [
+            { id: 'e1', address: 'folake@ire.events', verified: true, primary: true },
+            { id: 'e2', address: 'folake.adeyemi@gmail.com', verified: false, primary: false },
+          ],
+          phoneNumbers: [],
+        });
+      if (pathname === '/api/auth/verify/resend')
+        return json({ cooldownSeconds: 0, codeState: 'live' });
+      if (pathname === '/api/auth/verify/email')
+        return json({
+          id: 'e2',
+          address: 'folake.adeyemi@gmail.com',
+          verified: true,
+          primary: false,
+        });
+      throw new TypeError('Failed to fetch');
+    });
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/verify-email?address=e2'] })}
+      />,
+    );
+
+    expect(await screen.findByText(/folake\.adeyemi@gmail\.com/)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+    enter('123456');
+
+    await waitFor(() =>
+      expect(sent.find((s) => s.path === 'POST /api/auth/verify/email')?.body).toEqual({
+        code: '123456',
+        address: 'e2',
+      }),
+    );
+    expect(sent.some((s) => s.path === 'GET /api/auth/verify/resend?address=e2')).toBe(true);
+  });
+});
+
 describe('a held sign-up on a device whose session has ended', () => {
   beforeEach(() => {
     __setSessionState({ status: 'signedOut', ended: true });

@@ -1461,6 +1461,288 @@ h2 {
   margin: 0;
 }
 
+.settings-wide {
+  max-width: 85rem;
+}
+
+/* Roles-Desktop: the list beside the role, wrapping to one column, with flex as the app needs. */
+.roles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spaceXl);
+}
+
+.roles-list {
+  display: flex;
+  flex: 1 1 15rem;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.roles-list-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceXs);
+  padding-bottom: var(--spaceSm);
+}
+
+.roles-list-head h1,
+.roles-list-head p,
+.roles-detail h2,
+.roles-detail-title p,
+.roles-panels p,
+.roles-removing p {
+  margin: 0;
+}
+
+.roles-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: var(--spaceSm) var(--spaceMd);
+  border: 0;
+  border-radius: var(--radiusInset);
+  background: transparent;
+  color: var(--colorInk);
+  text-align: left;
+  cursor: pointer;
+}
+
+.roles-pick[aria-pressed='true'] {
+  background: var(--colorInset);
+}
+
+.roles-pick-text,
+.roles-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.roles-pick-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.roles-detail {
+  display: flex;
+  flex: 3 1 32rem;
+  flex-direction: column;
+  gap: var(--spaceLg);
+  min-width: 0;
+}
+
+.roles-detail form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.roles-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spaceMd) var(--spaceLg);
+}
+
+.roles-detail-title {
+  display: flex;
+  flex: 1 1 15rem;
+  flex-direction: column;
+  gap: var(--spaceXs);
+}
+
+.roles-grid-head {
+  padding: var(--spaceSm) 0;
+  border-top: var(--borderDivider);
+  border-bottom: var(--borderDivider);
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+}
+
+.roles-grid {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roles-grid li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceSm) 0;
+  border-bottom: var(--borderDivider);
+}
+
+.roles-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceLg);
+}
+
+.roles-row-sub {
+  margin-left: var(--spaceLg);
+  padding-left: var(--spaceMd);
+  border-left: var(--borderInset);
+}
+
+.roles-row-name {
+  font-weight: 600;
+}
+
+.roles-levels {
+  display: flex;
+  flex: 0 1 19rem;
+  gap: var(--spaceXs);
+}
+
+.roles-level {
+  flex: 1;
+  min-height: var(--sizeHit);
+  border: var(--borderControl);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font: var(--typeButton);
+  cursor: pointer;
+}
+
+.roles-level[aria-pressed='true'] {
+  border: var(--borderSelected);
+  background: var(--colorAccentTint);
+}
+
+.roles-fixed {
+  display: flex;
+  flex: 0 1 19rem;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spaceXs);
+  font-weight: 600;
+}
+
+.roles-padlock {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.roles-locked {
+  margin: 0;
+}
+
+.roles-unsaved {
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.roles-unsaved p {
+  flex: 1 1 15rem;
+  margin: 0;
+}
+
+.roles-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.roles-panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceLg);
+}
+
+.roles-panel {
+  display: flex;
+  flex: 1 1 15rem;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceLg);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.roles-panel-heading {
+  color: var(--colorInkSecondary);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+}
+
+.roles-removing {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.roles-replacements {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  max-width: 32rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.roles-replacement {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-height: var(--sizeHit);
+  padding: var(--spaceXs) var(--spaceMd);
+  border: var(--borderControl);
+  border-radius: var(--radiusInset);
+  cursor: pointer;
+}
+
+.roles-replacement .roles-row-name {
+  flex: 1;
+}
+
+/* Under the name, past the radio: a 20px control and the row's gap. */
+.roles-replacement-means {
+  flex-basis: 100%;
+  padding-left: calc(var(--sizeMark) + var(--spaceMd));
+}
+
+.roles-back {
+  display: none;
+  align-self: flex-start;
+}
+
+/* Roles-Phone and Roles-TabletPortrait: the list, or one role on its own page. */
+@media (width <= 60rem) {
+  .roles-back {
+    display: inline-flex;
+  }
+
+  .roles[data-open='false'] .roles-detail,
+  .roles[data-open='true'] .roles-list {
+    display: none;
+  }
+}
+
+.roles-replacement:has(input:checked) {
+  border: var(--borderSelected);
+  background: var(--colorAccentTint);
+}
+
 .no-organisation {
   max-width: 40rem;
 }
@@ -1490,6 +1772,16 @@ h2 {
 
 .phone-number {
   flex: 1 1 12rem;
+}
+
+/* ── Email addresses and phone numbers, in Settings > Account ───────────── */
+
+.contacts-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--spaceSm);
 }
 
 /* ── A label with a pill beside it ─────────────────────────────────────────── */

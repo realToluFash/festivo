@@ -17,8 +17,8 @@ use Psl\Vec;
 /** Who may answer a request to get back in (sc-509): an owner or admin of one of the person's organisations, never the person. */
 final readonly class RecoveryApprovers
 {
-    /** Admin joins when sc-66 seeds it. */
-    public const array ROLES = [SeededRole::Owner];
+    /** By the seeded role, not its permissions: an organisation can change what Administrator holds, not this duty. */
+    public const array ROLES = [SeededRole::Owner, SeededRole::Administrator];
 
     public function __construct(
         private EntityManagerInterface $entityManager,

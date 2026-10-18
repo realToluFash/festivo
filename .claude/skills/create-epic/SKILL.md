@@ -15,6 +15,10 @@ You are turning a scope of work into a Shortcut epic.
 work out what that scope actually contains, write it down so the stories under it can be
 drafted without re-litigating the shape, and create the epic.
 
+**Tools.** Read and write Shortcut only through `sq pm`; `sq pm help` lists what you may
+run. Never call the Shortcut tools or `gh` directly. Only the product manager creates
+epics.
+
 ## What an epic is here
 
 **An epic is a scope of work, not a stack.** This is the thing that distinguishes this
@@ -126,14 +130,13 @@ Only proceed on explicit approval.
 ## Step 5: Create it
 
 Workspace **soirely**. The destination is fixed — do not ask, and do not let the model
-pick:
+pick. `sq` sets the team and the owner itself:
 
-| Field | Value                                                            |
-| ----- | ---------------------------------------------------------------- |
-| Team  | Tolulope Fasugba's Team — `6acb7a32-5acb-464f-b80d-b0994da161b4` |
-| Owner | `6acb7a32-5323-4319-be6c-6d43226fd986`                           |
+```sh
+sq pm new-epic --name "Guests & RSVP" < draft.md
+```
 
-Use `epics-create`. Name the epic after the outcome, not the mechanism — `Guests & RSVP`,
+It prints the epic id and its URL. Name the epic after the outcome, not the mechanism — `Guests & RSVP`,
 not `Guest endpoints`. Keep names short enough to read in a list.
 
 ## Step 6: Report

@@ -300,14 +300,16 @@ describe('the time zone list after a language change', () => {
   });
 
   it('keeps the rows shown when the new list cannot be fetched, and saves nothing', async () => {
-    answeringByLanguage(Promise.resolve(json({ type: 'x', title: 'x', status: 500 }, 500)));
+    const asked = answeringByLanguage(
+      Promise.resolve(json({ type: 'x', title: 'x', status: 500 }, 500)),
+    );
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
     fireEvent.change(zoneInput(), { target: { value: 'calcutta' } });
 
     await act(() => setLanguage('fr'));
-    await waitFor(() => expect(vi.mocked(fetch).mock.calls).toHaveLength(2));
+    await waitFor(() => expect(asked).toEqual(['en', 'fr']));
 
     expect(screen.getByRole('option', { name: /Kolkata \(UTC\+05:30\)/ })).toBeDefined();
     expect(vi.mocked(fetch).mock.calls.some(([, init]) => (init?.method ?? 'GET') !== 'GET')).toBe(

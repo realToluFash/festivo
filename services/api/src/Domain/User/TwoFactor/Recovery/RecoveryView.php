@@ -41,8 +41,7 @@ final readonly class RecoveryView
         return [
             'email' => $email?->getAddress(),
             'phone' => null !== $phone && $phone->isVerified() ? $phone->getNumber() : null,
-            'organisations' => self::names($this->recoveryApprovers->askedFor($user)),
-            'nobody' => [] === $this->recoveryApprovers->for($user),
+            ...$this->asked($user),
         ];
     }
 
@@ -57,7 +56,7 @@ final readonly class RecoveryView
             'status' => $status->value,
             'email' => $recovery->getEmailAddress()->getAddress(),
             'phone' => $phone?->getNumber(),
-            'organisations' => self::names($this->recoveryApprovers->askedFor($user)),
+            ...$this->asked($user),
             'supportAddress' => $this->supportAddress,
             ...$this->times($recovery, $user, $asked),
             'codes' => TwoFactorRecoveryStatus::Proving === $status ? [
@@ -84,6 +83,14 @@ final readonly class RecoveryView
             'organisations' => self::names($shared),
             ...$this->times($recovery, $approver, $asked),
         ];
+    }
+
+    /** @return array{organisations: list<string>, nobody: bool} */
+    private function asked(User $user): array
+    {
+        $organisations = self::names($this->recoveryApprovers->askedFor($user));
+
+        return ['organisations' => $organisations, 'nobody' => [] === $organisations];
     }
 
     /** @return array{askedAt: ?string, asked: ?string, expiresAt: ?string, expires: ?string} */

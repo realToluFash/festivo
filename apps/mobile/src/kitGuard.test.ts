@@ -92,11 +92,16 @@ describe('the app runs on Hermes', () => {
 
 describe('a field that takes a recovery code gets the full keyboard', () => {
   // sc-124 QA #1616: these fields fell back to the number pad, and a recovery code has letters and a hyphen.
-  const RECOVERY_CODE_FIELDS = ['devices.everywhere.code', 'ways.code'];
+  // The proof step's field is ConfirmItsYou's, named by the card that opens it (ways, contacts).
+  const RECOVERY_CODE_FIELDS = ['devices.everywhere.code', '${idPrefix}.code'];
 
   it.each(RECOVERY_CODE_FIELDS)('%s', (testID) => {
     const fields = sources(['src', 'app']).flatMap(({ text }) =>
-      selfClosing('CodeField', text).filter((tag) => tag.markup.includes(`testID="${testID}"`)),
+      selfClosing('CodeField', text).filter(
+        (tag) =>
+          tag.markup.includes(`testID="${testID}"`) ||
+          tag.markup.includes(`testID={\`${testID}\`}`),
+      ),
     );
 
     expect(fields, `one CodeField with testID "${testID}"`).toHaveLength(1);

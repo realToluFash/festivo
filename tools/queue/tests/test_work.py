@@ -1,0 +1,152 @@
+import unittest
+
+from soirely_queue import roles, work
+
+HEAD = "a" * 40
+OLD = "b" * 40
+
+
+def story(id_=1, state="In Review", labels=(), comments=(), moved_at="2026-10-18T10:00:00Z"):
+    return {"id": id_, "name": "A story", "url": "", "state": state, "labels": list(labels),
+            "epic": None, "position": 0, "moved_at": moved_at, "done": False,
+            "description": "", "comments": list(comments)}
+
+
+def comment(id_, text, parent=None, at=None):
+    return {"id": id_, "parent": parent, "at": at or f"2026-10-18T10:{id_:02d}:00Z",
+            "text": text}
+
+
+def pr(number=7, story_id=1, head=HEAD, checks="green", lead=(), threads=(), state="open"):
+    return {"number": number, "title": "", "url": "", "state": state, "draft": False,
+            "branch": f"feature/sc-{story_id}/x", "story_id": story_id, "head_sha": head,
+            "checks": checks, "mergeable": "mergeable", "merged_at": None, "merge_sha": None,
+            "lead": list(lead), "threads": list(threads)}
+
+
+def verdict(kind, sha, at="2026-10-18T11:00:00Z"):
+    return {"verdict": kind, "sha": sha, "at": at, "id": 1}
+
+
+def kinds(items, role=None):
+    return sorted(i["kind"] for i in items if role is None or role in i["roles"])
+
+
+class Header(unittest.TestCase):
+    def test_reads_addressees_and_author(self):
+        self.assertEqual(roles.header("[pm] [ux] (from qa)\nbody"),
+                         {"to": ["pm", "ux"], "from": "qa"})
+
+    def test_a_bare_dev_tag_goes_to_the_labelled_developer(self):
+        self.assertEqual(roles.addressees("[dev] (from lead)\n", ["dev2"]), ["dev2"])
+        self.assertEqual(roles.addressees("[dev] (from lead)\n", []), ["dev"])
+
+    def test_a_report_with_no_header_is_for_nobody(self):
+        self.assertEqual(roles.addressees("A QA report\n[pm] (from qa)", []), [])
+
+
+class Inbox(unittest.TestCase):
+    def test_a_question_stays_open_until_the_role_replies_in_its_thread(self):
+        asked = story(comments=[comment(1, "[lead] (from dev)\nre-review please")])
+        self.assertEqual([c["id"] for c in work.open_for("lead", asked)], [1])
+
+        answered = story(comments=[comment(1, "[lead] (from dev)\nre-review please"),
+                                   comment(2, "[dev] (from lead)\ndone", parent=1)])
+        self.assertEqual(work.open_for("lead", answered), [])
+        self.assertEqual(work.open_for("dev", answered)[0]["id"], 2)
+
+    def test_a_comment_a_finished_run_dealt_with_is_not_open(self):
+        asked = story(comments=[comment(1, "[lead] (from dev)\nre-review please")])
+        self.assertEqual(work.open_for("lead", asked, {("lead", 1)}), [])
+
+    def test_one_item_per_role_and_story_naming_every_open_comment(self):
+        asked = story(comments=[comment(1, "[pm] (from qa)\none"),
+                                comment(2, "[pm] [ux] (from qa)\ntwo")])
+        items = work.inbox_items([asked])
+        pm = [i for i in items if i["roles"] == ["pm"]]
+        self.assertEqual(len(pm), 1)
+        self.assertEqual(pm[0]["comments"], [1, 2])
+        self.assertEqual([i["comments"] for i in items if i["roles"] == ["ux"]], [[2]])
+
+
+class Review(unittest.TestCase):
+    def test_a_push_after_the_pass_needs_another_review(self):
+        items = work.review_items([story()], [pr(lead=[verdict("pass", OLD[:7])])])
+        self.assertEqual(len(items), 1)
+        self.assertIn("pushed after the pass", items[0]["reason"])
+
+    def test_a_pass_at_the_head_needs_nothing(self):
+        self.assertEqual(work.review_items([story()], [pr(lead=[verdict("pass", HEAD[:7])])]), [])
+
+    def test_findings_at_the_head_wait_until_the_story_comes_back(self):
+        found = [verdict("back", HEAD, at="2026-10-18T11:00:00Z")]
+        waiting = story(moved_at="2026-10-18T10:00:00Z")
+        returned = story(moved_at="2026-10-18T12:00:00Z")
+        self.assertEqual(work.review_items([waiting], [pr(lead=found)]), [])
+        self.assertEqual(len(work.review_items([returned], [pr(lead=found)])), 1)
+
+    def test_checks_still_running_are_not_ready(self):
+        self.assertEqual(work.review_items([story()], [pr(checks="pending")]), [])
+
+    def test_in_review_with_no_pull_request_is_flagged_unless_one_merged(self):
+        self.assertEqual(len(work.review_items([story()], [])), 1)
+        self.assertEqual(work.review_items([story()], [pr(state="merged")]), [])
+
+
+class Developer(unittest.TestCase):
+    def test_a_pass_at_the_head_with_no_open_thread_is_a_merge(self):
+        items = work.developer_items([story(labels=["dev2"])],
+                                     [pr(lead=[verdict("pass", HEAD[:7])])])
+        self.assertEqual([(i["kind"], i["roles"]) for i in items], [("merge", ["dev2"])])
+
+    def test_an_open_thread_holds_the_merge(self):
+        thread = {"id": "T", "resolved": False, "outdated": False, "path": "x", "line": 1,
+                  "comments": []}
+        items = work.developer_items([story()], [pr(lead=[verdict("pass", HEAD[:7])],
+                                                    threads=[thread])])
+        self.assertEqual(items, [])
+
+    def test_merged_at_the_passed_sha_goes_to_qa(self):
+        merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(kinds(work.developer_items([story()], [merged])), ["to-qa"])
+
+    def test_red_checks_and_green_in_progress(self):
+        self.assertEqual(kinds(work.developer_items([story()], [pr(checks="red")])),
+                         ["checks-red"])
+        self.assertEqual(kinds(work.developer_items([story(state="In Progress")], [pr()])),
+                         ["to-review"])
+
+
+class Queue(unittest.TestCase):
+    def test_an_unlabelled_to_do_story_is_one_item_both_developers_can_claim(self):
+        items = [i for i in work.queue_items([story(state="To Do")]) if i["pool"] == "dev"]
+        self.assertEqual(len(items), 1)
+        self.assertEqual(sorted(items[0]["roles"]), ["dev", "dev2"])
+
+    def test_ready_for_qa_is_one_item_for_the_three_testers(self):
+        items = work.queue_items([story(state="Ready For QA")])
+        self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
+
+    def test_a_translation_ticket_is_only_the_linguists(self):
+        items = work.queue_items([story(state="To Do", labels=["translation"])])
+        self.assertEqual(sorted(r for i in items for r in i["roles"]),
+                         ["en", "es", "fr", "pt"])
+
+
+class Heartbeat(unittest.TestCase):
+    def test_a_role_with_a_queue_picks_after_its_heartbeat(self):
+        now = 10_000_000
+        stories = [story(state="Ready For QA")]
+        due = work.heartbeat_items(stories, {"qa": now - 31 * 60}, set(), now)
+        self.assertIn("qa", [r for i in due if i["kind"] == "pick" for r in i["roles"]])
+        quiet = work.heartbeat_items(stories, {"qa": now - 5 * 60}, set(), now)
+        self.assertNotIn("qa", [r for i in quiet for r in i["roles"]])
+
+    def test_a_role_with_no_queue_and_no_sweep_stays_asleep(self):
+        items = work.heartbeat_items([], {}, set(), 10_000_000)
+        self.assertNotIn("dev", [r for i in items for r in i["roles"]])
+        self.assertIn("pm", [r for i in items for r in i["roles"]])
+
+
+if __name__ == "__main__":
+    unittest.main()

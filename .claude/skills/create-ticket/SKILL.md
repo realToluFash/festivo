@@ -15,6 +15,10 @@ without reading code.
 `$request` is usually a few sentences. Turn it into a **Description** and **AC** in the
 house format, fill the gaps by asking, and only then create the story.
 
+**Tools.** Read and write Shortcut only through `sq <your role>` (`sq pm` in the examples
+below; developers, the creative director and the linguists use their own); `sq <your role>
+help` lists what you may run. Never call the Shortcut tools or `gh` directly.
+
 ## One story, one pull request
 
 A story is the unit that becomes a PR. If it cannot land as one reviewable PR, it is two
@@ -31,7 +35,7 @@ Vague AC comes from vague understanding, and AC naming the wrong field is worse 
 
 1. **Search the codebase** for the area named in `$request`. You need real names: the
    screen, the route, the entity, the field labels, the exact options an enum offers.
-2. **Read the epic** this belongs under. It carries the scope boundary and the "carried
+2. **Read the epic** this belongs under (`sq pm epic N`). It carries the scope boundary and the "carried
    forward" notes, both of which change what the AC must say.
 3. **Check the reference implementation** at `~/festivo-backup-pre-symfony-2026-10-11` if
    the behaviour existed before. How it actually worked is often the clearest AC available
@@ -137,21 +141,14 @@ Only proceed on explicit approval.
 
 ## Step 5: Confirm the destination
 
-Workspace **soirely**. Fixed — do not ask:
-
-| Field    | Value                                                            |
-| -------- | ---------------------------------------------------------------- |
-| Team     | Tolulope Fasugba's Team — `6acb7a32-5acb-464f-b80d-b0994da161b4` |
-| Workflow | Standard — `500000005`                                           |
-
-Workflow states: Backlog `500000006` · To Do `500000007` · In Progress `500000008` ·
-In Review `500000009` · Ready For QA `500000087` · Failed QA `500000083` · Passsed QA
-`500000084` (three s's, Shortcut's spelling) · Done `500000010`. A new story is Backlog or
-To Do; the three QA states belong to work already built — see **soirely-qa-tester**.
+Workspace **soirely**. `sq` fixes the team and the workflow, and names states rather than
+ids. A new story is Backlog or To Do; the three QA states belong to work already built —
+see **soirely-qa-tester**. Only the product manager may create one straight into To Do;
+everyone else's starts in Backlog and the PM moves it on.
 
 **Ask for the epic.** Never guess it — a story under the wrong epic is invisible to
-whoever is working that scope. List the open epics and present them, offering "no epic"
-as a choice for genuine one-offs.
+whoever is working that scope. List the open epics (`sq pm epics`) and present them,
+offering "no epic" as a choice for genuine one-offs.
 
 Also ask, where not obvious:
 
@@ -161,7 +158,15 @@ Also ask, where not obvious:
 
 ## Step 6: Create it
 
-Use `stories-create`. Put the drafted markdown in the description. Name the story after
+Pipe the drafted markdown in as the description:
+
+```sh
+sq pm new-story --name "Show dietary tags on the service floor" --epic 31 \
+  --state Backlog --type feature --estimate 2 < draft.md
+```
+
+`--label` adds labels; leave out `--epic` for a one-off and `--estimate` if none was
+wanted. It prints the story id, its URL and the branch name. Name the story after
 the outcome rather than the mechanism — "Show dietary tags on the service floor", not
 "Add dietary field to seat".
 
@@ -169,8 +174,8 @@ the outcome rather than the mechanism — "Show dietary tags on the service floo
 
 Give the story ID and URL, the title, the epic, and one line on any assumption to check.
 
-Give the branch name for the work — `stories-get-branch-name` produces the one Shortcut
-will recognise, so the story moves itself when the PR opens.
+Give the branch name for the work — the one `new-story` printed, which Shortcut will
+recognise, so the story moves itself when the PR opens.
 
 Suggest `/review-ac <id>` once the work is under way.
 

@@ -40,6 +40,25 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Primary and other addresses (sc-113, `contacts.*`, `Account-*`).** The
+  primary signs in; any other address or number only reaches the person: "Other addresses can
+  reach you, but they cannot sign you in." / "Other numbers can reach you too." Never write a
+  line that implies a verified alternative will sign in or get account mail: the add hint is
+  "We email a code to prove it is yours. Until then it stays unverified." (the phone's says
+  "We text"). The cap reads the same in the card and from the server: "An account holds
+  {{most}} email addresses. Remove one to add another." Done line: "{{address}} has been
+  removed." Won over "only reaches you", which reads as "reaches only you", and over "You can
+  link", which states the cap as a permission rather than a rule.
+- **18 Oct 2026. A grid row the viewer cannot change (sc-66, `Roles-*` v30, `caller_limited`).**
+  Under the locked row: "Only someone who can change {{area}} can set this. It stays as it is
+  when you save." The inset above the grid, plural on `{{count}}` locked areas: "You can change
+  only what your role, {{role}}, holds. {{areas}} stays as it is when you save." / "… {{areas}}
+  stay as they are when you save." `{{areas}}` comes from `Intl.ListFormat` (conjunction) in
+  the reader's locale, from the grid's own area labels. Won over the drawn "A save leaves it as
+  it is" and "saving leaves it alone", because "a save" as a noun and "leave it alone" do not
+  carry into es, fr or pt, and over "your own role". The row and the inset close on the same
+  sentence, so they say the same thing the same way; the verb agrees with the list, so the
+  inset is a plural pair, never one key.
 - **18 Oct 2026. A cost line's rate or amount, too many decimals (sc-83, `CostLine`).** Two
   keys, one per field label: "That has too many decimal places for this event's currency.
   Enter the rate like {{example}}." on a rated line, and "… Enter the amount like
@@ -68,6 +87,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   rule that the example shows the rule and the words never name a decimal count; and over
   "Settled would be", which is not a sentence. "Close" is a state word, not the dialog's
   close button: its own key.
+- **17 Oct 2026. "A device that has not signed in to your Soirely account before has just
+  signed in."** (`emails:newDevice.body`). Won over "Your Soirely account was signed in to on
+  a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account
+  does not "see" devices. The device is the subject, so each locale can keep one plain verb.
+  The next lines give the time, the device and the address, so the sentence names none of them.
 - **17 Oct 2026. Share-link passphrase (sc-94, `ShareLinks`, `SharedBudget-*`).** "Make the
   passphrase at least {{count}} characters long, or leave it empty."; over the limit, "Shorten
   the passphrase to {{count}} characters or fewer."; locked, "Too many wrong passphrases have

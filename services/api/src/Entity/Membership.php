@@ -71,6 +71,12 @@ class Membership
         return $this->role;
     }
 
+    /** Only through RoleAssignment, which keeps the organisation's last owner. */
+    public function changeRole(Role $role): void
+    {
+        $this->role = $role;
+    }
+
     public function getStatus(): MembershipStatus
     {
         return $this->status;
