@@ -78,6 +78,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   rule that the example shows the rule and the words never name a decimal count; and over
   "Settled would be", which is not a sentence. "Close" is a state word, not the dialog's
   close button: its own key.
+- **17 Oct 2026. "A device that has not signed in to your Soirely account before has just
+  signed in."** (`emails:newDevice.body`). Won over "Your Soirely account was signed in to on
+  a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account
+  does not "see" devices. The device is the subject, so each locale can keep one plain verb.
+  The next lines give the time, the device and the address, so the sentence names none of them.
 - **17 Oct 2026. Share-link passphrase (sc-94, `ShareLinks`, `SharedBudget-*`).** "Make the
   passphrase at least {{count}} characters long, or leave it empty."; over the limit, "Shorten
   the passphrase to {{count}} characters or fewer."; locked, "Too many wrong passphrases have

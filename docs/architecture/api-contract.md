@@ -93,6 +93,7 @@ stays in seconds either way (RFC 9110 §10.2.3). Today only
 | `POST /api/auth/verify/resend`                     | one per 60 seconds per address                                  | every code sent          |
 | `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                             | every request started    |
 | `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                      | every proved call        |
+| `POST /api/auth/emails`, `/phones`                 | 10 per account per hour, fixed window, shared                   | every add asked for      |
 
 ## Verifying an address
 
@@ -152,6 +153,36 @@ The details screen (`PATCH /api/auth/complete-profile`) takes the same number as
 optional `phoneCountryCode` and `phoneNumber`, under the same rules. An empty number means
 no phone and removes the primary one. Its shape refusals are against `phoneNumber`,
 alongside the screen's other fields, and nothing is saved or texted until all of them pass.
+
+## Alternative addresses and numbers
+
+From Settings > Account (sc-113). **A primary identifies; an alternative only reaches.**
+Only the primary address signs anybody in (`findOneByPrimaryEmailAddress()`), and a phone
+never does: the primary phone is the one on the profile and the one texted.
+
+- `POST /api/auth/emails` (`address`) and `POST /api/auth/phones` (`countryCode`,
+  `number`) link one unverified and not primary, normalised as registration and
+  `PUT /api/auth/phone` normalise, and send its code. `201` with the row.
+- **Two of each per account, primary included** (`LinkedContacts::MOST`), held by the
+  service under the account's row lock: a third is `409 address_limit_reached`, the
+  detail naming the limit. A pending replacement number is not counted.
+- **One answer for a held address**, this account's or another's: `409 already_linked`,
+  the same bytes either way, so the endpoint is no oracle for who has an account.
+- `PATCH …/emails/{id}/primary` and `…/phones/{id}/primary` move the flag in one
+  transaction, reading the current primary under the account's row lock. An unverified row
+  is `409 address_not_verified`.
+- The email route also takes `proof` from `POST /api/auth/proof`, because it changes the
+  address that signs in and recovers the account. Without a live one it is
+  `403 proof_required`, before the id is looked at. The phone route takes none.
+- `DELETE …/emails/{id}` and `…/phones/{id}`: the primary is `409 primary_address`, the
+  only verified row is `409 last_verified_address`. `204` otherwise.
+- An id that is not this account's, or not an id, is `404 not_found`, never `403`.
+- The verify endpoints take the row by id: `address` on `POST /api/auth/verify/email`
+  and `/verify/resend` (`?address=` on its `GET`), `phone` on `/verify/phone`, its resend
+  and `/text-instead` (`?phone=` on the `GET`). Without one, they act on the primary
+  address, or the number awaiting its code, as before.
+- Every add, promotion and removal is audited (`email.added`, `email.primary`,
+  `email.removed`, and the same for `phone.`), with the value before and after.
 
 ## Getting back in without the second factor
 

@@ -1,4 +1,9 @@
-import { ApiError, proofRefusal } from '@soirely/api-client';
+import {
+  ApiError,
+  type Provider,
+  type ProviderSignInAttempt,
+  proofRefusal,
+} from '@soirely/api-client';
 import { formatTimeOfDay, type proveWith } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
@@ -21,6 +26,31 @@ export function keptProof(error: unknown, kept: string | null): string | null {
   if (tripRefused(error)) return null;
 
   return error instanceof ApiError ? (error.problem.pendingProof ?? kept) : kept;
+}
+
+/** The kept proof once the sign-in waits for its code: a password is sent again, a provider's sign-in never is. */
+export function keptOnceCodeAsked(
+  via: ReturnType<typeof proveWith>,
+  error: unknown,
+  kept: string | null,
+): string | null {
+  return via === 'password' ? null : keptProof(error, kept);
+}
+
+/** What Continue sends as the first factor: the kept proof, else the provider's sign-in, else the password. */
+export function firstFactor(
+  via: ReturnType<typeof proveWith>,
+  kept: string | null,
+  signIn: ProviderSignInAttempt | null,
+  password: string,
+):
+  | { pendingProof: string }
+  | { provider: Provider; signIn: ProviderSignInAttempt }
+  | { password: string } {
+  if (kept != null) return { pendingProof: kept };
+  if (via === 'password' || via == null || signIn == null) return { password };
+
+  return { provider: via, signIn };
 }
 
 /** The five minutes from the provider's sign-in ran out at step two: back to step one, the change kept (sc-510). */

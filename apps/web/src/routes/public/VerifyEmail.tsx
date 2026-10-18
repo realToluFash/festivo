@@ -8,7 +8,7 @@ import {
 import { cleanCode, codeProblem, formatCountdown } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate } from 'react-router';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
@@ -30,8 +30,51 @@ import { useFormChecks } from '../../formChecks.ts';
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export function VerifyEmail() {
   const [pending] = useState(heldRegistration);
+  const alternative = useSearchParams()[0].get('address');
+
+  if (alternative != null) return <ForAlternative id={alternative} />;
 
   return pending == null ? <ForSession /> : <ForRegistration pending={pending} />;
+}
+
+/** An address added from Settings > Account (sc-113), by its id: back to Account, never a sign-out. */
+function ForAlternative({ id }: { id: string }) {
+  const navigate = useNavigate();
+  const [address, setAddress] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+
+    api
+      .me()
+      .then((me) => {
+        if (live) setAddress(me.emailAddresses.find((held) => held.id === id)?.address ?? '');
+      })
+      .catch(() => {
+        if (live) setAddress('');
+      });
+
+    return () => {
+      live = false;
+    };
+  }, [id]);
+
+  if (address === '') return <Navigate to="/app/account" replace />;
+  if (address == null) return <Pending />;
+
+  return (
+    <CodeScreen
+      address={address}
+      alreadyVerified={false}
+      opening={() => api.verificationOpening(id)}
+      verify={async (code) => {
+        await api.verifyEmail(code, id);
+      }}
+      resend={() => api.resendVerification(id)}
+      onExpired={() => navigate('/app/account', { replace: true })}
+      carryOn={() => navigate('/app/account')}
+    />
+  );
 }
 
 function ForRegistration({ pending }: { pending: PendingRegistration }) {
@@ -130,7 +173,8 @@ function CodeScreen({
   /** The sign-up had already run out when the screen opened: nothing to resume, so signed out. */
   onGone?: () => void;
   carryOn: () => void | Promise<void>;
-  wrongAddress: () => void | Promise<void>;
+  /** Absent for an alternative address: it is simply removed from Account, and nobody signs out. */
+  wrongAddress?: () => void | Promise<void>;
   /** A sign-up has no session to sign out of: it starts again at Register. */
   registersAgain?: boolean;
 }) {
@@ -352,13 +396,15 @@ function CodeScreen({
             </form>
           )}
 
-          <div className="auth-footnote">
-            <span>{t('verifyEmail.wrongAddress')}</span>
-            <button className="link-button" type="button" onClick={() => void wrongAddress()}>
-              {registersAgain ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
-            </button>
-            {!registersAgain && <span>{t('verifyEmail.wrongAddressBody')}</span>}
-          </div>
+          {wrongAddress != null && (
+            <div className="auth-footnote">
+              <span>{t('verifyEmail.wrongAddress')}</span>
+              <button className="link-button" type="button" onClick={() => void wrongAddress()}>
+                {registersAgain ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
+              </button>
+              {!registersAgain && <span>{t('verifyEmail.wrongAddressBody')}</span>}
+            </div>
+          )}
         </>
       )}
     </AuthPage>
