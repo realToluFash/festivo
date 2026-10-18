@@ -18,8 +18,14 @@ vi.mock('react', () => ({
   useEffect: (effect: () => void) => effect(),
 }));
 
-const { launchSignedIn, reloadSignedIn, replaceOrganisation, signOutHere, useSignedIn } =
-  await import('./signedIn.ts');
+const {
+  launchSignedIn,
+  reloadSignedIn,
+  replaceOrganisation,
+  rereadAccount,
+  signOutHere,
+  useSignedIn,
+} = await import('./signedIn.ts');
 
 const account = { id: 'usr_1', name: 'Adaeze' };
 const organisation = {
@@ -118,5 +124,33 @@ describe('an organisation saved from its page', () => {
     replaceOrganisation({ ...other, name: 'Okafor & Co' });
 
     expect(useSignedIn().organisation?.id).toBe('org_1');
+  });
+});
+
+describe('the account read again without leaving the screen', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api.me.mockResolvedValue(account);
+    api.organisations.mockResolvedValue([organisation]);
+    await reloadSignedIn();
+    vi.clearAllMocks();
+  });
+
+  it('replaces the account and keeps the organisation, with no second organisations read', async () => {
+    api.me.mockResolvedValue({ ...account, name: 'Adaeze Okafor' });
+
+    await rereadAccount();
+
+    expect(useSignedIn().account).toEqual({ ...account, name: 'Adaeze Okafor' });
+    expect(useSignedIn().organisation).toEqual(organisation);
+    expect(api.organisations).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the read fails, keeps the account it had, and opens nothing', async () => {
+    api.me.mockRejectedValue(new Error('offline'));
+
+    await expect(rereadAccount()).rejects.toThrow('offline');
+    expect(useSignedIn().account).toEqual(account);
+    expect(router.replace).not.toHaveBeenCalled();
   });
 });

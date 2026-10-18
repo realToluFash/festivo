@@ -47,6 +47,13 @@ export function reloadSignedIn(): Promise<void> {
   return launchSignedIn().then(() => {});
 }
 
+/** The account alone, read again; a failed read rejects and leaves the screen where it is. */
+export async function rereadAccount(): Promise<void> {
+  const account = await api.me();
+
+  set({ ...state, account });
+}
+
 /** False when the account could not be read and sign-in has opened instead. */
 export function launchSignedIn(): Promise<boolean> {
   ended = false;

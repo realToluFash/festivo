@@ -279,7 +279,27 @@ describe('verifying an email address', () => {
 });
 
 describe('verifying an address added from Settings > Account', () => {
-  it('sends its id with the code, offers no sign-out, and goes back to Account', async () => {
+  const ME = {
+    id: 'acc_1',
+    name: 'Folake Ire',
+    businessName: null,
+    countryCode: null,
+    organisationCountry: 'NG',
+    locale: 'en',
+    timezone: null,
+    verified: true,
+    complete: true,
+    needsOrganisation: false,
+    hasPassword: true,
+    providers: [],
+    emailAddresses: [
+      { id: 'e1', address: 'folake@ire.events', verified: true, primary: true },
+      { id: 'e2', address: 'folake.adeyemi@gmail.com', verified: false, primary: false },
+    ],
+    phoneNumbers: [],
+  };
+
+  function fromAccount(me: unknown = ME) {
     const sent: { path: string; body: unknown }[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const { pathname, search } = new URL(String(input));
@@ -287,26 +307,7 @@ describe('verifying an address added from Settings > Account', () => {
         path: `${init?.method ?? 'GET'} ${pathname}${search}`,
         body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
       });
-      if (pathname === '/api/auth/me')
-        return json({
-          id: 'acc_1',
-          name: 'Folake Ire',
-          businessName: null,
-          countryCode: null,
-          organisationCountry: 'NG',
-          locale: 'en',
-          timezone: null,
-          verified: true,
-          complete: true,
-          needsOrganisation: false,
-          hasPassword: true,
-          providers: [],
-          emailAddresses: [
-            { id: 'e1', address: 'folake@ire.events', verified: true, primary: true },
-            { id: 'e2', address: 'folake.adeyemi@gmail.com', verified: false, primary: false },
-          ],
-          phoneNumbers: [],
-        });
+      if (pathname === '/api/auth/me') return json(me);
       if (pathname === '/api/auth/verify/resend')
         return json({ cooldownSeconds: 0, codeState: 'live' });
       if (pathname === '/api/auth/verify/email')
@@ -324,6 +325,12 @@ describe('verifying an address added from Settings > Account', () => {
       />,
     );
 
+    return sent;
+  }
+
+  it('sends its id with the code, offers no sign-out, and goes back to Account', async () => {
+    const sent = fromAccount();
+
     expect(await screen.findByText(/folake\.adeyemi@gmail\.com/)).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
     enter('123456');
@@ -335,6 +342,53 @@ describe('verifying an address added from Settings > Account', () => {
       }),
     );
     expect(sent.some((s) => s.path === 'GET /api/auth/verify/resend?address=e2')).toBe(true);
+  });
+
+  it("shows Account's way back instead of the onboarding steps, and sends a wrong address to Account", async () => {
+    fromAccount();
+
+    expect(await screen.findByLabelText('Code from the email')).toBeDefined();
+    expect(screen.queryByRole('list', { name: 'Before you start' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to Account' }).getAttribute('href')).toBe(
+      '/app/account',
+    );
+    expect(screen.getByText('Not your address?')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Remove it in Account' }).getAttribute('href')).toBe(
+      '/app/account',
+    );
+    expect(screen.queryByRole('button', { name: 'Register again with the right one' })).toBeNull();
+  });
+
+  it('ends on Back to Account, with the address still an alternative', async () => {
+    fromAccount();
+
+    await screen.findByLabelText('Code from the email');
+    enter('123456');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Email verified' })).toBeDefined();
+    expect(
+      screen.getByText(
+        'folake.adeyemi@gmail.com is verified. It stays an alternative address until you make it primary in Account.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Back to Account' })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/app/account?verified=e2', '/app/account?verified=e2']);
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Before you start' })).toBeNull();
+  });
+
+  it('opens on verified, with no code to enter, for an address verified elsewhere', async () => {
+    const sent = fromAccount({
+      ...ME,
+      emailAddresses: [ME.emailAddresses[0], { ...ME.emailAddresses[1], verified: true }],
+    });
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Email verified' })).toBeDefined();
+    expect(screen.queryByLabelText('Code from the email')).toBeNull();
+    expect(sent.some((s) => s.path.startsWith('GET /api/auth/verify/resend'))).toBe(false);
   });
 });
 

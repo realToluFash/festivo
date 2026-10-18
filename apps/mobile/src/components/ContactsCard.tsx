@@ -5,9 +5,11 @@ import {
   contactsLeft,
   formatPhone,
   formatTimeOfDay,
+  justVerified,
   listedContacts,
   lockLiftsAt,
   phoneLengthProblem,
+  rereadAfterRefusal,
 } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -21,6 +23,7 @@ import { emailMessage, useFormChecks } from '../kit/formChecks.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
 import { heldProof } from '../recentProof.ts';
+import { rereadAccount } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -47,10 +50,13 @@ type Asking = { id: string; what: 'promote' | 'prove' | 'remove' } | null;
 export function ContactsCards({
   account,
   kind: layout,
+  verified,
   onChanged,
 }: {
   account: Account;
   kind: LayoutKind;
+  /** The row a verify screen came back for, so its card says it is verified. */
+  verified: string | null;
   onChanged: () => Promise<void>;
 }) {
   const [twoFactorOn, setTwoFactorOn] = useState(false);
@@ -77,6 +83,7 @@ export function ContactsCards({
         layout={layout}
         rows={account.emailAddresses.map((held) => ({ ...held, shown: held.address }))}
         country={account.organisationCountry ?? ''}
+        verified={verified}
         confirming={{
           via: account.hasPassword ? 'password' : (account.providers[0]?.provider ?? null),
           twoFactorOn,
@@ -88,6 +95,7 @@ export function ContactsCards({
         layout={layout}
         rows={account.phoneNumbers.map((held) => ({ ...held, shown: formatPhone(held.number) }))}
         country={account.organisationCountry ?? ''}
+        verified={verified}
         onChanged={onChanged}
       />
     </>
@@ -99,6 +107,7 @@ function ContactsCard({
   layout,
   rows: all,
   country,
+  verified,
   confirming,
   onChanged,
 }: {
@@ -106,6 +115,7 @@ function ContactsCard({
   layout: LayoutKind;
   rows: Row[];
   country: string;
+  verified: string | null;
   /** How the person proves it is them before an address becomes the one signing in. */
   confirming?: { via: 'password' | Provider | null; twoFactorOn: boolean };
   onChanged: () => Promise<void>;
@@ -116,9 +126,32 @@ function ContactsCard({
   const [asking, setAsking] = useState<Asking>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [adding, setAdding] = useState(false);
-  const [done, setDone] = useState<string | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  const [arrived, setArrived] = useState(verified);
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
+  const arrival = justVerified(rows, arrived);
+  const done =
+    said ??
+    (arrival == null
+      ? null
+      : email
+        ? t('contacts.verifiedDone', { address: arrival.shown })
+        : t('contacts.verifiedDonePhone', { number: arrival.shown }));
+
+  function setDone(line: string | null): void {
+    setArrived(null);
+    setSaid(line);
+  }
+
+  /** True for a refusal that said the list had changed, once the list has been read again. */
+  async function rereadFor(refusal: unknown): Promise<boolean> {
+    const changed = await rereadAfterRefusal(codeOf(refusal), rereadAccount);
+
+    if (changed) setDone(null);
+
+    return changed;
+  }
 
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
     setRowError(null);
@@ -148,6 +181,7 @@ function ContactsCard({
       setAsking(null);
       await onChanged();
     } catch (refusal) {
+      if (await rereadFor(refusal)) setAsking(null);
       setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
     }
   }
@@ -306,6 +340,7 @@ function ContactsCard({
             setDone(t('contacts.added'));
             await onChanged();
           }}
+          onRefused={rereadFor}
           onCancel={() => setAdding(false)}
         />
       ) : (
@@ -327,7 +362,7 @@ function ContactsCard({
               count: left,
               most: CONTACTS_MOST,
             })
-          : t('contacts.capFull', { most: CONTACTS_MOST })}
+          : t(email ? 'contacts.capFullEmails' : 'contacts.capFullPhones', { most: CONTACTS_MOST })}
       </Text>
     </View>
   );
@@ -337,11 +372,13 @@ function Adding({
   kind,
   country: initialCountry,
   onAdded,
+  onRefused,
   onCancel,
 }: {
   kind: Kind;
   country: string;
   onAdded: () => Promise<void>;
+  onRefused: (refusal: unknown) => Promise<unknown>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -372,6 +409,7 @@ function Adding({
       await (email ? api.addEmailAddress(value) : api.addPhoneNumber(country, value));
       await onAdded();
     } catch (refusal) {
+      await onRefused(refusal);
       setSending(false);
       setRefused(addRefusal(refusal, kind, t));
     }
@@ -438,6 +476,10 @@ function Adding({
       />
     </View>
   );
+}
+
+function codeOf(refusal: unknown): string | null {
+  return refusal instanceof ApiError ? refusal.code : null;
 }
 
 /** The server's answer to a race the screen did not invite: each is a reason with the next step. */

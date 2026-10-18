@@ -278,6 +278,9 @@ describe('Settings > Roles', () => {
     await roles();
     pick(/^Coordinator/);
 
+    expect(
+      screen.getByText('Built in, so it cannot be removed. What it holds is yours to change.'),
+    ).toBeDefined();
     expect(level('Billing', 'Read')).toBeDefined();
     expect(
       within(screen.getByRole('group', { name: 'Billing' })).queryByRole('button', {
@@ -353,6 +356,43 @@ describe('Settings > Roles', () => {
     expect(screen.queryByRole('button', { name: 'New role' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Events' })).toBeNull();
     expect(screen.getAllByText('Change').length).toBeGreaterThan(0);
+  });
+
+  it('tells a viewer who cannot change roles who decides, and promises them no removal', async () => {
+    signedIn(membership({ ...IRE, permissions: ['members.read', 'events.read'] }));
+    answering();
+    await roles();
+
+    pick(/^Coordinator/);
+    expect(
+      screen.getByText(
+        'Built in, so it cannot be removed. Someone who can change Members and roles decides what it holds.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText(/What it holds is yours to change/)).toBeNull();
+
+    pick(/^Door team/);
+    expect(screen.getByText('Made by Ìrè Events.')).toBeDefined();
+    expect(screen.queryByText(/It can be removed/)).toBeNull();
+
+    pick(/^Owner/);
+    expect(screen.getByText('Everything, including whatever Soirely adds later.')).toBeDefined();
+  });
+
+  it('keeps the lines that promise changes for a viewer who can change roles', async () => {
+    answering();
+    await roles();
+
+    pick(/^Coordinator/);
+    expect(
+      screen.getByText('Built in, so it cannot be removed. What it holds is yours to change.'),
+    ).toBeDefined();
+
+    pick(/^Door team/);
+    expect(screen.getByText('Made by Ìrè Events. It can be removed.')).toBeDefined();
+
+    pick(/^Owner/);
+    expect(screen.getByText('Everything, including whatever Soirely adds later.')).toBeDefined();
   });
 
   it('refuses a role that cannot read members', async () => {

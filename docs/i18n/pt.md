@@ -39,6 +39,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A browser session is "Safari no iPhone"** (`devices.agent`, web and app, and
+  `emails:password.device.agent`): "{{browser}} no {{platform}}", beside "Aplicação Soirely no
+  iPhone" in the same list and the same email line. Every platform the parser names (iPhone,
+  iPad, Android, macOS, Windows, ChromeOS, Linux) is masculine, so "no" agrees with all of
+  them; a feminine one added later needs a `[dev]` context. Rejected "em iPhone": a bare noun
+  after "em" is the Brazilian habit, and it sat oddly beside "no iPhone".
+- **18 Oct 2026. "Devices you do not recognise" is "os dispositivos que não reconheça"**
+  (`emails:newDevice.notYou*`, `provider.linked.notYouNoPassword`,
+  `provider.unlinked.notYouNoPassword`, and "qualquer um que não reconheça" in `devices.intro`).
+  The subjunctive, since the email cannot know which devices those are; "que não reconhece"
+  reads as a set both sides already know.
 - **18 Oct 2026. The brand is feminine everywhere, "a Soirely"**, on screens, in emails and in
   `errors:` and `messages:`: "A Soirely não pode verificar", "Continuar para a Soirely",
   "iniciar sessão na Soirely", "o e-mail mais recente da Soirely", "Adicione a Soirely à sua

@@ -70,7 +70,8 @@ def refresh_lookups(db, shortcut):
 def sync_github(db):
     owner, name = store.get_meta(db, "repository") or github.repository()
     store.set_meta(db, "repository", [owner, name])
-    store.put_prs(db, github.pull_requests(owner, name))
+    known = {pr["number"]: pr for pr in store.prs(db)}
+    store.put_prs(db, github.pull_requests(owner, name, known))
     runs = github.main_runs()
     store.set_meta(db, "main_runs", runs)
     store.set_meta(db, "main_run", runs[0] if runs else None)

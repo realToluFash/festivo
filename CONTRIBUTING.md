@@ -51,7 +51,7 @@ An agent in QA mode does not use them here. There are three QA testers, and
 `just qa-env setup --tester N` makes a stack for tester N. Each stack is a worktree at
 `../soirely-qa`, `../soirely-qa2` or `../soirely-qa3` on the pushed head of the pull request
 under test, with its own containers and database, every port moved up by N×10000, and its
-own simulators. A developer running the suite and a QA pass stopping the API to test the
+own simulators, or Android emulators on a host without Xcode. A developer running the suite and a QA pass stopping the API to test the
 offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`, `… qa2` or
 `… qa3` from the main checkout as usual; each does its work in its own worktree, through
 `node .qa/bin/qa-env.mjs`.
