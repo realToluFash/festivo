@@ -40,6 +40,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A grid row the viewer cannot change (sc-66, `Roles-*` v30, `caller_limited`).**
+  Under the locked row: "Only someone who can change {{area}} can set this. It stays as it is
+  when you save." The inset above the grid, plural on `{{count}}` locked areas: "You can change
+  only what your role, {{role}}, holds. {{areas}} stays as it is when you save." / "… {{areas}}
+  stay as they are when you save." `{{areas}}` comes from `Intl.ListFormat` (conjunction) in
+  the reader's locale, from the grid's own area labels. Won over the drawn "A save leaves it as
+  it is" and "saving leaves it alone", because "a save" as a noun and "leave it alone" do not
+  carry into es, fr or pt, and over "your own role". The row and the inset close on the same
+  sentence, so they say the same thing the same way; the verb agrees with the list, so the
+  inset is a plural pair, never one key.
 - **18 Oct 2026. A cost line's rate or amount, too many decimals (sc-83, `CostLine`).** Two
   keys, one per field label: "That has too many decimal places for this event's currency.
   Enter the rate like {{example}}." on a rated line, and "… Enter the amount like
