@@ -50,6 +50,16 @@ Languages have plural rules that are not "one versus everything else".
 `guests` and a heading called `Guests`. Overwriting is silent — the broken one renders as
 its own key path, and no test fails.
 
+**A merge from main can bring back copy that main changed.** A conflict in a catalogue
+resolved to the branch's side reverts main's wording. A test on the branch that asserts the
+old string merges with no conflict at all and turns main red after it lands. So after every
+merge of main, list what main changed and grep the branch for the old text:
+
+```sh
+git diff <base before the merge> origin/main -- '**/i18n/locales/en.json' | grep '^-  *"'
+git grep -n "<each old string>" -- apps packages services
+```
+
 ## Guest names
 
 Never split a name to get a first name. Hosts type titles — Mr., Chief, Alhaji, Dr. —
