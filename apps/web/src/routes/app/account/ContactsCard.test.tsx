@@ -290,7 +290,7 @@ describe('email addresses and phone numbers', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Add address' }));
     expect(
-      screen.getByText("That doesn't look like an email address. Check it has an @ and a domain."),
+      screen.getByText('That does not look like an email address. Check it has an @ and a domain.'),
     ).toBeDefined();
     expect(sent.some((s) => s.call === 'POST /api/auth/emails')).toBe(false);
 
