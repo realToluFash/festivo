@@ -352,6 +352,28 @@ describe('verifying a number added from Settings > Account', () => {
     });
   });
 
+  it('says the number is now primary when the server made it so, on an account with no primary phone', async () => {
+    answering({
+      'GET /api/auth/me': () => json({ ...SET_UP, phoneNumbers: [ALTERNATIVE] }),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+      'POST /api/auth/verify/phone': () => json({ ...ALTERNATIVE, verified: true, primary: true }),
+    });
+    at('/verify-phone?phone=p2');
+    await screen.findByLabelText('Code from the text');
+
+    fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '184231' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Number verified' })).toBeDefined();
+    expect(
+      screen.getByText('+234 701 555 0188 is verified and is now your primary number.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/It stays an alternative number/)).toBeNull();
+    expect(screen.getAllByRole('link', { name: 'Back to Account' })[0]?.getAttribute('href')).toBe(
+      '/app/account?verified=p2',
+    );
+  });
+
   it('keeps the onboarding steps and Continue to Soirely during sign-up', async () => {
     answering({
       'GET /api/auth/me': () => json(account()),

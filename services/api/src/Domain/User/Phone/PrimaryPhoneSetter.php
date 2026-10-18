@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Phone;
 
+use App\Audit\Auditor;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeSender;
 use App\Entity\PhoneNumber;
 use App\Entity\User;
+use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Repository\PhoneNumberRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
 /** A row's verification describes its number, so a changed number is a new row, not the old one cleared. */
@@ -21,6 +24,7 @@ final readonly class PrimaryPhoneSetter
         private VerificationCodeIssuer $verificationCodeIssuer,
         private VerificationCodeSender $verificationCodeSender,
         private EntityManagerInterface $entityManager,
+        private Auditor $auditor,
     ) {
     }
 
@@ -92,7 +96,35 @@ final readonly class PrimaryPhoneSetter
     {
         if ($phone->isPending()) {
             $this->promote($phone, $phone->getUser()->getPrimaryPhoneNumber());
+
+            return;
         }
+
+        if (!$phone->isPrimary()) {
+            $this->primaryIfNone($phone);
+        }
+    }
+
+    /** sc-2244: an account with no primary phone takes the first number it proves. Read under the lock, as two may be proved at once. */
+    private function primaryIfNone(PhoneNumber $phone): void
+    {
+        $user = $phone->getUser();
+
+        $this->entityManager->wrapInTransaction(function () use ($user, $phone): void {
+            $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE);
+
+            foreach ($user->getPhoneNumbers() as $held) {
+                $this->entityManager->refresh($held);
+            }
+
+            if (null !== $user->getPrimaryPhoneNumber() || !$phone->isVerified()) {
+                return;
+            }
+
+            $phone->setPrimary(true);
+            $this->auditor->record('phone.primary', 'Account', $user->getId(), Actor::User, $user->getId(), $user->getName(), ['primary' => [null, $phone->getNumber()]]);
+            $this->entityManager->flush();
+        });
     }
 
     private function promote(PhoneNumber $next, ?PhoneNumber $current): void

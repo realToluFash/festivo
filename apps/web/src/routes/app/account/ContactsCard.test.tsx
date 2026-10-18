@@ -558,6 +558,38 @@ describe('back from verifying an address or number', () => {
     expect(container.querySelectorAll('.notice-done')).toHaveLength(1);
   });
 
+  it('says a number verified on an account with no primary phone is now the primary', async () => {
+    const madePrimary = {
+      ...ME,
+      phoneNumbers: [{ ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188' }],
+    };
+    answering({ 'GET /api/auth/me': () => json(madePrimary) });
+    open({}, '/app/account?verified=p2');
+
+    expect(
+      await screen.findByText('+234 701 555 0188 is verified and is now your primary number.'),
+    ).toBeDefined();
+    const phones = screen.getByRole('region', { name: 'Phone numbers' });
+    expect(within(phones).getByText('Primary')).toBeDefined();
+    expect(within(phones).queryByRole('button', { name: 'Make primary' })).toBeNull();
+    expect(within(phones).queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('keeps the short line for a number verified beside a primary', async () => {
+    const twoPhones = {
+      ...ME,
+      phoneNumbers: [
+        ME.phoneNumbers[0],
+        { ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188', primary: false },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(twoPhones) });
+    open({}, '/app/account?verified=p2');
+
+    expect(await screen.findByText('+234 701 555 0188 is verified.')).toBeDefined();
+    expect(screen.queryByText(/is now your primary number/)).toBeNull();
+  });
+
   it('says nothing for a row that is not verified', async () => {
     const unverified = {
       ...ME,

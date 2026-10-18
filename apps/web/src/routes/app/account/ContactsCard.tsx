@@ -165,7 +165,9 @@ function ContactsCard({
       ? null
       : email
         ? t('contacts.verifiedDone', { address: arrival.shown })
-        : t('contacts.verifiedDonePhone', { number: arrival.shown }));
+        : arrival.primary
+          ? t('contacts.verifiedPrimaryPhone', { number: arrival.shown })
+          : t('contacts.verifiedDonePhone', { number: arrival.shown }));
 
   useEffect(() => doneLine.current?.focus(), [done]);
 

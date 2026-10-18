@@ -706,6 +706,7 @@
     "removed": "Se ha quitado {{address}}.",
     "verifiedDone": "{{address}} is verified.",
     "verifiedDonePhone": "{{number}} is verified.",
+    "verifiedPrimaryPhone": "{{number}} is verified and is now your primary number.",
     "refusedPrimary": "Esta es la dirección con la que inicia sesión. Antes, haga principal otra dirección.",
     "refusedPrimaryPhone": "Este es su número principal. Antes, haga principal otro número.",
     "refusedLastVerified": "Esta es su única dirección verificada, la única prueba de que la cuenta es suya. Verifique otra antes de quitar esta.",

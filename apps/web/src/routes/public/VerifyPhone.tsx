@@ -35,6 +35,8 @@ export function VerifyPhone() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
+  // From the verify answer, never the list read before it: the server decides (sc-2244).
+  const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
   const wording = codeWording(route);
 
   useEffect(() => {
@@ -123,7 +125,7 @@ export function VerifyPhone() {
     setStatus({ kind: 'verifying' });
 
     try {
-      await api.verifyPhone(code, alternative);
+      setMadePrimary((await api.verifyPhone(code, alternative)).primary);
       setStatus({ kind: 'verified' });
     } catch (error) {
       setStatus(codeRefusal(error));
@@ -216,7 +218,9 @@ export function VerifyPhone() {
             <p>
               {alternative == null
                 ? t('verifyPhone.doneBody', { number })
-                : t('verifyPhone.doneBodyAlternative', { number })}
+                : (madePrimary ?? phone.primary)
+                  ? t('contacts.verifiedPrimaryPhone', { number })
+                  : t('verifyPhone.doneBodyAlternative', { number })}
             </p>
           </div>
           {alternative == null ? (
