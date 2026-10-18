@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { currentLocale } from '../../../i18n/index.ts';
 
 /** How many rows the list shows at once; the search narrows the rest. */
 const SHOWN = 50;
@@ -18,6 +19,7 @@ export function TimeZoneCard({
   onSaved: () => Promise<void>;
 }) {
   const { t } = useTranslation();
+  const locale = currentLocale();
   const [zones, setZones] = useState<TimeZoneOption[]>([]);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
@@ -29,6 +31,7 @@ export function TimeZoneCard({
     if (!editing && refocus) changeButton.current?.focus();
   }, [editing, refocus]);
 
+  // The API names the zones in the request's language, so a language change asks again (sc-1800).
   useEffect(() => {
     let live = true;
 
@@ -42,7 +45,7 @@ export function TimeZoneCard({
     return () => {
       live = false;
     };
-  }, []);
+  }, [locale]);
 
   const current = zones.find((zone) => zone.id === timezone);
   const label = timezone == null ? null : current == null ? timezone : zoneLabel(current);
@@ -117,7 +120,7 @@ function Choosing({
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
-  const [picked, setPicked] = useState<TimeZoneOption | null>(null);
+  const [pickedId, setPickedId] = useState<string | null>(null);
   const [active, setActive] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -125,7 +128,10 @@ function Choosing({
 
   useEffect(() => input.current?.focus(), []);
 
-  const showingPicked = picked != null && typed === zoneLabel(picked);
+  // Held by id, so a pick reads in the language the list was last fetched in.
+  const picked = pickedId == null ? null : (zones.find((zone) => zone.id === pickedId) ?? null);
+  const showingPicked = picked != null;
+  const shown = picked == null ? typed : zoneLabel(picked);
   const matches = showingPicked ? [] : matchingZones(zones, typed).slice(0, SHOWN);
   // "India · was Calcutta" only for the row a former name found (sc-986).
   const rowDetail = (zone: TimeZoneOption): string => {
@@ -140,7 +146,7 @@ function Choosing({
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
 
   function pick(zone: TimeZoneOption): void {
-    setPicked(zone);
+    setPickedId(zone.id);
     setTyped(zoneLabel(zone));
     setActive(-1);
     setError(null);
@@ -217,11 +223,11 @@ function Choosing({
           autoCorrect="off"
           spellCheck={false}
           placeholder={t('timeZone.placeholder')}
-          value={typed}
+          value={shown}
           disabled={saving}
           onChange={(event) => {
             setTyped(event.target.value);
-            setPicked(null);
+            setPickedId(null);
             setActive(-1);
             setError(null);
           }}
