@@ -41,6 +41,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The re-proof's step two after a provider sign-in (sc-2197, `Security-*`
+  `reproof_code`).** The status box reads "Signed in with {{provider}}", and the address that
+  provider vouched for goes alone on a second line. Neither line takes a full stop. Under the
+  code field: "A wrong code doesn't send you back to {{provider}}. Your {{provider}} sign-in
+  lasts {{count}} minutes.", and the `_one` form ends "… lasts a minute.". `{{count}}` is the
+  proof window, as in `waysCard.proofExpired_*`. "Lasts" won over the drawn "counts for",
+  an idiom that does not carry into es, fr or pt, and "Your {{provider}} sign-in lasts" pairs
+  with the expired line, "Your {{provider}} sign-in was more than {{count}} minutes ago". The
+  provider is named again rather than "your sign-in there", because every other language needs
+  a noun to point back to. The contraction stays because this is a hint, not an error.
+
 - **18 Oct 2026. The Roles refusals (sc-66, sc-2150, `messages:roles.*`).** Error bodies
   take no contractions: "Owner is built in and cannot be changed or removed. It always has
   everything." ("changed", not "edited", as the screen's grid says "change"). A built-in role
