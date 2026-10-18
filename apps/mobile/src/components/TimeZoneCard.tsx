@@ -234,7 +234,7 @@ function Choosing({
         </Text>
       )}
 
-      <View ref={aboveKeyboard} style={styles.group}>
+      <View {...aboveKeyboard} style={styles.group}>
         <PrimaryButton
           label={saving ? t('timeZone.saving') : t('timeZone.save')}
           onPress={() => void save()}
