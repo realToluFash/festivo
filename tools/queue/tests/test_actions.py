@@ -10,6 +10,7 @@ STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA
           "5": "In QA", "6": "Passsed QA", "7": "Failed QA"}
 IDS = {name: int(i) for i, name in STATES.items()}
 HEAD = "a" * 40
+OLD = "b" * 40
 
 
 class FakeShortcut:
@@ -148,16 +149,17 @@ class Writes(Base):
                                               text="x"))
 
 
-def pr(verdict=None, mergeable="mergeable", threads=()):
-    lead = [{"verdict": verdict, "sha": HEAD, "at": "t"}] if verdict else []
+def pr(verdict=None, mergeable="mergeable", threads=(), at=HEAD, carried=None):
+    lead = [{"verdict": verdict, "sha": at, "at": "t"}] if verdict else []
     return {"number": 9, "story_id": 1, "state": "open", "head_sha": HEAD, "checks": "green",
             "mergeable": mergeable, "lead": lead, "threads": list(threads), "url": "u",
-            "draft": False, "body": "", "title": "t", "merge_sha": None}
+            "draft": False, "body": "", "title": "t", "merge_sha": None, "carried": carried}
 
 
 class Merging(Base):
-    def live(self, mergeable="MERGEABLE"):
-        return {"headRefOid": HEAD, "mergeable": mergeable, "mergeCommit": "m" * 40}
+    def live(self, mergeable="MERGEABLE", head=HEAD, state="CLEAN"):
+        return {"headRefOid": head, "mergeable": mergeable, "mergeStateStatus": state,
+                "mergeCommit": "m" * 40}
 
     def test_no_merge_without_a_pass_at_the_head(self):
         self.fake.add(1, "In Review", ["dev2"])
@@ -174,6 +176,33 @@ class Merging(Base):
         with mock.patch("soirely_queue.github.live", return_value=self.live("CONFLICTING")), \
                 mock.patch("soirely_queue.github.merge") as merge:
             with self.assertRaisesRegex(actions.Refused, "Merge origin/main"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_branch_behind_main_says_to_bring_main_in(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live(state="BEHIND")), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "main has moved on"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_pass_carried_over_a_merge_of_main_merges(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, pr("pass", at=OLD[:7], carried=OLD[:7]))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD)
+
+    def test_a_carried_pass_is_for_the_synced_head_only(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, pr("pass", at=OLD[:7], carried=OLD[:7]))
+        with mock.patch("soirely_queue.github.live", return_value=self.live(head="d" * 40)), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "no lead pass"):
                 actions.merge(self.as_("dev2"), args(pr=9, text=None))
             merge.assert_not_called()
 

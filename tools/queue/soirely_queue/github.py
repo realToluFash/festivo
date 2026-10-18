@@ -355,6 +355,25 @@ def live(number):
             "mergeCommit": pull["merge_commit_sha"] if pull.get("merged") else None}
 
 
+HUNK = re.compile(r"^@@[^\n]*", re.M)
+
+
+def change_key(files):
+    """What a comparison changes, without hunk positions: merging main in moves a hunk without
+    changing it. None when GitHub leaves out a patch or the list, so nothing is assumed."""
+    if len(files) >= 300 or any("patch" not in f for f in files):
+        return None
+    return sorted((f["filename"], f.get("previous_filename"), f["status"],
+                   HUNK.sub("@@", f["patch"])) for f in files)
+
+
+def same_change(before, after):
+    """Whether `after` changes main exactly as `before` did."""
+    keys = [change_key(api(f"{repo_path()}/compare/main...{sha}").get("files") or [])
+            for sha in (before, after)]
+    return keys[0] is not None and keys[0] == keys[1]
+
+
 def post_review(owner, name, number, head, body, comments):
     payload = {"commit_id": head, "event": "COMMENT", "body": body,
                "comments": [{"path": c["path"], "line": c["line"], "side": "RIGHT",

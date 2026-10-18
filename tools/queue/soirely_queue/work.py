@@ -44,8 +44,23 @@ def latest_verdict(pr):
     return max(pr["lead"], key=lambda v: v["at"]) if pr["lead"] else None
 
 
-def covers(verdict, sha):
-    return bool(verdict and verdict["sha"] and sha.startswith(verdict["sha"]))
+def covers(verdict, sha, carried=None):
+    if not (verdict and verdict["sha"]):
+        return False
+    return sha.startswith(verdict["sha"]) or carried == verdict["sha"]
+
+
+def carried(pr, cache, same_change):
+    """The passed sha whose change the head still makes, as after merging main in. `cache`
+    holds each answer by sha pair, since a pair's answer never changes."""
+    verdict = latest_verdict(pr)
+    if not verdict or verdict["verdict"] != "pass" or not verdict["sha"] \
+            or covers(verdict, pr["head_sha"]):
+        return None
+    key = f"{verdict['sha']}..{pr['head_sha']}"
+    if key not in cache:
+        cache[key] = same_change(verdict["sha"], pr["head_sha"])
+    return verdict["sha"] if cache[key] else None
 
 
 def open_threads(pr):
@@ -138,7 +153,7 @@ def review_items(stories, prs):
             sha = pr["head_sha"]
             returned = verdict and verdict["verdict"] == "back" \
                 and (story["moved_at"] or "") > verdict["at"]
-            if covers(verdict, sha) and not returned:
+            if covers(verdict, sha, pr.get("carried")) and not returned:
                 continue
             if verdict and verdict["verdict"] == "pass":
                 why = f"pushed after the pass at {verdict['sha'][:7]}"
@@ -179,6 +194,7 @@ def developer_items(stories, prs):
         role = R.developer_of(story["labels"])
         sha = pr["head_sha"][:7]
         verdict = latest_verdict(pr)
+        covered = covers(verdict, pr["head_sha"], pr.get("carried"))
         number = pr["number"]
 
         def add(kind, reason):
@@ -187,7 +203,7 @@ def developer_items(stories, prs):
 
         if pr["state"] == "merged":
             if story["state"] == "In Review":
-                if covers(verdict, pr["head_sha"]) and verdict["verdict"] == "pass":
+                if covered and verdict["verdict"] == "pass":
                     add("to-qa", f"PR #{number} merged at the passed {sha}: "
                                  f"move sc-{story['id']} to Ready For QA")
                 else:
@@ -199,11 +215,11 @@ def developer_items(stories, prs):
         if pr["checks"] == "red":
             add("checks-red", f"PR #{number} checks are red at {sha}")
         elif pr["checks"] == "green" and story["state"] == "In Progress" \
-                and not covers(verdict, pr["head_sha"]):
+                and not covered:
             add("to-review", f"PR #{number} is green at {sha}: move sc-{story['id']} "
                              "to In Review")
         elif pr["checks"] == "green" and story["state"] == "In Review" \
-                and covers(verdict, pr["head_sha"]) and verdict["verdict"] == "pass":
+                and covered and verdict["verdict"] == "pass":
             if open_threads(pr):
                 continue
             conflict = ", but it conflicts with main" if pr["mergeable"] == "conflicting" else ""

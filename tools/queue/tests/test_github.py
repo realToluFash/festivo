@@ -164,6 +164,27 @@ class RestCalls(unittest.TestCase):
         self.assertEqual((found["state"], found["mergeCommit"], found["mergeable"]),
                          ("MERGED", MERGED, "UNKNOWN"))
 
+    def compare(self, before, after):
+        old, new = "b" * 40, HEAD
+        fake = FakeGh(routes({f"repos/o/n/compare/main...{old}": {"files": before},
+                              f"repos/o/n/compare/main...{new}": {"files": after}}))
+        with mock.patch("soirely_queue.github.gh", fake):
+            return github.same_change(old, new)
+
+    def test_a_merge_of_main_that_only_moves_the_hunks_is_the_same_change(self):
+        passed = [{"filename": "a.json", "status": "modified", "patch": "@@ -1,2 +1,2 @@\n-x\n+y"}]
+        merged = [{"filename": "a.json", "status": "modified", "patch": "@@ -9,2 +9,2 @@\n-x\n+y"}]
+        self.assertTrue(self.compare(passed, merged))
+
+    def test_an_edit_a_file_or_a_missing_patch_is_another_change(self):
+        passed = [{"filename": "a.json", "status": "modified", "patch": "@@ -1 +1 @@\n-x\n+y"}]
+        edited = [{**passed[0], "patch": "@@ -1 +1 @@\n-x\n+z"}]
+        extra = passed + [{"filename": "b.ts", "status": "modified", "patch": "@@ -1 +1 @@"}]
+        binary = [{"filename": "a.json", "status": "modified"}]
+        for after in (edited, extra, binary):
+            self.assertFalse(self.compare(passed, after))
+        self.assertFalse(self.compare(binary, binary))
+
     def test_merge_sends_the_head_it_was_passed_at_and_deletes_the_branch(self):
         fake = FakeGh(routes({"repos/o/n/pulls/7/merge": {"merged": True},
                               "repos/o/n/git/refs/heads/feature/x": ""}))
