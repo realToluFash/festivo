@@ -11,6 +11,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { proveIntro } from '../kit/waysProof.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { heldProof } from '../recentProof.ts';
@@ -396,11 +397,7 @@ function Proving({
   return (
     <ConfirmItsYou
       idPrefix="ways"
-      intro={
-        act.action === 'link'
-          ? t('waysCard.proveLink', { provider: name })
-          : t('waysCard.proveUnlink', { provider: name })
-      }
+      intro={proveIntro(t, act.action, name)}
       via={proveWith(hasPassword, providers, act.provider)}
       twoFactorOn={twoFactorOn}
       note={

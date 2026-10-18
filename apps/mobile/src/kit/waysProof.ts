@@ -9,6 +9,13 @@ import { type TFunction } from 'i18next';
 
 export type ProvingField = 'password' | 'code';
 
+/** Step one's lead line, which counts the proof window rather than naming a number (sc-2197). */
+export function proveIntro(t: TFunction, action: 'link' | 'unlink', provider: string): string {
+  return action === 'link'
+    ? t('waysCard.proveLink', { provider, count: PROOF_MINUTES })
+    : t('waysCard.proveUnlink', { provider, count: PROOF_MINUTES });
+}
+
 /** Under the code field; on step two after a provider, the line that says a wrong code keeps the sign-in too. */
 export function codeHelp(t: TFunction, stepTwo: string | null): string | string[] {
   return stepTwo == null

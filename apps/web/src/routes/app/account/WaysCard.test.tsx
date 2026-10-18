@@ -9,6 +9,19 @@ import { membership } from '../../../test-memberships.ts';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
+const proofWindow = vi.hoisted(() => ({ minutes: null as number | null }));
+
+vi.mock('@soirely/domain', async (original) => {
+  const domain = await original<typeof import('@soirely/domain')>();
+
+  return {
+    ...domain,
+    get PROOF_MINUTES() {
+      return proofWindow.minutes ?? domain.PROOF_MINUTES;
+    },
+  };
+});
+
 const HERE = '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f';
 const MEMBERSHIP = membership({ id: 'acc_1', name: 'Ire Events' });
 const GMAIL = 'folake.adeyemi@gmail.com';
@@ -109,6 +122,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  proofWindow.minutes = null;
   vi.restoreAllMocks();
   sessionStorage.clear();
   __setSessionState({ status: 'unknown' });
@@ -484,6 +498,48 @@ describe('step two after Google (sc-2197)', () => {
     expect(
       screen.getByText(
         "A wrong code doesn't send you back to Google. Your Google sign-in lasts 5 minutes.",
+      ),
+    ).toBeDefined();
+  });
+});
+
+describe('the proof window on screen is PROOF_MINUTES (sc-2197)', () => {
+  it('counts it on step one, linking and unlinking', async () => {
+    proofWindow.minutes = 1;
+    signedInAs({ providers: [{ provider: 'google', email: GMAIL }] });
+    answering({});
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Link Apple' }));
+    expect(
+      screen.getByText("To link Apple, confirm it's you. You won't be asked again for a minute."),
+    ).toBeDefined();
+    fireEvent.click(ways().getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlink Google' }));
+    expect(
+      await screen.findByText(
+        "To unlink Google, confirm it's you. You won't be asked again for a minute.",
+      ),
+    ).toBeDefined();
+  });
+
+  it('says a one-minute sign-in under the code field', async () => {
+    proofWindow.minutes = 1;
+    signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
+    backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+    answering(
+      { 'POST /api/auth/proof': () => problem('two_factor_required', 403, { pendingProof: 'k' }) },
+      true,
+    );
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    open('/oauth/google');
+
+    expect(
+      await screen.findByText(
+        "A wrong code doesn't send you back to Google. Your Google sign-in lasts a minute.",
+        {},
+        { timeout: 3000 },
       ),
     ).toBeDefined();
   });

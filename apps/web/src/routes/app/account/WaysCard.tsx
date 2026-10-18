@@ -4,7 +4,7 @@ import {
   type Provider,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import { proveWith, providerRows, type ProviderRow } from '@soirely/domain';
+import { PROOF_MINUTES, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -407,8 +407,8 @@ function Proving({
       idPrefix="ways"
       intro={
         act.action === 'link'
-          ? t('waysCard.proveLink', { provider: name })
-          : t('waysCard.proveUnlink', { provider: name })
+          ? t('waysCard.proveLink', { provider: name, count: PROOF_MINUTES })
+          : t('waysCard.proveUnlink', { provider: name, count: PROOF_MINUTES })
       }
       via={proveWith(hasPassword, providers, act.provider)}
       twoFactorOn={twoFactorOn}
