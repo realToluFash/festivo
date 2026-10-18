@@ -8,6 +8,7 @@
     "gate.phone_unverified": "Vérifiez votre numéro de portable pour continuer.",
     "proof.required": "Cette action nécessite votre mot de passe, ou une connexion avec Google ou Apple, dans les {minutes} dernières minutes, ainsi que votre code de double authentification s'il est activé.",
     "roles.last_owner": "This is the organisation's only owner. Make somebody else an owner first.",
+    "roles.grant_not_held": "Vous ne pouvez accorder, retirer ou attribuer que les autorisations de votre propre rôle. Rien n’a été modifié.",
     "roles.name_builtin": "A built-in role keeps its name.",
     "roles.name_required": "Give the role a name.",
     "roles.name_taken": "A role with that name already exists.",

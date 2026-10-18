@@ -89,6 +89,44 @@ final class RolesTest extends ApiTestCase
     }
 
     #[Test]
+    public function aMemberGrantsAndWithdrawsOnlyWhatTheyHold(): void
+    {
+        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $administrator = $this->seeded(SeededRole::Administrator);
+        $held = $this->as($admin, 'GET', $this->path('permissions'))['permissions'];
+        $raised = [...Type\vec(Type\string())->coerce($held), 'billing.manage'];
+
+        $this->as($admin, 'PATCH', $this->path('roles/' . $administrator), ['permissions' => $raised]);
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+        self::assertSame($held, $this->as($admin, 'GET', $this->path('permissions'))['permissions']);
+
+        $this->as($admin, 'POST', $this->path('roles'), ['name' => 'Accounts', 'permissions' => ['billing.manage']]);
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+
+        $this->as($admin, 'PATCH', $this->path('roles/' . $this->seeded(SeededRole::Coordinator)), ['permissions' => ['events.read']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $administrator), ['permissions' => $raised]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function onlyAnOwnerMovesPeopleOntoOwner(): void
+    {
+        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $door = Type\string()->coerce($this->as($admin, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+        $this->member('tope@ire.events', null, $door);
+
+        $this->as($admin, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+
+        $this->as($this->owner, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
     public function ownerCannotBeEditedOrDeleted(): void
     {
         $owner = $this->seeded(SeededRole::Owner);

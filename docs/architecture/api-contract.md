@@ -217,6 +217,9 @@ permissions are defaults written once at creation, then the organisation's to ch
   `role_name_taken`. An unknown permission is a violation on `permissions`.
 - Deleting a role that people hold needs `replacement`, a role in the same organisation,
   or it is `422` on `replacement`; its holders move to it first.
+- A caller grants, withdraws and moves people onto only what their own role holds: a
+  permission they lack, added or removed, or a replacement holding one, is
+  `403 grant_not_held`, and nothing changes.
 - A role id from another organisation is `404`. Demoting the last active owner is
   `409 last_owner` (`RoleAssignment`).
 

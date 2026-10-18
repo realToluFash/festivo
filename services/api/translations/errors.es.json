@@ -8,6 +8,7 @@
     "owner_role_fixed": "Propietario no se puede editar ni eliminar.",
     "seeded_role_kept": "Un rol predefinido no se puede eliminar.",
     "last_owner": "Una organización siempre tiene al menos un propietario.",
+    "grant_not_held": "Un rol solo puede recibir lo que usted tiene.",
     "provider_taken": "Esa cuenta ya está vinculada a otra cuenta de Soirely.",
     "last_sign_in_method": "Establezca una contraseña o vincule otra cuenta antes de quitar esta.",
     "unsupported_media_type": "Ese formato no es compatible.",

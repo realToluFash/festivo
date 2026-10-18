@@ -13,6 +13,7 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
@@ -33,6 +34,7 @@ final readonly class RoleManager
         private RoleAssignment $roleAssignment,
         private Auditor $auditor,
         private TranslatorInterface $translator,
+        private MembershipDirectoryInterface $membershipDirectory,
     ) {
     }
 
@@ -66,7 +68,9 @@ final readonly class RoleManager
     /** @param list<string> $permissions */
     public function create(Organisation $organisation, User $by, string $name, array $permissions): Role
     {
-        $role = Role::custom($organisation, $this->name($organisation, $name, null), $this->permissions($permissions));
+        $granted = $this->permissions($permissions);
+        $this->withinHeld($organisation, $by, $granted);
+        $role = Role::custom($organisation, $this->name($organisation, $name, null), $granted);
         $this->entityManager->persist($role);
         $this->record($by, $role, 'role.created', ['name' => [null, $role->label()]]);
         $this->entityManager->flush();
@@ -92,8 +96,11 @@ final readonly class RoleManager
         }
 
         if (null !== $permissions) {
+            $wanted = $this->permissions($permissions);
+            $changed = Vec\filter(Permission::cases(), static fn (Permission $permission): bool => Iter\contains($role->getPermissions(), $permission) !== Iter\contains($wanted, $permission));
+            $this->withinHeld($role->getOrganisation(), $by, $changed);
             $before = Vec\map($role->getPermissions(), static fn (Permission $permission): string => $permission->value);
-            $role->setPermissions($this->permissions($permissions));
+            $role->setPermissions($wanted);
             $after = Vec\map($role->getPermissions(), static fn (Permission $permission): string => $permission->value);
             $this->record($by, $role, 'role.permissions_changed', ['permissions' => [$before, $after]]);
         }
@@ -122,6 +129,7 @@ final readonly class RoleManager
             }
 
             $replacement = $this->replacement($role, $replacementId);
+            $this->withinHeld($role->getOrganisation(), $by, $replacement->getPermissions());
 
             foreach ($holders as $membership) {
                 $this->roleAssignment->assign($membership, $replacement);
@@ -187,6 +195,16 @@ final readonly class RoleManager
         }
 
         return Type\vec(Type\instance_of(Permission::class))->coerce($permissions);
+    }
+
+    /** @param list<Permission> $permissions nobody grants or withdraws what they lack (least privilege), so only Owner names Owner */
+    private function withinHeld(Organisation $organisation, User $by, array $permissions): void
+    {
+        $grants = $this->membershipDirectory->grantsIn($by, $organisation->getId());
+
+        if (Iter\any($permissions, static fn (Permission $permission): bool => null === $grants || !$grants->holds($permission))) {
+            throw new ApiException(ErrorCode::GrantNotHeld, $this->translator->trans('roles.grant_not_held'));
+        }
     }
 
     /** @param array<string, array{0: mixed, 1: mixed}> $changes */

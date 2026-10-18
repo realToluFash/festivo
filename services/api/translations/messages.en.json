@@ -8,6 +8,7 @@
     "gate.phone_unverified": "Verify your mobile number to carry on.",
     "proof.required": "This needs your password, or a sign-in with Google or Apple, in the last {minutes} minutes, and your two-factor code if two-factor is on.",
     "roles.last_owner": "This is the organisation's only owner. Make somebody else an owner first.",
+    "roles.grant_not_held": "You can only grant, remove or move people onto permissions your own role holds. Nothing was changed.",
     "roles.name_builtin": "A built-in role keeps its name.",
     "roles.name_required": "Give the role a name.",
     "roles.name_taken": "A role with that name already exists.",
