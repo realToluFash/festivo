@@ -60,7 +60,11 @@ def connect(path):
     db.row_factory = sqlite3.Row
     db.execute("pragma journal_mode = wal")
     db.executescript(SCHEMA)
-    merge_linguists(db)
+    if not get_meta(db, "linguists_merged"):
+        db.execute("begin immediate")
+        merge_linguists(db)
+        set_meta(db, "linguists_merged", True)
+        db.execute("commit")
     return db
 
 

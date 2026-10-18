@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 
 from soirely_queue import store
@@ -54,9 +56,6 @@ class Claims(unittest.TestCase):
         self.assertEqual(store.last_run(self.db, "lead"), NOW)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class FormerLinguists(unittest.TestCase):
     def test_what_the_locale_roles_dealt_with_and_noted_is_the_linguists(self):
@@ -70,3 +69,18 @@ class FormerLinguists(unittest.TestCase):
         self.assertNotIn(("l10n", 43), store.handled(db))
         self.assertEqual([row["note"] for row in store.notes(db, "l10n", 7)],
                          ["pt merged at abc1234"])
+
+    def test_the_copy_runs_on_the_first_connect_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "queue.db")
+            store.connect(path).close()
+            db = store.connect(path)
+            store.mark_handled(db, "fr", [51])
+            db.close()
+            db = store.connect(path)
+            self.assertNotIn(("l10n", 51), store.handled(db))
+            db.close()
+
+
+if __name__ == "__main__":
+    unittest.main()
