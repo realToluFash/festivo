@@ -41,6 +41,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A role's line for a viewer who cannot edit roles (sc-2251,
+  `rolesScreen.describeSeededReadOnly`, `describeCustomReadOnly`).** Shown to anyone without
+  `members.manage`. Seeded: "Built in, so it cannot be removed. Someone who can change
+  {{area}} decides what it holds.", where `{{area}}` is the grid's own label for the members
+  area, so it reads "… change Members and roles …". Custom: "Made by {{name}}.", `{{name}}`
+  the organisation. Neither line names an action the screen has hidden. Won over the drawn
+  "Someone who can manage roles", because the screen never says "manage" and the viewer
+  cannot find it on the grid. The grid calls it Members and roles at Change, and the locked
+  row already says "someone who can change {{area}}". The area is a slot, never typed into
+  the string, so the line cannot drift if the label is renamed.
 - **18 Oct 2026. The re-proof's step two after a provider sign-in (sc-2197, `Security-*`
   `reproof_code`).** The status box reads "Signed in with {{provider}}", and the address that
   provider vouched for goes alone on a second line. Neither line takes a full stop. Under the
