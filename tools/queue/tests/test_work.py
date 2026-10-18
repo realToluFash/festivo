@@ -311,6 +311,15 @@ class EveryWakeStillHappens(unittest.TestCase):
         for role in ("qa", "qa2", "qa3"):
             self.assertIn(("pick", role), found)
 
+    def test_a_developer_s_heartbeat_after_moving_its_own_story(self):
+        building = [story(1, state="In Progress", labels=["dev2"], moved_at="t1"),
+                    story(2, state="In Progress", labels=["dev1"], moved_at="t1")]
+        moves = {(1, "In Progress", "t1"): "dev2", (2, "In Progress", "t1"): "dev"}
+        found = self.woken(building, moves=moves, last_runs={})
+        self.assertIn(("pick", "dev2"), found)
+        self.assertIn(("pick", "dev"), found)
+        self.assertNotIn("lead", {r for _, r in found})
+
 
 class Heartbeat(unittest.TestCase):
     def test_a_role_with_a_queue_picks_after_its_heartbeat(self):
