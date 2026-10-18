@@ -41,7 +41,7 @@ final readonly class RecoveryView
         return [
             'email' => $email?->getAddress(),
             'phone' => null !== $phone && $phone->isVerified() ? $phone->getNumber() : null,
-            'organisations' => self::names($this->recoveryApprovers->organisationsOf($user)),
+            'organisations' => self::names($this->recoveryApprovers->askedFor($user)),
             'nobody' => [] === $this->recoveryApprovers->for($user),
         ];
     }
@@ -57,7 +57,7 @@ final readonly class RecoveryView
             'status' => $status->value,
             'email' => $recovery->getEmailAddress()->getAddress(),
             'phone' => $phone?->getNumber(),
-            'organisations' => self::names($this->recoveryApprovers->organisationsOf($user)),
+            'organisations' => self::names($this->recoveryApprovers->askedFor($user)),
             'supportAddress' => $this->supportAddress,
             ...$this->times($recovery, $user, $asked),
             'codes' => TwoFactorRecoveryStatus::Proving === $status ? [
