@@ -15,20 +15,22 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | Portuguese                   | Notes                                                            |
-| ------------------------- | ---------------------------- | ---------------------------------------------------------------- |
-| Settings                  | Definições                   |                                                                  |
-| Organisation              | Organização                  |                                                                  |
-| Sign in                   | Iniciar sessão               |                                                                  |
-| Sign out                  | Encerrar sessão              | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada" |
-| Email                     | Endereço de e-mail           |                                                                  |
-| Password                  | Palavra-passe                |                                                                  |
-| Continue                  | Continuar                    |                                                                  |
-| Cancel                    | Cancelar                     |                                                                  |
-| Two-factor authentication | Autenticação de dois fatores | In a comma list of Security's contents, "dois fatores" alone     |
-| Home (tab)                | Início                       | Settled 17 Oct 2026. Not "Página inicial": too long for the tab  |
-| Recovery code             | Código de recuperação        |                                                                  |
-| Phone (device)            | Telemóvel                    | Settled 18 Oct 2026. Never "celular"                             |
+| English                       | Portuguese                   | Notes                                                            |
+| ----------------------------- | ---------------------------- | ---------------------------------------------------------------- |
+| Settings                      | Definições                   |                                                                  |
+| Organisation                  | Organização                  |                                                                  |
+| Sign in                       | Iniciar sessão               |                                                                  |
+| Sign out                      | Encerrar sessão              | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada" |
+| Email                         | Endereço de e-mail           |                                                                  |
+| Password                      | Palavra-passe                |                                                                  |
+| Continue                      | Continuar                    |                                                                  |
+| Cancel                        | Cancelar                     |                                                                  |
+| Two-factor authentication     | Autenticação de dois fatores | In a comma list of Security's contents, "dois fatores" alone     |
+| Home (tab)                    | Início                       | Settled 17 Oct 2026. Not "Página inicial": too long for the tab  |
+| Recovery code                 | Código de recuperação        |                                                                  |
+| Phone (device)                | Telemóvel                    | Settled 18 Oct 2026. Never "celular"                             |
+| Account (Settings section)    | Conta                        | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"  |
+| Alternative (address, number) | alternativo                  | Settled 18 Oct 2026. Not primary; never "secundário"             |
 
 ## Never translated
 
@@ -39,6 +41,23 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Verifying an alternative from Account (sc-2594)** (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, web and app): "{{address}} está verificado. Continua a ser um
+  endereço alternativo até o tornar principal em Conta." and the done line "{{address}} está
+  verificado.". Endereço and número are both masculine, so the two keys read alike in
+  Portuguese and agree as "foi removido" does. "Conta" is the section, a bare label like
+  "Segurança": "em Conta", "Voltar a Conta" (as "voltar a Segurança"), never the page title
+  "A sua conta". "Remove it in Account" is "Removê-lo em Conta", the infinitive of the link
+  "Alterá-lo" after "Número errado?". Rejected "Remova-o em Conta": it breaks the link's
+  shape on the same screen. "Alternativo" over "secundário", which ranks it.
+- **18 Oct 2026. The power to change an area is "quem pode alterar {{area}}"**
+  (`rolesScreen.lockedLine`, `describeSeededReadOnly`): "Quem pode alterar Membros e funções
+  decide o que inclui." Impersonal, so it agrees with nobody; rejected "alguém que possa
+  alterar", which is longer and says the same power in a second way. A read-only twin keeps
+  its editable line's first sentence and agrees with "a função": "É predefinida…",
+  "Criada por {{name}}." A name that carries its own full stop gets a second one until the
+  renderer drops it (`docs/i18n/en.md`, sc-2251); no line is reworded around it.
 - **18 Oct 2026. A browser session is "Safari no iPhone"** (`devices.agent`, web and app, and
   `emails:password.device.agent`): "{{browser}} no {{platform}}", beside "Aplicação Soirely no
   iPhone" in the same list and the same email line. Every platform the parser names (iPhone,
