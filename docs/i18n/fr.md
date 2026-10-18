@@ -32,6 +32,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Cancel                    | Annuler                 |                                  |
 | Two-factor authentication | Double authentification | Settled: also "two-factor" alone |
 | Recovery code             | Code de récupération    |                                  |
+| Primary (address, number) | Principale / principal  | Settled 18 Oct: agrees with noun |
+| Other addresses, numbers  | Les autres adresses     | Settled 18 Oct: never secondaire |
+| Phone number              | Numéro de téléphone     | Settled 18 Oct: any number       |
+| Mobile number             | Numéro de portable      | Settled 18 Oct: the SMS field    |
+| Remove (from the account) | Retirer                 | Settled 18 Oct: not Supprimer    |
+| Linked (to an account)    | Associé                 | Settled 18 Oct: as `waysCard`    |
+| Unverified                | À vérifier              | Settled 18 Oct: no agreement     |
+| Account mail              | Les e-mails du compte   | Settled 18 Oct                   |
 
 ## Never translated
 
@@ -43,6 +51,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Primary and other addresses (sc-113, `contacts.*`, `Account-*`).** As in
+  the English: the primary signs in, the others only reach the person, « Les autres adresses
+  servent à vous joindre, mais pas à vous connecter ». « Retirer », not « Supprimer »: the
+  address leaves the account, it is not deleted. The cap reads the same in the card and from
+  the server, « Un compte est limité à {{most}} adresses e-mail », a rule rather than a
+  permission. Where one key serves both cards, write it so it needs no agreement:
+  « À vérifier », « Vous avez retiré {{address}}. », « Soirely ne lui enverra plus rien »,
+  « Ajout effectué. Reste la vérification : … », and the server's « Ces coordonnées ».
+  Where no neutral form reads well (`verified`, `primary`, `makePrimary`, `removeConfirm`,
+  `removeKeep`), the key holds the feminine for addresses and the number gets a key of its
+  own, asked of [dev] on sc-2149. Never « principal·e » or « Vérifié(e) ».
 - **18 Oct 2026. The new-device email** (`emails:newDevice.*`): subject « Nouvelle
   connexion à Soirely », short for a phone inbox; the body makes the device the subject,
   « Un appareil qui ne s'était jamais connecté à votre compte Soirely vient de s'y
