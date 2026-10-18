@@ -13,10 +13,14 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use RuntimeException;
+use stdClass;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\Validator\ConstraintViolation;
+use Symfony\Component\Validator\ConstraintViolationList;
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Throwable;
 
@@ -78,6 +82,45 @@ final class JsonExceptionListenerTest extends TestCase
 
         self::assertSame('translated:forbidden', $body['title']);
         self::assertArrayNotHasKey('detail', $body);
+    }
+
+    #[Test]
+    public function aValidationFailureWithNoMessageIsDetailedByItsFirstViolation(): void
+    {
+        $body = $this->handle(ApiException::validation([
+            ['propertyPath' => 'timezone', 'message' => 'Choose one from the list.', 'code' => 'validation_failed'],
+            ['propertyPath' => 'locale', 'message' => 'Choose a language.', 'code' => 'validation_failed'],
+        ]));
+
+        self::assertSame(422, $body['status']);
+        self::assertSame('Choose one from the list.', $body['detail']);
+    }
+
+    #[Test]
+    public function aValidationFailureKeepsItsOwnMessage(): void
+    {
+        $body = $this->handle(ApiException::validation(
+            [['propertyPath' => 'name', 'message' => 'Too long.', 'code' => 'invalid_shape']],
+            'The request does not have the expected shape.',
+        ));
+
+        self::assertSame('The request does not have the expected shape.', $body['detail']);
+    }
+
+    /** Symfony writes the whole violation list, class names and all, as the exception's message. */
+    #[Test]
+    public function aSymfonyValidationFailureIsDetailedByItsFirstViolationNotItsMessage(): void
+    {
+        $violations = new ConstraintViolationList([
+            new ConstraintViolation('This value is too long.', null, [], new stdClass(), 'name', 'x'),
+            new ConstraintViolation('This value is not valid.', null, [], new stdClass(), 'email', 'y'),
+        ]);
+
+        $body = $this->handle(new ValidationFailedException(new stdClass(), $violations));
+
+        self::assertSame(422, $body['status']);
+        self::assertSame('This value is too long.', $body['detail']);
+        self::assertSame('name', $body['violations'][0]['propertyPath']);
     }
 
     #[Test]

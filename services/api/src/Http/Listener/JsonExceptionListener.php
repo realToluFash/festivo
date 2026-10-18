@@ -42,7 +42,7 @@ final readonly class JsonExceptionListener
         $response = $this->problemRenderer->render(
             $request,
             $code,
-            $e->getMessage(),
+            $e instanceof ValidationFailedException ? '' : $e->getMessage(),
             $violations,
             $e instanceof ApiException ? $e->headers : [],
             $e instanceof ApiException ? $e->members : [],
