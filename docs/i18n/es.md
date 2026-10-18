@@ -49,6 +49,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The contact cap says the refusal's words.** Under each Account card:
+  «Puede añadir una más» / «uno más», then «Una cuenta admite hasta {{most}} direcciones de
+  correo electrónico, incluida la principal» / «… números de teléfono, incluido el
+  principal»; when full, «Tiene {{most}}, el máximo que admite una cuenta. Quite una para
+  añadir otra.» / «Quite uno para añadir otro.» «Admite» and «Quite una…» as the server's
+  `contacts.limit_*` and the card's `limit*` already say it, so the line and the refusal
+  read alike. The number before the noun is left to the card title, as the English does;
+  the gender of «una», «incluida» and «otra» is why each card has its own key
+  (`contacts.cap*`, sc-2149).
+
 - **18 Oct 2026. The Roles refusals speak the Roles screen's words.** «Rol», «predefinido»
   and «eliminar» for a role, because the screen already says «Eliminar rol» and
   «Predefinido»; a server refusal and the screen's own check say the same sentence
