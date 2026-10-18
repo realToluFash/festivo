@@ -306,7 +306,7 @@ function CodeScreen({
           </li>
         </ol>
       ) : (
-        <BackToAccount verified={verified ? fromAccount : null} />
+        !verified && <BackToAccount />
       )}
 
       {verified ? (
