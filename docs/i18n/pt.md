@@ -39,6 +39,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. An email's footer is "Está a receber esta mensagem porque…"** (`emails:newDevice.why`,
+  as `provider.why`). "Recebeu este e-mail" reads as a past event; the footer explains why it
+  arrives at all. The brand in a sentence is feminine, "a Soirely": "Novo início de sessão na
+  Soirely" (`newDevice.subject`), as "da Soirely" in the password emails. Sending someone to a
+  section is "vá a Segurança e…" (`newDevice.notYouNoPassword`), as "voltar a Segurança", so
+  the action comes after the place rather than trailing at the end.
+
 - **18 Oct 2026. An app session is "Aplicação Soirely no iPhone"** (`devices.app*`, web and
   app, and `emails:password.device.app*`): "no iPhone", "no iPad", "num telemóvel Android",
   "num tablet Android". "Aplicação", never "app"; "telemóvel", never "celular"; "tablet" is
