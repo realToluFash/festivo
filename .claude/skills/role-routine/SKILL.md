@@ -12,7 +12,7 @@ is what runs every three minutes, so a quiet tick has to cost almost nothing.
 
 Throughout, `sq` means `python3 <git common dir>/soirely-roles/sq/sq`, the copy that
 `python3 tools/queue/sq install` puts where no branch switch removes it, and every command
-names its role first: `sq <role> tick`, `sq fr next`, `sq dev2 done 41`.
+names its role first: `sq <role> tick`, `sq l10n next`, `sq dev2 done 41`.
 
 - **The check is a script, not a reading.** `sq <role> tick` reads one SQLite
   file that a single sync fills from Shortcut and GitHub, at most once a minute, for every
@@ -42,24 +42,23 @@ names its role first: `sq <role> tick`, `sq fr next`, `sq dev2 done 41`.
   role with stories in its queue gets a pick, which lists the queue for the skill to choose
   from:
 
-| Role                         | Woken by                                                              | Heartbeat                      |
-| ---------------------------- | --------------------------------------------------------------------- | ------------------------------ |
-| `/soirely-product-manager`   | `[pm]`, new in To Do or Failed QA                                     | 2 hours                        |
-| `/soirely-designer`          | `[ux]`, new in To Do or Failed QA                                     | 2 hours                        |
-| `/soirely-developer` (×2)    | its tag, new in Failed QA, In Progress, To Do; its PR's checks finish | 30 minutes, if work is waiting |
-| `/soirely-qa-tester` (×3)    | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA               | 30 minutes, if work is waiting |
-| `/soirely-tech-lead`         | `[lead]`, new in In Review                                            | 30 minutes, if work is waiting |
-| `/soirely-business-manager`  | `[bm]`, new in Backlog or To Do                                       | 12 hours                       |
-| `/soirely-ops`               | `[ops]`, `main` red                                                   | 6 hours                        |
-| `/soirely-linguist en`       | `[en]`, a translation ticket new in To Do, In Progress or Failed QA   | 2 hours                        |
-| `/soirely-linguist es/fr/pt` | its tag, a translation ticket new in To Do, In Progress or Failed QA  | 30 minutes, if work is waiting |
-| `/soirely-creative`          | `[cd]`                                                                | 24 hours                       |
+| Role                        | Woken by                                                              | Heartbeat                      |
+| --------------------------- | --------------------------------------------------------------------- | ------------------------------ |
+| `/soirely-product-manager`  | `[pm]`, new in To Do or Failed QA                                     | 2 hours                        |
+| `/soirely-designer`         | `[ux]`, new in To Do or Failed QA                                     | 2 hours                        |
+| `/soirely-developer` (×2)   | its tag, new in Failed QA, In Progress, To Do; its PR's checks finish | 30 minutes, if work is waiting |
+| `/soirely-qa-tester` (×3)   | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA               | 30 minutes, if work is waiting |
+| `/soirely-tech-lead`        | `[lead]`, new in In Review                                            | 30 minutes, if work is waiting |
+| `/soirely-business-manager` | `[bm]`, new in Backlog or To Do                                       | 12 hours                       |
+| `/soirely-ops`              | `[ops]`, `main` red                                                   | 6 hours                        |
+| `/soirely-linguist`         | `[l10n]`, a translation ticket new in To Do, In Progress or Failed QA | 2 hours                        |
+| `/soirely-creative`         | `[cd]`                                                                | 24 hours                       |
 
-The other roles' queues leave out stories labelled `translation`, which are the linguists'.
+The other roles' queues leave out stories labelled `translation`, which are the linguist's.
 The two developers share To Do, but see only their own work beyond it: a story labelled
 `dev2` is developer 2's, and any other is developer 1's. A bare `[dev]` comment, and a pull
 request's checks, wake only the developer whose label the story carries.
-A linguist's routine is scheduled per locale, with the locale as its role: `sq fr tick`.
+The linguist is one role for all four locales: `sq l10n tick`.
 
 The sync reads Shortcut through `SHORTCUT_API_TOKEN`, the owner's API token from Shortcut,
 Settings, API Tokens, exported in `~/.zshrc`, and GitHub through `gh`. When either fails,
@@ -81,7 +80,7 @@ that says it is already done.
    `"1-59/3 * * * *"` and `"2-59/3 * * * *"`, so the three reach the queue a minute apart,
    and developer 2 uses `"1-59/3 * * * *"` for the same reason. The prompt is below; fill
    in your role (a tester's is `qa`, `qa2` or `qa3`, a developer's `dev` or `dev2`, a
-   linguist's its locale) and the installed path the previous step printed:
+   linguist's `l10n`) and the installed path the previous step printed:
 
    ```text
    Soirely <role> routine tick. Run `python3 <git common dir>/soirely-roles/sq/sq <role> tick`
@@ -141,7 +140,7 @@ watching, so:
     `~/Projects/soirely-dev2`.
   - QA tester N works in `~/Projects/soirely-qa<n>` (its skill, section 4).
   - Ops works in its own worktree, `../soirely-ops`.
-  - Each linguist works in its own worktree, `../soirely-<locale>`.
+  - The linguist works in its own worktree, `../soirely-l10n`.
   - The tech lead, product manager, designer, business manager and creative director read
     code at a pull request's head with `sq <role> diff <pr> [paths…]` and
     `git show origin/<branch>:<path>`, and never check anything out.

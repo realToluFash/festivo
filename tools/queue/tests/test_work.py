@@ -42,6 +42,16 @@ class Header(unittest.TestCase):
         self.assertEqual(roles.addressees("[dev] (from lead)\n", ["dev2"]), ["dev2"])
         self.assertEqual(roles.addressees("[dev] (from lead)\n", []), ["dev"])
 
+    def test_a_former_locale_tag_or_signature_means_the_linguist(self):
+        self.assertEqual(roles.addressees("[fr] [pm] (from qa2)\n", []), ["l10n", "pm"])
+        self.assertEqual(roles.author("[qa] (from pt)\nDone."), "l10n")
+
+    def test_an_old_locale_thread_is_the_linguists_and_its_reply_answers_it(self):
+        asked = comment(1, "[fr] (from qa2)\nThe French label does not fit.")
+        self.assertEqual([c["id"] for c in work.open_for("l10n", story(comments=[asked]))], [1])
+        answered = comment(2, "[qa2] (from fr)\nShortened.", parent=1)
+        self.assertEqual(work.open_for("l10n", story(comments=[asked, answered])), [])
+
     def test_a_report_with_no_header_is_for_nobody(self):
         self.assertEqual(roles.addressees("A QA report\n[pm] (from qa)", []), [])
 
@@ -214,8 +224,7 @@ class Queue(unittest.TestCase):
 
     def test_a_translation_ticket_is_only_the_linguists(self):
         items = work.queue_items([story(state="To Do", labels=["translation"])])
-        self.assertEqual(sorted(r for i in items for r in i["roles"]),
-                         ["en", "es", "fr", "pt"])
+        self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"])
 
 
 class Heartbeat(unittest.TestCase):

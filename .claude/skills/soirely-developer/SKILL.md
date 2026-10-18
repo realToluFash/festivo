@@ -85,7 +85,7 @@ nothing. Two claims a few seconds apart are normal.
 Never remove the other developer's label, and never take yours off a story you have
 started. A story that should change hands is a question for the owner, in your report.
 
-**A story labelled `translation` is never yours**, in any state. It belongs to the linguists
+**A story labelled `translation` is never yours**, in any state. It belongs to the linguist
 (`/soirely-linguist`), so skip it when picking.
 
 **Start every new piece of work from the latest `main`.** Fetch first, then branch from
@@ -156,7 +156,7 @@ Load the ones the story touches. They carry the conventions; this file does not 
 | API tests                           | **writing-tests**                                                |
 | A screen on either client           | **screen-from-design**, and the story's artboards                |
 | `apps/mobile`                       | **react-native-best-practices**                                  |
-| Any user-facing string              | **locale-parity** — English in all four, the linguists translate |
+| Any user-facing string              | **locale-parity** — English in all four, the linguist translates |
 | Naming anything                     | **name-things**                                                  |
 | Comments                            | **code-comments**, and `npm run lint:comments` before you stage  |
 | Committing                          | **making-commits**                                               |

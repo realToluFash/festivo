@@ -90,8 +90,8 @@ which means its tester's run died. Any tester may take it over with the same
 it to `Ready For QA` only once every pull request it depends on is merged.
 `cd ~/Projects/soirely-qa<n> && node .qa/bin/qa-env.mjs checkout main`, then test each string in its description, in each locale it
 names, on phone and iPad. Each string is checked for its meaning, for truncation, and for
-plurals at 0, 1, 2 and a large number. A finding is tagged for its locale's linguist
-(`[fr] (from qa2)`), with the screenshot, never `[dev]` unless a key or slot is broken.
+plurals at 0, 1, 2 and a large number. A finding is tagged for the linguist and names
+its locale (`[l10n] (from qa2)`, "fr: …"), with the screenshot, never `[dev]` unless a key or slot is broken.
 
 **A story in `Ready For QA` is a claim, not a certainty.** It means somebody thinks the work
 is finished. Check that the pull request exists and that its checks are green before
