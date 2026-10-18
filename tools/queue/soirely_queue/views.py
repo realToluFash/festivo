@@ -71,7 +71,9 @@ def comments(p, story, mode="involving", author=None, since=None, always_ids=())
             if not items:
                 continue
         if author:
-            if not any(R.author(c["text"]) == author for c in items):
+            # `--from qa` means any tester, since all three report.
+            authors = R.TESTERS if author == "qa" else (author,)
+            if not any(R.author(c["text"]) in authors for c in items):
                 continue
         # A tester tests what the lead told any tester to look at.
         peers = R.TESTERS if p.role in R.TESTERS else (p.role,)

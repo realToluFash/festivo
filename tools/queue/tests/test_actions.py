@@ -218,3 +218,14 @@ class Merging(Base):
         self.assertTrue(body.endswith("Back to In Progress: 1 blocking."))
         self.assertEqual(self.state(1), "In Progress")
         self.assertIn("[dev2] (from lead)", self.fake.comments[-1][1])
+
+
+class Findings(unittest.TestCase):
+    def test_each_finding_opens_with_its_severity(self):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as f:
+            f.write("## a.ts:3 blocking\nThe guard is missing.\n## b.ts:9 nit\nnit: a word.\n")
+        found = actions.findings(f.name)
+        self.assertEqual([x["body"] for x in found],
+                         ["blocking: The guard is missing.", "nit: a word."])
+        self.assertEqual([x["blocking"] for x in found], [True, False])

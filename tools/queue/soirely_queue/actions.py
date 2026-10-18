@@ -82,7 +82,7 @@ def guard(c, command):
 
 
 def post(c, story, to, body, parent=None):
-    head = " ".join(f"[{t}]" for t in to) + f" (from {signature(c.role)})" if to else ""
+    head = " ".join(f"[{t}]" for t in to) + f" (from {signature(c.role)})"
     text = f"{head}\n{body.strip()}" if head else body.strip()
     return c.shortcut.comment(story["id"], text, parent)
 
@@ -135,8 +135,9 @@ def comment(c, a):
         parent = replied["parent"] or replied["id"]
         if not to and R.author(replied["text"]):
             to = [R.author(replied["text"])]
-    if not to:
-        raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker)")
+    if not to and not a.untagged:
+        raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker), "
+                      "or --untagged for a note that wakes nobody")
     unknown = [t for t in to if t not in R.ROLES and t != "dev"]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
@@ -235,6 +236,8 @@ def report(c, a):
 
 def edit(c, a):
     guard(c, "edit")
+    if not (a.section or a.dated):
+        raise Refused("say which part: --section <name> or --dated <title>")
     if a.target.startswith("epic-"):
         epic_id = int(a.target[5:])
         epic = c.shortcut.epic(epic_id)
@@ -242,8 +245,6 @@ def edit(c, a):
             T.replace(epic.get("description"), a.section, a.text)
         c.shortcut.update_epic(epic_id, description=body)
         return f"epic {epic_id}: {'added ' + a.dated if a.dated else 'replaced ' + a.section}"
-    if not (a.section or a.dated):
-        raise Refused("say which part: --section <name> or --dated <title>")
     name = a.section or a.dated
     if c.role == "ux" and not T.is_design(name):
         raise Refused("the designer writes only the Design section")
@@ -270,7 +271,9 @@ def new_story(c, a):
             raise Refused(f"{len(ideas)} ideas are open already; at most {MAX_IDEAS}")
     if c.role in R.LINGUISTS:
         labels.add("translation")
-    if state != "Backlog" and c.role != "pm":
+    # A translation ticket is ready to work once filed, so a linguist files it in To Do.
+    allowed = {"Backlog", "To Do"} if c.role in R.LINGUISTS else {"Backlog"}
+    if state not in allowed and c.role != "pm":
         raise Refused("a new story starts in Backlog; the product manager moves it on")
     fields = {"name": a.name, "description": a.text, "story_type": a.type or "feature",
               "workflow_state_id": c.state_id(state)[0],
@@ -294,6 +297,8 @@ def new_epic(c, a):
 
 def task(c, a):
     guard(c, "task")
+    if not (a.add or a.done or a.undo):
+        raise Refused("say what: --add <text>, --done <task id> or --undo <task id>")
     story_id = story_number(a.story)
     if a.add:
         made = c.shortcut.add_task(story_id, a.add)
@@ -333,19 +338,25 @@ def findings(path):
     for raw in open(path).read().splitlines():
         match = FINDING.match(raw)
         if match:
+            severity = match.group(3).strip().lower()
             found.append({"path": match.group(1), "line": int(match.group(2)),
-                          "blocking": "blocking" in match.group(3).lower(), "body": []})
+                          "severity": severity, "blocking": "blocking" in severity, "body": []})
         elif found:
             found[-1]["body"].append(raw)
     for item in found:
         item["body"] = "\n".join(item["body"]).strip()
         if not item["body"]:
             raise Refused(f"the finding at {item['path']}:{item['line']} has no text")
+        # The developer reads the severity first, so the comment opens with it.
+        if item["severity"] and not item["body"].lower().startswith(item["severity"]):
+            item["body"] = f"{item['severity']}: {item['body']}"
     return found
 
 
 def review(c, a):
     guard(c, "review")
+    if a.verdict not in ("pass", "back"):
+        raise Refused("say the verdict: --pass or --back")
     pr = c.pr(a.pr)
     story = c.story(pr["story_id"]) if pr["story_id"] else None
     live = github.live(a.pr)
@@ -479,6 +490,8 @@ def to_qa(c, a):
 
 def rerun(c, a):
     guard(c, "rerun")
+    if not (a.run or a.pr):
+        raise Refused("say what to rerun: a pull request number, or --run <id>")
     if a.run:
         github.rerun_failed(a.run)
         return f"rerunning the failed jobs of run {a.run}"
