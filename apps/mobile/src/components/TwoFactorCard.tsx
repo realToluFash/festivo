@@ -260,7 +260,7 @@ function SettingUp({
         {keyInGroups(enrolment.secret)}
       </Text>
 
-      <View ref={aboveKeyboard} style={styles.codeAndCheck}>
+      <View {...aboveKeyboard} style={styles.codeAndCheck}>
         <Field
           label={t('twoFactorCard.enterCode')}
           error={error}
