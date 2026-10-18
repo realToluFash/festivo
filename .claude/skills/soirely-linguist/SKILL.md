@@ -159,11 +159,15 @@ the feature merges.
 
 1. **Move the ticket to `In Progress`** if you are the first to start it:
    `sq fr move sc-N "In Progress"` (from `To Do` or `Failed QA`).
-2. **Work in your own worktree**, never in `~/Projects/soirely` or `~/Projects/soirely-dev2`, which are the developers':
+2. **Work in your own worktree**, `~/Projects/soirely-<locale>`, never in `~/Projects/soirely`
+   or `~/Projects/soirely-dev2`, which are the developers'. It has a stack of its own; if it
+   is not there, `just dev-env setup --role <locale>` from the main checkout makes it. Branch
+   there:
 
    ```sh
+   cd ~/Projects/soirely-<locale>
    git fetch origin
-   git worktree add ../soirely-<locale> -b l10n/sc-<id>/<locale> origin/main
+   git switch -c l10n/sc-<id>/<locale> origin/main
    ```
 
 3. **Edit only your locale's files**: the five catalogues `locale-status` reads, your guide,
@@ -190,7 +194,8 @@ the feature merges.
    - it changes nothing outside your locale's files;
    - every check is green, with no override, `--admin` or force-push;
    - never another role's pull request, and never one that touches code.
-8. **Complete your task** with `sq fr task sc-N --done <task id>`, then remove the worktree.
+8. **Complete your task** with `sq fr task sc-N --done <task id>`, then put the worktree back
+   on `main` with `git switch --detach origin/main`. Keep the worktree: its stack lives there.
 
 ## 5. Handing it to QA
 
