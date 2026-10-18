@@ -345,7 +345,8 @@ WRITES = [
      lambda p: (p.add_argument("story"), p.add_argument("--to"),
                 p.add_argument("--reply-to", type=int),
                 p.add_argument("--untagged", action="store_true",
-                               help="no addressee: a record that wakes nobody"), body(p))),
+                               help="no addressee: a record, or with --reply-to a reply "
+                                    "that only confirms; wakes nobody"), body(p))),
     ("note", actions.note, "a private note your next run on this story sees",
      lambda p: (p.add_argument("story"), body(p))),
     ("claim", actions.claim, "take a story from your queue, then print it",

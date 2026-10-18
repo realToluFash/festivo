@@ -37,7 +37,10 @@ class FakeShortcut:
 
     def comment(self, story_id, text, parent_id=None):
         self.comments.append((story_id, text))
-        return {"id": len(self.comments)}
+        made = {"id": len(self.comments), "parent_id": parent_id, "text": text,
+                "created_at": f"2026-10-18T10:{len(self.comments):02d}:00Z"}
+        self.raw[story_id]["comments"].append(made)
+        return made
 
     def upload(self, story_id, paths):
         pass
@@ -46,7 +49,9 @@ class FakeShortcut:
 def slim(raw):
     return {"id": raw["id"], "name": raw["name"], "url": "", "epic": None, "epic_id": None,
             "state": STATES[str(raw["workflow_state_id"])], "moved_at": raw["moved_at"],
-            "labels": sorted(label["name"] for label in raw["labels"]), "comments": [],
+            "labels": sorted(label["name"] for label in raw["labels"]),
+            "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
+                          "text": c["text"]} for c in raw["comments"]],
             "description": raw["description"], "tasks": [], "links": [], "done": False,
             "position": 1, "updated_at": raw["moved_at"], "type": "feature"}
 
@@ -172,6 +177,39 @@ class Writes(Base):
         with self.assertRaisesRegex(actions.Refused, "only the Design"):
             actions.edit(self.as_("ux"), args(target="sc-1", section="AC", dated=None,
                                               text="x"))
+
+
+class Replies(Base):
+    def setUp(self):
+        super().setUp()
+        self.fake.add(1, "In Progress", ["dev2"])
+        self.asked = self.fake.comment(1, "[dev2] (from pm)\nFor your awareness: AC 3 moved.")
+
+    def reply(self, untagged, text, to=None):
+        actions.comment(self.as_("dev2"), args(story="sc-1", to=to, reply_to=self.asked["id"],
+                                               untagged=untagged, text=text))
+        return self.fake.raw[1]["comments"][-1]
+
+    def inbox(self):
+        cli.refresh_work(self.db, 10_000_000)
+        return [(role, w["reason"]) for role in roles.ROLES
+                for w in store.waiting(self.db, role) if w["kind"] == "inbox"]
+
+    def test_a_reply_that_only_confirms_opens_nothing_for_anyone(self):
+        posted = self.reply(True, "Read, no questions.")
+        self.assertEqual(posted["text"], "(from dev2)\nRead, no questions.")
+        self.assertEqual(posted["parent_id"], self.asked["id"])
+        self.assertEqual(self.inbox(), [])
+
+    def test_a_reply_that_answers_still_reaches_the_asker(self):
+        posted = self.reply(False, "Built to the new AC 3.")
+        self.assertTrue(posted["text"].startswith("[pm] (from dev2)\n"))
+        self.assertEqual(self.inbox(), [("pm", f"comments for you on sc-1: #{posted['id']}")])
+
+    def test_a_confirmation_with_an_addressee_is_refused(self):
+        with self.assertRaisesRegex(actions.Refused, "--untagged posts no tag"):
+            self.reply(True, "Read.", to="pm")
+        self.assertEqual(len(self.fake.raw[1]["comments"]), 1)
 
 
 def pr(verdict=None, mergeable="mergeable", threads=(), at=HEAD, carried=None):

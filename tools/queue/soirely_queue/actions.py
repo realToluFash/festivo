@@ -82,9 +82,8 @@ def guard(c, command):
 
 
 def post(c, story, to, body, parent=None):
-    head = " ".join(f"[{t}]" for t in to) + f" (from {signature(c.role)})"
-    text = f"{head}\n{body.strip()}" if head else body.strip()
-    return c.shortcut.comment(story["id"], text, parent)
+    head = " ".join([*(f"[{t}]" for t in to), f"(from {signature(c.role)})"])
+    return c.shortcut.comment(story["id"], f"{head}\n{body.strip()}", parent)
 
 
 def set_state(c, story, name, check=True):
@@ -125,6 +124,8 @@ def comment(c, a):
     guard(c, "comment")
     story = c.story(a.story, fresh=False)
     to = [t for t in (a.to or "").replace(",", " ").split() if t]
+    if to and a.untagged:
+        raise Refused("--untagged posts no tag: drop --to, or drop --untagged to address it")
     parent = None
     if a.reply_to:
         replied = next((x for x in story["comments"] if x["id"] == a.reply_to), None)
@@ -135,11 +136,11 @@ def comment(c, a):
             raise Refused(f"no comment #{a.reply_to} on sc-{story['id']}")
         # Shortcut threads one level deep, so a reply to a reply goes on the thread's root.
         parent = replied["parent"] or replied["id"]
-        if not to and R.author(replied["text"]):
+        if not to and not a.untagged and R.author(replied["text"]):
             to = [R.author(replied["text"])]
     if not to and not a.untagged:
         raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker), "
-                      "or --untagged for a note that wakes nobody")
+                      "or --untagged for a record or a confirmation that wakes nobody")
     unknown = [t for t in to if t not in R.ROLES and t != "dev"]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
