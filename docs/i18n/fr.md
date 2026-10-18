@@ -43,6 +43,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The power to change roles is « une personne qui peut modifier {{area}} »**
+  (`rolesScreen.lockedLine`, `describeSeededReadOnly`), with « Membres et rôles » standing
+  alone as a noun. A read-only twin keeps its editing line's words: « choisit ce qu'il
+  permet » after `describeSeeded`'s « choisissez ce qu'il permet », and `describeCustom`
+  without « Il peut être supprimé ». Role lines agree with « rôle », masculine (sc-2472).
 - **18 Oct 2026. A role named in a sentence is « le rôle Propriétaire »** (`messages:roles.*`,
   sc-2150). The name stays a label after « le rôle », so nothing agrees with the person:
   « C'est la seule personne à avoir le rôle Propriétaire », never « le seul propriétaire »,
@@ -59,7 +64,6 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   form. The API catalogue has no plural family, and the limit (40) is always well above 1.
 - **18 Oct 2026. Menu, Messages, Budget and Organisation stay as they are** on the Roles grid
   (`web:rolesScreen.area.*`): they are the French words, listed in `same-as-english.json`.
-
 - **18 Oct 2026. The new-device email** (`emails:newDevice.*`): subject « Nouvelle
   connexion à Soirely », short for a phone inbox; the body makes the device the subject,
   « Un appareil qui ne s'était jamais connecté à votre compte Soirely vient de s'y
