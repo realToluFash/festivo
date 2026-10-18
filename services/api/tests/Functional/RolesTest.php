@@ -181,7 +181,7 @@ final class RolesTest extends ApiTestCase
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => '   ']);
         self::assertSame('Give the role a name.', $this->violation('name'));
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => Str\repeat('a', 41)]);
-        self::assertSame('That is longer than 40 characters.', $this->violation('name'));
+        self::assertSame('Shorten the name to 40 characters or fewer.', $this->violation('name'));
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => '  event MANAGER ']);
         self::assertSame('A role with that name already exists.', $this->violation('name'));
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['made.up']]);

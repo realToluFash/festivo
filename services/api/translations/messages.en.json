@@ -21,7 +21,7 @@
     "roles.name_builtin": "Built-in roles cannot be renamed. You can still change what this one holds.",
     "roles.name_required": "Give the role a name.",
     "roles.name_taken": "A role with that name already exists.",
-    "roles.name_too_long": "That is longer than {count} characters.",
+    "roles.name_too_long": "Shorten the name to {count} characters or fewer.",
     "roles.owner_fixed": "Owner is built in and cannot be changed or removed. It always has everything.",
     "roles.permission_unknown": "Soirely has no permission by that name. Reload the page and try again.",
     "roles.replacement_invalid": "Choose another role in this organisation.",
