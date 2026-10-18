@@ -1,4 +1,7 @@
-"""`sq`: the one place the roles read their work from and write their answers to."""
+"""`sq <role> <command>`: the one place the roles read their work from and write to.
+
+Every read prints a slice and goes through the ledger, so a role is never shown twice what
+it already has. Every write is checked against what the role may do before it is sent."""
 
 import argparse
 import os
@@ -8,10 +11,14 @@ import subprocess
 import sys
 import time
 
-from . import github, render, roles, store, sync, work
+from . import actions, digests, github, payloads, roles, store, sync, work
+from . import text as T
+from . import views as V
+from .ledger import Printer
 from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
+ADMIN = ("status", "sync", "install")
 
 
 def home():
@@ -26,17 +33,15 @@ def home():
     return path
 
 
-def command():
-    return f"python3 {HERE.parent / 'sq'}"
-
-
 def open_db():
     return store.connect(str(home() / "queue.db"))
 
 
 def refresh_work(db, now):
+    # A role's own pick or sweep does not make it busy, or the next refresh would retire it.
     busy = {row["roles"] for row in db.execute(
-        "select roles from work where status in ('open', 'claimed')")}
+        "select roles from work where status in ('open', 'claimed') "
+        "and kind not in ('pick', 'sweep')")}
     busy_roles = {role for roles_ in busy for role in roles_.split(",")}
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
@@ -59,279 +64,425 @@ def baseline(db):
 
 
 def brief(row, role):
-    sq = command()
+    sq = f"sq {role}"
     return "\n".join([
         f"Run `{roles.invoke(role)}` as an unattended routine run "
         "(.claude/skills/role-routine, section 3).",
         f"Your work is item {row['id']}: {row['reason']}.",
-        f"Start with `{sq} show {row['id']}`. It prints the story, its pull requests and every "
-        "comment you need, so do not fetch them again from Shortcut or GitHub.",
-        f"Write through sq too: `{sq} comment`, `move`, `pr-reply`, `pr-resolve` "
-        f"(`{sq} --help`). Nobody is watching: never wait for an answer.",
-        f"As your last step run `{sq} done {row['id']} --note \"<one line>\"`.",
+        f"Start with `{sq} next`. It prints what this work needs and the commands to act with. "
+        f"Read and write only through `{sq}` (`{sq} help`), never the Shortcut tools or gh. "
+        "Nobody is watching: never wait for an answer.",
+        f"As your last step run `{sq} done {row['id']} --note \"<one line>\"`, "
+        "even when you could not finish; the note says why.",
         "Then report in at most ten lines.",
     ])
 
 
-def wanted_role(name):
-    if name not in roles.ROLES:
-        sys.exit(f"unknown role {name}: one of {', '.join(roles.ROLES)}")
-    return name
+class Session:
+    """One command's database, ledger and caches."""
+
+    def __init__(self, role, again=False):
+        self.role = role
+        self.db = open_db()
+        self.cache = home() / "cache"
+        self.printer = Printer(self.db, role, again)
+
+    def story(self, ref):
+        story_id = actions.story_number(ref)
+        found = store.story(self.db, story_id)
+        if not found:
+            found = sync.refresh_story(self.db, Shortcut(), story_id)
+        return found
+
+    def done(self):
+        self.printer.save()
+        out = self.printer.text()
+        if out:
+            print(out)
 
 
-def text_from(args):
-    text = args.text if args.text is not None else sys.stdin.read()
-    if not text.strip():
-        sys.exit("nothing to post: pass --text or pipe the body in")
-    return text.strip()
-
-
-def cmd_tick(args):
-    role = wanted_role(args.role)
-    db = open_db()
-    now = time.time()
+def synced(db, now):
     errors = sync.sync(db, now)
     if errors and not store.get_meta(db, "synced_ok_at"):
-        return print(f"error: {'; '.join(errors)}")
+        sys.exit(f"error: {'; '.join(errors)}")
     refresh_work(db, now)
-    if store.held_by(db, role, now):
-        return print("busy")
-    row = store.claim(db, role, now)
-    if not row:
-        return print("idle")
-    print(f"wake: {row['reason']}\n---\n{brief(row, role)}")
 
 
-def cmd_next(args):
-    role = wanted_role(args.role)
-    db = open_db()
+# Work
+
+
+def cmd_tick(s, a):
     now = time.time()
-    sync.sync(db, now)
-    refresh_work(db, now)
-    row = store.held_by(db, role, now) or store.claim(db, role, now)
+    synced(s.db, now)
+    if store.held_by(s.db, s.role, now):
+        return print("busy")
+    row = store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
-    show_work(db, row, role, args.all)
+    print(f"wake: {row['reason']}\n---\n{brief(row, s.role)}")
 
 
-def show_work(db, row, role, everything=False):
-    story = store.story(db, row["story_id"]) if row["story_id"] else None
-    prs = [store.pr(db, row["pr"])] if row["pr"] else (
-        store.prs_for_story(db, row["story_id"]) if row["story_id"] else [])
-    print(render.work_block(row, story, [p for p in prs if p], role, everything,
-                            store.handled(db)))
+def cmd_next(s, a):
+    now = time.time()
+    synced(s.db, now)
+    row = store.held_by(s.db, s.role, now) or store.claim(s.db, s.role, now)
+    if not row:
+        return print("idle")
+    s.printer.run = f"work:{row['id']}"
+    payloads.render(s.printer, s.db, row, s.cache)
+    s.done()
 
 
-def parse_ref(ref):
-    ref = ref.strip()
-    if ref.startswith("sc-"):
-        return "story", int(ref[3:])
-    if ref.startswith("#"):
-        return "pr", int(ref[1:])
-    return "work", int(ref)
-
-
-def cmd_show(args):
-    db = open_db()
-    kind, number = parse_ref(args.ref)
-    if kind == "work":
-        row = store.item(db, number)
-        if not row:
-            sys.exit(f"no work item {number}")
-        role = args.role or row["claimed_by"] or row["roles"].split(",")[0]
-        return show_work(db, row, role, args.all)
-    if kind == "pr":
-        pr = store.pr(db, number)
-        if not pr:
-            sys.exit(f"PR #{number} is not open or recently merged")
-        story = store.story(db, pr["story_id"]) if pr["story_id"] else None
-        out = (render.story_block(story)
-               + render.comments_block(story, args.role, args.all, store.handled(db))
-               if story else [])
-        return print("\n".join(out + render.pr_block(pr, args.role)))
-    story = store.story(db, number)
-    if not story:
-        sync.refresh_story(db, Shortcut(), number)
-        story = store.story(db, number)
-    out = render.story_block(story) + render.comments_block(story, args.role, args.all,
-                                                            store.handled(db))
-    for pr in store.prs_for_story(db, number):
-        out += render.pr_block(pr, args.role)
-    print("\n".join(out))
-
-
-def cmd_done(args):
-    db = open_db()
-    if args.ref.isdigit():
-        row = store.finish(db, int(args.ref), args.note)
-        return print("done" if row else f"no work item {args.ref}")
-    role = wanted_role(args.ref)
-    row = store.held_by(db, role)
+def cmd_done(s, a):
+    row = store.item(s.db, int(a.id)) if a.id else store.held_by(s.db, s.role)
     if row:
-        store.finish(db, row["id"], args.note)
+        store.finish(s.db, row["id"], a.note)
     else:
-        store.mark_run(db, role)
+        store.mark_run(s.db, s.role)
     print("done")
 
 
-def cmd_release(args):
-    store.release(open_db(), int(args.id))
+def cmd_release(s, a):
+    row = store.held_by(s.db, s.role)
+    if row:
+        store.release(s.db, row["id"])
     print("released")
 
 
-def cmd_status(args):
-    db = open_db()
-    now = time.time()
-    synced = store.get_meta(db, "synced_ok_at")
-    errors = store.get_meta(db, "sync_errors") or []
-    print(f"synced {int(now - synced)}s ago" if synced else "never synced",
-          f"· last errors: {'; '.join(errors)}" if errors else "")
-    for role in roles.ROLES:
-        held = store.held_by(db, role, now)
-        waiting = store.waiting(db, role)
-        if not held and not waiting:
-            continue
-        line = f"{role:5} "
-        if held:
-            line += f"working on {held['id']} ({held['reason']}); "
-        line += f"{len(waiting)} waiting"
-        if waiting:
-            line += ": " + "; ".join(f"{w['id']} {w['reason']}" for w in waiting[:4])
-        print(line)
+def cmd_queue(s, a):
+    digests.render(s.printer, s.db)
+    s.done()
 
 
-def cmd_sync(args):
-    db = open_db()
-    errors = sync.sync(db, force=True, full=args.full)
-    refresh_work(db, time.time())
-    print("error: " + "; ".join(errors) if errors else "synced")
+# Reads
 
 
-def cmd_comment(args):
-    role = wanted_role(args.as_role)
-    kind, story_id = parse_ref(args.story)
-    if kind != "story":
-        sys.exit("comment takes a story: sc-<n>")
-    db = open_db()
-    shortcut = Shortcut()
-    story = store.story(db, story_id)
-    if args.reply_to and not any(c["id"] == args.reply_to for c in (story or {}).get("comments", [])):
-        sync.refresh_story(db, shortcut, story_id)
-        story = store.story(db, story_id)
-    parent = None
-    to = [t for t in (args.to or "").replace(",", " ").split() if t]
-    if args.reply_to:
-        replied = next((c for c in story["comments"] if c["id"] == args.reply_to), None) \
-            if story else None
-        if not replied:
-            sys.exit(f"no comment #{args.reply_to} on sc-{story_id}")
-        # Shortcut threads one level deep, so a reply to a reply goes on the thread's root.
-        parent = replied["parent"] or replied["id"]
-        if not to:
-            asker = roles.author(replied["text"])
-            to = [asker] if asker else []
-    if not to:
-        sys.exit("say who it is for: --to pm,ux")
-    head = " ".join(f"[{t}]" for t in to) + f" (from {role})"
-    posted = shortcut.comment(story_id, f"{head}\n{text_from(args)}", parent)
-    sync.refresh_story(db, shortcut, story_id)
-    print(f"posted #{posted['id']} on sc-{story_id}")
+def cmd_story(s, a):
+    story = s.story(a.story)
+    p = s.printer
+    if a.headings:
+        p.add(*V.header(story), "", "Sections: " + "; ".join(
+            h for h, _, _ in T.sections(story["description"])))
+        return s.done()
+    if a.section:
+        found = T.find(story["description"], a.section)
+        if not found:
+            sys.exit(f"sc-{story['id']} has no section {a.section!r}; "
+                     f"`sq {s.role} story sc-{story['id']} --headings` lists them")
+        heading, level, body = found
+        p.block(f"story:{story['id']}:section:{heading}", T.digest(body),
+                [f"sc-{story['id']} · {heading}", body], f"sc-{story['id']} · {heading}")
+        return s.done()
+    payloads.story_for(p, s.db, story, s.role)
+    s.done()
 
 
-def cmd_move(args):
-    kind, story_id = parse_ref(args.story)
-    if kind != "story":
-        sys.exit("move takes a story: sc-<n>")
-    shortcut = Shortcut()
-    raw = shortcut.story(story_id)
-    workflow = next(w for w in shortcut.workflows() if w["id"] == raw["workflow_id"])
-    state = next((s for s in workflow["states"] if s["name"].lower() == args.state.lower()),
-                 None)
-    if not state:
-        names = ", ".join(s["name"] for s in workflow["states"])
-        sys.exit(f"no state {args.state!r}: one of {names}")
-    shortcut.move(story_id, state["id"])
-    db = open_db()
-    sync.refresh_story(db, shortcut, story_id)
-    refresh_work(db, time.time())
-    print(f"sc-{story_id} is now {state['name']}")
+def cmd_comments(s, a):
+    story = s.story(a.story)
+    s.printer.add(*V.header(story))
+    mode = "all" if a.all else "open" if a.open else "involving"
+    V.comments(s.printer, story, mode=mode, author=getattr(a, "from"), since=a.since)
+    s.done()
 
 
-def cmd_pr_reply(args):
-    db = open_db()
-    owner, name = store.get_meta(db, "repository") or github.repository()
-    github.reply(owner, name, args.pr, args.comment, text_from(args))
-    sync.sync_github(db)
-    print(f"replied on PR #{args.pr}")
+def cmd_pr(s, a):
+    pr = store.pr(s.db, a.pr)
+    if not pr:
+        sys.exit(f"PR #{a.pr} is neither open nor recently merged")
+    if a.section:
+        V.pr_section(s.printer, pr, a.section)
+    else:
+        V.pr_status(s.printer, pr)
+        found = [h for h, _, _ in T.sections(pr["body"])]
+        s.printer.add("", f"Body sections: {'; '.join(found)} (`--section <name>`)")
+    s.done()
 
 
-def cmd_pr_resolve(args):
-    github.resolve(args.thread)
-    sync.sync_github(open_db())
-    print("resolved")
+def cmd_diff(s, a):
+    pr = store.pr(s.db, a.pr)
+    if not pr:
+        sys.exit(f"PR #{a.pr} is neither open nor recently merged")
+    files = V.diff_files(payloads.cached_diff(s.cache, pr))
+    p = s.printer
+    if not a.paths and not a.all:
+        p.add(f"PR #{a.pr} at {pr['head_sha'][:7]}, {len(files)} files:", *V.diff_stat(files))
+        return s.done()
+    wanted = files if a.all else {path: body for path, body in files.items()
+                                  if any(path == x or x in path for x in a.paths)}
+    if not wanted:
+        sys.exit("no file in the diff matches; `sq <role> diff <n>` lists them")
+    for path, body in wanted.items():
+        p.block(f"diff:{a.pr}:{path}", T.digest(body), [body, ""], path)
+    s.done()
 
 
-def cmd_install(args):
-    target = home() / "sq"
-    if target.exists():
-        shutil.rmtree(target)
-    shutil.copytree(HERE.parent, target,
-                    ignore=shutil.ignore_patterns("tests", "__pycache__", "*.md"))
-    db = open_db()
-    if not store.get_meta(db, "baselined_at"):
-        errors = sync.sync(db, force=True, full=True)
-        if errors:
-            return print(f"error: {'; '.join(errors)}")
-        baseline(db)
-    print(f"installed: python3 {target / 'sq'}")
+def cmd_checks(s, a):
+    found = github.pr_checks(a.pr)
+    failed = [c for c in found if c.get("bucket") == "fail"]
+    pending = [c for c in found if c.get("bucket") == "pending"]
+    print(f"PR #{a.pr}: {len(found)} checks, {len(failed)} failed, {len(pending)} pending")
+    for check in failed:
+        print(f"\n{check['workflow']} / {check['name']} {check['link']}")
+        if not a.names:
+            log = github.failed_log(check["link"], tail=a.tail)
+            print("\n".join("  " + line for line in log.splitlines()))
+    for check in pending:
+        print(f"  pending: {check['workflow']} / {check['name']}")
 
 
-def parser():
-    p = argparse.ArgumentParser(prog="sq", description=__doc__)
-    sub = p.add_subparsers(required=True)
+def cmd_runs(s, a):
+    for run in store.get_meta(s.db, "main_runs") or []:
+        print(f"{run['databaseId']} {run['headSha'][:7]} {run['workflowName']} "
+              f"{run['conclusion'] or run['status']} · {run['displayTitle']}")
 
-    def add(name, fn, help_):
+
+def cmd_find(s, a):
+    hits = Shortcut().search(a.query, pages=2)
+    for hit in hits[: a.limit]:
+        stored = store.story(s.db, hit["id"])
+        state = stored["state"] if stored else "-"
+        print(f"sc-{hit['id']} [{state}] {hit['name']}")
+    if len(hits) > a.limit:
+        print(f"… {len(hits) - a.limit} more (--limit)")
+
+
+def cmd_epics(s, a):
+    for epic_id, epic in sorted((store.get_meta(s.db, "epics") or {}).items(),
+                                key=lambda e: int(e[0])):
+        if a.all or epic.get("state") != "done":
+            print(f"{epic_id} [{epic.get('state')}] {epic['name']}")
+
+
+def cmd_epic(s, a):
+    epic = Shortcut().epic(a.epic)
+    p = s.printer
+    p.add(f"Epic {epic['id']} {epic['name']} [{epic.get('state')}] {epic.get('app_url')}")
+    for heading, level, body in T.sections(epic.get("description")):
+        p.block(f"epic:{epic['id']}:section:{heading}", T.digest(body),
+                ["", f"## {heading}", body], f"## {heading}")
+    stories = [x for x in store.stories(s.db) if x["epic_id"] == epic["id"] and not x["done"]]
+    if stories:
+        p.add("", "Open stories:", *V.queue_lines(stories))
+    s.done()
+
+
+def cmd_history(s, a):
+    story_id = actions.story_number(a.story)
+    states = store.get_meta(s.db, "states") or {}
+    for entry in Shortcut().history(story_id)[-a.limit:]:
+        moves = []
+        for action in entry.get("actions", []):
+            change = (action.get("changes") or {}).get("workflow_state_id")
+            if change:
+                moves.append(f"{states.get(str(change.get('old')), '?')} → "
+                             f"{states.get(str(change.get('new')), '?')}")
+        if moves:
+            print(f"{entry['changed_at'][:16].replace('T', ' ')} {'; '.join(moves)}")
+
+
+# Writes
+
+
+TAKES_BODY = {actions.comment, actions.note, actions.report, actions.edit, actions.new_story,
+              actions.new_epic, actions.review, actions.pr_reply, actions.pr_create}
+
+
+def write(fn):
+    def run(s, a):
+        if fn in TAKES_BODY and a.text is None:
+            a.text = sys.stdin.read()
+            if not a.text.strip():
+                sys.exit("nothing to send: pass --text or pipe the body in")
+        out = fn(actions.Context(s.db, s.role, s.cache), a)
+        if fn is actions.claim:
+            story = store.story(s.db, actions.story_number(a.story))
+            s.printer.add(f"Claimed sc-{story['id']}; it is {story['state']}.", "")
+            payloads.story_for(s.printer, s.db, story, s.role)
+            return s.done()
+        print(out)
+    return run
+
+
+def body(parser):
+    parser.add_argument("--text", help="the body; otherwise read from stdin")
+
+
+READS = [
+    ("next", cmd_next, "claim your next work and print what it needs", None),
+    ("tick", cmd_tick, "the routine's check: idle, busy, or wake with a brief", None),
+    ("done", cmd_done, "finish the work you hold, with a note for your next run",
+     lambda p: (p.add_argument("id", nargs="?"), p.add_argument("--note"))),
+    ("release", cmd_release, "give back the work you hold, unfinished", None),
+    ("queue", cmd_queue, "your queue or sweep list, one line per story", None),
+    ("story", cmd_story, "a story as you work on it; --section or --headings for a slice",
+     lambda p: (p.add_argument("story"), p.add_argument("--section"),
+                p.add_argument("--headings", action="store_true"))),
+    ("comments", cmd_comments, "a story's threads that involve you; --open, --all, --from",
+     lambda p: (p.add_argument("story"), p.add_argument("--open", action="store_true"),
+                p.add_argument("--all", action="store_true"), p.add_argument("--from"),
+                p.add_argument("--since", type=int, help="only comments after this id"))),
+    ("pr", cmd_pr, "a pull request's status and open threads, or one body --section",
+     lambda p: (p.add_argument("pr", type=int), p.add_argument("--section"))),
+    ("diff", cmd_diff, "a pull request's files, or the diff of the paths you name",
+     lambda p: (p.add_argument("pr", type=int), p.add_argument("paths", nargs="*"),
+                p.add_argument("--all", action="store_true"))),
+    ("checks", cmd_checks, "a pull request's checks, with the failed logs' last lines",
+     lambda p: (p.add_argument("pr", type=int), p.add_argument("--names", action="store_true"),
+                p.add_argument("--tail", type=int, default=40))),
+    ("runs", cmd_runs, "the last runs on main", None),
+    ("find", cmd_find, "Shortcut search, one line per story",
+     lambda p: (p.add_argument("query"), p.add_argument("--limit", type=int, default=20))),
+    ("epics", cmd_epics, "epics, one line each",
+     lambda p: p.add_argument("--all", action="store_true")),
+    ("epic", cmd_epic, "an epic's description and open stories",
+     lambda p: p.add_argument("epic", type=int)),
+    ("history", cmd_history, "a story's state changes",
+     lambda p: (p.add_argument("story"), p.add_argument("--limit", type=int, default=30))),
+]
+
+WRITES = [
+    ("comment", actions.comment, "post a tagged comment; --reply-to answers one",
+     lambda p: (p.add_argument("story"), p.add_argument("--to"),
+                p.add_argument("--reply-to", type=int), body(p))),
+    ("note", actions.note, "a private note your next run on this story sees",
+     lambda p: (p.add_argument("story"), body(p))),
+    ("claim", actions.claim, "take a story from your queue, then print it",
+     lambda p: p.add_argument("story")),
+    ("move", actions.move, "move a story to a state you may move it to",
+     lambda p: (p.add_argument("story"), p.add_argument("state"))),
+    ("label", actions.label, "add or remove labels; the rest are kept",
+     lambda p: (p.add_argument("story"), p.add_argument("--add", nargs="+"),
+                p.add_argument("--remove", nargs="+"))),
+    ("report", actions.report, "QA report: upload files, comment, move to the result",
+     lambda p: (p.add_argument("story"), p.add_argument("result", choices=["passed", "failed"]),
+                p.add_argument("--files", nargs="+"), body(p))),
+    ("edit", actions.edit, "replace a section, or add a dated one, on sc-<n> or epic-<n>",
+     lambda p: (p.add_argument("target"), p.add_argument("--section"),
+                p.add_argument("--dated"), body(p))),
+    ("new-story", actions.new_story, "create a story, in Backlog unless you are the PM",
+     lambda p: (p.add_argument("--name", required=True), p.add_argument("--epic", type=int),
+                p.add_argument("--state"), p.add_argument("--label", nargs="+"),
+                p.add_argument("--type", choices=["feature", "bug", "chore"]),
+                p.add_argument("--estimate", type=int, choices=[0, 1, 2, 4, 8]), body(p))),
+    ("new-epic", actions.new_epic, "create an epic",
+     lambda p: (p.add_argument("--name", required=True), body(p))),
+    ("task", actions.task, "add a task, or mark one --done / --undo",
+     lambda p: (p.add_argument("story"), p.add_argument("--add"),
+                p.add_argument("--done", type=int), p.add_argument("--undo", type=int))),
+    ("relate", actions.relate, "link two stories",
+     lambda p: (p.add_argument("story"), p.add_argument("other"),
+                p.add_argument("--verb", default="relates to",
+                               choices=["relates to", "blocks", "duplicates"]))),
+    ("archive", actions.archive, "archive a story", lambda p: p.add_argument("story")),
+    ("pr-create", actions.pr_create, "open a pull request from a pushed branch",
+     lambda p: (p.add_argument("--head", required=True), p.add_argument("--title", required=True),
+                p.add_argument("--draft", action="store_true"), body(p))),
+    ("review", actions.review, "post the review: summary on stdin, inline --findings file",
+     lambda p: (p.add_argument("pr", type=int),
+                p.add_argument("--pass", dest="verdict", action="store_const", const="pass"),
+                p.add_argument("--back", dest="verdict", action="store_const", const="back"),
+                p.add_argument("--findings", help="`## path:line blocking|should|nit` blocks"),
+                p.add_argument("--qa", help="on a pass, what QA should look at hard"),
+                body(p))),
+    ("pr-reply", actions.pr_reply, "reply in the review thread holding a comment",
+     lambda p: (p.add_argument("pr", type=int), p.add_argument("comment", type=int), body(p))),
+    ("resolve", actions.resolve, "reply in a thread (optional --text), then resolve it",
+     lambda p: (p.add_argument("pr", type=int), p.add_argument("comment", type=int),
+                p.add_argument("--text"))),
+    ("merge", actions.merge, "merge a pull request once every condition holds",
+     lambda p: (p.add_argument("pr", type=int),
+                p.add_argument("--text", help="anything QA should know"))),
+    ("to-qa", actions.to_qa, "hand a merged story to QA, naming the merge commit",
+     lambda p: (p.add_argument("story"), p.add_argument("--text"))),
+    ("rerun", actions.rerun, "rerun a pull request's failed jobs, or a --run",
+     lambda p: (p.add_argument("pr", type=int, nargs="?"), p.add_argument("--run", type=int))),
+]
+
+
+def role_parser(role):
+    p = argparse.ArgumentParser(prog=f"sq {role}", add_help=False,
+                                description=f"What {role} reads and writes. Reads print "
+                                "each thing once; --again prints it in full anyway.")
+    p.add_argument("--again", action="store_true", help=argparse.SUPPRESS)
+    sub = p.add_subparsers(dest="command", metavar="<command>")
+    sub.add_parser("help", help="this list")
+
+    def add(name, fn, help_, args):
         s = sub.add_parser(name, help=help_)
+        s.add_argument("--again", action="store_true", help="print in full what you have read")
         s.set_defaults(fn=fn)
-        return s
+        if args:
+            args(s)
 
-    add("tick", cmd_tick, "the routine's check: idle, busy, or wake with a brief").add_argument(
-        "role")
-    s = add("next", cmd_next, "claim the role's next work and print it")
-    s.add_argument("role")
-    s.add_argument("--all", action="store_true", help="every comment thread in full")
-    s = add("show", cmd_show, "print a work item, sc-<n> or #<pr>")
-    s.add_argument("ref")
-    s.add_argument("--role", help="whose comments to print in full")
-    s.add_argument("--all", action="store_true", help="every comment thread in full")
-    s = add("done", cmd_done, "finish a work item, or whatever a role holds")
-    s.add_argument("ref", help="a work item id, or a role")
-    s.add_argument("--note")
-    add("release", cmd_release, "give a claimed item back unfinished").add_argument("id")
-    add("status", cmd_status, "what every role holds and has waiting")
-    add("sync", cmd_sync, "sync now").add_argument("--full", action="store_true")
-    s = add("comment", cmd_comment, "post a tagged comment on a story")
-    s.add_argument("story")
-    s.add_argument("--as", dest="as_role", required=True, help="your role")
-    s.add_argument("--to", help="addressees, e.g. pm,ux; a reply defaults to the asker")
-    s.add_argument("--reply-to", type=int, help="the comment you answer")
-    s.add_argument("--text", help="the body; otherwise read from stdin")
-    s = add("move", cmd_move, "move a story to a state, by name")
-    s.add_argument("story")
-    s.add_argument("state")
-    s = add("pr-reply", cmd_pr_reply, "reply in a pull request's review thread")
-    s.add_argument("pr", type=int)
-    s.add_argument("comment", type=int, help="the thread's first comment id")
-    s.add_argument("--text")
-    add("pr-resolve", cmd_pr_resolve, "resolve a review thread").add_argument("thread")
-    add("install", cmd_install, "copy sq where no branch switch removes it")
+    for name, fn, help_, args in READS:
+        add(name, fn, help_, args)
+    for name, fn, help_, args in WRITES:
+        if roles.may(role, name):
+            add(name, write(fn), help_, args)
     return p
 
 
+def admin(argv):
+    p = argparse.ArgumentParser(prog="sq", description=__doc__)
+    sub = p.add_subparsers(dest="command", required=True)
+    sub.add_parser("status", help="what every role holds and has waiting")
+    sub.add_parser("sync", help="sync now").add_argument("--full", action="store_true")
+    sub.add_parser("install", help="copy sq where no branch switch removes it")
+    a = p.parse_args(argv)
+    db = open_db()
+    if a.command == "status":
+        now = time.time()
+        synced_at = store.get_meta(db, "synced_ok_at")
+        errors = store.get_meta(db, "sync_errors") or []
+        print(f"synced {int(now - synced_at)}s ago" if synced_at else "never synced",
+              f"· last errors: {'; '.join(errors)}" if errors else "")
+        for role in roles.ROLES:
+            held, waiting = store.held_by(db, role, now), store.waiting(db, role)
+            if held or waiting:
+                line = f"{role:5} " + (f"working on {held['id']} ({held['reason']}); "
+                                       if held else "")
+                line += f"{len(waiting)} waiting"
+                if waiting:
+                    line += ": " + "; ".join(f"{w['id']} {w['reason']}" for w in waiting[:4])
+                print(line)
+    elif a.command == "sync":
+        errors = sync.sync(db, force=True, full=a.full)
+        refresh_work(db, time.time())
+        print("error: " + "; ".join(errors) if errors else "synced")
+    else:
+        target = home() / "sq"
+        if target.exists():
+            shutil.rmtree(target)
+        shutil.copytree(HERE.parent, target,
+                        ignore=shutil.ignore_patterns("tests", "__pycache__", "*.md"))
+        if not store.get_meta(db, "baselined_at"):
+            errors = sync.sync(db, force=True, full=True)
+            if errors:
+                return print(f"error: {'; '.join(errors)}")
+            baseline(db)
+        print(f"installed: {target / 'sq'}")
+
+
 def main(argv=None):
-    args = parser().parse_args(argv)
+    argv = sys.argv[1:] if argv is None else argv
+    if not argv or argv[0] in ("-h", "--help", "help"):
+        return print(f"usage: sq <role> <command> …   (sq <role> help lists your commands)\n"
+                     f"       sq status | sync [--full] | install\n"
+                     f"roles: {', '.join(roles.ROLES)}")
     try:
-        args.fn(args)
+        if argv[0] in ADMIN:
+            return admin(argv)
+        role = argv[0]
+        if role not in roles.ROLES:
+            sys.exit(f"unknown role {role}: one of {', '.join(roles.ROLES)}")
+        parser = role_parser(role)
+        a = parser.parse_args(argv[1:])
+        if a.command in (None, "help"):
+            return parser.print_help()
+        a.fn(Session(role, a.again), a)
+    except actions.Refused as refusal:
+        print(f"refused: {refusal}")
+        sys.exit(2)
     except (RuntimeError, OSError) as error:
         print(f"error: {error}")
         sys.exit(1)

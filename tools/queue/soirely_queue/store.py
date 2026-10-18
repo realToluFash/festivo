@@ -32,6 +32,19 @@ create table if not exists work (
 );
 create index if not exists work_open on work (status, priority, first_seen);
 create table if not exists runs (role text primary key, last_done real);
+create table if not exists shown (
+  run text not null, key text not null, version text, at real, primary key (run, key)
+);
+create table if not exists seen (
+  role text not null, key text not null, version text, at real, primary key (role, key)
+);
+create table if not exists notes (
+  id integer primary key autoincrement, role text not null, story_id integer not null,
+  note text not null, at real not null
+);
+create table if not exists claims (
+  key text primary key, role text not null, at real not null
+);
 create table if not exists handled (
   role text not null, comment_id integer not null, primary key (role, comment_id)
 );
@@ -179,6 +192,8 @@ def finish(db, work_id, note=None, now=None):
                      [int(c) for c in row["comments"].split(",")])
     if row["claimed_by"]:
         mark_run(db, row["claimed_by"], now)
+    if note and row["story_id"]:
+        add_note(db, row["claimed_by"] or row["roles"].split(",")[0], row["story_id"], note, now)
     return row
 
 
@@ -209,3 +224,22 @@ def mark_handled(db, role, comment_ids):
 
 def handled(db):
     return {(row["role"], row["comment_id"]) for row in db.execute("select * from handled")}
+
+
+def add_note(db, role, story_id, note, now=None):
+    db.execute("insert into notes (role, story_id, note, at) values (?, ?, ?, ?)",
+               (role, story_id, note, now or time.time()))
+
+
+def notes(db, role, story_id, limit=3):
+    return db.execute("select note, at from notes where role = ? and story_id = ? "
+                      "order by at desc limit ?", (role, story_id, limit)).fetchall()
+
+
+def take_story(db, story, role, now=None):
+    """The first role to claim a story from the state it is in now holds it, so two testers
+    or two developers reaching it together cannot both win. Returns the holder."""
+    key = f"{story['id']}:{story['state']}:{story['moved_at']}"
+    db.execute("insert or ignore into claims (key, role, at) values (?, ?, ?)",
+               (key, role, now or time.time()))
+    return db.execute("select role from claims where key = ?", (key,)).fetchone()["role"]

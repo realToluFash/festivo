@@ -5,7 +5,7 @@ import re
 import subprocess
 
 PR_FIELDS = """
-number title url state isDraft headRefName headRefOid mergeable mergedAt
+number title url state isDraft headRefName headRefOid baseRefName mergeable mergedAt body
 mergeCommit { oid }
 commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }
 reviews(last: 30) { nodes { databaseId body createdAt commit { oid } } }
@@ -96,6 +96,8 @@ def slim(node):
         "branch": node["headRefName"],
         "story_id": int(story.group(1)) if story else None,
         "head_sha": node["headRefOid"],
+        "base": node["baseRefName"],
+        "body": node.get("body") or "",
         "checks": checks(node),
         "mergeable": node["mergeable"].lower(),
         "merged_at": node["mergedAt"],
@@ -111,11 +113,94 @@ def slim(node):
     }
 
 
-def main_run():
-    out = gh("run", "list", "--branch", "main", "--limit", "1", "--json",
-             "headSha,conclusion,url")
-    runs = json.loads(out)
-    return runs[0] if runs else None
+def main_runs(limit=5):
+    out = gh("run", "list", "--branch", "main", "--limit", str(limit), "--json",
+             "databaseId,headSha,conclusion,status,url,displayTitle,createdAt,workflowName")
+    return json.loads(out)
+
+
+def diff(number):
+    return gh("pr", "diff", str(number))
+
+
+def pr_checks(number):
+    out = subprocess.run(["gh", "pr", "checks", str(number), "--json",
+                          "name,state,bucket,link,workflow"], capture_output=True, text=True)
+    if out.returncode not in (0, 1, 8):
+        raise GitHubError(f"gh pr checks: {out.stderr.strip()[:200]}")
+    return json.loads(out.stdout or "[]")
+
+
+JOB_LINK = re.compile(r"/actions/runs/(\d+)/job/(\d+)")
+
+
+def failed_log(link=None, run=None, tail=60):
+    """The last lines of a failed job's log, from a check's link or a whole run's id."""
+    match = JOB_LINK.search(link or "")
+    if match:
+        args = [match.group(1), "--job", match.group(2)]
+    elif run:
+        args = [str(run)]
+    else:
+        return ""
+    result = subprocess.run(["gh", "run", "view", *args, "--log-failed"],
+                            capture_output=True, text=True)
+    lines = []
+    for line in result.stdout.splitlines():
+        # Each line is "<job>\t<step>\t<timestamp> <text>"; the text is what matters.
+        text = line.split("\t", 2)[-1]
+        lines.append(text.split(" ", 1)[1] if text[:4].isdigit() and " " in text else text)
+    return "\n".join(lines[-tail:])
+
+
+def rerun_failed(run_id):
+    gh("run", "rerun", str(run_id), "--failed")
+
+
+def compare(owner, name, base, head):
+    out = gh("api", f"repos/{owner}/{name}/compare/{base}...{head}")
+    body = json.loads(out)
+    return {"commits": [(c["sha"][:7], c["commit"]["message"].split("\n", 1)[0])
+                        for c in body.get("commits", [])],
+            "files": [f["filename"] for f in body.get("files", [])]}
+
+
+def files(number):
+    out = gh("pr", "view", str(number), "--json", "files")
+    return [(f["path"], f["additions"], f["deletions"]) for f in json.loads(out)["files"]]
+
+
+def live(number):
+    """What a merge decision needs, read now rather than from the last sync."""
+    out = gh("pr", "view", str(number), "--json",
+             "headRefOid,mergeable,mergeStateStatus,state,mergeCommit")
+    found = json.loads(out)
+    found["mergeCommit"] = (found.get("mergeCommit") or {}).get("oid")
+    return found
+
+
+def post_review(owner, name, number, head, body, comments):
+    payload = {"commit_id": head, "event": "COMMENT", "body": body,
+               "comments": [{"path": c["path"], "line": c["line"], "side": "RIGHT",
+                             "body": c["body"]} for c in comments]}
+    out = gh("api", f"repos/{owner}/{name}/pulls/{number}/reviews", "--method", "POST",
+             "--input", "-", stdin=json.dumps(payload))
+    return json.loads(out)
+
+
+def merge(number, head, method="merge", delete_branch=False):
+    args = ["pr", "merge", str(number), f"--{method}", "--match-head-commit", head]
+    if delete_branch:
+        args.append("--delete-branch")
+    gh(*args)
+
+
+def create_pr(head, title, body, draft=False, base="main"):
+    args = ["pr", "create", "--base", base, "--head", head, "--title", title,
+            "--body-file", "-"]
+    if draft:
+        args.append("--draft")
+    return gh(*args, stdin=body).strip()
 
 
 def reply(owner, name, number, comment_id, text):

@@ -120,3 +120,73 @@ def addressees(text, labels):
 def author(text):
     parsed = header(text)
     return parsed["from"] if parsed else None
+
+
+DEVS = ("dev", "dev2")
+TESTERS = ("qa", "qa2", "qa3")
+LINGUISTS = ("en", "es", "fr", "pt")
+EVERYONE = tuple(ROLES)
+
+# What each role may write, from the "must not" sections of the skills. A command not
+# listed for a role is refused before anything is sent.
+MAY = {
+    "comment": EVERYONE,
+    "note": EVERYONE,
+    "claim": DEVS + TESTERS,
+    "move": DEVS + TESTERS + LINGUISTS + ("lead", "pm"),
+    "label": DEVS + TESTERS + LINGUISTS + ("pm", "cd"),
+    "edit": LINGUISTS + ("pm", "ux", "cd", "bm"),
+    "new-story": DEVS + LINGUISTS + ("pm", "cd"),
+    "new-epic": ("pm",),
+    "task": LINGUISTS + ("pm",),
+    "relate": LINGUISTS + ("pm", "cd"),
+    "archive": ("pm",),
+    "report": TESTERS,
+    "pr-create": DEVS + LINGUISTS + ("ops",),
+    "review": ("lead",),
+    "pr-reply": DEVS + LINGUISTS + ("lead", "ops"),
+    "resolve": ("lead",),
+    "merge": DEVS + LINGUISTS,
+    "to-qa": DEVS,
+    "rerun": DEVS + ("ops",),
+}
+
+# The states each role may move a story into, and from.
+MOVES = {
+    "dev": {"In Progress": ("To Do", "Failed QA", "In Review"), "In Review": ("In Progress",),
+            "Ready For QA": ("In Review",)},
+    "lead": {"In Progress": ("In Review",)},
+    "pm": {"To Do": ("Backlog",), "Backlog": ("To Do",)},
+    "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
+           "Failed QA": ("In QA",)},
+    "en": {"In Progress": ("To Do", "Failed QA"), "Ready For QA": ("In Progress",)},
+}
+MOVES["dev2"] = MOVES["dev"]
+for _tester in TESTERS:
+    MOVES[_tester] = MOVES["qa"]
+for _locale in LINGUISTS:
+    MOVES[_locale] = MOVES["en"]
+
+# A role that labels may only touch these labels; the product manager may touch any.
+OWN_LABELS = {"dev": {"dev1"}, "dev2": {"dev2"}, "cd": {"idea"},
+              **{t: {"qa passed", "qa failed", "needs qa"} for t in TESTERS},
+              **{lang: {"translation"} for lang in LINGUISTS}}
+
+CATALOGUES = [
+    "apps/web/src/i18n/locales/{locale}.json",
+    "apps/mobile/src/i18n/locales/{locale}.json",
+    "services/api/translations/messages.{locale}.json",
+    "services/api/translations/errors.{locale}.json",
+    "services/api/translations/emails.{locale}.json",
+    "docs/i18n/{locale}.md",
+    "docs/i18n/same-as-english.json",
+]
+
+
+def locale_files(locale):
+    return {path.replace("{locale}", locale) for path in CATALOGUES}
+
+
+def may(role, command):
+    return role in MAY.get(command, ())
+
