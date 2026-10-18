@@ -649,6 +649,7 @@
     "approvedMark": "Confirmed",
     "approvedTitle": "Two-factor is off",
     "approvedIntro": "Somebody in {{organisations}} confirmed it was you. Every session you had has ended. Sign in, then set it up again.",
+    "approvedIntroNobody": "Somebody in your organisation confirmed it was you. Every session you had has ended. Sign in, then set it up again.",
     "signIn": "Sign in",
     "turnedDownMark": "Turned down",
     "turnedDownTitle": "Your request was turned down",

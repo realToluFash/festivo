@@ -1,5 +1,11 @@
 import { ApiError, type RecoveryOpening, type RecoveryState } from '@soirely/api-client';
-import { cleanCode, codeWording, formatCountdown, formatPhone } from '@soirely/domain';
+import {
+  cleanCode,
+  codeWording,
+  formatCountdown,
+  formatPhone,
+  recoveryIntroKey,
+} from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Linking, StyleSheet, type TextInput, View } from 'react-native';
@@ -365,7 +371,7 @@ function Request({
         saying={
           <Saying
             title={t('lostTwoFactor.waitingTitle')}
-            intro={t('lostTwoFactor.waitingIntro', { organisations })}
+            intro={t(recoveryIntroKey('waiting', state.nobody), { organisations })}
             mark={{ tone: 'progress', word: t('lostTwoFactor.waitingMark') }}
           />
         }
@@ -378,6 +384,13 @@ function Request({
         <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
           {t('lostTwoFactor.stayOut', { email: state.email })}
         </Text>
+        {state.nobody && supportAddress !== '' && (
+          <SecondaryButton
+            label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
+            onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
+            testID="lostTwoFactor.support"
+          />
+        )}
         <Text size={tokens.typeBodyPhone.size} weight="semibold">
           {t('lostTwoFactor.notYou')}
         </Text>
@@ -404,7 +417,7 @@ function Request({
         saying={
           <Saying
             title={t('lostTwoFactor.approvedTitle')}
-            intro={t('lostTwoFactor.approvedIntro', { organisations: anyOf })}
+            intro={t(recoveryIntroKey('approved', state.nobody), { organisations: anyOf })}
             mark={{ tone: 'done', word: t('lostTwoFactor.approvedMark') }}
           />
         }
@@ -426,7 +439,7 @@ function Request({
         saying={
           <Saying
             title={t('lostTwoFactor.turnedDownTitle')}
-            intro={t('lostTwoFactor.turnedDownIntro', { organisations: anyOf })}
+            intro={t(recoveryIntroKey('turned_down', state.nobody), { organisations: anyOf })}
             mark={{ tone: 'broken', word: t('lostTwoFactor.turnedDownMark') }}
           />
         }

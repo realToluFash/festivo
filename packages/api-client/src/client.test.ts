@@ -1441,6 +1441,17 @@ describe('getting back in without the second factor', () => {
     ]);
   });
 
+  test('reads whether anybody is left to answer a waiting request', async () => {
+    const answering = (state: object) =>
+      new ApiClient({ baseUrl: () => 'http://api.test', fetch: async () => json({ state }) });
+
+    expect((await answering(WAITING).recoveryState('handle')).nobody).toBe(false);
+    expect(
+      (await answering({ ...WAITING, organisations: [], nobody: true }).recoveryState('handle'))
+        .nobody,
+    ).toBe(true);
+  });
+
   test('reads the start screen, and an open request to carry on with', async () => {
     const proving = {
       ...WAITING,

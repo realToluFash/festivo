@@ -26,6 +26,8 @@ const PROVING = {
   email: 'folake@ire.events',
   phone: '+2348035550142',
   organisations: ['Ìrè Events'],
+  nobody: false,
+  supportAddress: 'support@soirely.com',
   askedAt: null,
   asked: null,
   expiresAt: null,
@@ -102,7 +104,10 @@ async function atTheStart(answers: Record<string, () => Response>) {
   );
   await screen.findByRole(
     'heading',
-    { level: 1, name: /Get back in|Contact Soirely support|Enter both codes|Waiting/ },
+    {
+      level: 1,
+      name: /Get back in|Contact Soirely support|Enter both codes|Waiting|Two-factor is off/,
+    },
     THE_WAY_IN,
   );
 
@@ -231,6 +236,55 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
     expect(screen.getByRole('link', { name: 'Email support@soirely.com' })).toBeDefined();
     expect(sessionStorage.getItem('soirely.twoFactorRecovery')).toBeNull();
+  });
+
+  it('says nobody is left to answer a waiting request, which stays open, and names nobody', async () => {
+    const nobodyLeft = { ...WAITING, organisations: [], nobody: true };
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: nobodyLeft }),
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Waiting for your organisation' }),
+    ).toBeDefined();
+    expect(
+      screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/asked the owners and admins/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Email support@soirely.com' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Cancel the request' })).toBeDefined();
+  });
+
+  it('names the organisation again once somebody can answer, with no support link', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({ ...OPENING, recovery: 'handle', state: WAITING }),
+    });
+
+    expect(
+      await screen.findByText(
+        'We’ve asked the owners and admins of Ìrè Events to confirm it’s you. One answer is enough.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Email support@soirely.com' })).toBeNull();
+  });
+
+  it('approved with nobody left, names no organisation', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({
+          ...OPENING,
+          recovery: 'handle',
+          state: { ...WAITING, status: 'approved', organisations: [], nobody: true },
+        }),
+    });
+
+    expect(
+      await screen.findByText(
+        'Somebody in your organisation confirmed it was you. Every session you had has ended. Sign in, then set it up again.',
+      ),
+    ).toBeDefined();
   });
 
   it('opens the waiting screen when the codes were already proved on another device', async () => {

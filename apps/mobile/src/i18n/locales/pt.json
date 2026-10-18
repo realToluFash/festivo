@@ -521,6 +521,7 @@
     "approvedMark": "Confirmado",
     "approvedTitle": "A autenticação de dois fatores está desativada",
     "approvedIntro": "Alguém de {{organisations}} confirmou que era você. Todas as suas sessões foram encerradas. Inicie sessão e configure-a de novo.",
+    "approvedIntroNobody": "Somebody in your organisation confirmed it was you. Every session you had has ended. Sign in, then set it up again.",
     "signIn": "Iniciar sessão",
     "turnedDownMark": "Recusado",
     "turnedDownTitle": "O seu pedido foi recusado",
