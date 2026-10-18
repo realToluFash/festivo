@@ -13,10 +13,7 @@ export const STACKS = {
   dev2: 40000,
   lead: 45000,
   ops: 50000,
-  en: 15000,
-  es: 25000,
-  fr: 35000,
-  pt: 55000,
+  l10n: 15000,
 };
 
 export const DEVELOPERS = [2];
