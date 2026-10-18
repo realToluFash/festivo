@@ -39,6 +39,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The contact cap is "Uma conta pode ter até {{most}} …, incluindo o
+  principal"** (`contacts.capEmails_*`, `capPhones_*`, `capFullEmails`, `capFullPhones`, web
+  and app), as `contacts.limitEmails` and `limitPhones` already say. One more is "Pode
+  adicionar mais um"; the full line is "Já tem {{most}}, o máximo que uma conta pode ter.
+  Remova um para adicionar outro." "Endereço" and "número" are both masculine, so a number's
+  own keys (`contacts.verifiedPhone`, `primaryPhone`, `makePrimaryPhone`, `removeConfirmPhone`,
+  `removeKeepPhone`) hold the address card's words, and "Não verificado" serves both, with no
+  `unverifiedPhone`. The count is never 0 here (the full line shows instead) and never large,
+  so `_one` and `_other` cover it.
 - **18 Oct 2026. A browser session is "Safari no iPhone"** (`devices.agent`, web and app, and
   `emails:password.device.agent`): "{{browser}} no {{platform}}", beside "Aplicação Soirely no
   iPhone" in the same list and the same email line. Every platform the parser names (iPhone,
