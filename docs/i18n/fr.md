@@ -61,7 +61,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   A refusal shared with a web key takes the web's French (`nameBlank`, `nameTaken`,
   `removeNoReplacement`).
 - **18 Oct 2026. A length limit says what to do: « Raccourcissez le nom à {count} caractères
-  maximum. »** (`messages:roles.name_too_long`, after en's "Shorten the name to {count}
+  maximum. »** (`messages:roles.name_too_long`, and `web:rolesScreen.nameTooLong` with
+  `{{most}}`, so the screen and the server say one sentence; after en's "Shorten the name to {count}
   characters or fewer."). « N caractères maximum » is the form people read in every French
   form. The API catalogue has no plural family, and the limit (40) is always well above 1.
 - **18 Oct 2026. Menu, Messages, Budget and Organisation stay as they are** on the Roles grid
@@ -77,8 +78,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   Where no neutral form reads well (`verified`, `primary`, `makePrimary`, `removeConfirm`,
   `removeKeep`), the key holds the feminine for addresses and the number gets a key of its
   own, asked of [dev] on sc-2149. Never « principal·e » or « Vérifié(e) ».
-  The cap's `_one` reads « Vous pouvez encore ajouter {{count}} adresse » with the number,
-  not « une »: French `one` covers 0 too, and « 0 adresse » is right where « une » is not.
+  The cap's `_one` reads « Vous pouvez encore ajouter une adresse » (« un numéro »), with no
+  `{{count}}`, as the English does. French `one` also covers 0, but the cap line shows only
+  while at least one is left: 0 left shows `capFullEmails`/`capFullPhones` instead
+  (`ContactsCard`, `left > 0`). Do not put `{{count}}` back; the parity check wants the
+  English's slots. New strings take U+00A0 before `: ; ? !`, as sc-2504 settles.
 - **18 Oct 2026. The new-device email** (`emails:newDevice.*`): subject « Nouvelle
   connexion à Soirely », short for a phone inbox; the body makes the device the subject,
   « Un appareil qui ne s'était jamais connecté à votre compte Soirely vient de s'y

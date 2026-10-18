@@ -4,7 +4,7 @@
     "actor.system": "Système",
     "actor.user": "Titulaire du compte",
     "contacts.already_linked": "Ces coordonnées sont déjà associées à un compte. Indiquez-en d'autres.",
-    "contacts.last_verified_email": "C'est la seule adresse vérifiée du compte : elle seule prouve qu'il est le vôtre. Vérifiez-en une autre avant de retirer celle-ci.",
+    "contacts.last_verified_email": "C'est la seule adresse vérifiée du compte : elle seule prouve qu'il est le vôtre. Vérifiez-en une autre avant de retirer celle-ci.",
     "contacts.last_verified_phone": "C'est le seul numéro vérifié du compte. Vérifiez-en un autre avant de retirer celui-ci.",
     "contacts.limit_email": "Un compte est limité à {count} adresses e-mail. Retirez-en une pour en ajouter une autre.",
     "contacts.limit_phone": "Un compte est limité à {count} numéros de téléphone. Retirez-en un pour en ajouter un autre.",
