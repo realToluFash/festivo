@@ -12,3 +12,37 @@ export function keyboardLift(os: string): KeyboardLift {
 
   return { avoid: null, adjustScrollInsets: false };
 }
+
+export interface Rect {
+  y: number;
+  height: number;
+}
+
+/** Whether the keyboard covers any of a group, or its margin, in window coordinates. */
+export function coveredBy(keyboardTop: number, group: Rect, margin: number): boolean {
+  return group.y + group.height + margin > keyboardTop;
+}
+
+export interface Lift {
+  /** The group's top inside the scroll content. */
+  contentY: number;
+  height: number;
+  /** The scroll view's top in the window. */
+  scrollTop: number;
+  /** The keyboard's top in the window. */
+  keyboardTop: number;
+  margin: number;
+}
+
+/** The scroll offset that rests a group's bottom `margin` above the keyboard, its top never above the scroll view's. */
+export function offsetAboveKeyboard({
+  contentY,
+  height,
+  scrollTop,
+  keyboardTop,
+  margin,
+}: Lift): number {
+  const bottomAboveKeys = contentY + height + margin - (keyboardTop - scrollTop);
+
+  return Math.max(0, Math.min(bottomAboveKeys, contentY - margin));
+}

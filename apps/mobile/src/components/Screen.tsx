@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useRef,
+  useState,
 } from 'react';
 import {
   Keyboard,
@@ -17,34 +18,94 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { keyboardLift } from '../kit/keyboard.ts';
+import { keyboardLift, coveredBy, offsetAboveKeyboard } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 
 const LIFT = keyboardLift(Platform.OS);
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
 
-const ScreenScroll = createContext<RefObject<ScrollView | null> | null>(null);
+interface ScreenScrollView {
+  ref: RefObject<ScrollView | null>;
+  /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
+  resized: Set<() => void>;
+}
 
-/** For a field and the button under it: the lift alone shows the field, and leaves the button behind the keys. */
-export function useAboveKeyboard(): RefObject<View | null> {
+const ScreenScroll = createContext<ScreenScrollView | null>(null);
+
+export interface AboveKeyboard {
+  ref: RefObject<View | null>;
+  onLayout: () => void;
+}
+
+// Not scrollResponderScrollNativeHandleToKeyboard: it measures as if the scroll view began at
+// the top of the window, so under a header it stops short and leaves the button behind the keys.
+function liftAboveKeyboard(
+  scroll: RefObject<ScrollView | null> | undefined,
+  group: View | null,
+  keyboardTop: number | null,
+): void {
+  const view = scroll?.current;
+  const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (view == null || content == null || scrollHost == null) return;
+  if (group == null || keyboardTop == null) return;
+
+  group.measureInWindow((_gx, groupY, _gw, groupHeight) => {
+    if (!coveredBy(keyboardTop, { y: groupY, height: groupHeight }, tokens.spaceLg)) return;
+
+    group.measureLayout(content, (_x, contentY, _w, height) => {
+      scrollHost.measureInWindow((_sx, scrollTop) => {
+        view.scrollTo({
+          y: offsetAboveKeyboard({
+            contentY,
+            height,
+            scrollTop,
+            keyboardTop,
+            margin: tokens.spaceLg,
+          }),
+          animated: true,
+        });
+      });
+    });
+  });
+}
+
+/** For a field and the button under it, spread on their View. It lifts again when an error grows the group. */
+export function useAboveKeyboard(): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
-  const group = useRef<View>(null);
+  const ref = useRef<View>(null);
+  const keyboardTop = useRef<number | null>(
+    Keyboard.isVisible() ? (Keyboard.metrics()?.screenY ?? null) : null,
+  );
 
   useEffect(() => {
-    const shown = Keyboard.addListener('keyboardDidShow', () => {
-      if (group.current == null) return;
-      scroll?.current?.scrollResponderScrollNativeHandleToKeyboard(
-        group.current,
-        tokens.spaceLg,
-        true,
-      );
+    const lift = () => {
+      if (keyboardTop.current != null)
+        liftAboveKeyboard(scroll?.ref, ref.current, keyboardTop.current);
+    };
+    const shown = Keyboard.addListener('keyboardDidShow', (event) => {
+      keyboardTop.current = event.endCoordinates.screenY;
+      lift();
     });
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardTop.current = null;
+    });
+    // On Android the avoiding view shrinks the scroll view after keyboardDidShow, and a scroll
+    // asked for before that is clamped short.
+    scroll?.resized.add(lift);
 
-    return () => shown.remove();
+    return () => {
+      shown.remove();
+      hidden.remove();
+      scroll?.resized.delete(lift);
+    };
   }, [scroll]);
 
-  return group;
+  return {
+    ref,
+    onLayout: () => liftAboveKeyboard(scroll?.ref, ref.current, keyboardTop.current),
+  };
 }
 
 /** For a field that opens a list under it: brings the field to the top of the screen once it mounts. */
@@ -54,10 +115,10 @@ export function useScrolledToTop(): RefObject<View | null> {
 
   useEffect(() => {
     // RN declares getInnerViewRef in ScrollView.js but not in its .d.ts; measureLayout needs that element.
-    const content = (scroll?.current as InnerViewRef | null | undefined)?.getInnerViewRef();
+    const content = (scroll?.ref.current as InnerViewRef | null | undefined)?.getInnerViewRef();
     if (field.current == null || content == null) return;
     field.current.measureLayout(content, (_x, y) => {
-      scroll?.current?.scrollTo({ y: Math.max(0, y - tokens.spaceLg), animated: true });
+      scroll?.ref.current?.scrollTo({ y: Math.max(0, y - tokens.spaceLg), animated: true });
     });
   }, [scroll]);
 
@@ -101,6 +162,10 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const scrollView = useRef<ScrollView>(null);
+  const [screenScroll] = useState<ScreenScrollView>(() => ({
+    ref: scrollView,
+    resized: new Set(),
+  }));
 
   const padding: ViewStyle = {
     paddingTop: edges.includes('top') ? insets.top : 0,
@@ -112,6 +177,7 @@ export function Screen({
   const body = scroll ? (
     <ScrollView
       ref={scrollView}
+      onLayout={() => screenScroll.resized.forEach((resized) => resized())}
       style={styles.fill}
       contentContainerStyle={[styles.content, contentStyle]}
       // So the first tap after typing hits the control rather than only
@@ -127,7 +193,7 @@ export function Screen({
   );
 
   return (
-    <ScreenScroll.Provider value={scroll ? scrollView : null}>
+    <ScreenScroll.Provider value={scroll ? screenScroll : null}>
       <View style={[styles.root, padding, style]}>
         {LIFT.avoid == null ? (
           body
