@@ -649,7 +649,7 @@
     "approvedMark": "Confirmée",
     "approvedTitle": "La double authentification est désactivée",
     "approvedIntro": "Quelqu'un de {{organisations}} a confirmé que c'était vous. Toutes vos sessions sont terminées. Connectez-vous, puis configurez-la à nouveau.",
-    "approvedIntroNobody": "Somebody in your organisation confirmed it was you. Every session you had has ended. Sign in, then set it up again.",
+    "approvedIntroNobody": "Quelqu'un de votre organisation a confirmé que c'était vous. Toutes vos sessions sont terminées. Connectez-vous, puis configurez-la à nouveau.",
     "signIn": "Se connecter",
     "turnedDownMark": "Refusée",
     "turnedDownTitle": "Votre demande a été refusée",
