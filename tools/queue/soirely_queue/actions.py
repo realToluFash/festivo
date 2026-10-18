@@ -460,10 +460,10 @@ def merge(c, a):
                       "checks are green, a pass carries over if the merge changed nothing of the "
                       "pull request's own")
     if c.role in R.LINGUISTS:
-        mine = R.locale_files(c.role)
+        mine = R.linguist_files()
         stray = [path for path, _, _ in github.files(a.pr) if path not in mine]
         if stray:
-            raise Refused(f"a linguist merges only its own locale files; this also changes "
+            raise Refused(f"the linguist merges only locale files; this also changes "
                           f"{', '.join(stray[:5])}")
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"

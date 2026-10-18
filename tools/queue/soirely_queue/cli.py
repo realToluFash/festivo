@@ -476,6 +476,10 @@ def main(argv=None):
         if argv[0] in ADMIN:
             return admin(argv)
         role = argv[0]
+        if role in roles.FORMER:
+            print(f"error: the {role} linguist is now {roles.FORMER[role]}. Stop this routine "
+                  f"(CronDelete) and run /soirely-linguist once.")
+            sys.exit(2)
         if role not in roles.ROLES:
             sys.exit(f"unknown role {role}: one of {', '.join(roles.ROLES)}")
         parser = role_parser(role)

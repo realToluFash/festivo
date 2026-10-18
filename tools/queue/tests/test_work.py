@@ -42,6 +42,16 @@ class Header(unittest.TestCase):
         self.assertEqual(roles.addressees("[dev] (from lead)\n", ["dev2"]), ["dev2"])
         self.assertEqual(roles.addressees("[dev] (from lead)\n", []), ["dev"])
 
+    def test_a_former_locale_tag_or_signature_means_the_linguist(self):
+        self.assertEqual(roles.addressees("[fr] [pm] (from qa2)\n", []), ["l10n", "pm"])
+        self.assertEqual(roles.author("[qa] (from pt)\nDone."), "l10n")
+
+    def test_an_old_locale_thread_is_the_linguists_and_its_reply_answers_it(self):
+        asked = comment(1, "[fr] (from qa2)\nThe French label does not fit.")
+        self.assertEqual([c["id"] for c in work.open_for("l10n", story(comments=[asked]))], [1])
+        answered = comment(2, "[qa2] (from fr)\nShortened.", parent=1)
+        self.assertEqual(work.open_for("l10n", story(comments=[asked, answered])), [])
+
     def test_a_report_with_no_header_is_for_nobody(self):
         self.assertEqual(roles.addressees("A QA report\n[pm] (from qa)", []), [])
 
@@ -190,6 +200,23 @@ class Carried(unittest.TestCase):
         self.assertEqual(self.asked, [])
         self.assertEqual(kinds(work.developer_items([story()], [merged])), ["merged-unpassed"])
 
+    def test_a_merged_pull_request_keeps_the_carry_made_while_open(self):
+        before = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
+        merged = pr(state="merged", lead=[verdict("pass", OLD[:7])])
+        kept = work.carried(merged, {}, self.same(False), before)
+        self.assertEqual(kept, OLD[:7])
+        self.assertEqual(self.asked, [])
+        merged["carried"] = kept
+        self.assertEqual(kinds(work.developer_items([story()], [merged])), ["to-qa"])
+
+    def test_a_merged_head_keeps_no_carry_made_at_another_head_or_pass(self):
+        merged = pr(state="merged", lead=[verdict("pass", OLD[:7])])
+        for before in (pr(head="c" * 40, lead=[verdict("pass", OLD[:7])], carried=OLD[:7]),
+                       pr(lead=[verdict("pass", "d" * 7)], carried="d" * 7),
+                       pr(lead=[verdict("pass", OLD[:7])])):
+            self.assertIsNone(work.carried(merged, {}, self.same(True), before))
+        self.assertEqual(self.asked, [])
+
     def test_nothing_to_carry_without_a_pass_or_with_one_at_the_head(self):
         for lead in ([], [verdict("back", OLD)], [verdict("pass", HEAD[:7])]):
             self.assertIsNone(work.carried(pr(lead=lead), {}, self.same(True)))
@@ -214,8 +241,7 @@ class Queue(unittest.TestCase):
 
     def test_a_translation_ticket_is_only_the_linguists(self):
         items = work.queue_items([story(state="To Do", labels=["translation"])])
-        self.assertEqual(sorted(r for i in items for r in i["roles"]),
-                         ["en", "es", "fr", "pt"])
+        self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"])
 
     def test_a_role_s_own_move_is_no_wake_for_it(self):
         moved = story(state="To Do", moved_at="t1")
@@ -280,7 +306,7 @@ class EveryWakeStillHappens(unittest.TestCase):
     def test_each_role_s_heartbeat(self):
         waiting = story(state="Ready For QA", moved_at="t1")
         found = self.woken([waiting], moves={(1, "Ready For QA", "t1"): "dev2"}, last_runs={})
-        for role in ("pm", "ux", "bm", "ops", "en", "cd"):
+        for role in ("pm", "ux", "bm", "ops", "l10n", "cd"):
             self.assertIn(("sweep", role), found)
         for role in ("qa", "qa2", "qa3"):
             self.assertIn(("pick", role), found)

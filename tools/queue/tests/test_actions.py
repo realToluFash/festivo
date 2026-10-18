@@ -4,7 +4,7 @@ import argparse
 import unittest
 from unittest import mock
 
-from soirely_queue import actions, cli, roles, store
+from soirely_queue import actions, cli, roles, store, sync
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
           "5": "In QA", "6": "Passsed QA", "7": "Failed QA", "8": "Backlog"}
@@ -275,6 +275,21 @@ class Merging(Base):
         with self.assertRaisesRegex(actions.Refused, "no lead pass covers"):
             actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
 
+    def test_to_qa_takes_a_merge_at_the_head_a_pass_carried_to(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.set_meta(self.db, "repository", ["o", "n"])
+        store.put_pr(self.db, pr("pass", at=OLD[:7], carried=OLD[:7]))
+        merged = {**pr("pass", at=OLD[:7]), "state": "merged", "merge_sha": "m" * 40}
+        del merged["carried"]
+        with mock.patch("soirely_queue.github.pull_requests", return_value=[merged]), \
+                mock.patch("soirely_queue.github.main_runs", return_value=[]), \
+                mock.patch("soirely_queue.github.same_change") as same:
+            sync.sync_github(self.db)
+        same.assert_not_called()
+        actions.to_qa(self.as_("dev2"), args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("m" * 40, self.fake.comments[-1][1])
+
     def test_a_passed_merge_lands_at_the_head_and_tells_qa(self):
         self.fake.add(1, "In Review", ["dev2"])
         store.put_pr(self.db, pr("pass"))
@@ -287,14 +302,24 @@ class Merging(Base):
         self.assertIn("[qa] (from dev2)", self.fake.comments[-1][1])
         self.assertIn("m" * 40, self.fake.comments[-1][1])
 
-    def test_a_linguist_merges_with_a_merge_commit(self):
+    def test_the_linguist_merges_every_locale_with_a_merge_commit(self):
         store.put_pr(self.db, pr())
-        mine = [(path, 1, 0) for path in sorted(roles.locale_files("fr"))]
+        mine = [(path, 1, 0) for path in sorted(roles.linguist_files())]
         with mock.patch("soirely_queue.github.live", return_value=self.live()), \
                 mock.patch("soirely_queue.github.files", return_value=mine), \
                 mock.patch("soirely_queue.github.merge") as merge:
-            actions.merge(self.as_("fr"), args(pr=9, text=None))
+            actions.merge(self.as_("l10n"), args(pr=9, text=None))
         merge.assert_called_once_with(9, HEAD, delete_branch=True)
+
+    def test_the_linguist_merges_no_code(self):
+        store.put_pr(self.db, pr())
+        files = [("apps/web/src/i18n/locales/fr.json", 1, 0), ("apps/web/src/App.tsx", 1, 0)]
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.files", return_value=files), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "only locale files.*App.tsx"):
+                actions.merge(self.as_("l10n"), args(pr=9, text=None))
+            merge.assert_not_called()
 
     def test_a_pass_with_a_blocking_finding_is_refused_before_posting(self):
         self.fake.add(1, "In Review")
