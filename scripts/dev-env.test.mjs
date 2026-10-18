@@ -54,7 +54,8 @@ describe('a second developer’s stack', () => {
 describe('the other roles’ stacks', () => {
   it('each have a worktree named for the role', () => {
     expect(roleConfig('lead').project).toBe('soirely-lead');
-    expect(roleOf('/Users/x/Projects/soirely-fr')).toBe('fr');
+    expect(roleOf('/Users/x/Projects/soirely-l10n')).toBe('l10n');
+    expect(roleOf('/Users/x/Projects/soirely-fr')).toBeNull();
     expect(roleOf('/Users/x/Projects/soirely-qa')).toBeNull();
     expect(roleOf('/Users/x/Projects/soirely')).toBeNull();
   });
@@ -66,9 +67,9 @@ describe('the other roles’ stacks', () => {
 
   it('write the role into .env', () => {
     const example = readFileSync(new URL('../.env.example', import.meta.url), 'utf8');
-    const rendered = renderDevEnv(example, roleConfig('es'));
-    expect(rendered).toMatch(/^COMPOSE_PROJECT_NAME=soirely-es$/m);
-    expect(rendered).toMatch(/^API_PORT=33080$/m);
-    expect(rendered).toMatch(/^# The es stack/m);
+    const rendered = renderDevEnv(example, roleConfig('l10n'));
+    expect(rendered).toMatch(/^COMPOSE_PROJECT_NAME=soirely-l10n$/m);
+    expect(rendered).toMatch(/^API_PORT=23080$/m);
+    expect(rendered).toMatch(/^# The l10n stack/m);
   });
 });

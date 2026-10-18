@@ -1,6 +1,6 @@
 # French at Soirely
 
-Kept by `/soirely-linguist fr`. Read it before writing a string in French, and add to it
+Kept by `/soirely-linguist`. Read it before writing a string in French, and add to it
 whenever you decide something a second string will need.
 
 ## Variant and register

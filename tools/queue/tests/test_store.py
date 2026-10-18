@@ -56,3 +56,17 @@ class Claims(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FormerLinguists(unittest.TestCase):
+    def test_what_the_locale_roles_dealt_with_and_noted_is_the_linguists(self):
+        db = store.connect(":memory:")
+        store.mark_handled(db, "fr", [41, 42])
+        store.mark_handled(db, "pm", [43])
+        store.add_note(db, "pt", 7, "pt merged at abc1234", NOW)
+        store.merge_linguists(db)
+        store.merge_linguists(db)
+        self.assertLessEqual({("l10n", 41), ("l10n", 42)}, store.handled(db))
+        self.assertNotIn(("l10n", 43), store.handled(db))
+        self.assertEqual([row["note"] for row in store.notes(db, "l10n", 7)],
+                         ["pt merged at abc1234"])
