@@ -58,7 +58,6 @@ export function ConfirmItsYou({
   const [checking, setChecking] = useState(false);
   // The API's kept proof once a sign-in waits for its code: Google's or Apple's is single-use (RFC 6749 §4.1.2).
   const kept = useRef<string | null>(null);
-  const arrival = useRef<Promise<void> | null>(null);
   // Turned on in the two-factor card since this page loaded: the API says so, and the field appears.
   const [codeAsked, setCodeAsked] = useState(twoFactorOn);
   const passwordInput = useRef<HTMLInputElement>(null);
@@ -81,8 +80,6 @@ export function ConfirmItsYou({
     event.preventDefault();
     if (checking || !checks.passes({ password, code })) return;
 
-    // A code typed while the sign-in is still being exchanged waits for its kept proof.
-    await arrival.current;
     await send(codeAsked ? code.trim() : undefined);
   }
 
@@ -141,7 +138,7 @@ export function ConfirmItsYou({
     heading.current?.focus();
     if (signIn == null || exchanged.current) return;
     exchanged.current = true;
-    arrival.current = send(undefined);
+    void send(undefined);
     // Once, on arrival: what came back from the provider is taken then and never again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
