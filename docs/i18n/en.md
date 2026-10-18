@@ -40,6 +40,34 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A cost line's rate or amount, too many decimals (sc-83, `CostLine`).** Two
+  keys, one per field label: "That has too many decimal places for this event's currency.
+  Enter the rate like {{example}}." on a rated line, and "… Enter the amount like
+  {{example}}." on a `fixed` line, whose field is labelled Amount. `{{example}}` as sc-88's,
+  at the currency's minor unit ("12" for JPY, "12.50" for GBP, "12.500" for KWD). Won over
+  "rate" on every line, because a refusal names the field the person is looking at (as
+  sc-90's "Enter the ceiling like", and sc-88's "Enter the amount in {{currency}}"), and over
+  one key with the field as a slot, because "rate" and "amount" take different articles and
+  genders in es, fr and pt, so a slot would leave them no way to agree.
+- **18 Oct 2026. The budget ceiling's form and warnings (sc-90, `Ceiling`).** Too many
+  decimals, one key for every currency: "That has too many decimal places for this event's
+  currency. Enter the ceiling like {{example}}.", with `{{example}}` built as sc-88's (from
+  20000, or 20000.5 when the currency has a minor unit: "20,000" for JPY, "20,000.50" for GBP,
+  "20,000.500" for KWD). Not a number: "Enter the ceiling as a number, like {{example}}."
+  Below 0: "The ceiling cannot be below 0. Enter 0 or more." Another currency: "Enter the
+  ceiling in {{currency}}, the currency this event uses." (sc-88's shape). Announced on Save:
+  "One field needs fixing, so nothing was sent." / "{{count}} fields need fixing, so nothing
+  was sent." (plural keys). Saved: "Ceiling saved." The rate-edit warning names the ceiling:
+  "{{rate}} takes the event over its ceiling." or "{{rate}} takes {{category}} over its
+  ceiling.", then "Settled, it would be {{total}} against {{ceiling}}. You can still save it."
+  or "If everyone comes, it would be {{total}} against {{ceiling}}. You can still save it."
+  The four state words stay as drawn (Within, Close, Over if all come, Over); sentences say
+  "if everyone comes", never "if everybody still to answer says yes". Won over the drawn
+  "British pounds use at most 2 decimal places", which puts a currency's plural name into
+  prose (agreement in es, fr and pt), needs a sentence per decimal count, and breaks sc-88's
+  rule that the example shows the rule and the words never name a decimal count; and over
+  "Settled would be", which is not a sentence. "Close" is a state word, not the dialog's
+  close button: its own key.
 - **17 Oct 2026. Share-link passphrase (sc-94, `ShareLinks`, `SharedBudget-*`).** "Make the
   passphrase at least {{count}} characters long, or leave it empty."; over the limit, "Shorten
   the passphrase to {{count}} characters or fewer."; locked, "Too many wrong passphrases have
