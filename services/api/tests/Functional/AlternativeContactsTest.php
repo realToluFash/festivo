@@ -345,7 +345,7 @@ final class AlternativeContactsTest extends ApiTestCase
     /** @return list<string> */
     private function audited(): array
     {
-        $entries = self::em()->getRepository(AuditEntry::class)->findBy(['subjectId' => $this->user->getId()], ['occurredAt' => 'ASC']);
+        $entries = self::em()->getRepository(AuditEntry::class)->findBy(['subjectId' => $this->user->getId()], ['occurredAt' => 'ASC', 'id' => 'ASC']);
 
         return Vec\values(Vec\filter(
             Vec\map($entries, static fn (AuditEntry $entry): string => $entry->action()),
