@@ -214,6 +214,7 @@
     "signOut": "Se déconnecter",
     "doneTitle": "Adresse vérifiée",
     "doneBody": "{{address}} est confirmée. Ensuite, quelques informations pour que votre équipe sache qui est qui.",
+    "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
     "continue": "Continuer",
     "failedTitle": "Cela n'a pas fonctionné",
     "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant.",
@@ -246,6 +247,7 @@
     "carryOnWithout": "Continuer sans",
     "doneTitle": "Numéro vérifié",
     "doneBody": "Soirely peut vous joindre au {{number}} si un problème survient le soir même.",
+    "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
     "continue": "Continuer vers Soirely",
     "changeTitle": "Changez votre numéro de portable",
     "nowVerified": "Actuel : {{number}} · vérifié",
@@ -855,6 +857,8 @@
     "promoted": "{{address}} is now your primary address. Sign in with it from now on.",
     "promotedPhone": "{{number}} is now your primary number.",
     "removed": "{{address}} is removed.",
+    "verifiedDone": "{{address}} is verified.",
+    "verifiedDonePhone": "{{number}} is verified.",
     "refusedPrimary": "This is the address you sign in with. Make another one primary first.",
     "refusedPrimaryPhone": "This is your primary number. Make another one primary first.",
     "refusedLastVerified": "This is your only verified address, the one proof the account is yours. Verify another before removing this one.",
@@ -862,6 +866,9 @@
     "refusedNotVerified": "Verify this address before making it primary.",
     "refusedNotVerifiedPhone": "Verify this number before making it primary.",
     "failed": "That did not work. Try again.",
-    "proveIntro": "Confirm it's you before changing the address you sign in with."
+    "proveIntro": "Confirm it's you before changing the address you sign in with.",
+    "backToAccount": "Back to Account",
+    "removeInAccount": "Remove it in Account",
+    "removeInAccountPhone": "Remove it in Account"
   }
 }
