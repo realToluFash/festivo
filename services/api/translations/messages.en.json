@@ -21,7 +21,7 @@
     "roles.name_builtin": "A built-in role keeps its name.",
     "roles.name_required": "Give the role a name.",
     "roles.name_taken": "A role with that name already exists.",
-    "roles.name_too_long": "That is longer than {count} characters.",
+    "roles.name_too_long": "Shorten the name to {count} characters or fewer.",
     "roles.owner_fixed": "Owner is built in and can't be edited or removed. It always has everything.",
     "roles.permission_unknown": "That is not a permission Soirely has.",
     "roles.replacement_invalid": "Choose another role in this organisation.",
