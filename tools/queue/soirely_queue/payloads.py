@@ -111,6 +111,17 @@ def review(p, db, row, story, pr, cache):
                f"{SQ} lead done {row['id']} --note \"<one line>\"")
 
 
+def threads(p, pr, story, row):
+    p.add(*V.header(story))
+    V.notes(p, story)
+    V.pr_status(p, pr)
+    n = pr["number"]
+    next_lines(p, f"{SQ} lead resolve {n} <comment id> --text \"…\"   (the reply settles it)",
+               f"{SQ} lead pr-reply {n} <comment id> --text \"…\"   (it does not; stays open)",
+               f"{SQ} lead diff {n} <path>",
+               f"{SQ} lead done {row['id']} --note \"<one line>\"")
+
+
 def checks_red(p, pr, story, row):
     V.pr_status(p, pr, compact=True)
     failed = [c for c in github.pr_checks(pr["number"]) if c.get("bucket") == "fail"]
@@ -164,6 +175,8 @@ def render(p, db, row, cache):
         return inbox(p, db, row, story)
     if kind == "review":
         return review(p, db, row, story, pr, cache)
+    if kind == "threads":
+        return threads(p, pr, story, row)
     if kind == "checks-red":
         p.add(*V.header(story))
         return checks_red(p, pr, story, row)

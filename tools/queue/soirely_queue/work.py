@@ -1,5 +1,7 @@
 """Turns what the sync stored into the work each role has waiting. No network here."""
 
+import re
+
 from . import roles as R
 
 INBOX, PULL_REQUEST, REVIEW, QUEUE, SWEEP = 10, 20, 30, 40, 90
@@ -48,6 +50,25 @@ def covers(verdict, sha):
 
 def open_threads(pr):
     return [t for t in pr["threads"] if not t["resolved"]]
+
+
+FINDING = re.compile(r"^\s*(blocking|should|nit)\b", re.I)
+SIGNED = re.compile(r"\(from ([a-z0-9]+)\)")
+
+
+def answered_findings(pr):
+    """Open threads the lead started with a finding whose last word is someone else's, so
+    the lead has a reply to check and a thread to resolve or answer."""
+    found = []
+    for t in open_threads(pr):
+        first, last = (t["comments"][0], t["comments"][-1]) if t["comments"] else (None, None)
+        if not first or last is first or not FINDING.match(first["text"]):
+            continue
+        signed = SIGNED.findall(last["text"])
+        if signed and signed[-1] == "lead":
+            continue
+        found.append(t)
+    return found
 
 
 def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None, comments=None):
@@ -129,6 +150,21 @@ def review_items(stories, prs):
                                "lead", ["lead"], "review",
                                f"review sc-{story['id']}, PR #{pr['number']} at {sha[:7]}: {why}"
                                f"{', checks red' if pr['checks'] == 'red' else ''}",
+                               REVIEW, story, pr))
+    # A review item already shows every open thread; otherwise a reply in one of the
+    # lead's threads is work of its own, whatever state the story is in.
+    reviewing = {item["pr"] for item in items}
+    by_id = {story["id"]: story for story in stories}
+    for pr in prs:
+        story = by_id.get(pr["story_id"])
+        if pr["state"] != "open" or pr["number"] in reviewing or not story or story["done"]:
+            continue
+        answered = answered_findings(pr)
+        if answered:
+            last = max(t["comments"][-1]["id"] for t in answered)
+            items.append(_item(f"lead:threads:#{pr['number']}@{last}", "lead", ["lead"],
+                               "threads", f"replies on your findings on PR #{pr['number']} "
+                               f"(sc-{story['id']}): {len(answered)} open threads",
                                REVIEW, story, pr))
     return items
 

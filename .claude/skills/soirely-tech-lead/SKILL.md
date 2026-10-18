@@ -198,6 +198,11 @@ thread you opened:
 An open thread means a finding still stands, and the developer merges only when none are
 open. A thread resolved by somebody other than you is reopened and re-checked.
 
+A reply on one of your findings with no new push (the developer keeping the code as it is,
+or answering a `should` or `nit` after your pass) comes to you as a `threads` item, whatever
+state the story is in. Treat it the same way: resolve what the reply settles, answer what it
+does not, because a pass with an open thread still holds the merge.
+
 ```sh
 sq lead pr 61                                                  # open and resolved threads, with comment ids
 sq lead resolve 61 <comment id> --text "Resolved in <short sha>."  # reply in the thread, then resolve it
