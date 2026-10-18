@@ -335,6 +335,18 @@ describe('Settings > Roles', () => {
     ).toBeDefined();
   });
 
+  it('refuses a seeded role’s name in another language before sending', async () => {
+    const sent = answering();
+    await roles();
+    fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'COORDINATEUR' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+
+    expect(screen.getByText('A role with that name already exists.')).toBeDefined();
+    expect(sent.some((request) => request.method === 'POST')).toBe(false);
+  });
+
   it('opens a role on its own page at narrow widths, with Roles to go back', async () => {
     answering();
     await roles();
