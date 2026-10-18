@@ -355,6 +355,35 @@ def live(number):
             "mergeCommit": pull["merge_commit_sha"] if pull.get("merged") else None}
 
 
+HUNK = re.compile(r"^@@[^\n]*", re.M)
+UNCOMPARABLE = re.compile(r"HTTP 4(04|22)")
+
+
+def change_key(files):
+    """What a comparison changes, without hunk positions: merging main in moves a hunk without
+    changing it. None for no change at all, which every merged head shows, or when GitHub
+    leaves out a patch or the list, so nothing is assumed."""
+    if not files or len(files) >= 300 or any("patch" not in f for f in files):
+        return None
+    return sorted((f["filename"], f.get("previous_filename"), f["status"],
+                   HUNK.sub("@@", f["patch"])) for f in files)
+
+
+def same_change(before, after):
+    """Whether `after` changes main exactly as `before` did. A sha GitHub cannot compare, as
+    after a force-push, never will be, so it answers no rather than failing."""
+    try:
+        keys = [change_key(api(f"{repo_path()}/compare/main...{sha}").get("files") or [])
+                for sha in (before, after)]
+    except RateLimited:
+        raise
+    except GitHubError as error:
+        if UNCOMPARABLE.search(str(error)):
+            return False
+        raise
+    return keys[0] is not None and keys[0] == keys[1]
+
+
 def post_review(owner, name, number, head, body, comments):
     payload = {"commit_id": head, "event": "COMMENT", "body": body,
                "comments": [{"path": c["path"], "line": c["line"], "side": "RIGHT",
