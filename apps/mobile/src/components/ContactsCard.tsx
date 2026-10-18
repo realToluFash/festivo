@@ -192,12 +192,14 @@ function ContactsCard({
                     weight="semibold"
                     style={row.verified ? styles.on : styles.secondary}
                   >
-                    {row.verified ? t('contacts.verified') : t('contacts.unverified')}
+                    {row.verified
+                      ? t(email ? 'contacts.verified' : 'contacts.verifiedPhone')
+                      : t('contacts.unverified')}
                   </Text>
                   {row.primary && (
                     <View style={styles.pill}>
                       <Text size={tokens.typePill.size} weight="semibold" style={styles.secondary}>
-                        {t('contacts.primary')}
+                        {t(email ? 'contacts.primary' : 'contacts.primaryPhone')}
                       </Text>
                     </View>
                   )}
@@ -217,7 +219,7 @@ function ContactsCard({
               )}
               {here == null && offers.makePrimary && (
                 <SecondaryButton
-                  label={t('contacts.makePrimary')}
+                  label={t(email ? 'contacts.makePrimary' : 'contacts.makePrimaryPhone')}
                   onPress={() =>
                     email ? setAsking({ id: row.id, what: 'promote' }) : void act(row, 'promote')
                   }
@@ -268,7 +270,7 @@ function ContactsCard({
                     label={
                       here === 'promote'
                         ? t('contacts.promoteConfirm')
-                        : t('contacts.removeConfirm')
+                        : t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')
                     }
                     onPress={() => void act(row, here)}
                     testID={`contacts.${row.id}.confirm`}
@@ -277,7 +279,7 @@ function ContactsCard({
                     label={
                       here === 'promote'
                         ? t('contacts.promoteKeep', { old: primary?.shown ?? '' })
-                        : t('contacts.removeKeep')
+                        : t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')
                     }
                     onPress={() => setAsking(null)}
                     testID={`contacts.${row.id}.keep`}
