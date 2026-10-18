@@ -40,6 +40,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The Roles refusals (sc-66, sc-2150, `messages:roles.*`).** Error bodies
+  take no contractions: "Owner is built in and cannot be changed or removed. It always has
+  everything." ("changed", not "edited", as the screen's grid says "change"). A built-in role
+  says what is still allowed: "Built-in roles cannot be renamed. You can still change what this
+  one holds." and "Built-in roles cannot be removed, but you can change what they hold. If
+  nobody needs this one, leave it unassigned." "Someone", not "somebody", as in the locked row.
+  An unknown permission is a stale page: "Soirely has no permission by that name. Reload the
+  page and try again." Over the limit, the house phrase "Shorten the name to {count}
+  characters or fewer." is wanted over "That is longer than {count} characters.", which says
+  what is wrong but not what to do; the API test pins the old text, so that change waits on
+  [dev] (sc-2150). Translate it in the wanted shape.
 - **18 Oct 2026. Primary and other addresses (sc-113, `contacts.*`, `Account-*`).** The
   primary signs in; any other address or number only reaches the person: "Other addresses can
   reach you, but they cannot sign you in." / "Other numbers can reach you too." Never write a
