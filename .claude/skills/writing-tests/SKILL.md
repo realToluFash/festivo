@@ -111,6 +111,9 @@ Two things this makes tempting and wrong:
 
 - **Do not assert on an auto-increment value or on row order without an `ORDER BY`.** The
   rollback does not reset a sequence.
+- **An order assertion sorts on a unique key, or ends its `ORDER BY` with one.** The
+  `occurred_at` columns are `TIMESTAMP(0)`, so rows written in one test tie, and a tie
+  comes back in any order. Break it with the UUIDv7 `id`, which is time-ordered.
 - **Code that opens its own transaction** sees a transaction already open. If something
   needs to commit for real, it cannot be tested this way, and that is worth saying in the
   test rather than working around.
