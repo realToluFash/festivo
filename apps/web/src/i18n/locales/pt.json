@@ -723,7 +723,7 @@
     "holders_other": "{{count}} pessoas",
     "nameLabel": "Nome da função",
     "nameBlank": "Dê um nome à função.",
-    "nameTooLong": "O nome pode ter no máximo {{most}} caracteres.",
+    "nameTooLong": "Encurte o nome para um máximo de {{most}} caracteres.",
     "nameTaken": "Já existe uma função com esse nome.",
     "describeOwner": "Tudo, incluindo o que a Soirely acrescentar mais tarde.",
     "describeSeeded": "É predefinida, por isso não pode ser removida. É você quem escolhe o que inclui.",
