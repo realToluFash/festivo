@@ -22,9 +22,12 @@ type Stage =
 export function TwoFactorCard({
   email,
   onBusy,
+  recount,
 }: {
   email: string;
   onBusy: (busy: boolean) => void;
+  /** Changes when another card spent a code, so the unused count is asked for again. */
+  recount: number;
 }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
@@ -46,6 +49,22 @@ export function TwoFactorCard({
       live = false;
     };
   }, [attempt]);
+
+  useEffect(() => {
+    if (recount === 0) return;
+    let live = true;
+
+    api
+      .twoFactorStatus()
+      .then((status) => {
+        if (live) setStage((now) => (now.kind === 'at-rest' ? { kind: 'at-rest', status } : now));
+      })
+      .catch(() => {});
+
+    return () => {
+      live = false;
+    };
+  }, [recount]);
 
   const busy = stage.kind === 'setting-up' || stage.kind === 'saving-codes';
   useEffect(() => onBusy(busy), [busy, onBusy]);

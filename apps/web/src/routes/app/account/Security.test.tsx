@@ -582,6 +582,53 @@ describe('signing out everywhere else', () => {
     });
   });
 
+  it('counts the recovery code it spent on the two-factor card, without leaving the page', async () => {
+    let left = 9;
+    stub(
+      {
+        'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: left }),
+        'POST /api/auth/proof': () => {
+          left = 8;
+
+          return json({ proof: 'p-1', expiresAt: '' });
+        },
+        'POST /api/auth/sessions/others': () => json({ signedOut: 2, thisDevice: false }),
+      },
+      true,
+    );
+
+    await openCheck();
+    expect(await screen.findByText('9 of 10 unused · each works once')).toBeDefined();
+    fireEvent.change(password(), { target: { value: 'a decent passphrase' } });
+    fireEvent.change(await screen.findByLabelText('Code'), { target: { value: 'abcd-efgh' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
+
+    expect(await screen.findByText('8 of 10 unused · each works once')).toBeDefined();
+  });
+
+  it('leaves the count as it was when the code is refused', async () => {
+    const sent = stub(
+      {
+        'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 9 }),
+        'POST /api/auth/proof': () => problem('two_factor_code_invalid', 422),
+      },
+      true,
+    );
+
+    await openCheck();
+    fireEvent.change(password(), { target: { value: 'a decent passphrase' } });
+    fireEvent.change(await screen.findByLabelText('Code'), { target: { value: '000000' } });
+    const asked = () => sent.filter((entry) => entry.call === 'GET /api/auth/two-factor').length;
+    const before = asked();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign them out' }));
+
+    await screen.findByText(
+      'That code did not work. Enter the code your app shows now, or an unused recovery code.',
+    );
+    expect(screen.getByText('9 of 10 unused · each works once')).toBeDefined();
+    expect(asked()).toBe(before);
+  });
+
   it('says a wrong code is wrong, under the code', async () => {
     stub({ 'POST /api/auth/proof': () => problem('two_factor_code_invalid', 422) }, true);
 
