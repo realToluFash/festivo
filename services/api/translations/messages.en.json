@@ -4,7 +4,7 @@
     "actor.system": "System",
     "actor.user": "Account holder",
     "contacts.already_linked": "That is already linked to an account. Add a different one.",
-    "contacts.last_verified_email": "This is the one proof the account is yours. Verify another before removing this one.",
+    "contacts.last_verified_email": "This is the only verified address on the account, the one proof it is yours. Verify another before removing this one.",
     "contacts.last_verified_phone": "This is the only verified number on the account. Verify another before removing this one.",
     "contacts.limit_email": "An account holds {count} email addresses. Remove one to add another.",
     "contacts.limit_phone": "An account holds {count} phone numbers. Remove one to add another.",

@@ -40,6 +40,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Primary and other addresses (sc-113, `contacts.*`, `Account-*`).** The
+  primary signs in; any other address or number only reaches the person: "Other addresses can
+  reach you, but they cannot sign you in." / "Other numbers can reach you too." Never write a
+  line that implies a verified alternative will sign in or get account mail: the add hint is
+  "We email a code to prove it is yours. Until then it stays unverified." (the phone's says
+  "We text"). The cap reads the same in the card and from the server: "An account holds
+  {{most}} email addresses. Remove one to add another." Done line: "{{address}} has been
+  removed." Won over "only reaches you", which reads as "reaches only you", and over "You can
+  link", which states the cap as a permission rather than a rule.
 - **18 Oct 2026. A grid row the viewer cannot change (sc-66, `Roles-*` v30, `caller_limited`).**
   Under the locked row: "Only someone who can change {{area}} can set this. It stays as it is
   when you save." The inset above the grid, plural on `{{count}}` locked areas: "You can change
