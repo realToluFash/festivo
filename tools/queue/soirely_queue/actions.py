@@ -414,9 +414,10 @@ def resolve(c, a):
     owner, name = c.repository()
     pr = c.pr(a.pr)
     found = thread_of(pr, a.comment)
+    # Resolving first: when GraphQL is spent it fails, and nothing is posted to be repeated.
+    github.resolve(found["id"])
     if a.text:
         github.reply(owner, name, a.pr, found["comments"][0]["id"], a.text)
-    github.resolve(found["id"])
     sync.sync_github(c.db)
     return f"resolved {found['path']}:{found['line'] or '-'} on PR #{a.pr}"
 
