@@ -70,6 +70,24 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+function me({ timezone }: { timezone: string }): Response {
+  return json({
+    id: 'acc_1',
+    name: 'Folake Ire',
+    businessName: null,
+    countryCode: null,
+    locale: 'en',
+    timezone,
+    verified: true,
+    complete: true,
+    needsOrganisation: false,
+    hasPassword: true,
+    providers: [],
+    emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
+    phoneNumbers: [],
+  });
+}
+
 function open(session: Partial<Session> = {}) {
   __setSessionState({ status: 'signedIn', session: { ...FOLAKE, ...session } });
 
@@ -123,24 +141,7 @@ describe("the account's time zone", () => {
   it('finds a zone by its country, picks it, and saves it', async () => {
     const sent = answering({
       'PUT /api/auth/timezone': () => json({ timezone: 'Europe/London' }),
-      'GET /api/auth/me': () =>
-        json({
-          id: 'acc_1',
-          name: 'Folake Ire',
-          businessName: null,
-          countryCode: null,
-          locale: 'en',
-          timezone: 'Europe/London',
-          verified: true,
-          complete: true,
-          needsOrganisation: false,
-          hasPassword: true,
-          providers: [],
-          emailAddresses: [
-            { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },
-          ],
-          phoneNumbers: [],
-        }),
+      'GET /api/auth/me': () => me({ timezone: 'Europe/London' }),
       'GET /api/orgs': () => json({ organisations: [] }),
     });
     open();
@@ -229,11 +230,16 @@ const ZONES_FR = [
   },
 ];
 
-function answeringByLanguage(french: Promise<Response> | null = null): string[] {
+function answeringByLanguage(
+  french: Promise<Response> | null = null,
+  answers: Record<string, () => Response> = {},
+): string[] {
   const asked: string[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const call = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+    const answer = answers[call];
+    if (answer != null) return answer();
     if (call !== 'GET /api/auth/timezones') throw new Error(`Nothing stubbed for ${call}`);
 
     const language = new Headers(init?.headers).get('Accept-Language') ?? '';
@@ -313,6 +319,67 @@ describe('the time zone list after a language change', () => {
     expect(vi.mocked(fetch).mock.calls.some(([, init]) => (init?.method ?? 'GET') !== 'GET')).toBe(
       false,
     );
+  });
+
+  const SAVING_KOLKATA = {
+    'PUT /api/auth/timezone': () => json({ timezone: 'Asia/Kolkata' }),
+    'GET /api/auth/me': () => me({ timezone: 'Asia/Kolkata' }),
+    'GET /api/orgs': () => json({ organisations: [] }),
+  };
+
+  async function saveKolkata(): Promise<void> {
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.change(zoneInput(), { target: { value: 'india' } });
+    fireEvent.click(screen.getByRole('option', { name: /Kolkata \(UTC\+05:30\)/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save time zone' }));
+
+    expect(
+      await screen.findByText(
+        'Time zone changed to Kolkata (UTC+05:30). Times in your emails now use it.',
+      ),
+    ).toBeDefined();
+  }
+
+  it('names the saved zone in the new language in its confirmation, and back again', async () => {
+    const asked = answeringByLanguage(null, SAVING_KOLKATA);
+    open();
+    await saveKolkata();
+
+    await act(() => setLanguage('fr'));
+
+    expect(
+      await screen.findByText(
+        "Fuseau horaire changé pour Calcutta (UTC+05:30). Les heures de vos e-mails l'utilisent désormais.",
+      ),
+    ).toBeDefined();
+
+    await act(() => setLanguage('en'));
+
+    expect(
+      await screen.findByText(
+        'Time zone changed to Kolkata (UTC+05:30). Times in your emails now use it.',
+      ),
+    ).toBeDefined();
+    expect(asked).toEqual(['en', 'fr', 'en']);
+    expect(screen.getByRole('button', { name: 'Change' })).toBeDefined();
+  });
+
+  it('keeps the saved name shown while the new list is on its way, and if it never comes', async () => {
+    let release: (response: Response) => void = () => {};
+    answeringByLanguage(new Promise((resolve) => (release = resolve)), SAVING_KOLKATA);
+    open();
+    await saveKolkata();
+
+    await act(() => setLanguage('fr'));
+
+    const kept =
+      "Fuseau horaire changé pour Kolkata (UTC+05:30). Les heures de vos e-mails l'utilisent désormais.";
+    expect(screen.getByText(kept)).toBeDefined();
+
+    await act(async () => release(json({ type: 'x', title: 'x', status: 500 }, 500)));
+
+    expect(screen.getByText(kept)).toBeDefined();
+    expect(screen.getByRole('status').textContent).not.toContain('Asia/');
   });
 
   it('reads a picked zone in the new language', async () => {
