@@ -456,8 +456,8 @@ def merge(c, a):
         if stray:
             raise Refused(f"a linguist merges only its own locale files; this also changes "
                           f"{', '.join(stray[:5])}")
-        github.merge(a.pr, head, method="squash", delete_branch=True)
-        return f"merged PR #{a.pr} (squash)"
+        github.merge(a.pr, head, delete_branch=True)
+        return f"merged PR #{a.pr}"
     story = c.story(pr["story_id"]) if pr["story_id"] else None
     if not story or story["state"] != "In Review":
         raise Refused(f"its story is {story['state'] if story else 'unknown'}, not In Review")

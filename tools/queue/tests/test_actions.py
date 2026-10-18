@@ -4,7 +4,7 @@ import argparse
 import unittest
 from unittest import mock
 
-from soirely_queue import actions, store
+from soirely_queue import actions, roles, store
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
           "5": "In QA", "6": "Passsed QA", "7": "Failed QA"}
@@ -188,6 +188,15 @@ class Merging(Base):
         self.assertEqual(self.state(1), "Ready For QA")
         self.assertIn("[qa] (from dev2)", self.fake.comments[-1][1])
         self.assertIn("m" * 40, self.fake.comments[-1][1])
+
+    def test_a_linguist_merges_with_a_merge_commit(self):
+        store.put_pr(self.db, pr())
+        mine = [(path, 1, 0) for path in sorted(roles.locale_files("fr"))]
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.files", return_value=mine), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            actions.merge(self.as_("fr"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD, delete_branch=True)
 
     def test_a_pass_with_a_blocking_finding_is_refused_before_posting(self):
         self.fake.add(1, "In Review")

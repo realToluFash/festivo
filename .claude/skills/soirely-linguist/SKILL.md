@@ -184,8 +184,8 @@ the feature merges.
    `create-pr`'s show-and-wait step. Its Evidence of work lists each key with its old and
    new text. Answer a review comment with `sq fr pr-reply N <comment id>`.
 7. **Merge it yourself** once its checks are green on the head commit: `sq fr merge N`. It
-   squashes, deletes the branch, and refuses, with the reason, when a check is not green or
-   the pull request changes anything outside your locale's files. Merge only on these terms:
+   makes a merge commit, deletes the branch, and refuses, with the reason, when a check is
+   not green or the pull request changes anything outside your locale's files. Merge only on these terms:
    - the pull request is yours, for this ticket, and based on `main`;
    - it changes nothing outside your locale's files;
    - every check is green, with no override, `--admin` or force-push;
