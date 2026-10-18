@@ -183,7 +183,7 @@ export function ConfirmItsYou({
         </Field>
       )}
 
-      <View ref={aboveKeyboard} style={styles.group}>
+      <View {...aboveKeyboard} style={styles.group}>
         {codeAsked && (
           <Field label={t('waysCard.code')} error={codeError} help={t('waysCard.codeHelp')}>
             <CodeField

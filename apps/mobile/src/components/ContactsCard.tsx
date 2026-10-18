@@ -376,7 +376,7 @@ function Adding({
   }
 
   return (
-    <View ref={aboveKeyboard} style={styles.group}>
+    <View {...aboveKeyboard} style={styles.group}>
       {email ? (
         <Field label={t('contacts.emailLabel')} error={error} help={t('contacts.emailHelp')}>
           <TextField
