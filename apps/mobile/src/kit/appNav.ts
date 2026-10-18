@@ -8,11 +8,12 @@ export const DESTINATION_HREF = { home: '/', settings: '/settings' } as const sa
   string
 >;
 
-export type SettingsSection = 'account' | 'security';
+export type SettingsSection = 'account' | 'security' | 'organisation';
 
 export const SECTION_HREF = {
   account: '/settings/account',
   security: '/settings/security',
+  organisation: '/settings/organisation',
 } as const satisfies Record<SettingsSection, string>;
 
 /** The interim screens' old paths, kept so a link to one still lands on its Settings page. */
@@ -23,4 +24,17 @@ export const INTERIM_HREF = {
 
 export function destinationOf(pathname: string): Destination {
   return pathname === '/settings' || pathname.startsWith('/settings/') ? 'settings' : 'home';
+}
+
+export interface SettingsGroup {
+  heading: 'yourAccount' | 'organisationHeading';
+  sections: readonly SettingsSection[];
+}
+
+export function settingsGroups(inOrganisation: boolean): readonly SettingsGroup[] {
+  const yours: SettingsGroup = { heading: 'yourAccount', sections: ['account', 'security'] };
+
+  return inOrganisation
+    ? [yours, { heading: 'organisationHeading', sections: ['organisation'] }]
+    : [yours];
 }

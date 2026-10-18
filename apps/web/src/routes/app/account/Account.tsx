@@ -2,9 +2,10 @@ import { useTranslation } from 'react-i18next';
 
 import { AccountSections } from '../../../components/AccountSections.tsx';
 import { refreshAccount, useSession } from '../../../session.ts';
+import { ContactsCards } from './ContactsCard.tsx';
 import { TimeZoneCard } from './TimeZoneCard.tsx';
 
-/** Your account > Account. Its address and phone cards are sc-113's; the time zone is sc-868's. */
+/** Your account > Account: the address and phone cards (sc-113), then the time zone (sc-868). */
 export function Account() {
   const { t } = useTranslation();
   const session = useSession();
@@ -17,6 +18,8 @@ export function Account() {
       </div>
 
       <AccountSections />
+
+      <ContactsCards onPrimaryChanged={() => refreshAccount()} />
 
       <TimeZoneCard timezone={session.timezone} onSaved={() => refreshAccount()} />
     </div>

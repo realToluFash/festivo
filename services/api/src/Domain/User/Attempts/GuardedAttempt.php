@@ -21,14 +21,13 @@ final readonly class GuardedAttempt
     /**
      * @template T
      *
-     * @param callable(): void                   $lock            the account's (or address's) lock, never the IP's
-     * @param callable(): list<LimiterInterface> $budgets         read once the lock is held, each charged once if wrong
-     * @param callable(): (T|WrongSecret)        $check           the check, and whatever a right secret goes on to do
-     * @param bool                               $lastWrongPauses the wrong try that spends a budget is refused as the pause
+     * @param callable(): void                   $lock    the account's (or address's) lock, never the IP's
+     * @param callable(): list<LimiterInterface> $budgets read once the lock is held, each charged once if wrong
+     * @param callable(): (T|WrongSecret)        $check   the check, and whatever a right secret goes on to do
      *
      * @return T
      */
-    public function attempt(callable $lock, callable $budgets, callable $check, string $paused, bool $lastWrongPauses = false): mixed
+    public function attempt(callable $lock, callable $budgets, callable $check, string $paused): mixed
     {
         $connection = $this->entityManager->getConnection();
         $connection->beginTransaction();
@@ -40,7 +39,7 @@ final readonly class GuardedAttempt
             $result = null === $refusal ? $check() : null;
 
             if ($result instanceof WrongSecret) {
-                $refusal = self::charged($limits, $result, $paused, $lastWrongPauses);
+                $refusal = self::charged($limits, $result, $paused);
             }
 
             $this->entityManager->flush();
@@ -76,12 +75,12 @@ final readonly class GuardedAttempt
     }
 
     /** @param list<LimiterInterface> $budgets */
-    private static function charged(array $budgets, WrongSecret $wrong, string $paused, bool $lastWrongPauses): ApiException
+    private static function charged(array $budgets, WrongSecret $wrong, string $paused): ApiException
     {
         $spends = Vec\map($budgets, static fn (LimiterInterface $budget) => $budget->consume());
 
         foreach ($spends as $spend) {
-            if ($lastWrongPauses && $spend->getRemainingTokens() <= 0) {
+            if ($spend->getRemainingTokens() <= 0) {
                 return ApiException::tooManyAttempts($paused, $spend->getRetryAfter());
             }
         }

@@ -9,6 +9,7 @@
 export * from './locales.ts';
 export * from './guestName.ts';
 export * from './userAgent.ts';
+export * from './contacts.ts';
 export * from './datetime.ts';
 export * from './devices.ts';
 export * from './password.ts';
@@ -21,3 +22,4 @@ export * from './signInMethods.ts';
 export * from './timeZones.ts';
 export * from './phoneCodeRoute.ts';
 export * from './organisations.ts';
+export * from './roles.ts';

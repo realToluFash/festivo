@@ -32,11 +32,11 @@ final class SignInConcurrencyTest extends FunctionalTestCase
     private const string VENUE_WIFI = '198.51.100.7';
 
     #[Test]
-    public function twentyParallelGuessesForOneAddressCheckFiveAndRefuseFifteen(): void
+    public function twentyParallelGuessesForOneAddressCheckFiveAndOnlyTheFifthSpendsTheBudget(): void
     {
         $codes = $this->inParallel(Vec\fill(20, ['guessed@example.com', self::VENUE_WIFI]));
 
-        self::assertSame([401 => 5, 429 => 15], $codes);
+        self::assertSame([401 => 4, 429 => 16], $codes, 'the fifth wrong guess is the pause, and the fifteen after it are not checked');
     }
 
     /** Guests on one venue's Wi-Fi share an IP: a sign-in still in its check holds up only its own address. */

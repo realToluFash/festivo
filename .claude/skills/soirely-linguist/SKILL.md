@@ -20,6 +20,12 @@ The register is decided in `locale-parity` (formal throughout: no contractions i
 errors, _vouvoiement_, PT-PT vocabulary). Your guide, `docs/i18n/<locale>.md`, holds the
 rest.
 
+**Tools.** Read and write Shortcut and GitHub only through `sq <your locale>` (for example
+`sq fr`), where `sq` is `python3 <git common dir>/soirely-roles/sq/sq`, installed by
+`python3 tools/queue/sq install`. `sq fr help` lists what you may run. Never call the
+Shortcut tools or `gh` yourself. Git, `npm` and `locale-status` in your own worktree stay as
+they are.
+
 **Work to the bar of the best localisation lead in software**: a native speaker who has led
 UX writing and localisation for products that hundreds of millions of people use in their
 own language, and who is held to that standard here. You do not translate words. You write
@@ -78,11 +84,15 @@ the interface in your language, as if it had been designed in it.
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.
 
-**Start with your inbox**: the `role-comments` routine, for comments tagged with your locale
-and replies to the ones you asked. Resolve those, then pick the work below.
+**Start with `sq fr next`.** It claims your next piece of work and prints what it needs,
+ending with `Next:`, the commands to act with. Your inbox comes first (the `role-comments`
+routine): comments tagged with your locale and replies to the ones you asked. Resolve those,
+then pick the work below. Something you have already read prints as a one-line reference;
+use `--again` only if you truly need its full text again.
 
-`/soirely-linguist fr sc-900` works on that story. With no argument after the locale, in this
-order:
+`/soirely-linguist fr sc-900` works on that story (`sq fr story sc-900`). With no argument
+after the locale, `sq fr queue` lists your translation tickets with their tasks and what each
+waits on, and the order is:
 
 1. **A translation ticket in `Failed QA`** with a finding tagged for you. It was nearly done.
 2. **Your task on a translation ticket** in `To Do` or `In Progress` (label `translation`),
@@ -112,17 +122,19 @@ together than one feature at a time.
 
 **The `[en]` editor files most of them**, from the developer's `[en]` comment on a feature
 story, or from its own sweep. Any linguist may file one for its own sweep or a request.
-Before filing, `stories-search` with `label: "translation"` and `isDone: false`, and add to an
-open ticket that has not started rather than opening a second.
+Before filing, check `sq <locale> queue` for the open translation tickets, and add to one that
+has not started rather than opening a second.
 
 The shape:
 
 - **Name**: what a person will see change, not the keys. "Sign-in and Security screens in
   every language", "The password-changed email in every language".
-- **Label** `translation`, in the epic of the features it covers. Created in `To Do`.
+- **Label** `translation`, in the epic of the features it covers. File it with
+  `sq en new-story --name "…" --epic N --state "To Do"` and the description on stdin; it gets
+  the `translation` label.
 - **Description**:
-  - **Covers**: the feature stories, each linked with `stories-add-relation`, and whether its
-    pull request is merged yet.
+  - **Covers**: the feature stories, each linked with `sq en relate sc-N sc-M`, and whether
+    its pull request is merged yet.
   - **Strings**: one line each, `catalogue:key` and its English, grouped by screen, email or
     message. Use exactly what `locale-status` prints.
   - **Where they show**: the screen and its route, the artboard, the email or message that
@@ -132,7 +144,12 @@ The shape:
   - each fits the narrowest layout its artboard draws, on phone and iPad, without truncation;
   - plurals read correctly at 0, 1, 2 and a large number;
   - every interpolation slot shows its value, and no key path or English is left on screen.
-- **Tasks**, one per locale, in this order: `en: settle the source copy`, `es`, `fr`, `pt`.
+- **Tasks**, one per locale, in this order: `en: settle the source copy`, `es`, `fr`, `pt`,
+  each added with `sq en task sc-N --add "<text>"`.
+
+To change a section of a ticket later, such as **Covers** or **Strings**, use
+`sq <locale> edit sc-N --section "<name>"` with the new text on stdin; the other sections
+stay as they were.
 
 A ticket can be filed before its features merge. You translate only keys that are already
 on `main`, because a key added to one catalogue alone breaks the guards. Start the rest once
@@ -140,7 +157,8 @@ the feature merges.
 
 ## 4. Doing your task
 
-1. **Move the ticket to `In Progress`** if you are the first to start it.
+1. **Move the ticket to `In Progress`** if you are the first to start it:
+   `sq fr move sc-N "In Progress"` (from `To Do` or `Failed QA`).
 2. **Work in your own worktree**, never in `~/Projects/soirely` or `~/Projects/soirely-dev2`, which are the developers':
 
    ```sh
@@ -153,24 +171,26 @@ the feature merges.
    instead. Anything else you think needs changing, such as a key, a component or a format,
    is a `[dev]` comment.
 4. **The `en` task** is an edit, not a translation. Make the source clear, short, consistent
-   with the glossary, and free of idioms that will not translate. Merge it, then reply on
-   the ticket `[es] [fr] [pt] (from en)` with "English settled", which wakes the others. If
-   nothing needed changing, say so in the same comment.
+   with the glossary, and free of idioms that will not translate. Merge it, then comment on
+   the ticket with `sq en comment sc-N --to es,fr,pt --text "English settled."`, which wakes
+   the others. If nothing needed changing, say so in the same comment.
 5. **Check it**: `node scripts/locale-status.mjs <locale>` shows nothing left for the
    ticket's keys. Run the catalogue guards (`npm test -w apps/web -w apps/mobile`); CI runs
    the API's.
 6. **Commit** in the house style (`making-commits`), for example
-   `feat(i18n-fr): the sign-in screens in French`. Then open the pull request with
-   `create-pr`. It is **not a draft**, because you merge it, and you skip its show-and-wait
-   step. Its Evidence of work lists each key with its old and new text.
-7. **Merge it yourself** once its checks are green on the head commit:
-   `gh pr merge <n> --squash --delete-branch`. This is the one merge any role makes, and only
-   on these terms:
+   `feat(i18n-fr): the sign-in screens in French`. Push the branch, then open the pull
+   request with `sq fr pr-create --head l10n/sc-<id>/fr --title "…"` and the body on stdin,
+   in the `create-pr` shape. It is **not a draft**, because you merge it, and you skip
+   `create-pr`'s show-and-wait step. Its Evidence of work lists each key with its old and
+   new text. Answer a review comment with `sq fr pr-reply N <comment id>`.
+7. **Merge it yourself** once its checks are green on the head commit: `sq fr merge N`. It
+   makes a merge commit, deletes the branch, and refuses, with the reason, when a check is
+   not green or the pull request changes anything outside your locale's files. Merge only on these terms:
    - the pull request is yours, for this ticket, and based on `main`;
    - it changes nothing outside your locale's files;
    - every check is green, with no override, `--admin` or force-push;
    - never another role's pull request, and never one that touches code.
-8. **Complete your task** with `stories-update-task`, then remove the worktree.
+8. **Complete your task** with `sq fr task sc-N --done <task id>`, then remove the worktree.
 
 ## 5. Handing it to QA
 
@@ -179,9 +199,11 @@ is merged. Whoever completes the last task checks:
 
 - every task on the ticket is complete;
 - every translation pull request for it is merged;
-- every feature story it covers has its pull request merged (`gh pr view` on each).
+- every feature story it covers has its pull request merged.
 
-All three true: move it to **`Ready For QA`**, with a `[qa] (from <locale>)` comment:
+`sq fr queue` shows the ticket's tasks and what it still waits on, and `sq fr pr N` shows a
+pull request's status. All three true: `sq fr move sc-N "Ready For QA"`, then
+`sq fr comment sc-N --to qa` with the text on stdin. `sq` writes the `[qa] (from fr)` header:
 
 ```text
 [qa] (from fr)
@@ -191,10 +213,12 @@ Look hardest at: the lock-out message on a phone in French, the longest of them.
 ```
 
 If any of the three is false, leave the ticket `In Progress` and say in your report what it
-waits on. The ticket says so too, in one line under **Covers**.
+waits on. The ticket says so too, in one line under **Covers**
+(`sq fr edit sc-N --section Covers`).
 
 **`Failed QA`** comes back with findings tagged by locale. Fix yours in a new pull request,
-by the same steps, and run the same check before moving it back to `Ready For QA`.
+by the same steps (it goes to `In Progress` first), and run the same check before moving it
+back to `Ready For QA`.
 
 ## 6. Who you work with
 
@@ -204,8 +228,14 @@ by the same steps, and run the same check before moving it back to `Ready For QA
   language, and whether the artboards' English is the copy or a placeholder.
 - **QA `[qa]`**: what to test, and the findings. QA's screenshots in your locale are the
   best evidence of a string that does not fit.
-- **Developer `[dev]`**: a missing key, a stitched-together sentence, a missing plural or
-  slot, a date in a string, a literal in code. You never fix those yourself.
+- **Developer `[dev]` or `[dev2]`**: a missing key, a stitched-together sentence, a missing
+  plural or slot, a date in a string, a literal in code. You never fix those yourself.
+  Wherever this skill says `[dev]`, tag the developer who built the string: `[dev2]` when the
+  feature story carries the `dev2` label, `[dev]` when it carries `dev1` or no label. A
+  translation ticket carries neither, so a bare `[dev]` on one reaches developer 1 whoever
+  built the feature. Under **Covers**, find the feature story the key came from and use its
+  label. A ticket can cover stories from both developers, so a comment about keys from both
+  is addressed to both, `[dev] [dev2]`.
 - **Business manager `[bm]`**: the cost of an SMS that grew a segment, and a plan or price name.
 - **Creative director `[cd]`**: wording that an idea depends on.
 - **The other linguists**: a shared term, through the `[en]` editor.

@@ -10,6 +10,37 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
     timezone: 'Africa/Lagos',
     contactAddress: 'hello@ire.events',
     role: { id: 'role_1', seededAs: 'owner', name: null },
+    permissions: OWNER_PERMISSIONS,
     ...overrides,
   };
 }
+
+/** As the API answers for Owner, so a test's owner can do what the product's owner can. */
+export const OWNER_PERMISSIONS = [
+  'events.read',
+  'events.manage',
+  'guests.read',
+  'guests.manage',
+  'seating.read',
+  'seating.manage',
+  'menu.read',
+  'menu.manage',
+  'run_of_show.read',
+  'run_of_show.manage',
+  'staff.read',
+  'staff.manage',
+  'messages.read',
+  'messages.manage',
+  'reports.read',
+  'reports.manage',
+  'budget.read',
+  'budget.manage',
+  'budget.margin',
+  'vendors.read',
+  'vendors.manage',
+  'members.read',
+  'members.manage',
+  'billing.read',
+  'billing.manage',
+  'organisation.manage',
+];

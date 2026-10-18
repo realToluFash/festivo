@@ -18,13 +18,19 @@ vi.mock('react', () => ({
   useEffect: (effect: () => void) => effect(),
 }));
 
-const { launchSignedIn, reloadSignedIn, signOutHere, useSignedIn } = await import('./signedIn.ts');
+const { launchSignedIn, reloadSignedIn, replaceOrganisation, signOutHere, useSignedIn } =
+  await import('./signedIn.ts');
 
 const account = { id: 'usr_1', name: 'Adaeze' };
 const organisation = {
   id: 'org_1',
   name: 'Ìrè Events',
+  countryCode: 'NG',
+  contactAddress: 'hello@ire.events',
+  currency: 'NGN',
+  timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },
+  permissions: ['organisation.manage'],
 };
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -84,5 +90,33 @@ describe('opening the signed-in home at launch', () => {
 
     await expect(launchSignedIn()).resolves.toBe(false);
     expect(router.replace).toHaveBeenCalledWith('/sign-in');
+  });
+});
+
+describe('an organisation saved from its page', () => {
+  const other = { ...organisation, id: 'org_2', name: 'Okafor Weddings' };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api.me.mockResolvedValue(account);
+    api.organisations.mockResolvedValue([organisation, other]);
+    await reloadSignedIn();
+  });
+
+  it('shows its new name in the switcher and on the list at once, with no second load', () => {
+    replaceOrganisation({ ...organisation, name: 'Ìrè Events Ltd' });
+
+    expect(useSignedIn().organisation?.name).toBe('Ìrè Events Ltd');
+    expect(useSignedIn().organisations.map(({ name }) => name)).toEqual([
+      'Ìrè Events Ltd',
+      'Okafor Weddings',
+    ]);
+    expect(api.organisations).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the organisation this device is in alone when another one changes', () => {
+    replaceOrganisation({ ...other, name: 'Okafor & Co' });
+
+    expect(useSignedIn().organisation?.id).toBe('org_1');
   });
 });

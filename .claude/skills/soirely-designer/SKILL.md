@@ -17,6 +17,10 @@ you touch has to say so in those words. The artboards for epic 27 say "drawn for
 ticket in the established language, **not by the designer.** Needs review before it is
 treated as the specification." Keep writing that line.
 
+**Tools.** Read and write Shortcut and GitHub only through `sq ux`; `sq ux help` lists what
+this role may run. Never call the Shortcut tools or `gh` directly. Git in your own checkout
+stays as it is.
+
 ## 1. The work is already written down. Read it rather than this file.
 
 `docs/design/handoffs/` is the specification for this job, one brief per epic:
@@ -46,9 +50,11 @@ below.
 ### Sweep the backlog, every run
 
 Nobody files a ticket for "this needs a screen", so a story that needs you rarely says so in
-your inbox. Every run, after the inbox, look through the stories that are not done
-(`stories-search`, `isDone: false`, newest first, every epic) and pick out the ones that
-need design:
+your inbox. Every run, after the inbox, `sq ux next` prints the sweep: the stories not
+done with no Design section, or whose AC changed since their Design section was written,
+with `Next:` commands, ids filled in (`sq ux queue` for the same list, one line per story).
+Something you have already read prints as a one-line reference; use `--again` only if you
+truly need its full text again. Pick out the ones that need design:
 
 - a story with a screen in its AC and **no Design section**, or one that says "Not drawn"
   or names no artboard;
@@ -59,8 +65,8 @@ need design:
 - a story in `Failed QA` whose report blames a screen against the artboards.
 
 Draw what each one needs, in its epic's artifact, and write its Design section. Where the
-AC leaves the answer undecided, ask `[pm]` on that story with your proposal and draw the
-proposal meanwhile. A signed-off story is out of scope unless its AC moved after the
+AC leaves the answer undecided, ask `[pm]` on that story with your proposal
+(`sq ux comment sc-N --to pm`) and draw the proposal meanwhile. A signed-off story is out of scope unless its AC moved after the
 sign-off.
 
 Report what the sweep found as its own list: the stories drawn, the questions asked, and
@@ -69,14 +75,16 @@ the stories looked at and left alone. A sweep that found nothing says so in one 
 `/soirely-designer sc-56` draws what that story needs. `/soirely-designer 27` takes an
 epic. With no argument:
 
-1. **The epic in progress** — `epics-search`, state `in progress`. If more than one, ask
+1. **The epic in progress** — `sq ux epics` gives each epic with its state, and
+   `sq ux epic N` its description and open stories. If more than one is in progress, ask
    which; an epic is a week of work and not a thing to guess at.
 2. Then the coverage audit below, which is how you find the stories that need you.
 3. A story whose Design section says **"Needs review"** or names no artboard is in scope. A
    story whose Design section is settled is not — do not redraw a screen somebody has
    signed off because you would have done it differently.
 
-**A story in `Failed QA` with a design finding is yours too.** Read the QA report: if a
+**A story in `Failed QA` with a design finding is yours too.** Read the QA report
+(`sq ux comments sc-N --all`): if a
 screen fails because the artboards drew data that does not exist, the artboard is the
 defect, not the code.
 
@@ -149,8 +157,9 @@ built in this language for exactly this purpose. Match its density and level of 
 
 ## 7. Write the story's Design section
 
-The artboard is half the handover; the other half is what the drawing decided. The house
-shape, in this order:
+The artboard is half the handover; the other half is what the drawing decided. Write it
+with `sq ux edit sc-N --section Design`, body on stdin: it replaces the Design section
+and leaves the rest of the description as it was. The house shape, in this order:
 
 ```markdown
 **Artboard:** `VerifyEmail-*.dc.html` (four layouts) · <artifact url>

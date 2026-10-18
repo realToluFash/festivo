@@ -20,6 +20,7 @@ use App\Http\Access\Policy\Authenticated;
 use App\Http\CodeField;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
+use Psl\Iter;
 use Psl\Type;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -67,9 +68,9 @@ final readonly class PhoneController
     #[Route('/api/auth/verify/phone', name: 'auth_verify_phone', methods: ['POST'])]
     public function verify(Request $request): JsonResponse
     {
-        $body = Input::body($request, Type\shape(['code' => Type\optional(Type\mixed())]));
+        $body = Input::body($request, Type\shape(['code' => Type\optional(Type\mixed()), 'phone' => Type\optional(Type\string())]));
         $code = $this->codeField->required($body, 'code', CodeField::FROM_TEXT);
-        $phone = $this->phone();
+        $phone = $this->phone($body['phone'] ?? null);
 
         $refusal = $this->contactVerifier->attempt($phone, $code);
 
@@ -84,9 +85,9 @@ final readonly class PhoneController
 
     /** Read on every open and every poll, so it must never spend a try or send a code itself. */
     #[Route('/api/auth/verify/phone/resend', name: 'auth_verify_phone_resend_cooldown', methods: ['GET'])]
-    public function cooldown(): JsonResponse
+    public function cooldown(Request $request): JsonResponse
     {
-        $phone = $this->phone();
+        $phone = $this->phone($request->query->getString('phone') ?: null);
         // Polled while the code is on WhatsApp, so a silent WhatsApp hands over to SMS in about 30 seconds.
         $this->phoneCodeDispatch->fallBackIfDue($phone);
 
@@ -99,17 +100,17 @@ final readonly class PhoneController
 
     /** "Text it to me instead": the same code by SMS once, and later codes for this number by text too. */
     #[Route('/api/auth/verify/phone/text-instead', name: 'auth_verify_phone_text_instead', methods: ['POST'])]
-    public function textInstead(): JsonResponse
+    public function textInstead(Request $request): JsonResponse
     {
-        $this->phoneCodeDispatch->textInstead($this->phone());
+        $this->phoneCodeDispatch->textInstead($this->phone(self::named($request)));
 
         return new JsonResponse(['route' => PhoneCodeRoute::SmsChosen->value]);
     }
 
     #[Route('/api/auth/verify/phone/resend', name: 'auth_verify_phone_resend', methods: ['POST'])]
-    public function resend(): JsonResponse
+    public function resend(Request $request): JsonResponse
     {
-        $phone = $this->phone();
+        $phone = $this->phone(self::named($request));
         $issued = $this->verificationCodeResender->resend($phone);
 
         if (0 === $issued) {
@@ -144,10 +145,20 @@ final readonly class PhoneController
         ];
     }
 
-    private function phone(): PhoneNumber
+    /** The number awaiting its code, or an alternative this account holds by its id (sc-113). */
+    private function phone(?string $id): PhoneNumber
     {
-        return $this->user()->getPhoneNumberAwaitingCode()
-            ?? throw ApiException::notFound('This account has no phone number.');
+        $user = $this->user();
+        $phone = null === $id
+            ? $user->getPhoneNumberAwaitingCode()
+            : Iter\search($user->getPhoneNumbers(), static fn (PhoneNumber $held): bool => $held->getId()->toRfc4122() === $id);
+
+        return $phone ?? throw ApiException::notFound('That number is not linked to this account.');
+    }
+
+    private static function named(Request $request): ?string
+    {
+        return '' === $request->getContent() ? null : Input::body($request, Type\shape(['phone' => Type\optional(Type\string())]))['phone'] ?? null;
     }
 
     private function user(): User

@@ -100,7 +100,7 @@ describe('Settings > General', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
-    expect(screen.getByText(/That doesn't look like an email address/)).toBeDefined();
+    expect(screen.getByText(/That does not look like an email address/)).toBeDefined();
     expect(screen.getByLabelText('Name').getAttribute('aria-invalid')).toBe('true');
     expect(sent).toEqual([]);
   });
@@ -134,7 +134,12 @@ describe('Settings > General', () => {
   });
 
   it('shows the details as text, with no controls, to a role that cannot change them', () => {
-    signedIn(membership({ role: { id: 'role_2', seededAs: 'coordinator', name: null } }));
+    signedIn(
+      membership({
+        role: { id: 'role_2', seededAs: 'coordinator', name: null },
+        permissions: ['events.read', 'events.manage', 'budget.read'],
+      }),
+    );
     settings();
 
     expect(screen.getByText('hello@ire.events')).toBeDefined();

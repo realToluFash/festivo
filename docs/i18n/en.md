@@ -40,6 +40,112 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A grid row the viewer cannot change (sc-66, `Roles-*` v30, `caller_limited`).**
+  Under the locked row: "Only someone who can change {{area}} can set this. It stays as it is
+  when you save." The inset above the grid, plural on `{{count}}` locked areas: "You can change
+  only what your role, {{role}}, holds. {{areas}} stays as it is when you save." / "… {{areas}}
+  stay as they are when you save." `{{areas}}` comes from `Intl.ListFormat` (conjunction) in
+  the reader's locale, from the grid's own area labels. Won over the drawn "A save leaves it as
+  it is" and "saving leaves it alone", because "a save" as a noun and "leave it alone" do not
+  carry into es, fr or pt, and over "your own role". The row and the inset close on the same
+  sentence, so they say the same thing the same way; the verb agrees with the list, so the
+  inset is a plural pair, never one key.
+- **18 Oct 2026. A cost line's rate or amount, too many decimals (sc-83, `CostLine`).** Two
+  keys, one per field label: "That has too many decimal places for this event's currency.
+  Enter the rate like {{example}}." on a rated line, and "… Enter the amount like
+  {{example}}." on a `fixed` line, whose field is labelled Amount. `{{example}}` as sc-88's,
+  at the currency's minor unit ("12" for JPY, "12.50" for GBP, "12.500" for KWD). Won over
+  "rate" on every line, because a refusal names the field the person is looking at (as
+  sc-90's "Enter the ceiling like", and sc-88's "Enter the amount in {{currency}}"), and over
+  one key with the field as a slot, because "rate" and "amount" take different articles and
+  genders in es, fr and pt, so a slot would leave them no way to agree.
+- **18 Oct 2026. The budget ceiling's form and warnings (sc-90, `Ceiling`).** Too many
+  decimals, one key for every currency: "That has too many decimal places for this event's
+  currency. Enter the ceiling like {{example}}.", with `{{example}}` built as sc-88's (from
+  20000, or 20000.5 when the currency has a minor unit: "20,000" for JPY, "20,000.50" for GBP,
+  "20,000.500" for KWD). Not a number: "Enter the ceiling as a number, like {{example}}."
+  Below 0: "The ceiling cannot be below 0. Enter 0 or more." Another currency: "Enter the
+  ceiling in {{currency}}, the currency this event uses." (sc-88's shape). Announced on Save:
+  "One field needs fixing, so nothing was sent." / "{{count}} fields need fixing, so nothing
+  was sent." (plural keys). Saved: "Ceiling saved." The rate-edit warning names the ceiling:
+  "{{rate}} takes the event over its ceiling." or "{{rate}} takes {{category}} over its
+  ceiling.", then "Settled, it would be {{total}} against {{ceiling}}. You can still save it."
+  or "If everyone comes, it would be {{total}} against {{ceiling}}. You can still save it."
+  The four state words stay as drawn (Within, Close, Over if all come, Over); sentences say
+  "if everyone comes", never "if everybody still to answer says yes". Won over the drawn
+  "British pounds use at most 2 decimal places", which puts a currency's plural name into
+  prose (agreement in es, fr and pt), needs a sentence per decimal count, and breaks sc-88's
+  rule that the example shows the rule and the words never name a decimal count; and over
+  "Settled would be", which is not a sentence. "Close" is a state word, not the dialog's
+  close button: its own key.
+- **17 Oct 2026. "A device that has not signed in to your Soirely account before has just
+  signed in."** (`emails:newDevice.body`). Won over "Your Soirely account was signed in to on
+  a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account
+  does not "see" devices. The device is the subject, so each locale can keep one plain verb.
+  The next lines give the time, the device and the address, so the sentence names none of them.
+- **17 Oct 2026. Share-link passphrase (sc-94, `ShareLinks`, `SharedBudget-*`).** "Make the
+  passphrase at least {{count}} characters long, or leave it empty."; over the limit, "Shorten
+  the passphrase to {{count}} characters or fewer."; locked, "Too many wrong passphrases have
+  been tried on this link. Try again at {{time}}.", and without a usable `Retry-After`, "… Wait
+  a moment, then try again." "At", not the drawn "after", because every lock-out in the product
+  says "Try again at {{time}}". The organiser's note reads "While any line has a client price,
+  it shows no payments either.": "while", not "once", because payments come back when the event
+  returns to all at cost.
+- **17 Oct 2026. Attendance not recorded (sc-89, `PlannedActual`).** "Attendance was not
+  recorded"; "Nobody was checked in at the door, so there is no count of who came and no cost
+  per head. {{amount}} was paid to vendors."; "Check guests in at the door next time, and this
+  will show the cost per head of those who came." "Cost per head" is the page's term. The
+  drawn "what each guest who came really cost" was rejected, because "really" casts doubt on
+  the other figures.
+- **17 Oct 2026. Vendor form (sc-82, `Vendors`).** The phone reuses the account's settled hint
+  (`verifyPhone.numberHelp`) and its too-short and too-long keys. Only the invalid key is new,
+  "That is not a phone number for {{country}}. Check it and try again.", because a vendor's
+  number may be a landline. Website hint: "You can leave off https://. It is added when you
+  save."; other scheme: "Enter a web address that starts with https:// or http://, or leave
+  that part off." Blank: "Enter the vendor's name.", "Choose the category." Limits take the
+  house "Shorten the {field} to {{count}} characters or fewer.", and email shape reuses
+  `forms.emailShape`. Reuse a settled key wherever the same component says the same thing.
+
+- **17 Oct 2026. "That does not look like an email address. Check it has an @ and a domain."**
+  (`orgGeneral.contactInvalid` and `forms.emailShape`, web and app, and the API's
+  `validation.contact_address_invalid`; sc-1585). The house rule: no contractions in an error body.
+  Kept "look like" over "That is not an email address", which is blunter and reads as an accusation.
+  The web keys are pinned by tests, so that half is with [dev2] on sc-1585.
+- **17 Oct 2026. Dates on screens follow the locale (CLDR), the owner's call (sc-87,
+  #1700).** `{{date}}` and every date a screen shows come from `Intl.DateTimeFormat` with the
+  reader's locale, in the event's time zone: en-GB "Tuesday 23 September", en-US "Tuesday,
+  Sep 23". Boards are drawn in en-US and say the format follows the locale. Never write a
+  date, or its order, into a string. Rejected: one house style for every locale.
+- **17 Oct 2026. Quotes: added, revised and corrected (sc-87, `Quote-*`).** Saved lines, each
+  one string with slots, never parts joined in code: "Quote added: {{vendor}}, {{amount}},
+  quoted on {{date}}."; "Quote revised: {{vendor}}, {{amount}}, quoted on {{date}}." with
+  "The earlier quote is kept under Show the earlier quote." under it; "Quote corrected:
+  {{vendor}}, quote {{reference}}." and, with no quote number, its own key "Quote corrected:
+  {{vendor}}." (never "no quote number" in the slot), with "The amount, the date quoted and the
+  schedule are unchanged." under it. Live announcements: "Quote added.", "Quote revised.",
+  "Quote corrected." Correct form intro: "Correct what this quote covers, its quote number or
+  its budget lines. No earlier version is kept. To change the amount or the date quoted,
+  revise the quote, which keeps this one as an earlier quote." "Quoted on", not the bare
+  "quoted {{date}}": es, fr and pt need the preposition anyway. The intro says what the form
+  does first, with no colon-led list, which reads badly in a screen reader.
+- **17 Oct 2026. Quote and payment refusals (sc-87, `Quote-*`, `Engagement-*`).** Revise with
+  the amount and the date quoted unchanged, on the form and as the server's detail under one
+  key: "Change the amount or the date quoted to revise this quote. To change anything else,
+  correct the quote instead." (it sends nothing, so not "was not saved"). "The date quoted
+  cannot be in the future. Choose today or an earlier date."; "The date due cannot be before
+  the quote from {{vendor}} on {{date}}. Choose that date or a later one." (sc-88's date-paid
+  shape); "{{line}} is already agreed in the quote from {{vendor}}, so this quote was not
+  saved. Untick it in that quote first.", and the row that cannot be ticked reads "Agreed in
+  the quote from {{vendor}}"; "That vendor is no longer one of this organisation's vendors,
+  so the quote was not saved." (never echoes a name, because a vendor id from another
+  organisation must not read back that vendor's name); "Quotes and payment schedules are
+  read-only on this organisation's plan, so nothing has changed." Form checks: "Choose the
+  vendor."; "Enter what the quote covers."; "Enter the date quoted."; "Enter what the
+  payment is for." ("the payment", not "it": the message is read away from its label);
+  "Enter the date due."; "Shorten what the quote covers to {{count}} characters or fewer.",
+  and the same for the quote number and "what the payment is for". The amount and currency
+  checks are sc-88's shared keys.
+
 - **17 Oct 2026. Adding a payment already made (sc-88, `AddPaid-*`).** Title "Add a payment
   already made", button "Add as paid", kept as drawn: the title says what the person did, the
   button what happens. Refusals: "Choose the vendor it was paid to."; "Enter what it was

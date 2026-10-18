@@ -40,28 +40,42 @@ export function stackConfig(project, offset) {
     smocker: `${HOST}:${ports.SMOCKER_UI_PORT}`,
     mercure: `${HOST}:${ports.MERCURE_PORT}/.well-known/mercure`,
     metro: `exp://127.0.0.1:${ports.METRO_PORT}`,
+    oidc: `${HOST}:${ports.OIDC_PORT}`,
   };
+  // The sandbox signs a token with the address it was reached at: this stack's port from a
+  // browser or simulator, oidc:8080 from the API. The issuer lists accept both.
   const overrides = {
     COMPOSE_PROJECT_NAME: project,
     ...ports,
     MERCURE_PUBLIC_URL: urls.mercure,
     MERCURE_CORS_ORIGINS: `${urls.web} ${HOST}:${ports.METRO_PORT}`,
     STORAGE_PUBLIC_ENDPOINT: `${HOST}:${ports.STORAGE_PORT}`,
-    OAUTH_GOOGLE_ISSUER: `${HOST}:${ports.OIDC_PORT}/google`,
-    OAUTH_APPLE_ISSUER: `${HOST}:${ports.OIDC_PORT}/apple`,
+    OAUTH_GOOGLE_ISSUERS: `${urls.oidc}/google,http://oidc:8080/google`,
+    OAUTH_APPLE_ISSUERS: `${urls.oidc}/apple,http://oidc:8080/apple,https://appleid.apple.com`,
+    SOIRELY_GOOGLE_AUTHORIZE_URL: `${urls.oidc}/google/authorize`,
+    SOIRELY_APPLE_AUTHORIZE_URL: `${urls.oidc}/apple/authorize`,
+    OAUTH_APPLE_RETURN_URI: `${urls.api}/api/auth/oauth/apple/return`,
     SOIRELY_API_URL: urls.api,
     SOIRELY_MERCURE_URL: urls.mercure,
     CORS_WEB_ORIGIN: urls.web,
     CORS_EXPO_WEB_ORIGIN: `${HOST}:${ports.METRO_PORT}`,
     MAILPIT_URL: urls.mailpit,
   };
-  return { project, ports, urls, overrides };
+  // Expo reads these when the bundler starts, not from the stack's .env.
+  const app = {
+    EXPO_PUBLIC_API_URL: urls.api,
+    EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL: `${urls.oidc}/google/authorize`,
+    EXPO_PUBLIC_GOOGLE_TOKEN_URL: `${urls.oidc}/google/token`,
+    EXPO_PUBLIC_APPLE_AUTHORIZE_URL: `${urls.oidc}/apple/authorize`,
+    EXPO_PUBLIC_APPLE_TOKEN_URL: `${urls.oidc}/apple/token`,
+  };
+  return { project, ports, urls, overrides, app };
 }
 
 // Tester n is its own compose project and worktree, soirely-qa<n>, with every port up n×10000.
 export function qaConfig(tester = 1) {
   if (!TESTERS.includes(tester)) throw new Error(`no QA tester ${tester}: one of ${TESTERS}`);
-  const { project, ports, urls, overrides } = stackConfig(
+  const { project, ports, urls, overrides, app } = stackConfig(
     tester === 1 ? 'soirely-qa' : `soirely-qa${tester}`,
     tester * 10000,
   );
@@ -70,7 +84,7 @@ export function qaConfig(tester = 1) {
     phone: { name: `${label} iPhone`, type: 'iPhone 17 Pro' },
     ipad: { name: `${label} iPad`, type: 'iPad Pro 13-inch (M5)' },
   };
-  return { tester, project, ports, urls, overrides, simulators, chromePort: 9221 + tester };
+  return { tester, project, ports, urls, overrides, app, simulators, chromePort: 9221 + tester };
 }
 
 export const {
@@ -399,7 +413,7 @@ async function ios(args) {
   const metro = spawn('npx', ['expo', 'start', '--port', String(CONFIG.ports.METRO_PORT)], {
     cwd: join(root, 'apps/mobile'),
     stdio: ['ignore', 'inherit', 'inherit'],
-    env: { ...process.env, EXPO_PUBLIC_API_URL: CONFIG.urls.api, EXPO_PUBLIC_ENVIRONMENT: 'qa' },
+    env: { ...process.env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa' },
   });
   for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => metro.kill(signal));
 

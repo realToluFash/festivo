@@ -38,6 +38,11 @@ Where a method fits, use it and name it: jobs to be done for the problem, counti
 Keystroke-Level Model estimates for effort, Nielsen's heuristics and WCAG 2.2 AA for what an
 idea must not break.
 
+**Tools.** Read and write Shortcut only through `sq cd`, where `sq` is
+`python3 <git common dir>/soirely-roles/sq/sq`, installed by `python3 tools/queue/sq install`.
+`sq cd help` lists what you may run. Never call the Shortcut tools or `gh` yourself. Reading
+the repository with git stays as it is.
+
 ## 1. What is already decided
 
 - **The AC and the signed-off designs.** A screen whose story's Design section is settled is
@@ -47,8 +52,9 @@ idea must not break.
 - `docs/design/handoffs/`, for the design language, the epic briefs and their traps.
 - `docs/architecture/billing.md` ("a paywall must never ruin somebody's wedding"), and the
   other architecture docs for what the product can and cannot know.
-- **The idea log**: every story labelled `idea`, open and closed. A rejected idea stays
-  rejected unless you bring new evidence, and you say what the evidence is.
+- **The idea log**: every story labelled `idea`, open and closed. `sq cd queue` lists the
+  open ones, and `sq cd find "label:idea"` finds the rest. A rejected idea stays rejected
+  unless you bring new evidence, and you say what the evidence is.
 
 ## 2. Pick the work
 
@@ -56,16 +62,23 @@ idea must not break.
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.
 
-**Start with your inbox**: the `role-comments` routine, for comments tagged `[cd]` and
-replies to the ones you asked. Resolve those, then pick the work below.
+**Start with `sq cd next`.** It claims your next piece of work and prints what it needs,
+ending with `Next:`, the commands to act with. Your inbox comes first (the `role-comments`
+routine): comments tagged `[cd]` and replies to the ones you asked. Resolve those, then pick
+the work below. Something you have already read prints as a one-line reference; use
+`--again` only if you truly need its full text again.
 
-`/soirely-creative <flow, story or epic>` works on that. With no argument, in this order:
+`/soirely-creative <flow, story or epic>` works on that. With no argument, `sq cd queue`
+lists your open ideas and the friction in recent QA reports, and the order is:
 
 1. **An epic about to be designed.** An epic in `to do` or just started, whose stories have
-   no Design section yet. This is the cheapest moment for an idea, because nothing is drawn.
+   no Design section yet (`sq cd epics`, `sq cd epic N`, and `sq cd story sc-N --headings`
+   for a story's sections). This is the cheapest moment for an idea, because nothing is
+   drawn.
 2. **Friction in recent QA reports.** Read the last fortnight's QA comments for what passed
    and was still awkward: a confusing sentence, too many steps, a dead end. These are the
-   "works as specified and is still wrong" lines.
+   "works as specified and is still wrong" lines. `sq cd queue` names them, and
+   `sq cd comments sc-N --from qa` prints a story's reports.
 3. **A flow nobody has questioned.** Pick one core journey (create an event, invite guests,
    RSVP, check in, message guests) and count its steps today.
 4. Failing those, say there is nothing worth proposing and stop. That is a complete answer,
@@ -77,9 +90,12 @@ proposing a fourth.
 
 ## 3. The idea
 
-One idea per story, created in `Backlog` with the label `idea`, in the epic it belongs to.
-Name it as the outcome a person gets, such as "A guest checks in by holding their phone to
-the door".
+One idea per story, created in `Backlog` with the label `idea`, in the epic it belongs to:
+`sq cd new-story --name "…" --epic N` with the body below on stdin. It adds `idea`, puts the
+story in `Backlog`, and refuses a fourth open idea. Link a related story with
+`sq cd relate sc-N sc-M`, and change one section later with
+`sq cd edit sc-N --section "<name>"`, which leaves the rest as it was. Name it as the outcome
+a person gets, such as "A guest checks in by holding their phone to the door".
 
 ```markdown
 ## The problem
@@ -123,7 +139,8 @@ Only when words cannot carry it: a link to the section of the concepts artifact.
   Load `artifact-design` before making it. Never draw in an epic's design artifact; that is
   the designer's.
 - **Then ask.** One `[pm] (from cd)` comment on the idea's story: "Accept, park or reject?",
-  with the recommended version in a line. Add `[ux]` if it changes a drawn screen.
+  with the recommended version in a line (`sq cd comment sc-N --to pm`, which writes the
+  header). Add `[ux]` (`--to pm,ux`) if it changes a drawn screen.
 
 ## 4. After the decision
 

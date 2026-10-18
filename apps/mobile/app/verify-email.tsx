@@ -5,7 +5,7 @@ import {
   awaiting,
 } from '@soirely/api-client';
 import { cleanCode, codeProblem } from '@soirely/domain';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -25,8 +25,10 @@ type Status = CodeStatus | { kind: 'verified' };
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export default function VerifyEmail() {
   const { t } = useTranslation();
+  // An address added from Settings > Account (sc-113), by its id: verified here, then back there.
+  const alternative = useLocalSearchParams<{ address?: string }>().address;
   const [pending, setPending] = useState<PendingRegistration | null>(null);
-  const [next, setNext] = useState<Landing>('/');
+  const [next, setNext] = useState<Landing | '/settings/account'>('/');
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [address, setAddress] = useState('');
@@ -53,7 +55,25 @@ export default function VerifyEmail() {
     let live = true;
 
     void (async () => {
-      const held = await heldRegistration();
+      const held = alternative == null ? await heldRegistration() : null;
+
+      if (alternative != null) {
+        const account = await api.me().catch(() => null);
+        const added = account?.emailAddresses.find((one) => one.id === alternative);
+        if (!live) return;
+        if (added == null) {
+          router.replace('/settings/account');
+          return;
+        }
+
+        setAddress(added.address);
+        setNext('/settings/account');
+        if (added.verified) setStatus({ kind: 'verified' });
+        const opening = await api.verificationOpening(alternative).catch(() => null);
+        if (live && opening != null) opened(opening);
+
+        return;
+      }
 
       if (held != null) {
         if (!live) return;
@@ -90,7 +110,7 @@ export default function VerifyEmail() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [alternative]);
 
   /** The handle has run out, or was used: the sign-up starts again. */
   async function startAgain(): Promise<void> {
@@ -114,7 +134,7 @@ export default function VerifyEmail() {
 
     try {
       if (pending == null) {
-        await api.verifyEmail(cleanCode(typed));
+        await api.verifyEmail(cleanCode(typed), alternative);
       } else {
         const { account } = await api.confirmRegistration(pending.registration, cleanCode(typed));
         await dropRegistration();
@@ -135,7 +155,7 @@ export default function VerifyEmail() {
     try {
       setCooldown(
         await (pending == null
-          ? api.resendVerification()
+          ? api.resendVerification(alternative)
           : api.resendRegistrationCode(pending.registration)),
       );
       setStatus({ kind: 'entering' });
@@ -176,7 +196,7 @@ export default function VerifyEmail() {
       atFoot={done}
       saying={
         <>
-          <OnboardingSteps at={done ? 'verified' : 'verifying'} />
+          {alternative == null && <OnboardingSteps at={done ? 'verified' : 'verifying'} />}
           <AuthHeading
             done={done}
             title={done ? t('verifyEmail.doneTitle') : t('verifyEmail.title')}
@@ -205,13 +225,15 @@ export default function VerifyEmail() {
           onVerify={(code) => void verify(code)}
           onResend={() => void resend()}
         >
-          <Footnote
-            question={t('verifyEmail.wrongAddress')}
-            action={pending != null ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
-            onPress={() => void wrongAddress()}
-            {...(pending != null ? {} : { after: t('verifyEmail.wrongAddressBody') })}
-            testID="verifyEmail.signOut"
-          />
+          {alternative == null && (
+            <Footnote
+              question={t('verifyEmail.wrongAddress')}
+              action={pending != null ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
+              onPress={() => void wrongAddress()}
+              {...(pending != null ? {} : { after: t('verifyEmail.wrongAddressBody') })}
+              testID="verifyEmail.signOut"
+            />
+          )}
         </CodeForm>
       )}
     </AuthFrame>

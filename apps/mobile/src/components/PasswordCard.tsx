@@ -244,7 +244,7 @@ function Changing({
         />
       </Field>
 
-      <View ref={aboveKeyboard} style={styles.group}>
+      <View {...aboveKeyboard} style={styles.group}>
         <Field label={t('passwordCard.new')} error={nextError}>
           <PasswordField
             ref={nextInput}
@@ -413,7 +413,7 @@ function Setting({
     return (
       <>
         <Title text={t('passwordCard.setNewTitle')} />
-        <View ref={aboveKeyboard} style={styles.group}>
+        <View {...aboveKeyboard} style={styles.group}>
           <Field label={t('passwordCard.setNewLabel')} error={error}>
             <PasswordField
               ref={passwordInput}
@@ -474,7 +474,7 @@ function Setting({
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('passwordCard.setCodeIntro', { email })}
       </Text>
-      <View ref={aboveKeyboard} style={styles.group}>
+      <View {...aboveKeyboard} style={styles.group}>
         <Field label={t('passwordCard.setCodeLabel')} error={codeError}>
           <CodeField
             ref={codeInput}

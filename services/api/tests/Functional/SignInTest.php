@@ -208,9 +208,10 @@ final class SignInTest extends ApiTestCase
     public function aRefusedPasswordSpendsIt(): void
     {
         $this->account('guessed@example.com');
-        $controller = self::controllerWithBudget(1, '15 minutes');
+        $controller = self::controllerWithBudget(2, '15 minutes');
 
         self::assertSame(ErrorCode::InvalidCredentials, self::refusal($controller, 'guessed@example.com', 'a wrong guess')->errorCode);
+        self::assertSame(ErrorCode::TooManyAttempts, self::refusal($controller, 'guessed@example.com', 'a wrong guess')->errorCode, 'the guess that spends the budget is the pause');
         self::assertSame(ErrorCode::TooManyAttempts, self::refusal($controller, 'guessed@example.com', self::PASSWORD)->errorCode);
     }
 
@@ -233,14 +234,16 @@ final class SignInTest extends ApiTestCase
     }
 
     #[Test]
-    public function theThirtyFirstWrongPasswordFromOneIpIsRefusedWhateverTheAddress(): void
+    public function theThirtiethWrongPasswordFromOneIpIsThePauseWhateverTheAddress(): void
     {
         $limit = static fn (string $id, int $count): RateLimiterFactory => new RateLimiterFactory(['id' => $id, 'policy' => 'fixed_window', 'limit' => $count, 'interval' => '15 minutes'], new InMemoryStorage());
         $controller = new SignInController(self::service(SignInResponse::class), new SignInAttempts(self::service(UserAuthenticator::class), self::em(), $limit('ip', 30), $limit('account', 5), new GuardedAttempt(self::em())));
 
-        for ($i = 1; $i <= 30; ++$i) {
+        for ($i = 1; $i <= 29; ++$i) {
             self::assertSame(ErrorCode::InvalidCredentials, self::refusal($controller, 'walker' . $i . '@example.com', 'a wrong guess')->errorCode, 'attempt ' . $i);
         }
+
+        self::assertSame(ErrorCode::TooManyAttempts, self::refusal($controller, 'walker30@example.com', 'a wrong guess')->errorCode, 'the thirtieth spends the budget (sc-965)');
 
         self::assertSame(ErrorCode::TooManyAttempts, self::refusal($controller, 'walker31@example.com', 'a wrong guess')->errorCode);
     }

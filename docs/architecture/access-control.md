@@ -16,12 +16,12 @@ every one of them names a policy.**
 
 ## The four policies
 
-| Attribute                       | Who gets through                                                        |
-| ------------------------------- | ----------------------------------------------------------------------- |
-| `#[PublicAccess]`               | anybody, signed in or not                                               |
-| `#[Authenticated]`              | any signed-in account                                                   |
-| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it  |
-| `#[InEvent(permission)]`        | an active member of the organisation that owns the event in `{eventId}` |
+| Attribute                       | Who gets through                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `#[PublicAccess]`               | anybody, signed in or not                                                                              |
+| `#[Authenticated]`              | any signed-in account                                                                                  |
+| `#[InOrganisation(permission)]` | an active member of the organisation in `{organisationId}`, holding it; with `null`, any active member |
+| `#[InEvent(permission)]`        | an active member of the organisation that owns the event in `{eventId}`                                |
 
 All four live in `App\Http\Access\Policy`. One goes on the controller class or on the
 method; the method's wins, and two on the same level is refused at boot. A route that
@@ -30,6 +30,38 @@ because API Platform's routes have no controller of ours to carry one.
 
 A permission is a case of `App\Enum\Permission`. A policy takes the enum, not a string, so
 a permission that is not in the registry cannot be asked for: it does not compile.
+
+Each case names its **area** (a row of the roles screen's grid, `PermissionArea`) and the
+**seeded roles it starts on** (`defaultRoles()`). Areas hold a `read` and a `manage`
+permission, and `budget.margin` sits beside Budget's. `PermissionRegistryTest` fails for a
+permission that reaches no seeded role but Owner, unless it is listed there as Owner-only
+on purpose (`billing.manage`). A story that adds one names its defaults, and a migration
+grants it once to those seeded roles in every existing organisation (sc-66).
+
+What each seeded role starts with. Owner holds everything, including what is added later.
+These are defaults, written when the organisation is founded, and the organisation changes
+them afterwards on Settings > Roles:
+
+| Area         | Administrator      | Event manager | Coordinator | Read-only |
+| ------------ | ------------------ | ------------- | ----------- | --------- |
+| Events       | manage             | manage        | manage      | read      |
+| Guests       | manage             | manage        | manage      | read      |
+| Seating      | manage             | manage        | manage      | read      |
+| Menu         | manage             | manage        | manage      | read      |
+| Run of show  | manage             | manage        | manage      | read      |
+| Staff        | manage             | manage        | read        | read      |
+| Messages     | manage             | manage        | manage      | read      |
+| Reports      | manage             | manage        | read        | read      |
+| Budget       | manage, and margin | manage        | read        | read      |
+| Vendors      | manage             | none          | none        | none      |
+| Members      | manage             | none          | none        | none      |
+| Billing      | read               | none          | none        | none      |
+| Organisation | manage             | none          | none        | none      |
+
+**Nobody grants what they do not hold.** Creating or editing a role, a caller may add or
+remove only permissions their own role holds, and a deleted role's people may move only to
+a role holding nothing the caller lacks. So only an Owner can name Owner. Anything else is
+`403 grant_not_held` (OWASP least privilege, NIST RBAC).
 
 ## When it is checked
 
@@ -92,8 +124,8 @@ The listener asks two interfaces:
 - `EventDirectoryInterface::organisationOf($eventId)`: the event's organisation, or null.
 
 `App\Domain\Organisation\MembershipDirectory` answers the first from the `memberships`
-table: only an `active` membership counts. Until sc-66 gives roles their permissions,
-Owner is the only role, and it holds everything.
+table: only an `active` membership counts, and it grants what the member's role holds as
+the organisation last set it (`roles.permissions`). Owner holds everything.
 
 Until events exist, `NoEvents` answers that no event exists, so every event route refuses,
 which is the direction a gap should fail in.

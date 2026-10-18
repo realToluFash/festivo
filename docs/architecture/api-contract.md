@@ -71,6 +71,11 @@ Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in
 and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. A client
 shows the time from `Retry-After`, in the reader's timezone, never a figure of its own.
 
+Where a budget is spent by a wrong secret (a password or a code), the wrong try that spends
+the last of it is itself answered with the pause, not with that place's wrong-secret error,
+so nobody spends one more try to learn the time. Every try after it, the right secret
+included, gets the pause unchecked until the window ends. A right secret spends nothing.
+
 A limit that can last past the day it was hit also names its instant for the reader, by
 `UserMailer::deadline`: the `detail` reads "Try again Sunday, Oct 18 at 17:09 WAT." (or
 "UTC" with no zone), and the same words come as a `retryAt` member. A client quotes
@@ -78,13 +83,17 @@ A limit that can last past the day it was hit also names its instant for the rea
 stays in seconds either way (RFC 9110 §10.2.3). Today only
 `POST /api/auth/two-factor/recovery` carries `retryAt`.
 
-| Endpoint                             | Budget                                                    | Spent by              |
-| ------------------------------------ | --------------------------------------------------------- | --------------------- |
-| `POST /api/auth/register`            | 10 per IP per hour, fixed window                          | every attempt         |
-| `POST /api/auth/login`               | 5 per address and 30 per IP per 15 minutes, fixed windows | a refused password    |
-| `POST /api/auth/verify/resend`       | one per 60 seconds per address                            | every code sent       |
-| `POST /api/auth/two-factor/recovery` | 3 per account per 24 hours, rolling                       | every request started |
-| `POST /api/auth/sessions/others`     | 5 per account per 15 minutes, fixed window                | every proved call     |
+| Endpoint                                           | Budget                                                          | Spent by                 |
+| -------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
+| `POST /api/auth/register`                          | 10 per IP per hour, fixed window                                | every attempt            |
+| `POST /api/auth/login`                             | 5 per address and 30 per IP per 15 minutes, fixed windows       | a refused password       |
+| `PATCH /api/auth/password`, `POST /api/auth/proof` | 5 per account per 15 minutes, fixed window, one budget for both | a wrong current password |
+| `POST /api/auth/password/set/code`                 | 5 per account per 15 minutes, fixed window, across resends      | a wrong code             |
+| Two-factor codes, wherever asked                   | 5 per account per 15 minutes, fixed window                      | a wrong code             |
+| `POST /api/auth/verify/resend`                     | one per 60 seconds per address                                  | every code sent          |
+| `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                             | every request started    |
+| `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                      | every proved call        |
+| `POST /api/auth/emails`, `/phones`                 | 10 per account per hour, fixed window, shared                   | every add asked for      |
 
 ## Verifying an address
 
@@ -145,6 +154,36 @@ optional `phoneCountryCode` and `phoneNumber`, under the same rules. An empty nu
 no phone and removes the primary one. Its shape refusals are against `phoneNumber`,
 alongside the screen's other fields, and nothing is saved or texted until all of them pass.
 
+## Alternative addresses and numbers
+
+From Settings > Account (sc-113). **A primary identifies; an alternative only reaches.**
+Only the primary address signs anybody in (`findOneByPrimaryEmailAddress()`), and a phone
+never does: the primary phone is the one on the profile and the one texted.
+
+- `POST /api/auth/emails` (`address`) and `POST /api/auth/phones` (`countryCode`,
+  `number`) link one unverified and not primary, normalised as registration and
+  `PUT /api/auth/phone` normalise, and send its code. `201` with the row.
+- **Two of each per account, primary included** (`LinkedContacts::MOST`), held by the
+  service under the account's row lock: a third is `409 address_limit_reached`, the
+  detail naming the limit. A pending replacement number is not counted.
+- **One answer for a held address**, this account's or another's: `409 already_linked`,
+  the same bytes either way, so the endpoint is no oracle for who has an account.
+- `PATCH …/emails/{id}/primary` and `…/phones/{id}/primary` move the flag in one
+  transaction, reading the current primary under the account's row lock. An unverified row
+  is `409 address_not_verified`.
+- The email route also takes `proof` from `POST /api/auth/proof`, because it changes the
+  address that signs in and recovers the account. Without a live one it is
+  `403 proof_required`, before the id is looked at. The phone route takes none.
+- `DELETE …/emails/{id}` and `…/phones/{id}`: the primary is `409 primary_address`, the
+  only verified row is `409 last_verified_address`. `204` otherwise.
+- An id that is not this account's, or not an id, is `404 not_found`, never `403`.
+- The verify endpoints take the row by id: `address` on `POST /api/auth/verify/email`
+  and `/verify/resend` (`?address=` on its `GET`), `phone` on `/verify/phone`, its resend
+  and `/text-instead` (`?phone=` on the `GET`). Without one, they act on the primary
+  address, or the number awaiting its code, as before.
+- Every add, promotion and removal is audited (`email.added`, `email.primary`,
+  `email.removed`, and the same for `phone.`), with the value before and after.
+
 ## Getting back in without the second factor
 
 For a person who has lost both the authenticator and the recovery codes (sc-509). Every
@@ -187,6 +226,33 @@ is ever in a URL.
 - `…/recovery/not-me` takes the `request` and `token` from any email's "This wasn't me"
   link. It cancels every open request and ends every session. The `/cancel` on the waiting
   screen does the same.
+
+## Roles and permissions
+
+An organisation's roles (sc-66). Every organisation is created with five, in this order:
+Owner, Administrator, Event manager, Coordinator and Read-only (`seededAs`). Their
+permissions are defaults written once at creation, then the organisation's to change.
+
+- `GET /api/orgs/{id}/permissions`, for any active member: the caller's effective
+  permissions. `GET /api/orgs` carries the same list on each membership, so a client
+  renders only the controls it can use.
+- `GET /api/orgs/{id}/roles` (`members.read`): every role with `permissions`, `holders`,
+  `fixed` (Owner) and `removable` (a custom role), and `areas`, the registry grouped as
+  the grid draws it.
+- `POST …/roles` (`members.manage`) makes a custom role from `name` and `permissions`;
+  `PATCH …/roles/{roleId}` changes either; `DELETE …/roles/{roleId}` removes a custom one.
+- Owner refuses an edit or a delete with `409 owner_role_fixed`. A seeded role can be
+  edited but not renamed (`422` on `name`) or removed (`409 seeded_role_kept`).
+- A role name is trimmed, required, at most 40 characters, and unique in the organisation
+  ignoring case, the seeded labels included: a clash is a violation on `name` with code
+  `role_name_taken`. An unknown permission is a violation on `permissions`.
+- Deleting a role that people hold needs `replacement`, a role in the same organisation,
+  or it is `422` on `replacement`; its holders move to it first.
+- A caller grants, withdraws and moves people onto only what their own role holds: a
+  permission they lack, added or removed, or a replacement holding one, is
+  `403 grant_not_held`, and nothing changes.
+- A role id from another organisation is `404`. Demoting the last active owner is
+  `409 last_owner` (`RoleAssignment`).
 
 ## Authentication
 

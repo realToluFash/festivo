@@ -1,18 +1,21 @@
 import { primaryEmailAddress } from '@soirely/api-client';
 import { router } from 'expo-router';
-import { type ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { DESTINATION_HREF, SECTION_HREF, type SettingsSection } from '../kit/appNav.ts';
+import {
+  DESTINATION_HREF,
+  SECTION_HREF,
+  type SettingsSection,
+  settingsGroups,
+} from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { signOutHere, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 
 const LIST_WIDTH = 320;
-
-const SECTIONS: readonly SettingsSection[] = ['account', 'security'];
 
 /** The section keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function SettingsSplit({
@@ -34,54 +37,66 @@ export function SettingsSplit({
 
 export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsSection | null }) {
   const { t } = useTranslation();
-  const { account } = useSignedIn();
+  const { account, organisation } = useSignedIn();
   const phone = kind === 'phone';
-  const rows = SECTIONS.map((section, index) => (
-    <View key={section}>
-      {phone && index > 0 && <View style={styles.divider} />}
-      <Pressable
+  const line: Record<SettingsSection, string> = {
+    account: t('settings.accountLine'),
+    security: t('settings.securityLine'),
+    organisation: t('settings.organisationLine', { name: organisation?.name ?? '' }),
+  };
+  const groups = settingsGroups(organisation != null).map(({ heading, sections }, group) => ({
+    heading: (
+      <Text
+        size={tokens.typeLabel.size}
+        weight="semibold"
+        muted
+        accessibilityRole="header"
         style={[
-          styles.section,
-          !phone && styles.sectionTablet,
-          open === section && styles.sectionOpen,
+          styles.label,
+          !phone && styles.labelTablet,
+          !phone && group > 0 && styles.labelLater,
         ]}
-        onPress={() =>
-          phone ? router.push(SECTION_HREF[section]) : router.replace(SECTION_HREF[section])
-        }
-        accessibilityRole="button"
-        accessibilityState={{ selected: open === section }}
-        testID={`settings.${section}`}
       >
-        <View style={styles.fill}>
-          <Text size={tokens.typeTitleSection.size} weight="semibold">
-            {t(`settings.${section}`)}
-          </Text>
-          <Text size={tokens.typeBody.size} muted>
-            {t(`settings.${section}Line`)}
-          </Text>
-        </View>
-        <Text
-          size={tokens.typeTitleDialog.size}
-          muted
-          accessibilityElementsHidden
-          importantForAccessibility="no"
+        {t(`settings.${heading}`)}
+      </Text>
+    ),
+    key: heading,
+    rows: sections.map((section, index) => (
+      <View key={section}>
+        {phone && index > 0 && <View style={styles.divider} />}
+        <Pressable
+          style={[
+            styles.section,
+            !phone && styles.sectionTablet,
+            open === section && styles.sectionOpen,
+          ]}
+          onPress={() =>
+            phone ? router.push(SECTION_HREF[section]) : router.replace(SECTION_HREF[section])
+          }
+          accessibilityRole="button"
+          accessibilityState={{ selected: open === section }}
+          testID={`settings.${section}`}
         >
-          ›
-        </Text>
-      </Pressable>
-    </View>
-  ));
-  const heading = (
-    <Text
-      size={tokens.typeLabel.size}
-      weight="semibold"
-      muted
-      accessibilityRole="header"
-      style={[styles.label, !phone && styles.labelTablet]}
-    >
-      {t('settings.yourAccount')}
-    </Text>
-  );
+          <View style={styles.fill}>
+            <Text size={tokens.typeTitleSection.size} weight="semibold">
+              {t(`settings.${section}`)}
+            </Text>
+            <Text size={tokens.typeBody.size} muted>
+              {line[section]}
+            </Text>
+          </View>
+          <Text
+            size={tokens.typeTitleDialog.size}
+            muted
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          >
+            ›
+          </Text>
+        </Pressable>
+      </View>
+    )),
+  }));
   const signOut = (
     <View style={[styles.foot, !phone && styles.footTablet]}>
       {kind !== 'tabletLandscape' && account != null && (
@@ -105,8 +120,12 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
   if (phone) {
     return (
       <View style={styles.phoneList}>
-        {heading}
-        <View style={styles.card}>{rows}</View>
+        {groups.map(({ key, heading, rows }) => (
+          <Fragment key={key}>
+            {heading}
+            <View style={styles.card}>{rows}</View>
+          </Fragment>
+        ))}
         {signOut}
       </View>
     );
@@ -114,8 +133,12 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
 
   return (
     <View style={styles.tabletList} accessibilityLabel={t('settings.sections')}>
-      {heading}
-      {rows}
+      {groups.map(({ key, heading, rows }) => (
+        <Fragment key={key}>
+          {heading}
+          {rows}
+        </Fragment>
+      ))}
       <View style={styles.fill} />
       {signOut}
     </View>
@@ -133,6 +156,7 @@ export function backToSettings(label: string) {
 /** What a tablet shows beside the list before a section is chosen. */
 export function ChooseSection() {
   const { t } = useTranslation();
+  const { organisation } = useSignedIn();
 
   return (
     <View style={styles.choose}>
@@ -140,7 +164,9 @@ export function ChooseSection() {
         {t('settings.choose')}
       </Text>
       <Text size={tokens.typeBodyPhone.size} muted style={styles.center}>
-        {t('settings.chooseLine')}
+        {organisation == null
+          ? t('settings.chooseLine')
+          : t('settings.chooseLineWithOrganisation', { name: organisation.name })}
       </Text>
     </View>
   );
@@ -153,6 +179,7 @@ const styles = StyleSheet.create({
   phoneList: { gap: tokens.spaceLg },
   label: { paddingHorizontal: tokens.spaceXxs, letterSpacing: 1.2, textTransform: 'uppercase' },
   labelTablet: { paddingHorizontal: 14, paddingVertical: tokens.spaceXxs },
+  labelLater: { paddingTop: tokens.spaceLg },
   card: {
     overflow: 'hidden',
     borderRadius: tokens.radiusCardPhone,
