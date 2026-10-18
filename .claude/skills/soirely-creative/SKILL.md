@@ -163,7 +163,7 @@ The product manager replies on the story:
 - **Developer `[dev]`**: feasibility and rough effort.
 - **QA `[qa]`**: their reports are your best evidence. You never give QA work.
 - **Business manager `[bm]`**: cost, and whether an idea is a paid feature.
-- **Linguists `[en]` `[es]` `[fr]` `[pt]`**: an idea that depends on wording, or on a gesture,
+- **Linguist `[l10n]`**: an idea that depends on wording, or on a gesture,
   symbol or custom that may not travel across languages.
 
 ## 6. What this mode must not do
