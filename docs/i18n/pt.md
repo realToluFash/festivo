@@ -28,6 +28,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Two-factor authentication | Autenticação de dois fatores | In a comma list of Security's contents, "dois fatores" alone     |
 | Home (tab)                | Início                       | Settled 17 Oct 2026. Not "Página inicial": too long for the tab  |
 | Recovery code             | Código de recuperação        |                                                                  |
+| Phone (device)            | Telemóvel                    | Settled 18 Oct 2026. Never "celular"                             |
 
 ## Never translated
 
@@ -38,6 +39,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. An app session is "Aplicação Soirely no iPhone"** (`devices.app*`, web and
+  app, and `emails:password.device.app*`): "no iPhone", "no iPad", "num telemóvel Android",
+  "num tablet Android". "Aplicação", never "app"; "telemóvel", never "celular"; "tablet" is
+  masculine in PT-PT. Soirely, iPhone, iPad and Android stay as they are. Every string that
+  takes a device name (`devices.ended`, `devices.checkTitle`, `password.changed.where`) is
+  worded so it needs no agreement with it.
 - **17 Oct 2026. "Sign out everywhere else" is "Encerrar as outras sessões"** (`devices.everywhere*`,
   web and app). Shorter than "Encerrar a sessão nos outros dispositivos", so it fits the phone
   button, and it keeps "encerrar". The confirm and keep buttons follow the card's `devices.end`

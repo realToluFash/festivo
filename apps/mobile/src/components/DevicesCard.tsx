@@ -533,7 +533,7 @@ function EverywhereElse({
         </Text>
       )}
 
-      <View ref={aboveKeyboard} style={styles.group}>
+      <View {...aboveKeyboard} style={styles.group}>
         {codeAsked && (
           <Field
             label={t('devices.everywhereCode')}

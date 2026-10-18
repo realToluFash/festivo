@@ -40,6 +40,44 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A grid row the viewer cannot change (sc-66, `Roles-*` v30, `caller_limited`).**
+  Under the locked row: "Only someone who can change {{area}} can set this. It stays as it is
+  when you save." The inset above the grid, plural on `{{count}}` locked areas: "You can change
+  only what your role, {{role}}, holds. {{areas}} stays as it is when you save." / "… {{areas}}
+  stay as they are when you save." `{{areas}}` comes from `Intl.ListFormat` (conjunction) in
+  the reader's locale, from the grid's own area labels. Won over the drawn "A save leaves it as
+  it is" and "saving leaves it alone", because "a save" as a noun and "leave it alone" do not
+  carry into es, fr or pt, and over "your own role". The row and the inset close on the same
+  sentence, so they say the same thing the same way; the verb agrees with the list, so the
+  inset is a plural pair, never one key.
+- **18 Oct 2026. A cost line's rate or amount, too many decimals (sc-83, `CostLine`).** Two
+  keys, one per field label: "That has too many decimal places for this event's currency.
+  Enter the rate like {{example}}." on a rated line, and "… Enter the amount like
+  {{example}}." on a `fixed` line, whose field is labelled Amount. `{{example}}` as sc-88's,
+  at the currency's minor unit ("12" for JPY, "12.50" for GBP, "12.500" for KWD). Won over
+  "rate" on every line, because a refusal names the field the person is looking at (as
+  sc-90's "Enter the ceiling like", and sc-88's "Enter the amount in {{currency}}"), and over
+  one key with the field as a slot, because "rate" and "amount" take different articles and
+  genders in es, fr and pt, so a slot would leave them no way to agree.
+- **18 Oct 2026. The budget ceiling's form and warnings (sc-90, `Ceiling`).** Too many
+  decimals, one key for every currency: "That has too many decimal places for this event's
+  currency. Enter the ceiling like {{example}}.", with `{{example}}` built as sc-88's (from
+  20000, or 20000.5 when the currency has a minor unit: "20,000" for JPY, "20,000.50" for GBP,
+  "20,000.500" for KWD). Not a number: "Enter the ceiling as a number, like {{example}}."
+  Below 0: "The ceiling cannot be below 0. Enter 0 or more." Another currency: "Enter the
+  ceiling in {{currency}}, the currency this event uses." (sc-88's shape). Announced on Save:
+  "One field needs fixing, so nothing was sent." / "{{count}} fields need fixing, so nothing
+  was sent." (plural keys). Saved: "Ceiling saved." The rate-edit warning names the ceiling:
+  "{{rate}} takes the event over its ceiling." or "{{rate}} takes {{category}} over its
+  ceiling.", then "Settled, it would be {{total}} against {{ceiling}}. You can still save it."
+  or "If everyone comes, it would be {{total}} against {{ceiling}}. You can still save it."
+  The four state words stay as drawn (Within, Close, Over if all come, Over); sentences say
+  "if everyone comes", never "if everybody still to answer says yes". Won over the drawn
+  "British pounds use at most 2 decimal places", which puts a currency's plural name into
+  prose (agreement in es, fr and pt), needs a sentence per decimal count, and breaks sc-88's
+  rule that the example shows the rule and the words never name a decimal count; and over
+  "Settled would be", which is not a sentence. "Close" is a state word, not the dialog's
+  close button: its own key.
 - **17 Oct 2026. "A device that has not signed in to your Soirely account before has just
   signed in."** (`emails:newDevice.body`). Won over "Your Soirely account was signed in to on
   a device it hasn't seen before": "signed in to on" stacks two prepositions, and an account

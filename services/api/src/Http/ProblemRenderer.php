@@ -44,6 +44,10 @@ final readonly class ProblemRenderer
             'status' => $code->status(),
         ];
 
+        if ('' === $detail && [] !== $violations) {
+            $detail = $violations[0]['message'];
+        }
+
         if ($code->status() < 500 && '' !== $detail) {
             $problem['detail'] = $detail;
         }
