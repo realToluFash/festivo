@@ -16,6 +16,7 @@ use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
 use App\Locale\SupportedLocales;
+use App\Repository\InvitationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -37,6 +38,7 @@ final readonly class RoleManager
         private TranslatorInterface $translator,
         private MembershipDirectoryInterface $membershipDirectory,
         private SeededRoleLabels $seededRoleLabels,
+        private InvitationRepository $invitationRepository,
     ) {
     }
 
@@ -124,8 +126,10 @@ final readonly class RoleManager
         }
 
         $holders = $this->entityManager->getRepository(Membership::class)->findBy(['role' => $role]);
+        // An invitation still pending would otherwise lose its role and could never be accepted.
+        $invited = $this->invitationRepository->findPendingWithRole($role);
 
-        if ([] !== $holders) {
+        if ([] !== $holders || [] !== $invited) {
             if (null === $replacementId || '' === $replacementId) {
                 throw $this->invalid('replacement', 'roles.replacement_required');
             }
@@ -135,6 +139,10 @@ final readonly class RoleManager
 
             foreach ($holders as $membership) {
                 $this->roleAssignment->assign($membership, $replacement);
+            }
+
+            foreach ($invited as $invitation) {
+                $invitation->setRole($replacement);
             }
         }
 

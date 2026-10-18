@@ -105,5 +105,10 @@
     "newDevice.review": "Vérifiez vos appareils connectés :",
     "newDevice.notYou": "Si ce n'était pas vous, changez votre mot de passe et déconnectez les appareils que vous ne reconnaissez pas.",
     "newDevice.notYouNoPassword": "Si ce n'était pas vous, ouvrez Sécurité et déconnectez les appareils que vous ne reconnaissez pas.",
-    "newDevice.why": "Vous recevez ce message parce qu'un nouvel appareil s'est connecté à votre compte Soirely."
+    "newDevice.why": "Vous recevez ce message parce qu'un nouvel appareil s'est connecté à votre compte Soirely.",
+    "invitation.subject": "{inviter} invited you to join {organisation} on Soirely",
+    "invitation.body": "{inviter} invited you to join {organisation} as {role}. Open the link below to accept or decline.",
+    "invitation.expiry": "This invitation works until {date}.",
+    "invitation.inProduct": "You can also accept it in Soirely, signed in as {email}.",
+    "invitation.ignore": "If you were not expecting this, you can ignore this email. Nothing happens unless you accept."
 }

@@ -105,5 +105,10 @@
     "newDevice.review": "Reveja os seus dispositivos:",
     "newDevice.notYou": "Se não foi você, altere a sua palavra-passe e encerre a sessão nos dispositivos que não reconheça.",
     "newDevice.notYouNoPassword": "Se não foi você, vá a Segurança e encerre a sessão nos dispositivos que não reconheça.",
-    "newDevice.why": "Está a receber esta mensagem porque um novo dispositivo iniciou sessão na sua conta Soirely."
+    "newDevice.why": "Está a receber esta mensagem porque um novo dispositivo iniciou sessão na sua conta Soirely.",
+    "invitation.subject": "{inviter} invited you to join {organisation} on Soirely",
+    "invitation.body": "{inviter} invited you to join {organisation} as {role}. Open the link below to accept or decline.",
+    "invitation.expiry": "This invitation works until {date}.",
+    "invitation.inProduct": "You can also accept it in Soirely, signed in as {email}.",
+    "invitation.ignore": "If you were not expecting this, you can ignore this email. Nothing happens unless you accept."
 }

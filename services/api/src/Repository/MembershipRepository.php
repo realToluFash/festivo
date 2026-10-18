@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Membership;
+use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -32,5 +33,26 @@ final class MembershipRepository extends ServiceEntityRepository
     public function findActiveFor(User $user): array
     {
         return $this->findBy(['user' => $user, 'status' => MembershipStatus::Active], ['createdAt' => 'ASC', 'id' => 'ASC']);
+    }
+
+    /** @return list<Membership> in every state, oldest first */
+    public function findInOrganisation(Organisation $organisation): array
+    {
+        return $this->findBy(['organisation' => $organisation], ['createdAt' => 'ASC', 'id' => 'ASC']);
+    }
+
+    /** Through any address the account holds, verified or not: a membership is the account's, whichever address it uses. */
+    public function findOneByAddress(Organisation $organisation, string $normalisedEmail): ?Membership
+    {
+        return $this->createQueryBuilder('m')
+            ->join('m.user', 'u')
+            ->join('u.emailAddresses', 'e')
+            ->andWhere('m.organisation = :organisation')
+            ->andWhere('e.address = :email')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('email', $normalisedEmail)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }
