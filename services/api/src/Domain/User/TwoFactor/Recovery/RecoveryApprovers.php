@@ -28,29 +28,28 @@ final readonly class RecoveryApprovers
     /** @return list<User> */
     public function for(User $user): array
     {
-        $memberships = $this->entityManager->createQueryBuilder()
-            ->select('m', 'u', 'o')
-            ->from(Membership::class, 'm')
-            ->innerJoin('m.user', 'u')
-            ->innerJoin('m.organisation', 'o')
-            ->innerJoin('m.role', 'role')
-            ->innerJoin(Membership::class, 'theirs', 'WITH', 'theirs.organisation = m.organisation AND theirs.user = :user AND theirs.status = :active')
-            ->where('m.status = :active')
-            ->andWhere('m.user <> :user')
-            ->andWhere('role.seededAs IN (:roles)')
-            ->setParameter('user', $user)
-            ->setParameter('active', MembershipStatus::Active)
-            ->setParameter('roles', self::ROLES)
-            ->getQuery()
-            ->getResult();
-
         $approvers = [];
 
-        foreach (Type\vec(Type\instance_of(Membership::class))->coerce($memberships) as $membership) {
+        foreach ($this->approverMemberships($user) as $membership) {
             $approvers[$membership->getUser()->getId()->toRfc4122()] = $membership->getUser();
         }
 
         return Vec\values($approvers);
+    }
+
+    /** @return list<Organisation> the person's own in which somebody else can approve, oldest membership first */
+    public function askedFor(User $user): array
+    {
+        $asked = [];
+
+        foreach ($this->approverMemberships($user) as $membership) {
+            $asked[$membership->getOrganisation()->getId()->toRfc4122()] = true;
+        }
+
+        return Vec\filter(
+            $this->organisationsOf($user),
+            static fn (Organisation $organisation): bool => isset($asked[$organisation->getId()->toRfc4122()]),
+        );
     }
 
     /** @return list<Organisation> the person's own, oldest membership first */
@@ -79,5 +78,27 @@ final readonly class RecoveryApprovers
             $this->organisationsOf($user),
             static fn (Organisation $organisation): bool => isset($mine[$organisation->getId()->toRfc4122()]),
         );
+    }
+
+    /** @return list<Membership> */
+    private function approverMemberships(User $user): array
+    {
+        $memberships = $this->entityManager->createQueryBuilder()
+            ->select('m', 'u', 'o')
+            ->from(Membership::class, 'm')
+            ->innerJoin('m.user', 'u')
+            ->innerJoin('m.organisation', 'o')
+            ->innerJoin('m.role', 'role')
+            ->innerJoin(Membership::class, 'theirs', 'WITH', 'theirs.organisation = m.organisation AND theirs.user = :user AND theirs.status = :active')
+            ->where('m.status = :active')
+            ->andWhere('m.user <> :user')
+            ->andWhere('role.seededAs IN (:roles)')
+            ->setParameter('user', $user)
+            ->setParameter('active', MembershipStatus::Active)
+            ->setParameter('roles', self::ROLES)
+            ->getQuery()
+            ->getResult();
+
+        return Type\vec(Type\instance_of(Membership::class))->coerce($memberships);
     }
 }

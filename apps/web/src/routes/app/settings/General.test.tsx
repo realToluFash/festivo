@@ -100,7 +100,7 @@ describe('Settings > General', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
-    expect(screen.getByText(/That doesn't look like an email address/)).toBeDefined();
+    expect(screen.getByText(/That does not look like an email address/)).toBeDefined();
     expect(screen.getByLabelText('Name').getAttribute('aria-invalid')).toBe('true');
     expect(sent).toEqual([]);
   });
