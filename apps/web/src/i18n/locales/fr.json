@@ -730,6 +730,9 @@
     "ownerNote": "Propriétaire est intégré et ne peut être ni modifié ni supprimé. Il a toujours tout, et {{name}} en a toujours au moins un.",
     "saved": "Enregistré. S’applique à la prochaine requête de chaque personne.",
     "gridHeading": "Dans chaque domaine, ce rôle peut",
+    "lockedLine": "Seule une personne qui peut modifier {{area}} peut le régler. Cela ne change pas quand vous enregistrez.",
+    "lockedIntro_one": "Vous ne pouvez modifier que ce que comprend votre rôle, {{role}}. {{areas}} ne change pas quand vous enregistrez.",
+    "lockedIntro_other": "Vous ne pouvez modifier que ce que comprend votre rôle, {{role}}. {{areas}} ne changent pas quand vous enregistrez.",
     "level": {
       "nothing": "Rien",
       "read": "Lire",

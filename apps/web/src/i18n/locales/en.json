@@ -730,6 +730,9 @@
     "ownerNote": "Owner is built in and can't be edited or removed. It always has everything, and {{name}} always has at least one.",
     "saved": "Saved. Applies on each person's next request.",
     "gridHeading": "In each area, this role can",
+    "lockedLine": "Only someone who can change {{area}} can set this. It stays as it is when you save.",
+    "lockedIntro_one": "You can change only what your role, {{role}}, holds. {{areas}} stays as it is when you save.",
+    "lockedIntro_other": "You can change only what your role, {{role}}, holds. {{areas}} stay as they are when you save.",
     "level": {
       "nothing": "Nothing",
       "read": "Read",

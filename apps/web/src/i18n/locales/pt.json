@@ -730,6 +730,9 @@
     "ownerNote": "Proprietário é predefinida e não pode ser editada nem removida. Tem sempre tudo, e {{name}} tem sempre pelo menos um.",
     "saved": "Guardado. Aplica-se no próximo pedido de cada pessoa.",
     "gridHeading": "Em cada área, esta função pode",
+    "lockedLine": "Só quem pode alterar {{area}} pode definir isto. Fica como está quando guardar.",
+    "lockedIntro_one": "Só pode alterar o que a sua função, {{role}}, inclui. {{areas}} fica como está quando guardar.",
+    "lockedIntro_other": "Só pode alterar o que a sua função, {{role}}, inclui. {{areas}} ficam como estão quando guardar.",
     "level": {
       "nothing": "Nada",
       "read": "Ver",

@@ -8,10 +8,10 @@ import {
   MARGIN,
   ROLE_NAME_MAXIMUM,
   levelOf,
-  levelsOf,
   roleName,
   roleNameProblem,
   sameGrant,
+  settableLevels,
   whatTheySee,
   withLevel,
   withMargin,
@@ -248,9 +248,19 @@ function Editing({
   const english = i18next.getFixedT('en');
   const dirty = creating || !sameGrant(grant, startingGrant);
   const areas = catalogue.areas.map((entry) => entry.area);
-  // A caller changes only what they hold (sc-66): any other row shows its value, with no pills.
-  const settable = (permissions: string[]) =>
-    editable && permissions.every((permission) => held.includes(permission));
+  // A caller changes only what they hold (sc-66): a row with nothing left to pick is locked.
+  const rows = catalogue.areas.map(({ area, permissions }) => {
+    const levels = editable ? settableLevels(grant, held, area, permissions) : [];
+
+    return { area, permissions, levels, locked: editable && levels.length < 2 };
+  });
+  const marginLocked = editable && !held.includes(MARGIN);
+  const lockedAreas = rows.flatMap(({ area, permissions, locked }) => [
+    ...(locked ? [t(`rolesScreen.area.${area}`)] : []),
+    ...(marginLocked && grant.includes(`${area}.read`) && permissions.includes(MARGIN)
+      ? [t('rolesScreen.margin')]
+      : []),
+  ]);
 
   function change(next: string[]): void {
     setGrant(next);
@@ -358,11 +368,26 @@ function Editing({
         </div>
       )}
 
+      {lockedAreas.length > 0 && (
+        <div className="notice notice-quiet">
+          <Padlock />
+          <p>
+            {t('rolesScreen.lockedIntro', {
+              count: lockedAreas.length,
+              role: roleName(t, organisation.role),
+              areas: new Intl.ListFormat(currentLocale(), { type: 'conjunction' }).format(
+                lockedAreas,
+              ),
+            })}
+          </p>
+        </div>
+      )}
+
       <div className="roles-grid-head">
         <span>{t('rolesScreen.gridHeading')}</span>
       </div>
       <ul className="roles-grid">
-        {catalogue.areas.map(({ area, permissions }) => {
+        {rows.map(({ area, permissions, levels, locked }) => {
           const level = levelOf(grant, area);
 
           return (
@@ -372,20 +397,28 @@ function Editing({
                   <span className="roles-row-name">{t(`rolesScreen.area.${area}`)}</span>
                   <span className="muted">{t(`rolesScreen.means.${area}`)}</span>
                 </div>
-                {settable(permissions.filter((one) => one !== MARGIN)) ? (
+                {editable && !locked ? (
                   <Levels
                     label={t(`rolesScreen.area.${area}`)}
-                    options={levelsOf(permissions).map((value) => ({
+                    options={levels.map((value) => ({
                       value,
                       label: t(`rolesScreen.level.${value}`),
                     }))}
                     value={level}
-                    onPick={(value) => change(withLevel(grant, area, value))}
+                    onPick={(value) => change(withLevel(grant, area, value, permissions))}
                   />
                 ) : (
-                  <span className="roles-fixed">{t(`rolesScreen.level.${level}`)}</span>
+                  <span className="roles-fixed">
+                    {locked && <Padlock />}
+                    {t(`rolesScreen.level.${level}`)}
+                  </span>
                 )}
               </div>
+              {locked && (
+                <p className="muted roles-locked">
+                  {t('rolesScreen.lockedLine', { area: t(`rolesScreen.area.${area}`) })}
+                </p>
+              )}
               {area === 'budget' && level !== 'nothing' && permissions.includes(MARGIN) && (
                 <div className="roles-row roles-row-sub">
                   <div className="roles-row-text">
@@ -394,7 +427,7 @@ function Editing({
                       {t('rolesScreen.marginMeans', { name: organisation.name })}
                     </span>
                   </div>
-                  {settable([MARGIN]) ? (
+                  {editable && !marginLocked ? (
                     <Levels
                       label={t('rolesScreen.margin')}
                       options={[
@@ -406,12 +439,18 @@ function Editing({
                     />
                   ) : (
                     <span className="roles-fixed">
+                      {marginLocked && <Padlock />}
                       {grant.includes(MARGIN)
                         ? t('rolesScreen.marginShown')
                         : t('rolesScreen.marginHidden')}
                     </span>
                   )}
                 </div>
+              )}
+              {area === 'budget' && level !== 'nothing' && marginLocked && (
+                <p className="muted roles-locked">
+                  {t('rolesScreen.lockedLine', { area: t('rolesScreen.margin') })}
+                </p>
               )}
             </li>
           );
@@ -492,6 +531,26 @@ function Levels<T extends string>({
   );
 }
 
+function Padlock() {
+  return (
+    <svg
+      className="roles-padlock"
+      aria-hidden="true"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="5" y="11" width="14" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
 function WhatTheySee({ grant, areas }: { grant: string[]; areas: string[] }) {
   const { t } = useTranslation();
   const list = new Intl.ListFormat(currentLocale(), { type: 'conjunction' });
@@ -539,10 +598,7 @@ function Removing({
   const [status, setStatus] = useState<'asking' | 'removing' | 'failed'>('asking');
   const title = roleName(t, role);
   const choices = roles.filter(
-    (one) =>
-      one.id !== role.id &&
-      !one.fixed &&
-      one.permissions.every((permission) => held.includes(permission)),
+    (one) => one.id !== role.id && one.permissions.every((permission) => held.includes(permission)),
   );
   const chosen = choices.find((one) => one.id === replacement);
 

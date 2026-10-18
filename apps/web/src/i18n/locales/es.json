@@ -730,6 +730,9 @@
     "ownerNote": "Propietario es predefinido y no se puede editar ni eliminar. Siempre lo tiene todo, y {{name}} siempre tiene al menos uno.",
     "saved": "Guardado. Se aplica en la próxima solicitud de cada persona.",
     "gridHeading": "En cada área, este rol puede",
+    "lockedLine": "Solo alguien que pueda cambiar {{area}} puede configurarlo. Se mantiene igual al guardar.",
+    "lockedIntro_one": "Solo puede cambiar lo que incluye su rol, {{role}}. {{areas}} se mantiene igual al guardar.",
+    "lockedIntro_other": "Solo puede cambiar lo que incluye su rol, {{role}}. {{areas}} se mantienen igual al guardar.",
     "level": {
       "nothing": "Nada",
       "read": "Ver",

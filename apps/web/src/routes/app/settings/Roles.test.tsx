@@ -203,7 +203,7 @@ describe('Settings > Roles', () => {
 
     expect(screen.getByText('Choose the role these people move to.')).toBeDefined();
     expect(sent.some((request) => request.method === 'DELETE')).toBe(false);
-    expect(screen.queryByLabelText(/^Owner/)).toBeNull();
+    expect(screen.getByLabelText(/^Owner/)).toBeDefined();
 
     fireEvent.click(screen.getByLabelText(/^Read-only/));
     fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
@@ -260,20 +260,76 @@ describe('Settings > Roles', () => {
   });
 
   it('lets an Administrator change only what they hold, and never move people onto Owner', async () => {
-    signedIn(membership({ ...IRE, permissions: ROLES[1]?.permissions ?? [] }));
-    answering();
+    const finance = role('role_7', null, 'Finance', ['billing.read', 'billing.manage']);
+    signedIn(
+      membership({
+        ...IRE,
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: ROLES[1]?.permissions ?? [],
+      }),
+    );
+    answering((method) =>
+      method === 'GET'
+        ? new Response(JSON.stringify({ roles: [...ROLES, finance], areas: AREAS }), {
+            status: 200,
+          })
+        : null,
+    );
     await roles();
     pick(/^Coordinator/);
 
-    expect(screen.getByRole('group', { name: 'Events' })).toBeDefined();
+    expect(level('Billing', 'Read')).toBeDefined();
+    expect(
+      within(screen.getByRole('group', { name: 'Billing' })).queryByRole('button', {
+        name: 'Change',
+      }),
+    ).toBeNull();
+
+    pick(/^Finance/);
     expect(screen.queryByRole('group', { name: 'Billing' })).toBeNull();
+    expect(
+      screen.getByText(
+        'Only someone who can change Billing can set this. It stays as it is when you save.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'You can change only what your role, Administrator, holds. Billing stays as it is when you save.',
+      ),
+    ).toBeDefined();
 
     pick(/^Door team/);
     fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
 
     expect(screen.getByLabelText(/^Read-only/)).toBeDefined();
     expect(screen.queryByLabelText(/^Owner/)).toBeNull();
+    expect(screen.queryByLabelText(/^Finance/)).toBeNull();
     expect(screen.getByLabelText(/^Administrator/)).toBeDefined();
+  });
+
+  it('offers no Nothing on a budget whose margin the caller cannot withdraw', async () => {
+    signedIn(
+      membership({
+        ...IRE,
+        role: { id: 'role_8', seededAs: null, name: 'Budgets' },
+        permissions: ['members.read', 'members.manage', 'budget.read', 'budget.manage'],
+      }),
+    );
+    answering();
+    await roles();
+    pick(/^Administrator/);
+
+    expect(level('Budget', 'Read')).toBeDefined();
+    expect(
+      within(screen.getByRole('group', { name: 'Budget' })).queryByRole('button', {
+        name: 'Nothing',
+      }),
+    ).toBeNull();
+    expect(
+      screen.getByText(
+        'Only someone who can change Margin can set this. It stays as it is when you save.',
+      ),
+    ).toBeDefined();
   });
 
   it('opens a role on its own page at narrow widths, with Roles to go back', async () => {

@@ -1626,9 +1626,21 @@ h2 {
 }
 
 .roles-fixed {
+  display: flex;
   flex: 0 1 19rem;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spaceXs);
   font-weight: 600;
-  text-align: right;
+}
+
+.roles-padlock {
+  flex: none;
+  color: var(--colorInkSecondary);
+}
+
+.roles-locked {
+  margin: 0;
 }
 
 .roles-unsaved {
