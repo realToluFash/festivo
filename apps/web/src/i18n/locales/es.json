@@ -726,6 +726,8 @@
     "describeOwner": "Todo, incluido lo que Soirely añada más adelante.",
     "describeSeeded": "Es predefinido, así que no se puede eliminar. Usted decide lo que incluye.",
     "describeCustom": "Creado por {{name}}. Se puede eliminar.",
+    "describeSeededReadOnly": "Built in, so it cannot be removed. Someone who can change {{area}} decides what it holds.",
+    "describeCustomReadOnly": "Made by {{name}}.",
     "describeNew": "Empieza sin nada. Active lo que necesiten.",
     "remove": "Eliminar rol",
     "ownerNote": "Propietario es predefinido y no se puede editar ni eliminar. Siempre lo tiene todo, y {{name}} siempre tiene al menos uno.",

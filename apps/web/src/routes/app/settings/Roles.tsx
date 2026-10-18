@@ -342,7 +342,12 @@ function Editing({
           ) : (
             <h2 id="role-title">{title}</h2>
           )}
-          <p className="muted">{t(describe(role), { name: organisation.name })}</p>
+          <p className="muted">
+            {t(describe(role, manages), {
+              name: organisation.name,
+              area: t('rolesScreen.area.members'),
+            })}
+          </p>
         </div>
         {manages && role?.removable === true && (
           <button type="button" className="button button-danger" onClick={onRemove}>
@@ -650,7 +655,7 @@ function Removing({
                 />
                 <span className="roles-row-name">{roleName(t, one)}</span>
                 <span className="muted roles-replacement-means">
-                  {t(describe(one), { name: organisation.name })}
+                  {t(describe(one, true), { name: organisation.name })}
                 </span>
               </label>
             ))}
@@ -695,12 +700,14 @@ function Removing({
   );
 }
 
-/** Only Owner's line is a fact about what it holds; any other role's grid is the organisation's to change. */
-function describe(role: OrganisationRole | null): string {
+/** Only Owner's line is a fact about what it holds; any other line promises changes only to someone who can make them. */
+function describe(role: OrganisationRole | null, manages: boolean): string {
   if (role == null) return 'rolesScreen.describeNew';
   if (role.fixed) return 'rolesScreen.describeOwner';
+  if (role.seededAs != null)
+    return manages ? 'rolesScreen.describeSeeded' : 'rolesScreen.describeSeededReadOnly';
 
-  return role.seededAs != null ? 'rolesScreen.describeSeeded' : 'rolesScreen.describeCustom';
+  return manages ? 'rolesScreen.describeCustom' : 'rolesScreen.describeCustomReadOnly';
 }
 
 function unsavedLine(t: TFunction, creating: boolean, title: string, holders: number): string {

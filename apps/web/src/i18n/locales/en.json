@@ -726,6 +726,8 @@
     "describeOwner": "Everything, including whatever Soirely adds later.",
     "describeSeeded": "Built in, so it cannot be removed. What it holds is yours to change.",
     "describeCustom": "Made by {{name}}. It can be removed.",
+    "describeSeededReadOnly": "Built in, so it cannot be removed. Someone who can change {{area}} decides what it holds.",
+    "describeCustomReadOnly": "Made by {{name}}.",
     "describeNew": "Starts from nothing. Switch on what they need.",
     "remove": "Remove role",
     "ownerNote": "Owner is built in and can't be edited or removed. It always has everything, and {{name}} always has at least one.",
