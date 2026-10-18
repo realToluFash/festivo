@@ -39,6 +39,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. Other addresses and numbers "servem para contacto"** (`contacts.*`, web and
+  app, and `messages:contacts.*`). The primary "serve para iniciar sessão e recebe o e-mail da
+  conta"; the others "servem para contacto, mas não permitem iniciar sessão". Rejected "podem
+  contactá-lo", whose clitic assumes a man. The card says "Números de telefone", since another
+  number may be a landline; the field we text says "Número de telemóvel". "Stays unverified" is
+  "fica por verificar", and the badge "Não verificado". "Make primary" is "Tornar principal",
+  and a refusal puts "primeiro" before the noun: "Torne primeiro outro endereço principal".
+  "Prove it is yours" agrees with the address, not the person: "confirmar que o endereço é seu".
+
 - **18 Oct 2026. A role named in a sentence is "a função Proprietário"** (`messages:roles.*`).
   The role's name stays a label after "a função", so nothing agrees with it: "A função
   Proprietário é predefinida", "a única pessoa com a função Proprietário", never "o único
