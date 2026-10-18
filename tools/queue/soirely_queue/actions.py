@@ -76,6 +76,16 @@ def signature(role):
     return role
 
 
+def resync(c):
+    """The write is done by now, so a failed refresh must not read as a failed write: it
+    is reported after what was done, and the next tick's sync catches up."""
+    try:
+        sync.sync_github(c.db)
+    except github.GitHubError as error:
+        return f" (done; the refresh after it failed: {error})"
+    return ""
+
+
 def guard(c, command):
     if not R.may(c.role, command):
         raise Refused(f"{c.role} may not {command}: see `sq {c.role} help`")
@@ -385,10 +395,10 @@ def review(c, a):
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              "Answer each finding in its thread, fix, push, and hand it back to In Review.")
-    sync.sync_github(c.db)
+    stale = resync(c)
     if story:
         c.refresh(story["id"])
-    return f"posted the review on PR #{a.pr} ({len(items)} inline, {last})"
+    return f"posted the review on PR #{a.pr} ({len(items)} inline, {last}){stale}"
 
 
 def thread_of(pr, comment_id):
@@ -405,8 +415,7 @@ def pr_reply(c, a):
     first = thread_of(pr, a.comment)["comments"][0]["id"]
     # Signed, so the queue knows whose word a thread ends on.
     github.reply(owner, name, a.pr, first, f"{a.text.rstrip()} (from {signature(c.role)})")
-    sync.sync_github(c.db)
-    return f"replied on PR #{a.pr}"
+    return f"replied on PR #{a.pr}{resync(c)}"
 
 
 def resolve(c, a):
@@ -417,8 +426,7 @@ def resolve(c, a):
     if a.text:
         github.reply(owner, name, a.pr, found["comments"][0]["id"], a.text)
     github.resolve(found["id"])
-    sync.sync_github(c.db)
-    return f"resolved {found['path']}:{found['line'] or '-'} on PR #{a.pr}"
+    return f"resolved {found['path']}:{found['line'] or '-'} on PR #{a.pr}{resync(c)}"
 
 
 def pr_create(c, a):
@@ -426,8 +434,7 @@ def pr_create(c, a):
     if a.draft and c.role != "ops":
         raise Refused("pull requests open ready for review, not as drafts")
     url = github.create_pr(a.head, a.title, a.text, draft=a.draft)
-    sync.sync_github(c.db)
-    return f"opened {url}"
+    return f"opened {url}{resync(c)}"
 
 
 def hand_to_qa(c, story, pr, merge_sha, note=""):
@@ -470,9 +477,9 @@ def merge(c, a):
         raise Refused(f"{len(unresolved)} review threads are open; the lead resolves them")
     github.merge(a.pr, head)
     merged = github.live(a.pr)["mergeCommit"]
-    sync.sync_github(c.db)
     hand_to_qa(c, story, pr, merged, a.text)
-    return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is Ready For QA and QA is told"
+    return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} is Ready For QA and QA is told"
+            f"{resync(c)}")
 
 
 def to_qa(c, a):
