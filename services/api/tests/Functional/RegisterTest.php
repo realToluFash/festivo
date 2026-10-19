@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Organisation\Invitations\InvitationResponder;
 use App\Domain\User\Controller\RegisterController;
 use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\Password\PasswordPolicy;
@@ -20,6 +21,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\UserRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
+use App\Tests\Traits\InvitesPeople;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -39,6 +41,7 @@ use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 final class RegisterTest extends ApiTestCase
 {
     use ClockSensitiveTrait;
+    use InvitesPeople;
 
     /**
      * A literal password, which is the one thing a registration test cannot do
@@ -346,16 +349,12 @@ final class RegisterTest extends ApiTestCase
         self::assertSame(422, $this->client->getResponse()->getStatusCode());
     }
 
-    /**
-     * The invitation path, which has no endpoint yet: sc-67 builds the record
-     * that reaches it. The behaviour belongs to registration, so it is asserted
-     * here against the service rather than left until that story.
-     */
+    /** The endpoint's invitation path is InvitationTest's; this is the registrar's half of it. */
     #[Test]
     public function registrationThroughAnInvitationArrivesVerified(): void
     {
         $result = self::service(UserRegistrar::class)
-            ->registerFromInvitation('invited@example.com', 'Invited', self::GOOD_PASSWORD);
+            ->registerFromInvitation(self::invitationTo('invited@example.com')[0], 'Invited', self::GOOD_PASSWORD);
 
         self::em()->flush();
 
@@ -418,6 +417,7 @@ final class RegisterTest extends ApiTestCase
             self::service(PendingRegistrations::class),
             new RefusingRateLimiterFactory(),
             self::service(CodeField::class),
+            self::service(InvitationResponder::class),
         );
 
         try {
@@ -428,6 +428,31 @@ final class RegisterTest extends ApiTestCase
             self::assertSame(429, $e->errorCode->status());
             self::assertMatchesRegularExpression('/^Too many sign-ups from this network\. Try again at \d\d:\d\d\.$/', $e->getMessage());
             self::assertGreaterThan(0, (int) ($e->headers['Retry-After'] ?? 0));
+        }
+    }
+
+    #[Test]
+    public function anInvitedRegistrationSpendsTheSameBudgetBeforeItsTokenIsRead(): void
+    {
+        $controller = new RegisterController(
+            self::service(AccountSerialiser::class),
+            self::service(PendingRegistrations::class),
+            new RefusingRateLimiterFactory(),
+            self::service(CodeField::class),
+            self::service(InvitationResponder::class),
+        );
+        $body = Json\encode([
+            'email' => 'kemi.l@example.com',
+            'name' => 'Kemi Lawal',
+            'password' => self::GOOD_PASSWORD,
+            'invitationToken' => Str\repeat('ab', 32),
+        ]);
+
+        try {
+            $controller->register(Request::create('/api/auth/register', 'POST', content: $body));
+            self::fail('the invited path skipped the registration budget');
+        } catch (ApiException $e) {
+            self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode, 'refused for the budget, not for the invented token');
         }
     }
 

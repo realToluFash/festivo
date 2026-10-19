@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Http;
 
+use App\Domain\Organisation\SignInRules\SignInRulesEditor;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Enum\Permission;
+use App\Http\Access\Grants;
+use DateTimeInterface;
 use Psl\Vec;
 
 final readonly class OrganisationSerialiser
@@ -25,18 +28,27 @@ final readonly class OrganisationSerialiser
     }
 
     /** @return array<string, mixed> a seeded role is named by its key, which each client words itself */
-    public static function membership(Membership $membership): array
+    public static function membership(Membership $membership, Grants $grants): array
     {
         $role = $membership->getRole();
+        $organisation = $membership->getOrganisation();
+        $name = static fn (Permission $permission): string => $permission->value;
 
-        return self::organisation($membership->getOrganisation()) + [
+        return self::organisation($organisation) + [
             'role' => [
                 'id' => $role->getId()->toRfc4122(),
                 'seededAs' => $role->getSeededAs()?->value,
                 'name' => $role->getName(),
             ],
             // The same as GET /api/orgs/{id}/permissions, so a client hides what it cannot use without asking twice.
-            'permissions' => Vec\map($role->getPermissions(), static fn (Permission $permission): string => $permission->value),
+            'permissions' => Vec\map(Vec\filter($role->getPermissions(), $grants->allows(...)), $name),
+            // sc-69: what waits on two-factor, and whether only reading is open until Google or Apple is linked.
+            'withheldUntilTwoFactor' => Vec\map($grants->withheld(), $name),
+            'readOnlyUntilLinked' => $grants->isReadOnly(),
+            'signInRules' => [
+                ...SignInRulesEditor::rulesOf($organisation),
+                'changedAt' => $organisation->getSignInRulesChangedAt()?->format(DateTimeInterface::ATOM),
+            ],
         ];
     }
 }

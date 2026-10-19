@@ -45,9 +45,11 @@ final readonly class RolesController
 
         return new JsonResponse([
             'permissions' => Vec\map(
-                Vec\filter(Permission::cases(), $grants->holds(...)),
+                Vec\filter(Permission::cases(), $grants->allows(...)),
                 static fn (Permission $permission): string => $permission->value,
             ),
+            'withheldUntilTwoFactor' => Vec\map($grants->withheld(), static fn (Permission $permission): string => $permission->value),
+            'readOnlyUntilLinked' => $grants->isReadOnly(),
         ]);
     }
 

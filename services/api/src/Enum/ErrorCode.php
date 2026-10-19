@@ -25,7 +25,18 @@ enum ErrorCode: string
     case LastVerifiedAddress = 'last_verified_address';
     case ProviderTaken = 'provider_taken';
     case LastSignInMethod = 'last_sign_in_method';
+    case ProviderKeptByRule = 'provider_kept_by_rule';
     case UnsupportedMediaType = 'unsupported_media_type';
+
+    case AlreadyAMember = 'already_a_member';
+    case EmailTaken = 'email_taken';
+    case InvitationNotFound = 'invitation_not_found';
+    case InvitationExpired = 'invitation_expired';
+    case InvitationRevoked = 'invitation_revoked';
+    case InvitationAccepted = 'invitation_accepted';
+    case InvitationDeclined = 'invitation_declined';
+    case InvitationNotYours = 'invitation_not_yours';
+    case OrganisationDeleted = 'organisation_deleted';
 
     case Unauthenticated = 'unauthenticated';
     case InvalidCredentials = 'invalid_credentials';
@@ -54,6 +65,10 @@ enum ErrorCode: string
     case TwoFactorOff = 'two_factor_off';
     case TwoFactorRequired = 'two_factor_required';
     case ProofRequired = 'proof_required';
+    case OAuthOnly = 'oauth_only';
+    case OAuthOnlyUnlinked = 'oauth_only_unlinked';
+    case OrganisationTwoFactorRequired = 'organisation_two_factor_required';
+    case SessionTimedOut = 'session_timed_out';
     case RecoveryNobodyToApprove = 'recovery_nobody_to_approve';
     case RecoveryRequestInvalid = 'recovery_request_invalid';
     case RecoveryRequestClosed = 'recovery_request_closed';
@@ -75,14 +90,19 @@ enum ErrorCode: string
             self::MethodNotAllowed => 405,
             self::NotFound, self::ResetLinkInvalid => 404,
             self::ResetLinkUsed, self::ResetLinkExpired, self::RegistrationExpired => 410,
-            self::Conflict, self::PhoneTaken, self::ProviderTaken, self::LastSignInMethod, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
+            self::Conflict, self::PhoneTaken, self::ProviderTaken, self::LastSignInMethod, self::ProviderKeptByRule, self::TwoFactorAlreadyOn, self::TwoFactorNotEnrolled, self::TwoFactorOff => 409,
             self::RecoveryNobodyToApprove, self::RecoveryRequestClosed, self::RecoveryRequestProved, self::RecoveryRequestReplaced => 409,
             self::OwnerRoleFixed, self::SeededRoleKept, self::LastOwner => 409,
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
+            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined => 409,
+            self::InvitationNotFound => 404,
+            self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
+            self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,
-            self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid => 401,
+            self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
+            self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired => 403,
             self::TooManyRequests, self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
             self::VerificationCodeExhausted => 422,

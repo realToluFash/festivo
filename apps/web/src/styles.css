@@ -1381,6 +1381,140 @@ h2 {
   color: var(--colorAccentText);
 }
 
+.org-switcher-waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin-top: var(--spaceHair);
+  font: var(--typeMeta);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.org-switcher-ring {
+  flex: none;
+  width: var(--spaceMd);
+  height: var(--spaceMd);
+  box-sizing: border-box;
+  border: 2px solid var(--colorInkSecondary);
+  border-radius: var(--radiusPill);
+}
+
+.org-switcher-invitations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+  margin: var(--spaceXs) var(--spaceXl) var(--spaceSm);
+}
+
+.org-switcher-invitations .org-switcher-heading {
+  padding: var(--spaceXs) 0 0;
+}
+
+.org-tile-invited {
+  box-sizing: border-box;
+  border: var(--borderMark) var(--colorInkTertiary);
+  border-style: dashed;
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+}
+
+.invitation-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  min-width: 0;
+  padding: var(--spaceLg) var(--spaceXl);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.invitation-row-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  min-width: 0;
+}
+
+.invitation-row-naming {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  min-width: 0;
+}
+
+.invitation-row p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.invitation-row-name {
+  font: var(--typeRowTitle);
+}
+
+.invitation-row-line,
+.invitation-row-until,
+.invitation-row-note {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.invitation-row-answer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-width: 0;
+}
+
+.invitation-row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.invitation-row-said {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-width: 0;
+  font: var(--typeBody);
+  font-weight: 600;
+}
+
+.invitation-row-said .mark {
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+}
+
+.invitation-row-joined {
+  color: var(--colorAccentText);
+}
+
+.invitation-row-open {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no-organisation-invitations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.no-organisation .no-organisation-heading {
+  margin-top: var(--spaceXs);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+  color: var(--colorInkSecondary);
+}
+
 .org-switcher-note {
   margin: 0;
   padding: var(--spaceSm) var(--spaceXl) var(--spaceXs);
@@ -2063,4 +2197,255 @@ h2 {
   flex-direction: column;
   gap: var(--spaceSm);
   align-items: flex-start;
+}
+
+/* ── An invitation to join ────────────────────────────────────────────────── */
+
+.join-org {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  padding: var(--spaceLg);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.join-subheading {
+  margin: 0;
+  font: var(--typeTitleSection);
+  letter-spacing: var(--typeTitleSectionTracking);
+}
+
+.input-locked {
+  background: var(--colorInset);
+  color: var(--colorInkSecondary);
+}
+
+/* ── Settings > Members ───────────────────────────────────────────────────── */
+
+.members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceLg);
+}
+
+.members-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  align-items: flex-start;
+}
+
+.members-head h1,
+.members h1 {
+  margin: 0;
+}
+
+.members-back {
+  align-self: flex-start;
+}
+
+.members-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceMd);
+  border: var(--borderInset);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInk);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--colorInset);
+  box-shadow: var(--shadowCard);
+}
+
+.chip-count {
+  color: var(--colorInkSecondary);
+  font-weight: 500;
+}
+
+.members-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+  width: 100%;
+  min-height: var(--sizeHit);
+  padding: var(--spaceSm) 0;
+  border: 0;
+  background: transparent;
+  color: var(--colorInk);
+  text-align: left;
+}
+
+button.members-row {
+  cursor: pointer;
+}
+
+.members-row-text,
+.members-role-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+  min-width: 0;
+}
+
+.members-row-name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.members-state {
+  font-weight: 600;
+  color: var(--colorInkSecondary);
+}
+
+.members-state[data-state='active'] {
+  color: var(--colorAccentText);
+}
+
+.members-state[data-state='pending_approval'] {
+  color: var(--colorAttentionText);
+}
+
+.members-empty,
+.members-invitation {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  align-items: flex-start;
+  padding: var(--spaceSm) 0;
+}
+
+.members-invitation-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+  align-items: center;
+}
+
+.members-person {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.members-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.members-history li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--spaceXs) var(--spaceMd);
+}
+
+.members-roles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.members-role {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-height: var(--sizeHit);
+  padding: var(--spaceSm) 0;
+  cursor: pointer;
+}
+
+/* ── Settings > Sign-in rules (sc-69): the rules beside what saving does ─── */
+
+.sign-in-rules {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spaceXl);
+}
+
+.sign-in-rules-main,
+.sign-in-rules-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.sign-in-rules-main {
+  flex: 2 1 28rem;
+}
+
+.sign-in-rules-side {
+  flex: 1 1 20rem;
+}
+
+.sign-in-rules-methods {
+  max-width: none;
+}
+
+.sign-in-rules-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.sign-in-rules-switch h2 {
+  flex: 1 1 16rem;
+}
+
+.sign-in-rules-switch .roles-level {
+  flex: 0 0 auto;
+  padding: 0 var(--spaceLg);
+}
+
+.sign-in-rules-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.sign-in-rules-choices .roles-level {
+  flex: 0 0 auto;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+}
+
+.sign-in-rules-needs-own .button {
+  align-self: flex-start;
+  margin-top: var(--spaceSm);
+}
+
+.sign-in-rules-effects,
+.sign-in-rules-changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding-left: var(--spaceLg);
+}
+
+.sign-in-rules-changes p {
+  margin: 0;
 }

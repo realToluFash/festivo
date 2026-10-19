@@ -26,7 +26,8 @@ names its role first: `sq <role> tick`, `sq l10n next`, `sq dev2 done 41`.
   - for ops, `main` going red.
 
   A story that has sat in the queue since the last run does not wake it again, and nor does
-  a story leaving the queue. `sq status` lists what each role holds and has waiting.
+  a story leaving the queue, or one the role moved into its own queue itself. `sq status`
+  lists what each role holds and has waiting.
 
 - **The work runs in a fresh agent.** A woken tick hands the work to a background agent,
   which loads the skill, does the run with a clean context and reports back. The session

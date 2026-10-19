@@ -6,8 +6,11 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\OrganisationRules;
+use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\Permission;
+use App\Http\Access\Grants;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
@@ -30,6 +33,7 @@ final readonly class OrganisationController
         private OrganisationRepository $organisationRepository,
         private OrganisationRules $organisationRules,
         private EntityManagerInterface $entityManager,
+        private MembershipDirectoryInterface $membershipDirectory,
     ) {
     }
 
@@ -42,7 +46,10 @@ final readonly class OrganisationController
         $memberships = $user instanceof User ? $this->membershipRepository->findActiveFor($user) : [];
 
         return new JsonResponse([
-            'organisations' => Vec\map($memberships, OrganisationSerialiser::membership(...)),
+            'organisations' => Vec\map($memberships, fn (Membership $membership): array => OrganisationSerialiser::membership(
+                $membership,
+                $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
+            )),
         ]);
     }
 

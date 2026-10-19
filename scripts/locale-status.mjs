@@ -13,6 +13,7 @@ export const CATALOGUES = {
   messages: 'services/api/translations/messages.{locale}.json',
   errors: 'services/api/translations/errors.{locale}.json',
   emails: 'services/api/translations/emails.{locale}.json',
+  emailCounts: 'services/api/translations/emails+intl-icu.{locale}.json',
 };
 
 const SAME_AS_ENGLISH = 'docs/i18n/same-as-english.json';
