@@ -16,6 +16,7 @@ import {
   useSession,
   useSessionState,
 } from '../../session.ts';
+import { useWaitingInvitations } from '../../invitations.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 
@@ -72,6 +73,7 @@ function Shell() {
   const { pathname } = useLocation();
   const [switched, setSwitched] = useState<{ name: string; at: string } | null>(null);
   const organisation = session.organisation;
+  const waiting = useWaitingInvitations();
 
   return (
     <div className="shell">
@@ -86,6 +88,7 @@ function Shell() {
           <OrganisationSwitcher
             current={organisation}
             organisations={session.organisations}
+            waiting={waiting}
             onSwitch={(next) => {
               switchOrganisation(next.id);
               setSwitched({ name: next.name, at: pathname });
@@ -127,7 +130,15 @@ function Shell() {
 
         <ErrorBoundary>
           {organisation == null && !pathname.startsWith('/app/account') ? (
-            <NoOrganisation />
+            <NoOrganisation
+              waiting={waiting}
+              onOpen={(id) => {
+                const joined = session.organisations.find((membership) => membership.id === id);
+
+                switchOrganisation(id);
+                if (joined != null) setSwitched({ name: joined.name, at: pathname });
+              }}
+            />
           ) : (
             <Outlet />
           )}

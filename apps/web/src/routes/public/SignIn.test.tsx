@@ -191,6 +191,7 @@ describe('signing in, for real', () => {
     const sent = answering({
       'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
       'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),
+      'GET /api/invitations': () => json({ invitations: [] }),
     });
 
     at('/sign-in');
@@ -198,7 +199,13 @@ describe('signing in, for real', () => {
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
     expect(screen.getByText('Signed in as Folake Ire')).toBeDefined();
-    expect(sent.map((request) => request.path)).toEqual(['/api/auth/login', '/api/orgs']);
+    await waitFor(() =>
+      expect(sent.map((request) => request.path)).toEqual([
+        '/api/auth/login',
+        '/api/orgs',
+        '/api/invitations',
+      ]),
+    );
   });
 
   it('sends an unverified account to the verification screen instead', async () => {

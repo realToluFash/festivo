@@ -37,6 +37,10 @@ class Organisation
     #[ORM\Column(type: Types::STRING, length: 180)]
     private string $contactAddress;
 
+    /** What a stranger's invitation is written in, there being no account to ask (sc-67): the founder's, at founding. */
+    #[ORM\Column(type: Types::STRING, length: 5)]
+    private string $locale;
+
     /** Password sign-in is off for members who have linked Google or Apple; the rest read but do not change (sc-69). */
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $providerSignInOnly = false;
@@ -57,6 +61,7 @@ class Organisation
         string $currency,
         string $timezone,
         string $contactAddress,
+        string $locale,
     ) {
         $this->id = Uuid::v7();
         $this->name = $name;
@@ -64,6 +69,7 @@ class Organisation
         $this->currency = $currency;
         $this->timezone = $timezone;
         $this->contactAddress = $contactAddress;
+        $this->locale = $locale;
     }
 
     public function getId(): Uuid
@@ -119,6 +125,16 @@ class Organisation
     public function setContactAddress(string $contactAddress): void
     {
         $this->contactAddress = $contactAddress;
+    }
+
+    public function getLocale(): string
+    {
+        return $this->locale;
+    }
+
+    public function setLocale(string $locale): void
+    {
+        $this->locale = $locale;
     }
 
     public function isProviderSignInOnly(): bool

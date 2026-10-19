@@ -1654,3 +1654,196 @@ describe('getting back in without the second factor', () => {
     await expect(client.recoveryState('handle')).rejects.toThrow(/RecoveryView/);
   });
 });
+
+describe('invitations and members', () => {
+  function client(response: Response, sent: { line: string; body: unknown }[] = []) {
+    return {
+      api: new ApiClient({
+        baseUrl: () => 'http://api.test',
+        tokens: store('live', null),
+        refreshTokenIn: 'cookie',
+        fetch: async (url, init) => {
+          sent.push({
+            line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+            body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+          });
+
+          return response;
+        },
+      }),
+      sent,
+    };
+  }
+
+  // Every key MemberSerialiser and InvitationsController write, with the values they write.
+  const PREVIEW = {
+    id: 'inv_1',
+    organisation: { id: 'org_1', name: 'Ìrè Events' },
+    email: 'kemi.l@gmail.com',
+    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+    invitedBy: { name: 'Bisi Adeyemi' },
+    expiresAt: '2026-10-23T09:00:00+00:00',
+    refusal: null,
+    forYou: null,
+    signedInAs: null,
+  };
+
+  test('a link opens on who invited whom, to what, until when', async () => {
+    const { api, sent } = client(json(PREVIEW));
+
+    expect(await api.invitationLink('ab12')).toEqual(PREVIEW);
+    expect(sent).toEqual([{ line: 'POST /api/invitations/link', body: { token: 'ab12' } }]);
+  });
+
+  test("a deleted organisation's invitation keeps the name and loses the id", async () => {
+    const { api } = client(
+      json({
+        ...PREVIEW,
+        organisation: { id: null, name: 'Ìrè Events' },
+        role: null,
+        refusal: 'organisation_deleted',
+      }),
+    );
+
+    const preview = await api.invitationLink('ab12');
+
+    expect(preview.organisation).toEqual({ id: null, name: 'Ìrè Events' });
+    expect(preview.refusal).toBe('organisation_deleted');
+  });
+
+  test('registering from a link sends the token and is signed in at once', async () => {
+    const { api, sent } = client(
+      new Response(
+        JSON.stringify({
+          accessToken: 'fresh',
+          refreshExpiresAt: '2026-11-14T00:00:00+00:00',
+          sessionId: 's1',
+          account: {
+            id: 'u1',
+            name: 'Kemi Lawal',
+            verified: true,
+            complete: true,
+            emailAddresses: [
+              { id: 'e1', address: 'kemi.l@gmail.com', verified: true, primary: true },
+            ],
+            phoneNumbers: [],
+          },
+        }),
+        { status: 201 },
+      ),
+    );
+
+    const signedIn = await api.registerFromInvitation(
+      'ab12',
+      'kemi.l@gmail.com',
+      'Kemi Lawal',
+      'a long enough passphrase',
+    );
+
+    expect(signedIn.account.verified).toBe(true);
+    expect(sent[0]?.line).toBe('POST /api/auth/register');
+    expect(sent[0]?.body).toMatchObject({ invitationToken: 'ab12', refreshTokenIn: 'cookie' });
+  });
+
+  test('a refused link arrives as its code', async () => {
+    const { api } = client(problem(403, 'invitation_not_yours'));
+
+    const refused = await api
+      .registerFromInvitation('ab12', 'bob@example.com', 'Bob', 'a long enough passphrase')
+      .catch((error: unknown) => error);
+
+    expect(refused).toBeInstanceOf(ApiError);
+    expect((refused as ApiError).is('invitation_not_yours')).toBe(true);
+  });
+
+  test('the members list reads every state and its history', async () => {
+    const { api, sent } = client(
+      json({
+        members: [
+          {
+            id: 'm1',
+            user: { id: 'u1', name: 'Kemi Lawal', email: 'kemi.l@gmail.com' },
+            role: { id: 'role_4', seededAs: 'coordinator', name: null },
+            status: 'left_or_removed',
+            former: 'removed',
+            channel: 'invitation',
+            since: '2026-10-18T10:00:00+00:00',
+            invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
+            invitedAt: '2026-10-01T10:00:00+00:00',
+            self: false,
+            history: [
+              {
+                from: null,
+                to: 'active',
+                channel: 'invitation',
+                by: { id: 'u1', name: 'Kemi Lawal' },
+                at: '2026-10-02T10:00:00+00:00',
+              },
+              {
+                from: 'active',
+                to: 'left_or_removed',
+                channel: 'invitation',
+                by: { id: 'u2', name: 'Bisi Adeyemi' },
+                at: '2026-10-18T10:00:00+00:00',
+              },
+            ],
+          },
+        ],
+        invitations: [
+          {
+            id: 'inv_1',
+            email: 'amara@example.com',
+            role: { id: 'role_5', seededAs: 'read_only', name: null },
+            invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
+            status: 'pending',
+            sentAt: '2026-10-18T10:00:00+00:00',
+            expiresAt: '2026-10-25T10:00:00+00:00',
+            acceptedAt: null,
+            declinedAt: null,
+            revokedAt: null,
+          },
+        ],
+      }),
+    );
+
+    const list = await api.members('org_1');
+
+    expect(list.members[0]?.former).toBe('removed');
+    expect(list.members[0]?.history.map((step) => step.to)).toEqual(['active', 'left_or_removed']);
+    expect(list.invitations[0]?.status).toBe('pending');
+    expect(sent[0]?.line).toBe('GET /api/orgs/org_1/members');
+  });
+
+  test('a members list in a shape it does not know names where to look', async () => {
+    await expect(
+      client(json({ members: [{ id: 'm1' }], invitations: [] })).api.members('o'),
+    ).rejects.toThrow(/MembersController/);
+  });
+
+  test('an invitation is sent with the address and the role', async () => {
+    const { api, sent } = client(
+      json({
+        invitation: {
+          id: 'inv_2',
+          email: 'amara@example.com',
+          role: { id: 'role_5', seededAs: 'read_only', name: null },
+          invitedBy: { id: 'u2', name: 'Bisi Adeyemi' },
+          status: 'pending',
+          sentAt: null,
+          expiresAt: '2026-10-25T10:00:00+00:00',
+          acceptedAt: null,
+          declinedAt: null,
+          revokedAt: null,
+        },
+      }),
+    );
+
+    const sentInvitation = await api.inviteMember('org_1', 'amara@example.com', 'role_5');
+
+    expect(sentInvitation.id).toBe('inv_2');
+    expect(sent[0]).toEqual({
+      line: 'POST /api/orgs/org_1/members/invite',
+      body: { email: 'amara@example.com', roleId: 'role_5' },
+    });
+  });
+});
