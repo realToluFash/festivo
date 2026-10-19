@@ -115,6 +115,10 @@ only in the organisation that set it:
   it (`TokenIssuer::markSignedInWith`) and carries on, and unlinking that provider ends it.
   The marking happens under this rule only: without it, unlinking ends only the sessions
   started through the provider (sc-510), never the password session it was linked from.
+  Nobody can require it without having it either (sc-3290): turning it on while the person
+  saving has neither linked is the same **403 `oauth_only_unlinked`**, and nothing in that
+  save is changed. The page carries `ownProvider`, and its `passwordOnly` list never names
+  the caller.
 - **Two-factor for administrators**, for a member without it: every permission whose area is
   Members, Billing or Organisation (`Permission::isAdministrative()`) is withheld, and asking
   for one is **403 `organisation_two_factor_required`** with the permission named. Nothing
