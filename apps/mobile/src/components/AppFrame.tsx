@@ -1,23 +1,25 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
-import { initials, roleName } from '@soirely/domain';
+import { initials, roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, createContext, useContext, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
+import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { InvitationRows } from './InvitationRows.tsx';
 import { Text } from './Text.tsx';
 
 const RAIL_WIDTH = 220;
 
 const OpenSwitcher = createContext<(() => void) | undefined>(undefined);
 
-/** Opens the frame's organisation switcher; undefined while there is only one organisation to be in. */
+/** Opens the frame's organisation switcher; undefined while there is one organisation and no invitation. */
 export function useOpenSwitcher(): (() => void) | undefined {
   return useContext(OpenSwitcher);
 }
@@ -53,12 +55,22 @@ export function AppFrame({
   const { kind } = useLayout();
   const [choosing, setChoosing] = useState(false);
   const signedIn = useSignedIn();
-  const openSwitcher = signedIn.organisations.length > 1 ? () => setChoosing(true) : undefined;
+  const waiting = useWaitingInvitations();
+  const count = waitingInvitations(waiting.invitations, waiting.outcomes);
+  const openSwitcher =
+    signedIn.organisations.length > 1 || waiting.invitations.length > 0
+      ? () => setChoosing(true)
+      : undefined;
 
   return (
     <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
       {kind === 'tabletLandscape' && (
-        <Rail current={current} organisation={signedIn.organisation} onSwitch={openSwitcher} />
+        <Rail
+          current={current}
+          organisation={signedIn.organisation}
+          waiting={count}
+          onSwitch={openSwitcher}
+        />
       )}
       <View style={styles.column}>
         <FrameHeader
@@ -68,6 +80,7 @@ export function AppFrame({
           back={back}
           email={signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '')}
           organisation={signedIn.organisation}
+          waiting={count}
           onSwitch={openSwitcher}
         />
         <View style={styles.body}>
@@ -79,6 +92,7 @@ export function AppFrame({
         open={choosing}
         organisations={signedIn.organisations}
         current={signedIn.organisation}
+        waiting={waiting}
         onClose={() => setChoosing(false)}
       />
     </View>
@@ -92,6 +106,7 @@ function FrameHeader({
   back,
   email,
   organisation,
+  waiting,
   onSwitch,
 }: {
   kind: LayoutKind;
@@ -100,6 +115,7 @@ function FrameHeader({
   back: { label: string; onPress: () => void } | undefined;
   email: string;
   organisation: Membership | null;
+  waiting: number;
   onSwitch: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -123,7 +139,9 @@ function FrameHeader({
   if (kind === 'tabletPortrait') {
     return (
       <View style={[styles.header, styles.portraitHeader, top]}>
-        {organisation != null && <OrgPill organisation={organisation} onSwitch={onSwitch} />}
+        {organisation != null && (
+          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+        )}
         <View style={styles.pills} accessibilityRole="tablist">
           {DESTINATIONS.map((destination) => {
             const on = destination === current;
@@ -159,7 +177,7 @@ function FrameHeader({
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
       {current === 'home' && organisation != null && (
-        <OrgPill organisation={organisation} onSwitch={onSwitch} />
+        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
       )}
       {back != null && (
         <Pressable
@@ -227,10 +245,12 @@ function TabBar({ current }: { current: Destination }) {
 function Rail({
   current,
   organisation,
+  waiting,
   onSwitch,
 }: {
   current: Destination;
   organisation: Membership | null;
+  waiting: number;
   onSwitch: (() => void) | undefined;
 }) {
   const { t } = useTranslation();
@@ -276,7 +296,9 @@ function Rail({
           {t('app.name')}
         </Text>
       </View>
-      {organisation != null && <OrgPill organisation={organisation} onSwitch={onSwitch} railed />}
+      {organisation != null && (
+        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} railed />
+      )}
       <View style={styles.railGroup}>{DESTINATIONS.filter((d) => d !== 'settings').map(item)}</View>
       <View style={styles.fill} />
       <View style={[styles.railGroup, styles.railFoot]}>
@@ -307,10 +329,12 @@ function Rail({
 
 function OrgPill({
   organisation,
+  waiting,
   onSwitch,
   railed = false,
 }: {
   organisation: Membership;
+  waiting: number;
   onSwitch: (() => void) | undefined;
   railed?: boolean;
 }) {
@@ -319,11 +343,17 @@ function OrgPill({
   const label =
     onSwitch == null
       ? t('switcher.label', { name: organisation.name, role })
-      : t('switcher.labelSwitch', { name: organisation.name, role });
+      : waiting > 0
+        ? t('switcher.labelSwitchWaiting', { name: organisation.name, role, count: waiting })
+        : t('switcher.labelSwitch', { name: organisation.name, role });
 
   return (
     <Pressable
-      style={[styles.org, railed ? styles.orgRailed : styles.orgPill]}
+      style={[
+        styles.org,
+        railed ? styles.orgRailed : styles.orgPill,
+        waiting > 0 && styles.orgWaiting,
+      ]}
       onPress={onSwitch}
       disabled={onSwitch == null}
       accessibilityRole={onSwitch == null ? 'text' : 'button'}
@@ -343,6 +373,14 @@ function OrgPill({
           <Text size={tokens.typeMeta.size} muted>
             {t('frame.organisation')}
           </Text>
+        )}
+        {waiting > 0 && (
+          <View style={styles.waiting}>
+            <View style={styles.ring} />
+            <Text size={tokens.typeMeta.size} weight="semibold">
+              {t('invitations.count', { count: waiting })}
+            </Text>
+          </View>
         )}
       </View>
       {onSwitch != null && (
@@ -368,11 +406,13 @@ function Switcher({
   open,
   organisations,
   current,
+  waiting,
   onClose,
 }: {
   open: boolean;
   organisations: readonly Membership[];
   current: Membership | null;
+  waiting: WaitingInvitations;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -380,45 +420,66 @@ function Switcher({
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('switcher.close')}>
-        <View style={styles.sheet} onStartShouldSetResponder={() => true}>
-          <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-            {t('switcher.heading')}
-          </Text>
-          {organisations.map((organisation) => {
-            const isCurrent = organisation.id === current?.id;
+        <View style={styles.sheetFrame} onStartShouldSetResponder={() => true}>
+          <ScrollView contentContainerStyle={styles.sheet}>
+            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+              {t('switcher.heading')}
+            </Text>
+            {organisations.map((organisation) => {
+              const isCurrent = organisation.id === current?.id;
 
-            return (
-              <Pressable
-                key={organisation.id}
-                style={[styles.option, isCurrent && styles.optionOn]}
-                onPress={() => {
-                  onClose();
-                  if (!isCurrent) switchOrganisation(organisation.id);
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isCurrent }}
-                testID={`switcher.${organisation.id}`}
-              >
-                <Tile name={organisation.name} />
-                <View style={[styles.fill, styles.shrink]}>
-                  <Text size={tokens.typeBodyPhone.size} weight="semibold">
-                    {organisation.name}
-                  </Text>
-                  <Text size={tokens.typeBody.size} muted>
-                    {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
-                  </Text>
-                </View>
-                {isCurrent && (
-                  <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
-                    {t('switcher.current')}
-                  </Text>
-                )}
-              </Pressable>
-            );
-          })}
-          <Text size={tokens.typeBody.size} muted>
-            {t('switcher.remembered')}
-          </Text>
+              return (
+                <Pressable
+                  key={organisation.id}
+                  style={[styles.option, isCurrent && styles.optionOn]}
+                  onPress={() => {
+                    onClose();
+                    if (!isCurrent) switchOrganisation(organisation.id);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isCurrent }}
+                  testID={`switcher.${organisation.id}`}
+                >
+                  <Tile name={organisation.name} />
+                  <View style={[styles.fill, styles.shrink]}>
+                    <Text size={tokens.typeBodyPhone.size} weight="semibold">
+                      {organisation.name}
+                    </Text>
+                    <Text size={tokens.typeBody.size} muted>
+                      {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
+                    </Text>
+                  </View>
+                  {isCurrent && (
+                    <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
+                      {t('switcher.current')}
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+            {waiting.invitations.length > 0 && (
+              <View style={styles.invitations}>
+                <Text
+                  size={tokens.typeLabel.size}
+                  weight="semibold"
+                  muted
+                  accessibilityRole="header"
+                >
+                  {t('invitations.heading')}
+                </Text>
+                <InvitationRows
+                  waiting={waiting}
+                  onOpen={(id) => {
+                    onClose();
+                    switchOrganisation(id);
+                  }}
+                />
+              </View>
+            )}
+            <Text size={tokens.typeBody.size} muted>
+              {t('switcher.remembered')}
+            </Text>
+          </ScrollView>
         </View>
       </Pressable>
     </Modal>
@@ -592,16 +653,29 @@ const styles = StyleSheet.create({
     padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,
   },
-  sheet: {
+  sheetFrame: {
+    flexShrink: 1,
     alignSelf: 'center',
     width: '100%',
     maxWidth: 480,
-    gap: tokens.spaceLg,
-    padding: tokens.spaceXxl,
     borderRadius: tokens.radiusCardPhone,
     borderWidth: 1,
     borderColor: tokens.colorBorder,
     backgroundColor: tokens.colorCard,
+  },
+  sheet: {
+    gap: tokens.spaceLg,
+    padding: tokens.spaceXxl,
+  },
+  invitations: { gap: tokens.spaceSm },
+  orgWaiting: { height: undefined, minHeight: tokens.sizeHit, paddingVertical: tokens.spaceXxs },
+  waiting: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceXs },
+  ring: {
+    width: tokens.spaceMd,
+    height: tokens.spaceMd,
+    borderRadius: tokens.spaceMd / 2,
+    borderWidth: 2,
+    borderColor: tokens.colorInkSecondary,
   },
   option: {
     minHeight: tokens.sizeHitPhoneHero,

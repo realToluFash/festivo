@@ -1381,6 +1381,140 @@ h2 {
   color: var(--colorAccentText);
 }
 
+.org-switcher-waiting {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceXs);
+  margin-top: var(--spaceHair);
+  font: var(--typeMeta);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.org-switcher-ring {
+  flex: none;
+  width: var(--spaceMd);
+  height: var(--spaceMd);
+  box-sizing: border-box;
+  border: 2px solid var(--colorInkSecondary);
+  border-radius: var(--radiusPill);
+}
+
+.org-switcher-invitations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+  margin: var(--spaceXs) var(--spaceXl) var(--spaceSm);
+}
+
+.org-switcher-invitations .org-switcher-heading {
+  padding: var(--spaceXs) 0 0;
+}
+
+.org-tile-invited {
+  box-sizing: border-box;
+  border: var(--borderMark) var(--colorInkTertiary);
+  border-style: dashed;
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+}
+
+.invitation-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  min-width: 0;
+  padding: var(--spaceLg) var(--spaceXl);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+  background: var(--colorInset);
+}
+
+.invitation-row-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceMd);
+  min-width: 0;
+}
+
+.invitation-row-naming {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  min-width: 0;
+}
+
+.invitation-row p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.invitation-row-name {
+  font: var(--typeRowTitle);
+}
+
+.invitation-row-line,
+.invitation-row-until,
+.invitation-row-note {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.invitation-row-answer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-width: 0;
+}
+
+.invitation-row-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.invitation-row-said {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spaceSm);
+  min-width: 0;
+  font: var(--typeBody);
+  font-weight: 600;
+}
+
+.invitation-row-said .mark {
+  width: var(--sizeMark);
+  height: var(--sizeMark);
+}
+
+.invitation-row-joined {
+  color: var(--colorAccentText);
+}
+
+.invitation-row-open {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.no-organisation-invitations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+}
+
+.no-organisation .no-organisation-heading {
+  margin-top: var(--spaceXs);
+  font: var(--typeLabel);
+  letter-spacing: var(--typeLabelTracking);
+  text-transform: uppercase;
+  color: var(--colorInkSecondary);
+}
+
 .org-switcher-note {
   margin: 0;
   padding: var(--spaceSm) var(--spaceXl) var(--spaceXs);

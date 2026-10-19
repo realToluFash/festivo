@@ -128,6 +128,19 @@ export function switchOrganisation(id: string): void {
   set({ status: 'signedIn', session: { ...state.session, organisation } });
 }
 
+/** An invitation accepted in the product: the organisation joins the list, and nobody is moved into it. */
+export function joinOrganisation(joined: Membership): void {
+  if (state.status !== 'signedIn') return;
+
+  const current = state.session;
+  const organisations = [
+    ...current.organisations.filter((membership) => membership.id !== joined.id),
+    joined,
+  ];
+
+  set({ status: 'signedIn', session: { ...current, organisations } });
+}
+
 /** After an edit, so the switcher and every page read the new name at once. */
 export function replaceOrganisation(next: Membership): void {
   if (state.status !== 'signedIn') return;

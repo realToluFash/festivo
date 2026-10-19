@@ -89,6 +89,17 @@ export function switchOrganisation(id: string): void {
   void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
 }
 
+/** An invitation accepted in the app: the organisation joins the list, and nobody is moved into it. */
+export function joinOrganisation(joined: Membership): void {
+  set({
+    ...state,
+    organisations: [
+      ...state.organisations.filter((membership) => membership.id !== joined.id),
+      joined,
+    ],
+  });
+}
+
 export function replaceOrganisation(saved: Membership): void {
   const organisations = state.organisations.map((membership) =>
     membership.id === saved.id ? saved : membership,

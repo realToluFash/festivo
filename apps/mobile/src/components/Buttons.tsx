@@ -10,12 +10,14 @@ export function PrimaryButton({
   onPress,
   busy = false,
   off = false,
+  accessibilityLabel,
   testID,
 }: {
   label: string;
   onPress: () => void;
   busy?: boolean;
   off?: boolean;
+  accessibilityLabel?: string;
   testID: string;
 }) {
   const inactive = busy || off;
@@ -25,6 +27,7 @@ export function PrimaryButton({
       style={[styles.primary, busy && styles.primaryBusy, off && styles.primaryOff]}
       onPress={onPress}
       disabled={inactive}
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
       testID={testID}
