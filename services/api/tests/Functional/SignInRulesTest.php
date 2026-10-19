@@ -284,7 +284,9 @@ final class SignInRulesTest extends ApiTestCase
         $mails = $this->mails();
         self::assertSame(['bisi@ire.events', 'chidi@ire.events', 'folake@ire.events'], Vec\sort(Vec\map($mails, static fn (Email $mail): string => $mail->getTo()[0]->getAddress())));
         $toBisi = Iter\first(Vec\filter($mails, static fn (Email $mail): bool => 'bisi@ire.events' === $mail->getTo()[0]->getAddress()));
-        self::assertStringContainsString('until you link Google or Apple', (string) $toBisi?->getTextBody());
+        self::assertStringContainsString('until you link Google or Apple. Your password still signs you in.', (string) $toBisi?->getTextBody());
+        self::assertStringNotContainsString('Nobody is signed out', (string) $toBisi?->getTextBody());
+        self::assertStringNotContainsString('Passwords stop working', (string) $toBisi?->getTextBody());
         $toFolake = Iter\first(Vec\filter($mails, static fn (Email $mail): bool => 'folake@ire.events' === $mail->getTo()[0]->getAddress()));
         self::assertStringNotContainsString('until you link Google or Apple', (string) $toFolake?->getTextBody());
     }
