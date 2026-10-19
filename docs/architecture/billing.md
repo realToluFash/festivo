@@ -44,11 +44,11 @@ migration; adding it now is one table.
 
 ## Three kinds of limit
 
-| Kind        | Examples                                                      | At the boundary                                           |
-| ----------- | ------------------------------------------------------------- | --------------------------------------------------------- |
-| **Hard**    | team seats, active events                                     | refuse **at creation**, name the limit, offer the upgrade |
-| **Metered** | messages (SMS and WhatsApp, in credits), AI requests, storage | allow, record, warn on approach                           |
-| **Feature** | service floor, branding, API                                  | present but gated — never half-working                    |
+| Kind        | Examples                                                                                                                               | At the boundary                                           |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Hard**    | people per event, Free 100, companion places counted, Enterprise unlimited (owner, 19 Oct, reversing #3835); team seats, active events | refuse **at creation**, name the limit, offer the upgrade |
+| **Metered** | messages (SMS and WhatsApp, in credits), AI requests, storage                                                                          | allow, record, warn on approach                           |
+| **Feature** | service floor, branding, API                                                                                                           | present but gated — never half-working                    |
 
 **One meter.** Anything consumable reports to it. The previous build billed AI requests
 twice because the first meter was called "usage", and whoever needed metering later
@@ -60,8 +60,8 @@ counter, it already exists.
 This outranks everything above. It is also commercially correct: the moment the product
 fails somebody in front of two hundred guests, the account and its word of mouth are gone.
 
-- Limits are enforced **at creation** — when the event is made or the member invited. Never
-  at runtime.
+- Limits are enforced **at creation** — when the event is made, the guest added, the member
+  invited. Never at runtime.
 - A live event stays live regardless of billing state. A card that expires on Saturday
   afternoon does not stop the service floor.
 - Running out of credits degrades a **channel**, not the event. Email still goes; SMS waits.
@@ -130,11 +130,11 @@ can see.
 The owner approved the prices and limits recorded in epic 37, "Decided, 19 Oct: prices and
 limits" (memo sc-3928 #4131). Two lines above changed with them, and one rule is new:
 
-- **Guests per event is not a limit on any plan, Free included** (#3835). The Hard row read
-  "guests per event, team seats, active events", and the first bullet of "A paywall must never
-  ruin somebody's wedding" read
-  "when the event is made, the guest added, the member invited". A guest who is not messaged
-  costs nothing measurable, and a cap would refuse a host mid-list.
+- **People per event is a Hard limit: Free 100, companion places counted, Enterprise
+  unlimited** (owner, 19 Oct, reversing #3835, which had taken it off every plan). The cap
+  refuses only the next guest the host adds to their own list. It never removes a guest,
+  never stops a companion or an RSVP from a guest already invited, and never touches a live
+  event.
 - **WhatsApp is on every plan, Free included, paid per message in credits** (#4152, #4169).
   The Feature row read "service floor, WhatsApp channel, branding, API", and the Metered row
   read "messages, AI requests, storage". The credit is the only gate, so a plan never
