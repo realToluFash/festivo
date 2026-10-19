@@ -65,7 +65,14 @@
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
     "newHere": "¿Es nuevo aquí?",
     "createAccount": "Crear una cuenta",
-    "passwordBlank": "Introduzca su contraseña."
+    "passwordBlank": "Introduzca su contraseña.",
+    "timedOutTitle": "Signed out by {{organisation}}’s rule",
+    "timedOutBody_one": "{{organisation}} signs people out after {{count}} day without use. Sign in again to carry on.",
+    "timedOutBody_other": "{{organisation}} signs people out after {{count}} days without use. Sign in again to carry on.",
+    "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
+    "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
+    "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it.",
+    "anotherAccount": "Sign in with another account"
   },
   "register": {
     "title": "Cree su cuenta",
@@ -116,7 +123,7 @@
     "signOut": "Cerrar sesión",
     "doneTitle": "Correo verificado",
     "doneBody": "{{address}} está confirmado. A continuación, unos datos para que su equipo sepa quién es quién.",
-    "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
+    "doneBodyAlternative": "{{address}} está verificada. Seguirá siendo una dirección alternativa hasta que la haga principal en Cuenta.",
     "continue": "Continuar",
     "failedTitle": "No ha funcionado",
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
@@ -149,7 +156,7 @@
     "carryOnWithout": "Continuar sin él",
     "doneTitle": "Número verificado",
     "doneBody": "Soirely puede contactarle en {{number}} si algo sale mal esa noche.",
-    "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
+    "doneBodyAlternative": "{{number}} está verificado. Seguirá siendo un número alternativo hasta que lo haga principal en Cuenta.",
     "continue": "Continuar a Soirely",
     "changeTitle": "Cambie su número de móvil",
     "nowVerified": "Ahora: {{number}} · verificado",
@@ -428,7 +435,9 @@
     "confirmWarning": "Se cerrará la sesión de los dispositivos que entraron con {{provider}}",
     "confirmEmailed": "Avisaremos por correo a todas las direcciones verificadas de su cuenta de que {{provider}} se ha desvinculado.",
     "confirmUnlink": "Desvincular {{provider}}",
-    "keep": "Mantenerla vinculada"
+    "keep": "Mantenerla vinculada",
+    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one can't be removed.",
+    "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
   "timeZone": {
     "title": "Zona horaria",
@@ -637,7 +646,9 @@
     "signOut": "Cerrar sesión",
     "choose": "Elija una sección",
     "chooseLine": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta.",
-    "chooseLineWithOrganisation": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta. Organización reúne la configuración de {{name}}."
+    "chooseLineWithOrganisation": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta. Organización reúne la configuración de {{name}}.",
+    "signInRules": "Sign-in rules",
+    "signInRulesLine": "{{name}} · how people sign in, and for how long"
   },
   "switcher": {
     "yourRole": "Su función · {{role}}",
@@ -646,7 +657,9 @@
     "remembered": "Soirely recuerda su elección en este dispositivo.",
     "label": "Organización: {{name}}, su función {{role}}",
     "labelSwitch": "Organización: {{name}}, su función {{role}}. Cambiar de organización",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
+    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
   },
   "roles": {
     "owner": "Propietario",
@@ -663,12 +676,12 @@
     "phonesIntro": "Su número principal es el que figura en su perfil. Los demás también pueden servir para contactarle.",
     "phonesList": "Números de teléfono de esta cuenta",
     "count": "{{count}} de {{most}}",
-    "capEmails_one": "You can add one more. An account holds up to {{most}} email addresses, including the primary.",
-    "capEmails_other": "You can add {{count}} more. An account holds up to {{most}} email addresses, including the primary.",
-    "capPhones_one": "You can add one more. An account holds up to {{most}} phone numbers, including the primary.",
-    "capPhones_other": "You can add {{count}} more. An account holds up to {{most}} phone numbers, including the primary.",
-    "capFullEmails": "You have {{most}}, the most an account can hold. Remove one to add another.",
-    "capFullPhones": "You have {{most}}, the most an account can hold. Remove one to add another.",
+    "capEmails_one": "Puede añadir una más. Una cuenta admite hasta {{most}} direcciones de correo electrónico, incluida la principal.",
+    "capEmails_other": "Puede añadir {{count}} más. Una cuenta admite hasta {{most}} direcciones de correo electrónico, incluida la principal.",
+    "capPhones_one": "Puede añadir uno más. Una cuenta admite hasta {{most}} números de teléfono, incluido el principal.",
+    "capPhones_other": "Puede añadir {{count}} más. Una cuenta admite hasta {{most}} números de teléfono, incluido el principal.",
+    "capFullEmails": "Tiene {{most}}, el máximo que admite una cuenta. Quite una para añadir otra.",
+    "capFullPhones": "Tiene {{most}}, el máximo que admite una cuenta. Quite uno para añadir otro.",
     "verified": "Verificado",
     "unverified": "Sin verificar",
     "primary": "Principal",
@@ -704,8 +717,8 @@
     "promoted": "{{address}} ya es su dirección principal. A partir de ahora, inicie sesión con ella.",
     "promotedPhone": "{{number}} ya es su número principal.",
     "removed": "Se ha quitado {{address}}.",
-    "verifiedDone": "{{address}} is verified.",
-    "verifiedDonePhone": "{{number}} is verified.",
+    "verifiedDone": "{{address}} está verificada.",
+    "verifiedDonePhone": "{{number}} está verificado.",
     "refusedPrimary": "Esta es la dirección con la que inicia sesión. Antes, haga principal otra dirección.",
     "refusedPrimaryPhone": "Este es su número principal. Antes, haga principal otro número.",
     "refusedLastVerified": "Esta es su única dirección verificada, la única prueba de que la cuenta es suya. Verifique otra antes de quitar esta.",
@@ -714,9 +727,9 @@
     "refusedNotVerifiedPhone": "Verifique este número antes de hacerlo principal.",
     "failed": "No ha funcionado. Inténtelo de nuevo.",
     "proveIntro": "Confirme que es usted antes de cambiar la dirección con la que inicia sesión.",
-    "backToAccount": "Back to Account",
-    "removeInAccount": "Remove it in Account",
-    "removeInAccountPhone": "Remove it in Account"
+    "backToAccount": "Volver a Cuenta",
+    "removeInAccount": "Quitarla en Cuenta",
+    "removeInAccountPhone": "Quitarlo en Cuenta"
   },
   "orgGeneral": {
     "intro": "El nombre que ven su equipo y sus invitados, y los valores con los que empieza cada evento nuevo.",
@@ -736,5 +749,90 @@
     "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento.",
     "searchCurrency": "Buscar monedas",
     "searchTimezone": "Buscar zonas horarias"
+  },
+  "invitations": {
+    "heading": "Invitations",
+    "count_one": "{{count}} invitation",
+    "count_other": "{{count}} invitations",
+    "from": "Invitation from {{inviter}} · {{role}}",
+    "fromNobody": "Invitation · {{role}}",
+    "until": "Works until {{date}}",
+    "untilSentTo": "Works until {{date}} · Sent to {{email}}",
+    "accept": "Accept and join",
+    "acceptLabel": "Accept and join {{organisation}}",
+    "decline": "Decline",
+    "declineLabel": "Decline the invitation to {{organisation}}",
+    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
+    "declineNoteNobody": "Declining changes nothing else.",
+    "joined": "You joined {{organisation}} as {{role}}.",
+    "open": "Open {{organisation}}",
+    "declined": "You declined. {{inviter}} will see that you said no.",
+    "declinedNobody": "You declined.",
+    "failed": "Your answer did not reach us. Check your connection and try again.",
+    "refused": {
+      "invitation_expired": {
+        "word": "Expired",
+        "body": "This invitation has expired. Ask {{inviter}} to send a new one.",
+        "bodyNobody": "This invitation has expired. Ask whoever invited you to send a new one."
+      },
+      "invitation_revoked": {
+        "word": "Withdrawn",
+        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+      },
+      "invitation_accepted": {
+        "word": "Already accepted",
+        "body": "You already accepted this invitation."
+      },
+      "invitation_declined": {
+        "word": "Already declined",
+        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
+        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+      },
+      "invitation_not_yours": {
+        "word": "Signed in as someone else",
+        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+      },
+      "organisation_deleted": {
+        "word": "Organisation deleted",
+        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+      }
+    }
+  },
+  "signInRules": {
+    "readTitle": "{{organisation}}’s sign-in rules",
+    "readIntro": "Set by the organisation’s owners. You can read them here; only they can change them.",
+    "loading": "Loading the sign-in rules…",
+    "failedLoad": "The sign-in rules did not load.",
+    "retry": "Try again",
+    "methodTitle": "How people sign in",
+    "idleTitle": "How long a sign-in lasts unused",
+    "twoFactorShort": "Two-factor",
+    "inForceTitle": "The rules in force",
+    "askOwner": "Questions? Ask an owner of {{organisation}}.",
+    "changesTitle": "What changed, newest first",
+    "noChanges": "No changes yet. These are the rules every organisation starts with.",
+    "changeWhen": "{{day}} at {{time}} · {{who}}",
+    "changeWho": "{{name}} · {{role}}",
+    "changeWas": "was: {{was}}",
+    "valueAnyMethod": "Any method: email and password, Google or Apple",
+    "valueProviderOnly": "Google or Apple only",
+    "valueIdle_one": "Sign-ins end after {{count}} day without use",
+    "valueIdle_other": "Sign-ins end after {{count}} days without use",
+    "valueNoLimit": "Sign-ins last until you sign out",
+    "valueTwoFactor": "Two-factor required for people who can manage members, roles, billing or security",
+    "valueNoTwoFactor": "Two-factor not required",
+    "unlinkedTitle": "Read-only until you link Google or Apple",
+    "unlinkedBody": "{{organisation}} now signs in with Google or Apple only. Your password still works for now, but until you link one of them you can read and not change anything in {{organisation}}.",
+    "unlinkedLink": "Link Google or Apple",
+    "gateTitle": "Two-factor required by {{organisation}}",
+    "gateBody": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, those wait. Your events keep working.",
+    "gateTurnOn": "Turn on two-factor",
+    "gateLater": "Not now",
+    "changedTitle": "Sign-in rules changed",
+    "changedBody": "{{organisation}} changed its sign-in rules on {{day}}.",
+    "changedSee": "See what changed",
+    "changedClose": "Close this notice",
+    "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
+    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
   }
 }

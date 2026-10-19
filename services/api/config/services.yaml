@@ -130,6 +130,9 @@ services:
     App\Domain\User\Recovery\RecoveryMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Invitations\InvitationMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\Password\PasswordChangeMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
@@ -137,6 +140,9 @@ services:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\SignInMethods\SignInMethodMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\SignInRules\SignInRulesMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\TwoFactor\Recovery\NotMeLink:

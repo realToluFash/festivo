@@ -3,7 +3,7 @@ import { cleanCode, formatTimeOfDay, keyInGroups, lockLiftsAt } from '@soirely/d
 import { setStringAsync } from 'expo-clipboard';
 import { type TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
@@ -16,7 +16,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
+import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Stage =
@@ -330,10 +330,15 @@ function SavingCodes({
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const top = useScrolledToTop();
+
+  useEffect(() => Keyboard.dismiss(), []);
 
   return (
     <>
-      <Title text={t('twoFactorCard.saveTitle')} />
+      <View ref={top} collapsable={false}>
+        <Title text={t('twoFactorCard.saveTitle')} />
+      </View>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {phone
           ? `${t('twoFactorCard.saveIntro')} ${t('twoFactorCard.phoneKeepElsewhere')}`

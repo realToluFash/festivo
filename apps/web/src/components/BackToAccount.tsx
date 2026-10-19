@@ -7,12 +7,12 @@ function accountHref(verified: string | null): string {
     : `/app/account?verified=${encodeURIComponent(verified)}`;
 }
 
-/** "← Back to Account" on a verify screen opened from Account (sc-2304), where onboarding shows its steps. */
-export function BackToAccount({ verified }: { verified: string | null }) {
+/** "← Back to Account" on a verify screen opened from Account (sc-2304), until the code is accepted: then its one button says it. */
+export function BackToAccount() {
   const { t } = useTranslation();
 
   return (
-    <Link className="link-button auth-back" to={accountHref(verified)}>
+    <Link className="link-button auth-back" to={accountHref(null)}>
       <span aria-hidden="true">← </span>
       {t('contacts.backToAccount')}
     </Link>

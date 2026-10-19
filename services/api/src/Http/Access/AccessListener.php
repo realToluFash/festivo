@@ -65,7 +65,7 @@ final readonly class AccessListener
     {
         $organisationId = self::uuid($request, $policy->parameter);
 
-        $this->require($this->account($route), $organisationId, $policy->permission);
+        $this->require($request, $this->account($route), $organisationId, $policy->permission);
     }
 
     /** The event is found first, and its organisation's membership checked before any permission. */
@@ -75,15 +75,30 @@ final readonly class AccessListener
         $user = $this->account($route);
         $organisationId = $this->eventDirectory->organisationOf($eventId) ?? throw self::notFound();
 
-        $this->require($user, $organisationId, $policy->permission);
+        $this->require($request, $user, $organisationId, $policy->permission);
 
         $request->attributes->set(self::EVENT, $eventId);
     }
 
     /** Not a member reads as not found: a 403 would confirm the organisation or event exists. */
-    private function require(User $user, Uuid $organisationId, ?Permission $permission): void
+    private function require(Request $request, User $user, Uuid $organisationId, ?Permission $permission): void
     {
         $grants = $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound();
+
+        if ($grants->isReadOnly() && !$request->isMethodSafe()) {
+            throw new ApiException(ErrorCode::OAuthOnlyUnlinked, 'This organisation signs in with Google or Apple only. Link one to make changes.');
+        }
+
+        if (null !== $permission && $grants->withholds($permission)) {
+            throw new ApiException(
+                ErrorCode::OrganisationTwoFactorRequired,
+                'This organisation asks for two-factor before this. Turn it on in Security.',
+                [],
+                null,
+                [],
+                ['permission' => $permission->value],
+            );
+        }
 
         if (null !== $permission && !$grants->holds($permission)) {
             throw new ApiException(

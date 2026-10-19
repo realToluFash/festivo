@@ -173,6 +173,21 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertFalse($this->fresh($this->person)->hasTwoFactorSetupPrompt(), '"Not now"');
     }
 
+    /** sc-69: answering is administration, so an organisation's two-factor rule holds it back with the rest. */
+    #[Test]
+    public function anApproverWithoutTheTwoFactorTheirOrganisationRequiresCannotAnswer(): void
+    {
+        $organisation = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, $this->organisation->getId()));
+        $organisation->setAdministratorsNeedTwoFactor(true);
+        self::em()->flush();
+        $this->proved();
+
+        self::assertSame([], $this->asApprover('GET', '/api/auth/recovery-requests')['requests']);
+        $this->asApprover('POST', '/api/auth/recovery-requests/' . $this->requestId() . '/approve');
+        self::assertSame(404, $this->statusCode());
+        self::assertNotNull(self::service(TwoFactorFactorRepository::class)->findActiveFor($this->fresh($this->person)));
+    }
+
     #[Test]
     public function aTurnedDownRequestChangesNothing(): void
     {

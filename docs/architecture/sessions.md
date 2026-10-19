@@ -177,6 +177,16 @@ the minute they show and lift the lock themselves when it arrives.
 The budgets live in Redis (`cache.rate_limiter`), so every API container counts against the
 same one. In the test environment they are in memory; `cache.yaml` says why.
 
+## An organisation's inactivity limit
+
+sc-69. An organisation may sign people out after 7 or 30 days without use. A refresh token is
+issued at every use, so the presented token's age is how long the session has gone unused,
+to within one access token's fifteen minutes. `POST /api/auth/refresh` checks it against
+the **shortest** limit of every organisation the account belongs to (the earliest joined wins
+a tie), and past it revokes the chain and answers **401 `session_timed_out`** with
+`organisation`, `days` and the account's `email`, so the client can name whose rule it was
+and fill the address in. A limit set later applies to sessions already open.
+
 ## Pruning spent sessions
 
 `bin/console app:prune-refresh-tokens` deletes every `refresh_tokens` row whose `expires_at`

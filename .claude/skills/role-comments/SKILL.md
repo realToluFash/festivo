@@ -1,6 +1,6 @@
 ---
 name: role-comments
-description: How the roles talk to each other on a Shortcut story — a comment addressed with [pm] [qa] [qa2] [qa3] [ux] [dev] [dev2] [bm] [lead] [ops] [cd] [en] [es] [fr] [pt], answered in its own thread, and the inbox routine every role runs to find what is waiting on it. Use when a role needs something from another, and at the start of every /soirely-* run.
+description: How the roles talk to each other on a Shortcut story — a comment addressed with [pm] [qa] [qa2] [qa3] [ux] [dev] [dev2] [bm] [lead] [ops] [cd] [l10n], answered in its own thread, and the inbox routine every role runs to find what is waiting on it. Use when a role needs something from another, and at the start of every /soirely-* run.
 user-invocable: false
 ---
 
@@ -10,31 +10,28 @@ The roles never talk in chat. A question one of them has for another is a commen
 the story it is about, addressed by tag, so the right role finds it on its next run and
 anybody reading the story later can see what was asked and what was decided.
 
-| Tag      | Role                        | Asked about                                                          |
-| -------- | --------------------------- | -------------------------------------------------------------------- |
-| `[pm]`   | `/soirely-product-manager`  | what the product does: scope, AC, an undecided state                 |
-| `[ux]`   | `/soirely-designer`         | what a screen looks like, an artboard, a missing one                 |
-| `[dev]`  | `/soirely-developer`        | how it was built, a defect, a branch, a pull request                 |
-| `[dev2]` | `/soirely-developer dev2`   | the same, on a story labelled `dev2`                                 |
-| `[qa]`   | `/soirely-qa-tester`        | what was tested, a finding, a re-test: tester 1, or QA in general    |
-| `[qa2]`  | `/soirely-qa-tester qa2`    | a finding or a re-test from tester 2's report                        |
-| `[qa3]`  | `/soirely-qa-tester qa3`    | a finding or a re-test from tester 3's report                        |
-| `[bm]`   | `/soirely-business-manager` | money: a price, a plan limit, a cost, the market                     |
-| `[lead]` | `/soirely-tech-lead`        | a review: a finding, a re-review, how something should be built      |
-| `[ops]`  | `/soirely-ops`              | CI, the stacks, a deploy, an environment, a secret                   |
-| `[cd]`   | `/soirely-creative`         | an idea: a better way to do a flow, a proposal's evidence            |
-| `[en]`   | `/soirely-linguist en`      | English copy: wording, a new or changed string, a translation ticket |
-| `[es]`   | `/soirely-linguist es`      | Spanish: a translation, a string that does not fit                   |
-| `[fr]`   | `/soirely-linguist fr`      | French: a translation, a string that does not fit                    |
-| `[pt]`   | `/soirely-linguist pt`      | Portuguese: a translation, a string that does not fit                |
+| Tag      | Role                        | Asked about                                                       |
+| -------- | --------------------------- | ----------------------------------------------------------------- |
+| `[pm]`   | `/soirely-product-manager`  | what the product does: scope, AC, an undecided state              |
+| `[ux]`   | `/soirely-designer`         | what a screen looks like, an artboard, a missing one              |
+| `[dev]`  | `/soirely-developer`        | how it was built, a defect, a branch, a pull request              |
+| `[dev2]` | `/soirely-developer dev2`   | the same, on a story labelled `dev2`                              |
+| `[qa]`   | `/soirely-qa-tester`        | what was tested, a finding, a re-test: tester 1, or QA in general |
+| `[qa2]`  | `/soirely-qa-tester qa2`    | a finding or a re-test from tester 2's report                     |
+| `[qa3]`  | `/soirely-qa-tester qa3`    | a finding or a re-test from tester 3's report                     |
+| `[bm]`   | `/soirely-business-manager` | money: a price, a plan limit, a cost, the market                  |
+| `[lead]` | `/soirely-tech-lead`        | a review: a finding, a re-review, how something should be built   |
+| `[ops]`  | `/soirely-ops`              | CI, the stacks, a deploy, an environment, a secret                |
+| `[cd]`   | `/soirely-creative`         | an idea: a better way to do a flow, a proposal's evidence         |
+| `[l10n]` | `/soirely-linguist`         | copy in any language: wording, a new string, a translation ticket |
 
 **A QA report is answered to the tester who signed it**: `(from qa2)` gets `[qa2]`. A
 question for QA in general is `[qa]`. **A developer question goes to the developer whose
 label the story carries**: `dev2` gets `[dev2]`, and `dev1` or no label gets `[dev]`. A
 bare `[dev]` on a `dev2` story still reaches developer 2, but write the tag that is meant. A
 translation ticket carries no developer label, so a bare `[dev]` on one reaches developer 1:
-there, use the label of the feature story the string came from, which its **Covers** names. **Wording questions go to the linguists**: `[en]` for the source copy, the locale's tag for
-how it reads in that language. **Product questions go to `[pm]`.** If you are deciding what the product should do, stop:
+there, use the label of the feature story the string came from, which its **Covers** names. **Wording questions go to `[l10n]`**, the one linguist, for any language. `[en]`, `[es]`,
+`[fr]` and `[pt]` still reach it, but write `[l10n]`. **Product questions go to `[pm]`.** If you are deciding what the product should do, stop:
 that is a question, and this is where it goes. **Money questions go to `[bm]`**: what
 something costs, what to charge for it, or where a plan's limit sits.
 
@@ -87,6 +84,11 @@ the address the person typed.
   is an answer the next role builds against the old AC.
 - **Can't answer?** Say why and re-address it: `[pm] (from ux)` with what you need. Do not
   leave it unanswered — an open thread is somebody else's blocked work.
+- **A reply that only confirms carries no tag.** "Read, no questions", "Noted, nothing to
+  change", a relay checked and found right: nothing in it is for the asker to act on, so
+  post it with `sq <role> comment sc-N --reply-to <id> --untagged --text "…"`. It reads
+  `(from <role>)` alone, closes the thread for you, and opens nothing for anyone. A reply
+  that answers, asks, or needs the asker to do anything keeps its tag.
 - The asker does not reply to say thanks. The answer closes the thread.
 
 ## 3. What counts as open

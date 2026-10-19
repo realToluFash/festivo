@@ -204,7 +204,7 @@ prune-build-cache:
 # ../soirely-qa2 or ../soirely-qa3 — so that no two share a database, a port or a simulator.
 
 # Developer 2's own stack, at ../soirely-dev2: `just dev-env setup --developer 2`.
-# The other roles' the same way: `just dev-env setup --role lead` (ops, en, es, fr, pt).
+# The other roles' the same way: `just dev-env setup --role lead` (ops, l10n).
 dev-env *args:
     node scripts/dev-env.mjs {{args}}
 

@@ -8,6 +8,8 @@ use App\Doctrine\Traits\Timestampable;
 use App\Enum\MembershipStatus;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
+use Psl\Str;
 use Symfony\Component\Uid\Uuid;
 
 /** Always a real account: an invitation is its own record, and no membership exists until it is accepted. */
@@ -48,6 +50,11 @@ class Membership
         $this->organisation = $organisation;
         $this->user = $user;
         $this->role = $role;
+
+        if (!$status->isEntry()) {
+            throw new LogicException(Str\format('A membership cannot begin %s.', $status->value));
+        }
+
         $this->status = $status;
     }
 
@@ -80,6 +87,16 @@ class Membership
     public function getStatus(): MembershipStatus
     {
         return $this->status;
+    }
+
+    /** Refuses any transition the machine does not declare (sc-67), whoever asks. */
+    public function setStatus(MembershipStatus $status): void
+    {
+        if (!$this->status->canBecome($status)) {
+            throw new LogicException(Str\format('A membership cannot go from %s to %s.', $this->status->value, $status->value));
+        }
+
+        $this->status = $status;
     }
 
     public function isActive(): bool

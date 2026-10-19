@@ -1,6 +1,6 @@
 # Portuguese at Soirely
 
-Kept by `/soirely-linguist pt`. Read it before writing a string in Portuguese, and add to it
+Kept by `/soirely-linguist`. Read it before writing a string in Portuguese, and add to it
 whenever you decide something a second string will need.
 
 ## Variant and register
@@ -15,20 +15,22 @@ The rules every locale shares are in `.claude/skills/locale-parity`.
 One way to say each recurring thing, everywhere. Seeded from the catalogues as they stood on
 17 October 2026; the linguist reviews each row and marks it settled in Notes.
 
-| English                   | Portuguese                   | Notes                                                            |
-| ------------------------- | ---------------------------- | ---------------------------------------------------------------- |
-| Settings                  | Definições                   |                                                                  |
-| Organisation              | Organização                  |                                                                  |
-| Sign in                   | Iniciar sessão               |                                                                  |
-| Sign out                  | Encerrar sessão              | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada" |
-| Email                     | Endereço de e-mail           |                                                                  |
-| Password                  | Palavra-passe                |                                                                  |
-| Continue                  | Continuar                    |                                                                  |
-| Cancel                    | Cancelar                     |                                                                  |
-| Two-factor authentication | Autenticação de dois fatores | In a comma list of Security's contents, "dois fatores" alone     |
-| Home (tab)                | Início                       | Settled 17 Oct 2026. Not "Página inicial": too long for the tab  |
-| Recovery code             | Código de recuperação        |                                                                  |
-| Phone (device)            | Telemóvel                    | Settled 18 Oct 2026. Never "celular"                             |
+| English                       | Portuguese                   | Notes                                                            |
+| ----------------------------- | ---------------------------- | ---------------------------------------------------------------- |
+| Settings                      | Definições                   |                                                                  |
+| Organisation                  | Organização                  |                                                                  |
+| Sign in                       | Iniciar sessão               |                                                                  |
+| Sign out                      | Encerrar sessão              | Settled 17 Oct 2026. "A sessão foi encerrada", never "terminada" |
+| Email                         | Endereço de e-mail           |                                                                  |
+| Password                      | Palavra-passe                |                                                                  |
+| Continue                      | Continuar                    |                                                                  |
+| Cancel                        | Cancelar                     |                                                                  |
+| Two-factor authentication     | Autenticação de dois fatores | In a comma list of Security's contents, "dois fatores" alone     |
+| Home (tab)                    | Início                       | Settled 17 Oct 2026. Not "Página inicial": too long for the tab  |
+| Recovery code                 | Código de recuperação        |                                                                  |
+| Phone (device)                | Telemóvel                    | Settled 18 Oct 2026. Never "celular"                             |
+| Account (Settings section)    | Conta                        | Settled 18 Oct 2026. A bare label: "em Conta", "Voltar a Conta"  |
+| Alternative (address, number) | alternativo                  | Settled 18 Oct 2026. Not primary; never "secundário"             |
 
 ## Never translated
 
@@ -39,6 +41,32 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The contact cap is "Uma conta pode ter até {{most}} …, incluindo o
+  principal"** (`contacts.capEmails_*`, `capPhones_*`, `capFullEmails`, `capFullPhones`, web
+  and app), as `contacts.limitEmails` and `limitPhones` already say. One more is "Pode
+  adicionar mais um"; the full line is "Já tem {{most}}, o máximo que uma conta pode ter.
+  Remova um para adicionar outro." "Endereço" and "número" are both masculine, so a number's
+  own keys (`contacts.verifiedPhone`, `primaryPhone`, `makePrimaryPhone`, `removeConfirmPhone`,
+  `removeKeepPhone`) hold the address card's words, and "Não verificado" serves both, with no
+  `unverifiedPhone`. The count is never 0 here (the full line shows instead) and never large,
+  so `_one` and `_other` cover it.
+- **18 Oct 2026. Verifying an alternative from Account (sc-2594)** (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, web and app): "{{address}} está verificado. Continua a ser um
+  endereço alternativo até o tornar principal em Conta." and the done line "{{address}} está
+  verificado.". Endereço and número are both masculine, so the two keys read alike in
+  Portuguese and agree as "foi removido" does. "Conta" is the section, a bare label like
+  "Segurança": "em Conta", "Voltar a Conta" (as "voltar a Segurança"), never the page title
+  "A sua conta". "Remove it in Account" is "Removê-lo em Conta", the infinitive of the link
+  "Alterá-lo" after "Número errado?". Rejected "Remova-o em Conta": it breaks the link's
+  shape on the same screen. "Alternativo" over "secundário", which ranks it.
+- **18 Oct 2026. The power to change an area is "quem pode alterar {{area}}"**
+  (`rolesScreen.lockedLine`, `describeSeededReadOnly`): "Quem pode alterar Membros e funções
+  decide o que inclui." Impersonal, so it agrees with nobody; rejected "alguém que possa
+  alterar", which is longer and says the same power in a second way. A read-only twin keeps
+  its editable line's first sentence and agrees with "a função": "É predefinida…",
+  "Criada por {{name}}." A name that carries its own full stop gets a second one until the
+  renderer drops it (`docs/i18n/en.md`, sc-2251); no line is reworded around it.
 - **18 Oct 2026. A browser session is "Safari no iPhone"** (`devices.agent`, web and app, and
   `emails:password.device.agent`): "{{browser}} no {{platform}}", beside "Aplicação Soirely no
   iPhone" in the same list and the same email line. Every platform the parser names (iPhone,
@@ -75,7 +103,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   proprietário", which assumes a man. A role "holds" permissions as "inclui", as on the Roles
   screen. "Leave it unassigned" is "não a atribua a ninguém". A refusal over a length limit says
   what to do: "Encurte o nome para um máximo de {count} caracteres." The API catalogue has no
-  plural, and the limit is always well above 1.
+  plural, and the limit is always well above 1. The Roles screen's own check
+  (`web:rolesScreen.nameTooLong`) says the same sentence with `{{most}}`, so a person who meets
+  the server's check from a stale page reads what the screen would have said.
 
 - **18 Oct 2026. An email's footer is "Está a receber esta mensagem porque…"** (`emails:newDevice.why`,
   as `provider.why`). "Recebeu este e-mail" reads as a past event; the footer explains why it

@@ -51,5 +51,19 @@
     "recovery_request_closed": "This request has already ended.",
     "recovery_request_proved": "This request is already waiting for an answer.",
     "recovery_request_replaced": "A newer request was started on another device.",
-    "registration_expired": "Start registering again."
+    "registration_expired": "Start registering again.",
+    "already_a_member": "That person is already a member of this organisation.",
+    "email_taken": "That email address already has a Soirely account. Sign in with it to accept the invitation.",
+    "invitation_not_found": "We could not find that invitation. Check the link in the email.",
+    "invitation_expired": "This invitation has expired. Ask whoever invited you to send a new one.",
+    "invitation_revoked": "This invitation was withdrawn.",
+    "invitation_accepted": "This invitation has already been accepted.",
+    "invitation_declined": "This invitation was declined.",
+    "invitation_not_yours": "This invitation is for a different email address.",
+    "organisation_deleted": "This organisation no longer exists, so the invitation cannot be accepted.",
+    "provider_kept_by_rule": "Your organisation signs in with Google or Apple only, so your last one stays linked.",
+    "oauth_only": "This organisation signs in with Google or Apple only.",
+    "oauth_only_unlinked": "Read-only until you link Google or Apple.",
+    "organisation_two_factor_required": "This organisation asks for two-factor first.",
+    "session_timed_out": "Signed out after a time without use."
 }

@@ -11,6 +11,14 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
     contactAddress: 'hello@ire.events',
     role: { id: 'role_1', seededAs: 'owner', name: null },
     permissions: OWNER_PERMISSIONS,
+    withheldUntilTwoFactor: [],
+    readOnlyUntilLinked: false,
+    signInRules: {
+      providerOnly: false,
+      inactivityTimeoutDays: null,
+      administratorsNeedTwoFactor: false,
+      changedAt: null,
+    },
     ...overrides,
   };
 }

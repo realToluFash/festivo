@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\SignInMethods;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Provider\ProviderClaims;
 use App\Domain\User\TokenIssuer;
 use App\Entity\ProviderIdentity;
@@ -38,16 +39,22 @@ final readonly class ProviderLinking
         private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private SignInRules $signInRules,
     ) {
     }
 
-    /** Any address the provider vouches for, matching or not: a work Google account on a personal sign-up is the point. */
+    /**
+     * Any address the provider vouches for, matching or not: a work Google account on a personal sign-up is the point.
+     *
+     * @param Uuid|null $caller the chain the access token carries (CallerSession), which carries on as signed in with the provider under Google or Apple only
+     */
     public function link(
         User $user,
         IdentityProvider $provider,
         ProviderClaims $claims,
         #[SensitiveParameter]
         ?string $proof,
+        ?Uuid $caller = null,
         ?Request $request = null,
     ): ProviderIdentity {
         $this->recentProof->require($user, $proof);
@@ -60,6 +67,7 @@ final readonly class ProviderLinking
 
             // The same account linked again changes nothing, so nothing is recorded or emailed.
             if (null !== $held && $held->getUser()->getId()->equals($user->getId())) {
+                $this->carryOn($user, $caller, $provider);
                 $connection->commit();
 
                 return $held;
@@ -77,6 +85,7 @@ final readonly class ProviderLinking
             $this->entityManager->persist($identity);
             $this->record($user, 'provider.linked', [null, $provider->value]);
             $this->entityManager->flush();
+            $this->carryOn($user, $caller, $provider);
             $connection->commit();
         } catch (UniqueConstraintViolationException $e) {
             $connection->rollBack();
@@ -125,7 +134,19 @@ final readonly class ProviderLinking
                 throw new ApiException(ErrorCode::LastSignInMethod, 'Set a password or link another account before removing this one.');
             }
 
-            // sc-69 refuses here too, when an organisation requires Google or Apple and this is the member's last one.
+            $requiring = [] === $kept ? $this->signInRules->requiringProvider($user) : null;
+
+            if (null !== $requiring) {
+                throw new ApiException(
+                    ErrorCode::ProviderKeptByRule,
+                    'Your organisation signs in with Google or Apple only. Link the other one first.',
+                    [],
+                    null,
+                    [],
+                    ['organisation' => $requiring->getName(), 'provider' => $provider->value],
+                );
+            }
+
             foreach ($removed as $identity) {
                 $this->entityManager->remove($identity);
             }
@@ -147,6 +168,13 @@ final readonly class ProviderLinking
             'signedOut' => Iter\count($ended),
             'thisDevice' => null === $caller || Iter\any($ended, static fn (Uuid $chain): bool => $chain->equals($caller)),
         ];
+    }
+
+    private function carryOn(User $user, ?Uuid $caller, IdentityProvider $provider): void
+    {
+        if (null !== $caller && null !== $this->signInRules->refusingPassword($user)) {
+            $this->tokenIssuer->markSignedInWith($user, $caller, $provider);
+        }
     }
 
     private function linkedTo(User $user, IdentityProvider $provider): ?ProviderIdentity
