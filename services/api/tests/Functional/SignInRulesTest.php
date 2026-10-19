@@ -23,6 +23,7 @@ use App\Enum\MembershipStatus;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use App\Tests\Traits\OnboardsAccounts;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -140,6 +141,25 @@ final class SignInRulesTest extends ApiTestCase
         $this->as($bisi, 'PATCH', '/api/orgs/' . $this->organisation->getId()->toRfc4122(), ['name' => 'Bisi Events']);
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    /** Linking is itself a sign-in with the provider: the session it was linked from is not ended at its next refresh. */
+    #[Test]
+    public function thePasswordSessionAProviderIsLinkedFromCarriesOnPastItsRefreshes(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->set(['providerOnly' => true]);
+        $session = $this->signIn('bisi@ire.events');
+        $accessToken = Type\string()->coerce($session['accessToken'] ?? null);
+        $proof = $this->bearing($accessToken, '/api/auth/proof', ['password' => self::PASSWORD]);
+
+        $linked = $this->bearing($accessToken, '/api/auth/providers/google', ['proof' => $proof['proof'] ?? null, 'providerSignIn' => ['idToken' => $this->googleToken('g-bisi', 'bisi@gmail.com')]]);
+        self::assertSame(201, $this->statusCode(), Json\encode($linked));
+
+        $first = $this->refresh(Type\string()->coerce($session['refreshToken'] ?? null));
+        self::assertSame(200, $this->statusCode(), Json\encode($first));
+        $second = $this->refresh(Type\string()->coerce($first['refreshToken'] ?? null));
+        self::assertSame(200, $this->statusCode(), Json\encode($second));
     }
 
     #[Test]
@@ -619,6 +639,36 @@ final class SignInRulesTest extends ApiTestCase
         ], content: null === $body ? null : Json\encode([] === $body ? new stdClass() : $body));
 
         return $this->last();
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return array<string, mixed>
+     */
+    private function bearing(#[SensitiveParameter] string $accessToken, string $path, array $body): array
+    {
+        $this->client->request('POST', $path, server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
+        ], content: Json\encode($body));
+
+        return $this->last();
+    }
+
+    private function googleToken(string $subject, string $email): string
+    {
+        $configured = static fn (string $name): string => Str\trim(Str\split(Type\string()->coerce($_SERVER[$name] ?? $_ENV[$name] ?? ''), ',')[0] ?? '');
+
+        return self::service(TestSigningKeys::class)->sign([
+            'iss' => $configured('OAUTH_GOOGLE_ISSUERS'),
+            'aud' => $configured('OAUTH_GOOGLE_CLIENT_IDS'),
+            'iat' => new Clock()->now()->modify('-1 minute'),
+            'exp' => new Clock()->now()->modify('+1 hour'),
+            'sub' => $subject,
+            'email' => $email,
+            'email_verified' => true,
+        ]);
     }
 
     /** @return array<string, mixed> */

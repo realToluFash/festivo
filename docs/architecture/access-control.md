@@ -109,6 +109,9 @@ only in the organisation that set it:
   request that is not `GET`, `HEAD` or `OPTIONS` gets **403 `oauth_only_unlinked`**. Linking
   one lifts it. A member who has one linked is refused a password at sign-in instead
   (`403 oauth_only`, naming the organisation, the account's address and the providers linked).
+  A password session ends the same way at its next refresh, except the one a provider was
+  linked from: linking is a sign-in with that provider, so the chain is marked signed in with
+  it (`TokenIssuer::markSignedInWith`) and carries on, and unlinking that provider ends it.
 - **Two-factor for administrators**, for a member without it: every permission whose area is
   Members, Billing or Organisation (`Permission::isAdministrative()`) is withheld, and asking
   for one is **403 `organisation_two_factor_required`** with the permission named. Nothing

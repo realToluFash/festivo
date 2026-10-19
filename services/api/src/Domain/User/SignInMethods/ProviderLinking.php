@@ -43,13 +43,18 @@ final readonly class ProviderLinking
     ) {
     }
 
-    /** Any address the provider vouches for, matching or not: a work Google account on a personal sign-up is the point. */
+    /**
+     * Any address the provider vouches for, matching or not: a work Google account on a personal sign-up is the point.
+     *
+     * @param Uuid|null $caller the chain the access token carries (CallerSession), which carries on as signed in with the provider
+     */
     public function link(
         User $user,
         IdentityProvider $provider,
         ProviderClaims $claims,
         #[SensitiveParameter]
         ?string $proof,
+        ?Uuid $caller = null,
         ?Request $request = null,
     ): ProviderIdentity {
         $this->recentProof->require($user, $proof);
@@ -62,6 +67,7 @@ final readonly class ProviderLinking
 
             // The same account linked again changes nothing, so nothing is recorded or emailed.
             if (null !== $held && $held->getUser()->getId()->equals($user->getId())) {
+                $this->carryOn($user, $caller, $provider);
                 $connection->commit();
 
                 return $held;
@@ -79,6 +85,7 @@ final readonly class ProviderLinking
             $this->entityManager->persist($identity);
             $this->record($user, 'provider.linked', [null, $provider->value]);
             $this->entityManager->flush();
+            $this->carryOn($user, $caller, $provider);
             $connection->commit();
         } catch (UniqueConstraintViolationException $e) {
             $connection->rollBack();
@@ -161,6 +168,13 @@ final readonly class ProviderLinking
             'signedOut' => Iter\count($ended),
             'thisDevice' => null === $caller || Iter\any($ended, static fn (Uuid $chain): bool => $chain->equals($caller)),
         ];
+    }
+
+    private function carryOn(User $user, ?Uuid $caller, IdentityProvider $provider): void
+    {
+        if (null !== $caller) {
+            $this->tokenIssuer->markSignedInWith($user, $caller, $provider);
+        }
     }
 
     private function linkedTo(User $user, IdentityProvider $provider): ?ProviderIdentity
