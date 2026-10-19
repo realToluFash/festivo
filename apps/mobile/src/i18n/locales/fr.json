@@ -65,7 +65,14 @@
     "failedBody": "Quelque chose s'est mal passé en route. Réessayez dans un instant.",
     "newHere": "Nouveau sur Soirely ?",
     "createAccount": "Créer un compte",
-    "passwordBlank": "Saisissez votre mot de passe."
+    "passwordBlank": "Saisissez votre mot de passe.",
+    "timedOutTitle": "Signed out by {{organisation}}’s rule",
+    "timedOutBody_one": "{{organisation}} signs people out after {{count}} day without use. Sign in again to carry on.",
+    "timedOutBody_other": "{{organisation}} signs people out after {{count}} days without use. Sign in again to carry on.",
+    "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
+    "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
+    "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it.",
+    "anotherAccount": "Sign in with another account"
   },
   "register": {
     "title": "Créez votre compte",
@@ -428,7 +435,9 @@
     "confirmWarning": "Les appareils connectés avec {{provider}} seront déconnectés",
     "confirmEmailed": "Nous écrivons à chaque adresse vérifiée de votre compte pour signaler que {{provider}} a été dissocié.",
     "confirmUnlink": "Dissocier {{provider}}",
-    "keep": "Le garder associé"
+    "keep": "Le garder associé",
+    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one can't be removed.",
+    "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
   "timeZone": {
     "title": "Fuseau horaire",
@@ -637,7 +646,9 @@
     "signOut": "Se déconnecter",
     "choose": "Choisissez une section",
     "chooseLine": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés.",
-    "chooseLineWithOrganisation": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés. Organisation réunit les réglages de {{name}}."
+    "chooseLineWithOrganisation": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés. Organisation réunit les réglages de {{name}}.",
+    "signInRules": "Sign-in rules",
+    "signInRulesLine": "{{name}} · how people sign in, and for how long"
   },
   "switcher": {
     "yourRole": "Votre rôle · {{role}}",
@@ -786,5 +797,42 @@
         "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
       }
     }
+  },
+  "signInRules": {
+    "readTitle": "{{organisation}}’s sign-in rules",
+    "readIntro": "Set by the organisation’s owners. You can read them here; only they can change them.",
+    "loading": "Loading the sign-in rules…",
+    "failedLoad": "The sign-in rules did not load.",
+    "retry": "Try again",
+    "methodTitle": "How people sign in",
+    "idleTitle": "How long a sign-in lasts unused",
+    "twoFactorShort": "Two-factor",
+    "inForceTitle": "The rules in force",
+    "askOwner": "Questions? Ask an owner of {{organisation}}.",
+    "changesTitle": "What changed, newest first",
+    "noChanges": "No changes yet. These are the rules every organisation starts with.",
+    "changeWhen": "{{day}} at {{time}} · {{who}}",
+    "changeWho": "{{name}} · {{role}}",
+    "changeWas": "was: {{was}}",
+    "valueAnyMethod": "Any method: email and password, Google or Apple",
+    "valueProviderOnly": "Google or Apple only",
+    "valueIdle_one": "Sign-ins end after {{count}} day without use",
+    "valueIdle_other": "Sign-ins end after {{count}} days without use",
+    "valueNoLimit": "Sign-ins last until you sign out",
+    "valueTwoFactor": "Two-factor required for people who can manage members, roles, billing or security",
+    "valueNoTwoFactor": "Two-factor not required",
+    "unlinkedTitle": "Read-only until you link Google or Apple",
+    "unlinkedBody": "{{organisation}} now signs in with Google or Apple only. Your password still works for now, but until you link one of them you can read and not change anything in {{organisation}}.",
+    "unlinkedLink": "Link Google or Apple",
+    "gateTitle": "Two-factor required by {{organisation}}",
+    "gateBody": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, those wait. Your events keep working.",
+    "gateTurnOn": "Turn on two-factor",
+    "gateLater": "Not now",
+    "changedTitle": "Sign-in rules changed",
+    "changedBody": "{{organisation}} changed its sign-in rules on {{day}}.",
+    "changedSee": "See what changed",
+    "changedClose": "Close this notice",
+    "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
+    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
   }
 }

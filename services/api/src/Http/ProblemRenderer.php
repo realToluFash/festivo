@@ -21,7 +21,7 @@ final readonly class ProblemRenderer
     /**
      * @param list<array{propertyPath: string, message: string, code: string}> $violations
      * @param array<string, string>                                            $headers
-     * @param array<string, string>                                            $members
+     * @param array<string, int|string|list<string>>                           $members
      */
     public function render(
         Request $request,

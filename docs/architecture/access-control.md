@@ -100,6 +100,32 @@ For `#[InEvent]`:
 reach this far**: membership of the route's organisation is asked first, so a permission
 can only widen access for somebody already inside. There is no path around step 2.
 
+## An organisation's sign-in rules narrow what a membership grants
+
+sc-69. `MembershipDirectory` hands every `Grants` to `SignInRules::narrow()` before the
+listener sees it, so each rule applies on the next request, to sessions already open, and
+only in the organisation that set it:
+
+- **Google or Apple only**, for a member with neither linked: the grants are read-only. A
+  request that is not `GET`, `HEAD` or `OPTIONS` gets **403 `oauth_only_unlinked`**. Linking
+  one lifts it. A member who has one linked is refused a password at sign-in instead
+  (`403 oauth_only`, naming the organisation, the account's address and the providers linked).
+  A password session ends the same way at its next refresh, except the one a provider was
+  linked from: linking is a sign-in with that provider, so the chain is marked signed in with
+  it (`TokenIssuer::markSignedInWith`) and carries on, and unlinking that provider ends it.
+  The marking happens under this rule only: without it, unlinking ends only the sessions
+  started through the provider (sc-510), never the password session it was linked from.
+- **Two-factor for administrators**, for a member without it: every permission whose area is
+  Members, Billing or Organisation (`Permission::isAdministrative()`) is withheld, and asking
+  for one is **403 `organisation_two_factor_required`** with the permission named. Nothing
+  else changes, so events keep working. Nobody can require it without having it: turning it
+  on while the person saving has no two-factor of their own is **409 `two_factor_off`**,
+  and nothing in that save is changed. The sign-in rules page
+  (`GET /api/orgs/{id}/sign-in-rules`) carries `ownTwoFactor`, so it refuses before sending.
+
+`GET /api/orgs` and `GET /api/orgs/{id}/permissions` carry `withheldUntilTwoFactor` and
+`readOnlyUntilLinked`, and leave the withheld permissions out of `permissions`.
+
 ## Sub-resources are loaded through their event
 
 A controller argument marked `#[InThisEvent('tableId')]` is loaded by

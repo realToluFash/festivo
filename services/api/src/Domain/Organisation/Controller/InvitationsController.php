@@ -10,6 +10,8 @@ use App\Domain\Organisation\Invitations\InvitationResponder;
 use App\Entity\Invitation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Http\Access\Grants;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
@@ -32,6 +34,7 @@ final readonly class InvitationsController
         private Security $security,
         private InvitationRepository $invitationRepository,
         private InvitationResponder $invitationResponder,
+        private MembershipDirectoryInterface $membershipDirectory,
         private TranslatorInterface $translator,
     ) {
     }
@@ -72,7 +75,10 @@ final readonly class InvitationsController
     {
         $membership = $this->invitationResponder->accept($this->invitation($invitationId), $this->user());
 
-        return new JsonResponse(['organisation' => OrganisationSerialiser::membership($membership)]);
+        return new JsonResponse(['organisation' => OrganisationSerialiser::membership(
+            $membership,
+            $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
+        )]);
     }
 
     #[Route('/api/invitations/{invitationId}/decline', name: 'invitations_decline', methods: ['POST'])]

@@ -99,6 +99,20 @@ final readonly class TokenIssuer
         return $this->endLive($user, null, $provider);
     }
 
+    /** Linking is a sign-in with the provider, so a password session that links one counts as opened through it from then on (sc-69). */
+    public function markSignedInWith(User $user, Uuid $chainId, IdentityProvider $provider): void
+    {
+        $this->entityManager
+            ->createQuery(
+                'UPDATE ' . RefreshToken::class . ' t SET t.signedInWith = :provider'
+                . ' WHERE t.chainId = :chain AND t.user = :user AND t.revokedAt IS NULL AND t.signedInWith IS NULL',
+            )
+            ->setParameter('provider', $provider->value)
+            ->setParameter('chain', $chainId, UuidType::NAME)
+            ->setParameter('user', $user->getId(), UuidType::NAME)
+            ->execute();
+    }
+
     /**
      * Every session but the one named, if it is this account's: the shared piece for sc-115 and sc-116.
      *

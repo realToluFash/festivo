@@ -60,5 +60,10 @@
     "invitation_accepted": "Esta invitación ya se ha aceptado.",
     "invitation_declined": "Esta invitación se ha rechazado.",
     "invitation_not_yours": "Esta invitación es para otra dirección de correo.",
-    "organisation_deleted": "Esta organización ya no existe, así que no se puede aceptar la invitación."
+    "organisation_deleted": "Esta organización ya no existe, así que no se puede aceptar la invitación.",
+    "provider_kept_by_rule": "Su organización solo admite Google o Apple, así que la última cuenta vinculada se mantiene.",
+    "oauth_only": "Esta organización solo admite el inicio de sesión con Google o Apple.",
+    "oauth_only_unlinked": "Solo lectura hasta que vincule Google o Apple.",
+    "organisation_two_factor_required": "Esta organización pide primero la verificación en dos pasos.",
+    "session_timed_out": "Se cerró la sesión tras un tiempo sin uso."
 }

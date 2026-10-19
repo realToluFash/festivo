@@ -60,5 +60,10 @@
     "invitation_accepted": "This invitation has already been accepted.",
     "invitation_declined": "This invitation was declined.",
     "invitation_not_yours": "This invitation is for a different email address.",
-    "organisation_deleted": "This organisation no longer exists, so the invitation cannot be accepted."
+    "organisation_deleted": "This organisation no longer exists, so the invitation cannot be accepted.",
+    "provider_kept_by_rule": "Your organisation signs in with Google or Apple only, so your last one stays linked.",
+    "oauth_only": "This organisation signs in with Google or Apple only.",
+    "oauth_only_unlinked": "Read-only until you link Google or Apple.",
+    "organisation_two_factor_required": "This organisation asks for two-factor first.",
+    "session_timed_out": "Signed out after a time without use."
 }

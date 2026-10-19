@@ -768,7 +768,9 @@ describe('changing the password', () => {
       newPassword: 'a brand new passphrase',
       sessionId: HERE,
     });
-    expect(calls.filter((call) => call.path === '/api/auth/sessions').length).toBe(2);
+    await waitFor(() =>
+      expect(calls.filter((call) => call.path === '/api/auth/sessions').length).toBe(2),
+    );
   });
 
   it('checks both fields and the length before sending anything', () => {

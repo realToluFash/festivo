@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User;
 
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Mail\AccountLanguage;
 use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\PasswordResolver;
@@ -21,6 +22,7 @@ final readonly class UserAuthenticator
         private UserRepository $userRepository,
         private PasswordResolver $passwordResolver,
         private SignInGate $signInGate,
+        private SignInRules $signInRules,
     ) {
     }
 
@@ -40,6 +42,13 @@ final readonly class UserAuthenticator
 
         if (!$this->passwordResolver->verify($user, $password)) {
             throw $this->refuse();
+        }
+
+        // After the password, so the refusal tells nobody but its owner that the account belongs to the organisation.
+        $refusal = $this->signInRules->passwordRefusal($user);
+
+        if (null !== $refusal) {
+            throw $refusal;
         }
 
         // An account from before sc-852 or sc-868 learns its language and zone here, as at its next request.

@@ -697,6 +697,122 @@ describe('a browser never holds the refresh token', () => {
     ]);
   });
 
+  test('a membership carries what the sign-in rules keep back', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        json({
+          organisations: [
+            {
+              id: 'org_1',
+              name: 'Ìrè Events',
+              countryCode: 'NG',
+              currency: 'NGN',
+              timezone: 'Africa/Lagos',
+              contactAddress: 'hello@ire.events',
+              role: { id: 'role_1', seededAs: 'owner', name: null },
+              permissions: ['events.read'],
+              withheldUntilTwoFactor: ['members.manage'],
+              readOnlyUntilLinked: true,
+              signInRules: {
+                providerOnly: true,
+                inactivityTimeoutDays: 7,
+                administratorsNeedTwoFactor: true,
+                changedAt: '2026-10-19T10:00:00+00:00',
+              },
+            },
+          ],
+        }),
+    });
+
+    const organisations = await client.organisations();
+
+    expect(organisations[0]?.withheldUntilTwoFactor).toEqual(['members.manage']);
+    expect(organisations[0]?.readOnlyUntilLinked).toBe(true);
+    expect(organisations[0]?.signInRules.inactivityTimeoutDays).toBe(7);
+  });
+
+  test('sign-in rules are read with their history and saved with only what changed', async () => {
+    const sent: { method: string | undefined; path: string; body: unknown }[] = [];
+    const page = {
+      providerOnly: true,
+      inactivityTimeoutDays: null,
+      administratorsNeedTwoFactor: false,
+      changedAt: '2026-10-19T10:00:00+00:00',
+      inactivityChoices: [7, 30],
+      changes: [
+        {
+          at: '2026-10-19T10:00:00+00:00',
+          by: { name: 'Adaeze Okafor', role: { id: 'role_1', seededAs: 'owner', name: null } },
+          rule: 'providerOnly',
+          now: true,
+          was: false,
+        },
+      ],
+      passwordOnly: [
+        {
+          userId: 'user_2',
+          name: 'Bola Ade',
+          role: { id: 'role_2', seededAs: 'coordinator', name: null },
+        },
+      ],
+      ownTwoFactor: true,
+    };
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async (input, init) => {
+        sent.push({
+          method: init?.method,
+          path: new URL(String(input)).pathname,
+          body: init?.body == null ? null : JSON.parse(String(init.body)),
+        });
+
+        return json(page);
+      },
+    });
+
+    const read = await client.signInRules('org_1');
+    await client.updateSignInRules('org_1', { providerOnly: true });
+
+    expect(read.changes[0]?.by.name).toBe('Adaeze Okafor');
+    expect(read.passwordOnly?.[0]?.name).toBe('Bola Ade');
+    expect(read.ownTwoFactor).toBe(true);
+    expect(sent).toEqual([
+      { method: 'GET', path: '/api/orgs/org_1/sign-in-rules', body: null },
+      { method: 'PATCH', path: '/api/orgs/org_1/sign-in-rules', body: { providerOnly: true } },
+    ]);
+  });
+
+  test('sign-in rules for a member who may not change them have no password-only list, and name whose limit applies', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () =>
+        json({
+          providerOnly: false,
+          inactivityTimeoutDays: 30,
+          administratorsNeedTwoFactor: false,
+          changedAt: null,
+          inactivityChoices: [7, 30],
+          changes: [],
+          inactivityLimit: { organisationId: 'org_2', organisation: 'Studio Lumen', days: 7 },
+        }),
+    });
+
+    const page = await client.signInRules('org_1');
+
+    expect(page.passwordOnly).toBeNull();
+    expect(page.ownTwoFactor).toBe(false);
+    expect(page.inactivityLimit).toEqual({
+      organisationId: 'org_2',
+      organisation: 'Studio Lumen',
+      days: 7,
+    });
+  });
+
   test('setting a phone sends the country and the number as typed, and says a code went out', async () => {
     let sent: { method?: string | undefined; path: string; body: unknown } | null = null;
 

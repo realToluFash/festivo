@@ -37,6 +37,14 @@ const organisation = {
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },
   permissions: ['organisation.manage'],
+  withheldUntilTwoFactor: [],
+  readOnlyUntilLinked: false,
+  signInRules: {
+    providerOnly: false,
+    inactivityTimeoutDays: null,
+    administratorsNeedTwoFactor: false,
+    changedAt: null,
+  },
 };
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));

@@ -2375,3 +2375,77 @@ button.members-row {
   padding: var(--spaceSm) 0;
   cursor: pointer;
 }
+
+/* ── Settings > Sign-in rules (sc-69): the rules beside what saving does ─── */
+
+.sign-in-rules {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--spaceXl);
+}
+
+.sign-in-rules-main,
+.sign-in-rules-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXl);
+}
+
+.sign-in-rules-main {
+  flex: 2 1 28rem;
+}
+
+.sign-in-rules-side {
+  flex: 1 1 20rem;
+}
+
+.sign-in-rules-methods {
+  max-width: none;
+}
+
+.sign-in-rules-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceMd);
+}
+
+.sign-in-rules-switch h2 {
+  flex: 1 1 16rem;
+}
+
+.sign-in-rules-switch .roles-level {
+  flex: 0 0 auto;
+  padding: 0 var(--spaceLg);
+}
+
+.sign-in-rules-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.sign-in-rules-choices .roles-level {
+  flex: 0 0 auto;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+}
+
+.sign-in-rules-needs-own .button {
+  align-self: flex-start;
+  margin-top: var(--spaceSm);
+}
+
+.sign-in-rules-effects,
+.sign-in-rules-changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  margin: 0;
+  padding-left: var(--spaceLg);
+}
+
+.sign-in-rules-changes p {
+  margin: 0;
+}
