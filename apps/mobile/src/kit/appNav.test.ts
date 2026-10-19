@@ -74,15 +74,22 @@ describe('"Sign out" on the Settings list', () => {
 });
 
 describe('the Settings list', () => {
-  it('has Organisation and Sign-in rules rows below Security, under their own heading', () => {
-    expect(settingsGroups(true)).toEqual([
+  it('has Organisation, Members and Sign-in rules rows below Security, under their own heading', () => {
+    expect(settingsGroups({ permissions: ['members.read'] })).toEqual([
       { heading: 'yourAccount', sections: ['account', 'security'] },
-      { heading: 'organisationHeading', sections: ['organisation', 'signInRules'] },
+      { heading: 'organisationHeading', sections: ['organisation', 'members', 'signInRules'] },
     ]);
   });
 
-  it('leaves the Organisation row out while the account is in no organisation', () => {
-    expect(settingsGroups(false)).toEqual([
+  it('leaves Members out for a role that cannot read them (sc-3404)', () => {
+    expect(settingsGroups({ permissions: ['events.read'] })[1]?.sections).toEqual([
+      'organisation',
+      'signInRules',
+    ]);
+  });
+
+  it('leaves the Organisation rows out while the account is in no organisation', () => {
+    expect(settingsGroups(null)).toEqual([
       { heading: 'yourAccount', sections: ['account', 'security'] },
     ]);
   });
@@ -90,6 +97,11 @@ describe('the Settings list', () => {
   it('opens the Organisation page under Settings', () => {
     expect(SECTION_HREF.organisation).toBe('/settings/organisation');
     expect(destinationOf(SECTION_HREF.organisation)).toBe('settings');
+  });
+
+  it('opens Members under Settings (sc-3404)', () => {
+    expect(SECTION_HREF.members).toBe('/settings/members');
+    expect(destinationOf(SECTION_HREF.members)).toBe('settings');
   });
 
   it('opens the organisation’s sign-in rules under Settings (sc-69)', () => {
