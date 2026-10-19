@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 
 from soirely_queue import actions, cli, github, roles, store, sync
+from soirely_queue.shortcut import ShortcutError
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
           "5": "In QA", "6": "Passsed QA", "7": "Failed QA", "8": "Backlog"}
@@ -33,6 +34,8 @@ class FakeShortcut:
             self.raw[story_id]["moved_at"] = "t1"
         if "labels" in fields:
             self.raw[story_id]["labels"] = fields["labels"]
+        if "description" in fields:
+            self.raw[story_id]["description"] = fields["description"]
         return self.raw[story_id]
 
     def comment(self, story_id, text, parent_id=None):
@@ -44,6 +47,12 @@ class FakeShortcut:
 
     def upload(self, story_id, paths):
         pass
+
+    def relate(self, subject_id, object_id, verb="relates to"):
+        links = self.raw[subject_id].setdefault("story_links", [])
+        if any(x["subject_id"] == subject_id and x["object_id"] == object_id for x in links):
+            raise ShortcutError("Shortcut 422 on POST /api/v3/story-links: exists")
+        links.append({"subject_id": subject_id, "object_id": object_id, "verb": verb})
 
 
 def slim(raw):
@@ -175,8 +184,119 @@ class Writes(Base):
 
     def test_the_designer_writes_only_the_design_section(self):
         with self.assertRaisesRegex(actions.Refused, "only the Design"):
-            actions.edit(self.as_("ux"), args(target="sc-1", section="AC", dated=None,
-                                              text="x"))
+            actions.edit(self.as_("ux"), args(targets=["sc-1"], section="AC", dated=None,
+                                              text="x", replace=None, with_=None, dry=False))
+
+
+class LanguageTags(Base):
+    def test_a_language_tag_posts_as_written_and_reaches_the_linguist(self):
+        self.fake.add(1, "To Do")
+        actions.comment(self.as_("pm"), args(story="sc-1", to="en", reply_to=None,
+                                             untagged=False, text="Is this wording right?"))
+        posted = self.fake.raw[1]["comments"][-1]
+        self.assertTrue(posted["text"].startswith("[en] (from pm)\n"))
+        cli.refresh_work(self.db, 10_000_000)
+        inbox = [w["reason"] for w in store.waiting(self.db, "l10n") if w["kind"] == "inbox"]
+        self.assertEqual(inbox, [f"comments for you on sc-1: #{posted['id']}"])
+
+    def test_a_tag_that_is_neither_role_nor_language_is_still_refused(self):
+        self.fake.add(1, "To Do")
+        with self.assertRaisesRegex(actions.Refused, "no role de"):
+            actions.comment(self.as_("pm"), args(story="sc-1", to="de", reply_to=None,
+                                                 untagged=False, text="x"))
+
+
+class OutOfInProgress(Base):
+    def back(self, story_id=1, prs=()):
+        for found in prs:
+            store.put_pr(self.db, found)
+        with mock.patch("soirely_queue.sync.sync_github"):
+            return actions.move(self.as_("pm"), args(story=f"sc-{story_id}", state="Backlog"))
+
+    def test_a_story_nobody_holds_goes_back_to_backlog(self):
+        self.fake.add(1, "In Progress")
+        mentions = {**pr(), "story_id": 1, "branch": "feature/sc-259/other"}
+        self.back(prs=[mentions])
+        self.assertEqual(self.state(1), "Backlog")
+
+    def test_a_developer_s_label_holds_it(self):
+        self.fake.add(1, "In Progress", ["dev2"])
+        with self.assertRaisesRegex(actions.Refused, "carries dev2"):
+            self.back()
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_an_open_pull_request_on_its_branch_holds_it(self):
+        self.fake.add(1, "In Progress")
+        with self.assertRaisesRegex(actions.Refused, "PR #9 is open on its branch"):
+            self.back(prs=[{**pr(), "branch": "feature/sc-1/thing"}])
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_pm_still_moves_nothing_else_out_of_in_progress(self):
+        self.fake.add(1, "In Progress")
+        with self.assertRaisesRegex(actions.Refused, "only from Backlog"):
+            actions.move(self.as_("pm"), args(story="sc-1", state="To Do"))
+
+
+class LineEdits(Base):
+    def setUp(self):
+        super().setUp()
+        self.fake.add(1, "To Do")
+        self.fake.add(2, "To Do")
+        self.fake.raw[2]["description"] = "# AC\n- works\n- works"
+        self.fake.add(3, "To Do")
+
+    def edit(self, *targets, old="- works", new="- works offline", dry=False, role="pm"):
+        return actions.edit(self.as_(role), args(targets=list(targets), section=None,
+                                                 dated=None, text=None, replace=old,
+                                                 with_=new, dry=dry))
+
+    def body(self, story_id):
+        return self.fake.raw[story_id]["description"]
+
+    def test_one_occurrence_changes_in_every_story_named(self):
+        said = self.edit("sc-1", "sc-3")
+        self.assertEqual(said, "changed one line in sc-1, sc-3")
+        self.assertEqual(self.body(1), "# AC\n- works offline")
+        self.assertEqual(self.body(3), "# AC\n- works offline")
+
+    def test_a_repeated_or_missing_old_changes_nothing_anywhere(self):
+        self.fake.raw[3]["description"] = "# AC\n- other"
+        with self.assertRaisesRegex(actions.Refused, "sc-2 has it 2 times; sc-3 lacks it"):
+            self.edit("sc-1", "sc-2", "sc-3")
+        self.assertEqual(self.body(1), "# AC\n- works")
+
+    def test_dry_says_what_would_change_and_changes_nothing(self):
+        self.assertEqual(self.edit("sc-1", "sc-3", dry=True), "would change: sc-1, sc-3")
+        self.assertEqual(self.body(1), "# AC\n- works")
+
+    def test_the_designer_replaces_only_inside_design(self):
+        self.fake.raw[1]["description"] = "# AC\n- works\n# Design\n- artboard 3"
+        with self.assertRaisesRegex(actions.Refused, "outside the Design section"):
+            self.edit("sc-1", role="ux")
+        self.edit("sc-1", old="artboard 3", new="artboard 4", role="ux")
+        self.assertEqual(self.body(1), "# AC\n- works\n# Design\n- artboard 4")
+
+    def test_replace_without_with_is_refused(self):
+        with self.assertRaisesRegex(actions.Refused, "needs --with"):
+            self.edit("sc-1", new=None)
+
+
+class Relating(Base):
+    def test_relating_twice_says_already_linked(self):
+        self.fake.add(1, "To Do")
+        self.fake.add(2, "To Do")
+        a = args(story="sc-1", other="sc-2", verb="blocks")
+        self.assertEqual(actions.relate(self.as_("pm"), a), "sc-1 blocks sc-2")
+        self.assertEqual(actions.relate(self.as_("pm"), a), "already linked: sc-1 blocks sc-2")
+
+    def test_a_lost_race_reads_as_already_linked(self):
+        self.fake.add(1, "To Do")
+        self.fake.add(2, "To Do")
+        context = self.as_("pm")
+        with mock.patch("soirely_queue.actions.linked", side_effect=[False, True]):
+            self.fake.relate(1, 2, "blocks")
+            said = actions.relate(context, args(story="sc-1", other="sc-2", verb="blocks"))
+        self.assertEqual(said, "already linked: sc-1 blocks sc-2")
 
 
 class Replies(Base):

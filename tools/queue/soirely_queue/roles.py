@@ -148,7 +148,8 @@ MOVES = {
     "dev": {"In Progress": ("To Do", "Failed QA", "In Review"), "In Review": ("In Progress",),
             "Ready For QA": ("In Review",)},
     "lead": {"In Progress": ("In Review",)},
-    "pm": {"To Do": ("Backlog",), "Backlog": ("To Do",)},
+    # Out of In Progress only when nobody holds it: `actions.holder` says who does.
+    "pm": {"To Do": ("Backlog",), "Backlog": ("To Do", "In Progress")},
     "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
            "Failed QA": ("In QA",)},
     "l10n": {"In Progress": ("To Do", "Failed QA"), "Ready For QA": ("In Progress",)},

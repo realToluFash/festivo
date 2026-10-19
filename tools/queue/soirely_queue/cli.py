@@ -266,6 +266,24 @@ def cmd_epic(s, a):
     s.done()
 
 
+def cmd_states(s, a):
+    shortcut = Shortcut()
+    folder = pathlib.Path(a.body) if a.body else None
+    if folder:
+        folder.mkdir(parents=True, exist_ok=True)
+    for ref in a.stories:
+        try:
+            story = sync.refresh_story(s.db, shortcut, actions.story_number(ref))
+        except (actions.Refused, RuntimeError) as error:
+            print(f"{ref}: not read ({error})")
+            continue
+        print(f"sc-{story['id']} [{story['state']}] {story['epic'] or '-'} · {story['name']}")
+        if folder:
+            (folder / f"sc-{story['id']}.md").write_text(story["description"])
+    if folder:
+        print(f"descriptions in {folder}/")
+
+
 def cmd_history(s, a):
     story_id = actions.story_number(a.story)
     states = store.get_meta(s.db, "states") or {}
@@ -289,7 +307,7 @@ TAKES_BODY = {actions.comment, actions.note, actions.report, actions.edit, actio
 
 def write(fn):
     def run(s, a):
-        if fn in TAKES_BODY and a.text is None:
+        if fn in TAKES_BODY and a.text is None and getattr(a, "replace", None) is None:
             a.text = sys.stdin.read()
             if not a.text.strip():
                 sys.exit("nothing to send: pass --text or pipe the body in")
@@ -336,6 +354,10 @@ READS = [
      lambda p: p.add_argument("--all", action="store_true")),
     ("epic", cmd_epic, "an epic's description and open stories",
      lambda p: p.add_argument("epic", type=int)),
+    ("states", cmd_states, "one line per story: state, epic, name; --body saves descriptions",
+     lambda p: (p.add_argument("stories", nargs="+"),
+                p.add_argument("--body", metavar="DIR", help="write each description to "
+                               "DIR/sc-<n>.md"))),
     ("history", cmd_history, "a story's state changes",
      lambda p: (p.add_argument("story"), p.add_argument("--limit", type=int, default=30))),
 ]
@@ -359,9 +381,16 @@ WRITES = [
     ("report", actions.report, "QA report: upload files, comment, move to the result",
      lambda p: (p.add_argument("story"), p.add_argument("result", choices=["passed", "failed"]),
                 p.add_argument("--files", nargs="+"), body(p))),
-    ("edit", actions.edit, "replace a section, or add a dated one, on sc-<n> or epic-<n>",
-     lambda p: (p.add_argument("target"), p.add_argument("--section"),
-                p.add_argument("--dated"), body(p))),
+    ("edit", actions.edit, "replace a section, or add a dated one, on sc-<n> or epic-<n>; "
+     "--replace/--with changes one line",
+     lambda p: (p.add_argument("targets", nargs="+", metavar="target"),
+                p.add_argument("--section"), p.add_argument("--dated"),
+                p.add_argument("--replace", metavar="OLD",
+                               help="text that appears exactly once in each target"),
+                p.add_argument("--with", dest="with_", metavar="NEW"),
+                p.add_argument("--dry", action="store_true",
+                               help="with --replace: say which would change, change nothing"),
+                body(p))),
     ("new-story", actions.new_story, "create a story, in Backlog unless you are the PM",
      lambda p: (p.add_argument("--name", required=True), p.add_argument("--epic", type=int),
                 p.add_argument("--state"), p.add_argument("--label", nargs="+"),
@@ -402,16 +431,33 @@ WRITES = [
 ]
 
 
+def describe_move(role):
+    lines = [f"{state}, from {' or '.join(froms)}"
+             for state, froms in roles.MOVES.get(role, {}).items()]
+    text = "The moves you make:\n" + "\n".join(f"  {line}" for line in lines)
+    if role == "pm":
+        text += ("\n\nIn Progress to Backlog only while nobody holds the story: no dev1, "
+                 "dev2 or\ntranslation label, and no open pull request on a branch named "
+                 "after it.\nA pull request that only mentions the story, which Shortcut's "
+                 "GitHub link\nmoves to In Progress, does not hold it.")
+    return text
+
+
+DESCRIBE = {"move": describe_move}
+
+
 def role_parser(role):
     p = argparse.ArgumentParser(prog=f"sq {role}", add_help=False,
                                 description=f"What {role} reads and writes. Reads print "
                                 "each thing once; --again prints it in full anyway.")
     p.add_argument("--again", action="store_true", help=argparse.SUPPRESS)
     sub = p.add_subparsers(dest="command", metavar="<command>")
-    sub.add_parser("help", help="this list")
+    sub.add_parser("help", help="this list, or one command's").add_argument(
+        "topic", nargs="?")
 
     def add(name, fn, help_, args):
-        s = sub.add_parser(name, help=help_)
+        s = sub.add_parser(name, help=help_, description=DESCRIBE.get(name, lambda r: None)(role),
+                           formatter_class=argparse.RawDescriptionHelpFormatter)
         s.add_argument("--again", action="store_true", help="print in full what you have read")
         s.set_defaults(fn=fn)
         if args:
@@ -485,6 +531,9 @@ def main(argv=None):
         parser = role_parser(role)
         a = parser.parse_args(argv[1:])
         if a.command in (None, "help"):
+            topic = getattr(a, "topic", None)
+            if topic:
+                return parser.parse_args([topic, "--help"])
             return parser.print_help()
         a.fn(Session(role, a.again), a)
     except actions.Refused as refusal:
