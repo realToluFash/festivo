@@ -4,7 +4,7 @@ import argparse
 import unittest
 from unittest import mock
 
-from soirely_queue import actions, cli, roles, store, sync
+from soirely_queue import actions, cli, github, roles, store, sync
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
           "5": "In QA", "6": "Passsed QA", "7": "Failed QA", "8": "Backlog"}
@@ -351,6 +351,30 @@ class Merging(Base):
         self.assertEqual(self.state(1), "In Progress")
         self.assertIn("[dev2] (from lead)", self.fake.comments[-1][1])
 
+
+    def test_a_refresh_failing_after_the_post_still_says_it_posted(self):
+        self.fake.add(1, "In Review")
+        store.put_pr(self.db, pr())
+        limited = github.GitHubError("gh api graphql: API rate limit exceeded")
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.post_review", return_value={}), \
+                mock.patch("soirely_queue.sync.sync_github", side_effect=limited):
+            said = actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
+                                                         qa=None, text="summary"))
+        self.assertTrue(said.startswith("posted the review on PR #9"))
+        self.assertIn("refresh after it failed", said)
+        self.assertIn("[qa] (from lead)", self.fake.comments[-1][1])
+
+    def test_a_merge_tells_qa_even_when_the_refresh_after_it_fails(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, pr("pass"))
+        limited = github.GitHubError("gh api graphql: API rate limit exceeded")
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge"), \
+                mock.patch("soirely_queue.sync.sync_github", side_effect=limited):
+            said = actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        self.assertIn("refresh after it failed", said)
+        self.assertEqual(self.state(1), "Ready For QA")
 
 class Findings(unittest.TestCase):
     def test_each_finding_opens_with_its_severity(self):

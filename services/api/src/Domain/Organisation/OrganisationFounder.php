@@ -42,6 +42,7 @@ final readonly class OrganisationFounder
             'currency' => Regions::isCountry($country) ? Regions::currencyOf($country) : '',
             'timezone' => $timezone,
             'contactAddress' => $contact,
+            'locale' => $this->accountLanguage->of($owner),
         ]);
 
         $organisation = new Organisation(
@@ -50,7 +51,7 @@ final readonly class OrganisationFounder
             $fields['currency'],
             $fields['timezone'],
             $fields['contactAddress'],
-            $this->accountLanguage->of($owner),
+            $fields['locale'],
         );
         $this->entityManager->persist($organisation);
         $roles = Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): Role => Role::seeded($organisation, $seeded));

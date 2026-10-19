@@ -4,12 +4,15 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   copyFileSync,
+  cpSync,
   createWriteStream,
   existsSync,
   mkdirSync,
   openSync,
+  readdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
@@ -214,6 +217,17 @@ export function expoGoApk(versions, expoRange) {
 // Android's package is lower case, and every flow, an old commit's included, names iOS's.
 export function forAndroid(flow) {
   return flow.replace(/\bhost\.exp\.Exponent\b/g, EXPO_GO_ANDROID);
+}
+
+// The whole directory, so a flow's runFlow and runScript paths still resolve, rewritten too.
+export function androidFlows(source, target) {
+  rmSync(target, { recursive: true, force: true });
+  cpSync(source, target, { recursive: true });
+  for (const entry of readdirSync(target, { recursive: true })) {
+    if (!/\.ya?ml$/.test(entry)) continue;
+    const path = join(target, entry);
+    writeFileSync(path, forAndroid(readFileSync(path, 'utf8')));
+  }
 }
 
 export function branchForStory(id, remoteBranches) {
@@ -799,9 +813,13 @@ function maestro(args) {
   spawnSync('rm', ['-rf', out]);
   mkdirSync(out, { recursive: true });
 
-  const source = join(root, `apps/mobile/.maestro/${flow}.yaml`);
-  const file = onAndroid ? join(out, `${flow}.yaml`) : source;
-  if (onAndroid) writeFileSync(file, forAndroid(readFileSync(source, 'utf8')));
+  let flows = join(root, 'apps/mobile/.maestro');
+  if (onAndroid) {
+    const copy = join(root, '.qa/.maestro-android');
+    androidFlows(flows, copy);
+    flows = copy;
+  }
+  const file = join(flows, `${flow}.yaml`);
 
   const ok = run(
     maestroBin() ?? 'maestro',

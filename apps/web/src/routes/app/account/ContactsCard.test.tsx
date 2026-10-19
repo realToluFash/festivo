@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { holdProof } from '../../../recentProof.ts';
@@ -326,6 +327,54 @@ describe('email addresses and phone numbers', () => {
   });
 });
 
+describe('a number in the words of a number', () => {
+  const PHONE_WORDS = {
+    verifiedPhone: 'Number verified',
+    primaryPhone: 'Number primary',
+    makePrimaryPhone: 'Make number primary',
+    removeConfirmPhone: 'Remove the number',
+    removeKeepPhone: 'Keep the number',
+  };
+  const held: Record<string, string> = {};
+
+  beforeAll(() => {
+    for (const [key, value] of Object.entries(PHONE_WORDS)) {
+      held[key] = i18next.t(`contacts.${key}`);
+      i18next.addResource('en', 'translation', `contacts.${key}`, value);
+    }
+  });
+
+  afterAll(() => {
+    for (const [key, value] of Object.entries(held)) {
+      i18next.addResource('en', 'translation', `contacts.${key}`, value);
+    }
+  });
+
+  it("reads its own keys for its state and its buttons, never the address card's", async () => {
+    const twoPhones = {
+      ...ME,
+      phoneNumbers: [
+        ME.phoneNumbers[0],
+        { ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188', primary: false },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(twoPhones) });
+    open();
+
+    await screen.findByText('folake.adeyemi@gmail.com');
+    const numbers = within(screen.getByRole('list', { name: 'Phone numbers on this account' }));
+    expect(numbers.getAllByText('Number verified')).toHaveLength(2);
+    expect(numbers.getAllByText('Number primary')).toHaveLength(1);
+    expect(numbers.queryByText('Verified')).toBeNull();
+    expect(numbers.queryByText('Primary')).toBeNull();
+    expect(numbers.getByRole('button', { name: 'Make number primary' })).toBeDefined();
+
+    fireEvent.click(numbers.getByRole('button', { name: /^Remove / }));
+    expect(numbers.getByRole('button', { name: 'Remove the number' })).toBeDefined();
+    expect(numbers.getByRole('button', { name: 'Keep the number' })).toBeDefined();
+  });
+});
+
 describe('a refusal shows the account as it is now', () => {
   const OTHER = {
     id: 'p2',
@@ -556,6 +605,59 @@ describe('back from verifying an address or number', () => {
 
     expect(await screen.findByText('folake.adeyemi@gmail.com is verified.')).toBeDefined();
     expect(container.querySelectorAll('.notice-done')).toHaveLength(1);
+  });
+
+  it('says a number verified on an account with no primary phone is now the primary', async () => {
+    const madePrimary = {
+      ...ME,
+      phoneNumbers: [{ ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188' }],
+    };
+    answering({ 'GET /api/auth/me': () => json(madePrimary) });
+    open({}, '/app/account?verified=p2');
+
+    expect(
+      await screen.findByText('+234 701 555 0188 is verified and is now your primary number.'),
+    ).toBeDefined();
+    const phones = screen.getByRole('region', { name: 'Phone numbers' });
+    expect(within(phones).getByText('Primary')).toBeDefined();
+    expect(within(phones).queryByRole('button', { name: 'Make primary' })).toBeNull();
+    expect(within(phones).queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('says so too when the number took primary from an unverified one, which stays linked', async () => {
+    const tookOver = {
+      ...ME,
+      phoneNumbers: [
+        { ...ME.phoneNumbers[0], verified: false, primary: false },
+        { ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188' },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(tookOver) });
+    open({}, '/app/account?verified=p2');
+
+    expect(
+      await screen.findByText('+234 701 555 0188 is verified and is now your primary number.'),
+    ).toBeDefined();
+    const phones = screen.getByRole('region', { name: 'Phone numbers' });
+    expect(within(phones).getAllByText('Primary')).toHaveLength(1);
+    expect(within(phones).getByText('Unverified')).toBeDefined();
+    expect(within(phones).getByRole('link', { name: 'Send a code' })).toBeDefined();
+    expect(within(phones).getByRole('button', { name: 'Remove +234 803 555 0142' })).toBeDefined();
+  });
+
+  it('keeps the short line for a number verified beside a primary', async () => {
+    const twoPhones = {
+      ...ME,
+      phoneNumbers: [
+        ME.phoneNumbers[0],
+        { ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188', primary: false },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(twoPhones) });
+    open({}, '/app/account?verified=p2');
+
+    expect(await screen.findByText('+234 701 555 0188 is verified.')).toBeDefined();
+    expect(screen.queryByText(/is now your primary number/)).toBeNull();
   });
 
   it('says nothing for a row that is not verified', async () => {

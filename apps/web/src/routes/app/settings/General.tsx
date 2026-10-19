@@ -5,6 +5,7 @@ import {
   type OrganisationField,
   countryChoices,
   currencyLabel,
+  languageChoices,
   organisationChanges,
   organisationProblem,
   roleName,
@@ -12,9 +13,11 @@ import {
   withCurrent,
 } from '@soirely/domain';
 import { type FormEvent, useMemo, useState } from 'react';
+import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { OwnershipCard } from './OwnershipCard.tsx';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
@@ -23,14 +26,21 @@ import { can, replaceOrganisation, useSession } from '../../../session.ts';
 type Field = OrganisationField;
 type Errors = Partial<Record<Field, string>>;
 
-type Status = { kind: 'editing' } | { kind: 'saving' } | { kind: 'saved' } | { kind: 'failed' };
+type Status =
+  | { kind: 'editing' }
+  | { kind: 'saving' }
+  | { kind: 'saved'; language: string | null }
+  | { kind: 'failed' };
 
 export function General() {
   const { t } = useTranslation();
   const session = useSession();
   const organisation = session.organisation;
+  const [refusedIn, setRefusedIn] = useState<string | null>(null);
 
   if (organisation == null) return null;
+
+  const refused = refusedIn === organisation.id;
 
   return (
     <div className="settings">
@@ -42,19 +52,40 @@ export function General() {
 
       <RecoveryRequestsCard />
 
+      {refused && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <p>{t('orgGeneral.refused')}</p>
+        </div>
+      )}
+
       <section className="card settings-card" aria-labelledby="organisation-title">
         <h2 id="organisation-title">{t('orgGeneral.section')}</h2>
-        {can(session, 'organisation.manage') ? (
-          <Editable key={organisation.id} organisation={organisation} />
+        {can(session, 'organisation.manage') && !refused ? (
+          <Editable
+            key={organisation.id}
+            organisation={organisation}
+            onRefused={() => setRefusedIn(organisation.id)}
+          />
         ) : (
           <ReadOnly organisation={organisation} />
         )}
       </section>
+
+      <OwnershipCard key={organisation.id} organisation={organisation} />
     </div>
   );
 }
 
-function Editable({ organisation }: { organisation: Membership }) {
+function Editable({
+  organisation,
+  onRefused,
+}: {
+  organisation: Membership;
+  onRefused: () => void;
+}) {
   const { t } = useTranslation();
   const locale = currentLocale();
   const [values, setValues] = useState({
@@ -63,6 +94,7 @@ function Editable({ organisation }: { organisation: Membership }) {
     contactAddress: organisation.contactAddress,
     currency: organisation.currency,
     timezone: organisation.timezone,
+    locale: organisation.locale,
   });
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<Status>({ kind: 'editing' });
@@ -104,8 +136,17 @@ function Editable({ organisation }: { organisation: Membership }) {
       );
 
       replaceOrganisation({ ...organisation, ...saved });
-      setStatus({ kind: 'saved' });
+      setStatus({
+        kind: 'saved',
+        language: saved.locale === organisation.locale ? null : saved.locale,
+      });
     } catch (error) {
+      if (error instanceof ApiError && error.is('permission_required')) {
+        onRefused();
+        void rereadOrganisation(organisation.id);
+        return;
+      }
+
       if (error instanceof ApiError && error.is('validation_failed')) {
         setErrors(error.fieldErrors() as Errors);
         setStatus({ kind: 'editing' });
@@ -123,7 +164,13 @@ function Editable({ organisation }: { organisation: Membership }) {
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
-          <p>{t('orgGeneral.saved', { name: organisation.name })}</p>
+          <p>
+            {status.language == null
+              ? t('orgGeneral.saved', { name: organisation.name })
+              : t('orgGeneral.savedLanguage', {
+                  language: languageNameInSentence(t, status.language),
+                })}
+          </p>
         </div>
       )}
 
@@ -188,6 +235,19 @@ function Editable({ organisation }: { organisation: Membership }) {
 
       <DefaultsNote />
 
+      <div className="settings-fields">
+        <Choice
+          field="locale"
+          label={t('orgGeneral.language')}
+          help={t('orgGeneral.languageHint')}
+          value={values.locale}
+          error={errors.locale}
+          busy={busy}
+          options={languageChoices(t).map(({ code, name }) => ({ value: code, label: name }))}
+          onChange={change}
+        />
+      </div>
+
       <div>
         <button className="button button-primary" type="submit" aria-busy={busy}>
           {busy ? t('orgGeneral.saving') : t('orgGeneral.save')}
@@ -230,9 +290,35 @@ function ReadOnly({ organisation }: { organisation: Membership }) {
         </div>
       </dl>
       <DefaultsNote />
+      <dl className="settings-read-only">
+        <div>
+          <dt>{t('orgGeneral.language')}</dt>
+          <dd>{languageName(t, organisation.locale)}</dd>
+        </div>
+      </dl>
       <p className="muted">{t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}</p>
     </>
   );
+}
+
+/** In the reader's language alone, as a row names it. */
+function languageName(t: TFunction, code: string): string {
+  return t(`languageNames.${code}`, { defaultValue: code });
+}
+
+/** Mid-sentence, where es, fr and pt write a language's name in lowercase. */
+function languageNameInSentence(t: TFunction, code: string): string {
+  return t(`languageNamesInSentence.${code}`, { defaultValue: code });
+}
+
+/** The role may have changed under the page; the session catches up so every other screen does too. */
+async function rereadOrganisation(id: string): Promise<void> {
+  try {
+    const fresh = (await api.organisations()).find((membership) => membership.id === id);
+    if (fresh != null) replaceOrganisation(fresh);
+  } catch {
+    // The refusal is already on screen; a failed reread leaves the rest of the page as it was.
+  }
 }
 
 function DefaultsNote() {
@@ -296,6 +382,7 @@ function Text({
 function Choice({
   field,
   label,
+  help,
   value,
   error,
   busy,
@@ -304,6 +391,7 @@ function Choice({
 }: {
   field: Field;
   label: string;
+  help?: string;
   value: string;
   error: string | undefined;
   busy: boolean;
@@ -311,6 +399,9 @@ function Choice({
   onChange: (field: Field, value: string) => void;
 }) {
   const id = `organisation-${field}`;
+  const describedBy = [error == null ? null : `${id}-error`, help == null ? null : `${id}-help`]
+    .filter((one) => one != null)
+    .join(' ');
 
   return (
     <div className="field">
@@ -321,7 +412,7 @@ function Choice({
         value={value}
         disabled={busy}
         aria-invalid={error != null}
-        aria-describedby={error == null ? undefined : `${id}-error`}
+        aria-describedby={describedBy === '' ? undefined : describedBy}
         onChange={(event) => onChange(field, event.target.value)}
       >
         {options.map((option) => (
@@ -331,6 +422,11 @@ function Choice({
         ))}
       </select>
       {error != null && <FieldError id={`${id}-error`} message={error} />}
+      {help != null && (
+        <p className="field-help" id={`${id}-help`}>
+          {help}
+        </p>
+      )}
     </div>
   );
 }

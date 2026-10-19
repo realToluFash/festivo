@@ -13,4 +13,5 @@ enum MembershipChannel: string
     case Domain = 'domain';
     case Request = 'request';
     case Directory = 'directory';
+    case Settings = 'settings';
 }

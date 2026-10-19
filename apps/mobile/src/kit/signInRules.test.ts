@@ -37,6 +37,7 @@ function membership(overrides: Partial<Membership> = {}): Membership {
     currency: 'NGN',
     timezone: 'Africa/Lagos',
     contactAddress: 'hello@ire.events',
+    locale: 'en',
     role: { id: 'role_2', seededAs: 'administrator', name: null },
     permissions: ['events.read'],
     withheldUntilTwoFactor: [],

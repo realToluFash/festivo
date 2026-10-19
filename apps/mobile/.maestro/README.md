@@ -36,4 +36,5 @@ Maestro needs a Java runtime. `java -version` failing means
 - **Expo Go is the app**, so `appId` is `host.exp.Exponent` and the flow opens the project
   with `openLink`. A standalone build would use `com.soirely.app` and `launchApp`. On Android
   the package is `host.exp.exponent`, in lower case. Write iOS's: `qa-env.mjs maestro --android`
-  runs a copy of the flow with Android's.
+  runs from a copy of this whole directory with Android's, so a `runFlow` or `runScript` path
+  still resolves.

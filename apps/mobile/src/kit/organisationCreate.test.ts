@@ -11,6 +11,7 @@ const created: Membership = {
   contactAddress: 'folake@ire.events',
   currency: 'NGN',
   timezone: 'Africa/Lagos',
+  locale: 'en',
   role: { id: 'role_9', seededAs: 'owner', name: null },
   permissions: ['organisation.manage'],
   withheldUntilTwoFactor: [],

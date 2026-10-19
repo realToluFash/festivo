@@ -25,13 +25,19 @@ final readonly class RoleAssignment
 
     public function assign(Membership $membership, Role $role): void
     {
-        $leavesOwner = $membership->getRole()->isOwner() && !$role->isOwner();
-
-        if ($leavesOwner && $membership->isActive() && 1 === $this->activeOwners($membership->getOrganisation())) {
-            throw new ApiException(ErrorCode::LastOwner, $this->translator->trans('roles.last_owner'));
+        if (!$role->isOwner()) {
+            $this->release($membership);
         }
 
         $membership->changeRole($role);
+    }
+
+    /** Refused for the last active owner: demoting, removing and leaving all pass through here. */
+    public function release(Membership $membership): void
+    {
+        if ($membership->getRole()->isOwner() && $membership->isActive() && 1 === $this->activeOwners($membership->getOrganisation())) {
+            throw new ApiException(ErrorCode::LastOwner, $this->translator->trans('roles.last_owner'));
+        }
     }
 
     private function activeOwners(Organisation $organisation): int

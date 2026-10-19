@@ -44,6 +44,7 @@ final readonly class LinkedContacts
         private TranslatorInterface $translator,
         private RateLimiterFactoryInterface $contactAddAccountLimiter,
         private RecentProof $recentProof,
+        private PhonePromotion $phonePromotion,
     ) {
     }
 
@@ -135,16 +136,7 @@ final readonly class LinkedContacts
             throw $this->refusal(ErrorCode::AddressNotVerified, 'contacts.not_verified_phone');
         }
 
-        $this->entityManager->wrapInTransaction(function () use ($user, $phone): void {
-            $this->lock($user);
-            $this->reread($user->getPhoneNumbers());
-            $before = $user->getPrimaryPhoneNumber();
-            $before?->setPrimary(false);
-            $this->entityManager->flush();
-            $phone->setPrimary(true);
-            $this->record($user, 'phone.primary', 'primary', $before?->getNumber(), $phone->getNumber());
-            $this->entityManager->flush();
-        });
+        $this->phonePromotion->promote($phone);
 
         return $phone;
     }

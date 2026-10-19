@@ -27,6 +27,18 @@ function signedIn(organisation = IRE): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
+function languageField(): HTMLSelectElement {
+  return screen.getByLabelText('Language', { selector: '#organisation-locale' });
+}
+
+function readOnlyLanguage(): Element {
+  const row = [...document.querySelectorAll('dl.settings-read-only div')].find(
+    (one) => one.querySelector('dt')?.textContent === 'Language',
+  );
+
+  return row?.querySelector('dd') ?? document.body;
+}
+
 function settings() {
   return render(
     <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/settings'] })} />,
@@ -54,7 +66,7 @@ afterEach(() => {
 });
 
 describe('Settings > General', () => {
-  it("shows the five fields with the organisation's values", () => {
+  it("shows the six fields with the organisation's values", () => {
     settings();
 
     expect(screen.getByRole('heading', { level: 1, name: 'General' })).toBeDefined();
@@ -66,6 +78,92 @@ describe('Settings > General', () => {
     expect((screen.getByLabelText('Currency') as HTMLSelectElement).value).toBe('NGN');
     expect((screen.getByLabelText('Time zone') as HTMLSelectElement).value).toBe('Africa/Lagos');
     expect(screen.getByText(/new events start with these/)).toBeDefined();
+    expect(languageField().value).toBe('en');
+  });
+
+  it('offers exactly the four languages, each also in its own words, after the defaults note', () => {
+    settings();
+
+    const language = languageField();
+
+    expect([...language.options].map((option) => option.textContent)).toEqual([
+      'English',
+      'Spanish · Español',
+      'French · Français',
+      'Portuguese · Português',
+    ]);
+    expect(language.getAttribute('aria-describedby')).toBe('organisation-locale-help');
+    expect(
+      language.compareDocumentPosition(
+        screen.getByText(/Invitation emails to people without a Soirely account/),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(screen.getByText(/new events start with these/).compareDocumentPosition(language)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it('saves a new language on the same PATCH and says invitations already sent stay sent', async () => {
+    const sent = answering(
+      (body) =>
+        new Response(JSON.stringify({ ...IRE, ...(body as object), role: undefined }), {
+          status: 200,
+        }),
+    );
+    settings();
+
+    fireEvent.change(languageField(), { target: { value: 'fr' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toContain(
+        'Saved. Invitation emails to people without a Soirely account go out in French from now on. Invitations already sent are not sent again.',
+      ),
+    );
+    expect(sent.filter((request) => request.method === 'PATCH')).toEqual([
+      { method: 'PATCH', path: '/api/orgs/org_1', body: { locale: 'fr' } },
+    ]);
+  });
+
+  it('turns read-only under the refusal when the role lost the permission while the page was open', async () => {
+    const coordinator = membership({
+      role: { id: 'role_2', seededAs: 'coordinator', name: null },
+      permissions: ['events.read'],
+    });
+    const refusal = {
+      type: 'https://soirely.com/errors/permission_required',
+      title: 'This needs the organisation.manage permission.',
+      status: 403,
+    };
+    const sent = answering(() => new Response('{}', { status: 500 }));
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      sent.push({
+        method: init?.method ?? 'GET',
+        path: new URL(String(input)).pathname,
+        body: null,
+      });
+
+      return init?.method === 'PATCH'
+        ? new Response(JSON.stringify(refusal), { status: 403 })
+        : new Response(JSON.stringify({ organisations: [coordinator], requests: [] }), {
+            status: 200,
+          });
+    });
+    settings();
+
+    fireEvent.change(languageField(), { target: { value: 'pt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Nothing was saved. Your role does not include the permission this needs.',
+    );
+    expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
+    expect(readOnlyLanguage().textContent).toBe('English');
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Your role, Coordinator, can see these but not change them/),
+      ).toBeDefined(),
+    );
   });
 
   it('sends only what changed, and every screen reads the new name at once', async () => {
@@ -83,9 +181,9 @@ describe('Settings > General', () => {
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toMatch(/Saved\. Everyone in Ìrè Events Ltd/),
     );
-    expect(sent.filter((request) => request.path.startsWith('/api/orgs'))).toEqual([
-      { method: 'PATCH', path: '/api/orgs/org_1', body: { name: 'Ìrè Events Ltd' } },
-    ]);
+    expect(
+      sent.filter((request) => request.path.startsWith('/api/orgs') && request.method !== 'GET'),
+    ).toEqual([{ method: 'PATCH', path: '/api/orgs/org_1', body: { name: 'Ìrè Events Ltd' } }]);
     expect(
       screen.getByRole('button', { name: /Organisation: Ìrè Events Ltd, your role Owner/ }),
     ).toBeDefined();
@@ -167,6 +265,7 @@ describe('Settings > General', () => {
       'Contact address',
       'Currency',
       'Time zone',
+      'Language',
     ]);
 
     const note = screen.getByText(
@@ -177,6 +276,7 @@ describe('Settings > General', () => {
 
     expect(list?.compareDocumentPosition(note)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(note.compareDocumentPosition(role)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(note.compareDocumentPosition(readOnlyLanguage())).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });
 

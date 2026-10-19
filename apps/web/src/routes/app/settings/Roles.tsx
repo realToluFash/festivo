@@ -239,15 +239,17 @@ function Editing({
   const { t } = useTranslation();
   const creating = role == null;
   const editable = manages && !(role?.fixed ?? false);
+  const naming = creating || (editable && role.seededAs == null);
   const startingGrant = role?.permissions ?? [];
   const [grant, setGrant] = useState<string[]>(startingGrant);
-  const [typed, setTyped] = useState('');
+  const [typed, setTyped] = useState(role?.name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
   const [status, setStatus] = useState<'editing' | 'saving' | 'failed'>('editing');
   const title = role == null ? '' : roleName(t, role);
   // The API refuses a seeded role's label in every language (sc-2301), whatever the caller reads.
   const everyLanguage = LOCALE_CODES.map((locale) => i18next.getFixedT(locale));
-  const dirty = creating || !sameGrant(grant, startingGrant);
+  const renamed = !creating && naming && typed.trim() !== role.name;
+  const dirty = creating || renamed || !sameGrant(grant, startingGrant);
   const areas = catalogue.areas.map((entry) => entry.area);
   // A caller changes only what they hold (sc-66): a row with nothing left to pick is locked.
   const rows = catalogue.areas.map(({ area, permissions }) => {
@@ -272,10 +274,12 @@ function Editing({
     event.preventDefault();
     if (status === 'saving') return;
 
-    if (creating) {
+    if (creating || renamed) {
       const problem = roleNameProblem(
         typed,
-        catalogue.roles.flatMap((one) => everyLanguage.map((word) => roleName(word, one))),
+        catalogue.roles
+          .filter((one) => one.id !== role?.id)
+          .flatMap((one) => everyLanguage.map((word) => roleName(word, one))),
       );
 
       if (problem != null) {
@@ -290,14 +294,19 @@ function Editing({
     try {
       const result = creating
         ? await api.createRole(organisation.id, { name: typed.trim(), permissions: grant })
-        : await api.updateRole(organisation.id, role.id, { permissions: grant });
+        : await api.updateRole(
+            organisation.id,
+            role.id,
+            renamed ? { name: typed.trim(), permissions: grant } : { permissions: grant },
+          );
 
       setStatus('editing');
+      setTyped(result.name ?? '');
       onSaved(result);
     } catch (error) {
       const refusal = error instanceof ApiError ? error.fieldErrors().name : undefined;
 
-      if (creating && refusal != null) {
+      if (naming && refusal != null) {
         setNameError(refusal);
         setStatus('editing');
         document.getElementById('role-name')?.focus();
@@ -312,7 +321,7 @@ function Editing({
     <form noValidate onSubmit={(event) => void save(event)}>
       <div className="roles-detail-head">
         <div className="roles-detail-title">
-          {creating ? (
+          {naming ? (
             <div className="field">
               <label htmlFor="role-name">{t('rolesScreen.nameLabel')}</label>
               <input
@@ -329,6 +338,7 @@ function Editing({
                 onChange={(event) => {
                   setTyped(event.target.value);
                   setNameError(null);
+                  onEdited();
                 }}
               />
               {nameError != null && (
@@ -476,7 +486,15 @@ function Editing({
           <p>{unsavedLine(t, creating, title, role?.holders ?? 0)}</p>
           <div className="roles-actions">
             {!creating && (
-              <button type="button" className="button" onClick={() => setGrant(startingGrant)}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setGrant(startingGrant);
+                  setTyped(role.name ?? '');
+                  setNameError(null);
+                }}
+              >
                 {t('rolesScreen.discard')}
               </button>
             )}
