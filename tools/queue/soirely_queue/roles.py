@@ -153,6 +153,9 @@ MOVES = {
            "Failed QA": ("In QA",)},
     "l10n": {"In Progress": ("To Do", "Failed QA"), "Ready For QA": ("In Progress",)},
 }
+# The product manager also takes back an In Progress story that nobody holds: no role moved
+# it there, no developer label, no open pull request on its branch (`actions.holder`).
+PM_RELEASES = ("Backlog", "To Do")
 MOVES["dev2"] = MOVES["dev"]
 for _tester in TESTERS:
     MOVES[_tester] = MOVES["qa"]

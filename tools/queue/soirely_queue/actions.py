@@ -9,7 +9,7 @@ from . import github, store, sync
 from . import roles as R
 from . import text as T
 from . import work as W
-from .shortcut import Shortcut
+from .shortcut import Shortcut, ShortcutError
 
 
 class Refused(RuntimeError):
@@ -151,7 +151,7 @@ def comment(c, a):
     if not to and not a.untagged:
         raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker), "
                       "or --untagged for a record or a confirmation that wakes nobody")
-    unknown = [t for t in to if t not in R.ROLES and t != "dev"]
+    unknown = [t for t in to if t not in R.ROLES and t != "dev" and t not in R.LOCALES]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
     posted = post(c, story, to, a.text, parent)
@@ -170,10 +170,39 @@ def note(c, a):
 # Moving and labelling
 
 
+def holder(c, story):
+    """Who is working on an In Progress story, or None. A pull request that only mentions a
+    story moves it through Shortcut's GitHub link, and nobody holds it then."""
+    moved_by = store.moves(c.db).get((story["id"], story["state"], story["moved_at"]))
+    if moved_by:
+        return f"{moved_by} moved it there"
+    labelled = sorted(set(story["labels"]) & set(R.DEVELOPERS.values()))
+    if labelled:
+        return f"it carries {', '.join(labelled)}"
+    try:
+        sync.sync_github(c.db)
+    except github.GitHubError as error:
+        return f"its open pull requests could not be read ({error})"
+    branch = re.compile(rf"(?<!\d)sc-{story['id']}(?!\d)")
+    open_prs = [pr for pr in store.prs(c.db)
+                if pr["state"] == "open" and branch.search(pr.get("branch") or "")]
+    if open_prs:
+        return f"PR #{open_prs[0]['number']} is open on its branch"
+    return None
+
+
 def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
-    state = set_state(c, story, a.state)
+    _, wanted = c.state_id(a.state)
+    if c.role == "pm" and story["state"] == "In Progress" and wanted in R.PM_RELEASES:
+        held = holder(c, story)
+        if held:
+            raise Refused(f"sc-{story['id']} is In Progress and held: {held}. "
+                          "Ask its developer to move it")
+        state = set_state(c, story, a.state, check=False)
+    else:
+        state = set_state(c, story, a.state)
     c.refresh(story["id"])
     return f"sc-{story['id']} is now {state}"
 
@@ -247,10 +276,68 @@ def report(c, a):
 # Writing stories and epics
 
 
+def description_of(c, target):
+    if target.startswith("epic-"):
+        epic = c.shortcut.epic(int(target[5:]))
+        return epic.get("description") or "", lambda body: c.shortcut.update_epic(
+            epic["id"], description=body)
+    story_id = story_number(target)
+    raw = c.shortcut.story(story_id)
+
+    def save(body):
+        c.shortcut.update(story_id, description=body)
+        c.refresh(story_id)
+    return raw.get("description") or "", save
+
+
+def edit_line(c, a):
+    """One exact occurrence of --replace becomes --with, on every target or on none."""
+    if c.role == "ux":
+        raise Refused("the designer writes only the Design section: use --section Design")
+    if a.section or a.dated:
+        raise Refused("--replace edits text wherever it is: drop --section and --dated")
+    if a.with_ is None:
+        raise Refused("say what replaces it: --with \"<new>\" (an empty one deletes it)")
+    if not a.replace:
+        raise Refused("--replace needs the text to find")
+    found, problems = [], []
+    for target in a.targets:
+        body, save = description_of(c, target)
+        count = body.count(a.replace)
+        if count == 1:
+            found.append((target, body.replace(a.replace, a.with_), save))
+        else:
+            problems.append(f"{target} has it {count} times" if count
+                            else f"{target} does not have it")
+    if problems:
+        raise Refused(f"{'; '.join(problems)}; nothing changed")
+    if a.dry:
+        return "would change " + ", ".join(target for target, _, _ in found)
+    saved = []
+    for target, body, save in found:
+        try:
+            save(body)
+        except ShortcutError as error:
+            rest = [t for t, _, _ in found[len(saved) + 1:]]
+            raise Refused(f"changed {', '.join(saved) or 'nothing'}; {target} failed: {error}"
+                          + (f"; not tried: {', '.join(rest)}" if rest else "")) from error
+        saved.append(target)
+    return "changed " + ", ".join(target for target, _, _ in found)
+
+
 def edit(c, a):
     guard(c, "edit")
+    if a.replace is not None:
+        return edit_line(c, a)
+    if a.with_ is not None or a.dry:
+        raise Refused("--with and --dry go with --replace")
+    if len(a.targets) > 1:
+        raise Refused("--section and --dated edit one story: name one, "
+                      "or use --replace for several")
+    a.target = a.targets[0]
     if not (a.section or a.dated):
-        raise Refused("say which part: --section <name> or --dated <title>")
+        raise Refused("say which part: --section <name> or --dated <title>, "
+                      "or --replace <old> --with <new>")
     if a.target.startswith("epic-"):
         epic_id = int(a.target[5:])
         epic = c.shortcut.epic(epic_id)
@@ -326,6 +413,12 @@ def task(c, a):
 def relate(c, a):
     guard(c, "relate")
     subject, other = story_number(a.story), story_number(a.other)
+    pairs = {(subject, other)} if a.verb != "relates to" else {(subject, other),
+                                                                (other, subject)}
+    links = c.shortcut.story(subject).get("story_links", [])
+    if any(link.get("verb") == a.verb and (link.get("subject_id"), link.get("object_id"))
+           in pairs for link in links):
+        return f"already linked: sc-{subject} {a.verb} sc-{other}"
     c.shortcut.relate(subject, other, a.verb)
     c.refresh(subject)
     return f"sc-{subject} {a.verb} sc-{other}"
