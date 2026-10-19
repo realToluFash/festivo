@@ -71,7 +71,9 @@ describe('the application tree', () => {
   it('renders the shell with navigation and the organisation', () => {
     at('/app');
 
-    expect(screen.getByLabelText('Organisation: Okonkwo Events, your role Owner')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /Organisation: Okonkwo Events, your role Owner/ }),
+    ).toBeDefined();
     expect(screen.getByRole('link', { name: 'Events' })).toBeDefined();
     expect(screen.getByText('Signed in as Ada Okonkwo')).toBeDefined();
   });

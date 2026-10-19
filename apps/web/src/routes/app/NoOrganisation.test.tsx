@@ -142,4 +142,33 @@ describe('No organisation', () => {
     expect(await screen.findByText('Keep it to 100 characters.')).toBeDefined();
     expect(screen.getByRole('heading', { name: 'You are not in an organisation' })).toBeDefined();
   });
+
+  it('says starting it did not work when the refusal names no field the page has', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/validation_failed',
+            title: 'Some fields need attention.',
+            status: 422,
+            violations: [{ propertyPath: 'contactAddress', message: 'Bad address.', code: 'x' }],
+          },
+          422,
+        ),
+    });
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Okoro Weddings' },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+
+    expect(
+      await screen.findByText('Starting it did not work. Try again in a moment.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Bad address.')).toBeNull();
+  });
 });

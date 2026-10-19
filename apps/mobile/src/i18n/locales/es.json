@@ -653,18 +653,37 @@
     "chooseLine": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta.",
     "chooseLineWithOrganisation": "Cuenta reúne sus datos y cómo ponerse en contacto con usted. Seguridad reúne su contraseña, las formas de iniciar sesión, la verificación en dos pasos y los dispositivos con sesión abierta. Organización reúne la configuración de {{name}}.",
     "signInRules": "Normas de inicio de sesión",
-    "signInRulesLine": "{{name}} · cómo se inicia sesión y durante cuánto tiempo"
+    "signInRulesLine": "{{name}} · cómo se inicia sesión y durante cuánto tiempo",
+    "members": "Members",
+    "membersLine": "{{name}} · who is in it, and their roles"
   },
   "switcher": {
     "yourRole": "Su función · {{role}}",
     "heading": "Sus organizaciones",
     "current": "Actual",
     "remembered": "Soirely recuerda su elección en este dispositivo.",
+    "switched": "Ahora trabaja en {{name}}.",
     "label": "Organización: {{name}}, su función {{role}}",
     "labelSwitch": "Organización: {{name}}, su función {{role}}. Cambiar de organización",
     "close": "Cerrar",
     "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
     "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
+  },
+  "createOrganisation": {
+    "row": "Create an organisation",
+    "title": "Create an organisation",
+    "intro": "You will be its owner. Your other organisations stay as they are.",
+    "name": "Organisation name",
+    "nameHelp": "Your team and guests see this name. You can rename it later.",
+    "nameLong": "That name is {{length}} characters. Use 100 or fewer.",
+    "country": "Country",
+    "defaults": "The currency follows the country, the time zone comes from this device, and the contact address is your primary email, {{email}}. You can change them in Settings > General.",
+    "limitedTitle": "Too many new organisations for now.",
+    "limitedBody": "Try again at {{time}}.",
+    "failed": "Creating the organisation did not work. Nothing was created. Try again in a moment.",
+    "cancel": "Cancel",
+    "create": "Create organisation",
+    "creating": "Creating…"
   },
   "roles": {
     "owner": "Propietario",
@@ -908,5 +927,94 @@
     "deleteButton": "Delete {{organisation}}",
     "deleteKeep": "Keep {{organisation}}",
     "failed": "That did not go through, so nothing was changed. Try again."
+  },
+  "membersScreen": {
+    "title": "Members",
+    "loading": "Loading members…",
+    "failedLoad": "We could not load the members. Check your connection and try again.",
+    "show": "Show",
+    "shown": "Members shown",
+    "showEveryone": "Show everyone",
+    "state": {
+      "active": "Active",
+      "pending_approval": "Awaiting approval",
+      "suspended": "Suspended",
+      "left": "Left",
+      "removed": "Removed"
+    },
+    "how": {
+      "invitation": "Invitation",
+      "invitationFrom": "Invitation from {{inviter}}",
+      "self_created": "Created {{organisation}}",
+      "join_code": "Join code",
+      "domain": "Company email address",
+      "request": "Asked to join",
+      "directory": "Company directory"
+    },
+    "when": {
+      "since": "since {{date}}",
+      "asked": "asked {{date}}",
+      "suspended": "suspended {{date}}",
+      "left": "left {{date}}",
+      "removed": "removed {{date}}"
+    },
+    "you": "you",
+    "youAs": "You · {{role}}",
+    "roleTitle": "Role",
+    "roleFor": "Role for {{name}}",
+    "roleTakesEffect": "Takes effect on their next request; nobody is signed out.",
+    "rolePick": "Pick a different role",
+    "roleSave": "Change their role to {{role}}",
+    "roleChanged": "{{name}} is now {{role}}. Takes effect on their next request; nobody is signed out.",
+    "roleMeans": {
+      "owner": "Everything, including billing and deleting the organisation.",
+      "administrator": "Everything in events, plus members and roles. Not billing.",
+      "event_manager": "Everything inside events, and manages the budget. Never the margin.",
+      "coordinator": "Runs events. Reads the budget, never the margin.",
+      "read_only": "Sees events. Changes nothing."
+    },
+    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so this role can't change and they can't be removed until somebody else is an owner too.",
+    "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
+    "ownerOnly": "Only an owner can change an owner's role or remove them.",
+    "removeTitle": "Remove {{name}}",
+    "removeBody": "They lose access on their next request. Their events stay with {{organisation}}.",
+    "removeButton": "Remove from {{organisation}}",
+    "removeConfirmTitle": "Remove {{name}}?",
+    "removeConfirmBody": "{{name}} stops having access to {{organisation}} on their next request. Their events stay with {{organisation}}, and everything they did is kept.",
+    "removeConfirm": "Remove {{name}}",
+    "removeKeep": "Keep {{name}}",
+    "removed": "{{name}} was removed. Their events stay with {{organisation}}.",
+    "removedNext": "They are listed under Former in Members, with everything they did kept.",
+    "actionFailed": "That did not go through. Nothing was changed. Try again in a moment.",
+    "retry": "Reintentar",
+    "filter": {
+      "all": "All",
+      "active": "Active",
+      "suspended": "Suspended",
+      "former": "Former"
+    },
+    "empty": {
+      "all": {
+        "title": "Nobody here"
+      },
+      "active": {
+        "title": "Nobody is active"
+      },
+      "suspended": {
+        "title": "Nobody is suspended",
+        "body": "Everyone in {{organisation}} can use it right now."
+      },
+      "former": {
+        "title": "Nobody has left",
+        "body": "People who leave or are removed are listed here, with what they did kept."
+      }
+    },
+    "subtitle_one": "{{organisation}} · {{count}} active",
+    "subtitle_other": "{{organisation}} · {{count}} active",
+    "ownRole": "You can't change your own role. Another owner can, or you can hand ownership to somebody in Organisation.",
+    "goToOrganisation": "Go to Organisation ›",
+    "fromTheWeb": "Invitations are sent from Soirely on the web.",
+    "pickSomebody": "Pick somebody in the list to see them here.",
+    "backToList": "‹ Members"
   }
 }

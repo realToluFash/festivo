@@ -1073,6 +1073,24 @@ export class ApiClient {
     return page;
   }
 
+  /** sc-390: the caller its Owner, as `organisations()` lists it. Refused `too_many_attempts` past five an hour. */
+  async createOrganisation(organisation: {
+    name: string;
+    countryCode: string;
+    timezone: string;
+  }): Promise<Membership> {
+    const body = await this.post<{ organisation?: unknown }>('/api/orgs', organisation);
+    const membership = asMembership(body?.organisation);
+
+    if (membership == null) {
+      throw new Error(
+        'The API answered POST /api/orgs without the organisation. Check OrganisationController in services/api.',
+      );
+    }
+
+    return membership;
+  }
+
   async updateOrganisation(id: string, changes: OrganisationChanges): Promise<Organisation> {
     const organisation = asOrganisation(
       await this.patch<unknown>(`/api/orgs/${encodeURIComponent(id)}`, changes),
@@ -1262,24 +1280,6 @@ export class ApiClient {
     }
 
     return body.invitations.map((one: unknown) => this.invitationPreview(one));
-  }
-
-  /** The founder's membership, as Owner, as `organisations()` lists it. Refused `conflict` while the account is in one. */
-  async foundOrganisation(input: {
-    name: string;
-    countryCode: string;
-    timezone: string;
-  }): Promise<Membership> {
-    const body = await this.post<{ organisation?: unknown }>('/api/orgs', input);
-    const membership = asMembership(body?.organisation);
-
-    if (membership == null) {
-      throw new Error(
-        'The API answered POST /api/orgs without the organisation. Check OrganisationController in services/api.',
-      );
-    }
-
-    return membership;
   }
 
   /** The membership it made, as `organisations()` lists it. Refused `invitation_not_yours` for another address. */

@@ -43,9 +43,10 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
     account: t('settings.accountLine'),
     security: t('settings.securityLine'),
     organisation: t('settings.organisationLine', { name: organisation?.name ?? '' }),
+    members: t('settings.membersLine', { name: organisation?.name ?? '' }),
     signInRules: t('settings.signInRulesLine', { name: organisation?.name ?? '' }),
   };
-  const groups = settingsGroups(organisation != null).map(({ heading, sections }, group) => ({
+  const groups = settingsGroups(organisation).map(({ heading, sections }, group) => ({
     heading: (
       <Text
         size={tokens.typeLabel.size}

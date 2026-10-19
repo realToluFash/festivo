@@ -18,7 +18,6 @@
     "proof.required": "Isto requer a sua palavra-passe, ou um início de sessão com o Google ou a Apple, nos últimos {minutes} minutos, e o código de dois fatores, se a autenticação de dois fatores estiver ativada.",
     "roles.last_owner": "Esta é a única pessoa com a função Proprietário nesta organização. Atribua primeiro essa função a outra pessoa.",
     "organisation.owner_required": "Only an owner can delete the organisation.",
-    "organisation.found_already_in_one": "You already belong to an organisation.",
     "organisation.transfer_owner_required": "Only an owner can transfer ownership.",
     "organisation.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
     "roles.grant_not_held": "Só pode conceder, retirar ou passar pessoas para permissões que a sua função tem. Nada foi alterado.",

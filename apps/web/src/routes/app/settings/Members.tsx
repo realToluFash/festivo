@@ -13,9 +13,11 @@ import {
   historyLine,
   initials,
   memberIsShown,
+  memberRowLine,
+  memberStanding,
+  memberStatusWord,
   roleName,
 } from '@soirely/domain';
-import type { TFunction } from 'i18next';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -321,21 +323,6 @@ function MembersOverview({
   );
 }
 
-function statusWord(t: TFunction, member: OrganisationMember): string {
-  if (member.status === 'left_or_removed')
-    return t(`membersScreen.state.${member.former ?? 'removed'}`);
-
-  return t(`membersScreen.state.${member.status}`);
-}
-
-function channelWords(t: TFunction, member: OrganisationMember, organisation: string): string {
-  if (member.channel === 'invitation' && member.invitedBy != null) {
-    return t('membersScreen.how.invitationFrom', { inviter: member.invitedBy.name });
-  }
-
-  return t(`membersScreen.how.${member.channel ?? 'invitation'}`, { organisation });
-}
-
 function MemberRow({
   organisation,
   member,
@@ -347,21 +334,7 @@ function MemberRow({
 }) {
   const { t } = useTranslation();
   const former = member.status === 'left_or_removed';
-  const when = member.since == null ? '' : formatDay(member.since, currentLocale());
-  const verb =
-    member.status === 'pending_approval'
-      ? 'asked'
-      : member.status === 'suspended'
-        ? 'suspended'
-        : former
-          ? (member.former ?? 'removed')
-          : 'since';
-  const line = [
-    roleName(t, member.role),
-    ...(member.self ? [t('membersScreen.you')] : []),
-    channelWords(t, member, organisation.name),
-    t(`membersScreen.when.${verb}`, { date: when }),
-  ].join(' · ');
+  const line = memberRowLine(t, member, organisation.name, (at) => formatDay(at, currentLocale()));
   const content = (
     <>
       <span className="org-tile" aria-hidden="true">
@@ -371,7 +344,7 @@ function MemberRow({
         <span className="members-row-name">{member.user.name}</span>
         <span className="muted">{line}</span>
         <span className="members-state" data-state={member.status}>
-          {statusWord(t, member)}
+          {memberStatusWord(t, member)}
         </span>
       </span>
     </>
@@ -490,14 +463,9 @@ function MemberDetail({
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
-  const owner = member.role.seededAs === 'owner';
-  const owners = list.members.filter(
-    (one) => one.status === 'active' && one.role.seededAs === 'owner',
-  );
-  const lastOwner = owner && member.status === 'active' && owners.length === 1;
   const callerOwns = organisation.role.seededAs === 'owner';
-  const ownerOnly = owner && !callerOwns;
-  const acts = manages && !member.self && !lastOwner && !ownerOnly;
+  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const acts = standing === 'manageable';
 
   async function remove(): Promise<void> {
     setRemoval('removing');
@@ -574,7 +542,7 @@ function MemberDetail({
           <p className="muted">
             {member.self
               ? t('membersScreen.youAs', { role: roleName(t, member.role) })
-              : `${roleName(t, member.role)} · ${statusWord(t, member)}`}
+              : `${roleName(t, member.role)} · ${memberStatusWord(t, member)}`}
           </p>
           {member.user.email != null && <p className="muted">{member.user.email}</p>}
         </div>
@@ -589,7 +557,7 @@ function MemberDetail({
               {t('membersScreen.goToGeneral')}
             </Link>
           </>
-        ) : lastOwner ? (
+        ) : standing === 'onlyOwner' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
             <div className="notice notice-quiet">
@@ -602,10 +570,10 @@ function MemberDetail({
               <p className="muted">{t('membersScreen.askOwner', { name: member.user.name })}</p>
             )}
           </>
-        ) : ownerOnly || !manages ? (
+        ) : standing !== 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            {ownerOnly && manages && <p className="muted">{t('membersScreen.ownerOnly')}</p>}
+            {standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>}
           </>
         ) : (
           <RolePicker
