@@ -107,8 +107,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   principal», short enough for the row button; "Make another one primary first" puts
   «Antes» first and names the noun, «Antes, haga principal otra dirección» / «… otro
   número». A key shared by addresses and numbers takes no gender: «Quitar», «Conservar»,
-  «Sin verificar», «Este dato ya está vinculado…», and «Verificado» as the generic status
-  word. "Remove" is «Quitar», never «Eliminar», because the address still exists (sc-2149).
+  «Sin verificar», «Este dato ya está vinculado…». Since the number card has its own
+  `verifiedPhone`, «Verificado», the address card's `verified` agrees with «dirección»:
+  «Verificada». "Remove" is «Quitar», never «Eliminar», because the address still exists (sc-2149).
 
 - **18 Oct 2026. The new-device email.** The subject is «Nuevo inicio de sesión en
   Soirely», a noun phrase that fits a phone inbox. The body puts the device first, «Un
