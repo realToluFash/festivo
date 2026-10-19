@@ -662,4 +662,36 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
 
     expect(sent.filter((request) => request.path === '/api/invitations')).toEqual([]);
   });
+
+  it('stops offering the organisation at the domain once an invitation is accepted', async () => {
+    const sent = answering({
+      ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')),
+      'GET /api/join-offers': () =>
+        json({
+          domain: 'ire.events',
+          offers: [{ id: 'org_ire', name: 'Ìrè Events' }],
+          request: null,
+        }),
+      'POST /api/invitations/inv_1/accept': () =>
+        json({ organisation: membership({ ...ADUNNI, role: ROLE }) }),
+      'PATCH /api/auth/complete-profile': () =>
+        json({ account: ACCOUNT, verificationNeeded: false }),
+      'GET /api/orgs': () => json({ organisations: [membership({ ...ADUNNI, role: ROLE })] }),
+    });
+    at('/complete-profile');
+
+    expect(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Ask to join Ìrè Events' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Start my own organisation' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+    await waitFor(() => expect(sent.some((request) => request.method === 'PATCH')).toBe(true));
+    expect(sent.find((request) => request.method === 'PATCH')?.body).not.toHaveProperty(
+      'askToJoin',
+    );
+  });
 });
