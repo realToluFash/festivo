@@ -18,6 +18,7 @@
     "proof.required": "This needs your password, or a sign-in with Google or Apple, in the last {minutes} minutes, and your two-factor code if two-factor is on.",
     "roles.last_owner": "This is the organisation's only owner. Make someone else an owner first.",
     "organisation.owner_required": "Only an owner can delete the organisation.",
+    "organisation.found_already_in_one": "You already belong to an organisation.",
     "organisation.transfer_owner_required": "Only an owner can transfer ownership.",
     "organisation.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
     "roles.grant_not_held": "You can only grant, remove or move people onto permissions your own role holds. Nothing was changed.",

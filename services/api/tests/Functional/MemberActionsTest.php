@@ -126,6 +126,47 @@ final class MemberActionsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAccountInNoOrganisationStartsItsOwnAsOwner(): void
+    {
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $this->as($this->owner, 'DELETE', $this->path('/members/' . $this->membershipOf($chidi)));
+
+        $founded = $this->as($chidi, 'POST', '/api/orgs', ['name' => '  Okoro Weddings ', 'countryCode' => 'gh', 'timezone' => 'Africa/Accra']);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($founded));
+        $organisation = Type\shape(['name' => Type\string(), 'currency' => Type\string(), 'role' => Type\shape(['seededAs' => Type\string()], true)], true)->coerce($founded['organisation'] ?? null);
+        self::assertSame('Okoro Weddings', $organisation['name']);
+        self::assertSame('GHS', $organisation['currency']);
+        self::assertSame(SeededRole::Owner->value, $organisation['role']['seededAs']);
+        self::assertCount(1, Type\vec(Type\mixed())->coerce($this->as($chidi, 'GET', '/api/orgs')['organisations'] ?? null));
+    }
+
+    #[Test]
+    public function startingOneIsRefusedWhileInOne(): void
+    {
+        $refused = $this->as($this->owner, 'POST', '/api/orgs', ['name' => 'A second one', 'countryCode' => 'NG', 'timezone' => 'Africa/Lagos']);
+
+        self::assertSame(409, $this->statusCode());
+        self::assertSame('You already belong to an organisation.', $refused['detail'] ?? null);
+        self::assertCount(1, Type\vec(Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/orgs')['organisations'] ?? null));
+    }
+
+    #[Test]
+    public function startingOneWithNoNameOrCountrySendsNothing(): void
+    {
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $this->as($this->owner, 'DELETE', $this->path('/members/' . $this->membershipOf($chidi)));
+
+        $refused = $this->as($chidi, 'POST', '/api/orgs', ['name' => ' ', 'countryCode' => '', 'timezone' => 'Africa/Lagos']);
+
+        self::assertSame(422, $this->statusCode());
+        $paths = \array_column(Type\vec(Type\dict(Type\string(), Type\string()))->coerce($refused['violations'] ?? null), 'propertyPath');
+        self::assertContains('name', $paths);
+        self::assertContains('countryCode', $paths);
+        self::assertSame([], $this->as($chidi, 'GET', '/api/orgs')['organisations'] ?? null);
+    }
+
+    #[Test]
     public function aMemberLeavesAndIsListedAsLeft(): void
     {
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);

@@ -306,6 +306,11 @@
     "title": "No pertenece a ninguna organización",
     "body": "Los eventos, los equipos y los planes pertenecen a una organización, y ahora mismo no forma parte de ninguna. Su cuenta sigue siendo suya y no ha desaparecido nada.",
     "wayOn": "Pida a quien gestiona la suya que vuelva a invitar a {{email}}.",
+    "startTitle": "Start your own",
+    "startBody": "Set up a new organisation and you become its owner.",
+    "start": "Start organisation",
+    "starting": "Starting…",
+    "startFailed": "Starting it did not work. Try again in a moment.",
     "signedInAs": "Sesión iniciada como {{email}}.",
     "account": "Su cuenta"
   },

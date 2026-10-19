@@ -1262,6 +1262,24 @@ export class ApiClient {
     return body.invitations.map((one: unknown) => this.invitationPreview(one));
   }
 
+  /** The founder's membership, as Owner, as `organisations()` lists it. Refused `conflict` while the account is in one. */
+  async foundOrganisation(input: {
+    name: string;
+    countryCode: string;
+    timezone: string;
+  }): Promise<Membership> {
+    const body = await this.post<{ organisation?: unknown }>('/api/orgs', input);
+    const membership = asMembership(body?.organisation);
+
+    if (membership == null) {
+      throw new Error(
+        'The API answered POST /api/orgs without the organisation. Check OrganisationController in services/api.',
+      );
+    }
+
+    return membership;
+  }
+
   /** The membership it made, as `organisations()` lists it. Refused `invitation_not_yours` for another address. */
   async acceptInvitation(invitationId: string): Promise<Membership> {
     const body = await this.post<{ organisation?: unknown }>(

@@ -18,6 +18,7 @@
     "proof.required": "Cette action nécessite votre mot de passe, ou une connexion avec Google ou Apple, dans les {minutes} dernières minutes, ainsi que votre code de double authentification s'il est activé.",
     "roles.last_owner": "C'est la seule personne à avoir le rôle Propriétaire dans l'organisation. Attribuez d'abord ce rôle à quelqu'un d'autre.",
     "organisation.owner_required": "Only an owner can delete the organisation.",
+    "organisation.found_already_in_one": "You already belong to an organisation.",
     "organisation.transfer_owner_required": "Only an owner can transfer ownership.",
     "organisation.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
     "roles.grant_not_held": "Vous ne pouvez accorder, retirer ou attribuer que les autorisations de votre propre rôle. Rien n’a été modifié.",

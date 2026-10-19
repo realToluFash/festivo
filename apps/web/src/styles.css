@@ -1507,6 +1507,11 @@ h2 {
   gap: var(--spaceSm);
 }
 
+.no-organisation-start {
+  padding-top: var(--spaceMd);
+  border-top: var(--borderDivider);
+}
+
 .no-organisation .no-organisation-heading {
   margin-top: var(--spaceXs);
   font: var(--typeLabel);
