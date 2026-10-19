@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 
 from soirely_queue import store
@@ -52,6 +54,32 @@ class Claims(unittest.TestCase):
         store.finish(self.db, row["id"], None, NOW)
         self.assertEqual(store.handled(self.db), {("lead", 11), ("lead", 12)})
         self.assertEqual(store.last_run(self.db, "lead"), NOW)
+
+
+
+class FormerLinguists(unittest.TestCase):
+    def test_what_the_locale_roles_dealt_with_and_noted_is_the_linguists(self):
+        db = store.connect(":memory:")
+        store.mark_handled(db, "fr", [41, 42])
+        store.mark_handled(db, "pm", [43])
+        store.add_note(db, "pt", 7, "pt merged at abc1234", NOW)
+        store.merge_linguists(db)
+        store.merge_linguists(db)
+        self.assertLessEqual({("l10n", 41), ("l10n", 42)}, store.handled(db))
+        self.assertNotIn(("l10n", 43), store.handled(db))
+        self.assertEqual([row["note"] for row in store.notes(db, "l10n", 7)],
+                         ["pt merged at abc1234"])
+
+    def test_the_copy_runs_on_the_first_connect_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "queue.db")
+            store.connect(path).close()
+            db = store.connect(path)
+            store.mark_handled(db, "fr", [51])
+            db.close()
+            db = store.connect(path)
+            self.assertNotIn(("l10n", 51), store.handled(db))
+            db.close()
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Spanish at Soirely
 
-Kept by `/soirely-linguist es`. Read it before writing a string in Spanish, and add to it
+Kept by `/soirely-linguist`. Read it before writing a string in Spanish, and add to it
 whenever you decide something a second string will need.
 
 ## Variant and register

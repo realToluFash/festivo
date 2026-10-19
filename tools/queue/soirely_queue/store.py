@@ -4,6 +4,8 @@ import json
 import sqlite3
 import time
 
+from . import roles
+
 SCHEMA = """
 create table if not exists meta (key text primary key, value text);
 create table if not exists stories (
@@ -58,7 +60,21 @@ def connect(path):
     db.row_factory = sqlite3.Row
     db.execute("pragma journal_mode = wal")
     db.executescript(SCHEMA)
+    if not get_meta(db, "linguists_merged"):
+        db.execute("begin immediate")
+        merge_linguists(db)
+        set_meta(db, "linguists_merged", True)
+        db.execute("commit")
     return db
+
+
+def merge_linguists(db):
+    """What the four locale roles dealt with and noted is the l10n role's, so their old
+    comments do not come back to it as new. Repeating it changes nothing."""
+    former = ", ".join(f"'{locale}'" for locale in roles.FORMER)
+    db.execute("insert or ignore into handled (role, comment_id) select 'l10n', comment_id "
+               f"from handled where role in ({former})")
+    db.execute(f"update notes set role = 'l10n' where role in ({former})")
 
 
 def get_meta(db, key, default=None):
