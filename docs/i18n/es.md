@@ -49,6 +49,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **19 Oct 2026. Sign-in rules are «Normas de inicio de sesión»** (`signInRules.*`, web and
+  app, and `emails:signInRules.*`, sc-3030). «Normas», not «reglas», because they are set by
+  an organisation for its members. A member held back by one «podrá consultar, pero no cambiar
+  nada», the same words on the banner, the owner's preview and the email. Where a list of
+  names is the subject (`effectStranded`'s `{{names}}`, one name or several), the sentence is
+  impersonal, «Afecta a {{names}}: … se puede consultar…», so no verb has to agree with a count
+  the string does not have. "Turn on two-factor" is «Activar la verificación en dos pasos», as
+  `twoFactorCard.turnOn`, and a sentence says «la active». "The shortest of your organisations"
+  is «la más estricta», since the shortest limit is the strictest rule and «la más corta» reads
+  as a short rule. People who can manage are «quienes puedan gestionar»; roles are «roles»,
+  as on the Roles screen.
+
 - **18 Oct 2026. The contact cap says the refusal's words.** Under each Account card:
   «Puede añadir una más» / «uno más», then «Una cuenta admite hasta {{most}} direcciones de
   correo electrónico, incluida la principal» / «… números de teléfono, incluido el

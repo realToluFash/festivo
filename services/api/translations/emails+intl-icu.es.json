@@ -1,3 +1,3 @@
 {
-    "signInRules.rule.inactivity": "Anyone who has not used Soirely for {days, plural, one {# day} other {# days}} is asked to sign in again."
+    "signInRules.rule.inactivity": "A quien lleve {days, plural, one {# día} other {# días}} sin usar Soirely se le pedirá que vuelva a iniciar sesión."
 }

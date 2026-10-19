@@ -113,7 +113,7 @@
     "invitation.ignore": "If you were not expecting this, you can ignore this email. Nothing happens unless you accept.",
     "signInRules.changed.subject": "{organisation} changed its sign-in rules",
     "signInRules.changed.body": "{name} changed the sign-in rules for {organisation} on {when}:",
-    "signInRules.rule.providerOnly": "Everyone signs in with Google or Apple. Anybody with one linked who signed in with a password is asked to sign in again with it.",
+    "signInRules.rule.providerOnly": "Everyone signs in with Google or Apple. Anyone with one linked who signed in with a password is asked to sign in again with it.",
     "signInRules.rule.anyMethod": "Everyone can sign in with a password, Google or Apple again.",
     "signInRules.rule.noLimit": "Sign-ins last until people sign out.",
     "signInRules.rule.twoFactor": "People who can manage members, roles, billing or security need two-factor to do it.",

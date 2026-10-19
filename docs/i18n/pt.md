@@ -41,6 +41,19 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **19 Oct 2026. Sign-in rules are "Regras de início de sessão"** (`signInRules.*`, web and
+  app, and `emails:signInRules.*`, sc-3030). A member held back by one "pode consultar tudo,
+  mas sem alterar nada", the same words on the banner, the owner's preview and the email;
+  the state is "Só de leitura". A session that ends "é encerrada", as the glossary says, and
+  `errors:session_timed_out` now says so too. In prose a provider is "uma conta Google ou
+  Apple", which needs no article for either; a button keeps "Associar Google ou Apple", as
+  `waysCard.link`. Where a list of names is the subject (`effectStranded`'s `{{names}}`), the
+  sentence opens "Abrange {{names}}:" and goes on with "é possível", so no verb has to agree
+  with a count the string does not have. "Turn on two-factor" is "Ativar a autenticação de
+  dois fatores", as `twoFactorCard.turnOn`; "the shortest of your organisations" is "a mais
+  exigente", since the shortest limit is the strictest rule. Roles are "funções", as on the
+  Roles screen; people who can manage are "quem pode gerir".
+
 - **18 Oct 2026. The contact cap is "Uma conta pode ter até {{most}} …, incluindo o
   principal"** (`contacts.capEmails_*`, `capPhones_*`, `capFullEmails`, `capFullPhones`, web
   and app), as `contacts.limitEmails` and `limitPhones` already say. One more is "Pode
