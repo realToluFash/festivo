@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { firewallAdvice, lanAddress, parseEnv, phoneConfig, wifiDevices } from './phone.mjs';
+import { firewallAdvice, KEPT, lanAddress, parseEnv, phoneConfig, wifiDevices } from './phone.mjs';
 import { stackConfig } from './qa-env.mjs';
 
 const v4 = (address, internal = false) => ({ family: 'IPv4', address, internal });
@@ -93,6 +93,18 @@ describe('the stack and the bundle, pointed at that address', () => {
     );
     expect(config.stack.OAUTH_APPLE_ISSUERS.split(',')).toContain('https://appleid.apple.com');
     expect(phoneConfig({ ...role, ...config.stack }, '192.168.1.221').stack).toEqual(config.stack);
+  });
+
+  it('moves every stack setting that names this machine, but the project and its ports', () => {
+    const named = Object.entries(stackConfig('soirely-ops', 50000, '192.168.1.221').overrides)
+      .filter(([, value]) => String(value).includes('192.168.1.221'))
+      .map(([key]) => key);
+    expect(named.filter((key) => !(key in config.stack) && !KEPT.includes(key))).toEqual([]);
+    expect(config.stack.OAUTH_APPLE_RETURN_URI).toBe(
+      'http://192.168.1.221:58080/api/auth/oauth/apple/return',
+    );
+    expect(Object.keys(config.stack)).not.toContain('API_PORT');
+    expect(Object.keys(config.stack)).not.toContain('COMPOSE_PROJECT_NAME');
   });
 
   it('gives the bundle every app setting the stacks have, and none on localhost', () => {

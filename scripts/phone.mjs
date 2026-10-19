@@ -40,6 +40,10 @@ export function lanAddress(interfaces, wifi = []) {
   return (wireless ?? candidates[0])?.address ?? null;
 }
 
+// What the phone leaves alone: the project and its ports. Every other override follows the
+// phone's address, so a key added to stackConfig reaches the phone without a change here.
+export const KEPT = ['COMPOSE_PROJECT_NAME', ...Object.keys(DEVELOPMENT_PORTS)];
+
 export function phoneConfig(env, address) {
   const offset = Number(env.API_PORT ?? DEVELOPMENT_PORTS.API_PORT) - DEVELOPMENT_PORTS.API_PORT;
   const here = stackConfig(env.COMPOSE_PROJECT_NAME, offset);
@@ -58,9 +62,10 @@ export function phoneConfig(env, address) {
       ),
     ].join(',');
   return {
+    // While it runs, a flow with one fixed address, such as Apple on an emulator against
+    // 127.0.0.1, works only from the phone. A plain `just up` puts it back.
     stack: {
-      MERCURE_PUBLIC_URL: phone.overrides.MERCURE_PUBLIC_URL,
-      STORAGE_PUBLIC_ENDPOINT: phone.overrides.STORAGE_PUBLIC_ENDPOINT,
+      ...Object.fromEntries(Object.entries(phone.overrides).filter(([key]) => !KEPT.includes(key))),
       OAUTH_GOOGLE_ISSUERS: issuers('OAUTH_GOOGLE_ISSUERS', 'google'),
       OAUTH_APPLE_ISSUERS: issuers('OAUTH_APPLE_ISSUERS', 'apple'),
     },
@@ -158,9 +163,28 @@ async function expoGoLink() {
   }
 }
 
+// A moved checkout has a newer stackConfig than the one loaded here, so the newer script runs.
+function rerunIfMoved(before) {
+  if (git(['rev-parse', 'HEAD']) === before) return;
+  const result = spawnSync(
+    process.execPath,
+    [fileURLToPath(import.meta.url), ...process.argv.slice(2)],
+    {
+      cwd: ROOT,
+      stdio: 'inherit',
+      env: { ...process.env, SOIRELY_PHONE_MOVED: '1' },
+    },
+  );
+  process.exit(result.status ?? 1);
+}
+
 async function main() {
   const host = address();
-  latestMain();
+  if (!process.env.SOIRELY_PHONE_MOVED) {
+    const before = git(['rev-parse', 'HEAD']);
+    latestMain();
+    rerunIfMoved(before);
+  }
   // Setup writes .env on a fresh checkout, so it is read only afterwards.
   run('node', ['scripts/setup.mjs']);
   const config = phoneConfig(parseEnv(readFileSync(join(ROOT, '.env'), 'utf8')), host);
