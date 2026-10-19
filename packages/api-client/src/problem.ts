@@ -29,7 +29,7 @@ export interface Problem {
   organisation?: string;
   /** On `oauth_only`: the providers this account may sign in with instead. */
   providers?: string[];
-  /** On `session_timed_out`: the limit that ended it, and the address to sign back in with. */
+  /** On `session_timed_out`: the limit that ended it. With `oauth_only` too, the address to sign back in with. */
   days?: number;
   email?: string;
   /** On `provider_kept_by_rule`: the provider that must stay linked. */

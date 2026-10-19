@@ -79,6 +79,7 @@ final class SignInRulesTest extends ApiTestCase
         self::assertSame(ErrorCode::OAuthOnly->type(), $body['type'] ?? null);
         self::assertSame('Ìrè Events', $body['organisation'] ?? null);
         self::assertSame(['google'], $body['providers'] ?? null);
+        self::assertSame('folake@ire.events', $body['email'] ?? null, 'sign-in fills in the address beside the provider buttons');
     }
 
     #[Test]

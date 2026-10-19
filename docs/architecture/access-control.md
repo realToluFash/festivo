@@ -108,7 +108,7 @@ only in the organisation that set it:
 - **Google or Apple only**, for a member with neither linked: the grants are read-only. A
   request that is not `GET`, `HEAD` or `OPTIONS` gets **403 `oauth_only_unlinked`**. Linking
   one lifts it. A member who has one linked is refused a password at sign-in instead
-  (`403 oauth_only`, naming the organisation and the providers linked).
+  (`403 oauth_only`, naming the organisation, the account's address and the providers linked).
 - **Two-factor for administrators**, for a member without it: every permission whose area is
   Members, Billing or Organisation (`Permission::isAdministrative()`) is withheld, and asking
   for one is **403 `organisation_two_factor_required`** with the permission named. Nothing

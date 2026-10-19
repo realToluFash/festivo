@@ -23,7 +23,7 @@ type Status =
   | { kind: 'failed' }
   | { kind: 'sessionEnded' }
   | { kind: 'timedOut'; rule: TimedOut }
-  | { kind: 'providerOnly'; organisation: string; providers: string[] };
+  | ({ kind: 'providerOnly' } & ProviderOnly);
 
 export function SignIn() {
   const { t } = useTranslation();
@@ -88,7 +88,7 @@ export function SignIn() {
     try {
       await landAfterSignIn(await api.signIn(values.email, values.password), navigate);
     } catch (error) {
-      setStatus(refusalFrom(error));
+      setStatus(refusalFrom(error, values.email));
     }
   }
 
@@ -187,91 +187,119 @@ export function SignIn() {
         </div>
       )}
 
-      {/* A password cannot sign this account in, so the form gives way to the provider buttons. */}
-      <form
-        ref={form}
-        className="auth-form"
-        hidden={status.kind === 'providerOnly'}
-        noValidate
-        onSubmit={(event) => void submit(event)}
-      >
-        <div className="field">
-          <label htmlFor="email">{t('signIn.email')}</label>
-          <input
-            className={checks.errors.email == null ? 'input' : 'input input-wrong'}
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            autoCorrect="off"
-            spellCheck={false}
-            defaultValue={status.kind === 'timedOut' ? status.rule.email : undefined}
-            disabled={busy}
-            required
-            aria-invalid={checks.errors.email != null}
-            aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
-            onBlur={(event) => checks.left('email', event.target.value)}
-            onChange={(event) => checks.edited('email', event.target.value)}
-          />
-          {checks.errors.email != null && (
-            <FieldError id="email-error" message={checks.errors.email} />
+      {/* A password cannot sign this account in, so the form gives way to the buttons it has linked. */}
+      {status.kind === 'providerOnly' ? (
+        <>
+          {status.email !== '' && (
+            <div className="field">
+              <label htmlFor="email">{t('signIn.email')}</label>
+              <input className="input" id="email" type="email" value={status.email} readOnly />
+            </div>
           )}
-        </div>
 
-        <div className="field">
-          <div className="field-heading">
-            <label htmlFor="password">{t('signIn.password')}</label>
-            {/* Shorter on a phone, as drawn; the name a screen reader hears stays the whole question. */}
-            <Link className="link-button" to="/forgot-password" aria-label={t('recovery.forgot')}>
-              <span className="wide-only">{t('recovery.forgot')}</span>
-              <span className="narrow-only">{t('recovery.forgotShort')}</span>
-            </Link>
-          </div>
-          <PasswordField
-            id="password"
-            autoComplete="current-password"
-            wrong={status.kind === 'refused' || checks.errors.password != null}
-            disabled={busy}
-            submitting={busy}
-            describedBy={
-              status.kind === 'refused' || checks.errors.password != null
-                ? 'password-error'
-                : undefined
-            }
-            onBlur={(value) => checks.left('password', value)}
-            onChange={(value) => checks.edited('password', value)}
-          />
+          <ProviderSignIn only={status.providers} />
 
-          {/* One message for a wrong address and a wrong password, because
-                  two messages answer "is this address registered". */}
-          {checks.errors.password != null ? (
-            <FieldError id="password-error" message={checks.errors.password} />
-          ) : (
-            status.kind === 'refused' && (
-              <FieldError id="password-error" message={t('signIn.refused')}>
-                <Link className="link-button" to="/forgot-password">
-                  {t('signIn.lockedReset')}
+          <p className="muted">
+            {t('signIn.providerOnlyFootnote', { organisation: status.organisation })}
+          </p>
+
+          <button
+            className="link-button"
+            type="button"
+            onClick={() => setStatus({ kind: 'ready' })}
+          >
+            {t('signIn.anotherAccount')}
+          </button>
+        </>
+      ) : (
+        <>
+          <form
+            ref={form}
+            className="auth-form"
+            noValidate
+            onSubmit={(event) => void submit(event)}
+          >
+            <div className="field">
+              <label htmlFor="email">{t('signIn.email')}</label>
+              <input
+                className={checks.errors.email == null ? 'input' : 'input input-wrong'}
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                autoCorrect="off"
+                spellCheck={false}
+                defaultValue={status.kind === 'timedOut' ? status.rule.email : undefined}
+                disabled={busy}
+                required
+                aria-invalid={checks.errors.email != null}
+                aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
+                onBlur={(event) => checks.left('email', event.target.value)}
+                onChange={(event) => checks.edited('email', event.target.value)}
+              />
+              {checks.errors.email != null && (
+                <FieldError id="email-error" message={checks.errors.email} />
+              )}
+            </div>
+
+            <div className="field">
+              <div className="field-heading">
+                <label htmlFor="password">{t('signIn.password')}</label>
+                {/* Shorter on a phone, as drawn; the name a screen reader hears stays the whole question. */}
+                <Link
+                  className="link-button"
+                  to="/forgot-password"
+                  aria-label={t('recovery.forgot')}
+                >
+                  <span className="wide-only">{t('recovery.forgot')}</span>
+                  <span className="narrow-only">{t('recovery.forgotShort')}</span>
                 </Link>
-              </FieldError>
-            )
-          )}
-        </div>
+              </div>
+              <PasswordField
+                id="password"
+                autoComplete="current-password"
+                wrong={status.kind === 'refused' || checks.errors.password != null}
+                disabled={busy}
+                submitting={busy}
+                describedBy={
+                  status.kind === 'refused' || checks.errors.password != null
+                    ? 'password-error'
+                    : undefined
+                }
+                onBlur={(value) => checks.left('password', value)}
+                onChange={(value) => checks.edited('password', value)}
+              />
 
-        <button className="button button-primary" type="submit" disabled={locked} aria-busy={busy}>
-          {locked
-            ? t('signIn.lockedUntil', { time: status.retryAt })
-            : busy
-              ? t('signIn.submitting')
-              : t('signIn.submit')}
-        </button>
-      </form>
+              {/* One message for a wrong address and a wrong password, because
+                      two messages answer "is this address registered". */}
+              {checks.errors.password != null ? (
+                <FieldError id="password-error" message={checks.errors.password} />
+              ) : (
+                status.kind === 'refused' && (
+                  <FieldError id="password-error" message={t('signIn.refused')}>
+                    <Link className="link-button" to="/forgot-password">
+                      {t('signIn.lockedReset')}
+                    </Link>
+                  </FieldError>
+                )
+              )}
+            </div>
 
-      <ProviderSignIn />
-
-      {status.kind === 'providerOnly' && (
-        <button className="link-button" type="button" onClick={() => setStatus({ kind: 'ready' })}>
-          {t('signIn.anotherAccount')}
-        </button>
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={locked}
+              aria-busy={busy}
+            >
+              {locked
+                ? t('signIn.lockedUntil', { time: status.retryAt })
+                : busy
+                  ? t('signIn.submitting')
+                  : t('signIn.submit')}
+            </button>
+          </form>
+          <ProviderSignIn />
+        </>
       )}
 
       <div className="auth-footnote">
@@ -284,13 +312,14 @@ export function SignIn() {
   );
 }
 
-function refusalFrom(error: unknown): Status {
+function refusalFrom(error: unknown, typed: string): Status {
   if (!(error instanceof ApiError)) return { kind: 'failed' };
 
   if (error.is('invalid_credentials')) return { kind: 'refused' };
 
   const providerOnly = providerOnlyBy(error.problem);
-  if (providerOnly != null) return { kind: 'providerOnly', ...providerOnly };
+  if (providerOnly != null)
+    return { kind: 'providerOnly', ...providerOnly, email: providerOnly.email || typed };
 
   if (error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));

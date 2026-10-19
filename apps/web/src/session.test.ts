@@ -38,11 +38,16 @@ describe('a session the API ended', () => {
         status: 403,
         organisation: 'Ìrè Events',
         providers: ['google'],
+        email: 'folake@ire.events',
       }),
     ).toEqual({
       status: 'signedOut',
       ended: true,
-      providerOnly: { organisation: 'Ìrè Events', providers: ['google'] },
+      providerOnly: {
+        organisation: 'Ìrè Events',
+        providers: ['google'],
+        email: 'folake@ire.events',
+      },
     });
   });
 

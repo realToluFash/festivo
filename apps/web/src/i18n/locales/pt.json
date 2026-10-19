@@ -93,7 +93,8 @@
     "timedOutBody_other": "{{organisation}} signs people out after {{count}} days without use. Sign in again to carry on.",
     "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
     "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
-    "anotherAccount": "Sign in with another account"
+    "anotherAccount": "Sign in with another account",
+    "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it."
   },
   "register": {
     "title": "Crie a sua conta",

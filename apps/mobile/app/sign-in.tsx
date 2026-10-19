@@ -10,8 +10,9 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { Field, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { Text } from '../src/components/Text.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
-import { ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
+import { ProviderButtons, ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
@@ -294,14 +295,33 @@ function Credentials({
         </>
       )}
 
-      <ProviderSignIn onFailed={onProviderFailed} />
+      {refusal?.kind === 'providerOnly' ? (
+        <>
+          {refusal.email !== '' && (
+            <Field label={t('signIn.email')}>
+              <TextField
+                editable={false}
+                defaultValue={refusal.email}
+                accessibilityLabel={t('signIn.email')}
+                testID="signIn.email"
+              />
+            </Field>
+          )}
 
-      {providerOnly && (
-        <QuietButton
-          label={t('signIn.anotherAccount')}
-          onPress={onAnotherAccount}
-          testID="signIn.anotherAccount"
-        />
+          <ProviderButtons only={refusal.providers} onFailed={onProviderFailed} />
+
+          <Text size={tokens.typeSmall.size} muted>
+            {t('signIn.providerOnlyFootnote', { organisation: refusal.organisation })}
+          </Text>
+
+          <QuietButton
+            label={t('signIn.anotherAccount')}
+            onPress={onAnotherAccount}
+            testID="signIn.anotherAccount"
+          />
+        </>
+      ) : (
+        <ProviderSignIn onFailed={onProviderFailed} />
       )}
 
       <Footnote
