@@ -186,12 +186,7 @@ function Editable({ organisation }: { organisation: Membership }) {
         />
       </div>
 
-      <div className="notice notice-quiet">
-        <span className="mark mark-info" aria-hidden="true">
-          i
-        </span>
-        <p>{t('orgGeneral.defaultsNote')}</p>
-      </div>
+      <DefaultsNote />
 
       <div>
         <button className="button button-primary" type="submit" aria-busy={busy}>
@@ -222,6 +217,10 @@ function ReadOnly({ organisation }: { organisation: Membership }) {
           <dd>{country ?? organisation.countryCode}</dd>
         </div>
         <div>
+          <dt>{t('orgGeneral.contact')}</dt>
+          <dd>{organisation.contactAddress}</dd>
+        </div>
+        <div>
           <dt>{t('orgGeneral.currency')}</dt>
           <dd>{currencyLabel(organisation.currency, locale)}</dd>
         </div>
@@ -229,13 +228,23 @@ function ReadOnly({ organisation }: { organisation: Membership }) {
           <dt>{t('orgGeneral.timezone')}</dt>
           <dd>{timezoneLabel(organisation.timezone)}</dd>
         </div>
-        <div>
-          <dt>{t('orgGeneral.contact')}</dt>
-          <dd>{organisation.contactAddress}</dd>
-        </div>
       </dl>
+      <DefaultsNote />
       <p className="muted">{t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}</p>
     </>
+  );
+}
+
+function DefaultsNote() {
+  const { t } = useTranslation();
+
+  return (
+    <div className="notice notice-quiet">
+      <span className="mark mark-info" aria-hidden="true">
+        i
+      </span>
+      <p>{t('orgGeneral.defaultsNote')}</p>
+    </div>
   );
 }
 
