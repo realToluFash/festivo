@@ -259,6 +259,8 @@ export interface SignInRulesPage extends OrganisationSignInRules {
   passwordOnly: { userId: string; name: string; role: MemberRole }[] | null;
   /** The shortest limit across the caller's organisations, which may be another organisation's. */
   inactivityLimit: InactivityLimit | null;
+  /** Whether the caller has two-factor, without which requiring it of administrators is refused. */
+  ownTwoFactor: boolean;
 }
 
 export interface InactivityLimit {
@@ -959,7 +961,7 @@ export class ApiClient {
     );
   }
 
-  /** Refused `validation_failed` on `inactivityTimeoutDays` for anything but a listed choice or null. */
+  /** Refused `validation_failed` for an unlisted length, `two_factor_off` for two-factor asked without it. */
   async updateSignInRules(
     organisationId: string,
     changes: SignInRulesChanges,
@@ -1598,6 +1600,7 @@ function asSignInRulesPage(raw: unknown): SignInRulesPage | null {
     changes: changes as SignInRuleChange[],
     passwordOnly: passwordOnly as SignInRulesPage['passwordOnly'],
     inactivityLimit: asInactivityLimit(page.inactivityLimit),
+    ownTwoFactor: page.ownTwoFactor === true,
   };
 }
 

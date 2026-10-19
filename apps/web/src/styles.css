@@ -2121,6 +2121,11 @@ h2 {
   padding: 0 var(--spaceXl);
 }
 
+.sign-in-rules-needs-own .button {
+  align-self: flex-start;
+  margin-top: var(--spaceSm);
+}
+
 .sign-in-rules-effects,
 .sign-in-rules-changes {
   display: flex;

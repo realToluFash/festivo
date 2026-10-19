@@ -9,7 +9,9 @@ use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Enum\ErrorCode;
 use App\Http\AfterResponse;
+use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
@@ -31,16 +33,22 @@ final readonly class SignInRulesEditor
         private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private SignInRules $signInRules,
     ) {
     }
 
     /**
-     * Rules left out keep their value. Nothing changed records nothing and tells nobody.
+     * Rules left out keep their value. Nothing changed records nothing and tells nobody. Requiring
+     * two-factor of administrators is refused, changing nothing, while the person asking has none.
      *
      * @param array{providerOnly?: bool, inactivityTimeoutDays?: ?int, administratorsNeedTwoFactor?: bool} $asked
      */
     public function change(Organisation $organisation, User $by, array $asked, ?Request $request = null): void
     {
+        if (true === ($asked['administratorsNeedTwoFactor'] ?? null) && !$this->signInRules->hasTwoFactor($by)) {
+            throw new ApiException(ErrorCode::TwoFactorOff, 'Two-factor is not on.');
+        }
+
         $before = self::rulesOf($organisation);
 
         if (Iter\contains_key($asked, 'providerOnly')) {

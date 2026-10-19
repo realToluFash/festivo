@@ -112,7 +112,10 @@ only in the organisation that set it:
 - **Two-factor for administrators**, for a member without it: every permission whose area is
   Members, Billing or Organisation (`Permission::isAdministrative()`) is withheld, and asking
   for one is **403 `organisation_two_factor_required`** with the permission named. Nothing
-  else changes, so events keep working.
+  else changes, so events keep working. Nobody can require it without having it: turning it
+  on while the person saving has no two-factor of their own is **409 `two_factor_off`**,
+  and nothing in that save is changed. The sign-in rules page
+  (`GET /api/orgs/{id}/sign-in-rules`) carries `ownTwoFactor`, so it refuses before sending.
 
 `GET /api/orgs` and `GET /api/orgs/{id}/permissions` carry `withheldUntilTwoFactor` and
 `readOnlyUntilLinked`, and leave the withheld permissions out of `permissions`.

@@ -221,6 +221,7 @@ final class SignInRulesTest extends ApiTestCase
     public function requiredTwoFactorWithholdsAdministrationAndNothingElse(): void
     {
         $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
 
         $this->as($bisi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/roles');
@@ -244,6 +245,7 @@ final class SignInRulesTest extends ApiTestCase
     {
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $before = $this->as($chidi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions');
+        $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
 
         self::assertSame($before, $this->as($chidi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions'));
@@ -254,15 +256,49 @@ final class SignInRulesTest extends ApiTestCase
     public function settingUpTwoFactorRestoresAdministrationOnTheNextRequest(): void
     {
         $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
-        $factor = new TwoFactorFactor($this->fresh($bisi), self::service(SecretBox::class)->seal(self::SECRET));
-        $factor->activate(new Clock()->now());
-        self::em()->persist($factor);
-        self::em()->flush();
+        $this->turnOnTwoFactor($bisi);
 
         $this->as($bisi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/roles');
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function requiringTwoFactorOfAdministratorsIsRefusedToSomebodyWithoutItAndChangesNothing(): void
+    {
+        self::assertFalse($this->as($this->owner, 'GET', $this->path())['ownTwoFactor'] ?? null);
+
+        $body = $this->set(['administratorsNeedTwoFactor' => true, 'inactivityTimeoutDays' => 30]);
+
+        self::assertSame(409, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::TwoFactorOff->type(), $body['type'] ?? null);
+        $rules = $this->as($this->owner, 'GET', $this->path());
+        self::assertSame([false, null, []], [$rules['administratorsNeedTwoFactor'] ?? null, $rules['inactivityTimeoutDays'] ?? null, $rules['changes'] ?? null]);
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'sign_in_rules.changed']));
+        self::assertSame([], $this->mails());
+    }
+
+    #[Test]
+    public function requiringTwoFactorOfAdministratorsGoesThroughOnceTheSaverHasIt(): void
+    {
+        $this->turnOnTwoFactor($this->owner);
+        self::assertTrue($this->as($this->owner, 'GET', $this->path())['ownTwoFactor'] ?? null);
+
+        $body = $this->set(['administratorsNeedTwoFactor' => true]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertTrue($body['administratorsNeedTwoFactor'] ?? null);
+    }
+
+    #[Test]
+    public function everyOtherRuleIsSavedBySomebodyWithoutTwoFactor(): void
+    {
+        $body = $this->set(['providerOnly' => true, 'inactivityTimeoutDays' => 7, 'administratorsNeedTwoFactor' => false]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame([true, 7], [$body['providerOnly'] ?? null, $body['inactivityTimeoutDays'] ?? null]);
     }
 
     #[Test]
@@ -343,6 +379,7 @@ final class SignInRulesTest extends ApiTestCase
         $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
         $own = self::service(OrganisationFounder::class)->found($this->fresh($bisi), 'Bisi Studio', 'NG', 'Africa/Lagos');
         self::em()->flush();
+        $this->turnOnTwoFactor($this->owner);
         $this->set(['providerOnly' => true, 'administratorsNeedTwoFactor' => true]);
 
         $this->as($bisi, 'PATCH', '/api/orgs/' . $own->getId()->toRfc4122(), ['name' => 'Bisi Studio Ltd']);
@@ -479,6 +516,14 @@ final class SignInRulesTest extends ApiTestCase
     private function linkProvider(User $user, string $subject): void
     {
         self::em()->persist(new ProviderIdentity($this->fresh($user), IdentityProvider::Google, $subject, null));
+        self::em()->flush();
+    }
+
+    private function turnOnTwoFactor(User $user): void
+    {
+        $factor = new TwoFactorFactor($this->fresh($user), self::service(SecretBox::class)->seal(self::SECRET));
+        $factor->activate(new Clock()->now());
+        self::em()->persist($factor);
         self::em()->flush();
     }
 

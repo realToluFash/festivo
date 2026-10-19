@@ -127,6 +127,83 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(idle.className).toBe('sign-in-rules-choices');
   });
 
+  it('refuses requiring two-factor while the person saving has none, and sends nothing', async () => {
+    signedIn(membership());
+    const sent = answering();
+    open();
+
+    const require = await screen.findByRole('button', {
+      name: 'Require two-factor for people who can manage members, roles, billing or security',
+    });
+    fireEvent.click(require);
+
+    const notice = screen.getByRole('alert');
+    expect(within(notice).getByText('Turn on two-factor for yourself first')).toBeDefined();
+    expect(within(notice).getByText('Then you can require it here.')).toBeDefined();
+    expect(
+      within(notice).getByRole('link', { name: 'Turn on two-factor' }).getAttribute('href'),
+    ).toBe('/app/account/security');
+    expect(require.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByText('Not required')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
+  });
+
+  it('sends requiring two-factor once the person saving has it', async () => {
+    signedIn(membership());
+    const page = { ...PAGE, ownTwoFactor: true };
+    const sent = answering(page, { ...page, administratorsNeedTwoFactor: true });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Require two-factor for people who can manage members, roles, billing or security',
+      }),
+    );
+    expect(screen.queryByText('Turn on two-factor for yourself first')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(await screen.findByText(/Rules saved/)).toBeDefined();
+    expect(sent.at(-1)?.body).toEqual({ administratorsNeedTwoFactor: true });
+  });
+
+  it('when the server refuses it, the switch goes back off and the other choices stay unsaved', async () => {
+    signedIn(membership());
+    const page = { ...PAGE, ownTwoFactor: true };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
+      init?.method === 'PATCH'
+        ? new Response(
+            JSON.stringify({
+              type: 'https://soirely.com/errors/two_factor_off',
+              title: 'Two-factor is not on.',
+              status: 409,
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+          )
+        : new Response(JSON.stringify(page), { status: 200 }),
+    );
+    open();
+
+    const idle = within(
+      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
+    );
+    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
+    const require = screen.getByRole('button', {
+      name: 'Require two-factor for people who can manage members, roles, billing or security',
+    });
+    fireEvent.click(require);
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(await screen.findByText('Turn on two-factor for yourself first')).toBeDefined();
+    expect(require.getAttribute('aria-pressed')).toBe('false');
+    expect(idle.getByRole('button', { name: '7 days' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Save rules' })).toBeDefined();
+    expect(screen.queryByText(/The rules were not saved/)).toBeNull();
+  });
+
   it('offers no save while the rules are the ones in force', async () => {
     signedIn(membership());
     answering();
