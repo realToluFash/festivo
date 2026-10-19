@@ -1032,7 +1032,7 @@
     "removed": "Vous avez retiré {{address}}.",
     "verifiedDone": "{{address}} est vérifiée.",
     "verifiedDonePhone": "{{number}} est vérifié.",
-    "verifiedPrimaryPhone": "{{number}} is verified and is now your primary number.",
+    "verifiedPrimaryPhone": "{{number}} est vérifié : c'est désormais votre numéro principal.",
     "refusedPrimary": "C'est l'adresse avec laquelle vous vous connectez. Définissez d'abord une autre adresse comme principale.",
     "refusedPrimaryPhone": "C'est votre numéro principal. Définissez d'abord un autre numéro comme principal.",
     "refusedLastVerified": "C'est votre seule adresse vérifiée : elle seule prouve que le compte est le vôtre. Vérifiez-en une autre avant de retirer celle-ci.",
