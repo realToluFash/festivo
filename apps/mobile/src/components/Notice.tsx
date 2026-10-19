@@ -9,18 +9,27 @@ export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
 export function Notice({
   tone,
   mark,
+  markTone = tone,
   title,
+  accentTitle = false,
   body,
+  detail,
   action,
   heading = false,
+  announce = false,
 }: {
   tone: NoticeTone;
   mark: string;
+  markTone?: NoticeTone;
   title?: string;
-  body: string;
+  accentTitle?: boolean;
+  body?: string;
+  detail?: string | null;
   action?: FieldAction | undefined;
   /** The notice is the screen's message, so its title is the screen's heading. */
   heading?: boolean;
+  /** The notice appears in answer to something the person did, so a screen reader reads it out. */
+  announce?: boolean;
 }) {
   const surface = {
     quiet: styles.quiet,
@@ -33,18 +42,23 @@ export function Notice({
     attention: styles.ringAttention,
     broken: styles.ringBroken,
     done: styles.ringDone,
-  }[tone];
+  }[markTone];
   const ink = {
     quiet: styles.inkInfo,
     attention: styles.inkAttention,
     broken: styles.inkBroken,
     done: styles.inkDone,
-  }[tone];
+  };
+  const titleInk = accentTitle ? styles.accent : tone === 'quiet' ? undefined : ink[tone];
 
   return (
-    <View style={[styles.notice, surface]}>
+    <View
+      style={[styles.notice, surface]}
+      accessible={announce || undefined}
+      accessibilityLiveRegion={announce ? 'polite' : undefined}
+    >
       <View style={[styles.mark, ring]}>
-        <Text size={tokens.typePill.size} weight="bold" style={ink}>
+        <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]}>
           {mark}
         </Text>
       </View>
@@ -53,13 +67,18 @@ export function Notice({
           <Text
             size={heading ? tokens.typeTitleDialog.size : tokens.typeRowTitle.size}
             weight="bold"
-            style={tone === 'quiet' ? undefined : ink}
+            style={titleInk}
             accessibilityRole={heading ? 'header' : undefined}
           >
             {title}
           </Text>
         )}
-        <Text size={tokens.typeBodyPhone.size}>{body}</Text>
+        {body != null && <Text size={tokens.typeBodyPhone.size}>{body}</Text>}
+        {detail != null && (
+          <Text size={tokens.typeSmall.size} muted>
+            {detail}
+          </Text>
+        )}
         {action != null && (
           <Pressable
             style={styles.action}

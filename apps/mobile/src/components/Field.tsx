@@ -23,7 +23,7 @@ export function Field({
   labelAction?: FieldAction | undefined;
   error?: string | null | undefined;
   errorActions?: readonly FieldAction[] | undefined;
-  help?: string | undefined;
+  help?: string | readonly string[] | undefined;
   children: ReactNode;
 }) {
   return (
@@ -54,11 +54,11 @@ export function Field({
       </View>
       {children}
       {error != null && <FieldError message={error} actions={errorActions} />}
-      {help != null && (
-        <Text size={tokens.typeSmall.size} style={styles.secondary}>
-          {help}
+      {(typeof help === 'string' ? [help] : (help ?? [])).map((line) => (
+        <Text key={line} size={tokens.typeSmall.size} style={styles.secondary}>
+          {line}
         </Text>
-      )}
+      ))}
     </View>
   );
 }

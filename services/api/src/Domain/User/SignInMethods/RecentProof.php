@@ -51,6 +51,8 @@ final readonly class RecentProof
     /**
      * The password or a linked provider's sign-in, then the two-factor code when it is on. A refused code carries
      * `pendingProof`, which stands in for the first factor on the next try: a provider's sign-in is single-use.
+     * Asked for the code straight after a provider's sign-in, it carries `providerEmail` too, the address that
+     * sign-in vouched for, as the provider wrote it.
      *
      * @param array{0: IdentityProvider, 1: ProviderClaims}|null $provider
      *
@@ -69,6 +71,7 @@ final readonly class RecentProof
         $pending = null === $pendingProof || '' === $pendingProof ? null : $this->awaitingCode($user, $pendingProof);
 
         $provedAt = null === $pending ? $this->passFirstFactor($user, $password, $provider) : $pending[1]->provedAt();
+        $vouched = null === $pending && null !== $provider && $provider[1]->emailVerified ? $provider[1]->email : null;
 
         $factor = $this->twoFactorFactorRepository->findActiveFor($user);
 
@@ -82,13 +85,18 @@ final readonly class RecentProof
 
                 $this->secondFactorCheck->passEither($factor, $code);
             } catch (ApiException $refusal) {
+                $members = [...$refusal->members, 'pendingProof' => $plain];
+                if (ErrorCode::TwoFactorRequired === $refusal->errorCode && null !== $vouched) {
+                    $members['providerEmail'] = $vouched;
+                }
+
                 throw new ApiException(
                     $refusal->errorCode,
                     $refusal->getMessage(),
                     $refusal->violations,
                     $refusal,
                     $refusal->headers,
-                    [...$refusal->members, 'pendingProof' => $plain],
+                    $members,
                 );
             }
 

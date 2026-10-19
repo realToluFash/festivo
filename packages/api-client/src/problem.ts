@@ -25,6 +25,8 @@ export interface Problem {
   retryAt?: string;
   /** On a refused two-factor code after the first factor passed: send it back with the next code instead. */
   pendingProof?: string;
+  /** On `two_factor_required` straight after a Google or Apple sign-in: the address that sign-in vouched for. */
+  providerEmail?: string;
   /** On `oauth_only`, `session_timed_out` or `provider_kept_by_rule`: the organisation whose rule it is (sc-69). */
   organisation?: string;
   /** On `oauth_only`: the providers this account may sign in with instead. */

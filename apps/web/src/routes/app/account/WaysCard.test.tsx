@@ -9,6 +9,19 @@ import { membership } from '../../../test-memberships.ts';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
+const proofWindow = vi.hoisted(() => ({ minutes: null as number | null }));
+
+vi.mock('@soirely/domain', async (original) => {
+  const domain = await original<typeof import('@soirely/domain')>();
+
+  return {
+    ...domain,
+    get PROOF_MINUTES() {
+      return proofWindow.minutes ?? domain.PROOF_MINUTES;
+    },
+  };
+});
+
 const HERE = '018f3a4c-0001-7c3d-9e1f-2a3b4c5d6e7f';
 const MEMBERSHIP = membership({ id: 'acc_1', name: 'Ire Events' });
 const GMAIL = 'folake.adeyemi@gmail.com';
@@ -109,6 +122,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  proofWindow.minutes = null;
   vi.restoreAllMocks();
   sessionStorage.clear();
   __setSessionState({ status: 'unknown' });
@@ -412,6 +426,125 @@ describe('a wrong code after Google', () => {
   });
 });
 
+describe('step two after Google (sc-2197)', () => {
+  function signedInBox(): HTMLElement {
+    const box = screen.getByText('Signed in with Google').closest<HTMLElement>('[role="status"]');
+    if (box == null) throw new Error('no status box');
+
+    return box;
+  }
+
+  async function backAtStepTwo(answers: (() => Response)[]): Promise<Sent[]> {
+    signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
+    backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+    const sent = answering(
+      { 'POST /api/auth/proof': () => (answers.shift() ?? answers[0])!() },
+      true,
+    );
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    open('/oauth/google');
+    await screen.findByText('Signed in with Google', {}, { timeout: 3000 });
+
+    return sent;
+  }
+
+  it('names the Google sign-in and the address Google vouched for, not the account’s own', async () => {
+    await backAtStepTwo([
+      () =>
+        problem('two_factor_required', 403, {
+          pendingProof: 'kept-1',
+          providerEmail: 'Folake.Adeyemi@gmail.com',
+        }),
+    ]);
+
+    expect(within(signedInBox()).getByText('Folake.Adeyemi@gmail.com')).toBeDefined();
+    expect(within(signedInBox()).queryByText('folake@ire.events')).toBeNull();
+    expect(
+      screen.getByText(
+        "A wrong code doesn't send you back to Google. Your Google sign-in lasts 5 minutes.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByLabelText('Code').getAttribute('aria-describedby')).toBe(
+      'ways-code-help ways-code-kept',
+    );
+    expect(screen.queryByText("Google confirmed it's you. Enter the code to carry on.")).toBeNull();
+  });
+
+  it('says the sign-in alone when Google gave no address', async () => {
+    await backAtStepTwo([() => problem('two_factor_required', 403, { pendingProof: 'kept-1' })]);
+
+    expect(signedInBox().querySelectorAll('p')).toHaveLength(1);
+    expect(within(signedInBox()).queryByText('folake@ire.events')).toBeNull();
+  });
+
+  it('keeps step two, the box and the address after a wrong code', async () => {
+    await backAtStepTwo([
+      () =>
+        problem('two_factor_required', 403, {
+          pendingProof: 'kept-1',
+          providerEmail: GMAIL,
+        }),
+      () => problem('two_factor_code_invalid', 422, { pendingProof: 'kept-1' }),
+    ]);
+
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '000000' } });
+    fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
+
+    expect(
+      await screen.findByText('That code did not work. Check your app and try again.'),
+    ).toBeDefined();
+    expect(within(signedInBox()).getByText(GMAIL)).toBeDefined();
+    expect(screen.getByLabelText('Code')).toBeDefined();
+    expect(
+      screen.getByText(
+        "A wrong code doesn't send you back to Google. Your Google sign-in lasts 5 minutes.",
+      ),
+    ).toBeDefined();
+  });
+});
+
+describe('the proof window on screen is PROOF_MINUTES (sc-2197)', () => {
+  it('counts it on step one, linking and unlinking', async () => {
+    proofWindow.minutes = 1;
+    signedInAs({ providers: [{ provider: 'google', email: GMAIL }] });
+    answering({});
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Link Apple' }));
+    expect(
+      screen.getByText("To link Apple, confirm it's you. You won't be asked again for a minute."),
+    ).toBeDefined();
+    fireEvent.click(ways().getByRole('button', { name: 'Cancel' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlink Google' }));
+    expect(
+      await screen.findByText(
+        "To unlink Google, confirm it's you. You won't be asked again for a minute.",
+      ),
+    ).toBeDefined();
+  });
+
+  it('says a one-minute sign-in under the code field', async () => {
+    proofWindow.minutes = 1;
+    signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
+    backFromGoogle({ kind: 'prove', then: { action: 'link', provider: 'apple' } });
+    answering(
+      { 'POST /api/auth/proof': () => problem('two_factor_required', 403, { pendingProof: 'k' }) },
+      true,
+    );
+    vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
+    open('/oauth/google');
+
+    expect(
+      await screen.findByText(
+        "A wrong code doesn't send you back to Google. Your Google sign-in lasts a minute.",
+        {},
+        { timeout: 3000 },
+      ),
+    ).toBeDefined();
+  });
+});
+
 describe('a kept sign-in that ran out', () => {
   it('goes back to the first step, the change kept, and says the Google sign-in was too long ago', async () => {
     signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] });
@@ -439,6 +572,7 @@ describe('a kept sign-in that ran out', () => {
       ),
     ).toBeDefined();
     expect(screen.queryByLabelText('Code')).toBeNull();
+    expect(screen.queryByText('Signed in with Google')).toBeNull();
     expect(sent.filter((s) => s.call === 'POST /api/auth/proof').map((s) => s.body)).toEqual([
       { provider: 'google', providerSignIn: expect.objectContaining({ code: 'the-code' }) },
       { pendingProof: 'kept-1', code: '123456' },

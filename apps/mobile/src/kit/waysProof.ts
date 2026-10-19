@@ -4,10 +4,27 @@ import {
   type ProviderSignInAttempt,
   proofRefusal,
 } from '@soirely/api-client';
-import { formatTimeOfDay, type proveWith } from '@soirely/domain';
+import { PROOF_MINUTES, formatTimeOfDay, type proveWith } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 export type ProvingField = 'password' | 'code';
+
+/** Step one's lead line, which counts the proof window rather than naming a number (sc-2197). */
+export function proveIntro(t: TFunction, action: 'link' | 'unlink', provider: string): string {
+  return action === 'link'
+    ? t('waysCard.proveLink', { provider, count: PROOF_MINUTES })
+    : t('waysCard.proveUnlink', { provider, count: PROOF_MINUTES });
+}
+
+/** Under the code field; on step two after a provider, the line that says a wrong code keeps the sign-in too. */
+export function codeHelp(t: TFunction, stepTwo: string | null): string | string[] {
+  return stepTwo == null
+    ? t('waysCard.codeHelp')
+    : [
+        t('waysCard.codeHelp'),
+        t('waysCard.codeKeepsSignIn', { provider: stepTwo, count: PROOF_MINUTES }),
+      ];
+}
 
 /** Only beside a password: with Google or Apple, the code is asked for when it returns, never before the trip (sc-510). */
 export function codeBeforeTrip(via: ReturnType<typeof proveWith>, twoFactorOn: boolean): boolean {
@@ -51,6 +68,23 @@ export function firstFactor(
   if (via === 'password' || via == null || signIn == null) return { password };
 
   return { provider: via, signIn };
+}
+
+export interface SignedIn {
+  email: string | null;
+}
+
+/** Step two's status box (sc-2197): kept across a wrong code, gone once the trip has to be made again. */
+export function signedInWith(
+  via: ReturnType<typeof proveWith>,
+  error: unknown,
+  now: SignedIn | null,
+): SignedIn | null {
+  if (via === 'password' || via == null || tripRefused(error)) return null;
+  if (error instanceof ApiError && error.is('two_factor_required'))
+    return now ?? { email: error.problem.providerEmail ?? null };
+
+  return now;
 }
 
 /** The five minutes from the provider's sign-in ran out at step two: back to step one, the change kept (sc-510). */
