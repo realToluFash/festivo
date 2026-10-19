@@ -105,5 +105,16 @@
     "newDevice.review": "Vérifiez vos appareils connectés :",
     "newDevice.notYou": "Si ce n'était pas vous, changez votre mot de passe et déconnectez les appareils que vous ne reconnaissez pas.",
     "newDevice.notYouNoPassword": "Si ce n'était pas vous, ouvrez Sécurité et déconnectez les appareils que vous ne reconnaissez pas.",
-    "newDevice.why": "Vous recevez ce message parce qu'un nouvel appareil s'est connecté à votre compte Soirely."
+    "newDevice.why": "Vous recevez ce message parce qu'un nouvel appareil s'est connecté à votre compte Soirely.",
+    "signInRules.changed.subject": "{organisation} changed its sign-in rules",
+    "signInRules.changed.body": "{name} changed the sign-in rules for {organisation} on {when}:",
+    "signInRules.rule.providerOnly": "Everyone signs in with Google or Apple only. Passwords stop working for signing in.",
+    "signInRules.rule.anyMethod": "Everyone can sign in with a password, Google or Apple again.",
+    "signInRules.rule.noLimit": "Sign-ins last until people sign out.",
+    "signInRules.rule.twoFactor": "People who can manage members, roles, billing or security need two-factor to do it.",
+    "signInRules.rule.noTwoFactor": "People who can manage members, roles, billing or security no longer need two-factor to do it.",
+    "signInRules.changed.link": "You sign in with a password only. It still works, but until you link Google or Apple you can read and not change anything in {organisation}. Nobody is signed out.",
+    "signInRules.changed.linkWhere": "Link Google or Apple from Security: {link}",
+    "signInRules.changed.see": "See the rules in force: {link}",
+    "signInRules.changed.footer": "You're getting this because you're a member of {organisation}."
 }

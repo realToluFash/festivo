@@ -99,6 +99,24 @@ For `#[InEvent]`:
 reach this far**: membership of the route's organisation is asked first, so a permission
 can only widen access for somebody already inside. There is no path around step 2.
 
+## An organisation's sign-in rules narrow what a membership grants
+
+sc-69. `MembershipDirectory` hands every `Grants` to `SignInRules::narrow()` before the
+listener sees it, so each rule applies on the next request, to sessions already open, and
+only in the organisation that set it:
+
+- **Google or Apple only**, for a member with neither linked: the grants are read-only. A
+  request that is not `GET`, `HEAD` or `OPTIONS` gets **403 `oauth_only_unlinked`**. Linking
+  one lifts it. A member who has one linked is refused a password at sign-in instead
+  (`403 oauth_only`, naming the organisation and the providers linked).
+- **Two-factor for administrators**, for a member without it: every permission whose area is
+  Members, Billing or Organisation (`Permission::isAdministrative()`) is withheld, and asking
+  for one is **403 `organisation_two_factor_required`** with the permission named. Nothing
+  else changes, so events keep working.
+
+`GET /api/orgs` and `GET /api/orgs/{id}/permissions` carry `withheldUntilTwoFactor` and
+`readOnlyUntilLinked`, and leave the withheld permissions out of `permissions`.
+
 ## Sub-resources are loaded through their event
 
 A controller argument marked `#[InThisEvent('tableId')]` is loaded by

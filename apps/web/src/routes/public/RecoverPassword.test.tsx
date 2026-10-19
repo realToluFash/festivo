@@ -221,6 +221,36 @@ describe('setting a new password from the link', () => {
     );
   });
 
+  it('under a Google-or-Apple-only rule, sets it and ends at the provider buttons, as a sign-in would (sc-69)', async () => {
+    checked({
+      'POST /api/auth/password/reset': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/oauth_only',
+            title: 'No.',
+            status: 403,
+            organisation: 'Ìrè Events',
+            providers: ['google'],
+          },
+          403,
+        ),
+    });
+    at('/reset-password?token=t1');
+    await screen.findByLabelText('New password');
+
+    fireEvent.change(screen.getByLabelText('New password'), {
+      target: { value: 'a brand new passphrase' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Set password and sign in' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(
+        /Ìrè Events signs in with Google or Apple only/,
+      ),
+    );
+    expect(screen.getByLabelText('Password').closest('form')?.hidden).toBe(true);
+  });
+
   it('with two-factor on, asks for the code before the new password, and changes nothing first', async () => {
     const sent = answering({
       'POST /api/auth/password/reset/check': () =>

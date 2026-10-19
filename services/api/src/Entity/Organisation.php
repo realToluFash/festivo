@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -35,6 +36,20 @@ class Organisation
 
     #[ORM\Column(type: Types::STRING, length: 180)]
     private string $contactAddress;
+
+    /** Password sign-in is off for members who have linked Google or Apple; the rest read but do not change (sc-69). */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $providerSignInOnly = false;
+
+    /** Null is no limit. */
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    private ?int $inactivityTimeoutDays = null;
+
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $administratorsNeedTwoFactor = false;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $signInRulesChangedAt = null;
 
     public function __construct(
         string $name,
@@ -104,5 +119,45 @@ class Organisation
     public function setContactAddress(string $contactAddress): void
     {
         $this->contactAddress = $contactAddress;
+    }
+
+    public function isProviderSignInOnly(): bool
+    {
+        return $this->providerSignInOnly;
+    }
+
+    public function setProviderSignInOnly(bool $providerSignInOnly): void
+    {
+        $this->providerSignInOnly = $providerSignInOnly;
+    }
+
+    public function getInactivityTimeoutDays(): ?int
+    {
+        return $this->inactivityTimeoutDays;
+    }
+
+    public function setInactivityTimeoutDays(?int $inactivityTimeoutDays): void
+    {
+        $this->inactivityTimeoutDays = $inactivityTimeoutDays;
+    }
+
+    public function isAdministratorsNeedTwoFactor(): bool
+    {
+        return $this->administratorsNeedTwoFactor;
+    }
+
+    public function setAdministratorsNeedTwoFactor(bool $administratorsNeedTwoFactor): void
+    {
+        $this->administratorsNeedTwoFactor = $administratorsNeedTwoFactor;
+    }
+
+    public function getSignInRulesChangedAt(): ?DateTimeImmutable
+    {
+        return $this->signInRulesChangedAt;
+    }
+
+    public function setSignInRulesChangedAt(?DateTimeImmutable $signInRulesChangedAt): void
+    {
+        $this->signInRulesChangedAt = $signInRulesChangedAt;
     }
 }

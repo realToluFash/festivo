@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\User\TwoFactor\Recovery;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\TokenIssuer;
+use App\Entity\Organisation;
 use App\Entity\TwoFactorRecovery;
 use App\Entity\User;
 use App\Enum\Actor;
@@ -17,7 +19,9 @@ use App\Repository\TwoFactorFactorRepository;
 use App\Repository\TwoFactorRecoveryRepository;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Iter;
 use Psl\Type;
+use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -33,6 +37,7 @@ final readonly class RecoveryDecisions
         private RecoveryApprovers $recoveryApprovers,
         private TwoFactorRecoveryMailer $twoFactorRecoveryMailer,
         private TokenIssuer $tokenIssuer,
+        private SignInRules $signInRules,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
@@ -42,7 +47,10 @@ final readonly class RecoveryDecisions
     /** @return list<TwoFactorRecovery> waiting on an answer this person may give, their own among them */
     public function waitingFor(User $approver): array
     {
-        return $this->twoFactorRecoveryRepository->findWaitingAnswerableBy($approver, RecoveryApprovers::ROLES, $this->clock->now());
+        return Vec\filter(
+            $this->twoFactorRecoveryRepository->findWaitingAnswerableBy($approver, RecoveryApprovers::ROLES, $this->clock->now()),
+            fn (TwoFactorRecovery $recovery): bool => $this->mayAnswer($approver, $recovery),
+        );
     }
 
     /** Two-factor off, every recovery code spent, every session ended; they sign in again and are asked to set it up. */
@@ -137,6 +145,10 @@ final readonly class RecoveryDecisions
     private function mayAnswer(User $approver, TwoFactorRecovery $recovery): bool
     {
         return $recovery->getUser()->getId()->equals($approver->getId())
-            || [] !== $this->recoveryApprovers->sharedBy($approver, $recovery->getUser());
+            || Iter\any(
+                $this->recoveryApprovers->sharedBy($approver, $recovery->getUser()),
+                // An organisation's sign-in rules hold this duty back with the rest of administration (sc-69).
+                fn (Organisation $organisation): bool => $this->signInRules->leavesAdministration($approver, $organisation),
+            );
     }
 }

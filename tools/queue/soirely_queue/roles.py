@@ -168,6 +168,7 @@ CATALOGUES = [
     "services/api/translations/messages.{locale}.json",
     "services/api/translations/errors.{locale}.json",
     "services/api/translations/emails.{locale}.json",
+    "services/api/translations/emails+intl-icu.{locale}.json",
     "docs/i18n/{locale}.md",
     "docs/i18n/same-as-english.json",
 ]

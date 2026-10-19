@@ -8,6 +8,7 @@ import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx'
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
+import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import {
   landingFor,
   restoreSession,
@@ -41,7 +42,17 @@ export function AppLayout() {
     // A sign-up waiting on its code has no session yet: it goes back to its code, not to sign-in.
     if (heldRegistration() != null) return <Navigate to="/verify-email" replace />;
 
-    return <Navigate to={state.ended ? '/sign-in?signed-out' : '/sign-in'} replace />;
+    return (
+      <Navigate
+        to={state.ended ? '/sign-in?signed-out' : '/sign-in'}
+        state={
+          state.timedOut == null && state.providerOnly == null
+            ? undefined
+            : { timedOut: state.timedOut, providerOnly: state.providerOnly }
+        }
+        replace
+      />
+    );
   }
 
   if (state.status === 'unreachable') return <Unreachable />;
@@ -101,6 +112,9 @@ function Shell() {
 
       <main id="content" className="shell-content">
         <LinkedNotice />
+        {organisation != null && (
+          <SignInRulesNotices key={organisation.id} organisation={organisation} />
+        )}
         {/* Said on the page it happened on, and gone once the person moves on. */}
         {switched != null && switched.at === pathname && (
           <div className="notice notice-done" role="status">
