@@ -5,11 +5,11 @@ import { readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expoGoApk } from './qa-env.mjs';
+import { DEVELOPMENT_PORTS, expoGoApk, stackConfig } from './qa-env.mjs';
 
 const PRIVATE = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
-// Docker, VMware, VPN and bridge interfaces carry private addresses no phone can reach.
-const VIRTUAL = /^(docker|br-|veth|vmnet|virbr|tun|tap|utun|wg|lo)/;
+// Docker, VMware, VPN, bridge and Apple peer-to-peer interfaces carry addresses no phone reaches.
+const VIRTUAL = /^(docker|br-|bridge|veth|vmnet|virbr|tun|tap|utun|wg|lo|awdl|llw|anpi)/;
 
 export function parseEnv(text) {
   const env = {};
@@ -20,8 +20,15 @@ export function parseEnv(text) {
   return env;
 }
 
-// Wi-Fi first: a phone joins the wireless network, and a laptop's wired port is often another one.
-export function lanAddress(interfaces) {
+// On a Mac, en0 is Wi-Fi on a laptop and Ethernet on a desktop: only networksetup knows which.
+export function wifiDevices(hardwarePorts) {
+  return [...hardwarePorts.matchAll(/Hardware Port: (?:Wi-Fi|AirPort)\nDevice: (\S+)/g)].map(
+    (match) => match[1],
+  );
+}
+
+// Wi-Fi first: a phone joins the wireless network, and a wired port is often another one.
+export function lanAddress(interfaces, wifi = []) {
   const candidates = Object.entries(interfaces)
     .filter(([name]) => !VIRTUAL.test(name))
     .flatMap(([name, addresses]) =>
@@ -29,36 +36,56 @@ export function lanAddress(interfaces) {
         .filter((a) => a.family === 'IPv4' && !a.internal && PRIVATE.test(a.address))
         .map((a) => ({ name, address: a.address })),
     );
-  const wireless = candidates.find(({ name }) => /^(wl|en0$)/.test(name));
+  const wireless = candidates.find(({ name }) => wifi.includes(name) || /^wl/.test(name));
   return (wireless ?? candidates[0])?.address ?? null;
 }
 
-export function phoneConfig(env, host) {
-  const at = (port) => `http://${host}:${env[port]}`;
-  const oidc = at('OIDC_PORT');
-  const withIssuer = (list, path) =>
-    [...new Set([...(list ?? '').split(',').filter(Boolean), `${oidc}/${path}`])].join(',');
+export function phoneConfig(env, address) {
+  const offset = Number(env.API_PORT ?? DEVELOPMENT_PORTS.API_PORT) - DEVELOPMENT_PORTS.API_PORT;
+  const here = stackConfig(env.COMPOSE_PROJECT_NAME, offset);
+  const phone = stackConfig(env.COMPOSE_PROJECT_NAME, offset, address);
+  const oidc = phone.ports.OIDC_PORT;
+  // Sign-in from this machine keeps working beside sign-in from the phone.
+  const issuers = (key, path) =>
+    [
+      ...new Set(
+        [
+          ...(env[key] ?? '').split(','),
+          `http://localhost:${oidc}/${path}`,
+          ...here.overrides[key].split(','),
+          ...phone.overrides[key].split(','),
+        ].filter(Boolean),
+      ),
+    ].join(',');
   return {
     stack: {
-      MERCURE_PUBLIC_URL: `${at('MERCURE_PORT')}/.well-known/mercure`,
-      STORAGE_PUBLIC_ENDPOINT: at('STORAGE_PORT'),
-      OAUTH_GOOGLE_ISSUERS: withIssuer(env.OAUTH_GOOGLE_ISSUERS, 'google'),
-      OAUTH_APPLE_ISSUERS: withIssuer(env.OAUTH_APPLE_ISSUERS, 'apple'),
+      MERCURE_PUBLIC_URL: phone.overrides.MERCURE_PUBLIC_URL,
+      STORAGE_PUBLIC_ENDPOINT: phone.overrides.STORAGE_PUBLIC_ENDPOINT,
+      OAUTH_GOOGLE_ISSUERS: issuers('OAUTH_GOOGLE_ISSUERS', 'google'),
+      OAUTH_APPLE_ISSUERS: issuers('OAUTH_APPLE_ISSUERS', 'apple'),
     },
     expo: {
-      REACT_NATIVE_PACKAGER_HOSTNAME: host,
-      EXPO_PUBLIC_API_URL: at('API_PORT'),
+      ...phone.app,
+      REACT_NATIVE_PACKAGER_HOSTNAME: address,
       EXPO_PUBLIC_ENVIRONMENT: 'phone',
-      EXPO_PUBLIC_GOOGLE_AUTHORIZE_URL: `${oidc}/google/authorize`,
-      EXPO_PUBLIC_GOOGLE_TOKEN_URL: `${oidc}/google/token`,
-      EXPO_PUBLIC_APPLE_AUTHORIZE_URL: `${oidc}/apple/authorize`,
-      EXPO_PUBLIC_APPLE_TOKEN_URL: `${oidc}/apple/token`,
     },
-    ports: ['API_PORT', 'METRO_PORT', 'OIDC_PORT', 'MERCURE_PORT', 'STORAGE_PORT'].map(
-      (key) => env[key],
-    ),
-    url: `exp://${host}:${env.METRO_PORT}`,
+    ports: phone.ports,
+    url: phone.urls.metro,
+    codes: { mail: here.urls.mailpit, sms: here.urls.smocker },
   };
+}
+
+export function firewallAdvice(platform, address, ports) {
+  if (platform === 'darwin') {
+    return [
+      'macOS lets apps through its firewall, not ports. In System Settings › Network › Firewall,',
+      'allow incoming connections for node (Metro) and Docker Desktop, or turn the firewall off.',
+    ];
+  }
+  const open = ['API_PORT', 'METRO_PORT', 'OIDC_PORT', 'MERCURE_PORT', 'STORAGE_PORT'];
+  return [
+    `sudo ufw allow from ${address.replace(/\.\d+$/, '.0/24')} to any port ${open.map((key) => ports[key]).join(',')} proto tcp`,
+  ];
 }
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -85,21 +112,34 @@ function step(label) {
 // A developer's branch is work in progress; only a detached, clean checkout is moved to main.
 function latestMain() {
   step('The latest main');
-  if (git(['status', '--porcelain']))
+  if (git(['status', '--porcelain'])) {
     throw new Error('uncommitted changes here: commit or move them first');
+  }
   const branch = git(['branch', '--show-current']);
-  if (branch)
+  if (branch) {
     throw new Error(
       `this checkout is on ${branch}: run it from a detached one, such as ../soirely-ops`,
     );
+  }
   git(['fetch', '--quiet', 'origin']);
   git(['checkout', '--quiet', '--detach', 'origin/main']);
   console.log(`  ${git(['log', '-1', '--format=%h %s'])}`);
 }
 
+function address() {
+  if (process.argv[2]) return process.argv[2];
+  const ports =
+    process.platform === 'darwin'
+      ? (spawnSync('networksetup', ['-listallhardwareports'], { encoding: 'utf8' }).stdout ?? '')
+      : '';
+  const found = lanAddress(networkInterfaces(), wifiDevices(ports));
+  if (!found)
+    throw new Error('no address on a private network: pass one, `just phone 192.168.1.20`');
+  return found;
+}
+
 function stack(config) {
   step('The stack, reachable from the phone');
-  run('node', ['scripts/setup.mjs']);
   // The shell's values win over .env, so a plain `docker compose up` puts the stack back on localhost.
   run('docker', ['compose', 'up', '-d', '--build', '--wait', 'api'], { env: config.stack });
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
@@ -119,13 +159,11 @@ async function expoGoLink() {
 }
 
 async function main() {
-  const host = process.argv[2] ?? lanAddress(networkInterfaces());
-  if (!host)
-    throw new Error('no address on a private network: pass one, `just phone 192.168.1.20`');
-  const env = parseEnv(readFileSync(join(ROOT, '.env'), 'utf8'));
-  const config = phoneConfig(env, host);
-
+  const host = address();
   latestMain();
+  // Setup writes .env on a fresh checkout, so it is read only afterwards.
+  run('node', ['scripts/setup.mjs']);
+  const config = phoneConfig(parseEnv(readFileSync(join(ROOT, '.env'), 'utf8')), host);
   stack(config);
 
   const apk = await expoGoLink();
@@ -134,16 +172,13 @@ async function main() {
     `  1. Expo Go ${apk ? `${apk.version}, the build for this SDK: ${apk.url}` : 'for this SDK'}`,
   );
   console.log(`  2. Enter URL manually: ${config.url}`);
-  console.log(
-    `  Codes: email at http://localhost:${env.MAILPIT_UI_PORT}, SMS at http://localhost:${env.SMOCKER_UI_PORT} (History)`,
-  );
-  console.log(`  Nothing loads? Open the firewall to the network:`);
-  console.log(
-    `    sudo ufw allow from ${host.replace(/\.\d+$/, '.0/24')} to any port ${config.ports.join(',')} proto tcp`,
-  );
+  console.log(`  Codes: email at ${config.codes.mail}, SMS at ${config.codes.sms} (History)`);
+  console.log('  Nothing loads? Let the phone through the firewall:');
+  for (const line of firewallAdvice(process.platform, host, config.ports))
+    console.log(`    ${line}`);
 
   step('Metro, until Ctrl-C');
-  run('npx', ['expo', 'start', '--lan', '--port', env.METRO_PORT, '--clear'], {
+  run('npx', ['expo', 'start', '--lan', '--port', String(config.ports.METRO_PORT), '--clear'], {
     cwd: join(ROOT, 'apps/mobile'),
     env: config.expo,
   });

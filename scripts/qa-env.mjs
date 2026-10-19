@@ -21,7 +21,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
 
-const DEVELOPMENT_PORTS = {
+export const DEVELOPMENT_PORTS = {
   POSTGRES_PORT: 5432,
   REDIS_PORT: 6379,
   MERCURE_PORT: 3000,
@@ -40,10 +40,10 @@ export const TESTERS = [1, 2, 3];
 
 // 127.0.0.1, not localhost: a cookie ignores the port, so a QA browser on localhost
 // would overwrite a developer's session. One host for web and API keeps SameSite.
-const HOST = 'http://127.0.0.1';
-
+// A phone passes the machine's network address instead: on a phone, 127.0.0.1 is the phone.
 // One compose project with every port moved up by offset. QA and the second developer use it.
-export function stackConfig(project, offset) {
+export function stackConfig(project, offset, address = '127.0.0.1') {
+  const HOST = `http://${address}`;
   const ports = Object.fromEntries(
     Object.entries(DEVELOPMENT_PORTS).map(([key, port]) => [key, port + offset]),
   );
@@ -53,7 +53,7 @@ export function stackConfig(project, offset) {
     mailpit: `${HOST}:${ports.MAILPIT_UI_PORT}`,
     smocker: `${HOST}:${ports.SMOCKER_UI_PORT}`,
     mercure: `${HOST}:${ports.MERCURE_PORT}/.well-known/mercure`,
-    metro: `exp://127.0.0.1:${ports.METRO_PORT}`,
+    metro: `exp://${address}:${ports.METRO_PORT}`,
     oidc: `${HOST}:${ports.OIDC_PORT}`,
   };
   // The sandbox signs a token with the address it was reached at: this stack's port from a
