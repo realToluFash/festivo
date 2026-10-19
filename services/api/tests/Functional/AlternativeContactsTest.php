@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\User\Contacts\LinkedContacts;
+use App\Domain\User\Contacts\PhonePromotion;
 use App\Domain\User\UserRegistrar;
 use App\Domain\User\Verification\RecordingTextMessageSender;
 use App\Entity\AuditEntry;
@@ -20,6 +21,7 @@ use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
 use Psl\Str;
@@ -305,6 +307,42 @@ final class AlternativeContactsTest extends ApiTestCase
         ], $this->phones());
         $this->call('GET', '/api/auth/sessions');
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aNumberPromotedOnVerifyLeavesTheTrailOfOneMadePrimary(): void
+    {
+        $first = $this->addPhone('0803 555 0143');
+        $second = $this->addPhone('0803 555 0144');
+        $this->call('POST', '/api/auth/verify/phone', ['phone' => $first, 'code' => $this->codeTo('+2348035550143')]);
+        $this->call('POST', '/api/auth/verify/phone', ['phone' => $second, 'code' => $this->codeTo('+2348035550144')]);
+
+        $this->call('PATCH', '/api/auth/phones/' . $second . '/primary');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $entries = self::em()->getRepository(AuditEntry::class)->findBy(['subjectId' => $this->user->getId(), 'action' => 'phone.primary'], ['occurredAt' => 'ASC', 'id' => 'ASC']);
+        self::assertSame([
+            ['primary' => [null, '+2348035550143']],
+            ['primary' => ['+2348035550143', '+2348035550144']],
+        ], Vec\map($entries, static fn (AuditEntry $entry): array => $entry->changes()));
+    }
+
+    #[Test]
+    public function aPromotionOnVerifyReadsThePrimaryUnderTheLock(): void
+    {
+        $first = $this->addPhone('0803 555 0143');
+        $second = $this->addPhone('0803 555 0144');
+        $stale = Iter\search($this->fresh()->getPhoneNumbers(), static fn (PhoneNumber $phone): bool => $phone->getId()->equals(Uuid::fromString($second))) ?? self::fail('the second number is linked');
+        self::assertNull($stale->getUser()->getPrimaryPhoneNumber());
+        $connection = self::em()->getConnection();
+        $connection->executeStatement('UPDATE phone_numbers SET verified_at = NOW()');
+        $connection->executeStatement('UPDATE phone_numbers SET is_primary = true WHERE id = ?', [$first]);
+        $stale->setVerifiedAt(new DateTimeImmutable());
+
+        self::service(PhonePromotion::class)->promoteIfNoneVerified($stale);
+
+        self::assertSame('+2348035550143', $this->fresh()->getPrimaryPhoneNumber()?->getNumber());
+        self::assertSame(['phone.added', 'phone.added'], $this->audited());
     }
 
     #[Test]
