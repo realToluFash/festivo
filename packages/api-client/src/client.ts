@@ -255,12 +255,14 @@ export interface SignInRuleChange {
 export interface SignInRulesPage extends OrganisationSignInRules {
   inactivityChoices: number[];
   changes: SignInRuleChange[];
-  /** Members with no Google or Apple linked; only for a caller who may change the rules. */
+  /** Members with no Google or Apple linked, never the caller; only for a caller who may change the rules. */
   passwordOnly: { userId: string; name: string; role: MemberRole }[] | null;
   /** The shortest limit across the caller's organisations, which may be another organisation's. */
   inactivityLimit: InactivityLimit | null;
   /** Whether the caller has two-factor, without which requiring it of administrators is refused. */
   ownTwoFactor: boolean;
+  /** Whether the caller has Google or Apple linked, without which requiring it is refused. */
+  ownProvider: boolean;
 }
 
 export interface InactivityLimit {
@@ -2031,6 +2033,7 @@ function asSignInRulesPage(raw: unknown): SignInRulesPage | null {
     passwordOnly: passwordOnly as SignInRulesPage['passwordOnly'],
     inactivityLimit: asInactivityLimit(page.inactivityLimit),
     ownTwoFactor: page.ownTwoFactor === true,
+    ownProvider: page.ownProvider === true,
   };
 }
 

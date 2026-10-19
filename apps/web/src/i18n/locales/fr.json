@@ -1190,6 +1190,8 @@
     "needsOwnTitle": "Turn on two-factor for yourself first",
     "needsOwnBody": "Then you can require it here.",
     "needsOwnTurnOn": "Turn on two-factor",
+    "needsOwnProviderTitle": "Link Google or Apple for yourself first",
+    "needsOwnProviderBody": "Then you can require it here.",
     "effectsTitle": "What happens when you save",
     "effectStranded": "{{names}} can read but not change anything until they link Google or Apple. Their password still signs them in.",
     "effectProviderOnly": "Everyone signs in with Google or Apple. Anybody with one linked who signed in with a password is asked to sign in again with it.",

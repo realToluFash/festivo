@@ -322,6 +322,68 @@ final class SignInRulesTest extends ApiTestCase
     }
 
     #[Test]
+    public function requiringGoogleOrAppleIsRefusedToSomebodyWithNeitherLinkedAndChangesNothing(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->unlink($this->owner);
+        self::assertFalse($this->as($this->owner, 'GET', $this->path())['ownProvider'] ?? null);
+
+        $body = $this->set(['providerOnly' => true, 'inactivityTimeoutDays' => 7]);
+
+        self::assertSame(403, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::OAuthOnlyUnlinked->type(), $body['type'] ?? null);
+        $rules = $this->as($this->owner, 'GET', $this->path());
+        self::assertSame([false, null, []], [$rules['providerOnly'] ?? null, $rules['inactivityTimeoutDays'] ?? null, $rules['changes'] ?? null]);
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'sign_in_rules.changed']));
+        self::assertSame([], $this->mails());
+
+        $body = $this->set(['inactivityTimeoutDays' => 7]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame([false, 7], [$body['providerOnly'] ?? null, $body['inactivityTimeoutDays'] ?? null]);
+    }
+
+    #[Test]
+    public function requiringGoogleOrAppleGoesThroughOnceTheSaverHasOneLinked(): void
+    {
+        $this->unlink($this->owner);
+        $this->linkProvider($this->owner, 'g-folake-again');
+        self::assertTrue($this->as($this->owner, 'GET', $this->path())['ownProvider'] ?? null);
+
+        $body = $this->set(['providerOnly' => true]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertTrue($body['providerOnly'] ?? null);
+    }
+
+    #[Test]
+    public function theStrandingListNeverNamesTheMemberReadingIt(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->unlink($this->owner);
+
+        $body = $this->as($this->owner, 'GET', $this->path());
+
+        self::assertSame(['Bisi Adeyemi'], Vec\map(
+            Type\vec(Type\shape(['name' => Type\string()], true))->coerce($body['passwordOnly'] ?? null),
+            static fn (array $member): string => $member['name'],
+        ));
+    }
+
+    #[Test]
+    public function anUnlinkedOwnerStillCannotTurnTheRuleOffUntilTheyLink(): void
+    {
+        $this->set(['providerOnly' => true]);
+        $this->unlink($this->owner);
+
+        $body = $this->set(['providerOnly' => false]);
+
+        self::assertSame(403, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::OAuthOnlyUnlinked->type(), $body['type'] ?? null);
+        self::assertTrue($this->as($this->owner, 'GET', $this->path())['providerOnly'] ?? null);
+    }
+
+    #[Test]
     public function aChangeIsRecordedWithWhoAndWhenAndEveryMemberIsEmailed(): void
     {
         $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
@@ -536,6 +598,15 @@ final class SignInRulesTest extends ApiTestCase
     private function linkProvider(User $user, string $subject): void
     {
         self::em()->persist(new ProviderIdentity($this->fresh($user), IdentityProvider::Google, $subject, null));
+        self::em()->flush();
+    }
+
+    private function unlink(User $user): void
+    {
+        foreach (self::em()->getRepository(ProviderIdentity::class)->findBy(['user' => $user->getId()]) as $identity) {
+            self::em()->remove($identity);
+        }
+
         self::em()->flush();
     }
 

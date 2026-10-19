@@ -38,8 +38,9 @@ final readonly class SignInRulesEditor
     }
 
     /**
-     * Rules left out keep their value. Nothing changed records nothing and tells nobody. Requiring
-     * two-factor of administrators is refused, changing nothing, while the person asking has none.
+     * Rules left out keep their value. Nothing changed records nothing and tells nobody. Nobody can
+     * require a sign-in method they do not have: two-factor of administrators, or Google or Apple
+     * only, is refused, changing nothing, while the person asking has none (sc-69, sc-3290).
      *
      * @param array{providerOnly?: bool, inactivityTimeoutDays?: ?int, administratorsNeedTwoFactor?: bool} $asked
      */
@@ -47,6 +48,10 @@ final readonly class SignInRulesEditor
     {
         if (true === ($asked['administratorsNeedTwoFactor'] ?? null) && !$this->signInRules->hasTwoFactor($by)) {
             throw new ApiException(ErrorCode::TwoFactorOff, 'Two-factor is not on.');
+        }
+
+        if (true === ($asked['providerOnly'] ?? null) && !$this->signInRules->isLinked($by)) {
+            throw new ApiException(ErrorCode::OAuthOnlyUnlinked, 'Link Google or Apple before requiring it.');
         }
 
         $before = self::rulesOf($organisation);

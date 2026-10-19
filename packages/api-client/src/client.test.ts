@@ -758,6 +758,7 @@ describe('a browser never holds the refresh token', () => {
         },
       ],
       ownTwoFactor: true,
+      ownProvider: true,
     };
 
     const client = new ApiClient({
@@ -780,6 +781,7 @@ describe('a browser never holds the refresh token', () => {
     expect(read.changes[0]?.by.name).toBe('Adaeze Okafor');
     expect(read.passwordOnly?.[0]?.name).toBe('Bola Ade');
     expect(read.ownTwoFactor).toBe(true);
+    expect(read.ownProvider).toBe(true);
     expect(sent).toEqual([
       { method: 'GET', path: '/api/orgs/org_1/sign-in-rules', body: null },
       { method: 'PATCH', path: '/api/orgs/org_1/sign-in-rules', body: { providerOnly: true } },
@@ -806,6 +808,7 @@ describe('a browser never holds the refresh token', () => {
 
     expect(page.passwordOnly).toBeNull();
     expect(page.ownTwoFactor).toBe(false);
+    expect(page.ownProvider).toBe(false);
     expect(page.inactivityLimit).toEqual({
       organisationId: 'org_2',
       organisation: 'Studio Lumen',
