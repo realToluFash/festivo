@@ -108,21 +108,45 @@ export function useAboveKeyboard(): AboveKeyboard {
   };
 }
 
-/** For a field that opens a list under it: brings the field to the top of the screen once it mounts. */
-export function useScrolledToTop(): RefObject<View | null> {
+/** The height a group may take between the scroll view's top and the keyboard, or null while the keys are down. */
+export function useRoomAboveKeyboard(): number | null {
   const scroll = useContext(ScreenScroll);
-  const field = useRef<View>(null);
+  const [room, setRoom] = useState<number | null>(null);
 
   useEffect(() => {
-    // RN declares getInnerViewRef in ScrollView.js but not in its .d.ts; measureLayout needs that element.
-    const content = (scroll?.ref.current as InnerViewRef | null | undefined)?.getInnerViewRef();
-    if (field.current == null || content == null) return;
-    field.current.measureLayout(content, (_x, y) => {
-      scroll?.ref.current?.scrollTo({ y: Math.max(0, y - tokens.spaceLg), animated: true });
+    let keyboardTop: number | null = Keyboard.isVisible()
+      ? (Keyboard.metrics()?.screenY ?? null)
+      : null;
+    const measure = () => {
+      const scrollHost = scroll?.ref.current?.getNativeScrollRef();
+      if (keyboardTop == null || scrollHost == null) {
+        setRoom(null);
+        return;
+      }
+      const top = keyboardTop;
+      scrollHost.measureInWindow((_x, scrollTop) => {
+        setRoom(top - scrollTop - 2 * tokens.spaceLg);
+      });
+    };
+    const shown = Keyboard.addListener('keyboardDidShow', (event) => {
+      keyboardTop = event.endCoordinates.screenY;
+      measure();
     });
+    const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardTop = null;
+      measure();
+    });
+    scroll?.resized.add(measure);
+    measure();
+
+    return () => {
+      shown.remove();
+      hidden.remove();
+      scroll?.resized.delete(measure);
+    };
   }, [scroll]);
 
-  return field;
+  return room;
 }
 
 /**

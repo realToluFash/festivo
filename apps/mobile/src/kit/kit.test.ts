@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
 import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
-import { coveredBy, keyboardLift, offsetAboveKeyboard } from './keyboard.ts';
+import { coveredBy, keyboardLift, listRoom, offsetAboveKeyboard } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
   it('on iOS, by the scroll view alone', () => {
@@ -50,6 +50,22 @@ describe('a field and its button rest above the keyboard', () => {
     expect(coveredBy(500, { y: 300, height: 150 }, 16)).toBe(false);
     expect(coveredBy(500, { y: 300, height: 190 }, 16)).toBe(true);
     expect(coveredBy(500, { y: 450, height: 150 }, 16)).toBe(true);
+  });
+});
+
+describe('a list between a field and its button shrinks to fit above the keyboard', () => {
+  const smallPhone = { room: 300, rest: 220, oneRow: 70, most: 264 };
+
+  it('to the room the field and the button leave', () => {
+    expect(listRoom(smallPhone)).toBe(80);
+  });
+
+  it('never under one whole row', () => {
+    expect(listRoom({ ...smallPhone, rest: 280 })).toBe(70);
+  });
+
+  it('never taller than with the keyboard down', () => {
+    expect(listRoom({ ...smallPhone, room: 900 })).toBe(264);
   });
 });
 
