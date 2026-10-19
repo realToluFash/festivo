@@ -20,6 +20,7 @@ import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
+import { useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Step =
@@ -454,6 +455,7 @@ function Delete({
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const input = useRef<TextInput>(null);
+  const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
   const matches = typed.trim() === name;
 
@@ -509,32 +511,34 @@ function Delete({
           <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
         </View>
       )}
-      <Field
-        label={t('ownership.deleteType', { organisation: name })}
-        error={mismatch}
-        help={matches ? t('ownership.deleteMatches') : t('ownership.deleteExactly')}
-      >
-        <TextField
-          ref={input}
-          value={typed}
-          wrong={mismatch != null}
-          editable={!busy}
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="off"
-          onChangeText={(value) => {
-            setTyped(value);
-            if (value.trim() === name) setMismatch(null);
-          }}
-          testID="ownership.delete.name"
+      <View {...aboveKeyboard} style={styles.form}>
+        <Field
+          label={t('ownership.deleteType', { organisation: name })}
+          error={mismatch}
+          help={matches ? t('ownership.deleteMatches') : t('ownership.deleteExactly')}
+        >
+          <TextField
+            ref={input}
+            value={typed}
+            wrong={mismatch != null}
+            editable={!busy}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            onChangeText={(value) => {
+              setTyped(value);
+              if (value.trim() === name) setMismatch(null);
+            }}
+            testID="ownership.delete.name"
+          />
+        </Field>
+        <PrimaryButton
+          label={t('ownership.deleteButton', { organisation: name })}
+          busy={busy}
+          onPress={() => void submit()}
+          testID="ownership.delete.send"
         />
-      </Field>
-      <PrimaryButton
-        label={t('ownership.deleteButton', { organisation: name })}
-        busy={busy}
-        onPress={() => void submit()}
-        testID="ownership.delete.send"
-      />
+      </View>
       <QuietButton
         label={t('ownership.deleteKeep', { organisation: name })}
         onPress={onKeep}
