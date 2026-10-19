@@ -48,7 +48,8 @@ export async function createOrganisation(
         if (named[field] != null) errors[field] = named[field];
       }
 
-      return { kind: 'refused', errors };
+      // A refusal naming only a field this form lacks, such as the derived contact address.
+      return Object.keys(errors).length === 0 ? { kind: 'failed' } : { kind: 'refused', errors };
     }
 
     return { kind: 'failed' };

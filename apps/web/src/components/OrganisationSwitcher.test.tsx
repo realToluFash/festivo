@@ -249,6 +249,34 @@ describe('creating an organisation', () => {
     expect((screen.getByLabelText('Organisation name') as HTMLInputElement).value).toBe('Six');
   });
 
+  it('says it did not work when the refusal names no field the dialog has', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    creating(() =>
+      json(
+        {
+          type: 'https://soirely.com/errors/validation_failed',
+          title: 'No.',
+          status: 422,
+          violations: [
+            { propertyPath: 'contactAddress', message: 'Bad address.', code: 'validation_failed' },
+          ],
+        },
+        422,
+      ),
+    );
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+
+    expect(
+      await screen.findByText(
+        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
+      ),
+    ).toBeDefined();
+  });
+
   it('cancels with nothing created', () => {
     const fetch = vi.spyOn(globalThis, 'fetch');
     inOne();

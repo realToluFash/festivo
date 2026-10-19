@@ -98,6 +98,13 @@ export function CreateOrganisation({
 
       if (error instanceof ApiError && error.is('validation_failed')) {
         const fields = error.fieldErrors();
+
+        // A refusal naming only a field this form lacks, such as the derived contact address.
+        if (fields.name == null && fields.countryCode == null) {
+          setFailed(true);
+          return;
+        }
+
         setRefused({ name: fields.name, countryCode: fields.countryCode });
         (fields.name != null ? nameInput : countryInput).current?.focus();
         return;

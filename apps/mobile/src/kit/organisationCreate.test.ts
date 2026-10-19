@@ -68,6 +68,18 @@ describe('creating an organisation', () => {
     expect(outcome).toEqual({ kind: 'refused', errors: { name: 'Enter the name.' } });
   });
 
+  it('is a failure when the refusal names no field the form has', async () => {
+    const create = vi.fn(async () => {
+      throw refusal('validation_failed', 422, [
+        { propertyPath: 'contactAddress', message: 'Bad address.', code: 'validation_failed' },
+      ]);
+    });
+
+    expect(await createOrganisation(create, { name: 'X', countryCode: 'NG' }, 'UTC')).toEqual({
+      kind: 'failed',
+    });
+  });
+
   it('reads when the limit lifts from Retry-After', async () => {
     const create = vi.fn(async () => {
       throw refusal('too_many_attempts', 429, [], { 'Retry-After': '600' });
