@@ -378,7 +378,6 @@ final class SignInRulesTest extends ApiTestCase
         self::assertIsString($body['accessToken'] ?? null);
     }
 
-    /** Regression: an account in no organisation with the rule resets and signs in as before. */
     #[Test]
     public function aResetOutsideTheRulesOrganisationSignsInAsBefore(): void
     {
