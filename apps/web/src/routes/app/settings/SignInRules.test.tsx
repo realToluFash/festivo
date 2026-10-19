@@ -117,6 +117,16 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(screen.queryByText('Sign-in rules changed')).toBeNull();
   });
 
+  it('lays the inactivity lengths out as pills that wrap', async () => {
+    signedIn(membership());
+    answering();
+    open();
+
+    const idle = await screen.findByRole('group', { name: 'How long a sign-in lasts unused' });
+
+    expect(idle.className).toBe('sign-in-rules-choices');
+  });
+
   it('offers no save while the rules are the ones in force', async () => {
     signedIn(membership());
     answering();

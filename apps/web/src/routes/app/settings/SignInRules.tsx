@@ -256,7 +256,11 @@ function Editable({
           <section className="card settings-card" aria-labelledby="rules-idle">
             <h2 id="rules-idle">{t('signInRules.idleTitle')}</h2>
             <p className="muted">{t('signInRules.idleIntro')}</p>
-            <div className="roles-levels" role="group" aria-label={t('signInRules.idleTitle')}>
+            <div
+              className="sign-in-rules-choices"
+              role="group"
+              aria-label={t('signInRules.idleTitle')}
+            >
               {[...page.inactivityChoices, null].map((days) => (
                 <button
                   key={String(days)}

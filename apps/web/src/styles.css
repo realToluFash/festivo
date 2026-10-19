@@ -2109,6 +2109,18 @@ h2 {
   padding: 0 var(--spaceLg);
 }
 
+.sign-in-rules-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceSm);
+}
+
+.sign-in-rules-choices .roles-level {
+  flex: 0 0 auto;
+  height: var(--sizeHit);
+  padding: 0 var(--spaceXl);
+}
+
 .sign-in-rules-effects,
 .sign-in-rules-changes {
   display: flex;
