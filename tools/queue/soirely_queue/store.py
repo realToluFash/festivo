@@ -4,6 +4,8 @@ import json
 import sqlite3
 import time
 
+from . import roles
+
 SCHEMA = """
 create table if not exists meta (key text primary key, value text);
 create table if not exists stories (
@@ -48,6 +50,10 @@ create table if not exists claims (
 create table if not exists handled (
   role text not null, comment_id integer not null, primary key (role, comment_id)
 );
+create table if not exists moves (
+  story_id integer not null, state text not null, moved_at text not null, role text not null,
+  primary key (story_id, state, moved_at)
+);
 """
 
 LEASE_MINUTES = 90
@@ -58,7 +64,21 @@ def connect(path):
     db.row_factory = sqlite3.Row
     db.execute("pragma journal_mode = wal")
     db.executescript(SCHEMA)
+    if not get_meta(db, "linguists_merged"):
+        db.execute("begin immediate")
+        merge_linguists(db)
+        set_meta(db, "linguists_merged", True)
+        db.execute("commit")
     return db
+
+
+def merge_linguists(db):
+    """What the four locale roles dealt with and noted is the l10n role's, so their old
+    comments do not come back to it as new. Repeating it changes nothing."""
+    former = ", ".join(f"'{locale}'" for locale in roles.FORMER)
+    db.execute("insert or ignore into handled (role, comment_id) select 'l10n', comment_id "
+               f"from handled where role in ({former})")
+    db.execute(f"update notes set role = 'l10n' where role in ({former})")
 
 
 def get_meta(db, key, default=None):
@@ -224,6 +244,16 @@ def mark_handled(db, role, comment_ids):
 
 def handled(db):
     return {(row["role"], row["comment_id"]) for row in db.execute("select * from handled")}
+
+
+def mark_move(db, story_id, state, moved_at, role):
+    db.execute("insert or replace into moves (story_id, state, moved_at, role) "
+               "values (?, ?, ?, ?)", (story_id, state, moved_at, role))
+
+
+def moves(db):
+    return {(row["story_id"], row["state"], row["moved_at"]): row["role"]
+            for row in db.execute("select * from moves")}
 
 
 def add_note(db, role, story_id, note, now=None):
