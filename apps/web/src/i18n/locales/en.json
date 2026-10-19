@@ -1221,5 +1221,11 @@
     "es": "Spanish",
     "fr": "French",
     "pt": "Portuguese"
+  },
+  "languageNamesInSentence": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
   }
 }

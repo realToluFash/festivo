@@ -140,7 +140,9 @@ export function EditableDetails({
             body={
               newLanguage == null
                 ? t('orgGeneral.saved', { name: organisation.name })
-                : t('orgGeneral.savedLanguage', { language: languageName(t, newLanguage) })
+                : t('orgGeneral.savedLanguage', {
+                    language: languageNameInSentence(t, newLanguage),
+                  })
             }
           />
         </View>
@@ -300,9 +302,14 @@ export function ReadOnlyDetails({
   );
 }
 
-/** In the reader's language alone, as a sentence or a row names it. */
+/** In the reader's language alone, as a row names it. */
 function languageName(t: TFunction, code: string): string {
   return t(`languageNames.${code}`, { defaultValue: code });
+}
+
+/** Mid-sentence, where es, fr and pt write a language's name in lowercase. */
+function languageNameInSentence(t: TFunction, code: string): string {
+  return t(`languageNamesInSentence.${code}`, { defaultValue: code });
 }
 
 const styles = StyleSheet.create({

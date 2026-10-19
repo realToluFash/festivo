@@ -164,7 +164,9 @@ function Editable({
           <p>
             {status.language == null
               ? t('orgGeneral.saved', { name: organisation.name })
-              : t('orgGeneral.savedLanguage', { language: languageName(t, status.language) })}
+              : t('orgGeneral.savedLanguage', {
+                  language: languageNameInSentence(t, status.language),
+                })}
           </p>
         </div>
       )}
@@ -296,9 +298,14 @@ function ReadOnly({ organisation }: { organisation: Membership }) {
   );
 }
 
-/** In the reader's language alone, as a sentence or a row names it. */
+/** In the reader's language alone, as a row names it. */
 function languageName(t: TFunction, code: string): string {
   return t(`languageNames.${code}`, { defaultValue: code });
+}
+
+/** Mid-sentence, where es, fr and pt write a language's name in lowercase. */
+function languageNameInSentence(t: TFunction, code: string): string {
+  return t(`languageNamesInSentence.${code}`, { defaultValue: code });
 }
 
 /** The role may have changed under the page; the session catches up so every other screen does too. */
