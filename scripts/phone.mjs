@@ -27,7 +27,6 @@ export function wifiDevices(hardwarePorts) {
   );
 }
 
-// Wi-Fi first: a phone joins the wireless network, and a wired port is often another one.
 export function lanAddress(interfaces, wifi = []) {
   const candidates = Object.entries(interfaces)
     .filter(([name]) => !VIRTUAL.test(name))
@@ -40,8 +39,7 @@ export function lanAddress(interfaces, wifi = []) {
   return (wireless ?? candidates[0])?.address ?? null;
 }
 
-// What the phone leaves alone: the project and its ports. Every other override follows the
-// phone's address, so a key added to stackConfig reaches the phone without a change here.
+// Every other override follows the phone, so a key added to stackConfig needs nothing here.
 export const KEPT = ['COMPOSE_PROJECT_NAME', ...Object.keys(DEVELOPMENT_PORTS)];
 
 export function phoneConfig(env, address) {
@@ -49,7 +47,6 @@ export function phoneConfig(env, address) {
   const here = stackConfig(env.COMPOSE_PROJECT_NAME, offset);
   const phone = stackConfig(env.COMPOSE_PROJECT_NAME, offset, address);
   const oidc = phone.ports.OIDC_PORT;
-  // Sign-in from this machine keeps working beside sign-in from the phone.
   const issuers = (key, path) =>
     [
       ...new Set(
@@ -62,8 +59,7 @@ export function phoneConfig(env, address) {
       ),
     ].join(',');
   return {
-    // While it runs, a flow with one fixed address, such as Apple on an emulator against
-    // 127.0.0.1, works only from the phone. A plain `just up` puts it back.
+    // Meanwhile Apple on an emulator against 127.0.0.1 fails; a plain `just up` restores it.
     stack: {
       ...Object.fromEntries(Object.entries(phone.overrides).filter(([key]) => !KEPT.includes(key))),
       OAUTH_GOOGLE_ISSUERS: issuers('OAUTH_GOOGLE_ISSUERS', 'google'),
@@ -114,7 +110,6 @@ function step(label) {
   process.stdout.write(`\n▸ ${label}\n`);
 }
 
-// A developer's branch is work in progress; only a detached, clean checkout is moved to main.
 function latestMain() {
   step('The latest main');
   if (git(['status', '--porcelain'])) {
