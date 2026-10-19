@@ -58,8 +58,12 @@ function git(args, cwd) {
   return result.stdout.trim();
 }
 
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit' });
+function run(command, args, cwd, env = {}) {
+  const result = spawnSync(command, args, {
+    cwd,
+    stdio: 'inherit',
+    env: { ...process.env, ...env },
+  });
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} exited ${result.status}`);
 }
 
@@ -80,7 +84,7 @@ function worktree(config) {
   return join(dirname(mainCheckout()), config.project);
 }
 
-function writeEnv(root, config) {
+export function writeEnv(root, config) {
   const rendered = renderDevEnv(readFileSync(join(root, '.env.example'), 'utf8'), config);
   writeFileSync(join(root, '.env'), rendered);
   console.log(`  .env for compose project ${config.project}`);
@@ -109,15 +113,7 @@ function setup(config) {
   run('node', ['scripts/setup.mjs'], root);
 
   step('The stack');
-  run('docker', ['compose', 'up', '-d', '--build'], root);
-  // Waits on the lasting services only: --wait fails when a one-shot init container exits 0.
-  const services = JSON.parse(
-    capture('docker', ['compose', 'config', '--format', 'json'], root) ?? '{}',
-  ).services;
-  const lasting = Object.entries(services ?? {})
-    .filter(([, service]) => service.restart !== 'no')
-    .map(([name]) => name);
-  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...lasting], root);
+  startStack(root);
 
   step('The databases');
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
@@ -127,6 +123,18 @@ function setup(config) {
   run('npm', ['run', 'test:db'], root);
 
   status(config);
+}
+
+export function startStack(root, env = {}) {
+  run('docker', ['compose', 'up', '-d', '--build'], root, env);
+  // Waits on the lasting services only: --wait fails when a one-shot init container exits 0.
+  const services = JSON.parse(
+    capture('docker', ['compose', 'config', '--format', 'json'], root) ?? '{}',
+  ).services;
+  const lasting = Object.entries(services ?? {})
+    .filter(([, service]) => service.restart !== 'no')
+    .map(([name]) => name);
+  run('docker', ['compose', 'up', '-d', '--wait', '--no-recreate', ...lasting], root, env);
 }
 
 function env(config) {
