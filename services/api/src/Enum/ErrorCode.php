@@ -37,6 +37,7 @@ enum ErrorCode: string
     case InvitationAccepted = 'invitation_accepted';
     case InvitationDeclined = 'invitation_declined';
     case InvitationNotYours = 'invitation_not_yours';
+    case JoinOfferUnavailable = 'join_offer_unavailable';
     case OrganisationDeleted = 'organisation_deleted';
 
     case Unauthenticated = 'unauthenticated';
@@ -96,7 +97,7 @@ enum ErrorCode: string
             self::OwnerRoleFixed, self::SeededRoleKept, self::LastOwner => 409,
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
-            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined => 409,
+            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable => 409,
             self::InvitationNotFound => 404,
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
             self::InvitationNotYours => 403,

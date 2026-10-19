@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Onboarding;
 
+use App\Domain\Organisation\DomainJoining\JoinRequester;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\Phone\PhoneNumberParser;
 use App\Domain\User\Phone\PrimaryPhoneSetter;
@@ -11,13 +12,15 @@ use App\Entity\PhoneNumber;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Repository\OrganisationRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Str;
 use Psl\Vec;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** The details screen's save: the person's name and optional mobile, and for an account that founds its own, the organisation. */
+/** The details screen's save: the person's name and optional mobile, and for an account in none, the organisation it founds or asks to join (sc-561). */
 final readonly class DetailsSaver
 {
     /** The organisation fields "A few details" shows; a refusal reports no other. */
@@ -28,6 +31,8 @@ final readonly class DetailsSaver
         private OrganisationFounder $organisationFounder,
         private PhoneNumberParser $phoneNumberParser,
         private PrimaryPhoneSetter $primaryPhoneSetter,
+        private JoinRequester $joinRequester,
+        private OrganisationRepository $organisationRepository,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
     ) {
@@ -42,6 +47,7 @@ final readonly class DetailsSaver
         ?string $timezone,
         ?string $phoneCountryCode = null,
         ?string $phoneNumber = null,
+        ?string $askToJoin = null,
     ): ?PhoneNumber {
         $violations = [];
         $trimmed = Str\trim($name);
@@ -55,7 +61,10 @@ final readonly class DetailsSaver
             ];
         }
 
-        if ($this->accountCompleteness->needsOrganisation($user)) {
+        $needsOrganisation = $this->accountCompleteness->needsOrganisation($user);
+        $asking = $needsOrganisation ? $askToJoin : null;
+
+        if ($needsOrganisation && null === $asking) {
             try {
                 $this->organisationFounder->found($user, $organisationName ?? '', $countryCode ?? '', $timezone ?? '');
             } catch (ApiException $e) {
@@ -76,6 +85,13 @@ final readonly class DetailsSaver
 
         if ([] !== $violations) {
             throw ApiException::validation($violations);
+        }
+
+        // Asking runs the same checks as Save, and is refused before anything is written.
+        if (null !== $asking) {
+            $organisation = Uuid::isValid($asking) ? $this->organisationRepository->find($asking) : null;
+
+            $this->joinRequester->ask($user, $organisation ?? throw new ApiException(ErrorCode::JoinOfferUnavailable, $this->translator->trans('domain_joining.unavailable')));
         }
 
         $texted = $this->primaryPhoneSetter->set($user, $phone);

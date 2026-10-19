@@ -44,6 +44,8 @@ final readonly class ProfileController
             'timezone' => Type\optional(Type\nullable(Type\string())),
             'phoneCountryCode' => Type\optional(Type\nullable(Type\string())),
             'phoneNumber' => Type\optional(Type\nullable(Type\string())),
+            // An organisation offered through the address's domain (sc-561), asked instead of founding one.
+            'askToJoin' => Type\optional(Type\nullable(Type\string())),
         ]));
 
         $texted = $this->detailsSaver->save(
@@ -54,6 +56,7 @@ final readonly class ProfileController
             $body['timezone'] ?? null,
             $body['phoneCountryCode'] ?? null,
             $body['phoneNumber'] ?? null,
+            $body['askToJoin'] ?? null,
         );
 
         return new JsonResponse([

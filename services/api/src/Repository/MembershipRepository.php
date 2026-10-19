@@ -87,6 +87,21 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /** @return list<Membership> in every state, in organisations that still exist */
+    public function findAllFor(User $user): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.user = :user')
+            ->setParameter('user', $user)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     /** The organisation is joined so the soft-delete filter applies to it: a deleted one's members hold nothing (sc-68). */
     private function active(): QueryBuilder
     {

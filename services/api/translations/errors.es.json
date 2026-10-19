@@ -66,5 +66,6 @@
     "oauth_only": "Esta organización solo admite el inicio de sesión con Google o Apple.",
     "oauth_only_unlinked": "Solo lectura hasta que vincule Google o Apple.",
     "organisation_two_factor_required": "Esta organización pide primero la verificación en dos pasos.",
-    "session_timed_out": "Se cerró la sesión tras un tiempo sin uso."
+    "session_timed_out": "Se cerró la sesión tras un tiempo sin uso.",
+    "join_offer_unavailable": "No puedes pedir unirte a esa organización. Crea la tuya o pide a alguien de allí que te invite."
 }
