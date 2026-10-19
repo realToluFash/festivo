@@ -1,8 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import {
+  androidFlows,
   androidSdk,
   branchForStory,
   COMPOSE_PROJECT,
@@ -248,6 +251,24 @@ describe('a flow on Android', () => {
   it('is left alone otherwise', () => {
     expect(forAndroid(flow)).toContain("'host.exp.Exponents'");
     expect(forAndroid(forAndroid(flow))).toBe(forAndroid(flow));
+  });
+
+  it('brings the flows it runs, rewritten, where its paths expect them', () => {
+    const source = mkdtempSync(join(tmpdir(), 'maestro-'));
+    mkdirSync(join(source, 'shared'));
+    writeFileSync(join(source, 'verify.yaml'), `${flow}\n- runFlow: shared/open-mail.yaml\n`);
+    writeFileSync(join(source, 'shared/open-mail.yaml'), 'appId: host.exp.Exponent\n---\n');
+    writeFileSync(join(source, 'shared/read.js'), 'output.code = "host.exp.Exponent"\n');
+    const target = join(source, '..', `${source.split('/').pop()}-android`);
+
+    androidFlows(source, target);
+
+    expect(readFileSync(join(target, 'verify.yaml'), 'utf8')).toContain('shared/open-mail.yaml');
+    expect(readFileSync(join(target, 'shared/open-mail.yaml'), 'utf8')).toBe(
+      'appId: host.exp.exponent\n---\n',
+    );
+    expect(readFileSync(join(target, 'shared/read.js'), 'utf8')).toContain('host.exp.Exponent');
+    expect(readFileSync(join(source, 'shared/open-mail.yaml'), 'utf8')).toContain('Exponent');
   });
 });
 
