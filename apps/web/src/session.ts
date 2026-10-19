@@ -3,6 +3,7 @@ import {
   ApiError,
   ApiUnreachableError,
   type Awaiting,
+  type JoinRequest,
   type LinkedProvider,
   type Membership,
   type Problem,
@@ -35,6 +36,8 @@ export interface Session {
   organisations: readonly Membership[];
   /** The account's IANA zone; null while times reach the person in UTC (sc-868). */
   timezone: string | null;
+  /** The request to join at its domain that an account in no organisation is waiting on (sc-561). */
+  waitingFor: JoinRequest | null;
 }
 
 export type SessionState =
@@ -129,7 +132,7 @@ export function landingFor(gate: Awaiting | null): string {
   if (gate === 'email') return '/verify-email';
   if (gate === 'phone') return '/verify-phone?from=onboarding';
 
-  return gate === 'details' ? '/complete-profile' : '/app';
+  return gate === 'details' || gate === 'approval' ? '/complete-profile' : '/app';
 }
 
 /** Remembered on this device, so the next visit opens where this one left off. */
@@ -217,6 +220,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     organisations,
     organisationCountry: account.organisationCountry,
     timezone: account.timezone,
+    waitingFor: account.waitingFor,
     organisation: chooseOrganisation(organisations, remembered),
   };
 }

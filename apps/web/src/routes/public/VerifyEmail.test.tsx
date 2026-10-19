@@ -22,6 +22,7 @@ const FOLAKE: Session = {
   organisations: [MEMBERSHIP],
   organisationCountry: null,
   timezone: null,
+  waitingFor: null,
 };
 
 function answering(answers: Record<string, () => Response>, seen: string[] = []) {
@@ -287,6 +288,7 @@ describe('verifying an address added from Settings > Account', () => {
     organisationCountry: 'NG',
     locale: 'en',
     timezone: null,
+    waitingFor: null,
     verified: true,
     complete: true,
     needsOrganisation: false,

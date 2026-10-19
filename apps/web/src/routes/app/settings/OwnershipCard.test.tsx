@@ -48,6 +48,7 @@ function signedIn(organisation = IRE): void {
     organisations: [organisation],
     organisationCountry: null,
     timezone: null,
+    waitingFor: null,
   };
 
   __setSessionState({ status: 'signedIn', session });
@@ -60,6 +61,7 @@ const ME = {
   countryCode: null,
   locale: 'en',
   timezone: null,
+  waitingFor: null,
   verified: true,
   complete: true,
   needsOrganisation: false,

@@ -80,6 +80,7 @@ function signedIn(organisation = IRE): void {
     organisations: [organisation],
     organisationCountry: null,
     timezone: null,
+    waitingFor: null,
   };
 
   __setSessionState({ status: 'signedIn', session });

@@ -79,6 +79,7 @@ function signedIn(email = 'kemi.l@gmail.com'): void {
     organisations: [],
     organisationCountry: null,
     timezone: null,
+    waitingFor: null,
   };
 
   __setSessionState({ status: 'signedIn', session });

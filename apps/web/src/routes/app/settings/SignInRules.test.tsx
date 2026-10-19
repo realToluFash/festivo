@@ -66,6 +66,7 @@ function signedIn(organisation: Membership): void {
     organisations: [organisation],
     organisationCountry: null,
     timezone: null,
+    waitingFor: null,
   };
 
   __setSessionState({ status: 'signedIn', session });

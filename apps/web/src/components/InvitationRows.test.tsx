@@ -77,6 +77,7 @@ function signedIn(organisations: readonly Membership[]): void {
       organisations,
       organisationCountry: null,
       timezone: null,
+      waitingFor: null,
     },
   });
 }

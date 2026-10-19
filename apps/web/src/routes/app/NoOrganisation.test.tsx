@@ -22,6 +22,7 @@ function inNone(): void {
       organisations: [],
       organisationCountry: null,
       timezone: null,
+      waitingFor: null,
     },
   });
 }
