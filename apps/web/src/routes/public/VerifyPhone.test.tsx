@@ -286,6 +286,118 @@ describe('check your messages', () => {
   });
 });
 
+describe('verifying a number added from Settings > Account', () => {
+  const ALTERNATIVE = {
+    id: 'p2',
+    number: '+2347015550188',
+    countryCode: 'NG',
+    verified: false,
+    primary: false,
+  };
+  const SET_UP = {
+    ...account([{ ...PHONE, verified: true }, ALTERNATIVE]),
+    verified: true,
+    complete: true,
+    needsOrganisation: false,
+  };
+
+  it("texts the code to that number, with Account's way back instead of the onboarding steps", async () => {
+    const sent = answering({
+      'GET /api/auth/me': () => json(SET_UP),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+    });
+    at('/verify-phone?phone=p2');
+
+    expect(await screen.findByText('We texted a code to +234 701 555 0188.')).toBeDefined();
+    expect(screen.queryByRole('list', { name: 'Before you start' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to Account' }).getAttribute('href')).toBe(
+      '/app/account',
+    );
+    expect(screen.getByText('Wrong number?')).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Remove it in Account' }).getAttribute('href')).toBe(
+      '/app/account',
+    );
+    expect(screen.queryByRole('link', { name: 'Change it' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Carry on without it' })).toBeNull();
+    expect(sent.some((request) => request.path === '/api/auth/verify/phone/resend')).toBe(true);
+  });
+
+  it.each([
+    ['a wrong code', 'verification_code_invalid', /That code does not match/],
+    ['an expired code', 'verification_code_expired', 'That code has expired'],
+    ['too many wrong tries', 'verification_code_exhausted', 'Too many wrong tries'],
+  ])("keeps Account's way back at the top after %s", async (_, code, says) => {
+    answering({
+      'GET /api/auth/me': () => json(SET_UP),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+      'POST /api/auth/verify/phone': () => problem(422, code),
+    });
+    at('/verify-phone?phone=p2');
+    await screen.findByLabelText('Code from the text');
+
+    fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+
+    expect(await screen.findByText(says)).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Back to Account' })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/app/account']);
+  });
+
+  it('ends on Back to Account, with the number still an alternative', async () => {
+    const sent = answering({
+      'GET /api/auth/me': () => json(SET_UP),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+      'POST /api/auth/verify/phone': () => json({ ...ALTERNATIVE, verified: true }),
+    });
+    at('/verify-phone?phone=p2');
+    await screen.findByLabelText('Code from the text');
+
+    fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '184231' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Number verified' })).toBeDefined();
+    expect(
+      screen.getByText(
+        '+234 701 555 0188 is verified. It stays an alternative number until you make it primary in Account.',
+      ),
+    ).toBeDefined();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Back to Account' })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/app/account?verified=p2']);
+    expect(screen.getByRole('link', { name: 'Back to Account' }).className).toMatch(
+      /button-primary/,
+    );
+    expect(screen.queryByRole('button', { name: 'Continue to Soirely' })).toBeNull();
+    expect(sent.find((request) => request.method === 'POST')?.body).toEqual({
+      code: '184231',
+      phone: 'p2',
+    });
+  });
+
+  it('keeps the onboarding steps and Continue to Soirely during sign-up', async () => {
+    answering({
+      'GET /api/auth/me': () => json(account()),
+      'GET /api/auth/verify/phone/resend': () => json({ cooldownSeconds: 0 }),
+      'POST /api/auth/verify/phone': () => json({ ...PHONE, verified: true }),
+    });
+    at('/verify-phone?from=onboarding');
+    await screen.findByLabelText('Code from the text');
+
+    expect(screen.getByRole('list', { name: 'Before you start' })).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Back to Account' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '184231' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Verify number' }));
+
+    expect(await screen.findByRole('button', { name: 'Continue to Soirely' })).toBeDefined();
+    expect(screen.getByRole('list', { name: 'Before you start' })).toBeDefined();
+  });
+});
+
 describe('change your mobile number', () => {
   it('shows the current number, says it keeps working until the new one is verified, and starts on its country', async () => {
     answering({ 'GET /api/auth/me': () => json(account([{ ...PHONE, verified: true }])) });

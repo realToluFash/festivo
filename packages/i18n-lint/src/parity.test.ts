@@ -2,8 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { emptyMessages, keyParity, pluralFamilies, slotParity } from './catalogues.ts';
-import { LOCALES, ROOT, SURFACES } from './surfaces.ts';
+import {
+  type Catalogue,
+  emptyMessages,
+  keyParity,
+  pluralFamilies,
+  slotParity,
+  wordDrift,
+} from './catalogues.ts';
+import { LOCALES, ROOT, SHARED_WORDS, SURFACES, type WordCopy } from './surfaces.ts';
 
 /**
  * Every surface, the same four checks.
@@ -59,6 +66,20 @@ describe.each(SURFACES.map((s) => [s.name, s] as const))('%s', (_name, surface) 
   });
 });
 
+describe.each(SHARED_WORDS.map((shared) => [shared.what, shared] as const))(
+  '%s',
+  (_what, shared) => {
+    it('read the same on every surface that keeps a copy', () => {
+      expect(
+        wordDrift(shared.copies).map(
+          (drift) => `${drift.locale}: ${drift.word} reads ${JSON.stringify(drift.readings)}`,
+        ),
+        'change the word in every copy, or one surface lets through what another refuses',
+      ).toEqual([]);
+    });
+  },
+);
+
 /**
  * The checks themselves, against catalogues built to be wrong.
  *
@@ -93,6 +114,26 @@ describe('the checks catch what they are for', () => {
     );
 
     expect(incomplete).toEqual([{ locale: 'fr', present: 'guests_one', missing: 'guests_other' }]);
+  });
+
+  it('notices a shared word one copy reads differently, or lacks', () => {
+    const copy = (name: string, under: string): WordCopy => ({
+      name,
+      catalogues: '',
+      file: () => '',
+      under,
+    });
+    const read = (from: WordCopy, locale: string): Catalogue =>
+      from.name === 'web'
+        ? { roles: { owner: 'Owner', coordinator: 'Coordinator' } }
+        : locale === 'es'
+          ? { 'seeded_role.owner': 'Dueño' }
+          : { 'seeded_role.owner': 'Owner', 'seeded_role.coordinator': 'Coordinator' };
+
+    expect(wordDrift([copy('web', 'roles'), copy('api', 'seeded_role')], read)).toEqual([
+      { locale: 'es', word: 'coordinator', readings: { web: 'Coordinator', api: null } },
+      { locale: 'es', word: 'owner', readings: { web: 'Owner', api: 'Dueño' } },
+    ]);
   });
 
   it('notices an empty message', () => {

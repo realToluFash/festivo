@@ -13,6 +13,11 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { api } from '../../api.ts';
 import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
+import {
+  BackToAccount,
+  BackToAccountButton,
+  RemoveInAccount,
+} from '../../components/BackToAccount.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { dropRegistration, heldRegistration } from '../../pendingRegistration.ts';
@@ -40,7 +45,7 @@ export function VerifyEmail() {
 /** An address added from Settings > Account (sc-113), by its id: back to Account, never a sign-out. */
 function ForAlternative({ id }: { id: string }) {
   const navigate = useNavigate();
-  const [address, setAddress] = useState<string | null>(null);
+  const [held, setHeld] = useState<{ address: string; verified: boolean } | 'gone' | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -48,10 +53,10 @@ function ForAlternative({ id }: { id: string }) {
     api
       .me()
       .then((me) => {
-        if (live) setAddress(me.emailAddresses.find((held) => held.id === id)?.address ?? '');
+        if (live) setHeld(me.emailAddresses.find((one) => one.id === id) ?? 'gone');
       })
       .catch(() => {
-        if (live) setAddress('');
+        if (live) setHeld('gone');
       });
 
     return () => {
@@ -59,20 +64,20 @@ function ForAlternative({ id }: { id: string }) {
     };
   }, [id]);
 
-  if (address === '') return <Navigate to="/app/account" replace />;
-  if (address == null) return <Pending />;
+  if (held === 'gone') return <Navigate to="/app/account" replace />;
+  if (held == null) return <Pending />;
 
   return (
     <CodeScreen
-      address={address}
-      alreadyVerified={false}
+      address={held.address}
+      alreadyVerified={held.verified}
       opening={() => api.verificationOpening(id)}
       verify={async (code) => {
         await api.verifyEmail(code, id);
       }}
       resend={() => api.resendVerification(id)}
       onExpired={() => navigate('/app/account', { replace: true })}
-      carryOn={() => navigate('/app/account')}
+      fromAccount={id}
     />
   );
 }
@@ -163,6 +168,7 @@ function CodeScreen({
   carryOn,
   wrongAddress,
   registersAgain = false,
+  fromAccount,
 }: {
   address: string;
   alreadyVerified: boolean;
@@ -172,11 +178,12 @@ function CodeScreen({
   onExpired: () => void;
   /** The sign-up had already run out when the screen opened: nothing to resume, so signed out. */
   onGone?: () => void;
-  carryOn: () => void | Promise<void>;
-  /** Absent for an alternative address: it is simply removed from Account, and nobody signs out. */
+  carryOn?: () => void | Promise<void>;
   wrongAddress?: () => void | Promise<void>;
   /** A sign-up has no session to sign out of: it starts again at Register. */
   registersAgain?: boolean;
+  /** The id of an address added in Account: Account's way back replaces the steps and the way on. */
+  fromAccount?: string;
 }) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
@@ -283,20 +290,24 @@ function CodeScreen({
 
   return (
     <AuthPage>
-      <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
-        <li className={verified ? 'step step-done' : 'step step-now'}>
-          <span className="step-mark" aria-hidden="true">
-            {verified ? '✓' : '1'}
-          </span>
-          {verified ? t('verifyEmail.step1Done') : t('verifyEmail.step1')}
-        </li>
-        <li className="step step-later">
-          <span className="step-mark" aria-hidden="true">
-            2
-          </span>
-          {t('verifyEmail.step2')}
-        </li>
-      </ol>
+      {fromAccount == null ? (
+        <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
+          <li className={verified ? 'step step-done' : 'step step-now'}>
+            <span className="step-mark" aria-hidden="true">
+              {verified ? '✓' : '1'}
+            </span>
+            {verified ? t('verifyEmail.step1Done') : t('verifyEmail.step1')}
+          </li>
+          <li className="step step-later">
+            <span className="step-mark" aria-hidden="true">
+              2
+            </span>
+            {t('verifyEmail.step2')}
+          </li>
+        </ol>
+      ) : (
+        !verified && <BackToAccount />
+      )}
 
       {verified ? (
         <>
@@ -305,11 +316,23 @@ function CodeScreen({
           </span>
           <div>
             <h1>{t('verifyEmail.doneTitle')}</h1>
-            <p className="muted">{t('verifyEmail.doneBody', { address })}</p>
+            <p className="muted">
+              {fromAccount == null
+                ? t('verifyEmail.doneBody', { address })
+                : t('verifyEmail.doneBodyAlternative', { address })}
+            </p>
           </div>
-          <button className="button button-primary" type="button" onClick={() => void carryOn()}>
-            {t('verifyEmail.continue')}
-          </button>
+          {fromAccount == null ? (
+            <button
+              className="button button-primary"
+              type="button"
+              onClick={() => void carryOn?.()}
+            >
+              {t('verifyEmail.continue')}
+            </button>
+          ) : (
+            <BackToAccountButton verified={fromAccount} />
+          )}
         </>
       ) : (
         <>
@@ -395,6 +418,8 @@ function CodeScreen({
               </div>
             </form>
           )}
+
+          {fromAccount != null && <RemoveInAccount kind="email" />}
 
           {wrongAddress != null && (
             <div className="auth-footnote">

@@ -1,6 +1,6 @@
 import { ApiUnreachableError, type Health, awaiting } from '@soirely/api-client';
-import { Link, router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { Link, router, useNavigation } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -13,6 +13,7 @@ import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
+import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
 import { launchSignedIn } from '../src/signedIn.ts';
 
 /**
@@ -32,6 +33,17 @@ export default function Home() {
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [launching, setLaunching] = useState<Launching>('deciding');
+  const navigation = useNavigation();
+  const left = useRef(false);
+
+  // Once left, launch stays left: coming Back to it does not re-decide (sc-2096).
+  useEffect(
+    () =>
+      navigation.addListener('blur', () => {
+        left.current = true;
+      }),
+    [navigation],
+  );
 
   // The loading state belongs to the event that causes the reload, not to the
   // effect. Setting it in the effect body made every attempt two renders
@@ -71,20 +83,30 @@ export default function Home() {
       if (live) setLaunching('signedOut');
       else if (!answer.ended) return;
 
-      void launchRoute(answer.ended, {
-        held: heldRegistration,
-        open: (registration) => api.registrationOpening(registration),
-        drop: dropRegistration,
-      }).then((route) => {
-        // Launch already left: the signed-out notice still follows, a held sign-up waits for the next launch.
-        if (route != null && (live || route === '/sign-in?signedOut=1')) router.replace(route);
+      // Mounted is not enough: a screen pushed over launch leaves it mounted underneath.
+      const onLaunch = () => live && !left.current && navigation.isFocused();
+
+      void launchRoute(
+        answer.ended,
+        {
+          held: heldRegistration,
+          open: (registration) => api.registrationOpening(registration),
+          drop: dropRegistration,
+        },
+        onLaunch,
+      ).then((route) => {
+        if (route == null) return;
+        // An organisation's rule that ended the session is named on sign-in (sc-69).
+        router.replace(
+          route === '/sign-in?signedOut=1' ? signInRoute(ruleRefusal(answer.why), true) : route,
+        );
       });
     });
 
     return () => {
       live = false;
     };
-  }, [attempt]);
+  }, [attempt, navigation]);
 
   useEffect(() => {
     let live = true;

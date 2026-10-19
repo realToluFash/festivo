@@ -68,7 +68,7 @@ story or pull request, read fresh rather than from the last sync, and says why i
 
 | Write                                                | Who                                | Does                                                                                                                                                                                                                                                                       |
 | ---------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `comment sc-N --to r,r \| --reply-to ID`             | all                                | posts `[r] (from role)`; a reply goes on the thread's root and defaults to the asker                                                                                                                                                                                       |
+| `comment sc-N --to r,r \| --reply-to ID`             | all                                | posts `[r] (from role)`; a reply goes on the thread's root and defaults to the asker. `--untagged` posts `(from role)` alone, a record or a reply that only confirms, and wakes nobody                                                                                     |
 | `note sc-N`                                          | all                                | a private line the role's next run on the story sees                                                                                                                                                                                                                       |
 | `claim sc-N`                                         | developers, testers                | developer: adds its label, moves to In Progress. Tester: In QA plus `QA claim: qaN`; a claim over three hours old can be taken over. The first claim recorded wins. Prints the story                                                                                       |
 | `move sc-N "<state>"`                                | per `roles.MOVES`                  | only the moves the role's skill makes, from the states it makes them from                                                                                                                                                                                                  |
@@ -81,7 +81,7 @@ story or pull request, read fresh rather than from the last sync, and says why i
 | `resolve N <comment id> [--text]`                    | lead                               | replies in the thread, then resolves it                                                                                                                                                                                                                                    |
 | `pr-reply N <comment id>`                            | developers, linguists, lead, ops   | replies in the thread holding that comment, signed `(from role)` so the queue knows whose word it ends on                                                                                                                                                                  |
 | `merge N`                                            | developers, linguists              | developer: only with the lead's pass at the live head, no open thread, green checks and MERGEABLE; merges with `--match-head-commit`, moves the story to Ready For QA and tells `[qa]` the merge commit. Linguist: its own locale files only, merge commit, branch deleted |
-| `to-qa sc-N`                                         | developers                         | for a PR that merged at the passed head: Ready For QA, and `[qa]` told the merge commit                                                                                                                                                                                    |
+| `to-qa sc-N`                                         | developers                         | for a PR that merged at a head the pass covers, carried over a merge of main included: Ready For QA, and `[qa]` told the merge commit                                                                                                                                      |
 | `rerun N \| --run ID`                                | developers, ops                    | reruns the failed jobs                                                                                                                                                                                                                                                     |
 
 ## How work is found
@@ -89,10 +89,20 @@ story or pull request, read fresh rather than from the last sync, and says why i
 - **`sync.py`** runs at most once a minute, whichever tick asks first. It does a full pass
   over the queue states every 15 minutes, and otherwise refetches only the stories updated
   since yesterday whose `updated_at` changed. GitHub is one GraphQL query over the open and
-  recently merged pull requests, and the last five runs on main.
+  recently merged pull requests (about 13 points of the 5,000 an hour), and the last five
+  runs on main.
+- **When GraphQL is spent**, the sync reads the same pull requests over REST, which has its
+  own hourly budget, and refetches only those whose `updated_at` or head changed, or whose
+  checks were pending. REST cannot say whether a thread is resolved, so a known thread keeps
+  what the last GraphQL sync saw and a new one counts as open. Reads and writes that REST
+  does as well (`live`, files, diff, merge, pr-create, reviews, replies) always use REST;
+  `checks` falls back to it. Only `resolve` needs GraphQL, and it says so rather than reply
+  and fail. Every `gh` call names the repository, so `sq` works from any directory.
 - **`work.py`** turns the stored stories and pull requests into work items, with no network
   calls. Each item has a fingerprint, such as `lead:review:#176@e9ced78:<moved_at>`, so
-  finished work stays finished and a change makes a new item.
+  finished work stays finished and a change makes a new item. Every move a role makes
+  through `sq` is recorded with the `moved_at` it landed at, and a story a role moved into
+  its own queue is no work for it; the same move by anyone else still is.
 - **`store.py`** holds the claims. A role holds one item at a time, a pooled item (Ready For
   QA, unlabelled To Do) goes to one role only, and a claim lapses after 90 minutes.
 

@@ -15,6 +15,9 @@ use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
+use App\Locale\SupportedLocales;
+use App\Repository\InvitationRepository;
+use App\Repository\MembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -35,6 +38,9 @@ final readonly class RoleManager
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private MembershipDirectoryInterface $membershipDirectory,
+        private SeededRoleLabels $seededRoleLabels,
+        private InvitationRepository $invitationRepository,
+        private MembershipRepository $membershipRepository,
     ) {
     }
 
@@ -45,7 +51,7 @@ final readonly class RoleManager
         $order = Dict\flip(Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): string => $seeded->value));
         $rank = static fn (Role $role): int => $order[$role->getSeededAs()->value ?? ''] ?? Iter\count($order);
 
-        return Vec\sort($roles, static fn (Role $a, Role $b): int => [$rank($a), Str\lowercase($a->label())] <=> [$rank($b), Str\lowercase($b->label())]);
+        return Vec\sort($roles, static fn (Role $a, Role $b): int => [$rank($a), Str\lowercase($a->getName() ?? '')] <=> [$rank($b), Str\lowercase($b->getName() ?? '')]);
     }
 
     /** Scoped to the organisation before it is used: another organisation's role id is not found. */
@@ -72,7 +78,7 @@ final readonly class RoleManager
         $this->withinHeld($organisation, $by, $granted);
         $role = Role::custom($organisation, $this->name($organisation, $name, null), $granted);
         $this->entityManager->persist($role);
-        $this->record($by, $role, 'role.created', ['name' => [null, $role->label()]]);
+        $this->record($by, $role, 'role.created', ['name' => [null, $role->getName()]]);
         $this->entityManager->flush();
 
         return $role;
@@ -85,14 +91,14 @@ final readonly class RoleManager
             throw new ApiException(ErrorCode::OwnerRoleFixed, $this->translator->trans('roles.owner_fixed'));
         }
 
-        if (null !== $name && Str\trim($name) !== $role->label()) {
+        if (null !== $name && Str\trim($name) !== $this->currentName($role)) {
             if (null !== $role->getSeededAs()) {
                 throw $this->invalid('name', 'roles.name_builtin');
             }
 
-            $before = $role->label();
+            $before = $role->getName();
             $role->rename($this->name($role->getOrganisation(), $name, $role));
-            $this->record($by, $role, 'role.renamed', ['name' => [$before, $role->label()]]);
+            $this->record($by, $role, 'role.renamed', ['name' => [$before, $role->getName()]]);
         }
 
         if (null !== $permissions) {
@@ -122,21 +128,27 @@ final readonly class RoleManager
         }
 
         $holders = $this->entityManager->getRepository(Membership::class)->findBy(['role' => $role]);
+        // An invitation still pending would otherwise lose its role and could never be accepted.
+        $invited = $this->invitationRepository->findPendingWithRole($role);
 
-        if ([] !== $holders) {
+        if ([] !== $holders || [] !== $invited) {
             if (null === $replacementId || '' === $replacementId) {
                 throw $this->invalid('replacement', 'roles.replacement_required');
             }
 
             $replacement = $this->replacement($role, $replacementId);
-            $this->withinHeld($role->getOrganisation(), $by, $replacement->getPermissions());
+            $this->mayGrant($role->getOrganisation(), $by, $replacement);
 
             foreach ($holders as $membership) {
                 $this->roleAssignment->assign($membership, $replacement);
             }
+
+            foreach ($invited as $invitation) {
+                $invitation->setRole($replacement);
+            }
         }
 
-        $this->record($by, $role, 'role.deleted', ['name' => [$role->label(), null]]);
+        $this->record($by, $role, 'role.deleted', ['name' => [$role->getName(), null]]);
         $this->entityManager->remove($role);
         $this->entityManager->flush();
     }
@@ -156,7 +168,15 @@ final readonly class RoleManager
         return $replacement;
     }
 
-    /** Trimmed, required, at most 40, and unique in the organisation ignoring case, the seeded labels included. */
+    /** A seeded role sent back under its English label, as sc-66 shipped it, is not being renamed. */
+    private function currentName(Role $role): ?string
+    {
+        $seeded = $role->getSeededAs();
+
+        return null === $seeded ? $role->getName() : $this->seededRoleLabels->label($seeded, SupportedLocales::DEFAULT);
+    }
+
+    /** Trimmed, required, at most 40, and unique ignoring case among the organisation's own roles and the seeded labels in every language. */
     private function name(Organisation $organisation, string $typed, ?Role $self): string
     {
         $name = Str\trim($typed);
@@ -169,9 +189,9 @@ final readonly class RoleManager
             throw $this->invalid('name', 'roles.name_too_long', ['{count}' => (string) self::NAME_MAXIMUM]);
         }
 
-        $taken = Iter\any(
+        $taken = $this->seededRoleLabels->includes($name) || Iter\any(
             $this->rolesOf($organisation),
-            static fn (Role $role): bool => $role !== $self && Str\lowercase($role->label()) === Str\lowercase($name),
+            static fn (Role $role): bool => $role !== $self && Str\lowercase($role->getName() ?? '') === Str\lowercase($name),
         );
 
         if ($taken) {
@@ -195,6 +215,16 @@ final readonly class RoleManager
         }
 
         return Type\vec(Type\instance_of(Permission::class))->coerce($permissions);
+    }
+
+    /** Whoever puts somebody in a role, by invitation, by moving them or by deleting theirs, is held to this one rule. */
+    public function mayGrant(Organisation $organisation, User $by, Role $role): void
+    {
+        $this->withinHeld($organisation, $by, $role->getPermissions());
+
+        if ($role->isOwner() && true !== $this->membershipRepository->findActive($by, $organisation->getId())?->getRole()->isOwner()) {
+            throw new ApiException(ErrorCode::GrantNotHeld, $this->translator->trans('roles.grant_not_held'));
+        }
     }
 
     /** @param list<Permission> $permissions nobody grants or withdraws what they lack (least privilege), so only Owner names Owner */

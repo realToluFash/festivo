@@ -92,9 +92,8 @@ def guard(c, command):
 
 
 def post(c, story, to, body, parent=None):
-    head = " ".join(f"[{t}]" for t in to) + f" (from {signature(c.role)})"
-    text = f"{head}\n{body.strip()}" if head else body.strip()
-    return c.shortcut.comment(story["id"], text, parent)
+    head = " ".join([*(f"[{t}]" for t in to), f"(from {signature(c.role)})"])
+    return c.shortcut.comment(story["id"], f"{head}\n{body.strip()}", parent)
 
 
 def set_state(c, story, name, check=True):
@@ -108,7 +107,9 @@ def set_state(c, story, name, check=True):
         froms = " or ".join(allowed) if allowed else "nowhere"
         raise Refused(f"{c.role} moves a story to {state} only from {froms}; "
                       f"sc-{story['id']} is {story['state']}")
-    c.shortcut.update(story["id"], workflow_state_id=state_id)
+    moved = c.shortcut.update(story["id"], workflow_state_id=state_id)
+    if moved and moved.get("moved_at"):
+        store.mark_move(c.db, story["id"], state, moved["moved_at"], c.role)
     return state
 
 
@@ -133,6 +134,8 @@ def comment(c, a):
     guard(c, "comment")
     story = c.story(a.story, fresh=False)
     to = [t for t in (a.to or "").replace(",", " ").split() if t]
+    if to and a.untagged:
+        raise Refused("--untagged posts no tag: drop --to, or drop --untagged to address it")
     parent = None
     if a.reply_to:
         replied = next((x for x in story["comments"] if x["id"] == a.reply_to), None)
@@ -143,11 +146,11 @@ def comment(c, a):
             raise Refused(f"no comment #{a.reply_to} on sc-{story['id']}")
         # Shortcut threads one level deep, so a reply to a reply goes on the thread's root.
         parent = replied["parent"] or replied["id"]
-        if not to and R.author(replied["text"]):
+        if not to and not a.untagged and R.author(replied["text"]):
             to = [R.author(replied["text"])]
     if not to and not a.untagged:
         raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker), "
-                      "or --untagged for a note that wakes nobody")
+                      "or --untagged for a record or a confirmation that wakes nobody")
     unknown = [t for t in to if t not in R.ROLES and t != "dev"]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
@@ -423,9 +426,10 @@ def resolve(c, a):
     owner, name = c.repository()
     pr = c.pr(a.pr)
     found = thread_of(pr, a.comment)
+    # Resolving first: when GraphQL is spent it fails, and nothing is posted to be repeated.
+    github.resolve(found["id"])
     if a.text:
         github.reply(owner, name, a.pr, found["comments"][0]["id"], a.text)
-    github.resolve(found["id"])
     return f"resolved {found['path']}:{found['line'] or '-'} on PR #{a.pr}{resync(c)}"
 
 
@@ -459,10 +463,10 @@ def merge(c, a):
     if live["mergeable"] != "MERGEABLE":
         raise Refused(f"GitHub says {live['mergeable']}; try again in a minute")
     if c.role in R.LINGUISTS:
-        mine = R.locale_files(c.role)
+        mine = R.linguist_files()
         stray = [path for path, _, _ in github.files(a.pr) if path not in mine]
         if stray:
-            raise Refused(f"a linguist merges only its own locale files; this also changes "
+            raise Refused(f"the linguist merges only locale files; this also changes "
                           f"{', '.join(stray[:5])}")
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"
@@ -470,7 +474,8 @@ def merge(c, a):
     if not story or story["state"] != "In Review":
         raise Refused(f"its story is {story['state'] if story else 'unknown'}, not In Review")
     verdict = W.latest_verdict(pr)
-    if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, head)):
+    carried = pr.get("carried") if head == pr["head_sha"] else None
+    if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, head, carried)):
         raise Refused(f"no lead pass covers the head {head[:7]}; wait for the lead's review")
     unresolved = W.open_threads(pr)
     if unresolved:
@@ -490,7 +495,8 @@ def to_qa(c, a):
         raise Refused(f"sc-{story['id']} has no merged pull request")
     pr = merged[-1]
     verdict = W.latest_verdict(pr)
-    if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, pr["head_sha"])):
+    if not (verdict and verdict["verdict"] == "pass"
+            and W.covers(verdict, pr["head_sha"], pr.get("carried"))):
         raise Refused(f"PR #{pr['number']} merged at a head no lead pass covers: ask [lead]")
     hand_to_qa(c, story, pr, pr["merge_sha"], a.text)
     return f"sc-{story['id']} is Ready For QA; QA is told about {pr['merge_sha'][:7]}"

@@ -51,7 +51,7 @@ An agent in QA mode does not use them here. There are three QA testers, and
 `just qa-env setup --tester N` makes a stack for tester N. Each stack is a worktree at
 `../soirely-qa`, `../soirely-qa2` or `../soirely-qa3` on the pushed head of the pull request
 under test, with its own containers and database, every port moved up by N×10000, and its
-own simulators. A developer running the suite and a QA pass stopping the API to test the
+own simulators, or Android emulators on a host without Xcode. A developer running the suite and a QA pass stopping the API to test the
 offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`, `… qa2` or
 `… qa3` from the main checkout as usual; each does its work in its own worktree, through
 `node .qa/bin/qa-env.mjs`.
@@ -65,10 +65,10 @@ label, `dev1` or `dev2`, so the other leaves it alone; `.claude/skills/soirely-d
 has the details.
 
 Every other role that raises pull requests has a stack of its own the same way:
-`just dev-env setup --role <role>` makes `../soirely-<role>` for `lead`, `ops`, `en`, `es`,
-`fr` or `pt`. Only five whole tens of thousands fit under port 65536, so these take the half
-steps: `en` +15000, `es` +25000, `fr` +35000, `lead` +45000, `ops` +50000, `pt` +55000
-(`STACKS` in `scripts/dev-env.mjs`). No two development ports are 5000 apart, so no stack
+`just dev-env setup --role <role>` makes `../soirely-<role>` for `lead`, `ops` or `l10n`, the
+one linguist for all four locales. Only five whole tens of thousands fit under port 65536, so
+these take the half steps: `l10n` +15000, `lead` +45000, `ops` +50000 (`STACKS` in
+`scripts/dev-env.mjs`). No two development ports are 5000 apart, so no stack
 can land on another's.
 
 ## The shape of the work

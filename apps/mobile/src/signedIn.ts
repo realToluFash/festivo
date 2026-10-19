@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Account, Membership } from '@soirely/api-client';
-import { chooseOrganisation } from '@soirely/domain';
+import type { Account, InvitationPreview, Membership } from '@soirely/api-client';
+import { type InvitationOutcome, chooseOrganisation } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useSyncExternalStore } from 'react';
 
@@ -13,9 +13,19 @@ export interface SignedIn {
   account: Account | null;
   organisations: readonly Membership[];
   organisation: Membership | null;
+  invitations: readonly InvitationPreview[];
+  invitationOutcomes: Readonly<Record<string, InvitationOutcome>>;
 }
 
-let state: SignedIn = { account: null, organisations: [], organisation: null };
+const SIGNED_OUT: SignedIn = {
+  account: null,
+  organisations: [],
+  organisation: null,
+  invitations: [],
+  invitationOutcomes: {},
+};
+
+let state: SignedIn = SIGNED_OUT;
 /** Set by signing out here, so a frame still on screen does not ask again and earn a "You were signed out". */
 let ended = false;
 const listeners = new Set<() => void>();
@@ -47,6 +57,13 @@ export function reloadSignedIn(): Promise<void> {
   return launchSignedIn().then(() => {});
 }
 
+/** The account alone, read again; a failed read rejects and leaves the screen where it is. */
+export async function rereadAccount(): Promise<void> {
+  const account = await api.me();
+
+  set({ ...state, account });
+}
+
 /** False when the account could not be read and sign-in has opened instead. */
 export function launchSignedIn(): Promise<boolean> {
   ended = false;
@@ -58,9 +75,20 @@ export function launchSignedIn(): Promise<boolean> {
 let loading: Promise<boolean> | null = null;
 
 function load(): Promise<boolean> {
-  loading ??= Promise.all([api.me(), api.organisations(), remembered()])
-    .then(([account, organisations, id]) => {
-      set({ account, organisations, organisation: chooseOrganisation(organisations, id) });
+  loading ??= Promise.all([
+    api.me(),
+    api.organisations(),
+    remembered(),
+    api.myInvitations().catch(() => state.invitations),
+  ])
+    .then(([account, organisations, id, invitations]) => {
+      set({
+        ...state,
+        account,
+        organisations,
+        organisation: chooseOrganisation(organisations, id),
+        invitations,
+      });
 
       return true;
     })
@@ -80,6 +108,21 @@ export function switchOrganisation(id: string): void {
 
   set({ ...state, organisation });
   void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+}
+
+/** An invitation accepted in the app: the organisation joins the list, and nobody is moved into it. */
+export function joinOrganisation(joined: Membership): void {
+  set({
+    ...state,
+    organisations: [
+      ...state.organisations.filter((membership) => membership.id !== joined.id),
+      joined,
+    ],
+  });
+}
+
+export function settleInvitation(id: string, outcome: InvitationOutcome): void {
+  set({ ...state, invitationOutcomes: { ...state.invitationOutcomes, [id]: outcome } });
 }
 
 export function replaceOrganisation(saved: Membership): void {
@@ -113,7 +156,7 @@ export function endedHere(): void {
 function forget(): void {
   ended = true;
   loading = null;
-  set({ account: null, organisations: [], organisation: null });
+  set(SIGNED_OUT);
 }
 
 async function remembered(): Promise<string | null> {

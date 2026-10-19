@@ -1,6 +1,6 @@
 # English at Soirely
 
-Kept by `/soirely-linguist en`. Read it before writing a string in English, and add to it
+Kept by `/soirely-linguist`. Read it before writing a string in English, and add to it
 whenever you decide something a second string will need.
 
 ## Variant and register
@@ -10,6 +10,15 @@ not "can't". British spelling: organisation, cancelled, colour. Sentence case fo
 label and heading.
 
 The rules every locale shares are in `.claude/skills/locale-parity`.
+
+**A limit checked on screen and by the server says the same sentence in both catalogues.** The
+field's key (`web` or `mobile`) and the API's refusal (`messages` or `errors`) carry the same
+words, with the limit as a slot in each, because a stale page or another client meets the
+server's check instead and must read what the screen would have said. Reword one and the other
+changes in the same pull request; where a test pins the server's text, it waits on [dev] and
+the entry below says so. Over a text limit the sentence is "Shorten the {field} to {{count}}
+characters or fewer." Translate the pair as one sentence. sc-2150 found three pairs that
+differed (`rolesScreen.nameTooLong` against `roles.name_too_long` in en, es and fr).
 
 ## Glossary
 
@@ -42,6 +51,19 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. A sentence that ends on a name the host typed (sc-2251, #2550,
+  `rolesScreen.describeCustom`, `describeCustomReadOnly` and every line like them).** The
+  name goes where the sentence wants it, at the end as well, so "Made by {{name}}." stays. A
+  name that carries its own full stop, such as "Galas Ltd." or a guest's "Jr.", gets a second
+  one from the string ("… Ltd.."). As in print, only the name's stop should show. Dropping
+  the string's own stop is the renderer's job, for every value on web, in the app and in what
+  the API renders: sc-2573, filed from #2562. A value that ends in ".", "!", "?" or "…" takes
+  no full stop from the string after it. Any other character after the value stays, as print
+  keeps an abbreviation's stop before it ("Galas Ltd., Lagos"). Until sc-2573 lands the
+  doubled stop shows, and no line is reworded to avoid it. Won over putting the name
+  first ("{{name}} made this role."), which fixes one line of eight and the next string not at
+  all, and in es, fr and pt often leaves a participle or adjective to agree with a name of
+  unknown gender. Also won over quoting the name, which reads as if the name were in doubt.
 - **18 Oct 2026. Verifying an alternative from Account (sc-2304, sc-2244, `VerifyEmail-*` and
   `VerifyPhone-*` with `from` = `account`, `Account-*` `verified_alt`).** Settled as ux drew
   it. The headings are sign-up's "Email verified" and "Number verified". The body: "{{address}}
@@ -93,7 +115,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   page and try again." Over the limit, the house phrase "Shorten the name to {count}
   characters or fewer." is wanted over "That is longer than {count} characters.", which says
   what is wrong but not what to do; the API test pins the old text, so that change waits on
-  [dev] (sc-2150). Translate it in the wanted shape.
+  [dev] (sc-2150, PR #187). Translate it in the wanted shape. The Roles screen's own check,
+  `web:rolesScreen.nameTooLong`, says the same: "Shorten the name to {{most}} characters or
+  fewer.", replacing "Keep the name to {{most}} characters."
 - **18 Oct 2026. Primary and other addresses (sc-113, `contacts.*`, `Account-*`).** The
   primary signs in; any other address or number only reaches the person: "Other addresses can
   reach you, but they cannot sign you in." / "Other numbers can reach you too." Never write a

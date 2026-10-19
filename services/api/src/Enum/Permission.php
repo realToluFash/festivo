@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enum;
 
+use Psl\Iter;
 use Psl\Str;
 
 /** The registry: a policy can only name a case, so a permission outside it cannot be asked for. */
@@ -39,6 +40,18 @@ enum Permission: string
     public function area(): PermissionArea
     {
         return PermissionArea::from(Str\split($this->value, '.')[0]);
+    }
+
+    /** What an organisation's two-factor rule for administrators covers (sc-69): members, roles, billing and the organisation itself. */
+    public function isAdministrative(): bool
+    {
+        return Iter\contains([PermissionArea::Members, PermissionArea::Billing, PermissionArea::Organisation], $this->area());
+    }
+
+    /** A `.manage` permission: what the read-only rule for an unlinked member keeps back (sc-69). */
+    public function isChange(): bool
+    {
+        return Str\ends_with($this->value, '.manage');
     }
 
     /** @return list<SeededRole> where a new organisation starts it; Owner holds every one regardless */

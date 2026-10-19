@@ -12,6 +12,11 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
+import {
+  BackToAccount,
+  BackToAccountButton,
+  RemoveInAccount,
+} from '../src/components/BackToAccount.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
 import { CodeForm } from '../src/components/CodeForm.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
@@ -19,6 +24,7 @@ import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/
 import { useFormChecks } from '../src/kit/formChecks.ts';
 import { type Landing, landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
+import { rereadAccount } from '../src/signedIn.ts';
 
 type Status = CodeStatus | { kind: 'verified' };
 
@@ -28,7 +34,7 @@ export default function VerifyEmail() {
   // An address added from Settings > Account (sc-113), by its id: verified here, then back there.
   const alternative = useLocalSearchParams<{ address?: string }>().address;
   const [pending, setPending] = useState<PendingRegistration | null>(null);
-  const [next, setNext] = useState<Landing | '/settings/account'>('/');
+  const [next, setNext] = useState<Landing>('/');
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [address, setAddress] = useState('');
@@ -67,7 +73,6 @@ export default function VerifyEmail() {
         }
 
         setAddress(added.address);
-        setNext('/settings/account');
         if (added.verified) setStatus({ kind: 'verified' });
         const opening = await api.verificationOpening(alternative).catch(() => null);
         if (live && opening != null) opened(opening);
@@ -135,6 +140,8 @@ export default function VerifyEmail() {
     try {
       if (pending == null) {
         await api.verifyEmail(cleanCode(typed), alternative);
+        // Account, under this screen, shows the row verified however it is reached.
+        if (alternative != null) void rereadAccount().catch(() => {});
       } else {
         const { account } = await api.confirmRegistration(pending.registration, cleanCode(typed));
         await dropRegistration();
@@ -196,18 +203,28 @@ export default function VerifyEmail() {
       atFoot={done}
       saying={
         <>
-          {alternative == null && <OnboardingSteps at={done ? 'verified' : 'verifying'} />}
+          {alternative == null ? (
+            <OnboardingSteps at={done ? 'verified' : 'verifying'} />
+          ) : (
+            !done && <BackToAccount />
+          )}
           <AuthHeading
             done={done}
             title={done ? t('verifyEmail.doneTitle') : t('verifyEmail.title')}
             intro={
-              done ? t('verifyEmail.doneBody', { address }) : t('verifyEmail.intro', { address })
+              !done
+                ? t('verifyEmail.intro', { address })
+                : alternative == null
+                  ? t('verifyEmail.doneBody', { address })
+                  : t('verifyEmail.doneBodyAlternative', { address })
             }
           />
         </>
       }
     >
-      {status.kind === 'verified' ? (
+      {status.kind === 'verified' && alternative != null ? (
+        <BackToAccountButton verified={alternative} />
+      ) : status.kind === 'verified' ? (
         <PrimaryButton
           label={t('verifyEmail.continue')}
           onPress={() => router.replace(next)}
@@ -225,7 +242,7 @@ export default function VerifyEmail() {
           onVerify={(code) => void verify(code)}
           onResend={() => void resend()}
         >
-          {alternative == null && (
+          {alternative == null ? (
             <Footnote
               question={t('verifyEmail.wrongAddress')}
               action={pending != null ? t('verifyEmail.registerAgain') : t('verifyEmail.signOut')}
@@ -233,6 +250,8 @@ export default function VerifyEmail() {
               {...(pending != null ? {} : { after: t('verifyEmail.wrongAddressBody') })}
               testID="verifyEmail.signOut"
             />
+          ) : (
+            <RemoveInAccount kind="email" />
           )}
         </CodeForm>
       )}

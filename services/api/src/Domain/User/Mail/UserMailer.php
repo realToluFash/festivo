@@ -130,7 +130,7 @@ final readonly class UserMailer
         ));
     }
 
-    /** @param array<string, string> $parameters */
+    /** @param array<string, int|string> $parameters a count is an int, for a catalogue's plural */
     public function line(string $key, ?string $locale, array $parameters = []): string
     {
         return $this->translator->trans($key, $parameters, self::DOMAIN, $locale);

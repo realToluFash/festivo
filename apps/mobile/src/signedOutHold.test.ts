@@ -51,4 +51,19 @@ describe('the signed-out redirect at launch', () => {
       ended: false,
     });
   });
+
+  it('keeps the API’s reason, at launch and after it (sc-69)', async () => {
+    const reasons: unknown[] = [];
+    const hold = signedOutHold((why) => reasons.push(why));
+    const why = { type: 'https://soirely.com/errors/session_timed_out', title: 'No.', status: 401 };
+
+    const answer = await hold.during(async () => {
+      hold.onSignedOut(why);
+      throw new Error('401');
+    });
+    hold.onSignedOut(why);
+
+    expect(answer).toMatchObject({ ended: true, why });
+    expect(reasons).toEqual([why]);
+  });
 });

@@ -87,7 +87,14 @@
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
     "newHere": "É novo por aqui?",
     "createAccount": "Criar uma conta",
-    "passwordBlank": "Introduza a sua palavra-passe."
+    "passwordBlank": "Introduza a sua palavra-passe.",
+    "timedOutTitle": "Signed out by {{organisation}}’s rule",
+    "timedOutBody_one": "{{organisation}} signs people out after {{count}} day without use. Sign in again to carry on.",
+    "timedOutBody_other": "{{organisation}} signs people out after {{count}} days without use. Sign in again to carry on.",
+    "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
+    "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
+    "anotherAccount": "Sign in with another account",
+    "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it."
   },
   "register": {
     "title": "Crie a sua conta",
@@ -138,7 +145,7 @@
     "keep": "Manter a sessão",
     "ended": "{{name}} ficou sem sessão.",
     "signInAgain": "O dispositivo terá de voltar a iniciar sessão para continuar, por isso confirme primeiro que ninguém o está a usar num evento.",
-    "agent": "{{browser}} em {{platform}}",
+    "agent": "{{browser}} no {{platform}}",
     "appIPhone": "Aplicação Soirely no iPhone",
     "appIPad": "Aplicação Soirely no iPad",
     "appAndroidPhone": "Aplicação Soirely num telemóvel Android",
@@ -214,6 +221,7 @@
     "signOut": "Encerrar sessão",
     "doneTitle": "E-mail verificado",
     "doneBody": "{{address}} está confirmado. A seguir, alguns dados para que a sua equipa saiba quem é quem.",
+    "doneBodyAlternative": "{{address}} está verificado. Continua a ser um endereço alternativo até o tornar principal em Conta.",
     "continue": "Continuar",
     "failedTitle": "Não funcionou",
     "failedBody": "Algo falhou pelo caminho. Tente novamente dentro de um momento.",
@@ -246,6 +254,7 @@
     "carryOnWithout": "Continuar sem ele",
     "doneTitle": "Número verificado",
     "doneBody": "A Soirely pode contactar o {{number}} se algo correr mal na noite do evento.",
+    "doneBodyAlternative": "{{number}} está verificado. Continua a ser um número alternativo até o tornar principal em Conta.",
     "continue": "Continuar para a Soirely",
     "changeTitle": "Altere o seu número de telemóvel",
     "nowVerified": "Atual: {{number}} · verificado",
@@ -282,7 +291,9 @@
     "remembered": "A Soirely lembra a sua escolha neste dispositivo.",
     "switched": "Agora a trabalhar em {{name}}.",
     "label": "Organização: {{name}}, a sua função {{role}}",
-    "labelSwitch": "Organização: {{name}}, a sua função {{role}}. Mudar de organização"
+    "labelSwitch": "Organização: {{name}}, a sua função {{role}}. Mudar de organização",
+    "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
+    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
   },
   "roles": {
     "owner": "Proprietário",
@@ -557,7 +568,9 @@
     "confirmWarning": "A sessão é encerrada nos dispositivos que entraram com o {{provider}}",
     "confirmEmailed": "Enviamos um email a todos os endereços verificados da sua conta a avisar que o {{provider}} foi desassociado.",
     "confirmUnlink": "Desassociar o {{provider}}",
-    "keep": "Manter associada"
+    "keep": "Manter associada",
+    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one can't be removed.",
+    "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
   "timeZone": {
     "title": "Fuso horário",
@@ -707,7 +720,137 @@
   "settings": {
     "sections": "Definições da organização",
     "sectionGeneral": "Geral",
-    "sectionRoles": "Funções"
+    "sectionMembers": "Members",
+    "sectionRoles": "Funções",
+    "sectionSignInRules": "Sign-in rules"
+  },
+  "membersScreen": {
+    "title": "Members",
+    "loading": "Loading members…",
+    "failedLoad": "We could not load the members. Check your connection and try again.",
+    "subtitle": "{{organisation}} · {{active}} active · {{invited}} invited",
+    "invite": "Invite somebody",
+    "show": "Show",
+    "shown": "Members shown",
+    "showEveryone": "Show everyone",
+    "filter": {
+      "all": "All",
+      "active": "Active",
+      "invited": "Invited",
+      "waiting": "Awaiting approval",
+      "suspended": "Suspended",
+      "former": "Former"
+    },
+    "empty": {
+      "all": {
+        "title": "Nobody here"
+      },
+      "active": {
+        "title": "Nobody is active",
+        "body": "Invite somebody to start."
+      },
+      "waiting": {
+        "title": "Nobody is waiting",
+        "body": "Requests to join show here until somebody answers them."
+      },
+      "suspended": {
+        "title": "Nobody is suspended",
+        "body": "Everyone in {{organisation}} can use it right now."
+      },
+      "former": {
+        "title": "Nobody has left",
+        "body": "People who leave or are removed are listed here, with what they did kept."
+      }
+    },
+    "state": {
+      "active": "Active",
+      "pending_approval": "Awaiting approval",
+      "suspended": "Suspended",
+      "left": "Left",
+      "removed": "Removed"
+    },
+    "how": {
+      "invitation": "Invitation",
+      "invitationFrom": "Invitation from {{inviter}}",
+      "self_created": "Created {{organisation}}",
+      "join_code": "Join code",
+      "domain": "Company email address",
+      "request": "Asked to join",
+      "directory": "Company directory"
+    },
+    "when": {
+      "since": "since {{date}}",
+      "asked": "asked {{date}}",
+      "suspended": "suspended {{date}}",
+      "left": "left {{date}}",
+      "removed": "removed {{date}}"
+    },
+    "you": "you",
+    "youAs": "You · {{role}}",
+    "invitations": "Invitations",
+    "invitationsNote": "Nobody has an account here until they accept.",
+    "noInvitations": "No invitations have been sent.",
+    "invitedAs": "{{role}} · invited by {{inviter}}",
+    "dates": {
+      "pending": "Sent {{sent}} · expires {{ended}}",
+      "expired": "Sent {{sent}} · expired {{ended}}",
+      "revoked": "Sent {{sent}} · revoked {{ended}}",
+      "declined": "Sent {{sent}} · declined {{ended}}",
+      "accepted": "Sent {{sent}}"
+    },
+    "invitationState": {
+      "pending": "Pending",
+      "expired": "Expired",
+      "revoked": "Revoked",
+      "declined": "Declined",
+      "accepted": "Accepted"
+    },
+    "revoke": "Revoke",
+    "inviteAgain": "Invite again",
+    "revokeFailed": "We could not revoke that invitation. Try again.",
+    "howTheyGotHere": "How they got here",
+    "someone": "somebody no longer here",
+    "byYou": "you",
+    "history": {
+      "invitedBy": "Invited by {{by}}",
+      "joined": {
+        "invitation": "Accepted the invitation",
+        "self_created": "Created {{organisation}}",
+        "join_code": "Joined with a join code",
+        "domain": "Joined with a company email address",
+        "request": "Joined after asking",
+        "directory": "Joined from the company directory"
+      },
+      "asked": {
+        "invitation": "Asked to join",
+        "self_created": "Asked to join",
+        "join_code": "Asked to join with a join code",
+        "domain": "Asked to join with a company email address",
+        "request": "Asked to join",
+        "directory": "Asked to join from the company directory"
+      },
+      "approved": "Approved by {{by}}",
+      "suspended": "Suspended by {{by}}",
+      "restored": "Restored by {{by}}",
+      "left": "Left {{organisation}}",
+      "removed": "Removed by {{by}}"
+    },
+    "whoToInvite": "Who to invite",
+    "role": "Role",
+    "emailBlank": "Enter their email address.",
+    "emailShape": "That does not look like an email address. Check it has an @ and a domain, like amara.o@gmail.com.",
+    "roleMeans": {
+      "owner": "Everything, including billing and deleting the organisation.",
+      "administrator": "Everything in events, plus members and roles. Not billing.",
+      "event_manager": "Everything inside events, and manages the budget. Never the margin.",
+      "coordinator": "Runs events. Reads the budget, never the margin.",
+      "read_only": "Sees events. Changes nothing."
+    },
+    "inviteNote": "They get an email in their language with a link to join {{organisation}} as {{role}}. The email says when the link stops working.",
+    "send": "Send invitation",
+    "cancel": "Cancel",
+    "sent": "Invitation sent to {{email}}.",
+    "sendFailed": "We could not send the invitation. Check your connection and try again."
   },
   "rolesScreen": {
     "title": "Funções",
@@ -721,11 +864,13 @@
     "holders_other": "{{count}} pessoas",
     "nameLabel": "Nome da função",
     "nameBlank": "Dê um nome à função.",
-    "nameTooLong": "O nome pode ter no máximo {{most}} caracteres.",
+    "nameTooLong": "Encurte o nome para um máximo de {{most}} caracteres.",
     "nameTaken": "Já existe uma função com esse nome.",
     "describeOwner": "Tudo, incluindo o que a Soirely acrescentar mais tarde.",
     "describeSeeded": "É predefinida, por isso não pode ser removida. É você quem escolhe o que inclui.",
     "describeCustom": "Criada por {{name}}. Pode ser removida.",
+    "describeSeededReadOnly": "É predefinida, por isso não pode ser removida. Quem pode alterar {{area}} decide o que inclui.",
+    "describeCustomReadOnly": "Criada por {{name}}.",
     "describeNew": "Começa sem nada. Ative o que for preciso.",
     "remove": "Remover função",
     "ownerNote": "Proprietário é predefinida e não pode ser editada nem removida. Tem sempre tudo, e {{name}} tem sempre pelo menos um.",
@@ -812,11 +957,12 @@
     "phonesIntro": "O seu número principal é o que aparece no seu perfil. Os outros números também servem para contacto.",
     "phonesList": "Números de telefone desta conta",
     "count": "{{count}} de {{most}}",
-    "capEmails_one": "You can add {{count}} more. Primary included, an account holds {{most}} email addresses.",
-    "capEmails_other": "You can add {{count}} more. Primary included, an account holds {{most}} email addresses.",
-    "capPhones_one": "You can add {{count}} more. Primary included, an account holds {{most}} numbers.",
-    "capPhones_other": "You can add {{count}} more. Primary included, an account holds {{most}} numbers.",
-    "capFull": "You have the most you can add: {{most}}. Remove one to add another.",
+    "capEmails_one": "Pode adicionar mais um. Uma conta pode ter até {{most}} endereços de e-mail, incluindo o principal.",
+    "capEmails_other": "Pode adicionar mais {{count}}. Uma conta pode ter até {{most}} endereços de e-mail, incluindo o principal.",
+    "capPhones_one": "Pode adicionar mais um. Uma conta pode ter até {{most}} números de telefone, incluindo o principal.",
+    "capPhones_other": "Pode adicionar mais {{count}}. Uma conta pode ter até {{most}} números de telefone, incluindo o principal.",
+    "capFullEmails": "Já tem {{most}}, o máximo que uma conta pode ter. Remova um para adicionar outro.",
+    "capFullPhones": "Já tem {{most}}, o máximo que uma conta pode ter. Remova um para adicionar outro.",
     "verified": "Verificado",
     "unverified": "Não verificado",
     "primary": "Principal",
@@ -852,6 +998,8 @@
     "promoted": "{{address}} é agora o seu endereço principal. A partir de agora, inicie sessão com ele.",
     "promotedPhone": "{{number}} é agora o seu número principal.",
     "removed": "{{address}} foi removido.",
+    "verifiedDone": "{{address}} está verificado.",
+    "verifiedDonePhone": "{{number}} está verificado.",
     "refusedPrimary": "Este é o endereço com que inicia sessão. Torne primeiro outro endereço principal.",
     "refusedPrimaryPhone": "Este é o seu número principal. Torne primeiro outro número principal.",
     "refusedLastVerified": "Este é o seu único endereço verificado, a única prova de que a conta é sua. Verifique outro antes de remover este.",
@@ -859,6 +1007,211 @@
     "refusedNotVerified": "Verifique este endereço antes de o tornar principal.",
     "refusedNotVerifiedPhone": "Verifique este número antes de o tornar principal.",
     "failed": "Não foi possível concluir. Tente novamente.",
-    "proveIntro": "Confirme que é você antes de alterar o endereço com que inicia sessão."
+    "proveIntro": "Confirme que é você antes de alterar o endereço com que inicia sessão.",
+    "backToAccount": "Voltar a Conta",
+    "removeInAccount": "Removê-lo em Conta",
+    "removeInAccountPhone": "Removê-lo em Conta"
+  },
+  "join": {
+    "registerTitle": "Join {{organisation}}",
+    "answerTitle": "Join {{organisation}}?",
+    "emailTakenTitle": "Sign in to accept",
+    "acceptedTitle": "You are in",
+    "declinedTitle": "Invitation declined",
+    "notFoundTitle": "We could not find that invitation",
+    "notFoundBody": "The link may be mistyped, or a newer invitation replaced it. Check the latest email, or ask whoever invited you to send it again.",
+    "orgLine": "Invitation from {{inviter}} · {{role}}",
+    "orgDeleted": "Deleted",
+    "invited": "{{inviter}} invited {{email}} to join as {{role}}.",
+    "worksUntil": "This invitation works until {{date}}.",
+    "createTitle": "Create an account",
+    "emailLocked": "This is the address the invitation was sent to. It is already confirmed, so there is no code to enter.",
+    "passwordBlank": "Choose a password.",
+    "passwordShort": "Use at least {{count}} characters.",
+    "createAndJoin": "Create account and join",
+    "joining": "Joining…",
+    "failedTitle": "Joining did not work",
+    "haveAccount": "I already have an account",
+    "emailTakenHeading": "You already have an account",
+    "emailTakenBody": "{{email}} already has a Soirely account. Sign in with it, and you can accept the invitation there.",
+    "signInToAccept": "Sign in to accept",
+    "forgotPassword": "Forgot your password?",
+    "invitedYou": "{{inviter}} invited you to join as {{role}}.",
+    "signedInUntil": "Signed in as {{email}} · this invitation works until {{date}}.",
+    "accept": "Accept and join",
+    "decline": "Decline",
+    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
+    "answerFailedTitle": "Your answer did not reach us",
+    "joined": "You joined {{organisation}} as {{role}}.",
+    "open": "Open {{organisation}}",
+    "declinedBody": "You declined. {{inviter}} will see that you said no.",
+    "goToEvents": "Go to your events",
+    "goHome": "Go to Soirely",
+    "signOutAndUse": "Sign out and use {{email}}",
+    "staySignedIn": "Stay signed in as {{email}}",
+    "refused": {
+      "invitation_expired": {
+        "title": "This invitation has expired",
+        "word": "Expired",
+        "body": "This invitation has expired. Ask {{inviter}} to send a new one."
+      },
+      "invitation_revoked": {
+        "title": "This invitation was withdrawn",
+        "word": "Withdrawn",
+        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+      },
+      "invitation_accepted": {
+        "title": "Already accepted",
+        "word": "Already accepted",
+        "body": "You already accepted this invitation."
+      },
+      "invitation_declined": {
+        "title": "Already declined",
+        "word": "Already declined",
+        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind."
+      },
+      "invitation_not_yours": {
+        "title": "This invitation is for someone else",
+        "word": "Signed in as someone else",
+        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+      },
+      "organisation_deleted": {
+        "title": "This organisation is gone",
+        "word": "Organisation deleted",
+        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+      }
+    }
+  },
+  "invitations": {
+    "heading": "Invitations",
+    "count_one": "{{count}} invitation",
+    "count_other": "{{count}} invitations",
+    "from": "Invitation from {{inviter}} · {{role}}",
+    "fromNobody": "Invitation · {{role}}",
+    "until": "Works until {{date}}",
+    "untilSentTo": "Works until {{date}} · Sent to {{email}}",
+    "accept": "Accept and join",
+    "acceptLabel": "Accept and join {{organisation}}",
+    "decline": "Decline",
+    "declineLabel": "Decline the invitation to {{organisation}}",
+    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
+    "declineNoteNobody": "Declining changes nothing else.",
+    "joined": "You joined {{organisation}} as {{role}}.",
+    "open": "Open {{organisation}}",
+    "declined": "You declined. {{inviter}} will see that you said no.",
+    "declinedNobody": "You declined.",
+    "failed": "Your answer did not reach us. Check your connection and try again.",
+    "refused": {
+      "invitation_expired": {
+        "word": "Expired",
+        "body": "This invitation has expired. Ask {{inviter}} to send a new one.",
+        "bodyNobody": "This invitation has expired. Ask whoever invited you to send a new one."
+      },
+      "invitation_revoked": {
+        "word": "Withdrawn",
+        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+      },
+      "invitation_accepted": {
+        "word": "Already accepted",
+        "body": "You already accepted this invitation."
+      },
+      "invitation_declined": {
+        "word": "Already declined",
+        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
+        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+      },
+      "invitation_not_yours": {
+        "word": "Signed in as someone else",
+        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+      },
+      "organisation_deleted": {
+        "word": "Organisation deleted",
+        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+      }
+    }
+  },
+  "signInRules": {
+    "title": "Sign-in rules",
+    "intro": "For everyone in {{organisation}}. Each rule says who it affects before you turn it on.",
+    "readTitle": "{{organisation}}’s sign-in rules",
+    "readIntro": "Set by the organisation’s owners. You can read them here; only they can change them.",
+    "loading": "Loading the sign-in rules…",
+    "failedLoad": "The sign-in rules did not load.",
+    "retry": "Try again",
+    "saved": "Rules saved. Everyone affected has an email saying what changed.",
+    "failedSave": "The rules were not saved. Nothing changed. Try again in a moment.",
+    "methodTitle": "How people sign in",
+    "anyMethod": "Any method",
+    "anyMethodMeans": "Email and password, Google or Apple. Each person chooses.",
+    "providerOnly": "Google or Apple only",
+    "providerOnlyMeans": "Passwords stop working for signing in to {{organisation}}.",
+    "strandedTitle_one": "{{count}} person signs in with a password only",
+    "strandedTitle_other": "{{count}} people sign in with a password only",
+    "strandedBody": "None of them has Google or Apple linked. When you save, each gets an email and, at their next sign-in, a button to link one. Until they do, they can read but not change anything in {{organisation}}.",
+    "strandedList": "People affected",
+    "strandedPerson": "{{name}} · {{role}} · password",
+    "idleTitle": "How long a sign-in lasts unused",
+    "idleIntro": "After this long without using Soirely, people are asked to sign in again.",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "noLimit": "No limit",
+    "twoFactorTitle": "Two-factor for people who can manage members, roles, billing or security",
+    "twoFactorShort": "Two-factor",
+    "twoFactorLabel": "Require two-factor for people who can manage members, roles, billing or security",
+    "required": "Required",
+    "notRequired": "Not required",
+    "turnOn": "Turn on",
+    "turnOff": "Turn off",
+    "twoFactorOn": "Anyone without two-factor keeps working events and is asked to set it up before their next change to members, roles, billing or security.",
+    "twoFactorOff": "Off. Anyone with an owner’s or administrator’s password can change members, roles and billing.",
+    "needsOwnTitle": "Turn on two-factor for yourself first",
+    "needsOwnBody": "Then you can require it here.",
+    "needsOwnTurnOn": "Turn on two-factor",
+    "needsOwnProviderTitle": "Link Google or Apple for yourself first",
+    "needsOwnProviderBody": "Then you can require it here.",
+    "effectsTitle": "What happens when you save",
+    "effectStranded": "{{names}} can read but not change anything until they link Google or Apple. Their password still signs them in.",
+    "effectProviderOnly": "Everyone signs in with Google or Apple. Anybody with one linked who signed in with a password is asked to sign in again with it.",
+    "effectAnyMethod": "People can sign in with their password again.",
+    "effectIdle_one": "Anyone who has not used Soirely for {{count}} day is asked to sign in again, from their next visit.",
+    "effectIdle_other": "Anyone who has not used Soirely for {{count}} days is asked to sign in again, from their next visit.",
+    "effectNoLimit": "Sign-ins last until people sign out.",
+    "effectTwoFactorOn": "People who can manage members, roles, billing or security need two-factor for it. Until they turn it on, only those permissions wait; their events keep working.",
+    "effectTwoFactorOff": "People who can manage members, roles, billing or security can do it without two-factor.",
+    "effectNothing": "Nothing changes. These are the rules in force.",
+    "save": "Save rules",
+    "saving": "Saving…",
+    "inForce": "Rules are saved",
+    "emailNote": "Everyone affected gets an email saying what changed and why.",
+    "seeTitle": "What they will see",
+    "seeProviderBody": "A rule set by {{organisation}}. Use the Google or Apple button. Until you link one, you can read but not change.",
+    "seeNote": "The message names {{organisation}} and the rule, so nobody thinks Soirely is broken. Somebody in several organisations sees which one’s rule it is.",
+    "inForceTitle": "The rules in force",
+    "askOwner": "Questions? Ask an owner of {{organisation}}.",
+    "changesTitle": "What changed, newest first",
+    "noChanges": "No changes yet. These are the rules every organisation starts with.",
+    "changeWhen": "{{day}} at {{time}} · {{who}}",
+    "changeWho": "{{name}} · {{role}}",
+    "changeWas": "was: {{was}}",
+    "valueAnyMethod": "Any method: email and password, Google or Apple",
+    "valueProviderOnly": "Google or Apple only",
+    "valueIdle_one": "Sign-ins end after {{count}} day without use",
+    "valueIdle_other": "Sign-ins end after {{count}} days without use",
+    "valueNoLimit": "Sign-ins last until you sign out",
+    "valueTwoFactor": "Two-factor required for people who can manage members, roles, billing or security",
+    "valueNoTwoFactor": "Two-factor not required",
+    "unlinkedTitle": "Read-only until you link Google or Apple",
+    "unlinkedBody": "{{organisation}} now signs in with Google or Apple only. Your password still works for now, but until you link one of them you can read and not change anything in {{organisation}}.",
+    "unlinkedLink": "Link Google or Apple",
+    "gateTitle": "Two-factor required by {{organisation}}",
+    "gateBody": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, those wait. Your events keep working.",
+    "gateTurnOn": "Turn on two-factor",
+    "gateLater": "Not now",
+    "changedTitle": "Sign-in rules changed",
+    "changedBody": "{{organisation}} changed its sign-in rules on {{day}}.",
+    "changedSee": "See what changed",
+    "changedClose": "Close this notice",
+    "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
+    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
   }
 }

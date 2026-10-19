@@ -12,6 +12,11 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { api } from '../../api.ts';
 import { type CodeStatus, codeRefusal, openingStatus } from '../../codeScreen.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
+import {
+  BackToAccount,
+  BackToAccountButton,
+  RemoveInAccount,
+} from '../../components/BackToAccount.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
@@ -21,9 +26,9 @@ export function VerifyPhone() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const onboarding = params.get('from') === 'onboarding';
   // A number added from Settings > Account (sc-113), by its id: verified there, then back to Account.
   const alternative = params.get('phone') ?? undefined;
+  const onboarding = params.get('from') === 'onboarding' && alternative == null;
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
@@ -146,7 +151,7 @@ export function VerifyPhone() {
 
   async function carryOn(): Promise<void> {
     await refreshAccount();
-    navigate(alternative == null ? '/app' : '/app/account');
+    navigate('/app');
   }
 
   // Saving the details with no number removes the phone, so the gate rests on the email again.
@@ -182,6 +187,8 @@ export function VerifyPhone() {
 
   return (
     <AuthPage>
+      {alternative != null && !verified && <BackToAccount />}
+
       {onboarding && (
         <ol className="steps" aria-label={t('verifyEmail.stepsLabel')}>
           <li className="step step-done">
@@ -206,11 +213,19 @@ export function VerifyPhone() {
           </span>
           <div className="auth-heading">
             <h1>{t('verifyPhone.doneTitle')}</h1>
-            <p>{t('verifyPhone.doneBody', { number })}</p>
+            <p>
+              {alternative == null
+                ? t('verifyPhone.doneBody', { number })
+                : t('verifyPhone.doneBodyAlternative', { number })}
+            </p>
           </div>
-          <button className="button button-primary" type="button" onClick={() => void carryOn()}>
-            {t('verifyPhone.continue')}
-          </button>
+          {alternative == null ? (
+            <button className="button button-primary" type="button" onClick={() => void carryOn()}>
+              {t('verifyPhone.continue')}
+            </button>
+          ) : (
+            <BackToAccountButton verified={alternative} />
+          )}
         </>
       ) : (
         <>
@@ -309,13 +324,15 @@ export function VerifyPhone() {
             </form>
           )}
 
-          {alternative == null && (
+          {alternative == null ? (
             <div className="auth-footnote">
               <span>{t('verifyPhone.wrongNumber')}</span>
               <Link className="link-button" to={onboarding ? '/phone?from=onboarding' : '/phone'}>
                 {t('verifyPhone.changeIt')}
               </Link>
             </div>
+          ) : (
+            <RemoveInAccount kind="phone" />
           )}
 
           {onboarding && (

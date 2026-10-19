@@ -26,6 +26,7 @@ type Act = { action: 'link' | 'unlink'; provider: Provider };
 type Said =
   | { kind: 'linked'; provider: Provider; email: string | null }
   | { kind: 'unlinked' | 'taken' | 'last' | 'providerFailed'; provider: Provider }
+  | { kind: 'keptByRule'; provider: Provider; organisation: string }
   | { kind: 'failed' };
 
 type Stage =
@@ -342,6 +343,20 @@ function SaidNotice({ said }: { said: Said }) {
     );
   }
 
+  if (said.kind === 'keptByRule') {
+    return (
+      <Notice
+        tone="broken"
+        mark={tokens.marks.broken.glyph}
+        title={t('waysCard.keptByRule', { organisation: said.organisation })}
+        body={t('waysCard.keptByRuleNext', {
+          provider: PROVIDER_NAMES[said.provider],
+          other: PROVIDER_NAMES[said.provider === 'google' ? 'apple' : 'google'],
+        })}
+      />
+    );
+  }
+
   if (said.kind === 'taken') {
     const provider = PROVIDER_NAMES[said.provider];
 
@@ -470,6 +485,8 @@ function refused(error: unknown, provider: Provider): Said {
   if (error instanceof ApiError && error.is('provider_taken')) return { kind: 'taken', provider };
   if (error instanceof ApiError && error.is('last_sign_in_method'))
     return { kind: 'last', provider };
+  if (error instanceof ApiError && error.is('provider_kept_by_rule'))
+    return { kind: 'keptByRule', provider, organisation: error.problem.organisation ?? '' };
 
   return { kind: 'failed' };
 }

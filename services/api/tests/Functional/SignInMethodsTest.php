@@ -146,6 +146,25 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertSame(['provider' => ['google', null]], $entry?->changes(), 'before and after: it was there, and now is not');
     }
 
+    /** sc-510 under no rule: a password session that links Google and unlinks it is not one Google started (lead, PR #244). */
+    #[Test]
+    public function withNoRuleThePasswordSessionALinkCameFromOutlivesTheUnlink(): void
+    {
+        $byPassword = $this->session(null);
+        $proof = $this->provedByPassword();
+        $token = $this->googleToken('g-wrong', 'folake.wrong@gmail.com');
+        $this->call('POST', '/api/auth/providers/google', ['proof' => $proof, 'providerSignIn' => ['idToken' => $token]], bearer: $byPassword->accessToken);
+        self::assertSame(201, $this->statusCode());
+
+        $body = $this->call('POST', '/api/auth/providers/google/unlink', ['proof' => $proof], bearer: $byPassword->accessToken);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame(['signedOut' => 0, 'thisDevice' => false], $body, 'the password session was never signed in with Google');
+        self::em()->clear();
+        self::assertNull(self::em()->find(RefreshToken::class, $byPassword->sessionId)?->getSignedInWith());
+        self::assertNull(self::em()->find(RefreshToken::class, $byPassword->sessionId)?->getRevokedAt());
+    }
+
     /** The password the default line points at is not there to change. */
     #[Test]
     public function anAccountWithNoPasswordIsToldWhatItCanDo(): void

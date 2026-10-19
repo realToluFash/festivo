@@ -20,12 +20,14 @@ use App\Http\Exception\ApiException;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class RolesTest extends ApiTestCase
 {
@@ -136,6 +138,20 @@ final class RolesTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAdministratorHoldingEveryPermissionStillCannotMovePeopleOntoOwner(): void
+    {
+        $administrator = self::em()->find(Role::class, $this->seeded(SeededRole::Administrator)) ?? self::fail('no administrator role');
+        $administrator->setPermissions(Permission::cases());
+        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $door = Type\string()->coerce($this->as($admin, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+        $this->member('tope@ire.events', null, $door);
+
+        $this->as($admin, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
     public function ownerCannotBeEditedOrDeleted(): void
     {
         $owner = $this->seeded(SeededRole::Owner);
@@ -181,7 +197,7 @@ final class RolesTest extends ApiTestCase
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => '   ']);
         self::assertSame('Give the role a name.', $this->violation('name'));
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => Str\repeat('a', 41)]);
-        self::assertSame('That is longer than 40 characters.', $this->violation('name'));
+        self::assertSame('Shorten the name to 40 characters or fewer.', $this->violation('name'));
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => '  event MANAGER ']);
         self::assertSame('A role with that name already exists.', $this->violation('name'));
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['made.up']]);
@@ -216,6 +232,72 @@ final class RolesTest extends ApiTestCase
         self::assertSame(Vec\map(Permission::cases(), static fn (Permission $permission): string => $permission->value), $listed);
         self::assertContains(['area' => 'budget', 'permissions' => ['budget.read', 'budget.manage', 'budget.margin']], $areas);
         self::assertContains(['area' => 'vendors', 'permissions' => ['vendors.read', 'vendors.manage']], $areas);
+    }
+
+    /** sc-2301: an English speaker's "Coordinador" was listed twice in a Spanish speaker's role picker. */
+    #[Test]
+    #[DataProvider('languages')]
+    public function aSeededRoleNameInAnyLanguageIsTakenWhateverTheCallerReads(string $locale): void
+    {
+        $this->as($this->owner, 'POST', $this->path('roles?locale=' . $locale), ['name' => 'Coordinador']);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(self::service(TranslatorInterface::class)->trans('roles.name_taken', [], null, $locale), $this->violation('name'));
+        self::assertSame('role_name_taken', $this->violation('name', 'code'));
+        self::assertNotContains('Coordinador', Vec\map($this->roles(), static fn (array $role): mixed => $role['name']));
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function languages(): iterable
+    {
+        yield 'English' => ['en'];
+        yield 'Spanish' => ['es'];
+        yield 'French' => ['fr'];
+        yield 'Portuguese' => ['pt'];
+    }
+
+    #[Test]
+    public function aCustomRoleIsNotRenamedToASeededRoleInAnotherLanguage(): void
+    {
+        $door = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $door), ['name' => 'COORDINATEUR', 'permissions' => ['events.read', 'seating.read']]);
+
+        self::assertSame('A role with that name already exists.', $this->violation('name'));
+        self::assertSame(['events.read'], $this->permissionsOf($door));
+        self::assertContains('Door team', Vec\map($this->roles(), static fn (array $role): mixed => $role['name']));
+    }
+
+    /** Named before sc-2301 counted every language: the name stays, and any change to it is checked. */
+    #[Test]
+    public function aRoleAlreadyNamedAfterASeededRoleKeepsItsNameUnchanged(): void
+    {
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $existing = Role::custom($organisation, 'Coordenador', [Permission::EventsRead]);
+        self::em()->persist($existing);
+        self::em()->flush();
+        $id = $existing->getId()->toRfc4122();
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $id), ['permissions' => ['events.read', 'seating.read']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('Coordenador', $this->last()['name']);
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $id), ['name' => 'Coordenador', 'permissions' => ['events.read']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $id), ['name' => 'coordenador']);
+        self::assertSame('A role with that name already exists.', $this->violation('name'));
+        self::assertContains('Coordenador', Vec\map($this->roles(), static fn (array $role): mixed => $role['name']));
+    }
+
+    #[Test]
+    public function aNameDifferingFromASeededLabelInMoreThanCaseIsFree(): void
+    {
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Proprietario']);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Coordinators']);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
     }
 
     #[Test]
@@ -296,11 +378,12 @@ final class RolesTest extends ApiTestCase
         return '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/' . $rest;
     }
 
-    private function violation(string $field): ?string
+    /** @param 'message'|'code' $part */
+    private function violation(string $field, string $part = 'message'): ?string
     {
-        foreach (Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($this->last()['violations'] ?? []) as $violation) {
+        foreach (Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string(), 'code' => Type\string()], true))->coerce($this->last()['violations'] ?? []) as $violation) {
             if ($violation['propertyPath'] === $field) {
-                return $violation['message'];
+                return $violation[$part];
             }
         }
 

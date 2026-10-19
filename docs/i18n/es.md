@@ -1,6 +1,6 @@
 # Spanish at Soirely
 
-Kept by `/soirely-linguist es`. Read it before writing a string in Spanish, and add to it
+Kept by `/soirely-linguist`. Read it before writing a string in Spanish, and add to it
 whenever you decide something a second string will need.
 
 ## Variant and register
@@ -49,12 +49,42 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The contact cap says the refusal's words.** Under each Account card:
+  «Puede añadir una más» / «uno más», then «Una cuenta admite hasta {{most}} direcciones de
+  correo electrónico, incluida la principal» / «… números de teléfono, incluido el
+  principal»; when full, «Tiene {{most}}, el máximo que admite una cuenta. Quite una para
+  añadir otra.» / «Quite uno para añadir otro.» «Admite» and «Quite una…» as the server's
+  `contacts.limit_*` and the card's `limit*` already say it, so the line and the refusal
+  read alike. The number before the noun is left to the card title, as the English does;
+  the gender of «una», «incluida» and «otra» is why each card has its own key
+  (`contacts.cap*`, sc-2149).
+
+- **18 Oct 2026. An alternative address or number, verified from Account.** "Alternative"
+  is «alternativa» / «alternativo», a plain Spanish adjective here, never «secundaria», which
+  ranks it. The verified line agrees with the noun: «{{address}} está verificada», because
+  the sentence goes on «una dirección alternativa… hasta que la haga principal», and
+  «{{number}} está verificado». "It stays" is «Seguirá siendo», since it was alternative
+  before it was verified. A section is its bare label after «a» and «en», as «volver a
+  Seguridad» already says it: «Volver a Cuenta», «en Cuenta». "Remove it in Account" after
+  the question is the infinitive, «Quitarla en Cuenta» / «Quitarlo en Cuenta», the shape of
+  «¿Número equivocado? Cambiarlo» (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, sc-2594).
+
+- **18 Oct 2026. Who decides, for someone who cannot.** A line shown to a viewer without the
+  power names who has it with `lockedLine`'s words, «alguien que pueda cambiar {{area}}»,
+  and never «Usted»: «Lo que incluye lo decide alguien que pueda cambiar {{area}}» is the
+  twin of «Usted decide lo que incluye». A read-only twin keeps its editable line's first
+  sentence word for word and drops what the viewer cannot do («Creado por {{name}}.»).
+  Rejected «Quien pueda cambiar…», shorter but a second wording for the same power
+  (`rolesScreen.describeSeededReadOnly`, `describeCustomReadOnly`, sc-2472).
+
 - **18 Oct 2026. The Roles refusals speak the Roles screen's words.** «Rol», «predefinido»
   and «eliminar» for a role, because the screen already says «Eliminar rol» and
   «Predefinido»; a server refusal and the screen's own check say the same sentence
-  (`roles.name_required` = `rolesScreen.nameBlank`). A length limit is «Acorte el nombre a
-  {count} caracteres como máximo», where the plural always reads right, since a limit is
-  never 1. «General» and «Roles» are the Spanish words, so they are in
+  (`roles.name_required` = `rolesScreen.nameBlank`, `roles.name_too_long` =
+  `rolesScreen.nameTooLong`). A length limit is «Acorte el nombre a {count} caracteres como
+  máximo», where the plural always reads right, since a limit is never 1. «General» and «Roles» are the Spanish words, so they are in
   `same-as-english.json` (sc-2150).
 
 - **18 Oct 2026. A phone number is «número de teléfono»; the one we text is «de móvil».**

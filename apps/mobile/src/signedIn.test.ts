@@ -1,9 +1,13 @@
+import type { InvitationPreview } from '@soirely/api-client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({
   me: vi.fn(),
   organisations: vi.fn(),
   signOut: vi.fn(),
+  myInvitations: vi.fn(async (): Promise<InvitationPreview[]> => []),
+  acceptInvitation: vi.fn(),
+  declineInvitation: vi.fn(),
 }));
 const router = vi.hoisted(() => ({ replace: vi.fn() }));
 
@@ -18,8 +22,15 @@ vi.mock('react', () => ({
   useEffect: (effect: () => void) => effect(),
 }));
 
-const { launchSignedIn, reloadSignedIn, replaceOrganisation, signOutHere, useSignedIn } =
-  await import('./signedIn.ts');
+const {
+  launchSignedIn,
+  reloadSignedIn,
+  replaceOrganisation,
+  rereadAccount,
+  signOutHere,
+  useSignedIn,
+} = await import('./signedIn.ts');
+const { useWaitingInvitations } = await import('./invitations.ts');
 
 const account = { id: 'usr_1', name: 'Adaeze' };
 const organisation = {
@@ -31,6 +42,14 @@ const organisation = {
   timezone: 'Africa/Lagos',
   role: { id: 'role_1', seededAs: 'owner', name: null },
   permissions: ['organisation.manage'],
+  withheldUntilTwoFactor: [],
+  readOnlyUntilLinked: false,
+  signInRules: {
+    providerOnly: false,
+    inactivityTimeoutDays: null,
+    administratorsNeedTwoFactor: false,
+    changedAt: null,
+  },
 };
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -66,7 +85,13 @@ describe('"Sign out" on the Settings list and the "This device" row', () => {
     signOutHere();
     await settle();
 
-    expect(useSignedIn()).toEqual({ account: null, organisations: [], organisation: null });
+    expect(useSignedIn()).toEqual({
+      account: null,
+      organisations: [],
+      organisation: null,
+      invitations: [],
+      invitationOutcomes: {},
+    });
     expect(api.me).not.toHaveBeenCalled();
   });
 });
@@ -118,5 +143,85 @@ describe('an organisation saved from its page', () => {
     replaceOrganisation({ ...other, name: 'Okafor & Co' });
 
     expect(useSignedIn().organisation?.id).toBe('org_1');
+  });
+});
+
+describe('the account read again without leaving the screen', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api.me.mockResolvedValue(account);
+    api.organisations.mockResolvedValue([organisation]);
+    await reloadSignedIn();
+    vi.clearAllMocks();
+  });
+
+  it('replaces the account and keeps the organisation, with no second organisations read', async () => {
+    api.me.mockResolvedValue({ ...account, name: 'Adaeze Okafor' });
+
+    await rereadAccount();
+
+    expect(useSignedIn().account).toEqual({ ...account, name: 'Adaeze Okafor' });
+    expect(useSignedIn().organisation).toEqual(organisation);
+    expect(api.organisations).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the read fails, keeps the account it had, and opens nothing', async () => {
+    api.me.mockRejectedValue(new Error('offline'));
+
+    await expect(rereadAccount()).rejects.toThrow('offline');
+    expect(useSignedIn().account).toEqual(account);
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+});
+
+describe('an invitation answered on one screen', () => {
+  const invitation: InvitationPreview = {
+    id: 'inv_1',
+    organisation: { id: 'org_2', name: 'Okafor Weddings' },
+    email: 'adaeze@ire.events',
+    role: { id: 'role_2', seededAs: 'coordinator', name: null },
+    invitedBy: { name: 'Chidi' },
+    expiresAt: '2026-10-26T09:00:00Z',
+    refusal: null,
+    forYou: true,
+    signedInAs: null,
+  };
+  const joined = { ...organisation, id: 'org_2', name: 'Okafor Weddings' };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api.me.mockResolvedValue(account);
+    api.organisations.mockResolvedValue([organisation]);
+    api.myInvitations.mockResolvedValue([invitation]);
+    await reloadSignedIn();
+  });
+
+  it('is read once with the account, not once per screen', () => {
+    useWaitingInvitations();
+    useWaitingInvitations();
+
+    expect(api.myInvitations).toHaveBeenCalledTimes(1);
+    expect(useWaitingInvitations().invitations).toEqual([invitation]);
+  });
+
+  it('shows as declined on the screen underneath too', async () => {
+    api.declineInvitation.mockResolvedValue(undefined);
+    const settings = useWaitingInvitations();
+
+    await settings.answer(invitation, 'decline');
+
+    expect(useWaitingInvitations().outcomes).toEqual({ inv_1: { kind: 'declined' } });
+  });
+
+  it('shows as accepted on the screen underneath too, with the organisation joined', async () => {
+    api.acceptInvitation.mockResolvedValue(joined);
+    const settings = useWaitingInvitations();
+
+    await settings.answer(invitation, 'accept');
+
+    expect(useWaitingInvitations().outcomes).toEqual({
+      inv_1: { kind: 'accepted', organisationId: 'org_2' },
+    });
+    expect(useSignedIn().organisations.map(({ id }) => id)).toEqual(['org_1', 'org_2']);
   });
 });

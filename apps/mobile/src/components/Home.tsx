@@ -12,6 +12,7 @@ import { AppFrame, bodyEdges, useOpenSwitcher } from './AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LinkedNotice } from './LinkedNotice.tsx';
 import { Screen } from './Screen.tsx';
+import { SignInRulesNotices } from './SignInRulesNotices.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text } from './Text.tsx';
 
@@ -35,6 +36,9 @@ function HomeBody() {
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
       <LinkedNotice />
+      {organisation != null && (
+        <SignInRulesNotices key={organisation.id} organisation={organisation} />
+      )}
       {account != null && (
         <View style={[cardFrame(kind), styles.card]}>
           <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">

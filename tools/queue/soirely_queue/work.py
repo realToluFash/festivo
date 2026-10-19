@@ -44,8 +44,28 @@ def latest_verdict(pr):
     return max(pr["lead"], key=lambda v: v["at"]) if pr["lead"] else None
 
 
-def covers(verdict, sha):
-    return bool(verdict and verdict["sha"] and sha.startswith(verdict["sha"]))
+def covers(verdict, sha, carried=None):
+    if not (verdict and verdict["sha"]):
+        return False
+    return sha.startswith(verdict["sha"]) or carried == verdict["sha"]
+
+
+def carried(pr, cache, same_change, before=None):
+    """The passed sha whose change the head still makes, as after merging main in. `cache`
+    holds each answer by sha pair, since a pair's answer never changes. A merged head is part
+    of main, so nothing can compare it: it keeps the carry `before`, last sync's record, made."""
+    verdict = latest_verdict(pr)
+    if not verdict or verdict["verdict"] != "pass" or not verdict["sha"] \
+            or covers(verdict, pr["head_sha"]):
+        return None
+    if pr["state"] != "open":
+        before = before or {}
+        kept = before.get("carried") if before.get("head_sha") == pr["head_sha"] else None
+        return kept if kept == verdict["sha"] else None
+    key = f"{verdict['sha']}..{pr['head_sha']}"
+    if key not in cache:
+        cache[key] = same_change(verdict["sha"], pr["head_sha"])
+    return verdict["sha"] if cache[key] else None
 
 
 def open_threads(pr):
@@ -99,11 +119,15 @@ def queued(role, stories):
             and config["filter"](set(story["labels"]), story["state"])]
 
 
-def queue_items(stories):
-    """A story entering a role's queue is work once. One sitting there waits for a pick."""
+def queue_items(stories, moves=None):
+    """A story entering a role's queue is work once, unless the role moved it there itself.
+    One sitting there waits for a pick."""
+    moves = moves or {}
     merged = {}
     for role, config in R.ROLES.items():
         for story in queued(role, stories):
+            if moves.get((story["id"], story["state"], story["moved_at"])) == role:
+                continue
             pool = R.pool(role, story["state"], story["labels"])
             fingerprint = f"{pool}:story:sc-{story['id']}:{story['state']}:{story['moved_at']}"
             if fingerprint in merged:
@@ -138,7 +162,7 @@ def review_items(stories, prs):
             sha = pr["head_sha"]
             returned = verdict and verdict["verdict"] == "back" \
                 and (story["moved_at"] or "") > verdict["at"]
-            if covers(verdict, sha) and not returned:
+            if covers(verdict, sha, pr.get("carried")) and not returned:
                 continue
             if verdict and verdict["verdict"] == "pass":
                 why = f"pushed after the pass at {verdict['sha'][:7]}"
@@ -179,6 +203,7 @@ def developer_items(stories, prs):
         role = R.developer_of(story["labels"])
         sha = pr["head_sha"][:7]
         verdict = latest_verdict(pr)
+        covered = covers(verdict, pr["head_sha"], pr.get("carried"))
         number = pr["number"]
 
         def add(kind, reason):
@@ -187,7 +212,7 @@ def developer_items(stories, prs):
 
         if pr["state"] == "merged":
             if story["state"] == "In Review":
-                if covers(verdict, pr["head_sha"]) and verdict["verdict"] == "pass":
+                if covered and verdict["verdict"] == "pass":
                     add("to-qa", f"PR #{number} merged at the passed {sha}: "
                                  f"move sc-{story['id']} to Ready For QA")
                 else:
@@ -199,11 +224,11 @@ def developer_items(stories, prs):
         if pr["checks"] == "red":
             add("checks-red", f"PR #{number} checks are red at {sha}")
         elif pr["checks"] == "green" and story["state"] == "In Progress" \
-                and not covers(verdict, pr["head_sha"]):
+                and not covered:
             add("to-review", f"PR #{number} is green at {sha}: move sc-{story['id']} "
                              "to In Review")
         elif pr["checks"] == "green" and story["state"] == "In Review" \
-                and covers(verdict, pr["head_sha"]) and verdict["verdict"] == "pass":
+                and covered and verdict["verdict"] == "pass":
             if open_threads(pr):
                 continue
             conflict = ", but it conflicts with main" if pr["mergeable"] == "conflicting" else ""
@@ -242,7 +267,7 @@ def heartbeat_items(stories, last_runs, busy_roles, now):
 
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
-           handled=frozenset()):
+           handled=frozenset(), moves=None):
     return (inbox_items(stories, handled) + developer_items(stories, prs) + review_items(stories, prs)
-            + queue_items(stories) + main_items(main_run)
+            + queue_items(stories, moves) + main_items(main_run)
             + heartbeat_items(stories, last_runs or {}, set(busy_roles), now))

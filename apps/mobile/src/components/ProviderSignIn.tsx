@@ -47,8 +47,10 @@ export function OrRule({ label }: { label: string }) {
 /** Built to each owner's published specification; the marks are copied, not redrawn. */
 export function ProviderButtons({
   onFailed = failedElsewhere,
+  only,
 }: {
   onFailed?: ((provider: string) => void) | undefined;
+  only?: readonly string[] | undefined;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -66,24 +68,29 @@ export function ProviderButtons({
     }
   }
 
+  const shows = (provider: Provider): boolean =>
+    only == null || only.length === 0 || only.includes(provider);
+
   return (
     <View style={styles.group}>
-      <Pressable
-        style={[styles.button, styles.google]}
-        onPress={() => void continueWith('google')}
-        disabled={busy}
-        accessibilityRole="button"
-        accessibilityState={{ busy, disabled: busy }}
-        testID="signIn.google"
-      >
-        <GoogleMark />
-        <Text size={tokens.typeButton.size} weight="medium" style={styles.googleText}>
-          {t('signIn.withGoogle', { provider: 'Google' })}
-        </Text>
-      </Pressable>
+      {shows('google') && (
+        <Pressable
+          style={[styles.button, styles.google]}
+          onPress={() => void continueWith('google')}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityState={{ busy, disabled: busy }}
+          testID="signIn.google"
+        >
+          <GoogleMark />
+          <Text size={tokens.typeButton.size} weight="medium" style={styles.googleText}>
+            {t('signIn.withGoogle', { provider: 'Google' })}
+          </Text>
+        </Pressable>
+      )}
 
       {/* Apple's own button on iOS, as its rules ask; elsewhere the same black style, drawn. */}
-      {Platform.OS === 'ios' ? (
+      {!shows('apple') ? null : Platform.OS === 'ios' ? (
         <AppleAuthenticationButton
           buttonType={AppleAuthenticationButtonType.CONTINUE}
           buttonStyle={AppleAuthenticationButtonStyle.BLACK}
