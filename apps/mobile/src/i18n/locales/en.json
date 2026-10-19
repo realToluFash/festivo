@@ -724,6 +724,7 @@
     "removed": "{{address}} has been removed.",
     "verifiedDone": "{{address}} is verified.",
     "verifiedDonePhone": "{{number}} is verified.",
+    "verifiedPrimaryPhone": "{{number}} is verified and is now your primary number.",
     "refusedPrimary": "This is the address you sign in with. Make another one primary first.",
     "refusedPrimaryPhone": "This is your primary number. Make another one primary first.",
     "refusedLastVerified": "This is your only verified address, the one proof the account is yours. Verify another before removing this one.",
