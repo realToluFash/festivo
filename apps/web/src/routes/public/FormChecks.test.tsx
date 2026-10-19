@@ -20,6 +20,7 @@ const UNVERIFIED: Session = {
   organisations: [membership()],
   organisationCountry: null,
   timezone: null,
+  waitingFor: null,
 };
 
 function at(path: string) {

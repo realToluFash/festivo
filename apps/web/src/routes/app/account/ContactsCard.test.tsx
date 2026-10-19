@@ -24,6 +24,7 @@ const FOLAKE: Session = {
   organisations: [MEMBERSHIP],
   organisationCountry: null,
   timezone: 'Africa/Lagos',
+  waitingFor: null,
 };
 
 const ZONES = [
@@ -95,6 +96,7 @@ const ME = {
   organisationCountry: 'NG',
   locale: 'en',
   timezone: 'Africa/Lagos',
+  waitingFor: null,
   verified: true,
   complete: true,
   needsOrganisation: false,

@@ -7,5 +7,5 @@ export function landingFor(gate: Awaiting | null): Landing {
   if (gate === 'email') return '/verify-email';
   if (gate === 'phone') return '/verify-phone?from=onboarding';
 
-  return gate === 'details' ? '/complete-profile' : '/';
+  return gate === 'details' || gate === 'approval' ? '/complete-profile' : '/';
 }

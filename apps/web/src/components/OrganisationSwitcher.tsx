@@ -4,18 +4,23 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import type { WaitingInvitations } from '../invitations.ts';
+import type { DomainOffer } from '../joinOffers.ts';
 import { InvitationRows } from './InvitationRows.tsx';
 
 export function OrganisationSwitcher({
   current,
   organisations,
   waiting,
+  offer = null,
+  email = '',
   onSwitch,
   onCreate,
 }: {
   current: Membership;
   organisations: readonly Membership[];
   waiting: WaitingInvitations;
+  offer?: DomainOffer | null;
+  email?: string;
   onSwitch: (organisation: Membership) => void;
   onCreate: () => void;
 }) {
@@ -112,6 +117,7 @@ export function OrganisationSwitcher({
               );
             })}
           </ul>
+          {offer?.organisation != null && <OfferCard offer={offer} email={email} />}
           {waiting.invitations.length > 0 && (
             <section
               className="org-switcher-invitations"
@@ -151,6 +157,71 @@ export function OrganisationSwitcher({
             <span>{t('createOrganisation.row')}</span>
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** An organisation at the domain of the primary address: Ask to join, or Not now for good. */
+function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const name = offer.organisation?.name ?? '';
+
+  async function ask(): Promise<void> {
+    setBusy(true);
+    setFailed(false);
+
+    try {
+      await offer.ask();
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="org-switcher-offer" role="group" aria-labelledby="org-switcher-offer">
+      <div className="org-switcher-offer-text">
+        <p id="org-switcher-offer" className="org-switcher-offer-title">
+          {t('domainJoining.usesSoirely', { organisation: name })}
+        </p>
+        <p>{t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}</p>
+      </div>
+      {offer.asked ? (
+        <div className="org-switcher-offer-asked" role="status">
+          <span className="org-switcher-ring" aria-hidden="true" />
+          <p>
+            <strong>{t('domainJoining.waiting')}</strong>
+            {' · '}
+            {t('domainJoining.switcherAsked', { email })}
+          </p>
+        </div>
+      ) : (
+        <>
+          {failed && <p role="alert">{t('domainJoining.unavailable')}</p>}
+          <div className="org-switcher-offer-buttons">
+            <button
+              className="button button-primary"
+              type="button"
+              aria-busy={busy}
+              disabled={busy}
+              onClick={() => void ask()}
+            >
+              {t('domainJoining.ask')}
+            </button>
+            <button
+              className="button"
+              type="button"
+              disabled={busy}
+              onClick={() => void offer.dismiss()}
+            >
+              {t('domainJoining.notNow')}
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

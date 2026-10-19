@@ -16,7 +16,9 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\MembershipStatus;
 use App\Enum\Permission;
+use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
@@ -50,6 +52,7 @@ final readonly class MembersController
         private MemberActions $memberActions,
         private OwnershipTransfer $ownershipTransfer,
         private TranslatorInterface $translator,
+        private MembershipDirectoryInterface $membershipDirectory,
     ) {
     }
 
@@ -69,10 +72,15 @@ final readonly class MembersController
             static fn (Invitation $invitation): string => $invitation->getAcceptedBy()?->getId()->toRfc4122() ?? '',
         );
         $now = new DateTimeImmutable();
+        // Somebody waiting for approval is shown only to the people who decide on them (sc-392, #529).
+        $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
 
         return new JsonResponse([
             'members' => Vec\map(
-                $this->membershipRepository->findInOrganisation($organisation),
+                Vec\filter(
+                    $this->membershipRepository->findInOrganisation($organisation),
+                    static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus(),
+                ),
                 static fn (Membership $membership): array => MemberSerialiser::member(
                     $membership,
                     $history[$membership->getId()->toRfc4122()] ?? [],

@@ -17,6 +17,7 @@ import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { CompanyDomainsCard } from './CompanyDomainsCard.tsx';
 import { OwnershipCard } from './OwnershipCard.tsx';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
@@ -73,6 +74,10 @@ export function General() {
           <ReadOnly organisation={organisation} />
         )}
       </section>
+
+      {can(session, 'members.manage') && (
+        <CompanyDomainsCard key={organisation.id} organisation={organisation} />
+      )}
 
       <OwnershipCard key={organisation.id} organisation={organisation} />
     </div>

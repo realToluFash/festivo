@@ -9,4 +9,8 @@ describe('where an account lands', () => {
     expect(landingFor('details')).toBe('/complete-profile');
     expect(landingFor(null)).toBe('/');
   });
+
+  it('waits on the details screen while a request to join at its domain is unanswered', () => {
+    expect(landingFor('approval')).toBe('/complete-profile');
+  });
 });

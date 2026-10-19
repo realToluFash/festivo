@@ -19,6 +19,7 @@ import {
   useSessionState,
 } from '../../session.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
+import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
 
@@ -78,6 +79,7 @@ function Shell() {
   const organisation = session.organisation;
   const waiting = useWaitingInvitations();
   const closeCreate = useCallback(() => setCreating(false), []);
+  const offer = useDomainOffer();
 
   return (
     <div className="shell">
@@ -93,6 +95,8 @@ function Shell() {
             current={organisation}
             organisations={session.organisations}
             waiting={waiting}
+            offer={offer}
+            email={session.email}
             onSwitch={(next) => {
               switchOrganisation(next.id);
               setSwitched({ name: next.name, at: pathname });

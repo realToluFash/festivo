@@ -8,11 +8,13 @@ import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
+import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
+import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
@@ -61,15 +63,17 @@ export function AppFrame({
   const [created, setCreated] = useState<string | null>(null);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
+  const offer = useDomainOffer();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
-    signedIn.organisation != null || waiting.invitations.length > 0
+    signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
       ? () => {
           setCreated(null);
           setChoosing(true);
         }
       : undefined;
+  const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
 
   return (
     <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
@@ -87,7 +91,7 @@ export function AppFrame({
           current={current}
           title={title}
           back={back}
-          email={signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '')}
+          email={email}
           organisation={signedIn.organisation}
           waiting={count}
           onSwitch={openSwitcher}
@@ -111,6 +115,8 @@ export function AppFrame({
         organisations={signedIn.organisations}
         current={signedIn.organisation}
         waiting={waiting}
+        offer={offer}
+        email={email}
         onClose={() => setChoosing(false)}
         onCreate={() => {
           setChoosing(false);
@@ -119,7 +125,7 @@ export function AppFrame({
       />
       <CreateOrganisation
         open={creating}
-        email={signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '')}
+        email={email}
         onCancel={() => setCreating(false)}
         onCreated={(organisation) => {
           setCreating(false);
@@ -440,6 +446,8 @@ function Switcher({
   organisations,
   current,
   waiting,
+  offer,
+  email,
   onClose,
   onCreate,
 }: {
@@ -447,6 +455,8 @@ function Switcher({
   organisations: readonly Membership[];
   current: Membership | null;
   waiting: WaitingInvitations;
+  offer: DomainOffer;
+  email: string;
   onClose: () => void;
   onCreate: () => void;
 }) {
@@ -492,6 +502,7 @@ function Switcher({
                 </Pressable>
               );
             })}
+            {offer.organisation != null && <OfferCard offer={offer} email={email} />}
             {waiting.invitations.length > 0 && (
               <View style={styles.invitations}>
                 <Text
@@ -540,6 +551,72 @@ function Switcher({
   );
 }
 
+/** An organisation at the domain of the primary address: Ask to join, or Not now for good. */
+function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function ask(): Promise<void> {
+    setBusy(true);
+    setFailed(false);
+
+    try {
+      await offer.ask();
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={styles.offer}>
+      <Text size={tokens.typeRowTitle.size} weight="semibold" accessibilityRole="header">
+        {t('domainJoining.usesSoirely', { organisation: offer.organisation?.name ?? '' })}
+      </Text>
+      <Text size={tokens.typeBody.size} muted>
+        {t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}
+      </Text>
+      {offer.asked ? (
+        <View style={styles.offerAsked} accessibilityLiveRegion="polite">
+          <View style={styles.offerRing} />
+          <View style={styles.offerAskedWords}>
+            <Text size={tokens.typeBody.size} weight="semibold">
+              {t('domainJoining.waiting')}
+            </Text>
+            <Text size={tokens.typeBody.size}>
+              {`· ${t('domainJoining.switcherAsked', { email })}`}
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <>
+          {failed && (
+            <Text size={tokens.typeBody.size} style={styles.broken} accessibilityRole="alert">
+              {t('domainJoining.unavailable')}
+            </Text>
+          )}
+          <View style={styles.offerButtons}>
+            <PrimaryButton
+              label={t('domainJoining.ask')}
+              busy={busy}
+              onPress={() => void ask()}
+              testID="switcher.offer.ask"
+            />
+            <SecondaryButton
+              label={t('domainJoining.notNow')}
+              off={busy}
+              onPress={() => void offer.dismiss()}
+              testID="switcher.offer.notNow"
+            />
+          </View>
+        </>
+      )}
+    </View>
+  );
+}
+
 const STROKE = { strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 function Icon({ destination, on, size }: { destination: Destination; on: boolean; size: number }) {
@@ -563,6 +640,31 @@ const styles = StyleSheet.create({
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },
   accent: { color: tokens.colorAccentText },
+  broken: { color: tokens.colorBrokenText },
+  offer: {
+    gap: tokens.spaceSm,
+    padding: tokens.spaceXl,
+    borderRadius: tokens.radiusInset,
+    borderWidth: 1,
+    borderColor: tokens.colorInsetBorder,
+    backgroundColor: tokens.colorInset,
+  },
+  offerButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spaceSm },
+  offerAsked: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceSm },
+  offerAskedWords: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    flexShrink: 1,
+    minWidth: 0,
+    columnGap: tokens.spaceXxs,
+  },
+  offerRing: {
+    width: tokens.spaceMd,
+    height: tokens.spaceMd,
+    borderRadius: tokens.spaceMd / 2,
+    borderWidth: 2,
+    borderColor: tokens.colorAttention,
+  },
   header: {
     backgroundColor: tokens.colorHeader,
     borderBottomWidth: 1,

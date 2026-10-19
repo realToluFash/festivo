@@ -205,6 +205,7 @@ describe('signing in, for real', () => {
         '/api/auth/login',
         '/api/orgs',
         '/api/invitations',
+        '/api/join-offers',
       ]),
     );
   });

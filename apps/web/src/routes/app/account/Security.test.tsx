@@ -49,6 +49,7 @@ const FOLAKE: Session = {
   organisations: [MEMBERSHIP],
   organisationCountry: null,
   timezone: null,
+  waitingFor: null,
 };
 
 interface Call {
@@ -903,6 +904,7 @@ describe('adding a password to a Google account', () => {
           organisationCountry: null,
           locale: 'en',
           timezone: null,
+          waitingFor: null,
           verified: true,
           complete: true,
           needsOrganisation: false,

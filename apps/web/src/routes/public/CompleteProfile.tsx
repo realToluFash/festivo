@@ -1,9 +1,16 @@
-import { ApiError, type InvitationPreview } from '@soirely/api-client';
+import {
+  ApiError,
+  type InvitationPreview,
+  type JoinOffers,
+  type JoinRequest,
+} from '@soirely/api-client';
 import {
   answeringInvitation,
   countryChoices,
   deviceCountry,
   followCountry,
+  formatDay,
+  formatTimeOfDay,
   phoneLengthProblem,
   pickPhoneCountry,
   startingPhoneCountry,
@@ -84,37 +91,43 @@ export function CompleteProfile() {
 
       <LinkedNotice />
 
-      <div className="auth-heading">
-        <h1>{t('completeProfile.title')}</h1>
-        <p>{t('completeProfile.intro')}</p>
-      </div>
+      {state.session.waitingFor != null ? (
+        <Waiting request={state.session.waitingFor} email={state.session.email} />
+      ) : (
+        <>
+          <div className="auth-heading">
+            <h1>{t('completeProfile.title')}</h1>
+            <p>{t('completeProfile.intro')}</p>
+          </div>
 
-      {provider != null && (
-        <div className="notice notice-quiet" role="status">
-          <span className="mark mark-info" aria-hidden="true">
-            i
-          </span>
-          <p>
-            {t('completeProfile.providerConfirmed', {
-              provider,
-              email: state.session.email,
-            })}
-          </p>
-        </div>
+          {provider != null && (
+            <div className="notice notice-quiet" role="status">
+              <span className="mark mark-info" aria-hidden="true">
+                i
+              </span>
+              <p>
+                {t('completeProfile.providerConfirmed', {
+                  provider,
+                  email: state.session.email,
+                })}
+              </p>
+            </div>
+          )}
+
+          <Details
+            name={state.session.name}
+            needsOrganisation={state.session.needsOrganisation}
+            organisationCountry={
+              state.session.organisation?.countryCode ?? state.session.organisationCountry
+            }
+            onSaved={(verificationNeeded, asked) => {
+              // A phone to verify comes first; after it, an account that asked lands back here, waiting.
+              if (verificationNeeded) navigate('/verify-phone?from=onboarding', { replace: true });
+              else if (!asked) navigate('/app', { replace: true });
+            }}
+          />
+        </>
       )}
-
-      <Details
-        name={state.session.name}
-        needsOrganisation={state.session.needsOrganisation}
-        organisationCountry={
-          state.session.organisation?.countryCode ?? state.session.organisationCountry
-        }
-        onSaved={(verificationNeeded) =>
-          navigate(verificationNeeded ? '/verify-phone?from=onboarding' : '/app', {
-            replace: true,
-          })
-        }
-      />
 
       <div className="auth-footnote">
         <span>{t('completeProfile.signedInAs', { email: state.session.email })}</span>
@@ -123,6 +136,76 @@ export function CompleteProfile() {
         </button>
       </div>
     </AuthPage>
+  );
+}
+
+/** Asked to join at its domain, with nothing of that organisation's to see until somebody approves. */
+function Waiting({ request, email }: { request: JoinRequest; email: string }) {
+  const { t } = useTranslation();
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const organisation = request.organisation.name;
+  const locale = currentLocale();
+
+  async function startOwn(): Promise<void> {
+    setWithdrawing(true);
+    setFailed(false);
+
+    try {
+      await api.withdrawJoinRequest();
+      // Through the gate now: the product's no-organisation screen is where one is started.
+      await adoptAccount(await api.me());
+    } catch {
+      setWithdrawing(false);
+      setFailed(true);
+    }
+  }
+
+  return (
+    <>
+      <div className="auth-heading">
+        <h1>{t('domainJoining.waitingTitle', { organisation })}</h1>
+        <p>{t('domainJoining.waitingIntro', { email })}</p>
+      </div>
+
+      {failed && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('completeProfile.failedTitle')}</p>
+            <p>{t('completeProfile.failedBody')}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="notice notice-attention" role="status">
+        <span className="mark mark-attention" aria-hidden="true">
+          …
+        </span>
+        <p>
+          <strong>{t('domainJoining.waiting')}</strong>
+          {' · '}
+          {t('domainJoining.asked', {
+            day: formatDay(request.askedAt, locale),
+            time: formatTimeOfDay(request.askedAt, locale),
+          })}
+        </p>
+      </div>
+
+      <p>{t('domainJoining.waitingBody', { organisation })}</p>
+
+      <button
+        className="button"
+        type="button"
+        aria-busy={withdrawing}
+        disabled={withdrawing}
+        onClick={() => void startOwn()}
+      >
+        {t('domainJoining.startOwnInstead')}
+      </button>
+    </>
   );
 }
 
@@ -135,7 +218,7 @@ function Details({
   name: string;
   needsOrganisation: boolean;
   organisationCountry: string | null;
-  onSaved: (verificationNeeded: boolean) => void;
+  onSaved: (verificationNeeded: boolean, asked: boolean) => void;
 }) {
   const { t } = useTranslation();
   const locale = currentLocale();
@@ -181,6 +264,31 @@ function Details({
   const organisationInput = useRef<HTMLInputElement>(null);
   const phoneInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
+  // Only a self-registered account in no organisation is offered one at its domain (sc-561).
+  const [offered, setOffered] = useState<JoinOffers | null>(null);
+  const [own, setOwn] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+
+  useEffect(() => {
+    if (!needsOrganisation) return;
+
+    let current = true;
+    api.joinOffers().then(
+      (found) => {
+        if (current) setOffered(found);
+      },
+      // Without the offers the organisation fields show, as they would with none.
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [needsOrganisation]);
+
+  const offers = offered?.offers ?? [];
+  const showOffers = asksForOrganisation && offers.length > 0 && !own;
+  const founding = asksForOrganisation && !showOffers;
 
   function change(field: Exclude<Field, 'timezone'>, value: string): void {
     setValues((previous) => {
@@ -209,19 +317,26 @@ function Details({
 
   async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (answering) return;
 
+    if (answering || showOffers) return;
+
+    await send(null);
+  }
+
+  /** Saving, or asking to join `askToJoin` instead of founding: the same checks either way. */
+  async function send(askToJoin: string | null): Promise<void> {
+    const founds = founding && askToJoin == null;
     // Checked before sending, every field at once, and the first one that needs attention is focused.
     const checked: Errors = {};
     if (values.name.trim() === '') checked.name = t('completeProfile.nameBlank');
-    if (asksForOrganisation && values.organisationName.trim() === '') {
+    if (founds && values.organisationName.trim() === '') {
       checked.organisationName = t(
         stillOpen > 0
           ? 'completeProfile.organisationOrInvitation'
           : 'completeProfile.organisationBlank',
       );
     }
-    if (asksForOrganisation && values.countryCode === '') {
+    if (founds && values.countryCode === '') {
       checked.countryCode = t('forms.countryBlank');
     }
     // Optional: an empty field is no phone, so only a typed number is checked.
@@ -250,11 +365,13 @@ function Details({
 
     setSaving(true);
     setFailed(false);
+    setUnavailable(false);
 
     try {
       const saved = await api.completeProfile({
         name: values.name.trim(),
-        ...(asksForOrganisation
+        ...(askToJoin != null ? { askToJoin } : {}),
+        ...(founds
           ? {
               organisationName: values.organisationName.trim(),
               countryCode: values.countryCode,
@@ -267,9 +384,16 @@ function Details({
 
       if (firstJoined != null) rememberOrganisation(firstJoined);
       await adoptAccount(saved.account);
-      onSaved(saved.verificationNeeded);
+      onSaved(saved.verificationNeeded, askToJoin != null);
     } catch (error) {
       setSaving(false);
+
+      if (error instanceof ApiError && error.is('join_offer_unavailable')) {
+        // Taken off the list since the screen opened: what is offered now, and the fields if nothing is.
+        setOffered(await api.joinOffers().catch(() => null));
+        setUnavailable(true);
+        return;
+      }
 
       if (error instanceof ApiError && error.is('validation_failed')) {
         setErrors(error.fieldErrors() as Errors);
@@ -354,7 +478,61 @@ function Details({
         <p className="or-rule">{t('completeProfile.orStartOwn')}</p>
       )}
 
-      {asksForOrganisation && (
+      {unavailable && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <p>{t('domainJoining.unavailable')}</p>
+        </div>
+      )}
+
+      {showOffers && (
+        <div className="join-offers" role="group" aria-labelledby="join-offers-heading">
+          <div className="join-offers-intro">
+            <p className="join-offers-heading" id="join-offers-heading">
+              {t('domainJoining.heading')}
+            </p>
+            <p className="field-help">
+              {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
+            </p>
+          </div>
+          {offers.map((offer) => (
+            <div className="join-offer" key={offer.id}>
+              <div className="join-offer-text">
+                <p className="join-offer-title">
+                  {t('domainJoining.usesSoirely', { organisation: offer.name })}
+                </p>
+                <p className="field-help">{t('domainJoining.approvesFirst')}</p>
+              </div>
+              <button
+                className={offers.length === 1 ? 'button button-primary' : 'button'}
+                type="button"
+                disabled={saving}
+                aria-label={t('domainJoining.askLabel', { organisation: offer.name })}
+                onClick={() => void send(offer.id)}
+              >
+                {t('domainJoining.ask')}
+              </button>
+            </div>
+          ))}
+          <button className="button" type="button" disabled={saving} onClick={() => setOwn(true)}>
+            {t('domainJoining.startOwn')}
+          </button>
+        </div>
+      )}
+
+      {asksForOrganisation && offers.length > 0 && own && (
+        <button
+          className="link-button join-offers-back"
+          type="button"
+          onClick={() => setOwn(false)}
+        >
+          {t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
+        </button>
+      )}
+
+      {founding && (
         <>
           <div className="field">
             <label htmlFor="organisation">{t('completeProfile.organisation')}</label>
@@ -433,14 +611,16 @@ function Details({
         onNumber={(typed) => change('phoneNumber', typed)}
       />
 
-      <button
-        className="button button-primary"
-        type="submit"
-        aria-busy={saving}
-        disabled={answering}
-      >
-        {saving ? t('completeProfile.saving') : t('completeProfile.save')}
-      </button>
+      {!showOffers && (
+        <button
+          className="button button-primary"
+          type="submit"
+          aria-busy={saving}
+          disabled={answering}
+        >
+          {saving ? t('completeProfile.saving') : t('completeProfile.save')}
+        </button>
+      )}
     </form>
   );
 }

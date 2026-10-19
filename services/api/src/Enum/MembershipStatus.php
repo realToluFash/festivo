@@ -17,7 +17,7 @@ enum MembershipStatus: string
         return self::Active === $this || self::PendingApproval === $this;
     }
 
-    /** The declared transitions, and no others: re-joining is the only way back from left_or_removed. */
+    /** The declared transitions, and no others: re-joining, at either entry, is the only way back from left_or_removed. */
     public function canBecome(self $to): bool
     {
         if ($to === $this) {
@@ -28,7 +28,7 @@ enum MembershipStatus: string
             self::LeftOrRemoved => true,
             self::Active => self::PendingApproval === $this || self::Suspended === $this || self::LeftOrRemoved === $this,
             self::Suspended => self::Active === $this,
-            self::PendingApproval => false,
+            self::PendingApproval => self::LeftOrRemoved === $this,
         };
     }
 }

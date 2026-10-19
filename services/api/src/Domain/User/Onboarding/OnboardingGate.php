@@ -28,6 +28,8 @@ final readonly class OnboardingGate implements OnboardingGateInterface
         'invitations_mine',
         'invitations_accept',
         'invitations_decline',
+        // "A few details" offers the organisations at the address's domain (sc-561).
+        'join_offers',
     ];
 
     public function __construct(

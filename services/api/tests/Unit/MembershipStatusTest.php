@@ -31,7 +31,7 @@ final class MembershipStatusTest extends TestCase
         yield 'suspended before approval' => [MembershipStatus::PendingApproval, MembershipStatus::Suspended, false];
         yield 'back to waiting' => [MembershipStatus::Active, MembershipStatus::PendingApproval, false];
         yield 'suspended once gone' => [MembershipStatus::LeftOrRemoved, MembershipStatus::Suspended, false];
-        yield 'waiting once gone' => [MembershipStatus::LeftOrRemoved, MembershipStatus::PendingApproval, false];
+        yield 'asking again once gone' => [MembershipStatus::LeftOrRemoved, MembershipStatus::PendingApproval, true];
         yield 'active to active' => [MembershipStatus::Active, MembershipStatus::Active, false];
     }
 

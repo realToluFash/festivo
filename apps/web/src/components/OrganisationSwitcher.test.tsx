@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -29,6 +29,7 @@ function inTwo(): void {
       organisations: [IRE, OKAFOR],
       organisationCountry: null,
       timezone: null,
+      waitingFor: null,
     },
   });
 }
@@ -49,6 +50,7 @@ function inOne(): void {
       organisations: [IRE],
       organisationCountry: null,
       timezone: null,
+      waitingFor: null,
     },
   });
 }
@@ -144,6 +146,7 @@ describe('switching organisation', () => {
       needsOrganisation: false,
       hasPassword: true,
       twoFactorSetupPrompt: false,
+      waitingFor: null,
       providers: [],
       emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
       phoneNumbers: [],
@@ -286,5 +289,81 @@ describe('creating an organisation', () => {
 
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('an organisation at the domain of the address (sc-561)', () => {
+  function offering() {
+    const sent: { method: string; path: string }[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const method = init?.method ?? 'GET';
+      const path = new URL(String(input)).pathname;
+      sent.push({ method, path });
+
+      if (path === '/api/join-offers') {
+        return new Response(
+          JSON.stringify({
+            domain: 'ire.events',
+            offers: [{ id: 'org_3', name: 'Ìrè Events Kitchen' }],
+            request: null,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      if (path === '/api/join-offers/org_3/ask') {
+        return new Response(
+          JSON.stringify({
+            request: {
+              organisation: { id: 'org_3', name: 'Ìrè Events Kitchen' },
+              askedAt: '2026-10-19T10:00:00+00:00',
+            },
+          }),
+          { status: 201, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      if (path === '/api/join-offers/org_3/dismiss') return new Response(null, { status: 204 });
+
+      return new Response(JSON.stringify({ invitations: [] }), { status: 200 });
+    });
+
+    return sent;
+  }
+
+  it('offers it in the switcher, and asks', async () => {
+    offering();
+    inTwo();
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+
+    expect(await screen.findByText('Ìrè Events Kitchen uses Soirely')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Your address is at ire.events, so you can ask to join. Somebody there approves you before you see anything.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
+
+    expect(
+      await screen.findByText('we’ll email folake@ire.events when they answer.', { exact: false }),
+    ).toBeDefined();
+  });
+
+  it('hides it for good on Not now', async () => {
+    const sent = offering();
+    inTwo();
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+
+    expect(screen.queryByText('Ìrè Events Kitchen uses Soirely')).toBeNull();
+    await waitFor(() =>
+      expect(sent.some((request) => request.path === '/api/join-offers/org_3/dismiss')).toBe(true),
+    );
   });
 });

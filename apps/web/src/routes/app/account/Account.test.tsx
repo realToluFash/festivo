@@ -23,6 +23,7 @@ const FOLAKE: Session = {
   organisations: [MEMBERSHIP],
   organisationCountry: null,
   timezone: 'Africa/Lagos',
+  waitingFor: null,
 };
 
 const ZONES = [

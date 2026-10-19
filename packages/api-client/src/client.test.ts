@@ -1091,6 +1091,67 @@ describe('which gate an account is behind', () => {
 
     expect(awaiting({ verified: false, complete: false, emailAddresses: addresses })).toBe('email');
   });
+
+  test('a saved account in no organisation waits on the request it made at its domain (sc-561)', () => {
+    const waitingFor = { organisation: { id: 'org_1', name: 'Ìrè Events' }, askedAt: 'x' };
+
+    expect(
+      awaiting({ verified: true, complete: true, emailAddresses: email(true), waitingFor }),
+    ).toBe('approval');
+    expect(
+      awaiting({ verified: true, complete: false, emailAddresses: email(true), waitingFor }),
+    ).toBe('details');
+  });
+});
+
+describe('company domain joining (sc-561)', () => {
+  function answering(body: unknown, status = 200) {
+    const sent: { url: string; method: string }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({ url: String(input), method: init?.method ?? 'GET' });
+
+        return new Response(body == null ? null : JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    return { client, sent };
+  }
+
+  test('reads the offers and the request waiting', async () => {
+    const { client } = answering({
+      domain: 'ire.events',
+      offers: [{ id: 'org_1', name: 'Ìrè Events' }],
+      request: null,
+    });
+
+    expect(await client.joinOffers()).toEqual({
+      domain: 'ire.events',
+      offers: [{ id: 'org_1', name: 'Ìrè Events' }],
+      request: null,
+    });
+  });
+
+  test('reads the list of domains, and escapes the one removed', async () => {
+    const { client, sent } = answering({
+      domains: [{ domain: 'ire.events', stopped: true }],
+      most: 5,
+      ownAddress: 'folake@ire.events',
+    });
+
+    expect(await client.removeCompanyDomain('org_1', 'ire.events')).toEqual({
+      domains: [{ domain: 'ire.events', stopped: true }],
+      most: 5,
+      ownAddress: 'folake@ire.events',
+    });
+    expect(sent).toEqual([
+      { url: 'http://api.test/api/orgs/org_1/domains/ire.events', method: 'DELETE' },
+    ]);
+  });
 });
 
 describe('the health endpoint', () => {
@@ -1167,6 +1228,7 @@ const ACCOUNT = {
   needsOrganisation: false,
   hasPassword: true,
   twoFactorSetupPrompt: false,
+  waitingFor: null,
   providers: [],
   emailAddresses: [
     { id: 'a1', address: 'folake@ire.events', verified: true, primary: true },

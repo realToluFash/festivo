@@ -18,6 +18,7 @@ const ACCOUNT: Account = {
   needsOrganisation: false,
   hasPassword: true,
   twoFactorSetupPrompt: false,
+  waitingFor: null,
   providers: [],
   emailAddresses: [],
   phoneNumbers: [],

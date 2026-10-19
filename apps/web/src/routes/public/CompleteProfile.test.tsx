@@ -19,6 +19,7 @@ const FOLAKE: Session = {
   organisations: [],
   organisationCountry: null,
   timezone: null,
+  waitingFor: null,
 };
 
 const ACCOUNT = {
@@ -29,6 +30,7 @@ const ACCOUNT = {
   organisationCountry: null,
   locale: 'en',
   timezone: null,
+  waitingFor: null,
   verified: true,
   complete: true,
   needsOrganisation: false,
@@ -286,6 +288,7 @@ describe('a few details', () => {
       organisations: [organisation],
       organisationCountry: null,
       timezone: null,
+      waitingFor: null,
     });
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Renamed' } });
@@ -294,6 +297,116 @@ describe('a few details', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'A few details' })).toBeDefined(),
     );
+  });
+});
+
+describe('an organisation at the domain of the address (sc-561)', () => {
+  const ADA: Session = { ...FOLAKE, name: 'Ada Okeke', email: 'ada@ire.events' };
+  const OFFERS = {
+    domain: 'ire.events',
+    offers: [{ id: 'org_ire', name: 'Ìrè Events' }],
+    request: null,
+  };
+  const REQUEST = {
+    organisation: { id: 'org_ire', name: 'Ìrè Events' },
+    askedAt: '2026-10-17T14:20:00+00:00',
+  };
+
+  it('offers each organisation listing it instead of the organisation fields', async () => {
+    answering({ 'GET /api/join-offers': () => json(OFFERS) });
+    at('/complete-profile', ADA);
+
+    expect(await screen.findByText('Ìrè Events uses Soirely')).toBeDefined();
+    expect(
+      screen.getByText(
+        'Your address is at ire.events. Ask to join your company’s organisation, or start your own.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ask to join Ìrè Events' })).toBeDefined();
+    expect(screen.queryByLabelText('Organisation name')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save and continue' })).toBeNull();
+  });
+
+  it('shows the organisation fields after Start my own, with a way back', async () => {
+    answering({ 'GET /api/join-offers': () => json(OFFERS) });
+    at('/complete-profile', ADA);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Start my own organisation' }));
+
+    expect(screen.getByLabelText('Organisation name')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Save and continue' })).toBeDefined();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Ask to join an organisation at ire.events instead' }),
+    );
+    expect(screen.getByText('Ìrè Events uses Soirely')).toBeDefined();
+  });
+
+  it('checks the name before asking, and sends nothing without it', async () => {
+    const sent = answering({ 'GET /api/join-offers': () => json(OFFERS) });
+    at('/complete-profile', ADA);
+
+    fireEvent.change(screen.getByLabelText('Full name'), { target: { value: '  ' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' }));
+
+    expect(screen.getByText('Add your name to carry on.')).toBeDefined();
+    expect(sent.filter((request) => request.method !== 'GET')).toEqual([]);
+  });
+
+  it('saves the details with the request, then waits for approval', async () => {
+    const sent = answering({
+      'GET /api/join-offers': () => json(OFFERS),
+      'PATCH /api/auth/complete-profile': () =>
+        json({
+          account: { ...ACCOUNT, name: 'Ada Okeke', waitingFor: REQUEST },
+          verificationNeeded: false,
+        }),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    at('/complete-profile', ADA);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' }));
+
+    expect(
+      await screen.findByRole('heading', {
+        level: 1,
+        name: 'Waiting for Ìrè Events to approve you',
+      }),
+    ).toBeDefined();
+    expect(sent.find((request) => request.method === 'PATCH')?.body).toEqual({
+      name: 'Ada Okeke',
+      askToJoin: 'org_ire',
+      phoneCountryCode: expect.any(String) as string,
+      phoneNumber: '',
+    });
+  });
+
+  it('starts their own instead by withdrawing the request', async () => {
+    const sent = answering({
+      'DELETE /api/join-offers/request': () => new Response(null, { status: 204 }),
+      'GET /api/auth/me': () => json(ACCOUNT),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    at('/complete-profile', {
+      ...ADA,
+      complete: true,
+      awaiting: 'approval',
+      waitingFor: REQUEST,
+    });
+
+    expect(
+      screen.getByText('We’ll email ada@ire.events when somebody there answers.'),
+    ).toBeDefined();
+    expect(screen.getByText(/Waiting for approval/)).toBeDefined();
+    expect(
+      screen.getByText(
+        'Your details are saved. Until somebody at Ìrè Events approves you, there is nothing of theirs to see.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start my own organisation instead' }));
+
+    await waitFor(() => expect(sent.some((request) => request.method === 'DELETE')).toBe(true));
   });
 });
 
@@ -548,5 +661,37 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     at('/complete-profile', { ...FOLAKE, needsOrganisation: false });
 
     expect(sent.filter((request) => request.path === '/api/invitations')).toEqual([]);
+  });
+
+  it('stops offering the organisation at the domain once an invitation is accepted', async () => {
+    const sent = answering({
+      ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')),
+      'GET /api/join-offers': () =>
+        json({
+          domain: 'ire.events',
+          offers: [{ id: 'org_ire', name: 'Ìrè Events' }],
+          request: null,
+        }),
+      'POST /api/invitations/inv_1/accept': () =>
+        json({ organisation: membership({ ...ADUNNI, role: ROLE }) }),
+      'PATCH /api/auth/complete-profile': () =>
+        json({ account: ACCOUNT, verificationNeeded: false }),
+      'GET /api/orgs': () => json({ organisations: [membership({ ...ADUNNI, role: ROLE })] }),
+    });
+    at('/complete-profile');
+
+    expect(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Ask to join Ìrè Events' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Start my own organisation' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+    await waitFor(() => expect(sent.some((request) => request.method === 'PATCH')).toBe(true));
+    expect(sent.find((request) => request.method === 'PATCH')?.body).not.toHaveProperty(
+      'askToJoin',
+    );
   });
 });

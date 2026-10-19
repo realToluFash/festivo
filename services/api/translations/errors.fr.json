@@ -66,5 +66,6 @@
     "oauth_only": "Cette organisation n'accepte que la connexion avec Google ou Apple.",
     "oauth_only_unlinked": "Lecture seule tant que vous n'avez pas associé Google ou Apple.",
     "organisation_two_factor_required": "Cette organisation demande d'abord la double authentification.",
-    "session_timed_out": "Session fermée après une période d'inactivité."
+    "session_timed_out": "Session fermée après une période d'inactivité.",
+    "join_offer_unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre ou demandez à quelqu'un sur place de vous inviter."
 }
