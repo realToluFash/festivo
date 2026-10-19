@@ -49,6 +49,28 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The contact cap says the refusal's words.** Under each Account card:
+  «Puede añadir una más» / «uno más», then «Una cuenta admite hasta {{most}} direcciones de
+  correo electrónico, incluida la principal» / «… números de teléfono, incluido el
+  principal»; when full, «Tiene {{most}}, el máximo que admite una cuenta. Quite una para
+  añadir otra.» / «Quite uno para añadir otro.» «Admite» and «Quite una…» as the server's
+  `contacts.limit_*` and the card's `limit*` already say it, so the line and the refusal
+  read alike. The number before the noun is left to the card title, as the English does;
+  the gender of «una», «incluida» and «otra» is why each card has its own key
+  (`contacts.cap*`, sc-2149).
+
+- **18 Oct 2026. An alternative address or number, verified from Account.** "Alternative"
+  is «alternativa» / «alternativo», a plain Spanish adjective here, never «secundaria», which
+  ranks it. The verified line agrees with the noun: «{{address}} está verificada», because
+  the sentence goes on «una dirección alternativa… hasta que la haga principal», and
+  «{{number}} está verificado». "It stays" is «Seguirá siendo», since it was alternative
+  before it was verified. A section is its bare label after «a» and «en», as «volver a
+  Seguridad» already says it: «Volver a Cuenta», «en Cuenta». "Remove it in Account" after
+  the question is the infinitive, «Quitarla en Cuenta» / «Quitarlo en Cuenta», the shape of
+  «¿Número equivocado? Cambiarlo» (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, sc-2594).
+
 - **18 Oct 2026. Who decides, for someone who cannot.** A line shown to a viewer without the
   power names who has it with `lockedLine`'s words, «alguien que pueda cambiar {{area}}»,
   and never «Usted»: «Lo que incluye lo decide alguien que pueda cambiar {{area}}» is the

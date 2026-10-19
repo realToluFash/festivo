@@ -6,7 +6,8 @@ whenever you decide something a second string will need.
 ## Variant and register
 
 France French (fr-FR). _Vouvoiement_ throughout: "Veuillez…". France typography: a
-non-breaking space before `: ; ? !` and inside « guillemets ».
+non-breaking space, U+00A0, before `: ; ? !` and inside « guillemets », except in an SMS
+(sc-2504, under Decided phrasings).
 
 The rules every locale shares are in `.claude/skills/locale-parity`.
 
@@ -51,6 +52,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. One non-breaking space, U+00A0, before `: ; ? !` and inside « »** (sc-2504),
+  so that a colon, a question mark or a closing guillemet never starts a line on a phone:
+  « Quand : {when} », « « Mot de passe oublié ? » ». Never the narrow U+202F that the
+  Imprimerie nationale prefers before `; ? !`: two invisible spaces are one too many to tell
+  apart. Type the character itself, not an escape. The SMS (`emails:verification.text`, and
+  any SMS string after it) keeps a plain space: U+00A0 is outside GSM-7 and would send the
+  message as UCS-2, at 70 characters a segment. The diff cannot show the character, so a pull
+  request lists each key's old and new text with it written as `U+00A0`.
 - **18 Oct 2026. Verifying an alternative from Account** (`verifyEmail.doneBodyAlternative`,
   `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
   `contacts.removeInAccount*`, web and app, sc-2594). The body says what did not change:

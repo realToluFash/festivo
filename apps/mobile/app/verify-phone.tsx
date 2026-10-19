@@ -194,7 +194,7 @@ export default function VerifyPhone() {
       saying={
         <>
           {onboarding && <OnboardingSteps at="details" />}
-          {alternative != null && <BackToAccount verified={verified ? alternative : null} />}
+          {alternative != null && !verified && <BackToAccount />}
           <AuthHeading
             done={verified}
             title={verified ? t('verifyPhone.doneTitle') : t('verifyPhone.title')}
