@@ -162,9 +162,12 @@ head of the pull request:
 - `Review passed at <full head sha>. Ready to merge.`
 - `Back to In Progress: <n> blocking.`
 
-**The pass line is the developer's signal to merge**, and it holds only for the sha it
-names. If the developer pushes after it, the pass no longer covers what would be merged, and
-the story comes back to `In Review` for another look.
+**The pass line is the developer's signal to merge**, and it holds for the sha it names
+and for a head that only merges `main` into it. `sq` compares the two against `main`, file by
+file with hunk positions ignored, and carries the pass when the pull request's own change is
+the same, shown as "at the head, carried over a merge of main". Any other push, or a merge
+that needed a conflict resolution or met main's changes beside the developer's lines, means
+the pass no longer covers what would be merged, and the pull request comes back to you.
 
 ## 6. Moving the story
 

@@ -85,7 +85,7 @@ nothing. Two claims a few seconds apart are normal.
 Never remove the other developer's label, and never take yours off a story you have
 started. A story that should change hands is a question for the owner, in your report.
 
-**A story labelled `translation` is never yours**, in any state. It belongs to the linguists
+**A story labelled `translation` is never yours**, in any state. It belongs to the linguist
 (`/soirely-linguist`), so skip it when picking.
 
 **Start every new piece of work from the latest `main`.** Fetch first, then branch from
@@ -156,7 +156,7 @@ Load the ones the story touches. They carry the conventions; this file does not 
 | API tests                           | **writing-tests**                                                |
 | A screen on either client           | **screen-from-design**, and the story's artboards                |
 | `apps/mobile`                       | **react-native-best-practices**                                  |
-| Any user-facing string              | **locale-parity** — English in all four, the linguists translate |
+| Any user-facing string              | **locale-parity** — English in all four, the linguist translates |
 | Naming anything                     | **name-things**                                                  |
 | Comments                            | **code-comments**, and `npm run lint:comments` before you stage  |
 | Committing                          | **making-commits**                                               |
@@ -245,21 +245,26 @@ GitHub user, so the lead's summary is the review whose body opens with
 
 **Merge only when all of these hold**:
 
-1. The newest `## Review (from lead)` ends in the pass line, and **its sha is the pull
-   request's head**. A push after the pass voids it: the story stays in `In Review` and
-   you wait for the lead.
+1. The newest `## Review (from lead)` ends in the pass line, and **it covers the pull
+   request's head**: its sha is the head, or `sq dev pr` shows the pass "at the head,
+   carried over a merge of main". A merge of `origin/main` that leaves your change as it
+   was carries the pass. Any other push voids it, and so does a merge that needed a
+   conflict resolution or met main's changes beside your lines: the story stays in
+   `In Review` and you wait for the lead.
 2. **No review thread is open.** The lead resolves each thread after checking the fix; an
    open one is a finding that still stands, whatever your reply in it says.
 3. **CI is green on that head**, and GitHub reports the pull request `MERGEABLE`.
 
 `sq dev merge <n>` checks every one of these against the live pull request and refuses with
-the reason when one does not hold; it merges only at the head the lead passed. A conflict
-with `main` is refused too: merge `origin/main` into the branch and push, which voids the
-pass, so the story stays in `In Review` for the lead.
+the reason when one does not hold; it merges only at a head the lead's pass covers. A branch
+behind `main`, or one that conflicts with it, is refused too: merge `origin/main` into the
+branch and push, never rebase, and merge again once its checks are green. A clean merge
+carries the pass; a conflict resolution does not, so that story stays in `In Review` for
+the lead.
 
 **Once it has merged, it is ready for QA, and handing it over is yours.** `sq dev merge`
 does it: it moves the story to `Ready For QA` and tells `[qa]` the merge commit, so QA
 tests what landed (`--text` adds anything QA should know). For a pull request that merged
-some other way at the passed head, `sq dev to-qa sc-N` does the same. Nobody else makes
-this move: a passed story you merge and leave in `In Review` is a story nobody tests. Never
-move it before the merge, and never mark it Done.
+some other way at a head the pass covers, `sq dev to-qa sc-N` does the same. Nobody else
+makes this move: a passed story you merge and leave in `In Review` is a story nobody tests.
+Never move it before the merge, and never mark it Done.
