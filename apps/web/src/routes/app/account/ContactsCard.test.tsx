@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18next from 'i18next';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { holdProof } from '../../../recentProof.ts';
@@ -323,6 +324,54 @@ describe('email addresses and phone numbers', () => {
     await waitFor(() =>
       expect(sent.some((s) => s.call === 'PATCH /api/auth/phones/p2/primary')).toBe(true),
     );
+  });
+});
+
+describe('a number in the words of a number', () => {
+  const PHONE_WORDS = {
+    verifiedPhone: 'Number verified',
+    primaryPhone: 'Number primary',
+    makePrimaryPhone: 'Make number primary',
+    removeConfirmPhone: 'Remove the number',
+    removeKeepPhone: 'Keep the number',
+  };
+  const held: Record<string, string> = {};
+
+  beforeAll(() => {
+    for (const [key, value] of Object.entries(PHONE_WORDS)) {
+      held[key] = i18next.t(`contacts.${key}`);
+      i18next.addResource('en', 'translation', `contacts.${key}`, value);
+    }
+  });
+
+  afterAll(() => {
+    for (const [key, value] of Object.entries(held)) {
+      i18next.addResource('en', 'translation', `contacts.${key}`, value);
+    }
+  });
+
+  it("reads its own keys for its state and its buttons, never the address card's", async () => {
+    const twoPhones = {
+      ...ME,
+      phoneNumbers: [
+        ME.phoneNumbers[0],
+        { ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188', primary: false },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(twoPhones) });
+    open();
+
+    await screen.findByText('folake.adeyemi@gmail.com');
+    const numbers = within(screen.getByRole('list', { name: 'Phone numbers on this account' }));
+    expect(numbers.getAllByText('Number verified')).toHaveLength(2);
+    expect(numbers.getAllByText('Number primary')).toHaveLength(1);
+    expect(numbers.queryByText('Verified')).toBeNull();
+    expect(numbers.queryByText('Primary')).toBeNull();
+    expect(numbers.getByRole('button', { name: 'Make number primary' })).toBeDefined();
+
+    fireEvent.click(numbers.getByRole('button', { name: /^Remove / }));
+    expect(numbers.getByRole('button', { name: 'Remove the number' })).toBeDefined();
+    expect(numbers.getByRole('button', { name: 'Keep the number' })).toBeDefined();
   });
 });
 
