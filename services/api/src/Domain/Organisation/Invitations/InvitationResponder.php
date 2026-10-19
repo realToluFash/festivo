@@ -50,7 +50,9 @@ final readonly class InvitationResponder
     /** The refusal this invitation answers with before anybody is asked who they are, or null while it can be answered. */
     public function refusalOf(Invitation $invitation): ?ErrorCode
     {
-        if (null === $invitation->getOrganisation() || null === $invitation->getRole()) {
+        $organisation = $invitation->getOrganisation();
+
+        if (null === $organisation || $organisation->isDeleted() || null === $invitation->getRole()) {
             return ErrorCode::OrganisationDeleted;
         }
 

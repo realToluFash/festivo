@@ -1849,4 +1849,31 @@ describe('invitations and members', () => {
       body: { email: 'amara@example.com', roleId: 'role_5' },
     });
   });
+
+  test('a role change and a transfer each say which membership they move', async () => {
+    const { api, sent } = client(new Response(null, { status: 204 }));
+
+    await api.changeMemberRole('org_1', 'm_bisi', 'role_5');
+    await api.transferOwnership('org_1', 'm_bisi', 'p_1');
+
+    expect(sent).toEqual([
+      { line: 'PATCH /api/orgs/org_1/members/m_bisi', body: { roleId: 'role_5' } },
+      { line: 'POST /api/orgs/org_1/ownership', body: { membershipId: 'm_bisi', proof: 'p_1' } },
+    ]);
+  });
+
+  test('a deletion keeps the deadline as the server wrote it for the reader', async () => {
+    const { api, sent } = client(
+      json({
+        deletedAt: '2026-10-17T13:20:00+00:00',
+        restoreClosesAt: '2026-11-16T13:20:00+00:00',
+        restoreCloses: 'Monday, Nov 16 at 14:20 WAT',
+      }),
+    );
+
+    const deletion = await api.deleteOrganisation('org_1', 'Ìrè Events');
+
+    expect(deletion.restoreCloses).toBe('Monday, Nov 16 at 14:20 WAT');
+    expect(sent[0]).toEqual({ line: 'DELETE /api/orgs/org_1', body: { name: 'Ìrè Events' } });
+  });
 });

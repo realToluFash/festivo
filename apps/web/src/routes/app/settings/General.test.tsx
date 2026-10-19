@@ -83,9 +83,9 @@ describe('Settings > General', () => {
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toMatch(/Saved\. Everyone in Ìrè Events Ltd/),
     );
-    expect(sent.filter((request) => request.path.startsWith('/api/orgs'))).toEqual([
-      { method: 'PATCH', path: '/api/orgs/org_1', body: { name: 'Ìrè Events Ltd' } },
-    ]);
+    expect(
+      sent.filter((request) => request.path.startsWith('/api/orgs') && request.method !== 'GET'),
+    ).toEqual([{ method: 'PATCH', path: '/api/orgs/org_1', body: { name: 'Ìrè Events Ltd' } }]);
     expect(screen.getByLabelText('Organisation: Ìrè Events Ltd, your role Owner')).toBeDefined();
   });
 
