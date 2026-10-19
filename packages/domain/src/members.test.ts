@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { historyLine, memberIsShown } from './members.ts';
+import { historyLine, memberIsShown, memberStanding } from './members.ts';
 
 describe('which members a chip lists', () => {
   it('lists everybody but former members under All', () => {
@@ -57,5 +57,44 @@ describe('how a member got here', () => {
       historyLine({ from: 'left_or_removed', to: 'active', channel: 'invitation', by: 'u1' }, 'u1')
         .key,
     ).toBe('joined.invitation');
+  });
+});
+
+describe("what a member's page offers", () => {
+  const member = (seededAs: string, status: 'active' | 'suspended' = 'active', self = false) => ({
+    self,
+    status,
+    role: { seededAs },
+  });
+  const owner = member('owner');
+  const secondOwner = member('owner');
+  const coordinator = member('coordinator');
+  const you = member('administrator', 'active', true);
+  const admin = { owns: false, manages: true };
+  const anOwner = { owns: true, manages: true };
+
+  it('offers nothing on your own page', () => {
+    expect(memberStanding(you, [owner, you], anOwner)).toBe('self');
+  });
+
+  it('keeps the only active owner as they are, whoever looks', () => {
+    expect(memberStanding(owner, [owner, you, coordinator], anOwner)).toBe('onlyOwner');
+    expect(memberStanding(owner, [owner, member('owner', 'suspended')], anOwner)).toBe('onlyOwner');
+  });
+
+  it('lets an owner change or remove a second owner, and nobody else', () => {
+    expect(memberStanding(secondOwner, [owner, secondOwner], anOwner)).toBe('manageable');
+    expect(memberStanding(secondOwner, [owner, secondOwner], admin)).toBe('ownerOnly');
+  });
+
+  it('shows the role only to somebody without members.manage', () => {
+    const reader = { owns: false, manages: false };
+
+    expect(memberStanding(coordinator, [owner, coordinator], reader)).toBe('readOnly');
+    expect(memberStanding(secondOwner, [owner, secondOwner], reader)).toBe('readOnly');
+  });
+
+  it('offers a role change and removal for everybody else', () => {
+    expect(memberStanding(coordinator, [owner, coordinator], admin)).toBe('manageable');
   });
 });

@@ -13,6 +13,7 @@ import {
   historyLine,
   initials,
   memberIsShown,
+  memberStanding,
   roleName,
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
@@ -490,14 +491,9 @@ function MemberDetail({
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
-  const owner = member.role.seededAs === 'owner';
-  const owners = list.members.filter(
-    (one) => one.status === 'active' && one.role.seededAs === 'owner',
-  );
-  const lastOwner = owner && member.status === 'active' && owners.length === 1;
   const callerOwns = organisation.role.seededAs === 'owner';
-  const ownerOnly = owner && !callerOwns;
-  const acts = manages && !member.self && !lastOwner && !ownerOnly;
+  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const acts = standing === 'manageable';
 
   async function remove(): Promise<void> {
     setRemoval('removing');
@@ -589,7 +585,7 @@ function MemberDetail({
               {t('membersScreen.goToGeneral')}
             </Link>
           </>
-        ) : lastOwner ? (
+        ) : standing === 'onlyOwner' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
             <div className="notice notice-quiet">
@@ -602,10 +598,10 @@ function MemberDetail({
               <p className="muted">{t('membersScreen.askOwner', { name: member.user.name })}</p>
             )}
           </>
-        ) : ownerOnly || !manages ? (
+        ) : standing !== 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            {ownerOnly && manages && <p className="muted">{t('membersScreen.ownerOnly')}</p>}
+            {standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>}
           </>
         ) : (
           <RolePicker

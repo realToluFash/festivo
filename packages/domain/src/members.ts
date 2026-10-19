@@ -45,3 +45,30 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
 
   return { key: `joined.${step.channel}`, named: false };
 }
+
+/** What a member's page offers: sc-68's rules, read from the list the screen loaded, and checked again by the API. */
+export type MemberStanding = 'self' | 'onlyOwner' | 'ownerOnly' | 'readOnly' | 'manageable';
+
+interface StandingMember {
+  self: boolean;
+  status: MemberState;
+  role: { seededAs: string | null };
+}
+
+export function memberStanding(
+  member: StandingMember,
+  members: readonly StandingMember[],
+  caller: { owns: boolean; manages: boolean },
+): MemberStanding {
+  const owner = member.role.seededAs === 'owner';
+  const activeOwners = members.filter(
+    (one) => one.status === 'active' && one.role.seededAs === 'owner',
+  ).length;
+
+  if (member.self) return 'self';
+  if (owner && member.status === 'active' && activeOwners === 1) return 'onlyOwner';
+  if (!caller.manages) return 'readOnly';
+  if (owner && !caller.owns) return 'ownerOnly';
+
+  return 'manageable';
+}
