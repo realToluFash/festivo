@@ -306,6 +306,26 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(['waiting', ['Ìrè Events'], false], [$state['status'], $state['organisations'], $state['nobody']]);
     }
 
+    /** sc-3477: an ended request says nobody is left, so the screen offers support rather than a request that is refused. */
+    #[Test]
+    public function anEndedRequestWithNobodyLeftSaysSoUntilANewOwnerJoins(): void
+    {
+        self::mockTime('2026-10-17 13:20:00');
+        $handle = $this->proved();
+        $this->leaves($this->approver);
+
+        self::mockTime('2026-10-24 13:20:00');
+        $state = $this->state($handle);
+        self::assertSame(['expired', [], true], [$state['status'], $state['organisations'], $state['nobody']]);
+
+        $this->join($this->account('tunde@example.com', 'Tunde Bello'), SeededRole::Owner);
+        self::em()->flush();
+        $state = $this->state($handle);
+        self::assertSame(['expired', ['Ìrè Events'], false], [$state['status'], $state['organisations'], $state['nobody']]);
+
+        $this->start();
+    }
+
     #[Test]
     public function textItToMeInsteadLastsOnlyTheRequestsOwnCodes(): void
     {
