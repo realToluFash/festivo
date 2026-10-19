@@ -27,6 +27,7 @@ type Notice =
       kind: 'unlinked' | 'taken' | 'last' | 'providerFailed' | 'providerRefused';
       provider: Provider;
     }
+  | { kind: 'keptByRule'; provider: Provider; organisation: string }
   | { kind: 'failed' };
 
 type Stage =
@@ -351,6 +352,25 @@ function Said({ notice }: { notice: Notice }) {
     );
   }
 
+  if (notice.kind === 'keptByRule') {
+    const provider = PROVIDER_NAMES[notice.provider];
+    const other = PROVIDER_NAMES[notice.provider === 'google' ? 'apple' : 'google'];
+
+    return (
+      <div className="notice notice-broken" role="alert">
+        <span className="mark mark-broken" aria-hidden="true">
+          ✕
+        </span>
+        <div className="notice-body">
+          <p className="notice-title">
+            {t('waysCard.keptByRule', { organisation: notice.organisation })}
+          </p>
+          <p>{t('waysCard.keptByRuleNext', { provider, other })}</p>
+        </div>
+      </div>
+    );
+  }
+
   const title =
     notice.kind === 'taken'
       ? t('waysCard.taken', { provider: PROVIDER_NAMES[notice.provider] })
@@ -493,6 +513,8 @@ function refused(error: unknown, provider: Provider): Notice {
   if (error instanceof ApiError && error.is('provider_taken')) return { kind: 'taken', provider };
   if (error instanceof ApiError && error.is('last_sign_in_method'))
     return { kind: 'last', provider };
+  if (error instanceof ApiError && error.is('provider_kept_by_rule'))
+    return { kind: 'keptByRule', provider, organisation: error.problem.organisation ?? '' };
 
   return { kind: 'failed' };
 }

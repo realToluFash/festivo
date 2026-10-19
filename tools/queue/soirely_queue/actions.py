@@ -82,9 +82,8 @@ def guard(c, command):
 
 
 def post(c, story, to, body, parent=None):
-    head = " ".join(f"[{t}]" for t in to) + f" (from {signature(c.role)})"
-    text = f"{head}\n{body.strip()}" if head else body.strip()
-    return c.shortcut.comment(story["id"], text, parent)
+    head = " ".join([*(f"[{t}]" for t in to), f"(from {signature(c.role)})"])
+    return c.shortcut.comment(story["id"], f"{head}\n{body.strip()}", parent)
 
 
 def set_state(c, story, name, check=True):
@@ -98,7 +97,9 @@ def set_state(c, story, name, check=True):
         froms = " or ".join(allowed) if allowed else "nowhere"
         raise Refused(f"{c.role} moves a story to {state} only from {froms}; "
                       f"sc-{story['id']} is {story['state']}")
-    c.shortcut.update(story["id"], workflow_state_id=state_id)
+    moved = c.shortcut.update(story["id"], workflow_state_id=state_id)
+    if moved and moved.get("moved_at"):
+        store.mark_move(c.db, story["id"], state, moved["moved_at"], c.role)
     return state
 
 
@@ -123,6 +124,8 @@ def comment(c, a):
     guard(c, "comment")
     story = c.story(a.story, fresh=False)
     to = [t for t in (a.to or "").replace(",", " ").split() if t]
+    if to and a.untagged:
+        raise Refused("--untagged posts no tag: drop --to, or drop --untagged to address it")
     parent = None
     if a.reply_to:
         replied = next((x for x in story["comments"] if x["id"] == a.reply_to), None)
@@ -133,11 +136,11 @@ def comment(c, a):
             raise Refused(f"no comment #{a.reply_to} on sc-{story['id']}")
         # Shortcut threads one level deep, so a reply to a reply goes on the thread's root.
         parent = replied["parent"] or replied["id"]
-        if not to and R.author(replied["text"]):
+        if not to and not a.untagged and R.author(replied["text"]):
             to = [R.author(replied["text"])]
     if not to and not a.untagged:
         raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker), "
-                      "or --untagged for a note that wakes nobody")
+                      "or --untagged for a record or a confirmation that wakes nobody")
     unknown = [t for t in to if t not in R.ROLES and t != "dev"]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
@@ -452,15 +455,11 @@ def merge(c, a):
                       "the push voids the pass, so the story stays In Review for the lead")
     if live["mergeable"] != "MERGEABLE":
         raise Refused(f"GitHub says {live['mergeable']}; try again in a minute")
-    if live.get("mergeStateStatus") == "BEHIND":
-        raise Refused("main has moved on. Merge origin/main into the branch and push; once its "
-                      "checks are green, a pass carries over if the merge changed nothing of the "
-                      "pull request's own")
     if c.role in R.LINGUISTS:
-        mine = R.locale_files(c.role)
+        mine = R.linguist_files()
         stray = [path for path, _, _ in github.files(a.pr) if path not in mine]
         if stray:
-            raise Refused(f"a linguist merges only its own locale files; this also changes "
+            raise Refused(f"the linguist merges only locale files; this also changes "
                           f"{', '.join(stray[:5])}")
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"

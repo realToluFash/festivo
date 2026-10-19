@@ -5,7 +5,7 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
-import { ApiError, ApiUnreachableError, toProblem } from './problem.ts';
+import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 
 /** See docs/architecture/sessions.md. */
 export type RefreshTokenDelivery = 'body' | 'cookie';
@@ -227,9 +227,125 @@ export interface Membership extends Organisation {
   role: MemberRole;
   /** What this role holds here, every registered one for Owner (sc-66): what a client may show. */
   permissions: string[];
+  /** Held by the role but kept back until this account turns on two-factor (sc-69). */
+  withheldUntilTwoFactor: string[];
+  /** Under a Google-or-Apple-only rule with no provider linked: may read, not change (sc-69). */
+  readOnlyUntilLinked: boolean;
+  signInRules: OrganisationSignInRules;
+}
+
+/** An organisation's sign-in rules (sc-69); a null timeout is no limit. */
+export interface OrganisationSignInRules {
+  providerOnly: boolean;
+  inactivityTimeoutDays: number | null;
+  administratorsNeedTwoFactor: boolean;
+  changedAt: string | null;
+}
+
+export type SignInRulesChanges = Partial<Omit<OrganisationSignInRules, 'changedAt'>>;
+
+export interface SignInRuleChange {
+  at: string;
+  by: { name: string; role: MemberRole | null };
+  rule: 'providerOnly' | 'inactivityTimeoutDays' | 'administratorsNeedTwoFactor';
+  now: boolean | number | null;
+  was: boolean | number | null;
+}
+
+export interface SignInRulesPage extends OrganisationSignInRules {
+  inactivityChoices: number[];
+  changes: SignInRuleChange[];
+  /** Members with no Google or Apple linked, never the caller; only for a caller who may change the rules. */
+  passwordOnly: { userId: string; name: string; role: MemberRole }[] | null;
+  /** The shortest limit across the caller's organisations, which may be another organisation's. */
+  inactivityLimit: InactivityLimit | null;
+  /** Whether the caller has two-factor, without which requiring it of administrators is refused. */
+  ownTwoFactor: boolean;
+  /** Whether the caller has Google or Apple linked, without which requiring it is refused. */
+  ownProvider: boolean;
+}
+
+export interface InactivityLimit {
+  organisationId: string;
+  organisation: string;
+  days: number;
 }
 
 export type OrganisationChanges = Partial<Omit<Organisation, 'id'>>;
+
+export type InvitationRefusal =
+  | 'invitation_expired'
+  | 'invitation_revoked'
+  | 'invitation_accepted'
+  | 'invitation_declined'
+  | 'organisation_deleted';
+
+/** What the link opens on: `forYou` is null signed out, and says whether this account may answer it. */
+export interface InvitationPreview {
+  id: string;
+  /** The id is null once the organisation is deleted; its name is kept to say what is gone. */
+  organisation: { id: string | null; name: string };
+  email: string;
+  role: MemberRole | null;
+  invitedBy: { name: string } | null;
+  expiresAt: string;
+  refusal: InvitationRefusal | null;
+  forYou: boolean | null;
+  signedInAs: string | null;
+}
+
+export type MemberStatus = 'pending_approval' | 'active' | 'suspended' | 'left_or_removed';
+
+export type MemberChannel =
+  'invitation' | 'self_created' | 'join_code' | 'domain' | 'request' | 'directory';
+
+export interface MemberPerson {
+  id: string;
+  name: string;
+}
+
+export interface MembershipStep {
+  from: MemberStatus | null;
+  to: MemberStatus;
+  channel: MemberChannel;
+  by: MemberPerson | null;
+  at: string;
+}
+
+/** A row on Settings > Members; `former` tells left from removed, which share one state. */
+export interface OrganisationMember {
+  id: string;
+  user: { id: string; name: string; email: string | null };
+  role: MemberRole;
+  status: MemberStatus;
+  former: 'left' | 'removed' | null;
+  channel: MemberChannel | null;
+  since: string | null;
+  invitedBy: MemberPerson | null;
+  invitedAt: string | null;
+  self: boolean;
+  history: MembershipStep[];
+}
+
+export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
+
+export interface SentInvitation {
+  id: string;
+  email: string;
+  role: MemberRole | null;
+  invitedBy: MemberPerson | null;
+  status: SentInvitationStatus;
+  sentAt: string | null;
+  expiresAt: string | null;
+  acceptedAt: string | null;
+  declinedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface MembersList {
+  members: OrganisationMember[];
+  invitations: SentInvitation[];
+}
 
 /** The two codes the onboarding gate refuses with; each names the screen that passes it. */
 export type Gate = 'account_unverified' | 'profile_incomplete';
@@ -275,8 +391,8 @@ export interface ClientOptions {
   userAgent?: string;
   /** The app's install identifier, by which a sign-in from a new device is told apart (sc-511). The web has a cookie instead. */
   device?: () => string | null;
-  /** Called when refresh fails and the session is over. */
-  onSignedOut?: () => void;
+  /** Called when refresh fails and the session is over, with the API's reason when it gave one, such as `session_timed_out`. */
+  onSignedOut?: (why?: Problem) => void;
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
   onGate?: (gate: Gate) => void;
   fetch?: typeof fetch;
@@ -915,6 +1031,37 @@ export class ApiClient {
     return memberships as Membership[];
   }
 
+  async signInRules(organisationId: string): Promise<SignInRulesPage> {
+    return this.readSignInRules(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/sign-in-rules`),
+    );
+  }
+
+  /** Refused `validation_failed` for an unlisted length, `two_factor_off` for two-factor asked without it. */
+  async updateSignInRules(
+    organisationId: string,
+    changes: SignInRulesChanges,
+  ): Promise<SignInRulesPage> {
+    return this.readSignInRules(
+      await this.patch<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/sign-in-rules`,
+        changes,
+      ),
+    );
+  }
+
+  private readSignInRules(raw: unknown): SignInRulesPage {
+    const page = asSignInRulesPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/sign-in-rules in a shape this client does not know. Check SignInRulesController in services/api.',
+      );
+    }
+
+    return page;
+  }
+
   async updateOrganisation(id: string, changes: OrganisationChanges): Promise<Organisation> {
     const organisation = asOrganisation(
       await this.patch<unknown>(`/api/orgs/${encodeURIComponent(id)}`, changes),
@@ -975,6 +1122,117 @@ export class ApiClient {
       `/api/orgs/${encodeURIComponent(organisationId)}/roles/${encodeURIComponent(roleId)}`,
       { method: 'DELETE', body: { replacement } },
     );
+  }
+
+  async members(organisationId: string): Promise<MembersList> {
+    const raw = await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/members`);
+    const list = asMembersList(raw);
+
+    if (list == null) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/members in a shape this client does not know. Check MembersController in services/api.',
+      );
+    }
+
+    return list;
+  }
+
+  /** Refused `already_a_member`, `grant_not_held`, or a violation on `email` or `roleId`. Sending again replaces the link. */
+  async inviteMember(
+    organisationId: string,
+    email: string,
+    roleId: string,
+  ): Promise<SentInvitation> {
+    const body = await this.post<{ invitation?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/invite`,
+      { email, roleId },
+    );
+
+    return this.sentInvitation(body?.invitation);
+  }
+
+  async revokeInvitation(organisationId: string, invitationId: string): Promise<SentInvitation> {
+    const body = await this.request<{ invitation?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/invitations/${encodeURIComponent(invitationId)}`,
+      { method: 'DELETE' },
+    );
+
+    return this.sentInvitation(body?.invitation);
+  }
+
+  /** Refused `invitation_not_found` for a link that names nothing, including one that was sent again. */
+  async invitationLink(token: string): Promise<InvitationPreview> {
+    return this.invitationPreview(await this.post<unknown>('/api/invitations/link', { token }));
+  }
+
+  async myInvitations(): Promise<InvitationPreview[]> {
+    const body = await this.get<{ invitations?: unknown }>('/api/invitations');
+
+    if (!Array.isArray(body?.invitations)) {
+      throw new Error(
+        'The API answered GET /api/invitations without a list. Check InvitationsController in services/api.',
+      );
+    }
+
+    return body.invitations.map((one: unknown) => this.invitationPreview(one));
+  }
+
+  /** The membership it made, as `organisations()` lists it. Refused `invitation_not_yours` for another address. */
+  async acceptInvitation(invitationId: string): Promise<Membership> {
+    const body = await this.post<{ organisation?: unknown }>(
+      `/api/invitations/${encodeURIComponent(invitationId)}/accept`,
+      {},
+    );
+    const membership = asMembership(body?.organisation);
+
+    if (membership == null) {
+      throw new Error(
+        'The API answered an accepted invitation without the organisation. Check InvitationsController in services/api.',
+      );
+    }
+
+    return membership;
+  }
+
+  async declineInvitation(invitationId: string): Promise<void> {
+    await this.post<unknown>(`/api/invitations/${encodeURIComponent(invitationId)}/decline`, {});
+  }
+
+  async registerFromInvitation(
+    token: string,
+    email: string,
+    name: string,
+    password: string,
+  ): Promise<SignedIn> {
+    return this.signedInOnly(
+      '/api/auth/register',
+      { invitationToken: token, email, name, password },
+      'RegisterController',
+    );
+  }
+
+  private invitationPreview(raw: unknown): InvitationPreview {
+    const preview = asInvitationPreview(raw);
+
+    if (preview == null) {
+      throw new Error(
+        'The API answered an invitation in a shape this client does not know. Check InvitationsController in services/api.',
+      );
+    }
+
+    return preview;
+  }
+
+  private sentInvitation(raw: unknown): SentInvitation {
+    const invitation = asSentInvitation(raw);
+
+    if (invitation == null) {
+      throw new Error(
+        'The API answered an invitation in a shape this client does not know. Check MembersController in services/api.',
+      );
+    }
+
+    return invitation;
   }
 
   private role(raw: unknown): OrganisationRole {
@@ -1104,7 +1362,7 @@ export class ApiClient {
     if (response.status >= 500) throw new ApiUnreachableError();
 
     if (!response.ok) {
-      await this.forgetSession();
+      await this.forgetSession(await toProblem(response));
       return false;
     }
 
@@ -1218,9 +1476,9 @@ export class ApiClient {
     return { tokens, account, linked: body.linked === true };
   }
 
-  private async forgetSession(): Promise<void> {
+  private async forgetSession(why?: Problem): Promise<void> {
     await this.options.tokens?.clear();
-    this.options.onSignedOut?.();
+    this.options.onSignedOut?.(why);
   }
 
   private url(path: string, query?: RequestOptions['query']): string {
@@ -1418,13 +1676,185 @@ function asOrganisation(raw: unknown): Organisation | null {
   };
 }
 
+const REFUSALS: readonly InvitationRefusal[] = [
+  'invitation_expired',
+  'invitation_revoked',
+  'invitation_accepted',
+  'invitation_declined',
+  'organisation_deleted',
+];
+const MEMBER_STATUSES: readonly MemberStatus[] = [
+  'pending_approval',
+  'active',
+  'suspended',
+  'left_or_removed',
+];
+const CHANNELS: readonly MemberChannel[] = [
+  'invitation',
+  'self_created',
+  'join_code',
+  'domain',
+  'request',
+  'directory',
+];
+const SENT_STATUSES: readonly SentInvitationStatus[] = [
+  'pending',
+  'accepted',
+  'declined',
+  'revoked',
+  'expired',
+];
+
+function oneOf<T extends string>(raw: unknown, values: readonly T[]): T | null {
+  return values.find((value) => value === raw) ?? null;
+}
+
+function stringOrNull(raw: unknown): string | null {
+  return typeof raw === 'string' ? raw : null;
+}
+
+function asMemberRole(raw: unknown): MemberRole | null {
+  const role = raw as Record<string, unknown> | null;
+
+  if (typeof role?.id !== 'string') return null;
+
+  return { id: role.id, seededAs: stringOrNull(role.seededAs), name: stringOrNull(role.name) };
+}
+
+function asPerson(raw: unknown): MemberPerson | null {
+  const person = raw as Record<string, unknown> | null;
+
+  return typeof person?.id === 'string' && typeof person.name === 'string'
+    ? { id: person.id, name: person.name }
+    : null;
+}
+
+function asInvitationPreview(raw: unknown): InvitationPreview | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const preview = raw as Record<string, unknown>;
+  const organisation = preview.organisation as Record<string, unknown> | null;
+  const invitedBy = preview.invitedBy as Record<string, unknown> | null;
+
+  if (
+    typeof preview.id !== 'string' ||
+    typeof preview.email !== 'string' ||
+    typeof preview.expiresAt !== 'string' ||
+    typeof organisation?.name !== 'string'
+  )
+    return null;
+
+  return {
+    id: preview.id,
+    organisation: { id: stringOrNull(organisation.id), name: organisation.name },
+    email: preview.email,
+    role: asMemberRole(preview.role),
+    invitedBy: typeof invitedBy?.name === 'string' ? { name: invitedBy.name } : null,
+    expiresAt: preview.expiresAt,
+    refusal: oneOf(preview.refusal, REFUSALS),
+    forYou: typeof preview.forYou === 'boolean' ? preview.forYou : null,
+    signedInAs: stringOrNull(preview.signedInAs),
+  };
+}
+
+function asMembershipStep(raw: unknown): MembershipStep | null {
+  const step = raw as Record<string, unknown> | null;
+  const to = oneOf(step?.to, MEMBER_STATUSES);
+  const channel = oneOf(step?.channel, CHANNELS);
+
+  if (step == null || to == null || channel == null || typeof step.at !== 'string') return null;
+
+  return {
+    from: oneOf(step.from, MEMBER_STATUSES),
+    to,
+    channel,
+    by: asPerson(step.by),
+    at: step.at,
+  };
+}
+
+function asOrganisationMember(raw: unknown): OrganisationMember | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const member = raw as Record<string, unknown>;
+  const user = member.user as Record<string, unknown> | null;
+  const role = asMemberRole(member.role);
+  const status = oneOf(member.status, MEMBER_STATUSES);
+  const history = Array.isArray(member.history) ? member.history.map(asMembershipStep) : null;
+
+  if (
+    typeof member.id !== 'string' ||
+    typeof user?.id !== 'string' ||
+    typeof user.name !== 'string' ||
+    role == null ||
+    status == null ||
+    history == null ||
+    history.some((step) => step == null)
+  )
+    return null;
+
+  return {
+    id: member.id,
+    user: { id: user.id, name: user.name, email: stringOrNull(user.email) },
+    role,
+    status,
+    former: member.former === 'left' || member.former === 'removed' ? member.former : null,
+    channel: oneOf(member.channel, CHANNELS),
+    since: stringOrNull(member.since),
+    invitedBy: asPerson(member.invitedBy),
+    invitedAt: stringOrNull(member.invitedAt),
+    self: member.self === true,
+    history: history as MembershipStep[],
+  };
+}
+
+function asSentInvitation(raw: unknown): SentInvitation | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const invitation = raw as Record<string, unknown>;
+  const status = oneOf(invitation.status, SENT_STATUSES);
+
+  if (typeof invitation.id !== 'string' || typeof invitation.email !== 'string' || status == null)
+    return null;
+
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    role: asMemberRole(invitation.role),
+    invitedBy: asPerson(invitation.invitedBy),
+    status,
+    sentAt: stringOrNull(invitation.sentAt),
+    expiresAt: stringOrNull(invitation.expiresAt),
+    acceptedAt: stringOrNull(invitation.acceptedAt),
+    declinedAt: stringOrNull(invitation.declinedAt),
+    revokedAt: stringOrNull(invitation.revokedAt),
+  };
+}
+
+function asMembersList(raw: unknown): MembersList | null {
+  const list = raw as Record<string, unknown> | null;
+
+  if (!Array.isArray(list?.members) || !Array.isArray(list.invitations)) return null;
+
+  const members = list.members.map(asOrganisationMember);
+  const invitations = list.invitations.map(asSentInvitation);
+
+  if (members.some((one) => one == null) || invitations.some((one) => one == null)) return null;
+
+  return {
+    members: members as OrganisationMember[],
+    invitations: invitations as SentInvitation[],
+  };
+}
+
 function asMembership(raw: unknown): Membership | null {
   const organisation = asOrganisation(raw);
   const role = (raw as Record<string, unknown> | null)?.role as Record<string, unknown> | undefined;
 
   if (organisation == null || typeof role?.id !== 'string') return null;
 
-  const permissions = (raw as Record<string, unknown>).permissions;
+  const candidate = raw as Record<string, unknown>;
+  const permissions = candidate.permissions;
 
   return {
     ...organisation,
@@ -1436,7 +1866,99 @@ function asMembership(raw: unknown): Membership | null {
     permissions: Array.isArray(permissions)
       ? permissions.filter((one): one is string => typeof one === 'string')
       : [],
+    withheldUntilTwoFactor: stringList(candidate.withheldUntilTwoFactor) ?? [],
+    readOnlyUntilLinked: candidate.readOnlyUntilLinked === true,
+    signInRules: asOrganisationSignInRules(candidate.signInRules) ?? {
+      providerOnly: false,
+      inactivityTimeoutDays: null,
+      administratorsNeedTwoFactor: false,
+      changedAt: null,
+    },
   };
+}
+
+function asOrganisationSignInRules(raw: unknown): OrganisationSignInRules | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const rules = raw as Record<string, unknown>;
+
+  if (
+    typeof rules.providerOnly !== 'boolean' ||
+    typeof rules.administratorsNeedTwoFactor !== 'boolean' ||
+    (rules.inactivityTimeoutDays !== null && typeof rules.inactivityTimeoutDays !== 'number')
+  )
+    return null;
+
+  return {
+    providerOnly: rules.providerOnly,
+    inactivityTimeoutDays: rules.inactivityTimeoutDays as number | null,
+    administratorsNeedTwoFactor: rules.administratorsNeedTwoFactor,
+    changedAt: typeof rules.changedAt === 'string' ? rules.changedAt : null,
+  };
+}
+
+const RULES = ['providerOnly', 'inactivityTimeoutDays', 'administratorsNeedTwoFactor'] as const;
+
+function asRuleValue(raw: unknown): boolean | number | null | undefined {
+  return raw === null || typeof raw === 'boolean' || typeof raw === 'number' ? raw : undefined;
+}
+
+function asSignInRuleChange(raw: unknown): SignInRuleChange | null {
+  const change = (raw ?? {}) as Record<string, unknown>;
+  const by = (change.by ?? {}) as Record<string, unknown>;
+  const now = asRuleValue(change.now);
+  const was = asRuleValue(change.was);
+  const rule = RULES.find((one) => one === change.rule);
+
+  if (typeof change.at !== 'string' || typeof by.name !== 'string' || rule == null) return null;
+  if (now === undefined || was === undefined) return null;
+
+  return { at: change.at, by: { name: by.name, role: asMemberRole(by.role) }, rule, now, was };
+}
+
+function asSignInRulesPage(raw: unknown): SignInRulesPage | null {
+  const rules = asOrganisationSignInRules(raw);
+
+  if (rules == null) return null;
+
+  const page = raw as Record<string, unknown>;
+  const choices = Array.isArray(page.inactivityChoices)
+    ? page.inactivityChoices.filter((one): one is number => typeof one === 'number')
+    : null;
+  const changes = Array.isArray(page.changes) ? page.changes.map(asSignInRuleChange) : null;
+  const passwordOnly = Array.isArray(page.passwordOnly)
+    ? page.passwordOnly.map((entry: unknown) => {
+        const member = (entry ?? {}) as Record<string, unknown>;
+        const role = asMemberRole(member.role);
+
+        return typeof member.userId === 'string' && typeof member.name === 'string' && role != null
+          ? { userId: member.userId, name: member.name, role }
+          : null;
+      })
+    : null;
+
+  if (choices == null || changes == null || changes.some((change) => change == null)) return null;
+  if (passwordOnly?.some((member) => member == null)) return null;
+
+  return {
+    ...rules,
+    inactivityChoices: choices,
+    changes: changes as SignInRuleChange[],
+    passwordOnly: passwordOnly as SignInRulesPage['passwordOnly'],
+    inactivityLimit: asInactivityLimit(page.inactivityLimit),
+    ownTwoFactor: page.ownTwoFactor === true,
+    ownProvider: page.ownProvider === true,
+  };
+}
+
+function asInactivityLimit(raw: unknown): InactivityLimit | null {
+  const limit = (raw ?? {}) as Record<string, unknown>;
+
+  return typeof limit.organisationId === 'string' &&
+    typeof limit.organisation === 'string' &&
+    typeof limit.days === 'number'
+    ? { organisationId: limit.organisationId, organisation: limit.organisation, days: limit.days }
+    : null;
 }
 
 function asLinkedPhone(raw: unknown): LinkedPhone | null {

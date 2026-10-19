@@ -1,6 +1,6 @@
 # Portuguese at Soirely
 
-Kept by `/soirely-linguist pt`. Read it before writing a string in Portuguese, and add to it
+Kept by `/soirely-linguist`. Read it before writing a string in Portuguese, and add to it
 whenever you decide something a second string will need.
 
 ## Variant and register
@@ -41,6 +41,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **18 Oct 2026. The contact cap is "Uma conta pode ter até {{most}} …, incluindo o
+  principal"** (`contacts.capEmails_*`, `capPhones_*`, `capFullEmails`, `capFullPhones`, web
+  and app), as `contacts.limitEmails` and `limitPhones` already say. One more is "Pode
+  adicionar mais um"; the full line is "Já tem {{most}}, o máximo que uma conta pode ter.
+  Remova um para adicionar outro." "Endereço" and "número" are both masculine, so a number's
+  own keys (`contacts.verifiedPhone`, `primaryPhone`, `makePrimaryPhone`, `removeConfirmPhone`,
+  `removeKeepPhone`) hold the address card's words, and "Não verificado" serves both, with no
+  `unverifiedPhone`. The count is never 0 here (the full line shows instead) and never large,
+  so `_one` and `_other` cover it.
 - **18 Oct 2026. Verifying an alternative from Account (sc-2594)** (`verifyEmail.doneBodyAlternative`,
   `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
   `contacts.removeInAccount*`, web and app): "{{address}} está verificado. Continua a ser um

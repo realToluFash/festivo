@@ -37,17 +37,6 @@ def everything(labels, state):
     return True
 
 
-def _linguist(locale, heartbeat, sweeps=False):
-    return {
-        "skill": "soirely-linguist",
-        "invoke": f"/soirely-linguist {locale}",
-        "queue": TRANSLATION_QUEUE,
-        "filter": translation,
-        "heartbeat": heartbeat,
-        "sweeps": sweeps,
-    }
-
-
 ROLES = {
     "pm": {"skill": "soirely-product-manager", "queue": ["To Do", "Failed QA"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
@@ -70,10 +59,8 @@ ROLES = {
            "filter": not_translation, "heartbeat": 720, "sweeps": True},
     "ops": {"skill": "soirely-ops", "queue": [], "filter": everything, "heartbeat": 360,
             "sweeps": True, "main": True},
-    "en": _linguist("en", 120, True),
-    "es": _linguist("es", 30),
-    "fr": _linguist("fr", 30),
-    "pt": _linguist("pt", 30),
+    "l10n": {"skill": "soirely-linguist", "queue": TRANSLATION_QUEUE, "filter": translation,
+             "heartbeat": 120, "sweeps": True},
     "cd": {"skill": "soirely-creative", "queue": [], "filter": everything, "heartbeat": 1440,
            "sweeps": True},
 }
@@ -96,6 +83,10 @@ def pool(role, state, labels):
     return role
 
 
+LOCALES = ("en", "es", "fr", "pt")
+# The four linguists became one; their tags and signatures still mean it.
+FORMER = {locale: "l10n" for locale in LOCALES}
+
 HEADER = re.compile(r"^\s*((?:\[[a-z0-9]+\]\s*)+)\(from ([a-z0-9]+)\)")
 AUTHOR = re.compile(r"\(from ([a-z0-9]+)\)")
 
@@ -114,17 +105,18 @@ def addressees(text, labels):
     parsed = header(text)
     if not parsed:
         return []
-    return [developer_of(labels) if tag == "dev" else tag for tag in parsed["to"]]
+    return [developer_of(labels) if tag == "dev" else FORMER.get(tag, tag)
+            for tag in parsed["to"]]
 
 
 def author(text):
     parsed = header(text)
-    return parsed["from"] if parsed else None
+    return FORMER.get(parsed["from"], parsed["from"]) if parsed else None
 
 
 DEVS = ("dev", "dev2")
 TESTERS = ("qa", "qa2", "qa3")
-LINGUISTS = ("en", "es", "fr", "pt")
+LINGUISTS = ("l10n",)
 EVERYONE = tuple(ROLES)
 
 # What each role may write, from the "must not" sections of the skills. A command not
@@ -159,18 +151,16 @@ MOVES = {
     "pm": {"To Do": ("Backlog",), "Backlog": ("To Do",)},
     "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
            "Failed QA": ("In QA",)},
-    "en": {"In Progress": ("To Do", "Failed QA"), "Ready For QA": ("In Progress",)},
+    "l10n": {"In Progress": ("To Do", "Failed QA"), "Ready For QA": ("In Progress",)},
 }
 MOVES["dev2"] = MOVES["dev"]
 for _tester in TESTERS:
     MOVES[_tester] = MOVES["qa"]
-for _locale in LINGUISTS:
-    MOVES[_locale] = MOVES["en"]
 
 # A role that labels may only touch these labels; the product manager may touch any.
 OWN_LABELS = {"dev": {"dev1"}, "dev2": {"dev2"}, "cd": {"idea"},
               **{t: {"qa passed", "qa failed", "needs qa"} for t in TESTERS},
-              **{lang: {"translation"} for lang in LINGUISTS}}
+              "l10n": {"translation"}}
 
 CATALOGUES = [
     "apps/web/src/i18n/locales/{locale}.json",
@@ -178,6 +168,7 @@ CATALOGUES = [
     "services/api/translations/messages.{locale}.json",
     "services/api/translations/errors.{locale}.json",
     "services/api/translations/emails.{locale}.json",
+    "services/api/translations/emails+intl-icu.{locale}.json",
     "docs/i18n/{locale}.md",
     "docs/i18n/same-as-english.json",
 ]
@@ -185,6 +176,10 @@ CATALOGUES = [
 
 def locale_files(locale):
     return {path.replace("{locale}", locale) for path in CATALOGUES}
+
+
+def linguist_files():
+    return set().union(*(locale_files(locale) for locale in LOCALES))
 
 
 def may(role, command):

@@ -640,4 +640,24 @@ describe('unlinking a provider', () => {
       await screen.findByText('Set a password or link another account before removing this one.'),
     ).toBeDefined();
   });
+
+  it('names the organisation whose rule keeps the last provider linked (sc-69)', async () => {
+    signedInAs({ providers: [{ provider: 'google', email: GMAIL }] });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    answering({
+      'POST /api/auth/providers/google/unlink': () =>
+        problem('provider_kept_by_rule', 409, { organisation: 'Ìrè Events', provider: 'google' }),
+    });
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+
+    expect(
+      await screen.findByText(
+        "A rule set by Ìrè Events: everyone in it signs in with Google or Apple, so your last one can't be removed.",
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('Link Apple first if you want to unlink Google.')).toBeDefined();
+  });
 });

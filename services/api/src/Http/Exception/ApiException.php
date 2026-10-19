@@ -16,7 +16,7 @@ class ApiException extends RuntimeException
      * @param list<array{propertyPath: string, message: string, code: string}> $violations
      * @param array<string, string>                                            $headers    Retry-After on a 429,
      *                                                                                     and little else
-     * @param array<string, string>                                            $members    extra problem members,
+     * @param array<string, int|string|list<string>>                           $members    extra problem members,
      *                                                                                     such as the permission
      */
     public function __construct(

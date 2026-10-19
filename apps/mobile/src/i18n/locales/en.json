@@ -65,7 +65,14 @@
     "failedBody": "Something went wrong on the way. Try again in a moment.",
     "newHere": "New here?",
     "createAccount": "Create an account",
-    "passwordBlank": "Enter your password."
+    "passwordBlank": "Enter your password.",
+    "timedOutTitle": "Signed out by {{organisation}}’s rule",
+    "timedOutBody_one": "{{organisation}} signs people out after {{count}} day without use. Sign in again to carry on.",
+    "timedOutBody_other": "{{organisation}} signs people out after {{count}} days without use. Sign in again to carry on.",
+    "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
+    "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
+    "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it.",
+    "anotherAccount": "Sign in with another account"
   },
   "register": {
     "title": "Create your account",
@@ -433,7 +440,9 @@
     "confirmWarning": "Devices signed in with {{provider}} are signed out",
     "confirmEmailed": "We email every verified address on your account to say {{provider}} was unlinked.",
     "confirmUnlink": "Unlink {{provider}}",
-    "keep": "Keep it linked"
+    "keep": "Keep it linked",
+    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one can't be removed.",
+    "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
   "timeZone": {
     "title": "Time zone",
@@ -642,7 +651,9 @@
     "signOut": "Sign out",
     "choose": "Choose a section",
     "chooseLine": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices.",
-    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}."
+    "chooseLineWithOrganisation": "Account holds who you are and how to reach you. Security holds your password, ways to sign in, two-factor and signed-in devices. Organisation holds the settings for {{name}}.",
+    "signInRules": "Sign-in rules",
+    "signInRulesLine": "{{name}} · how people sign in, and for how long"
   },
   "switcher": {
     "yourRole": "Your role · {{role}}",
@@ -651,7 +662,9 @@
     "remembered": "Soirely remembers your choice on this device.",
     "label": "Organisation: {{name}}, your role {{role}}",
     "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
-    "close": "Close"
+    "close": "Close",
+    "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
+    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
   },
   "roles": {
     "owner": "Owner",
@@ -741,5 +754,90 @@
     "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
     "searchCurrency": "Search currencies",
     "searchTimezone": "Search time zones"
+  },
+  "invitations": {
+    "heading": "Invitations",
+    "count_one": "{{count}} invitation",
+    "count_other": "{{count}} invitations",
+    "from": "Invitation from {{inviter}} · {{role}}",
+    "fromNobody": "Invitation · {{role}}",
+    "until": "Works until {{date}}",
+    "untilSentTo": "Works until {{date}} · Sent to {{email}}",
+    "accept": "Accept and join",
+    "acceptLabel": "Accept and join {{organisation}}",
+    "decline": "Decline",
+    "declineLabel": "Decline the invitation to {{organisation}}",
+    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
+    "declineNoteNobody": "Declining changes nothing else.",
+    "joined": "You joined {{organisation}} as {{role}}.",
+    "open": "Open {{organisation}}",
+    "declined": "You declined. {{inviter}} will see that you said no.",
+    "declinedNobody": "You declined.",
+    "failed": "Your answer did not reach us. Check your connection and try again.",
+    "refused": {
+      "invitation_expired": {
+        "word": "Expired",
+        "body": "This invitation has expired. Ask {{inviter}} to send a new one.",
+        "bodyNobody": "This invitation has expired. Ask whoever invited you to send a new one."
+      },
+      "invitation_revoked": {
+        "word": "Withdrawn",
+        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+      },
+      "invitation_accepted": {
+        "word": "Already accepted",
+        "body": "You already accepted this invitation."
+      },
+      "invitation_declined": {
+        "word": "Already declined",
+        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
+        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+      },
+      "invitation_not_yours": {
+        "word": "Signed in as someone else",
+        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+      },
+      "organisation_deleted": {
+        "word": "Organisation deleted",
+        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+      }
+    }
+  },
+  "signInRules": {
+    "readTitle": "{{organisation}}’s sign-in rules",
+    "readIntro": "Set by the organisation’s owners. You can read them here; only they can change them.",
+    "loading": "Loading the sign-in rules…",
+    "failedLoad": "The sign-in rules did not load.",
+    "retry": "Try again",
+    "methodTitle": "How people sign in",
+    "idleTitle": "How long a sign-in lasts unused",
+    "twoFactorShort": "Two-factor",
+    "inForceTitle": "The rules in force",
+    "askOwner": "Questions? Ask an owner of {{organisation}}.",
+    "changesTitle": "What changed, newest first",
+    "noChanges": "No changes yet. These are the rules every organisation starts with.",
+    "changeWhen": "{{day}} at {{time}} · {{who}}",
+    "changeWho": "{{name}} · {{role}}",
+    "changeWas": "was: {{was}}",
+    "valueAnyMethod": "Any method: email and password, Google or Apple",
+    "valueProviderOnly": "Google or Apple only",
+    "valueIdle_one": "Sign-ins end after {{count}} day without use",
+    "valueIdle_other": "Sign-ins end after {{count}} days without use",
+    "valueNoLimit": "Sign-ins last until you sign out",
+    "valueTwoFactor": "Two-factor required for people who can manage members, roles, billing or security",
+    "valueNoTwoFactor": "Two-factor not required",
+    "unlinkedTitle": "Read-only until you link Google or Apple",
+    "unlinkedBody": "{{organisation}} now signs in with Google or Apple only. Your password still works for now, but until you link one of them you can read and not change anything in {{organisation}}.",
+    "unlinkedLink": "Link Google or Apple",
+    "gateTitle": "Two-factor required by {{organisation}}",
+    "gateBody": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, those wait. Your events keep working.",
+    "gateTurnOn": "Turn on two-factor",
+    "gateLater": "Not now",
+    "changedTitle": "Sign-in rules changed",
+    "changedBody": "{{organisation}} changed its sign-in rules on {{day}}.",
+    "changedSee": "See what changed",
+    "changedClose": "Close this notice",
+    "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
+    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
   }
 }

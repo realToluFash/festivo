@@ -51,5 +51,19 @@
     "recovery_request_closed": "Este pedido já terminou.",
     "recovery_request_proved": "Este pedido já está à espera de resposta.",
     "recovery_request_replaced": "Foi iniciado um pedido mais recente noutro dispositivo.",
-    "registration_expired": "Comece o registo de novo."
+    "registration_expired": "Comece o registo de novo.",
+    "already_a_member": "Essa pessoa já é membro desta organização.",
+    "email_taken": "Esse endereço de e-mail já tem uma conta Soirely. Inicie sessão com ela para aceitar o convite.",
+    "invitation_not_found": "Não encontrámos esse convite. Verifique a ligação no e-mail.",
+    "invitation_expired": "Este convite expirou. Peça a quem o convidou que envie um novo.",
+    "invitation_revoked": "Este convite foi retirado.",
+    "invitation_accepted": "Este convite já foi aceite.",
+    "invitation_declined": "Este convite foi recusado.",
+    "invitation_not_yours": "Este convite destina-se a outro endereço de e-mail.",
+    "organisation_deleted": "Esta organização já não existe, pelo que o convite não pode ser aceite.",
+    "provider_kept_by_rule": "A sua organização só aceita Google ou Apple, por isso a última conta associada mantém-se.",
+    "oauth_only": "Esta organização só aceita o início de sessão com Google ou Apple.",
+    "oauth_only_unlinked": "Só de leitura até associar Google ou Apple.",
+    "organisation_two_factor_required": "Esta organização pede primeiro a autenticação de dois fatores.",
+    "session_timed_out": "A sessão terminou após um período sem utilização."
 }

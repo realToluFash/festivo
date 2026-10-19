@@ -50,13 +50,18 @@ def covers(verdict, sha, carried=None):
     return sha.startswith(verdict["sha"]) or carried == verdict["sha"]
 
 
-def carried(pr, cache, same_change):
+def carried(pr, cache, same_change, before=None):
     """The passed sha whose change the head still makes, as after merging main in. `cache`
-    holds each answer by sha pair, since a pair's answer never changes."""
+    holds each answer by sha pair, since a pair's answer never changes. A merged head is part
+    of main, so nothing can compare it: it keeps the carry `before`, last sync's record, made."""
     verdict = latest_verdict(pr)
-    if pr["state"] != "open" or not verdict or verdict["verdict"] != "pass" \
-            or not verdict["sha"] or covers(verdict, pr["head_sha"]):
+    if not verdict or verdict["verdict"] != "pass" or not verdict["sha"] \
+            or covers(verdict, pr["head_sha"]):
         return None
+    if pr["state"] != "open":
+        before = before or {}
+        kept = before.get("carried") if before.get("head_sha") == pr["head_sha"] else None
+        return kept if kept == verdict["sha"] else None
     key = f"{verdict['sha']}..{pr['head_sha']}"
     if key not in cache:
         cache[key] = same_change(verdict["sha"], pr["head_sha"])
@@ -114,11 +119,15 @@ def queued(role, stories):
             and config["filter"](set(story["labels"]), story["state"])]
 
 
-def queue_items(stories):
-    """A story entering a role's queue is work once. One sitting there waits for a pick."""
+def queue_items(stories, moves=None):
+    """A story entering a role's queue is work once, unless the role moved it there itself.
+    One sitting there waits for a pick."""
+    moves = moves or {}
     merged = {}
     for role, config in R.ROLES.items():
         for story in queued(role, stories):
+            if moves.get((story["id"], story["state"], story["moved_at"])) == role:
+                continue
             pool = R.pool(role, story["state"], story["labels"])
             fingerprint = f"{pool}:story:sc-{story['id']}:{story['state']}:{story['moved_at']}"
             if fingerprint in merged:
@@ -258,7 +267,7 @@ def heartbeat_items(stories, last_runs, busy_roles, now):
 
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
-           handled=frozenset()):
+           handled=frozenset(), moves=None):
     return (inbox_items(stories, handled) + developer_items(stories, prs) + review_items(stories, prs)
-            + queue_items(stories) + main_items(main_run)
+            + queue_items(stories, moves) + main_items(main_run)
             + heartbeat_items(stories, last_runs or {}, set(busy_roles), now))

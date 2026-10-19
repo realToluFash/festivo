@@ -74,10 +74,10 @@ describe('"Sign out" on the Settings list', () => {
 });
 
 describe('the Settings list', () => {
-  it('has an Organisation row below Security, under its own heading', () => {
+  it('has Organisation and Sign-in rules rows below Security, under their own heading', () => {
     expect(settingsGroups(true)).toEqual([
       { heading: 'yourAccount', sections: ['account', 'security'] },
-      { heading: 'organisationHeading', sections: ['organisation'] },
+      { heading: 'organisationHeading', sections: ['organisation', 'signInRules'] },
     ]);
   });
 
@@ -90,5 +90,10 @@ describe('the Settings list', () => {
   it('opens the Organisation page under Settings', () => {
     expect(SECTION_HREF.organisation).toBe('/settings/organisation');
     expect(destinationOf(SECTION_HREF.organisation)).toBe('settings');
+  });
+
+  it('opens the organisation’s sign-in rules under Settings (sc-69)', () => {
+    expect(SECTION_HREF.signInRules).toBe('/settings/sign-in-rules');
+    expect(destinationOf(SECTION_HREF.signInRules)).toBe('settings');
   });
 });

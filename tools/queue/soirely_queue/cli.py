@@ -45,7 +45,7 @@ def refresh_work(db, now):
     busy_roles = {role for roles_ in busy for role in roles_.split(",")}
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
-                        last_runs, busy_roles, now, store.handled(db))
+                        last_runs, busy_roles, now, store.handled(db), store.moves(db))
     store.record(db, items, now)
     return items
 
@@ -345,7 +345,8 @@ WRITES = [
      lambda p: (p.add_argument("story"), p.add_argument("--to"),
                 p.add_argument("--reply-to", type=int),
                 p.add_argument("--untagged", action="store_true",
-                               help="no addressee: a record that wakes nobody"), body(p))),
+                               help="no addressee: a record, or with --reply-to a reply "
+                                    "that only confirms; wakes nobody"), body(p))),
     ("note", actions.note, "a private note your next run on this story sees",
      lambda p: (p.add_argument("story"), body(p))),
     ("claim", actions.claim, "take a story from your queue, then print it",
@@ -475,6 +476,10 @@ def main(argv=None):
         if argv[0] in ADMIN:
             return admin(argv)
         role = argv[0]
+        if role in roles.FORMER:
+            print(f"error: the {role} linguist is now {roles.FORMER[role]}. Stop this routine "
+                  f"(CronDelete) and run /soirely-linguist once.")
+            sys.exit(2)
         if role not in roles.ROLES:
             sys.exit(f"unknown role {role}: one of {', '.join(roles.ROLES)}")
         parser = role_parser(role)

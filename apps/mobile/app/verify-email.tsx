@@ -206,7 +206,7 @@ export default function VerifyEmail() {
           {alternative == null ? (
             <OnboardingSteps at={done ? 'verified' : 'verifying'} />
           ) : (
-            <BackToAccount verified={done ? alternative : null} />
+            !done && <BackToAccount />
           )}
           <AuthHeading
             done={done}
