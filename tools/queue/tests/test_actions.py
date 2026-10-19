@@ -33,7 +33,17 @@ class FakeShortcut:
             self.raw[story_id]["moved_at"] = "t1"
         if "labels" in fields:
             self.raw[story_id]["labels"] = fields["labels"]
+        if "description" in fields:
+            self.raw[story_id]["description"] = fields["description"]
         return self.raw[story_id]
+
+    def relate(self, subject_id, object_id, verb="relates to"):
+        links = self.raw[subject_id].setdefault("story_links", [])
+        if any(x == {"subject_id": subject_id, "object_id": object_id, "verb": verb}
+               for x in links):
+            raise RuntimeError("Shortcut 422 on POST /api/v3/story-links")
+        links.append({"subject_id": subject_id, "object_id": object_id, "verb": verb})
+        self.raw.setdefault(object_id, {}).setdefault("story_links", []).append(links[-1])
 
     def comment(self, story_id, text, parent_id=None):
         self.comments.append((story_id, text))
@@ -175,8 +185,126 @@ class Writes(Base):
 
     def test_the_designer_writes_only_the_design_section(self):
         with self.assertRaisesRegex(actions.Refused, "only the Design"):
-            actions.edit(self.as_("ux"), args(target="sc-1", section="AC", dated=None,
-                                              text="x"))
+            actions.edit(self.as_("ux"), args(targets=["sc-1"], section="AC", dated=None,
+                                              replace=None, with_=None, dry=False, text="x"))
+        with self.assertRaisesRegex(actions.Refused, "only the Design"):
+            actions.edit(self.as_("ux"), line_edit(["sc-1"], "a", "b"))
+
+
+class LanguageTags(Base):
+    def test_a_language_tag_heads_the_comment_and_reaches_the_linguist(self):
+        self.fake.add(1, "To Do", ["translation"])
+        actions.comment(self.as_("pm"), args(story="sc-1", to="en", reply_to=None,
+                                             untagged=False, text="Word this, please."))
+        posted = self.fake.raw[1]["comments"][-1]
+        self.assertTrue(posted["text"].startswith("[en] (from pm)\n"))
+        cli.refresh_work(self.db, 10_000_000)
+        self.assertEqual([w["reason"] for w in store.waiting(self.db, "l10n")
+                          if w["kind"] == "inbox"], [f"comments for you on sc-1: #{posted['id']}"])
+
+    def test_an_unknown_tag_is_still_refused(self):
+        self.fake.add(1, "To Do")
+        with self.assertRaisesRegex(actions.Refused, "no role de"):
+            actions.comment(self.as_("pm"), args(story="sc-1", to="de", reply_to=None,
+                                                 untagged=False, text="x"))
+
+
+class Releasing(Base):
+    def move(self, state="Backlog"):
+        return actions.move(self.as_("pm"), args(story="sc-1", state=state))
+
+    def test_pm_takes_back_a_story_nobody_holds(self):
+        self.fake.add(1, "In Progress")
+        self.assertEqual(self.move(), "sc-1 is now Backlog")
+        self.fake.add(2, "In Progress")
+        actions.move(self.as_("pm"), args(story="sc-2", state="To Do"))
+        self.assertEqual(self.state(2), "To Do")
+
+    def test_a_story_a_role_moved_in_is_held(self):
+        self.fake.add(1, "In Review", ["backend"])
+        actions.move(self.as_("lead"), args(story="sc-1", state="In Progress"))
+        with self.assertRaisesRegex(actions.Refused, "held: lead moved it there"):
+            self.move()
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_developer_label_holds_it(self):
+        self.fake.add(1, "In Progress", ["dev2"])
+        with self.assertRaisesRegex(actions.Refused, "carries dev2"):
+            self.move()
+
+    def test_an_open_pr_on_its_branch_holds_it_and_a_mention_does_not(self):
+        self.fake.add(1, "In Progress")
+        store.put_pr(self.db, {**pr(), "number": 7, "branch": "feature/sc-11/other"})
+        store.put_pr(self.db, {**pr(), "number": 8, "branch": "chore/model", "title": "sc-1"})
+        store.put_pr(self.db, {**pr(), "number": 9, "branch": "feature/sc-1/catalogue"})
+        with self.assertRaisesRegex(actions.Refused, "PR #9 is open on its branch"):
+            self.move()
+        store.put_prs(self.db, [{**pr(), "number": 8, "branch": "chore/model"}])
+        self.assertEqual(self.move(), "sc-1 is now Backlog")
+
+    def test_other_moves_are_refused_as_before(self):
+        self.fake.add(1, "In Review")
+        with self.assertRaisesRegex(actions.Refused, "only from To Do; sc-1 is In Review"):
+            self.move()
+        self.fake.add(2, "In Progress")
+        with self.assertRaisesRegex(actions.Refused, "never moves a story to Ready For QA"):
+            actions.move(self.as_("pm"), args(story="sc-2", state="Ready For QA"))
+        with self.assertRaisesRegex(actions.Refused, "dev never moves a story to Backlog"):
+            actions.move(self.as_("dev"), args(story="sc-2", state="Backlog"))
+
+
+def line_edit(targets, old, new, dry=False):
+    return args(targets=targets, replace=old, with_=new, dry=dry, section=None, dated=None,
+                text=None)
+
+
+class LineEdits(Base):
+    def setUp(self):
+        super().setUp()
+        for story_id in (1, 2):
+            self.fake.add(story_id, "To Do")
+            self.fake.raw[story_id]["description"] = "# AC\n- works\n- shows a total"
+
+    def body(self, story_id):
+        return self.fake.raw[story_id]["description"]
+
+    def test_one_occurrence_changes_on_every_story(self):
+        said = actions.edit(self.as_("pm"), line_edit(["sc-1", "sc-2"], "- works",
+                                                      "- works offline"))
+        self.assertEqual(said, "changed sc-1, sc-2")
+        self.assertEqual(self.body(2), "# AC\n- works offline\n- shows a total")
+
+    def test_a_missing_or_repeated_text_changes_nothing_anywhere(self):
+        self.fake.raw[2]["description"] = "- works\n- works"
+        with self.assertRaisesRegex(actions.Refused, "sc-2 has it 2 times; nothing changed"):
+            actions.edit(self.as_("pm"), line_edit(["sc-1", "sc-2"], "- works", "- x"))
+        with self.assertRaisesRegex(actions.Refused, "sc-1 does not have it"):
+            actions.edit(self.as_("pm"), line_edit(["sc-1"], "- absent", "- x"))
+        self.assertEqual(self.body(1), "# AC\n- works\n- shows a total")
+
+    def test_dry_says_what_would_change_and_changes_nothing(self):
+        said = actions.edit(self.as_("pm"), line_edit(["sc-1", "sc-2"], "a total", "the sum",
+                                                      dry=True))
+        self.assertEqual(said, "would change sc-1, sc-2")
+        self.assertEqual(self.body(1), "# AC\n- works\n- shows a total")
+
+    def test_a_section_edit_still_names_one_story(self):
+        with self.assertRaisesRegex(actions.Refused, "edit one story"):
+            actions.edit(self.as_("pm"), args(targets=["sc-1", "sc-2"], replace=None,
+                                              with_=None, dry=False, section="AC", dated=None,
+                                              text="- x"))
+        actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                          dry=False, section="AC", dated=None, text="- x"))
+        self.assertEqual(self.body(1), "# AC\n\n- x\n")
+
+
+class Relating(Base):
+    def test_relating_twice_says_already_linked(self):
+        self.fake.add(1, "To Do")
+        self.fake.add(2, "To Do")
+        a = args(story="sc-1", other="sc-2", verb="blocks")
+        self.assertEqual(actions.relate(self.as_("pm"), a), "sc-1 blocks sc-2")
+        self.assertEqual(actions.relate(self.as_("pm"), a), "already linked: sc-1 blocks sc-2")
 
 
 class Replies(Base):

@@ -266,6 +266,26 @@ def cmd_epic(s, a):
     s.done()
 
 
+def cmd_states(s, a):
+    shortcut = Shortcut()
+    folder = pathlib.Path(a.body) if a.body else None
+    if folder:
+        folder.mkdir(parents=True, exist_ok=True)
+    for ref in a.stories:
+        try:
+            story = sync.refresh_story(s.db, shortcut, actions.story_number(ref))
+        except actions.Refused as refusal:
+            print(f"{ref}: {refusal}")
+            continue
+        except RuntimeError as error:
+            print(f"{ref}: not found ({error})" if " 404 " in str(error) else f"{ref}: {error}")
+            continue
+        print(f"sc-{story['id']} [{story['state']}] {story['epic'] or 'no epic'} · "
+              f"{story['name']}")
+        if folder:
+            (folder / f"sc-{story['id']}.md").write_text(story["description"])
+
+
 def cmd_history(s, a):
     story_id = actions.story_number(a.story)
     states = store.get_meta(s.db, "states") or {}
@@ -289,7 +309,7 @@ TAKES_BODY = {actions.comment, actions.note, actions.report, actions.edit, actio
 
 def write(fn):
     def run(s, a):
-        if fn in TAKES_BODY and a.text is None:
+        if fn in TAKES_BODY and a.text is None and getattr(a, "replace", None) is None:
             a.text = sys.stdin.read()
             if not a.text.strip():
                 sys.exit("nothing to send: pass --text or pipe the body in")
@@ -336,9 +356,28 @@ READS = [
      lambda p: p.add_argument("--all", action="store_true")),
     ("epic", cmd_epic, "an epic's description and open stories",
      lambda p: p.add_argument("epic", type=int)),
+    ("states", cmd_states, "many stories, one line each: state, epic, name; --body DIR "
+     "saves each description",
+     lambda p: (p.add_argument("stories", nargs="+"), p.add_argument("--body", metavar="DIR"))),
     ("history", cmd_history, "a story's state changes",
      lambda p: (p.add_argument("story"), p.add_argument("--limit", type=int, default=30))),
 ]
+
+DETAILS = {
+    "move": "Move a story to a state your role moves it to, from the states it moves it "
+            "from. The product manager also moves an In Progress story back to Backlog or "
+            "To Do when nobody holds it: no role moved it there through sq, it carries no "
+            "developer label (dev1, dev2), and no open pull request is on its branch. A "
+            "pull request that only mentions a story moves it through Shortcut's GitHub "
+            "link, and that is the case this is for.",
+    "edit": "Replace one section (--section), add a dated one (--dated), or change one "
+            "exact piece of text with --replace OLD --with NEW. --replace takes several "
+            "targets, refuses unless OLD appears exactly once in every one of them, and then "
+            "changes all or none; --dry says which would change.",
+    "relate": "Link two stories. A link that already exists answers \"already linked\".",
+    "comment": "Post a tagged comment. --to takes roles, dev, and the language tags en, es, "
+               "fr and pt, which reach the linguist.",
+}
 
 WRITES = [
     ("comment", actions.comment, "post a tagged comment; --reply-to answers one",
@@ -359,9 +398,16 @@ WRITES = [
     ("report", actions.report, "QA report: upload files, comment, move to the result",
      lambda p: (p.add_argument("story"), p.add_argument("result", choices=["passed", "failed"]),
                 p.add_argument("--files", nargs="+"), body(p))),
-    ("edit", actions.edit, "replace a section, or add a dated one, on sc-<n> or epic-<n>",
-     lambda p: (p.add_argument("target"), p.add_argument("--section"),
-                p.add_argument("--dated"), body(p))),
+    ("edit", actions.edit, "replace a section, add a dated one, or --replace one line, "
+     "on sc-<n> or epic-<n>",
+     lambda p: (p.add_argument("targets", nargs="+", metavar="target"),
+                p.add_argument("--section"), p.add_argument("--dated"),
+                p.add_argument("--replace", metavar="OLD",
+                               help="text found exactly once in each target"),
+                p.add_argument("--with", dest="with_", metavar="NEW"),
+                p.add_argument("--dry", action="store_true",
+                               help="say which targets would change, change none"),
+                body(p))),
     ("new-story", actions.new_story, "create a story, in Backlog unless you are the PM",
      lambda p: (p.add_argument("--name", required=True), p.add_argument("--epic", type=int),
                 p.add_argument("--state"), p.add_argument("--label", nargs="+"),
@@ -408,10 +454,11 @@ def role_parser(role):
                                 "each thing once; --again prints it in full anyway.")
     p.add_argument("--again", action="store_true", help=argparse.SUPPRESS)
     sub = p.add_subparsers(dest="command", metavar="<command>")
-    sub.add_parser("help", help="this list")
+    sub.add_parser("help", help="this list, or one command's: help <command>").add_argument(
+        "topic", nargs="?")
 
     def add(name, fn, help_, args):
-        s = sub.add_parser(name, help=help_)
+        s = sub.add_parser(name, help=help_, description=DETAILS.get(name, help_))
         s.add_argument("--again", action="store_true", help="print in full what you have read")
         s.set_defaults(fn=fn)
         if args:
@@ -422,6 +469,7 @@ def role_parser(role):
     for name, fn, help_, args in WRITES:
         if roles.may(role, name):
             add(name, write(fn), help_, args)
+    p.commands = sub.choices
     return p
 
 
@@ -485,6 +533,11 @@ def main(argv=None):
         parser = role_parser(role)
         a = parser.parse_args(argv[1:])
         if a.command in (None, "help"):
+            topic = getattr(a, "topic", None)
+            if topic in parser.commands:
+                return parser.commands[topic].print_help()
+            if topic:
+                sys.exit(f"no command {topic} for {role}; `sq {role} help` lists them")
             return parser.print_help()
         a.fn(Session(role, a.again), a)
     except actions.Refused as refusal:
