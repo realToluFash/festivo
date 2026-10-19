@@ -295,7 +295,7 @@ export interface InvitationPreview {
 export type MemberStatus = 'pending_approval' | 'active' | 'suspended' | 'left_or_removed';
 
 export type MemberChannel =
-  'invitation' | 'self_created' | 'join_code' | 'domain' | 'request' | 'directory';
+  'invitation' | 'self_created' | 'join_code' | 'domain' | 'request' | 'directory' | 'settings';
 
 export interface MemberPerson {
   id: string;
@@ -343,6 +343,15 @@ export interface SentInvitation {
 export interface MembersList {
   members: OrganisationMember[];
   invitations: SentInvitation[];
+}
+
+/** What deleting an organisation destroys, and until when support can restore it, as the reader writes it. */
+export interface OrganisationDeletion {
+  events: number;
+  guests: number;
+  members: number;
+  restoreClosesAt: string;
+  restoreCloses: string;
 }
 
 /** The two codes the onboarding gate refuses with; each names the screen that passes it. */
@@ -1158,6 +1167,82 @@ export class ApiClient {
     return this.sentInvitation(body?.invitation);
   }
 
+  /** Refused `conflict` for the caller's own, `grant_not_held`, or `last_owner`. Takes effect on their next request. */
+  async changeMemberRole(
+    organisationId: string,
+    membershipId: string,
+    roleId: string,
+  ): Promise<void> {
+    await this.patch<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
+      { roleId },
+    );
+  }
+
+  async removeMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.request<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
+      { method: 'DELETE' },
+    );
+  }
+
+  /** Refused `last_owner` while the caller is the only owner. */
+  async leaveOrganisation(organisationId: string): Promise<void> {
+    await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/leave`, {});
+  }
+
+  /** With the proof from `prove()`. The caller becomes an Administrator. */
+  async transferOwnership(
+    organisationId: string,
+    membershipId: string,
+    proof: string,
+  ): Promise<void> {
+    await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/ownership`, {
+      membershipId,
+      proof,
+    });
+  }
+
+  async organisationDeletion(organisationId: string): Promise<OrganisationDeletion> {
+    return this.deletion(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/deletion`),
+    );
+  }
+
+  /** Refused with a violation on `name` unless it is typed exactly. */
+  async deleteOrganisation(organisationId: string, name: string): Promise<OrganisationDeletion> {
+    const body = await this.request<Record<string, unknown>>(
+      `/api/orgs/${encodeURIComponent(organisationId)}`,
+      { method: 'DELETE', body: { name } },
+    );
+
+    return this.deletion({ events: 0, guests: 0, members: 0, ...body });
+  }
+
+  private deletion(raw: unknown): OrganisationDeletion {
+    const body = raw as Record<string, unknown> | null;
+
+    if (
+      typeof body?.events !== 'number' ||
+      typeof body.guests !== 'number' ||
+      typeof body.members !== 'number' ||
+      typeof body.restoreClosesAt !== 'string' ||
+      typeof body.restoreCloses !== 'string'
+    ) {
+      throw new Error(
+        'The API answered an organisation deletion in a shape this client does not know. Check DeletionController in services/api.',
+      );
+    }
+
+    return {
+      events: body.events,
+      guests: body.guests,
+      members: body.members,
+      restoreClosesAt: body.restoreClosesAt,
+      restoreCloses: body.restoreCloses,
+    };
+  }
+
   /** Refused `invitation_not_found` for a link that names nothing, including one that was sent again. */
   async invitationLink(token: string): Promise<InvitationPreview> {
     return this.invitationPreview(await this.post<unknown>('/api/invitations/link', { token }));
@@ -1694,6 +1779,7 @@ const CHANNELS: readonly MemberChannel[] = [
   'domain',
   'request',
   'directory',
+  'settings',
 ];
 const SENT_STATUSES: readonly SentInvitationStatus[] = [
   'pending',

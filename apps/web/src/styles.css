@@ -1569,6 +1569,28 @@ h2 {
   margin-bottom: 0;
 }
 
+.settings-form h3 {
+  margin: 0;
+}
+
+.ownership-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+  align-items: center;
+  justify-content: space-between;
+  padding-block: var(--spaceMd);
+  border-top: var(--borderInset);
+}
+
+.ownership-row:first-of-type {
+  border-top: 0;
+}
+
+.ownership-row p {
+  margin: 0;
+}
+
 /* Two columns that wrap to one, with flex rather than grid so the same idea builds in the app. */
 .settings-fields {
   display: flex;
