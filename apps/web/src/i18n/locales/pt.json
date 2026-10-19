@@ -916,7 +916,7 @@
     "twoFactorOff": "Off. Anyone with an owner’s or administrator’s password can change members, roles and billing.",
     "effectsTitle": "What happens when you save",
     "effectStranded": "{{names}} can read but not change anything until they link Google or Apple. Nobody is signed out.",
-    "effectProviderOnly": "Everyone signs in with Google or Apple from their next sign-in. Nobody is signed out.",
+    "effectProviderOnly": "Everyone signs in with Google or Apple. Anybody with one linked who signed in with a password is asked to sign in again with it.",
     "effectAnyMethod": "People can sign in with their password again.",
     "effectIdle_one": "Anyone who has not used Soirely for {{count}} day is asked to sign in again, from their next visit.",
     "effectIdle_other": "Anyone who has not used Soirely for {{count}} days is asked to sign in again, from their next visit.",
@@ -955,6 +955,8 @@
     "changedTitle": "Sign-in rules changed",
     "changedBody": "{{organisation}} changed its sign-in rules on {{day}}.",
     "changedSee": "See what changed",
-    "changedClose": "Close this notice"
+    "changedClose": "Close this notice",
+    "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
+    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
   }
 }

@@ -257,6 +257,8 @@ export interface SignInRulesPage extends OrganisationSignInRules {
   changes: SignInRuleChange[];
   /** Members with no Google or Apple linked; only for a caller who may change the rules. */
   passwordOnly: { userId: string; name: string; role: MemberRole }[] | null;
+  /** The shortest limit across the caller's organisations, which may be another organisation's. */
+  inactivityLimit: InactivityLimit | null;
 }
 
 export interface InactivityLimit {
@@ -935,19 +937,12 @@ export class ApiClient {
   }
 
   async organisations(): Promise<Membership[]> {
-    return (await this.memberships()).organisations;
-  }
-
-  /** The organisations, and the inactivity limit that applies to this account across them. */
-  async memberships(): Promise<{
-    organisations: Membership[];
-    inactivityLimit: InactivityLimit | null;
-  }> {
     const raw = await this.get<unknown>('/api/orgs');
-    const body = typeof raw === 'object' && raw != null ? (raw as Record<string, unknown>) : {};
-    const memberships = Array.isArray(body.organisations)
-      ? body.organisations.map(asMembership)
-      : null;
+    const listed =
+      typeof raw === 'object' && raw != null
+        ? (raw as Record<string, unknown>).organisations
+        : null;
+    const memberships = Array.isArray(listed) ? listed.map(asMembership) : null;
 
     if (memberships == null || memberships.some((membership) => membership == null)) {
       throw new Error(
@@ -955,10 +950,7 @@ export class ApiClient {
       );
     }
 
-    return {
-      organisations: memberships as Membership[],
-      inactivityLimit: asInactivityLimit(body.inactivityLimit),
-    };
+    return memberships as Membership[];
   }
 
   async signInRules(organisationId: string): Promise<SignInRulesPage> {
@@ -1605,6 +1597,7 @@ function asSignInRulesPage(raw: unknown): SignInRulesPage | null {
     inactivityChoices: choices,
     changes: changes as SignInRuleChange[],
     passwordOnly: passwordOnly as SignInRulesPage['passwordOnly'],
+    inactivityLimit: asInactivityLimit(page.inactivityLimit),
   };
 }
 

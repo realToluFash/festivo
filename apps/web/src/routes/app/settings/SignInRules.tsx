@@ -92,6 +92,23 @@ export function SignInRules() {
         </div>
       )}
       {load.kind === 'loaded' &&
+        load.page.inactivityLimit != null &&
+        load.page.inactivityLimit.organisationId !== organisation.id && (
+          <div className="notice notice-quiet" role="status">
+            <span className="mark mark-info" aria-hidden="true">
+              i
+            </span>
+            <div className="notice-body">
+              <p>
+                {t('signInRules.limitApplies', {
+                  count: load.page.inactivityLimit.days,
+                  organisation: load.page.inactivityLimit.organisation,
+                })}
+              </p>
+            </div>
+          </div>
+        )}
+      {load.kind === 'loaded' &&
         (manages ? (
           <Editable
             key={organisation.id}

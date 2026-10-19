@@ -387,4 +387,24 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
 
     expect(screen.getByText('Enter your password.')).toBeDefined();
   });
+
+  it('opens on the provider buttons when a reset or an ended session was turned away by the rule', () => {
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: [
+            {
+              pathname: '/sign-in',
+              state: { providerOnly: { organisation: 'Ìrè Events', providers: ['google'] } },
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByRole('alert').textContent).toMatch(
+      /Ìrè Events signs in with Google or Apple only/,
+    );
+    expect(screen.getByLabelText('Password').closest('form')?.hidden).toBe(true);
+  });
 });

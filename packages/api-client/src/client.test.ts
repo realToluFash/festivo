@@ -697,7 +697,7 @@ describe('a browser never holds the refresh token', () => {
     ]);
   });
 
-  test('a membership carries what the sign-in rules keep back, and the limit that applies', async () => {
+  test('a membership carries what the sign-in rules keep back', async () => {
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',
       tokens: store('good', null),
@@ -723,20 +723,14 @@ describe('a browser never holds the refresh token', () => {
               },
             },
           ],
-          inactivityLimit: { organisationId: 'org_1', organisation: 'Ìrè Events', days: 7 },
         }),
     });
 
-    const { organisations, inactivityLimit } = await client.memberships();
+    const organisations = await client.organisations();
 
     expect(organisations[0]?.withheldUntilTwoFactor).toEqual(['members.manage']);
     expect(organisations[0]?.readOnlyUntilLinked).toBe(true);
     expect(organisations[0]?.signInRules.inactivityTimeoutDays).toBe(7);
-    expect(inactivityLimit).toEqual({
-      organisationId: 'org_1',
-      organisation: 'Ìrè Events',
-      days: 7,
-    });
   });
 
   test('sign-in rules are read with their history and saved with only what changed', async () => {
@@ -790,7 +784,7 @@ describe('a browser never holds the refresh token', () => {
     ]);
   });
 
-  test('sign-in rules for a member who may not change them have no password-only list', async () => {
+  test('sign-in rules for a member who may not change them have no password-only list, and name whose limit applies', async () => {
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',
       tokens: store('good', null),
@@ -802,10 +796,18 @@ describe('a browser never holds the refresh token', () => {
           changedAt: null,
           inactivityChoices: [7, 30],
           changes: [],
+          inactivityLimit: { organisationId: 'org_2', organisation: 'Studio Lumen', days: 7 },
         }),
     });
 
-    expect((await client.signInRules('org_1')).passwordOnly).toBeNull();
+    const page = await client.signInRules('org_1');
+
+    expect(page.passwordOnly).toBeNull();
+    expect(page.inactivityLimit).toEqual({
+      organisationId: 'org_2',
+      organisation: 'Studio Lumen',
+      days: 7,
+    });
   });
 
   test('setting a phone sends the country and the number as typed, and says a code went out', async () => {

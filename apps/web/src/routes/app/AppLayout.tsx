@@ -45,7 +45,11 @@ export function AppLayout() {
     return (
       <Navigate
         to={state.ended ? '/sign-in?signed-out' : '/sign-in'}
-        state={state.timedOut == null ? undefined : { timedOut: state.timedOut }}
+        state={
+          state.timedOut == null && state.providerOnly == null
+            ? undefined
+            : { timedOut: state.timedOut, providerOnly: state.providerOnly }
+        }
         replace
       />
     );

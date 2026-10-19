@@ -9,7 +9,7 @@ import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
-import type { TimedOut } from '../../session.ts';
+import { type ProviderOnly, type TimedOut, providerOnlyBy } from '../../session.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
@@ -29,12 +29,15 @@ export function SignIn() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
-  const { state: carried } = useLocation() as { state: { timedOut?: TimedOut } | null };
+  const { state: carried } = useLocation() as {
+    state: { timedOut?: TimedOut; providerOnly?: ProviderOnly } | null;
+  };
   const [status, setStatus] = useState<Status>(() => {
     const provider = params.get('provider-failed');
 
     if (provider != null) return { kind: 'providerFailed', provider };
     if (carried?.timedOut != null) return { kind: 'timedOut', rule: carried.timedOut };
+    if (carried?.providerOnly != null) return { kind: 'providerOnly', ...carried.providerOnly };
 
     return params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' };
   });
@@ -286,13 +289,8 @@ function refusalFrom(error: unknown): Status {
 
   if (error.is('invalid_credentials')) return { kind: 'refused' };
 
-  if (error.is('oauth_only') && error.problem.organisation != null) {
-    return {
-      kind: 'providerOnly',
-      organisation: error.problem.organisation,
-      providers: error.problem.providers ?? [],
-    };
-  }
+  const providerOnly = providerOnlyBy(error.problem);
+  if (providerOnly != null) return { kind: 'providerOnly', ...providerOnly };
 
   if (error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));

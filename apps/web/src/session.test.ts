@@ -30,6 +30,22 @@ describe('a session the API ended', () => {
     });
   });
 
+  it('carries a Google-or-Apple-only rule that ended a password session to sign-in (sc-69)', () => {
+    expect(
+      signedOutBy({
+        type: 'https://soirely.com/errors/oauth_only',
+        title: 'No.',
+        status: 403,
+        organisation: 'Ìrè Events',
+        providers: ['google'],
+      }),
+    ).toEqual({
+      status: 'signedOut',
+      ended: true,
+      providerOnly: { organisation: 'Ìrè Events', providers: ['google'] },
+    });
+  });
+
   it('says only that it ended for any other reason', () => {
     expect(
       signedOutBy({

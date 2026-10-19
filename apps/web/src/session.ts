@@ -42,13 +42,19 @@ export type SessionState =
   | { status: 'checking' }
   | { status: 'signedIn'; session: Session }
   | { status: 'unreachable'; retrying: boolean }
-  | { status: 'signedOut'; ended: boolean; timedOut?: TimedOut };
+  | { status: 'signedOut'; ended: boolean; timedOut?: TimedOut; providerOnly?: ProviderOnly };
 
 /** An organisation's inactivity rule ended the session (sc-69): sign-in names it and keeps the address. */
 export interface TimedOut {
   organisation: string;
   days: number;
   email: string;
+}
+
+/** An organisation's Google-or-Apple-only rule turned a password away (sc-69): sign-in names it and shows the buttons. */
+export interface ProviderOnly {
+  organisation: string;
+  providers: string[];
 }
 
 /** Per device, as the switcher promises: "Soirely remembers your choice on this device". */
@@ -151,8 +157,16 @@ export function replaceOrganisation(next: Membership): void {
   set({ status: 'signedIn', session: { ...current, organisations, organisation } });
 }
 
-export function forgetSession(ended = false, timedOut?: TimedOut): void {
-  set(timedOut == null ? { status: 'signedOut', ended } : { status: 'signedOut', ended, timedOut });
+export function forgetSession(ended = false, why?: Problem): void {
+  const timedOut = timedOutBy(why);
+  const providerOnly = providerOnlyBy(why);
+
+  set({
+    status: 'signedOut',
+    ended,
+    ...(timedOut == null ? {} : { timedOut }),
+    ...(providerOnly == null ? {} : { providerOnly }),
+  });
 }
 
 export function __setSessionState(next: SessionState): void {
@@ -164,6 +178,14 @@ function timedOutBy(why: Problem | undefined): TimedOut | undefined {
   if (why.organisation == null || why.days == null) return undefined;
 
   return { organisation: why.organisation, days: why.days, email: why.email ?? '' };
+}
+
+/** The `oauth_only` refusal, from a sign-in, a completed reset or a session the rule ended. */
+export function providerOnlyBy(why: Problem | undefined): ProviderOnly | undefined {
+  if (why == null || !new ApiError(why).is('oauth_only') || why.organisation == null)
+    return undefined;
+
+  return { organisation: why.organisation, providers: why.providers ?? [] };
 }
 
 function sessionFrom(account: Account, organisations: readonly Membership[]): Session {
@@ -217,7 +239,7 @@ function subscribe(listener: () => void): () => void {
 
 if (typeof window !== 'undefined') {
   window.addEventListener(SIGNED_OUT, (event) => {
-    forgetSession(true, timedOutBy((event as CustomEvent<Problem | undefined>).detail));
+    forgetSession(true, (event as CustomEvent<Problem | undefined>).detail);
   });
 
   // The API said the account is behind a gate this session did not know about, so read it again.

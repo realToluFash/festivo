@@ -155,6 +155,39 @@ describe('Settings > Sign-in rules, for any other member', () => {
   });
 });
 
+describe('whose inactivity limit applies, for a member of several organisations (sc-69)', () => {
+  it('names the other organisation whose shorter limit is the one in force', async () => {
+    signedIn(membership({ role: COORDINATOR, permissions: ['events.read'] }));
+    answering({
+      ...PAGE,
+      inactivityTimeoutDays: 30,
+      passwordOnly: undefined,
+      inactivityLimit: { organisationId: 'org_2', organisation: 'Studio Lumen', days: 7 },
+    });
+    open();
+
+    expect(
+      await screen.findByText(
+        'For you, sign-ins end after 7 days without use: Studio Lumen’s rule, the shortest of your organisations.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('says nothing more when this organisation’s own limit is the one in force', async () => {
+    signedIn(membership({ role: COORDINATOR, permissions: ['events.read'] }));
+    answering({
+      ...PAGE,
+      inactivityTimeoutDays: 7,
+      passwordOnly: undefined,
+      inactivityLimit: { organisationId: 'org_1', organisation: 'Ìrè Events', days: 7 },
+    });
+    open();
+
+    await screen.findAllByText('Sign-ins end after 7 days without use');
+    expect(screen.queryByText(/the shortest of your organisations/)).toBeNull();
+  });
+});
+
 describe('what the rules ask of a member, on every page', () => {
   it('a member with no provider under a Google-or-Apple-only rule is told they can only read', async () => {
     signedIn(membership({ readOnlyUntilLinked: true }));
