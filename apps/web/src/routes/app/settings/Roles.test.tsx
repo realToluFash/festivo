@@ -419,26 +419,4 @@ describe('Settings > Roles', () => {
     expect(await screen.findByRole('alert')).toBeDefined();
     expect(screen.queryByRole('heading', { level: 1, name: 'Roles' })).toBeNull();
   });
-
-  it('names the two-factor rule when that is what keeps members back (sc-69)', async () => {
-    signedIn(
-      membership({
-        ...IRE,
-        permissions: ['events.read'],
-        withheldUntilTwoFactor: ['members.read'],
-      }),
-    );
-    answering();
-    render(
-      <RouterProvider
-        router={createMemoryRouter(routes, { initialEntries: ['/app/settings/roles'] })}
-      />,
-    );
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Two-factor required by Ìrè Events' }),
-    ).toBeDefined();
-    expect(screen.getByRole('alert').textContent).toMatch(/Until you turn it on, those wait/);
-    expect(screen.queryByText('You do not have access to this')).toBeNull();
-  });
 });
