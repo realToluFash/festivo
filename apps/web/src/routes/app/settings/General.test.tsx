@@ -93,7 +93,11 @@ describe('Settings > General', () => {
       'Portuguese · Português',
     ]);
     expect(language.getAttribute('aria-describedby')).toBe('organisation-locale-help');
-    expect(screen.getByText(/Invitation emails to people without a Soirely account/)).toBeDefined();
+    expect(
+      language.compareDocumentPosition(
+        screen.getByText(/Invitation emails to people without a Soirely account/),
+      ),
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(screen.getByText(/new events start with these/).compareDocumentPosition(language)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );
@@ -116,7 +120,7 @@ describe('Settings > General', () => {
         'Saved. Invitation emails to people without a Soirely account go out in French from now on. Invitations already sent are not sent again.',
       ),
     );
-    expect(sent.filter((request) => request.path.startsWith('/api/orgs'))).toEqual([
+    expect(sent.filter((request) => request.method === 'PATCH')).toEqual([
       { method: 'PATCH', path: '/api/orgs/org_1', body: { locale: 'fr' } },
     ]);
   });

@@ -406,11 +406,6 @@ function Choice({
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      {help != null && (
-        <span className="field-help" id={`${id}-help`}>
-          {help}
-        </span>
-      )}
       <select
         className={error == null ? 'input' : 'input input-wrong'}
         id={id}
@@ -427,6 +422,11 @@ function Choice({
         ))}
       </select>
       {error != null && <FieldError id={`${id}-error`} message={error} />}
+      {help != null && (
+        <p className="field-help" id={`${id}-help`}>
+          {help}
+        </p>
+      )}
     </div>
   );
 }
