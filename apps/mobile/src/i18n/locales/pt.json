@@ -754,7 +754,12 @@
     "readOnly": "A sua função, {{role}}, pode ver estes dados mas não alterá-los. Os proprietários podem.",
     "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
     "searchCurrency": "Pesquisar moedas",
-    "searchTimezone": "Pesquisar fusos horários"
+    "searchTimezone": "Pesquisar fusos horários",
+    "language": "Language",
+    "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
+    "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
+    "refused": "Nothing was saved. Your role does not include the permission this needs.",
+    "searchLanguage": "Search languages"
   },
   "invitations": {
     "heading": "Invitations",
@@ -835,11 +840,23 @@
     "gateTurnOn": "Ativar a autenticação de dois fatores",
     "gateLater": "Agora não",
     "changedTitle": "As regras de início de sessão mudaram",
-    "changedBody": "{{organisation}} alterou as regras de início de sessão a {{day}}.",
+    "changedBody": "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}",
     "changedSee": "Ver o que mudou",
     "changedClose": "Fechar este aviso",
     "limitApplies_one": "No seu caso, a sessão é encerrada após {{count}} dia sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações.",
     "limitApplies_other": "No seu caso, a sessão é encerrada após {{count}} dias sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações."
+  },
+  "languageNames": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
+  },
+  "languageNamesInSentence": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
   },
   "ownership": {
     "title": "Ownership and leaving",

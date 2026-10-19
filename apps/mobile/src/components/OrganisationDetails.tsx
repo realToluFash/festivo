@@ -6,6 +6,7 @@ import {
   type OrganisationField,
   countryChoices,
   currencyLabel,
+  languageChoices,
   organisationProblem,
   roleName,
   timezoneLabel,
@@ -14,6 +15,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { type TFunction } from 'i18next';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
@@ -41,15 +43,19 @@ type Status = 'editing' | 'saving' | 'saved' | 'failed';
 export function EditableDetails({
   organisation,
   kind,
+  onForbidden,
 }: {
   organisation: Membership;
   kind: LayoutKind;
+  /** The role lost `organisation.manage` while the page was open: nothing was saved. */
+  onForbidden: () => void;
 }) {
   const { t } = useTranslation();
   const locale = currentLocale();
   const [values, setValues] = useState<Details>(() => detailsOf(organisation));
   const [refusal, setRefusal] = useState(NO_REFUSAL);
   const [status, setStatus] = useState<Status>('editing');
+  const [newLanguage, setNewLanguage] = useState<string | null>(null);
   const nameInput = useRef<TextInput>(null);
   const contactInput = useRef<TextInput>(null);
   const focus = (field: OrganisationField) =>
@@ -85,6 +91,8 @@ export function EditableDetails({
     [organisation.timezone],
   );
 
+  const languages = useMemo(() => languageChoices(t), [t]);
+
   const busy = status === 'saving';
   const errors = { ...refusal.errors, ...checks.errors };
 
@@ -106,9 +114,17 @@ export function EditableDetails({
       values,
     );
 
+    if (outcome.kind === 'forbidden') {
+      onForbidden();
+      return;
+    }
+
     if (outcome.kind === 'saved') {
       replaceOrganisation(outcome.organisation);
       setValues(detailsOf(outcome.organisation));
+      setNewLanguage(
+        outcome.organisation.locale === organisation.locale ? null : outcome.organisation.locale,
+      );
     }
     if (outcome.kind === 'refused') setRefusal(refusalOf(outcome.errors));
     setStatus(outcome.kind === 'refused' ? 'editing' : outcome.kind);
@@ -121,7 +137,13 @@ export function EditableDetails({
           <Notice
             tone="done"
             mark={tokens.marks.done.glyph}
-            body={t('orgGeneral.saved', { name: organisation.name })}
+            body={
+              newLanguage == null
+                ? t('orgGeneral.saved', { name: organisation.name })
+                : t('orgGeneral.savedLanguage', {
+                    language: languageNameInSentence(t, newLanguage),
+                  })
+            }
           />
         </View>
       )}
@@ -202,6 +224,22 @@ export function EditableDetails({
 
         <Notice tone="quiet" mark={tokens.marks.info.glyph} body={t('orgGeneral.defaultsNote')} />
 
+        <Field
+          label={t('orgGeneral.language')}
+          error={errors.locale}
+          help={t('orgGeneral.languageHint')}
+        >
+          <ListPicker
+            label={t('orgGeneral.language')}
+            searchLabel={t('orgGeneral.searchLanguage')}
+            choices={languages}
+            value={values.locale}
+            onChange={(code) => change('locale', code)}
+            disabled={busy}
+            testID="organisation.language"
+          />
+        </Field>
+
         <View style={kind === 'phone' ? undefined : styles.leading}>
           <PrimaryButton
             label={busy ? t('orgGeneral.saving') : t('orgGeneral.save')}
@@ -249,11 +287,29 @@ export function ReadOnlyDetails({
         ))}
       </View>
       <Notice tone="quiet" mark={tokens.marks.info.glyph} body={t('orgGeneral.defaultsNote')} />
+      <View style={styles.row}>
+        <Text size={tokens.typeButton.size} weight="semibold" style={styles.secondary}>
+          {t('orgGeneral.language')}
+        </Text>
+        <Text size={tokens.typeBodyPhone.size} testID="organisation.language.readOnly">
+          {languageName(t, organisation.locale)}
+        </Text>
+      </View>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}
       </Text>
     </View>
   );
+}
+
+/** In the reader's language alone, as a row names it. */
+function languageName(t: TFunction, code: string): string {
+  return t(`languageNames.${code}`, { defaultValue: code });
+}
+
+/** Mid-sentence, where es, fr and pt write a language's name in lowercase. */
+function languageNameInSentence(t: TFunction, code: string): string {
+  return t(`languageNamesInSentence.${code}`, { defaultValue: code });
 }
 
 const styles = StyleSheet.create({

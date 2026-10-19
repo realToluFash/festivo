@@ -91,7 +91,7 @@ final readonly class OrganisationController
         )], Response::HTTP_CREATED);
     }
 
-    /** Any of the five fields; those left out keep their value. */
+    /** Any of the six fields; those left out keep their value. */
     #[Route('/api/orgs/{organisationId}', name: 'orgs_update', methods: ['PATCH'])]
     #[InOrganisation(Permission::OrganisationManage)]
     public function update(Request $request, string $organisationId): JsonResponse
@@ -105,6 +105,7 @@ final readonly class OrganisationController
             'currency' => Type\optional(Type\string()),
             'timezone' => Type\optional(Type\string()),
             'contactAddress' => Type\optional(Type\string()),
+            'locale' => Type\optional(Type\string()),
         ]));
 
         $fields = $this->organisationRules->check([
@@ -113,6 +114,7 @@ final readonly class OrganisationController
             'currency' => $body['currency'] ?? $organisation->getCurrency(),
             'timezone' => $body['timezone'] ?? $organisation->getTimezone(),
             'contactAddress' => $body['contactAddress'] ?? $organisation->getContactAddress(),
+            'locale' => $body['locale'] ?? $organisation->getLocale(),
         ]);
 
         $organisation->setName($fields['name']);
@@ -120,6 +122,7 @@ final readonly class OrganisationController
         $organisation->setCurrency($fields['currency']);
         $organisation->setTimezone($fields['timezone']);
         $organisation->setContactAddress($fields['contactAddress']);
+        $organisation->setLocale($fields['locale']);
         $this->entityManager->flush();
 
         return new JsonResponse(OrganisationSerialiser::organisation($organisation));

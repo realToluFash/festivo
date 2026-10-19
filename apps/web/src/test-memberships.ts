@@ -9,6 +9,7 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
     currency: 'NGN',
     timezone: 'Africa/Lagos',
     contactAddress: 'hello@ire.events',
+    locale: 'en',
     role: { id: 'role_1', seededAs: 'owner', name: null },
     permissions: OWNER_PERMISSIONS,
     withheldUntilTwoFactor: [],

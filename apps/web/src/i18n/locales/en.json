@@ -331,7 +331,11 @@
     "contactBlank": "Enter a contact email address.",
     "contactInvalid": "That does not look like an email address. Check it has an @ and a domain.",
     "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
-    "failed": "Saving did not work. Nothing was changed. Try again in a moment."
+    "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
+    "language": "Language",
+    "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
+    "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
+    "refused": "Nothing was saved. Your role does not include the permission this needs."
   },
   "completeProfile": {
     "title": "A few details",
@@ -1247,6 +1251,18 @@
     "changedClose": "Close this notice",
     "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
     "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
+  },
+  "languageNames": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
+  },
+  "languageNamesInSentence": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
   },
   "ownership": {
     "title": "Ownership and leaving",

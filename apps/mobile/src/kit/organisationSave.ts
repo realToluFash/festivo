@@ -9,6 +9,7 @@ import {
 export type SaveOutcome =
   | { kind: 'saved'; organisation: Membership }
   | { kind: 'refused'; errors: Partial<Record<OrganisationField, string>> }
+  | { kind: 'forbidden' }
   | { kind: 'failed' };
 
 export async function saveOrganisation(
@@ -33,6 +34,8 @@ export async function saveOrganisation(
 
       return { kind: 'refused', errors };
     }
+
+    if (error instanceof ApiError && error.is('permission_required')) return { kind: 'forbidden' };
 
     return { kind: 'failed' };
   }
@@ -66,5 +69,6 @@ export function detailsOf(organisation: OrganisationDetails): OrganisationDetail
     contactAddress: organisation.contactAddress,
     currency: organisation.currency,
     timezone: organisation.timezone,
+    locale: organisation.locale,
   };
 }

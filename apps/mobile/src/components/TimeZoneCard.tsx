@@ -5,13 +5,14 @@ import { Pressable, ScrollView, StyleSheet, type TextInput, View } from 'react-n
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { listRoom } from '../kit/keyboard.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
+import { useAboveKeyboard, useRoomAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** How many rows the list shows at once; the search narrows the rest. */
@@ -19,6 +20,11 @@ const SHOWN = 30;
 
 /** The list scrolls inside this height, so the field and Save stay on screen (Account-*, Tweak `tz`). */
 const LIST_HEIGHT = 264;
+
+/** The list's padding and border, which the one-row floor counts along with the row. */
+const LIST_PADDING = tokens.spaceXxs;
+const LIST_BORDER = 1;
+const LIST_FRAME = 2 * (LIST_PADDING + LIST_BORDER);
 
 /** Your account > Account, the time zone the times sent to this person are written in (sc-868). */
 export function TimeZoneCard({
@@ -126,7 +132,12 @@ function Choosing({
   const [saving, setSaving] = useState(false);
   const input = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
+  const room = useRoomAboveKeyboard();
+  // With no on-screen keyboard (a hardware one), nothing lifts, so the card is brought up on opening.
   const top = useScrolledToTop();
+  const [groupHeight, setGroupHeight] = useState(0);
+  const [listHeight, setListHeight] = useState(0);
+  const [rowHeight, setRowHeight] = useState<number>(tokens.sizeHit);
 
   const showingPicked = picked != null && typed === zoneLabel(picked);
   const matches = showingPicked ? [] : matchingZones(zones, typed).slice(0, SHOWN);
@@ -141,6 +152,15 @@ function Choosing({
       : t('timeZone.countryWas', { country: zone.country, name: was });
   };
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
+  const listMost =
+    room == null
+      ? LIST_HEIGHT
+      : listRoom({
+          room,
+          rest: groupHeight - (matches.length > 0 ? listHeight : 0),
+          oneRow: rowHeight + LIST_FRAME,
+          most: LIST_HEIGHT,
+        });
 
   async function save(): Promise<void> {
     if (saving) return;
@@ -173,74 +193,88 @@ function Choosing({
 
   return (
     <>
-      <View ref={top}>
-        <Field
-          label={t('timeZone.find')}
-          error={error}
-          help={t('timeZone.help', { now: now ?? t('timeZone.nowUnset') })}
+      <View {...aboveKeyboard}>
+        <View
+          ref={top}
+          onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
+          style={styles.choosing}
         >
-          <TextField
-            ref={input}
-            wrong={error != null}
-            editable={!saving}
-            autoFocus
-            autoCapitalize="none"
-            placeholder={t('timeZone.placeholder')}
-            value={typed}
-            onChangeText={(text) => {
-              setTyped(text);
-              setPicked(null);
-              setError(null);
-            }}
-            returnKeyType="done"
-            onSubmitEditing={() => void save()}
-            accessibilityLabel={t('timeZone.find')}
-            testID="timeZone.search"
-          />
-        </Field>
-      </View>
-
-      {matches.length > 0 && (
-        <ScrollView
-          style={styles.list}
-          nestedScrollEnabled
-          keyboardShouldPersistTaps="handled"
-          accessibilityLabel={t('timeZone.listLabel')}
-        >
-          {matches.map((zone) => (
-            <Pressable
-              key={zone.id}
-              style={styles.option}
-              accessibilityRole="button"
-              onPress={() => {
-                setPicked(zone);
-                setTyped(zoneLabel(zone));
+          <Field
+            label={t('timeZone.find')}
+            error={error}
+            help={t('timeZone.help', { now: now ?? t('timeZone.nowUnset') })}
+          >
+            <TextField
+              ref={input}
+              wrong={error != null}
+              editable={!saving}
+              autoFocus
+              autoCapitalize="none"
+              placeholder={t('timeZone.placeholder')}
+              value={typed}
+              onChangeText={(text) => {
+                setTyped(text);
+                setPicked(null);
                 setError(null);
               }}
-              testID={`timeZone.option.${zone.id}`}
+              returnKeyType="done"
+              onSubmitEditing={() => void save()}
+              accessibilityLabel={t('timeZone.find')}
+              testID="timeZone.search"
+            />
+          </Field>
+
+          {matches.length > 0 && (
+            <ScrollView
+              style={[styles.list, { maxHeight: listMost }]}
+              onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}
+              nestedScrollEnabled
+              keyboardShouldPersistTaps="handled"
+              accessibilityLabel={t('timeZone.listLabel')}
             >
-              <Text size={tokens.typeBodyPhone.size}>{zoneLabel(zone)}</Text>
-              <Text size={tokens.typeSmall.size} style={styles.secondary}>
-                {rowDetail(zone)}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      )}
+              {matches.map((zone, index) => (
+                <Pressable
+                  key={zone.id}
+                  onLayout={
+                    index === 0
+                      ? (event) => setRowHeight(event.nativeEvent.layout.height)
+                      : undefined
+                  }
+                  style={styles.option}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setPicked(zone);
+                    setTyped(zoneLabel(zone));
+                    setError(null);
+                  }}
+                  testID={`timeZone.option.${zone.id}`}
+                >
+                  <Text size={tokens.typeBodyPhone.size}>{zoneLabel(zone)}</Text>
+                  <Text size={tokens.typeSmall.size} style={styles.secondary}>
+                    {rowDetail(zone)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
 
-      {noneMatch && error == null && (
-        <Text size={tokens.typeBodyPhone.size} style={styles.secondary} accessibilityRole="alert">
-          {t('timeZone.noneMatch', { typed: typed.trim() })}
-        </Text>
-      )}
+          {noneMatch && error == null && (
+            <Text
+              size={tokens.typeBodyPhone.size}
+              style={styles.secondary}
+              accessibilityRole="alert"
+            >
+              {t('timeZone.noneMatch', { typed: typed.trim() })}
+            </Text>
+          )}
 
-      <View {...aboveKeyboard} style={styles.group}>
-        <PrimaryButton
-          label={saving ? t('timeZone.saving') : t('timeZone.save')}
-          onPress={() => void save()}
-          busy={saving}
-          testID="timeZone.save"
-        />
+          <PrimaryButton
+            label={saving ? t('timeZone.saving') : t('timeZone.save')}
+            onPress={() => void save()}
+            busy={saving}
+            testID="timeZone.save"
+          />
+        </View>
       </View>
       <QuietButton label={t('timeZone.cancel')} onPress={onCancel} testID="timeZone.cancel" />
     </>
@@ -249,13 +283,13 @@ function Choosing({
 
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceXxs },
+  choosing: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   list: {
-    maxHeight: LIST_HEIGHT,
-    borderWidth: 1,
+    borderWidth: LIST_BORDER,
     borderColor: tokens.colorBorder,
     borderRadius: tokens.radiusField,
-    padding: tokens.spaceXxs,
+    padding: LIST_PADDING,
   },
   option: {
     minHeight: tokens.sizeHit,

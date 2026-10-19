@@ -589,6 +589,7 @@ describe('a browser never holds the refresh token', () => {
                 currency: 'NGN',
                 timezone: 'Africa/Lagos',
                 contactAddress: 'hello@ire.events',
+                locale: 'en',
                 role: { id: 'role_1', seededAs: 'owner', name: null },
               },
             ],
@@ -635,6 +636,7 @@ describe('a browser never holds the refresh token', () => {
             currency: 'NGN',
             timezone: 'Africa/Lagos',
             contactAddress: 'hello@ire.events',
+            locale: 'en',
           }),
           { status: 200 },
         );
@@ -711,6 +713,7 @@ describe('a browser never holds the refresh token', () => {
               currency: 'NGN',
               timezone: 'Africa/Lagos',
               contactAddress: 'hello@ire.events',
+              locale: 'en',
               role: { id: 'role_1', seededAs: 'owner', name: null },
               permissions: ['events.read'],
               withheldUntilTwoFactor: ['members.manage'],
