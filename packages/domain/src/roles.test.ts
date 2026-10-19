@@ -83,6 +83,22 @@ describe('a role name', () => {
     expect(roleNameProblem('owner', taken)).toBe('nameTaken');
     expect(roleNameProblem('Venue lead', taken)).toBeNull();
   });
+
+  it('is the same name however its accents were typed (sc-2766)', () => {
+    expect(roleNameProblem('So\u0301 leitura', ['Só leitura'])).toBe('nameTaken');
+    expect(roleNameProblem('Équipe bar', ['E\u0301quipe bar'])).toBe('nameTaken');
+    expect(roleNameProblem('e\u0301'.repeat(40), taken)).toBeNull();
+    expect(roleNameProblem('e\u0301'.repeat(41), taken)).toBe('nameTooLong');
+  });
+
+  it('folds only canonical equivalents', () => {
+    expect(
+      roleNameProblem('\uFF23\uFF4F\uFF4F\uFF52\uFF44\uFF49\uFF4E\uFF41\uFF44\uFF4F\uFF52', [
+        'Coordinador',
+      ]),
+    ).toBeNull();
+    expect(roleNameProblem('\uFB01nance', ['finance'])).toBeNull();
+  });
 });
 
 describe('the levels a caller can set', () => {
