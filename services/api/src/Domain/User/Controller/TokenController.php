@@ -65,6 +65,7 @@ final class TokenController
         }
 
         $this->endIfIdle($token);
+        $this->endIfPasswordRefused($token);
 
         $tokens = $this->tokenIssuer->rotate($token, $request);
         $this->entityManager->flush();
@@ -122,6 +123,21 @@ final class TokenController
                 'email' => $user->getPrimaryEmailAddress()?->getAddress() ?? '',
             ],
         );
+    }
+
+    /** A session a password opened ends once the rule turns that password away, as the next sign-in would (sc-69). */
+    private function endIfPasswordRefused(#[SensitiveParameter] RefreshToken $token): void
+    {
+        $refusal = null === $token->getSignedInWith() ? $this->signInRules->passwordRefusal($token->getUser()) : null;
+
+        if (null === $refusal) {
+            return;
+        }
+
+        $this->tokenIssuer->revokeChain($token);
+        $this->entityManager->flush();
+
+        throw $refusal;
     }
 
     /** @return array{refreshToken?: string, refreshTokenIn?: RefreshTokenDelivery} */

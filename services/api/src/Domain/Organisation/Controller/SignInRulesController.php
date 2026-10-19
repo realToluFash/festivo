@@ -41,6 +41,7 @@ final readonly class SignInRulesController
         private AuditEntryRepository $auditEntryRepository,
         private MembershipDirectoryInterface $membershipDirectory,
         private SignInRulesEditor $signInRulesEditor,
+        private SignInRules $signInRules,
     ) {
     }
 
@@ -81,12 +82,19 @@ final readonly class SignInRulesController
     private function rules(Organisation $organisation): array
     {
         $grants = $this->membershipDirectory->grantsIn($this->user(), $organisation->getId());
+        $limit = $this->signInRules->inactivityLimit($this->user());
 
         return [
             ...SignInRulesEditor::rulesOf($organisation),
             'inactivityChoices' => SignInRules::INACTIVITY_DAYS,
             'changedAt' => $organisation->getSignInRulesChangedAt()?->format(DateTimeInterface::ATOM),
             'changes' => $this->changes($organisation),
+            // The shortest across the caller's organisations, which may be another's (sc-69).
+            'inactivityLimit' => null === $limit ? null : [
+                'organisationId' => $limit->organisation->getId()->toRfc4122(),
+                'organisation' => $limit->organisation->getName(),
+                'days' => $limit->days,
+            ],
             ...(true === $grants?->holds(Permission::OrganisationManage)
                 ? ['passwordOnly' => Vec\map($this->membershipRepository->findActiveWithoutProviderIn($organisation), self::member(...))]
                 : []),

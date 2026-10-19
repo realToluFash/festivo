@@ -68,7 +68,7 @@ final readonly class SignInRulesMailer
     {
         return match (true) {
             'providerOnly' === $rule => $this->userMailer->line(true === $now ? 'signInRules.rule.providerOnly' : 'signInRules.rule.anyMethod', $locale),
-            'inactivityTimeoutDays' === $rule && \is_int($now) => $this->userMailer->line('signInRules.rule.inactivity', $locale, ['{days}' => (string) $now]),
+            'inactivityTimeoutDays' === $rule && \is_int($now) => $this->userMailer->line('signInRules.rule.inactivity', $locale, ['days' => $now]),
             'inactivityTimeoutDays' === $rule => $this->userMailer->line('signInRules.rule.noLimit', $locale),
             true === $now => $this->userMailer->line('signInRules.rule.twoFactor', $locale),
             default => $this->userMailer->line('signInRules.rule.noTwoFactor', $locale),

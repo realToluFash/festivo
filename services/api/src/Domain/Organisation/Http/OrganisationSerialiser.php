@@ -41,7 +41,7 @@ final readonly class OrganisationSerialiser
                 'name' => $role->getName(),
             ],
             // The same as GET /api/orgs/{id}/permissions, so a client hides what it cannot use without asking twice.
-            'permissions' => Vec\map(Vec\filter($role->getPermissions(), $grants->holds(...)), $name),
+            'permissions' => Vec\map(Vec\filter($role->getPermissions(), $grants->allows(...)), $name),
             // sc-69: what waits on two-factor, and whether only reading is open until Google or Apple is linked.
             'withheldUntilTwoFactor' => Vec\map($grants->withheld(), $name),
             'readOnlyUntilLinked' => $grants->isReadOnly(),

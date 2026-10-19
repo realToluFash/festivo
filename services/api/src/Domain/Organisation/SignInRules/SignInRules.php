@@ -7,8 +7,11 @@ namespace App\Domain\Organisation\SignInRules;
 use App\Domain\Organisation\SignInRules\Model\InactivityLimit;
 use App\Entity\Membership;
 use App\Entity\Organisation;
+use App\Entity\ProviderIdentity;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Http\Access\Grants;
+use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorFactorRepository;
@@ -36,6 +39,38 @@ final readonly class SignInRules
         }
 
         return $this->requiringProvider($user);
+    }
+
+    /** `oauth_only`, naming the organisation and the providers to use instead: one refusal for sign-in, reset and refresh alike. */
+    public function passwordRefusal(User $user): ?ApiException
+    {
+        $organisation = $this->refusingPassword($user);
+
+        if (null === $organisation) {
+            return null;
+        }
+
+        return new ApiException(
+            ErrorCode::OAuthOnly,
+            'This organisation signs in with Google or Apple only.',
+            [],
+            null,
+            [],
+            [
+                'organisation' => $organisation->getName(),
+                'providers' => Vec\map(
+                    $this->providerIdentityRepository->findBy(['user' => $user], ['provider' => 'ASC']),
+                    static fn (ProviderIdentity $identity): string => $identity->getProvider()->value,
+                ),
+            ],
+        );
+    }
+
+    /** Whether the organisation's rules leave this member their administrative duties, such as answering a recovery request. */
+    public function leavesAdministration(User $user, Organisation $organisation): bool
+    {
+        return !($organisation->isProviderSignInOnly() && !$this->isLinked($user))
+            && !($organisation->isAdministratorsNeedTwoFactor() && !$this->hasTwoFactor($user));
     }
 
     /** The first organisation the account belongs to that signs in with Google or Apple only. */

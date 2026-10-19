@@ -110,7 +110,6 @@
     "signInRules.changed.body": "{name} changed the sign-in rules for {organisation} on {when}:",
     "signInRules.rule.providerOnly": "Everyone signs in with Google or Apple only. Passwords stop working for signing in.",
     "signInRules.rule.anyMethod": "Everyone can sign in with a password, Google or Apple again.",
-    "signInRules.rule.inactivity": "Anyone who has not used Soirely for {days} days is asked to sign in again.",
     "signInRules.rule.noLimit": "Sign-ins last until people sign out.",
     "signInRules.rule.twoFactor": "People who can manage members, roles, billing or security need two-factor to do it.",
     "signInRules.rule.noTwoFactor": "People who can manage members, roles, billing or security no longer need two-factor to do it.",

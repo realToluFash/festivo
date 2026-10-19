@@ -48,6 +48,12 @@ enum Permission: string
         return Iter\contains([PermissionArea::Members, PermissionArea::Billing, PermissionArea::Organisation], $this->area());
     }
 
+    /** A `.manage` permission: what the read-only rule for an unlinked member keeps back (sc-69). */
+    public function isChange(): bool
+    {
+        return Str\ends_with($this->value, '.manage');
+    }
+
     /** @return list<SeededRole> where a new organisation starts it; Owner holds every one regardless */
     public function defaultRoles(): array
     {

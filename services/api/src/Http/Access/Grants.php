@@ -51,6 +51,12 @@ final readonly class Grants
         return $this->roleHolds($permission) && !$this->withholds($permission);
     }
 
+    /** What a client may offer: under the read-only rule a change is refused, so it is not offered either. */
+    public function allows(Permission $permission): bool
+    {
+        return $this->holds($permission) && !($this->readOnly && $permission->isChange());
+    }
+
     public function withholds(Permission $permission): bool
     {
         return Iter\contains($this->withheld, $permission);

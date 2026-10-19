@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\Mail\UserMailer;
+use App\Domain\User\Password\PasswordResolver;
+use App\Domain\User\TokenIssuer;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -25,6 +28,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
+use Psl\Regex;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
@@ -46,6 +50,9 @@ final class SignInRulesTest extends ApiTestCase
     private const string SECRET = 'JBSWY3DPEHPK3PXP';
 
     private const string WRONG = 'not the password at all';
+
+    /** @mago-expect lint:no-literal-password */
+    private const string NEW_PASSWORD = 'another decent passphrase';
 
     private User $owner;
 
@@ -198,7 +205,7 @@ final class SignInRulesTest extends ApiTestCase
         $this->as($other, 'PATCH', '/api/orgs/' . $lumen->getId()->toRfc4122() . '/sign-in-rules', ['inactivityTimeoutDays' => 7]);
         $this->join($this->owner, $lumen, SeededRole::Coordinator);
 
-        $limit = Type\shape(['organisation' => Type\string(), 'days' => Type\int()], true)->coerce($this->as($this->owner, 'GET', '/api/orgs')['inactivityLimit'] ?? null);
+        $limit = Type\shape(['organisation' => Type\string(), 'days' => Type\int()], true)->coerce($this->as($this->owner, 'GET', $this->path())['inactivityLimit'] ?? null);
         self::assertSame(['Studio Lumen', 7], [$limit['organisation'], $limit['days']]);
 
         $refreshToken = $this->signedInToken('folake@ire.events');
@@ -342,6 +349,97 @@ final class SignInRulesTest extends ApiTestCase
         self::assertSame(200, $this->statusCode());
     }
 
+    #[Test]
+    public function aCompletedResetSetsThePasswordButIsRefusedLikeASignInUnderTheRule(): void
+    {
+        $this->set(['providerOnly' => true]);
+
+        $this->forgot('folake@ire.events');
+        self::assertSame([202, []], [$this->statusCode(), $this->last()], 'the request answers as for any address');
+        $body = $this->reset($this->linkTo('folake@ire.events'));
+
+        self::assertSame(403, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::OAuthOnly->type(), $body['type'] ?? null);
+        self::assertSame(['Ìrè Events', ['google']], [$body['organisation'] ?? null, $body['providers'] ?? null]);
+        self::assertArrayNotHasKey('accessToken', $body, 'nobody is signed in');
+        self::assertTrue(self::service(PasswordResolver::class)->verify($this->fresh($this->owner), self::NEW_PASSWORD), 'the password is set');
+    }
+
+    #[Test]
+    public function anUnlinkedMembersResetStillSignsThemIn(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->set(['providerOnly' => true]);
+
+        $this->forgot('bisi@ire.events');
+        $body = $this->reset($this->linkTo('bisi@ire.events'));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertIsString($body['accessToken'] ?? null);
+    }
+
+    /** Regression: an account in no organisation with the rule resets and signs in as before. */
+    #[Test]
+    public function aResetOutsideTheRulesOrganisationSignsInAsBefore(): void
+    {
+        $this->set(['providerOnly' => true]);
+        $ada = $this->account('ada@lumen.studio', 'Ada Okoye');
+        $this->linkProvider($ada, 'g-ada');
+
+        $this->forgot('ada@lumen.studio');
+        $body = $this->reset($this->linkTo('ada@lumen.studio'));
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertIsString($body['accessToken'] ?? null);
+    }
+
+    #[Test]
+    public function aPasswordSessionOpenedBeforeTheRuleEndsAtItsNextRefresh(): void
+    {
+        $refreshToken = $this->signedInToken('folake@ire.events');
+        $this->set(['providerOnly' => true]);
+
+        $body = $this->refresh($refreshToken);
+
+        self::assertSame(403, $this->statusCode(), Json\encode($body));
+        self::assertSame([ErrorCode::OAuthOnly->type(), 'Ìrè Events'], [$body['type'] ?? null, $body['organisation'] ?? null]);
+        $this->refresh($refreshToken);
+        self::assertSame(ErrorCode::InvalidRefreshToken->type(), $this->last()['type'] ?? null, 'the session ended, not only the request');
+    }
+
+    #[Test]
+    public function aSessionOpenedWithGoogleCarriesOnUnderTheRule(): void
+    {
+        $tokens = self::service(TokenIssuer::class)->issueFor($this->fresh($this->owner), null, IdentityProvider::Google);
+        self::em()->flush();
+        $this->set(['providerOnly' => true]);
+
+        $this->refresh($tokens->refreshToken);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aReadOnlyMemberIsOfferedNoChange(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->set(['providerOnly' => true]);
+
+        $offered = Type\vec(Type\string())->coerce($this->as($bisi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions')['permissions'] ?? null);
+
+        self::assertContains('events.read', $offered);
+        self::assertSame([], Vec\filter($offered, static fn (string $permission): bool => Str\ends_with($permission, '.manage')));
+    }
+
+    #[Test]
+    public function theInactivityLineCountsItsDays(): void
+    {
+        $mailer = self::service(UserMailer::class);
+
+        self::assertStringContainsString('for 1 day is', $mailer->line('signInRules.rule.inactivity', 'en', ['days' => 1]));
+        self::assertStringContainsString('for 7 days is', $mailer->line('signInRules.rule.inactivity', 'en', ['days' => 7]));
+    }
+
     /**
      * @param array<string, mixed> $rules
      *
@@ -420,6 +518,29 @@ final class SignInRulesTest extends ApiTestCase
     private function refresh(#[SensitiveParameter] string $refreshToken): array
     {
         $this->client->request('POST', '/api/auth/refresh', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['refreshToken' => $refreshToken]));
+
+        return $this->last();
+    }
+
+    private function forgot(string $address): void
+    {
+        $this->client->request('POST', '/api/auth/password/forgot', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['email' => $address]));
+    }
+
+    private function linkTo(string $address): string
+    {
+        $mail = Iter\last(Vec\filter(
+            self::getMailerMessages(),
+            static fn (object $message): bool => $message instanceof Email && $address === $message->getTo()[0]->getAddress(),
+        ));
+
+        return Regex\first_match((string) Type\instance_of(Email::class)->coerce($mail)->getTextBody(), '/reset-password\?token=([0-9a-f]+)/')[1] ?? '';
+    }
+
+    /** @return array<string, mixed> */
+    private function reset(#[SensitiveParameter] string $token): array
+    {
+        $this->client->request('POST', '/api/auth/password/reset', server: ['CONTENT_TYPE' => 'application/json'], content: Json\encode(['token' => $token, 'password' => self::NEW_PASSWORD]));
 
         return $this->last();
     }

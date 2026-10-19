@@ -6,7 +6,6 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\OrganisationRules;
-use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\Permission;
@@ -35,33 +34,22 @@ final readonly class OrganisationController
         private OrganisationRules $organisationRules,
         private EntityManagerInterface $entityManager,
         private MembershipDirectoryInterface $membershipDirectory,
-        private SignInRules $signInRules,
     ) {
     }
 
-    /** Each organisation the caller is an active member of, with their role in it, and whose inactivity limit applies. */
+    /** Each organisation the caller is an active member of, with their role in it. */
     #[Route('/api/orgs', name: 'orgs_list', methods: ['GET'])]
     #[Authenticated]
     public function list(): JsonResponse
     {
         $user = $this->security->getUser();
-
-        if (!$user instanceof User) {
-            return new JsonResponse(['organisations' => [], 'inactivityLimit' => null]);
-        }
-
-        $limit = $this->signInRules->inactivityLimit($user);
+        $memberships = $user instanceof User ? $this->membershipRepository->findActiveFor($user) : [];
 
         return new JsonResponse([
-            'organisations' => Vec\map($this->membershipRepository->findActiveFor($user), fn (Membership $membership): array => OrganisationSerialiser::membership(
+            'organisations' => Vec\map($memberships, fn (Membership $membership): array => OrganisationSerialiser::membership(
                 $membership,
-                $this->membershipDirectory->grantsIn($user, $membership->getOrganisation()->getId()) ?? Grants::only([]),
+                $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
             )),
-            'inactivityLimit' => null === $limit ? null : [
-                'organisationId' => $limit->organisation->getId()->toRfc4122(),
-                'organisation' => $limit->organisation->getName(),
-                'days' => $limit->days,
-            ],
         ]);
     }
 
