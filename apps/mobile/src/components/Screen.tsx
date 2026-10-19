@@ -149,6 +149,35 @@ export function useRoomAboveKeyboard(): number | null {
   return room;
 }
 
+/** Brings the view to the top of the screen once it mounts, whatever the scroll it mounted into. */
+export function useScrolledToTop(): RefObject<View | null> {
+  const scroll = useContext(ScreenScroll);
+  const top = useRef<View>(null);
+
+  useEffect(() => {
+    const scrollUp = () => {
+      // RN declares getInnerViewRef in ScrollView.js but not in its .d.ts; measureLayout needs that element.
+      const content = (scroll?.ref.current as InnerViewRef | null | undefined)?.getInnerViewRef();
+      if (top.current == null || content == null) return;
+      top.current.measureLayout(content, (_x, y) => {
+        scroll?.ref.current?.scrollTo({ y: Math.max(0, y - tokens.spaceLg), animated: true });
+      });
+    };
+    // Keys that go down after the mount move the content under a scroll already asked for.
+    const hidden = Keyboard.isVisible()
+      ? Keyboard.addListener('keyboardDidHide', () => {
+          hidden?.remove();
+          scrollUp();
+        })
+      : null;
+    scrollUp();
+
+    return () => hidden?.remove();
+  }, [scroll]);
+
+  return top;
+}
+
 /**
  * The documented way to build a screen. Use this, not a bare View.
  *

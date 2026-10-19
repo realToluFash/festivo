@@ -24,6 +24,10 @@ final readonly class OnboardingGate implements OnboardingGateInterface
         'auth_verify_phone_resend',
         'auth_verify_phone_resend_cooldown',
         'auth_verify_phone_text_instead',
+        // A self-registered account in no organisation is incomplete until it joins one (sc-67).
+        'invitations_mine',
+        'invitations_accept',
+        'invitations_decline',
     ];
 
     public function __construct(

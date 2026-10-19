@@ -192,9 +192,10 @@ feature merges.
    `sq l10n pr-reply N <comment id>`.
 8. **Merge it yourself** once its checks are green on the head commit: `sq l10n merge N`. It
    makes a merge commit, deletes the branch, and refuses, with the reason, when a check is not
-   green, the branch is behind `main`, or the pull request changes anything outside the locale
-   files. When it says `main` has moved on, merge `origin/main` into the branch and push, and
-   merge once the checks are green again. Merge only on these terms:
+   green, the branch conflicts with `main`, or the pull request changes anything outside the
+   locale files. A branch merely behind `main` merges as it is; on a conflict, merge
+   `origin/main` into the branch and push, and merge once the checks are green again. Merge
+   only on these terms:
    - the pull request is yours, for this ticket, and based on `main`;
    - it changes nothing outside the locale files;
    - every check is green, with no override, `--admin` or force-push;

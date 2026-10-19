@@ -8,12 +8,13 @@ export const DESTINATION_HREF = { home: '/', settings: '/settings' } as const sa
   string
 >;
 
-export type SettingsSection = 'account' | 'security' | 'organisation';
+export type SettingsSection = 'account' | 'security' | 'organisation' | 'signInRules';
 
 export const SECTION_HREF = {
   account: '/settings/account',
   security: '/settings/security',
   organisation: '/settings/organisation',
+  signInRules: '/settings/sign-in-rules',
 } as const satisfies Record<SettingsSection, string>;
 
 /** The interim screens' old paths, kept so a link to one still lands on its Settings page. */
@@ -35,6 +36,6 @@ export function settingsGroups(inOrganisation: boolean): readonly SettingsGroup[
   const yours: SettingsGroup = { heading: 'yourAccount', sections: ['account', 'security'] };
 
   return inOrganisation
-    ? [yours, { heading: 'organisationHeading', sections: ['organisation'] }]
+    ? [yours, { heading: 'organisationHeading', sections: ['organisation', 'signInRules'] }]
     : [yours];
 }

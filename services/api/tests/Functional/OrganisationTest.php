@@ -17,6 +17,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\Access\FixtureDirectories;
 use App\Tests\Fixtures\Access\FixtureTable;
 use App\Tests\Fixtures\Access\FixtureTableRepository;
+use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -28,6 +29,7 @@ use Symfony\Component\Uid\Uuid;
 
 final class OrganisationTest extends ApiTestCase
 {
+    use InvitesPeople;
     use OnboardsAccounts;
 
     /** @mago-expect lint:no-literal-password */
@@ -73,7 +75,7 @@ final class OrganisationTest extends ApiTestCase
     public function anInvitedAccountIsRecordedAsSuchAndGetsNoOrganisation(): void
     {
         $invited = self::service(UserRegistrar::class)
-            ->registerFromInvitation('invited@example.com', 'Invited', self::PASSWORD)
+            ->registerFromInvitation(self::invitationTo('invited@example.com')[0], 'Invited', self::PASSWORD)
             ->user;
         self::onboard($invited);
         $selfRegistered = $this->account('own@example.com');

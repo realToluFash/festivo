@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Recovery;
 
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Device\KnownDevices;
 use App\Domain\User\Model\SignInResult;
 use App\Domain\User\Password\NewPasswordRules;
@@ -43,6 +44,7 @@ final readonly class PasswordRecovery
         private RecoveryMailer $recoveryMailer,
         private TwoFactorFactorRepository $twoFactorFactorRepository,
         private SecondFactorCheck $secondFactorCheck,
+        private SignInRules $signInRules,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
@@ -128,14 +130,22 @@ final readonly class PasswordRecovery
 
         $this->passwordResetTokenRepository->spendAllFor($user, $now);
         $this->tokenIssuer->revokeAllFor($user);
+        $this->entityManager->flush();
+        $this->recoveryMailer->sendChanged($user, $now);
+
+        // The password is set either way; it signs in only where a password sign-in would (sc-69).
+        $refusal = $this->signInRules->passwordRefusal($user);
+
+        if (null !== $refusal) {
+            throw $refusal;
+        }
+
         $tokens = $this->tokenIssuer->issueFor($user, $request);
         $this->entityManager->flush();
 
         if (null !== $request) {
             $this->knownDevices->remember($user, $request);
         }
-
-        $this->recoveryMailer->sendChanged($user, $now);
 
         return new SignInResult($user, $tokens);
     }

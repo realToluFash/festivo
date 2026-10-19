@@ -257,10 +257,10 @@ GitHub user, so the lead's summary is the review whose body opens with
 
 `sq dev merge <n>` checks every one of these against the live pull request and refuses with
 the reason when one does not hold; it merges only at a head the lead's pass covers. A branch
-behind `main`, or one that conflicts with it, is refused too: merge `origin/main` into the
-branch and push, never rebase, and merge again once its checks are green. A clean merge
-carries the pass; a conflict resolution does not, so that story stays in `In Review` for
-the lead.
+merely behind `main` merges as it is; a red `main` afterwards is fixed where it shows up. A
+branch that conflicts with `main` is refused: merge `origin/main` into the branch and push,
+never rebase, and merge again once its checks are green. A clean merge carries the pass; a
+conflict resolution does not, so that story stays in `In Review` for the lead.
 
 **Once it has merged, it is ready for QA, and handing it over is yours.** `sq dev merge`
 does it: it moves the story to `Ready For QA` and tells `[qa]` the merge commit, so QA

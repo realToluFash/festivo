@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
 import { EditableDetails, ReadOnlyDetails } from '../../src/components/OrganisationDetails.tsx';
+import { OwnershipCard } from '../../src/components/OwnershipCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
@@ -47,6 +48,11 @@ export default function Organisation() {
               ) : (
                 <ReadOnlyDetails organisation={organisation} kind={kind} />
               )}
+              <OwnershipCard
+                key={`ownership-${organisation.id}`}
+                organisation={organisation}
+                kind={kind}
+              />
             </View>
           )}
         </Screen>

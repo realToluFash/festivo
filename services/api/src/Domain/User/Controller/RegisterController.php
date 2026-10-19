@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\Organisation\Invitations\InvitationResponder;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Http\AccountSerialiser;
 use App\Domain\User\Http\IssuedTokensResponse;
@@ -31,6 +32,7 @@ final class RegisterController
         private readonly PendingRegistrations $pendingRegistrations,
         private readonly RateLimiterFactoryInterface $registrationLimiter,
         private readonly CodeField $codeField,
+        private readonly InvitationResponder $invitationResponder,
     ) {
     }
 
@@ -44,7 +46,21 @@ final class RegisterController
             'email' => Type\string(),
             'name' => Type\string(),
             'password' => Type\string(),
+            'invitationToken' => Type\optional(Type\string()),
+            'refreshTokenIn' => Type\optional(Type\backed_enum(RefreshTokenDelivery::class)),
         ]));
+
+        if (isset($body['invitationToken'])) {
+            $result = $this->invitationResponder->register($body['invitationToken'], $body['email'], $body['name'], $body['password'], $request);
+
+            return new IssuedTokensResponse(
+                $result->tokens,
+                $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body,
+                $request,
+                ['account' => $this->accountSerialiser->serialise($result->user)],
+                Response::HTTP_CREATED,
+            );
+        }
 
         $handle = $this->pendingRegistrations->start($body['email'], $body['name'], $body['password'], AccountLanguage::askedIn($request));
 

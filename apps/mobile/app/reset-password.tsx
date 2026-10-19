@@ -14,6 +14,7 @@ import { PasswordField } from '../src/components/PasswordField.tsx';
 import { PasswordRule } from '../src/components/PasswordRule.tsx';
 import { SecondFactorStep } from '../src/components/SecondFactorStep.tsx';
 import { useFormChecks } from '../src/kit/formChecks.ts';
+import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
 import { landingFor } from '../src/landing.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -79,8 +80,12 @@ export default function ResetPassword() {
       setStatus({ kind: 'done', email, account });
     } catch (error) {
       const dead = deadFrom(error);
+      const refusal = error instanceof ApiError ? ruleRefusal(error.problem) : null;
 
-      if (dead != null) {
+      // The password is set, but signs in only where a password sign-in would (sc-69).
+      if (refusal != null) {
+        router.replace(signInRoute(refusal, false));
+      } else if (dead != null) {
         setStatus({ kind: dead });
       } else if (error instanceof ApiError && error.is('validation_failed')) {
         const violation = error.problem.violations?.find((v) => v.propertyPath === 'password');
