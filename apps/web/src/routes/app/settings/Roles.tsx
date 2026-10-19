@@ -56,7 +56,7 @@ export function Roles() {
   }, [organisationId, attempt]);
 
   if (organisation == null) return null;
-  if (!can(session, 'members.read')) return <Forbidden />;
+  if (!can(session, 'members.read')) return <Forbidden permission="members.read" />;
 
   return (
     <div className="settings settings-wide">

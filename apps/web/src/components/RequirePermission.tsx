@@ -19,5 +19,5 @@ export function RequirePermission({
 }) {
   const session = useSession();
 
-  return can(session, permission) ? <>{children}</> : <Forbidden />;
+  return can(session, permission) ? <>{children}</> : <Forbidden permission={permission} />;
 }
