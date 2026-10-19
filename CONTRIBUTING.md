@@ -60,7 +60,8 @@ under test, with its own containers and database, every port moved up by N×1000
 own simulators, or Android emulators on a host without Xcode. A developer running the suite and a QA pass stopping the API to test the
 offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`, `… qa2` or
 `… qa3` from the main checkout as usual; each does its work in its own worktree, through
-`node .qa/bin/qa-env.mjs`.
+`node .qa/bin/qa-env.mjs`. Expo Go does not own the app's `soirely://` scheme, so on Android
+a provider's redirect is handed back with `node .qa/bin/qa-env.mjs link 'soirely://oauth/…'`.
 
 There are two developers. Developer 1 works in this checkout on the development ports.
 `just dev-env setup --developer 2` makes developer 2's: a worktree at `../soirely-dev2` with

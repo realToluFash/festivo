@@ -230,6 +230,27 @@ export function androidFlows(source, target) {
   }
 }
 
+// Expo Go owns exp:// but not the app's own scheme, so a redirect to it is handed to the
+// running experience directly; FLAG_ACTIVITY_SINGLE_TOP delivers it to that one, not a new one.
+export function linkIntent(url) {
+  if (!/^soirely:\/\//.test(url ?? '')) {
+    throw new Error('which link? `link soirely://oauth/…`, copied from the sandbox redirect');
+  }
+  return [
+    'shell',
+    'am',
+    'start',
+    '-a',
+    'android.intent.action.VIEW',
+    '-f',
+    '0x20000000',
+    '-n',
+    `${EXPO_GO_ANDROID}/host.exp.exponent.experience.ExperienceActivity`,
+    '-d',
+    `'${url.replaceAll("'", "'\\''")}'`,
+  ];
+}
+
 export function branchForStory(id, remoteBranches) {
   const matches = remoteBranches
     .map((b) => b.trim().replace(/^origin\//, ''))
@@ -788,6 +809,15 @@ async function android(args) {
   await new Promise((done) => metro.on('exit', done));
 }
 
+function link(args) {
+  const intent = linkIntent(args.find((a) => !a.startsWith('--')));
+  const tools = androidTools();
+  if (!emulatorOnline(tools)) {
+    throw new Error(`no emulator on ${emulatorSerial()} — run \`android\` first`);
+  }
+  run(tools.adb, ['-s', emulatorSerial(), ...intent], { env: tools.env });
+}
+
 function maestroDevice(args) {
   if (args.includes('--android')) {
     if (!emulatorOnline(androidTools())) {
@@ -852,7 +882,7 @@ function chrome() {
   ]);
 }
 
-const COMMANDS = { setup, checkout, status, ios, android, maestro, account, chrome };
+const COMMANDS = { setup, checkout, status, ios, android, link, maestro, account, chrome };
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const argv = process.argv.slice(2);
