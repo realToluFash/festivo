@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationSender;
+use App\Domain\Organisation\Roles\RoleManager;
 use App\Entity\Invitation;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
@@ -22,7 +23,6 @@ use App\Repository\MembershipRepository;
 use App\Repository\MembershipTransitionRepository;
 use App\Repository\OrganisationRepository;
 use DateTimeImmutable;
-use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Type;
 use Psl\Vec;
@@ -44,7 +44,7 @@ final readonly class MembersController
         private MembershipTransitionRepository $membershipTransitionRepository,
         private InvitationRepository $invitationRepository,
         private InvitationSender $invitationSender,
-        private EntityManagerInterface $entityManager,
+        private RoleManager $roleManager,
         private TranslatorInterface $translator,
     ) {
     }
@@ -119,17 +119,15 @@ final readonly class MembersController
 
     private function role(Organisation $organisation, string $roleId): Role
     {
-        $role = Uuid::isValid($roleId) ? $this->entityManager->find(Role::class, $roleId) : null;
-
-        if (null === $role || !$role->getOrganisation()->getId()->equals($organisation->getId())) {
+        try {
+            return $this->roleManager->find($organisation, $roleId);
+        } catch (ApiException) {
             throw ApiException::validation([[
                 'propertyPath' => 'roleId',
                 'message' => $this->translator->trans('roles.replacement_invalid'),
                 'code' => ErrorCode::ValidationFailed->value,
             ]]);
         }
-
-        return $role;
     }
 
     private function organisation(string $id): Organisation

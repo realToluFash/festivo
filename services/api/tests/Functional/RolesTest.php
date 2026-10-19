@@ -138,6 +138,20 @@ final class RolesTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAdministratorHoldingEveryPermissionStillCannotMovePeopleOntoOwner(): void
+    {
+        $administrator = self::em()->find(Role::class, $this->seeded(SeededRole::Administrator)) ?? self::fail('no administrator role');
+        $administrator->setPermissions(Permission::cases());
+        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $door = Type\string()->coerce($this->as($admin, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+        $this->member('tope@ire.events', null, $door);
+
+        $this->as($admin, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
     public function ownerCannotBeEditedOrDeleted(): void
     {
         $owner = $this->seeded(SeededRole::Owner);

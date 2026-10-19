@@ -17,6 +17,7 @@ use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
 use App\Locale\SupportedLocales;
 use App\Repository\InvitationRepository;
+use App\Repository\MembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -39,6 +40,7 @@ final readonly class RoleManager
         private MembershipDirectoryInterface $membershipDirectory,
         private SeededRoleLabels $seededRoleLabels,
         private InvitationRepository $invitationRepository,
+        private MembershipRepository $membershipRepository,
     ) {
     }
 
@@ -135,7 +137,7 @@ final readonly class RoleManager
             }
 
             $replacement = $this->replacement($role, $replacementId);
-            $this->withinHeld($role->getOrganisation(), $by, $replacement->getPermissions());
+            $this->mayGrant($role->getOrganisation(), $by, $replacement);
 
             foreach ($holders as $membership) {
                 $this->roleAssignment->assign($membership, $replacement);
@@ -213,6 +215,16 @@ final readonly class RoleManager
         }
 
         return Type\vec(Type\instance_of(Permission::class))->coerce($permissions);
+    }
+
+    /** Whoever puts somebody in a role, by invitation, by moving them or by deleting theirs, is held to this one rule. */
+    public function mayGrant(Organisation $organisation, User $by, Role $role): void
+    {
+        $this->withinHeld($organisation, $by, $role->getPermissions());
+
+        if ($role->isOwner() && true !== $this->membershipRepository->findActive($by, $organisation->getId())?->getRole()->isOwner()) {
+            throw new ApiException(ErrorCode::GrantNotHeld, $this->translator->trans('roles.grant_not_held'));
+        }
     }
 
     /** @param list<Permission> $permissions nobody grants or withdraws what they lack (least privilege), so only Owner names Owner */

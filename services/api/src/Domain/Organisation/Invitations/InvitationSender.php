@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Invitations;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\TokenIssuer;
 use App\Entity\Invitation;
@@ -16,7 +17,6 @@ use App\Enum\ErrorCode;
 use App\Enum\InvitationDelivery;
 use App\Enum\InvitationStatus;
 use App\Enum\MembershipStatus;
-use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\EmailAddressRepository;
@@ -41,7 +41,7 @@ final readonly class InvitationSender
         private InvitationRepository $invitationRepository,
         private MembershipRepository $membershipRepository,
         private EmailAddressRepository $emailAddressRepository,
-        private MembershipDirectoryInterface $membershipDirectory,
+        private RoleManager $roleManager,
         private InvitationMailer $invitationMailer,
         private AfterResponse $afterResponse,
         private Auditor $auditor,
@@ -54,7 +54,7 @@ final readonly class InvitationSender
     public function invite(Organisation $organisation, string $email, Role $role, User $by, ?Request $request = null): Invitation
     {
         $address = $this->address($email);
-        $this->mayGrant($organisation, $role, $by);
+        $this->roleManager->mayGrant($organisation, $by, $role);
 
         $member = $this->membershipRepository->findOneByAddress($organisation, $address);
 
@@ -139,21 +139,6 @@ final readonly class InvitationSender
         }
 
         return $address;
-    }
-
-    /** As with roles (sc-66): an inviter grants only what they hold, and only an owner makes an owner. */
-    private function mayGrant(Organisation $organisation, Role $role, User $by): void
-    {
-        $grants = $this->membershipDirectory->grantsIn($by, $organisation->getId());
-        $byOwner = true === $this->membershipRepository->findActive($by, $organisation->getId())?->getRole()->isOwner();
-
-        $held = null !== $grants
-            && ($byOwner || !$role->isOwner())
-            && Iter\all($role->getPermissions(), $grants->holds(...));
-
-        if (!$held) {
-            throw new ApiException(ErrorCode::GrantNotHeld, $this->translator->trans('roles.grant_not_held'));
-        }
     }
 
     private function invalid(string $field, string $key): ApiException

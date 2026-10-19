@@ -61,7 +61,8 @@ them afterwards on Settings > Roles:
 **Nobody grants what they do not hold.** Creating or editing a role, a caller may add or
 remove only permissions their own role holds, and a deleted role's people may move only to
 a role holding nothing the caller lacks. So only an Owner can name Owner. Anything else is
-`403 grant_not_held` (OWASP least privilege, NIST RBAC).
+`403 grant_not_held` (OWASP least privilege, NIST RBAC). Inviting somebody into a role (sc-67) is held to the same rule.
+Putting a person in a role, by any path, goes through `RoleManager::mayGrant()`, its one owner.
 
 ## When it is checked
 
