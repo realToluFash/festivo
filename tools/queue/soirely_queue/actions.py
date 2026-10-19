@@ -541,9 +541,22 @@ def hand_to_qa(c, story, pr, merge_sha, note=""):
     c.refresh(story["id"])
 
 
+def finish_handover(c, story, pr, note):
+    verdict = W.latest_verdict(pr)
+    if not (verdict and verdict["verdict"] == "pass"
+            and W.covers(verdict, pr["head_sha"], pr.get("carried"))):
+        raise Refused(f"PR #{pr['number']} merged at a head no lead pass covers: ask [lead]")
+    hand_to_qa(c, story, pr, pr["merge_sha"], note)
+    return f"sc-{story['id']} is Ready For QA; QA is told about {pr['merge_sha'][:7]}"
+
+
 def merge(c, a):
     guard(c, "merge")
     pr = c.pr(a.pr)
+    if pr["state"] == "merged" and pr["story_id"] and c.role not in R.LINGUISTS:
+        story = c.story(pr["story_id"])
+        if story["state"] == "In Review":
+            return f"PR #{a.pr} was already merged; " + finish_handover(c, story, pr, a.text)
     if pr["state"] != "open":
         raise Refused(f"PR #{a.pr} is {pr['state']}")
     live = github.live(a.pr)
@@ -575,7 +588,12 @@ def merge(c, a):
         raise Refused(f"{len(unresolved)} review threads are open; the lead resolves them")
     github.merge(a.pr, head)
     merged = github.live(a.pr)["mergeCommit"]
-    hand_to_qa(c, story, pr, merged, a.text)
+    try:
+        hand_to_qa(c, story, pr, merged, a.text)
+    except ShortcutError as error:
+        raise Refused(f"merged PR #{a.pr} as {merged}, but the handover to QA failed "
+                      f"({error}); run `sq {c.role} to-qa sc-{story['id']}` to finish it"
+                      f"{resync(c)}") from error
     return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} is Ready For QA and QA is told"
             f"{resync(c)}")
 
@@ -586,13 +604,7 @@ def to_qa(c, a):
     merged = [pr for pr in store.prs_for_story(c.db, story["id"]) if pr["state"] == "merged"]
     if not merged:
         raise Refused(f"sc-{story['id']} has no merged pull request")
-    pr = merged[-1]
-    verdict = W.latest_verdict(pr)
-    if not (verdict and verdict["verdict"] == "pass"
-            and W.covers(verdict, pr["head_sha"], pr.get("carried"))):
-        raise Refused(f"PR #{pr['number']} merged at a head no lead pass covers: ask [lead]")
-    hand_to_qa(c, story, pr, pr["merge_sha"], a.text)
-    return f"sc-{story['id']} is Ready For QA; QA is told about {pr['merge_sha'][:7]}"
+    return finish_handover(c, story, merged[-1], a.text)
 
 
 def rerun(c, a):

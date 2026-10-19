@@ -27,7 +27,9 @@ class Shortcut:
             raise ShortcutError("SHORTCUT_API_TOKEN is not set")
 
     def call(self, method, path, body=None, attempts=3, raw=None, content_type=None):
-        """Retries what Shortcut fails now and then: a 5xx, a dropped connection."""
+        """Retries what Shortcut fails now and then: a 5xx, a dropped connection, and on a
+        PUT the 409 a concurrent edit of the same story returns. Only GET and PUT, which
+        are safe to repeat."""
         url = path if path.startswith("http") else API + path
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None
                                             else None)
@@ -42,11 +44,12 @@ class Shortcut:
             except urllib.error.HTTPError as error:
                 detail = error.read().decode(errors="replace")[:200]
                 failure = f"Shortcut {error.code} on {method} {path.split('?')[0]}: {detail}"
-                if error.code < 500 or method != "GET":
+                transient = error.code >= 500 or (error.code == 409 and method == "PUT")
+                if not transient or method not in ("GET", "PUT"):
                     break
             except urllib.error.URLError as error:
                 failure = f"Shortcut unreachable: {error.reason}"
-                if method != "GET":
+                if method not in ("GET", "PUT"):
                     break
             time.sleep(2 ** attempt)
         raise ShortcutError(failure)

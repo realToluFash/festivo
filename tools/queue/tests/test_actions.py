@@ -547,6 +547,37 @@ class Merging(Base):
         self.assertIn("refresh after it failed", said)
         self.assertEqual(self.state(1), "Ready For QA")
 
+    def test_a_merge_whose_handover_fails_says_how_to_finish_it(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, pr("pass"))
+        refused = actions.ShortcutError("Shortcut 409 on PUT /api/v3/stories/1: conflict")
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge, \
+                mock.patch("soirely_queue.sync.sync_github"), \
+                mock.patch.object(self.fake, "update", side_effect=refused):
+            with self.assertRaisesRegex(actions.Refused,
+                                        f"merged PR #9 as {'m' * 40}.*409.*to-qa sc-1"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD)
+
+    def test_merging_a_merged_pr_whose_story_is_in_review_finishes_the_handover(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
+        with mock.patch("soirely_queue.github.merge") as merge:
+            said = actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        merge.assert_not_called()
+        self.assertIn("already merged", said)
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("m" * 40, self.fake.comments[-1][1])
+
+    def test_merging_a_merged_pr_whose_story_moved_on_is_refused(self):
+        self.fake.add(1, "Ready For QA", ["dev2"])
+        store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
+        with self.assertRaisesRegex(actions.Refused, "PR #9 is merged"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        self.assertEqual(self.fake.comments, [])
+
+
 class Findings(unittest.TestCase):
     def test_each_finding_opens_with_its_severity(self):
         import tempfile
