@@ -74,3 +74,23 @@ export function organisationChanges(
 export function withCurrent(listed: readonly string[], current: string): string[] {
   return listed.includes(current) ? [...listed] : [current, ...listed];
 }
+
+export type NewOrganisationField = 'name' | 'countryCode';
+
+export type NewOrganisationProblem =
+  { kind: 'nameBlank' } | { kind: 'nameLong'; length: number } | { kind: 'countryBlank' };
+
+/** "Create an organisation" (sc-390): the name is counted after trimming, as the API counts it. */
+export function newOrganisationProblem(
+  field: NewOrganisationField,
+  value: string,
+): NewOrganisationProblem | null {
+  if (field === 'countryCode') return value === '' ? { kind: 'countryBlank' } : null;
+
+  const name = value.trim();
+  const length = Array.from(name).length;
+
+  if (length === 0) return { kind: 'nameBlank' };
+
+  return length > ORGANISATION_NAME_MAXIMUM ? { kind: 'nameLong', length } : null;
+}

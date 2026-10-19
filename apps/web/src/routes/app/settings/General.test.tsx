@@ -86,7 +86,9 @@ describe('Settings > General', () => {
     expect(sent.filter((request) => request.path.startsWith('/api/orgs'))).toEqual([
       { method: 'PATCH', path: '/api/orgs/org_1', body: { name: 'Ìrè Events Ltd' } },
     ]);
-    expect(screen.getByLabelText('Organisation: Ìrè Events Ltd, your role Owner')).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: /Organisation: Ìrè Events Ltd, your role Owner/ }),
+    ).toBeDefined();
   });
 
   it('refuses a blank name and a contact that is not an address before sending anything', () => {

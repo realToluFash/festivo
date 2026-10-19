@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\Http\OrganisationSerialiser;
+use App\Domain\Organisation\OrganisationCreator;
 use App\Domain\Organisation\OrganisationRules;
 use App\Entity\Membership;
 use App\Entity\User;
+use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Http\Access\Grants;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
@@ -18,11 +20,13 @@ use App\Http\Input;
 use App\Repository\MembershipRepository;
 use App\Repository\OrganisationRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use LogicException;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 final readonly class OrganisationController
@@ -34,6 +38,7 @@ final readonly class OrganisationController
         private OrganisationRules $organisationRules,
         private EntityManagerInterface $entityManager,
         private MembershipDirectoryInterface $membershipDirectory,
+        private OrganisationCreator $organisationCreator,
     ) {
     }
 
@@ -51,6 +56,33 @@ final readonly class OrganisationController
                 $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
             )),
         ]);
+    }
+
+    /** A further organisation, the caller its Owner; listed as `list()` lists it. */
+    #[Route('/api/orgs', name: 'orgs_create', methods: ['POST'])]
+    #[Authenticated]
+    public function create(Request $request): JsonResponse
+    {
+        $user = $this->security->getUser();
+
+        if (!$user instanceof User) {
+            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+        }
+
+        $body = Input::body($request, Type\shape([
+            'name' => Type\string(),
+            'countryCode' => Type\string(),
+            'timezone' => Type\optional(Type\string()),
+        ]));
+
+        $organisation = $this->organisationCreator->create($user, $body['name'], $body['countryCode'], $body['timezone'] ?? '');
+        $membership = $this->membershipRepository->findActive($user, $organisation->getId())
+            ?? throw new LogicException('A created organisation has its creator as a member.');
+
+        return new JsonResponse(['organisation' => OrganisationSerialiser::membership(
+            $membership,
+            $this->membershipDirectory->grantsIn($user, $organisation->getId()) ?? Grants::only([]),
+        )], Response::HTTP_CREATED);
     }
 
     /** Any of the five fields; those left out keep their value. */

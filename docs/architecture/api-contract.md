@@ -94,6 +94,7 @@ stays in seconds either way (RFC 9110 §10.2.3). Today only
 | `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                             | every request started    |
 | `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                      | every proved call        |
 | `POST /api/auth/emails`, `/phones`                 | 10 per account per hour, fixed window, shared                   | every add asked for      |
+| `POST /api/orgs`                                   | 5 per account per hour, fixed window                            | every organisation made  |
 
 ## Verifying an address
 
@@ -226,6 +227,16 @@ is ever in a URL.
 - `…/recovery/not-me` takes the `request` and `token` from any email's "This wasn't me"
   link. It cancels every open request and ends every session. The `/cancel` on the waiting
   screen does the same.
+
+## Creating another organisation
+
+`POST /api/orgs` (sc-390), for any account through the onboarding gate, takes `name`,
+`countryCode` and the device's `timezone`, and founds the organisation as sign-up does: the
+caller is its Owner, with the seeded roles, the currency follows the country and the
+contact address is the caller's primary email. A timezone the API does not recognise, or
+none, gives `UTC`. A refusal names only `name` and `countryCode`, the fields the form
+has. `201` answers `{organisation}`, the membership as `GET /api/orgs` lists it, and the
+entry `organisation.created` is audited on the new organisation.
 
 ## Roles and permissions
 

@@ -651,6 +651,63 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.name).toBe('Ìrè Events Ltd');
   });
 
+  test('an organisation is created with its name, country and the device timezone', async () => {
+    let sent: { method: string | undefined; path: string; body: unknown } | null = null;
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async (input, init) => {
+        sent = {
+          method: init?.method,
+          path: new URL(String(input)).pathname,
+          body: JSON.parse(String(init?.body)),
+        };
+
+        return new Response(
+          JSON.stringify({
+            organisation: {
+              id: 'org_2',
+              name: 'Lagos Supper Club',
+              countryCode: 'NG',
+              currency: 'NGN',
+              timezone: 'Africa/Lagos',
+              contactAddress: 'ada@example.com',
+              role: { id: 'role_9', seededAs: 'owner', name: null },
+            },
+          }),
+          { status: 201 },
+        );
+      },
+    });
+
+    const created = await client.createOrganisation({
+      name: 'Lagos Supper Club',
+      countryCode: 'NG',
+      timezone: 'Africa/Lagos',
+    });
+
+    expect(sent).toEqual({
+      method: 'POST',
+      path: '/api/orgs',
+      body: { name: 'Lagos Supper Club', countryCode: 'NG', timezone: 'Africa/Lagos' },
+    });
+    expect(created.id).toBe('org_2');
+    expect(created.role.seededAs).toBe('owner');
+  });
+
+  test('a created organisation answered without it is an error', async () => {
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens: store('good', null),
+      fetch: async () => new Response(JSON.stringify({}), { status: 201 }),
+    });
+
+    await expect(
+      client.createOrganisation({ name: 'X', countryCode: 'NG', timezone: 'UTC' }),
+    ).rejects.toThrow(/OrganisationController/);
+  });
+
   test('roles are read with the grid, and a removed role names where its people go', async () => {
     const sent: { method: string | undefined; path: string; body: unknown }[] = [];
     const door = {
