@@ -7,6 +7,7 @@ namespace App\Tests\Unit;
 use App\Locale\SupportedLocales;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psl\Str;
 use Symfony\Component\Yaml\Yaml;
 
 /**
@@ -36,6 +37,19 @@ final class SupportedLocalesSourceTest extends TestCase
     public function theDefaultMatchesTheDeclaration(): void
     {
         self::assertSame($this->source()['default'], SupportedLocales::DEFAULT);
+    }
+
+    #[Test]
+    public function thePluralRegionsMatchTheDeclaration(): void
+    {
+        $declared = [];
+        foreach ($this->source()['supported'] as $locale) {
+            if (isset($locale['plurals'])) {
+                $declared[$locale['code']] = Str\replace($locale['plurals'], '-', '_');
+            }
+        }
+
+        self::assertSame($declared, SupportedLocales::PLURALS, 'SupportedLocales::PLURALS has drifted from /locales.json');
     }
 
     #[Test]
@@ -88,7 +102,7 @@ final class SupportedLocalesSourceTest extends TestCase
         return $codes;
     }
 
-    /** @return array{default: string, supported: list<array{code: string, name: string, nativeName: string, dir: string}>} */
+    /** @return array{default: string, supported: list<array{code: string, name: string, nativeName: string, dir: string, plurals?: string}>} */
     private function source(): array
     {
         // An explicit path from the environment, not arithmetic on __DIR__.

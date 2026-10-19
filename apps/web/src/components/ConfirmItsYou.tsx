@@ -63,6 +63,8 @@ export function ConfirmItsYou({
   const kept = useRef<string | null>(null);
   // Turned on in the two-factor card since this page loaded: the API says so, and the field appears.
   const [codeAsked, setCodeAsked] = useState(twoFactorOn);
+  // Step two after Google or Apple: the sign-in passed and the code is asked for (sc-2197).
+  const [vouched, setVouched] = useState<{ email: string | null } | null>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
 
@@ -106,7 +108,11 @@ export function ConfirmItsYou({
       dropProof();
 
       if (error instanceof ApiError && error.is('two_factor_required')) {
-        if (signIn != null) kept.current = error.problem.pendingProof ?? kept.current;
+        if (signIn != null) {
+          kept.current = error.problem.pendingProof ?? kept.current;
+          const email = error.problem.providerEmail ?? null;
+          setVouched((now) => now ?? { email });
+        }
         setCodeAsked(true);
 
         return;
@@ -115,6 +121,7 @@ export function ConfirmItsYou({
       if (signIn != null && error instanceof ApiError && error.is('proof_required')) {
         setSignIn(null);
         kept.current = null;
+        setVouched(null);
         setCode('');
         setRefusal(null);
         setExpired(true);
@@ -150,6 +157,9 @@ export function ConfirmItsYou({
   const passwordError =
     checks.errors.password ?? (refusal?.field === 'password' ? refusal.message : null);
   const codeError = checks.errors.code ?? (refusal?.field === 'code' ? refusal.message : null);
+  const stepTwo = vouched != null && signIn != null && viaProvider != null ? viaProvider : null;
+  const codeHelp =
+    stepTwo == null ? `${idPrefix}-code-help` : `${idPrefix}-code-help ${idPrefix}-code-kept`;
 
   return (
     <>
@@ -184,10 +194,18 @@ export function ConfirmItsYou({
         </div>
       )}
 
-      {signIn != null && viaProvider != null && (
-        <p className="muted">
-          {t('waysCard.providerConfirmed', { provider: PROVIDER_NAMES[viaProvider] })}
-        </p>
+      {stepTwo != null && (
+        <div className="notice notice-quiet signed-in" role="status">
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">
+              {t('waysCard.signedInWith', { provider: PROVIDER_NAMES[stepTwo] })}
+            </p>
+            {vouched?.email != null && <p className="signed-in-address">{vouched.email}</p>}
+          </div>
+        </div>
       )}
 
       <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
@@ -229,11 +247,7 @@ export function ConfirmItsYou({
               value={code}
               disabled={checking}
               aria-invalid={codeError != null}
-              aria-describedby={
-                codeError == null
-                  ? `${idPrefix}-code-help`
-                  : `${idPrefix}-code-error ${idPrefix}-code-help`
-              }
+              aria-describedby={codeError == null ? codeHelp : `${idPrefix}-code-error ${codeHelp}`}
               onChange={(event) => {
                 setCode(event.target.value);
                 if (refusal?.field === 'code') setRefusal(null);
@@ -245,6 +259,14 @@ export function ConfirmItsYou({
             <p className="field-help" id={`${idPrefix}-code-help`}>
               {t('waysCard.codeHelp')}
             </p>
+            {stepTwo != null && (
+              <p className="field-help" id={`${idPrefix}-code-kept`}>
+                {t('waysCard.codeKeepsSignIn', {
+                  provider: PROVIDER_NAMES[stepTwo],
+                  count: PROOF_MINUTES,
+                })}
+              </p>
+            )}
           </div>
         )}
 

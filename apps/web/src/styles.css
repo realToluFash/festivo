@@ -1498,6 +1498,20 @@ h2 {
   gap: var(--spaceSm);
 }
 
+.no-organisation-start {
+  padding-top: var(--spaceMd);
+  border-top: var(--borderDivider);
+}
+
+.no-organisation-start .field,
+.no-organisation-start .notice {
+  max-width: 27.5rem;
+}
+
+.no-organisation-start .button {
+  align-self: flex-start;
+}
+
 .no-organisation .no-organisation-heading {
   margin-top: var(--spaceXs);
   font: var(--typeLabel);
@@ -2322,6 +2336,16 @@ h2 {
 }
 
 .way-address {
+  overflow-wrap: anywhere;
+}
+
+.signed-in .notice-title {
+  color: var(--colorAccentText);
+}
+
+.signed-in-address {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
   overflow-wrap: anywhere;
 }
 

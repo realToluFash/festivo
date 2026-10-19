@@ -14,6 +14,7 @@ export interface Locale {
   name: string;
   nativeName: string;
   dir: 'ltr' | 'rtl';
+  plurals?: string;
 }
 
 export const LOCALES: readonly Locale[] = declaration.supported as Locale[];
@@ -39,6 +40,21 @@ export function narrowLocale(locale: string | null | undefined): LocaleCode {
   if (locale == null) return DEFAULT_LOCALE;
   const lang = language(locale);
   return LOCALE_CODES.includes(lang) ? lang : DEFAULT_LOCALE;
+}
+
+/** The tag whose plural rule a locale's copy follows: `pt` is written for Portugal, where 0 is plural. */
+export function pluralLocale(locale: LocaleCode): string {
+  return LOCALES.find((l) => l.code === locale)?.plurals ?? locale;
+}
+
+interface PluralResolver {
+  getRule(code: string, options?: object): unknown;
+}
+
+/** i18next reads plural rules from the bare language, so each client routes it through pluralLocale. */
+export function followPluralLocales(resolver: PluralResolver): void {
+  const rule = resolver.getRule.bind(resolver);
+  resolver.getRule = (code, options) => rule(pluralLocale(code), options);
 }
 
 function language(locale: string): string {

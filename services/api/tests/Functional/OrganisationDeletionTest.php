@@ -133,6 +133,7 @@ final class OrganisationDeletionTest extends ApiTestCase
 
         $this->delete($admin, 'Ìrè Events');
         self::assertSame(ErrorCode::OwnerRequired->type(), $this->last()['type'] ?? null);
+        self::assertSame('Only an owner can delete the organisation.', $this->last()['detail'] ?? null);
         $this->as($admin, 'GET', $this->path('/deletion'));
         self::assertSame(403, $this->statusCode());
 
@@ -256,18 +257,17 @@ final class OrganisationDeletionTest extends ApiTestCase
             self::assertStringContainsString('cannot be restored', $e->getMessage());
         }
 
-        self::assertSame(ErrorCode::ProfileIncomplete->type(), $this->as($this->owner, 'GET', $this->path('/permissions'))['type'] ?? null);
+        self::assertSame(ErrorCode::NotFound->type(), $this->as($this->owner, 'GET', $this->path('/permissions'))['type'] ?? null);
     }
 
-    /** It lands where an account with no organisation does, which offers to create one. */
+    /** It lands where an account with no organisation does, never back on the details screen. */
     #[Test]
-    public function anAccountWhoseOnlyOrganisationIsDeletedIsAskedToCreateOne(): void
+    public function anAccountWhoseOnlyOrganisationIsDeletedStaysComplete(): void
     {
         $this->delete($this->owner, 'Ìrè Events');
 
-        $this->as($this->owner, 'GET', '/api/orgs');
-
-        self::assertSame(ErrorCode::ProfileIncomplete->type(), $this->last()['type'] ?? null);
+        self::assertSame([], $this->as($this->owner, 'GET', '/api/orgs')['organisations'] ?? null);
+        self::assertTrue($this->as($this->owner, 'GET', '/api/auth/me')['complete'] ?? null);
     }
 
     #[Test]

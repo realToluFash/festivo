@@ -15,10 +15,13 @@ import { useFormChecks } from '../kit/formChecks.ts';
 import {
   type ProvingField,
   codeBeforeTrip,
+  codeHelp,
   firstFactor,
   keptOnceCodeAsked,
   keptProofRanOut,
   provingRefusal,
+  type SignedIn,
+  signedInWith,
   tripRefused,
 } from '../kit/waysProof.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
@@ -62,6 +65,7 @@ export function ConfirmItsYou({
   const returned = useRef<ProviderSignInAttempt | null>(null);
   const kept = useRef<string | null>(null);
   const [expired, setExpired] = useState(false);
+  const [signedIn, setSignedIn] = useState<SignedIn | null>(null);
   const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<{
     field: ProvingField | 'failed';
@@ -102,6 +106,7 @@ export function ConfirmItsYou({
       setChecking(false);
 
       if (error instanceof ProviderCancelled) return;
+      setSignedIn((now) => signedInWith(via, error, now));
       // The sign-in passed and waits for its code: the retry sends the API's kept proof, dated from the sign-in.
       if (error instanceof ApiError && error.is('two_factor_required')) {
         kept.current = keptOnceCodeAsked(via, error, kept.current);
@@ -137,6 +142,7 @@ export function ConfirmItsYou({
   const passwordError =
     checks.errors.password ?? (refusal?.field === 'password' ? refusal.message : null);
   const codeError = checks.errors.code ?? (refusal?.field === 'code' ? refusal.message : null);
+  const stepTwo = signedIn != null && via !== 'password' && via != null ? via : null;
 
   return (
     <>
@@ -152,6 +158,18 @@ export function ConfirmItsYou({
           tone="attention"
           mark="!"
           body={t('waysCard.proofExpired', { provider: PROVIDER_NAMES[via], count: PROOF_MINUTES })}
+        />
+      )}
+
+      {stepTwo != null && (
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.done.glyph}
+          markTone="done"
+          title={t('waysCard.signedInWith', { provider: PROVIDER_NAMES[stepTwo] })}
+          accentTitle
+          detail={signedIn?.email ?? null}
+          announce
         />
       )}
 
@@ -189,7 +207,11 @@ export function ConfirmItsYou({
 
       <View {...aboveKeyboard} style={styles.group}>
         {codeAsked && (
-          <Field label={t('waysCard.code')} error={codeError} help={t('waysCard.codeHelp')}>
+          <Field
+            label={t('waysCard.code')}
+            error={codeError}
+            help={codeHelp(t, stepTwo == null ? null : PROVIDER_NAMES[stepTwo])}
+          >
             <CodeField
               ref={codeInput}
               takesRecoveryCode
@@ -213,7 +235,7 @@ export function ConfirmItsYou({
 
         {note}
 
-        {via !== 'password' && via != null && (
+        {via !== 'password' && via != null && stepTwo == null && (
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {t('waysCard.proveWithProvider', { provider: PROVIDER_NAMES[via] })}
           </Text>

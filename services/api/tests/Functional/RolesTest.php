@@ -8,6 +8,7 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\User\TwoFactor\Recovery\RecoveryApprovers;
 use App\Domain\User\UserRegistrar;
+use App\Entity\AuditEntry;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -344,6 +345,99 @@ final class RolesTest extends ApiTestCase
 
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Coordinators']);
         self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    /** sc-2766: "Só leitura" typed as o + U+0301 read exactly like the seeded Portuguese label and was listed twice. */
+    #[Test]
+    public function aSeededLabelTypedWithDecomposedAccentsIsTaken(): void
+    {
+        $this->as($this->owner, 'POST', $this->path('roles?locale=pt'), ['name' => "So\u{0301} leitura"]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('role_name_taken', $this->violation('name', 'code'));
+        self::assertSame(self::service(TranslatorInterface::class)->trans('roles.name_taken', [], null, 'pt'), $this->violation('name'));
+        self::assertCount(5, $this->roles());
+    }
+
+    #[Test]
+    public function aCustomRoleIsNotRenamedToASeededLabelTypedWithDecomposedAccents(): void
+    {
+        $door = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team'])['id']);
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $door), ['name' => "So\u{0301} leitura"]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('role_name_taken', $this->violation('name', 'code'));
+        self::assertContains('Door team', Vec\map($this->roles(), static fn (array $role): mixed => $role['name']));
+    }
+
+    #[Test]
+    public function aCustomRoleNameTypedWithDecomposedAccentsIsTaken(): void
+    {
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => "\u{00C9}quipe bar"]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        $door = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team'])['id']);
+
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => "E\u{0301}quipe bar"]);
+        self::assertSame('role_name_taken', $this->violation('name', 'code'));
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $door), ['name' => "e\u{0301}QUIPE BAR"]);
+        self::assertSame('role_name_taken', $this->violation('name', 'code'));
+        self::assertContains('Door team', Vec\map($this->roles(), static fn (array $role): mixed => $role['name']));
+    }
+
+    #[Test]
+    public function aNameIsSavedWithItsAccentsComposed(): void
+    {
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => "E\u{0301}quipe de se\u{0301}curite\u{0301}"]);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame("\u{00C9}quipe de s\u{00E9}curit\u{00E9}", $this->last()['name']);
+    }
+
+    #[Test]
+    public function theFortyCharactersAreCountedComposed(): void
+    {
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => Str\repeat("e\u{0301}", 40)]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => Str\repeat("a\u{0301}", 41)]);
+        self::assertSame('Shorten the name to 40 characters or fewer.', $this->violation('name'));
+    }
+
+    /** Saved before sc-2766: the stored form stays, and either form of it sent back is not a rename. */
+    #[Test]
+    public function aRoleStoredDecomposedKeepsItsNameAndStillBlocksIt(): void
+    {
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $stored = "E\u{0301}quipe bar";
+        $existing = Role::custom($organisation, $stored, [Permission::EventsRead]);
+        self::em()->persist($existing);
+        self::em()->flush();
+        $id = $existing->getId()->toRfc4122();
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $id), ['name' => "\u{00C9}quipe bar", 'permissions' => ['events.read', 'seating.read']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($stored, $this->last()['name']);
+        self::assertSame(['events.read', 'seating.read'], $this->permissionsOf($id));
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'role.renamed', 'subjectId' => $existing->getId()]));
+
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => "\u{00C9}quipe bar"]);
+        self::assertSame('role_name_taken', $this->violation('name', 'code'));
+    }
+
+    /** Only canonical equivalents are folded: fullwidth letters and a ligature read differently, so they are other names. */
+    #[Test]
+    public function compatibilityVariantsAreSavedAsTyped(): void
+    {
+        $fullwidth = "\u{FF23}\u{FF4F}\u{FF4F}\u{FF52}\u{FF44}\u{FF49}\u{FF4E}\u{FF41}\u{FF44}\u{FF4F}\u{FF52}";
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => $fullwidth]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame($fullwidth, $this->last()['name']);
+
+        $this->as($this->owner, 'POST', $this->path('roles'), ['name' => "\u{FB01}nance"]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame("\u{FB01}nance", $this->last()['name']);
     }
 
     #[Test]
