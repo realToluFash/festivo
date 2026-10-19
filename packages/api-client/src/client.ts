@@ -5,7 +5,7 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
-import { ApiError, ApiUnreachableError, toProblem } from './problem.ts';
+import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 
 /** See docs/architecture/sessions.md. */
 export type RefreshTokenDelivery = 'body' | 'cookie';
@@ -227,6 +227,42 @@ export interface Membership extends Organisation {
   role: MemberRole;
   /** What this role holds here, every registered one for Owner (sc-66): what a client may show. */
   permissions: string[];
+  /** Held by the role but kept back until this account turns on two-factor (sc-69). */
+  withheldUntilTwoFactor: string[];
+  /** Under a Google-or-Apple-only rule with no provider linked: may read, not change (sc-69). */
+  readOnlyUntilLinked: boolean;
+  signInRules: OrganisationSignInRules;
+}
+
+/** An organisation's sign-in rules (sc-69); a null timeout is no limit. */
+export interface OrganisationSignInRules {
+  providerOnly: boolean;
+  inactivityTimeoutDays: number | null;
+  administratorsNeedTwoFactor: boolean;
+  changedAt: string | null;
+}
+
+export type SignInRulesChanges = Partial<Omit<OrganisationSignInRules, 'changedAt'>>;
+
+export interface SignInRuleChange {
+  at: string;
+  by: { name: string; role: MemberRole | null };
+  rule: 'providerOnly' | 'inactivityTimeoutDays' | 'administratorsNeedTwoFactor';
+  now: boolean | number | null;
+  was: boolean | number | null;
+}
+
+export interface SignInRulesPage extends OrganisationSignInRules {
+  inactivityChoices: number[];
+  changes: SignInRuleChange[];
+  /** Members with no Google or Apple linked; only for a caller who may change the rules. */
+  passwordOnly: { userId: string; name: string; role: MemberRole }[] | null;
+}
+
+export interface InactivityLimit {
+  organisationId: string;
+  organisation: string;
+  days: number;
 }
 
 export type OrganisationChanges = Partial<Omit<Organisation, 'id'>>;
@@ -275,8 +311,8 @@ export interface ClientOptions {
   userAgent?: string;
   /** The app's install identifier, by which a sign-in from a new device is told apart (sc-511). The web has a cookie instead. */
   device?: () => string | null;
-  /** Called when refresh fails and the session is over. */
-  onSignedOut?: () => void;
+  /** Called when refresh fails and the session is over, with the API's reason when it gave one, such as `session_timed_out`. */
+  onSignedOut?: (why?: Problem) => void;
   /** Called when the API refuses a request because the account is behind an onboarding gate. */
   onGate?: (gate: Gate) => void;
   fetch?: typeof fetch;
@@ -899,12 +935,19 @@ export class ApiClient {
   }
 
   async organisations(): Promise<Membership[]> {
+    return (await this.memberships()).organisations;
+  }
+
+  /** The organisations, and the inactivity limit that applies to this account across them. */
+  async memberships(): Promise<{
+    organisations: Membership[];
+    inactivityLimit: InactivityLimit | null;
+  }> {
     const raw = await this.get<unknown>('/api/orgs');
-    const listed =
-      typeof raw === 'object' && raw != null
-        ? (raw as Record<string, unknown>).organisations
-        : null;
-    const memberships = Array.isArray(listed) ? listed.map(asMembership) : null;
+    const body = typeof raw === 'object' && raw != null ? (raw as Record<string, unknown>) : {};
+    const memberships = Array.isArray(body.organisations)
+      ? body.organisations.map(asMembership)
+      : null;
 
     if (memberships == null || memberships.some((membership) => membership == null)) {
       throw new Error(
@@ -912,7 +955,41 @@ export class ApiClient {
       );
     }
 
-    return memberships as Membership[];
+    return {
+      organisations: memberships as Membership[],
+      inactivityLimit: asInactivityLimit(body.inactivityLimit),
+    };
+  }
+
+  async signInRules(organisationId: string): Promise<SignInRulesPage> {
+    return this.readSignInRules(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/sign-in-rules`),
+    );
+  }
+
+  /** Refused `validation_failed` on `inactivityTimeoutDays` for anything but a listed choice or null. */
+  async updateSignInRules(
+    organisationId: string,
+    changes: SignInRulesChanges,
+  ): Promise<SignInRulesPage> {
+    return this.readSignInRules(
+      await this.patch<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/sign-in-rules`,
+        changes,
+      ),
+    );
+  }
+
+  private readSignInRules(raw: unknown): SignInRulesPage {
+    const page = asSignInRulesPage(raw);
+
+    if (page == null) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/sign-in-rules in a shape this client does not know. Check SignInRulesController in services/api.',
+      );
+    }
+
+    return page;
   }
 
   async updateOrganisation(id: string, changes: OrganisationChanges): Promise<Organisation> {
@@ -1104,7 +1181,7 @@ export class ApiClient {
     if (response.status >= 500) throw new ApiUnreachableError();
 
     if (!response.ok) {
-      await this.forgetSession();
+      await this.forgetSession(await toProblem(response));
       return false;
     }
 
@@ -1218,9 +1295,9 @@ export class ApiClient {
     return { tokens, account, linked: body.linked === true };
   }
 
-  private async forgetSession(): Promise<void> {
+  private async forgetSession(why?: Problem): Promise<void> {
     await this.options.tokens?.clear();
-    this.options.onSignedOut?.();
+    this.options.onSignedOut?.(why);
   }
 
   private url(path: string, query?: RequestOptions['query']): string {
@@ -1424,7 +1501,8 @@ function asMembership(raw: unknown): Membership | null {
 
   if (organisation == null || typeof role?.id !== 'string') return null;
 
-  const permissions = (raw as Record<string, unknown>).permissions;
+  const candidate = raw as Record<string, unknown>;
+  const permissions = candidate.permissions;
 
   return {
     ...organisation,
@@ -1436,7 +1514,108 @@ function asMembership(raw: unknown): Membership | null {
     permissions: Array.isArray(permissions)
       ? permissions.filter((one): one is string => typeof one === 'string')
       : [],
+    withheldUntilTwoFactor: stringList(candidate.withheldUntilTwoFactor) ?? [],
+    readOnlyUntilLinked: candidate.readOnlyUntilLinked === true,
+    signInRules: asOrganisationSignInRules(candidate.signInRules) ?? {
+      providerOnly: false,
+      inactivityTimeoutDays: null,
+      administratorsNeedTwoFactor: false,
+      changedAt: null,
+    },
   };
+}
+
+function asOrganisationSignInRules(raw: unknown): OrganisationSignInRules | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const rules = raw as Record<string, unknown>;
+
+  if (
+    typeof rules.providerOnly !== 'boolean' ||
+    typeof rules.administratorsNeedTwoFactor !== 'boolean' ||
+    (rules.inactivityTimeoutDays !== null && typeof rules.inactivityTimeoutDays !== 'number')
+  )
+    return null;
+
+  return {
+    providerOnly: rules.providerOnly,
+    inactivityTimeoutDays: rules.inactivityTimeoutDays as number | null,
+    administratorsNeedTwoFactor: rules.administratorsNeedTwoFactor,
+    changedAt: typeof rules.changedAt === 'string' ? rules.changedAt : null,
+  };
+}
+
+function asMemberRole(raw: unknown): MemberRole | null {
+  const role = (raw ?? {}) as Record<string, unknown>;
+
+  if (typeof role.id !== 'string') return null;
+
+  return {
+    id: role.id,
+    seededAs: typeof role.seededAs === 'string' ? role.seededAs : null,
+    name: typeof role.name === 'string' ? role.name : null,
+  };
+}
+
+const RULES = ['providerOnly', 'inactivityTimeoutDays', 'administratorsNeedTwoFactor'] as const;
+
+function asRuleValue(raw: unknown): boolean | number | null | undefined {
+  return raw === null || typeof raw === 'boolean' || typeof raw === 'number' ? raw : undefined;
+}
+
+function asSignInRuleChange(raw: unknown): SignInRuleChange | null {
+  const change = (raw ?? {}) as Record<string, unknown>;
+  const by = (change.by ?? {}) as Record<string, unknown>;
+  const now = asRuleValue(change.now);
+  const was = asRuleValue(change.was);
+  const rule = RULES.find((one) => one === change.rule);
+
+  if (typeof change.at !== 'string' || typeof by.name !== 'string' || rule == null) return null;
+  if (now === undefined || was === undefined) return null;
+
+  return { at: change.at, by: { name: by.name, role: asMemberRole(by.role) }, rule, now, was };
+}
+
+function asSignInRulesPage(raw: unknown): SignInRulesPage | null {
+  const rules = asOrganisationSignInRules(raw);
+
+  if (rules == null) return null;
+
+  const page = raw as Record<string, unknown>;
+  const choices = Array.isArray(page.inactivityChoices)
+    ? page.inactivityChoices.filter((one): one is number => typeof one === 'number')
+    : null;
+  const changes = Array.isArray(page.changes) ? page.changes.map(asSignInRuleChange) : null;
+  const passwordOnly = Array.isArray(page.passwordOnly)
+    ? page.passwordOnly.map((entry: unknown) => {
+        const member = (entry ?? {}) as Record<string, unknown>;
+        const role = asMemberRole(member.role);
+
+        return typeof member.userId === 'string' && typeof member.name === 'string' && role != null
+          ? { userId: member.userId, name: member.name, role }
+          : null;
+      })
+    : null;
+
+  if (choices == null || changes == null || changes.some((change) => change == null)) return null;
+  if (passwordOnly?.some((member) => member == null)) return null;
+
+  return {
+    ...rules,
+    inactivityChoices: choices,
+    changes: changes as SignInRuleChange[],
+    passwordOnly: passwordOnly as SignInRulesPage['passwordOnly'],
+  };
+}
+
+function asInactivityLimit(raw: unknown): InactivityLimit | null {
+  const limit = (raw ?? {}) as Record<string, unknown>;
+
+  return typeof limit.organisationId === 'string' &&
+    typeof limit.organisation === 'string' &&
+    typeof limit.days === 'number'
+    ? { organisationId: limit.organisationId, organisation: limit.organisation, days: limit.days }
+    : null;
 }
 
 function asLinkedPhone(raw: unknown): LinkedPhone | null {
