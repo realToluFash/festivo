@@ -299,7 +299,10 @@ describe('verifying an address added from Settings > Account', () => {
     phoneNumbers: [],
   };
 
-  function fromAccount(me: unknown = ME) {
+  const VERIFIED = () =>
+    json({ id: 'e2', address: 'folake.adeyemi@gmail.com', verified: true, primary: false });
+
+  function fromAccount(me: unknown = ME, verifying: () => Response = VERIFIED) {
     const sent: { path: string; body: unknown }[] = [];
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const { pathname, search } = new URL(String(input));
@@ -310,13 +313,7 @@ describe('verifying an address added from Settings > Account', () => {
       if (pathname === '/api/auth/me') return json(me);
       if (pathname === '/api/auth/verify/resend')
         return json({ cooldownSeconds: 0, codeState: 'live' });
-      if (pathname === '/api/auth/verify/email')
-        return json({
-          id: 'e2',
-          address: 'folake.adeyemi@gmail.com',
-          verified: true,
-          primary: false,
-        });
+      if (pathname === '/api/auth/verify/email') return verifying();
       throw new TypeError('Failed to fetch');
     });
     render(
@@ -359,6 +356,24 @@ describe('verifying an address added from Settings > Account', () => {
     expect(screen.queryByRole('button', { name: 'Register again with the right one' })).toBeNull();
   });
 
+  it.each([
+    ['a wrong code', 'verification_code_invalid', /does not match/],
+    ['an expired code', 'verification_code_expired', /has expired/],
+    ['too many wrong tries', 'verification_code_exhausted', /Too many wrong/],
+  ])("keeps Account's way back at the top after %s", async (_, code, says) => {
+    fromAccount(ME, () => problem(code));
+
+    await screen.findByLabelText('Code from the email');
+    enter('000000');
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(says));
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Back to Account' })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/app/account']);
+  });
+
   it('ends on Back to Account, with the address still an alternative', async () => {
     fromAccount();
 
@@ -375,7 +390,10 @@ describe('verifying an address added from Settings > Account', () => {
       screen
         .getAllByRole('link', { name: 'Back to Account' })
         .map((link) => link.getAttribute('href')),
-    ).toEqual(['/app/account?verified=e2', '/app/account?verified=e2']);
+    ).toEqual(['/app/account?verified=e2']);
+    expect(screen.getByRole('link', { name: 'Back to Account' }).className).toMatch(
+      /button-primary/,
+    );
     expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
     expect(screen.queryByRole('list', { name: 'Before you start' })).toBeNull();
   });
@@ -388,6 +406,11 @@ describe('verifying an address added from Settings > Account', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Email verified' })).toBeDefined();
     expect(screen.queryByLabelText('Code from the email')).toBeNull();
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Back to Account' })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual(['/app/account?verified=e2']);
     expect(sent.some((s) => s.path.startsWith('GET /api/auth/verify/resend'))).toBe(false);
   });
 });

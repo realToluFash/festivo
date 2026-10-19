@@ -22,9 +22,9 @@ No string literal anywhere a user can see it. That means all of:
 A key added to one locale file and not the other three is the defect this skill exists to
 prevent. Add all four in the same change.
 
-**The developer writes the English; the linguists write the rest.** In a feature, put the
+**The developer writes the English; the linguist writes the rest.** In a feature, put the
 English text in all four catalogues, then leave a comment on the story:
-`[en] (from dev)` followed by the keys added or reworded. The `[en]` editor files the
+`[l10n] (from dev)` followed by the keys added or reworded. The linguist files the
 translation ticket (`soirely-linguist`, section 3), and `scripts/locale-status.mjs` finds any
 key nobody mentioned. Rewording an English string leaves the other three alone. The sweep
 marks them stale.
@@ -68,7 +68,7 @@ name, through whatever helper the client provides for it.
 
 ## Register
 
-Each language's own guide is `docs/i18n/<locale>.md`, kept by its linguist. Formal
+Each language's own guide is `docs/i18n/<locale>.md`, kept by the linguist. Formal
 throughout, and consistent:
 
 - English: British spelling, no contractions in error bodies — "cannot", not "can't"
