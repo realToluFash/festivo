@@ -138,6 +138,10 @@ function Shell() {
                 switchOrganisation(id);
                 if (joined != null) setSwitched({ name: joined.name, at: pathname });
               }}
+              onStarted={(started) => {
+                switchOrganisation(started.id);
+                setSwitched({ name: started.name, at: pathname });
+              }}
             />
           ) : (
             <Outlet />

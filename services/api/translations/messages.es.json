@@ -18,6 +18,8 @@
     "proof.required": "Para esto hace falta que haya confirmado su contraseña o iniciado sesión con Google o Apple en los últimos {minutes} minutos, además de su código de verificación en dos pasos si la tiene activada.",
     "roles.last_owner": "Es el único propietario de la organización. Antes, haga propietario a otra persona.",
     "organisation.owner_required": "Only an owner can delete the organisation.",
+    "organisation.found_already_in_one": "You already belong to an organisation.",
+    "organisation.transfer_owner_required": "Only an owner can transfer ownership.",
     "organisation.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
     "roles.grant_not_held": "Solo puede conceder, retirar o pasar personas a permisos que tiene su propio rol. No se ha cambiado nada.",
     "roles.name_builtin": "A un rol predefinido no se le puede cambiar el nombre, pero sí lo que incluye.",

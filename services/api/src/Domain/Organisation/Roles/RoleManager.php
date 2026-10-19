@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Roles;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\Members\OwnerCheck;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -17,7 +18,6 @@ use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
 use App\Locale\SupportedLocales;
 use App\Repository\InvitationRepository;
-use App\Repository\MembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -40,7 +40,7 @@ final readonly class RoleManager
         private MembershipDirectoryInterface $membershipDirectory,
         private SeededRoleLabels $seededRoleLabels,
         private InvitationRepository $invitationRepository,
-        private MembershipRepository $membershipRepository,
+        private OwnerCheck $ownerCheck,
     ) {
     }
 
@@ -222,7 +222,7 @@ final readonly class RoleManager
     {
         $this->withinHeld($organisation, $by, $role->getPermissions());
 
-        if ($role->isOwner() && true !== $this->membershipRepository->findActive($by, $organisation->getId())?->getRole()->isOwner()) {
+        if ($role->isOwner() && !$this->ownerCheck->holds($organisation, $by)) {
             throw new ApiException(ErrorCode::GrantNotHeld, $this->translator->trans('roles.grant_not_held'));
         }
     }
