@@ -12,7 +12,7 @@
  * are three sets that will eventually disagree, quietly, because each works on
  * its own.
  */
-import { DEFAULT_LOCALE, LOCALE_CODES, narrowLocale } from '@soirely/domain';
+import { DEFAULT_LOCALE, LOCALE_CODES, followPluralLocales, narrowLocale } from '@soirely/domain';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
@@ -50,6 +50,7 @@ export async function initI18n(): Promise<void> {
       },
       interpolation: { escapeValue: false },
     });
+  followPluralLocales(i18next.services.pluralResolver);
 
   applyDirection(currentLocale());
 }

@@ -11,6 +11,18 @@ final class SupportedLocales
     /** @var list<string> */
     public const ALL = ['en', 'es', 'fr', 'pt'];
 
+    /**
+     * The locales whose copy counts by a region's rule, as /locales.json's `plurals` declares.
+     *
+     * @var array<string, string>
+     */
+    public const PLURALS = ['pt' => 'pt_PT'];
+
+    public static function plurals(string $locale): string
+    {
+        return self::PLURALS[$locale] ?? $locale;
+    }
+
     public static function supports(?string $locale): bool
     {
         return null !== $locale && \in_array(self::normalise($locale), self::ALL, true);

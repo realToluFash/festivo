@@ -1,3 +1,4 @@
+import i18next from 'i18next';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { LANGUAGE_KEY, currentLocale, setLanguage, storedLanguage } from './index.ts';
@@ -46,5 +47,12 @@ describe('resolution', () => {
     await setLanguage('es');
 
     expect(document.documentElement.lang).toBe('es');
+  });
+
+  it('counts none in Portuguese as plural, the European rule the copy is written in', async () => {
+    await setLanguage('pt');
+
+    expect(i18next.t('nav.eventCount', { count: 0 })).toBe('0 eventos');
+    expect(i18next.t('nav.eventCount', { count: 1 })).toBe('1 evento');
   });
 });
