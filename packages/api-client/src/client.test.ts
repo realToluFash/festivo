@@ -1576,7 +1576,7 @@ describe('invitations and members', () => {
     const { api, sent } = client(json(PREVIEW));
 
     expect(await api.invitationLink('ab12')).toEqual(PREVIEW);
-    expect(sent.map((one) => one.line)).toEqual(['GET /api/invitations/link/ab12']);
+    expect(sent).toEqual([{ line: 'POST /api/invitations/link', body: { token: 'ab12' } }]);
   });
 
   test("a deleted organisation's invitation keeps the name and loses the id", async () => {

@@ -13,12 +13,14 @@ use App\Enum\ErrorCode;
 use App\Http\Access\Policy\Authenticated;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
+use App\Http\Input;
 use App\Repository\InvitationRepository;
 use DateTimeImmutable;
+use Psl\Type;
 use Psl\Vec;
-use SensitiveParameter;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -34,14 +36,15 @@ final readonly class InvitationsController
     ) {
     }
 
-    /** What the link opens onto, in whatever state it is, and whether the caller, if signed in, is the one invited. */
-    #[Route('/api/invitations/link/{token}', name: 'invitations_link', methods: ['GET'])]
+    /** What the link opens onto, in whatever state it is, and whether the caller, if signed in, is the one invited. The token is a credential, so it travels in the body, never the URL. */
+    #[Route('/api/invitations/link', name: 'invitations_link', methods: ['POST'])]
     #[PublicAccess]
-    public function link(#[SensitiveParameter] string $token): JsonResponse
+    public function link(Request $request): JsonResponse
     {
+        $body = Input::body($request, Type\shape(['token' => Type\string()]));
         $user = $this->security->getUser();
 
-        return new JsonResponse($this->preview($this->invitationResponder->find($token), $user instanceof User ? $user : null));
+        return new JsonResponse($this->preview($this->invitationResponder->find($body['token']), $user instanceof User ? $user : null));
     }
 
     /** Pending, to any address the account has verified: somebody with an account can accept here as well as from the email. */

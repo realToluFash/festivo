@@ -90,7 +90,7 @@ function open() {
   );
 }
 
-const LINK = `GET /api/invitations/link/${TOKEN}`;
+const LINK = 'POST /api/invitations/link';
 
 afterEach(() => {
   sessionStorage.clear();

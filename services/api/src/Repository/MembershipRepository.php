@@ -41,7 +41,7 @@ final class MembershipRepository extends ServiceEntityRepository
         return $this->findBy(['organisation' => $organisation], ['createdAt' => 'ASC', 'id' => 'ASC']);
     }
 
-    /** Through any address the account holds, verified or not: a membership is the account's, whichever address it uses. */
+    /** Through a verified address only, as accepting counts: an unverified one proves nobody is that person. */
     public function findOneByAddress(Organisation $organisation, string $normalisedEmail): ?Membership
     {
         return $this->createQueryBuilder('m')
@@ -49,6 +49,7 @@ final class MembershipRepository extends ServiceEntityRepository
             ->join('u.emailAddresses', 'e')
             ->andWhere('m.organisation = :organisation')
             ->andWhere('e.address = :email')
+            ->andWhere('e.verifiedAt IS NOT NULL')
             ->setParameter('organisation', $organisation)
             ->setParameter('email', $normalisedEmail)
             ->setMaxResults(1)

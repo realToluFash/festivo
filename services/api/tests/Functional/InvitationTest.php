@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\User\TokenIssuer;
+use App\Entity\EmailAddress;
 use App\Entity\Invitation;
 use App\Entity\Membership;
 use App\Entity\Organisation;
@@ -16,6 +17,7 @@ use App\Enum\InvitationDelivery;
 use App\Enum\InvitationStatus;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
+use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Repository\EmailAddressRepository;
 use App\Tests\ApiTestCase;
@@ -250,7 +252,7 @@ final class InvitationTest extends ApiTestCase
 
         self::assertSame($status, $this->statusCode());
         self::assertSame($code->type(), $body['type']);
-        self::assertSame($code->value, $this->call('GET', '/api/invitations/link/' . $token)['refusal'], 'and the link says which');
+        self::assertSame($code->value, $this->call('POST', '/api/invitations/link', ['token' => $token])['refusal'], 'and the link says which');
     }
 
     #[Test]
@@ -262,7 +264,7 @@ final class InvitationTest extends ApiTestCase
         self::em()->flush();
         self::em()->clear();
 
-        $link = $this->call('GET', '/api/invitations/link/' . $token);
+        $link = $this->call('POST', '/api/invitations/link', ['token' => $token]);
         $body = $this->as($kemi)->call('POST', $this->path($invitation, 'accept'));
 
         self::assertSame('organisation_deleted', $link['refusal']);
@@ -317,8 +319,8 @@ final class InvitationTest extends ApiTestCase
         $rows = self::em()->getRepository(Invitation::class)->findBy(['email' => 'kemi@example.com']);
         self::assertCount(1, $rows, 'one row, not two');
         self::assertSame(SeededRole::EventManager, $rows[0]->getRole()?->getSeededAs(), 'carrying the newer role');
-        self::assertSame(ErrorCode::InvitationNotFound->type(), $this->call('GET', '/api/invitations/link/' . $firstToken)['type'], 'the old link stops working');
-        self::assertNull($this->call('GET', '/api/invitations/link/' . $secondToken)['refusal']);
+        self::assertSame(ErrorCode::InvitationNotFound->type(), $this->call('POST', '/api/invitations/link', ['token' => $firstToken])['type'], 'the old link stops working');
+        self::assertNull($this->call('POST', '/api/invitations/link', ['token' => $secondToken])['refusal']);
     }
 
     #[Test]
@@ -331,7 +333,7 @@ final class InvitationTest extends ApiTestCase
 
         self::assertNotSame($token, $stored);
         self::assertSame(TokenIssuer::hash($token), $stored);
-        self::assertSame(ErrorCode::InvitationNotFound->type(), $this->call('GET', '/api/invitations/link/' . $stored)['type']);
+        self::assertSame(ErrorCode::InvitationNotFound->type(), $this->call('POST', '/api/invitations/link', ['token' => $stored])['type']);
         $this->register('kemi@example.com', $stored);
         $this->assertNoAccount('kemi@example.com');
     }
@@ -362,6 +364,59 @@ final class InvitationTest extends ApiTestCase
         $body = $this->as($admin)->invite($organisation, 'kemi@example.com', SeededRole::Owner);
 
         self::assertSame(ErrorCode::GrantNotHeld->type(), $body['type']);
+    }
+
+    #[Test]
+    public function anAdministratorHoldingEveryPermissionStillCannotInviteAnOwner(): void
+    {
+        [$organisation] = $this->organisation();
+        $administrator = $this->role($organisation, SeededRole::Administrator);
+        $administrator->setPermissions(Permission::cases());
+        $admin = self::inviter('admin@ire.events', 'Bisi Adeyemi');
+        self::service(MembershipMachine::class)->join($organisation, $admin, $administrator, MembershipStatus::Active, MembershipChannel::Invitation, $admin);
+        self::em()->flush();
+
+        $body = $this->as($admin)->invite($organisation, 'kemi@example.com', SeededRole::Owner);
+
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $body['type']);
+        self::assertSame([], self::em()->getRepository(Invitation::class)->findBy(['email' => 'kemi@example.com']));
+    }
+
+    #[Test]
+    public function aRoleFromAnotherOrganisationIsNotOneToInviteTo(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        $elsewhere = self::organisationFor(self::inviter('tunde@elsewhere.events', 'Tunde Bello'), 'Elsewhere');
+
+        $body = $this->as($owner)->call('POST', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/members/invite', [
+            'email' => 'kemi@example.com',
+            'roleId' => $this->role($elsewhere, SeededRole::Coordinator)->getId()->toRfc4122(),
+        ]);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame('roleId', Type\shape(['violations' => Type\vec(Type\shape(['propertyPath' => Type\string()], true))], true)->coerce($body)['violations'][0]['propertyPath']);
+    }
+
+    #[Test]
+    public function anUnverifiedAddressOnAMembersAccountDoesNotMakeThatAddressAMember(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        self::em()->persist(new EmailAddress($owner, 'new-hire@ire.events'));
+        self::em()->flush();
+
+        $this->as($owner)->invite($organisation, 'new-hire@ire.events', SeededRole::Coordinator);
+
+        self::assertSame(201, $this->statusCode());
+    }
+
+    #[Test]
+    public function theLinksTokenIsNeverPartOfTheAddress(): void
+    {
+        [, $token] = self::invitationTo('kemi@example.com');
+
+        $this->call('GET', '/api/invitations/link/' . $token);
+
+        self::assertSame(404, $this->statusCode());
     }
 
     #[Test]
@@ -460,7 +515,7 @@ final class InvitationTest extends ApiTestCase
         $this->call('DELETE', '/api/orgs/' . $organisation->getId()->toRfc4122() . '/invitations/' . $invitation->getId()->toRfc4122());
         self::assertSame(200, $this->statusCode());
 
-        self::assertSame('invitation_revoked', $this->call('GET', '/api/invitations/link/' . $token)['refusal']);
+        self::assertSame('invitation_revoked', $this->call('POST', '/api/invitations/link', ['token' => $token])['refusal']);
         $this->register('kemi@example.com', $token);
         self::assertSame(410, $this->statusCode());
         $this->assertNoAccount('kemi@example.com');

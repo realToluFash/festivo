@@ -1089,9 +1089,7 @@ export class ApiClient {
 
   /** Refused `invitation_not_found` for a link that names nothing, including one that was sent again. */
   async invitationLink(token: string): Promise<InvitationPreview> {
-    return this.invitationPreview(
-      await this.get<unknown>(`/api/invitations/link/${encodeURIComponent(token)}`),
-    );
+    return this.invitationPreview(await this.post<unknown>('/api/invitations/link', { token }));
   }
 
   async myInvitations(): Promise<InvitationPreview[]> {
