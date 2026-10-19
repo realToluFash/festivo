@@ -112,6 +112,8 @@ only in the organisation that set it:
   A password session ends the same way at its next refresh, except the one a provider was
   linked from: linking is a sign-in with that provider, so the chain is marked signed in with
   it (`TokenIssuer::markSignedInWith`) and carries on, and unlinking that provider ends it.
+  The marking happens under this rule only: without it, unlinking ends only the sessions
+  started through the provider (sc-510), never the password session it was linked from.
 - **Two-factor for administrators**, for a member without it: every permission whose area is
   Members, Billing or Organisation (`Permission::isAdministrative()`) is withheld, and asking
   for one is **403 `organisation_two_factor_required`** with the permission named. Nothing

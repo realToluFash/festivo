@@ -46,7 +46,7 @@ final readonly class ProviderLinking
     /**
      * Any address the provider vouches for, matching or not: a work Google account on a personal sign-up is the point.
      *
-     * @param Uuid|null $caller the chain the access token carries (CallerSession), which carries on as signed in with the provider
+     * @param Uuid|null $caller the chain the access token carries (CallerSession), which carries on as signed in with the provider under Google or Apple only
      */
     public function link(
         User $user,
@@ -172,7 +172,7 @@ final readonly class ProviderLinking
 
     private function carryOn(User $user, ?Uuid $caller, IdentityProvider $provider): void
     {
-        if (null !== $caller) {
+        if (null !== $caller && null !== $this->signInRules->refusingPassword($user)) {
             $this->tokenIssuer->markSignedInWith($user, $caller, $provider);
         }
     }
