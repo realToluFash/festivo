@@ -127,9 +127,11 @@ class Threads(unittest.TestCase):
                   thread("nit: x", "Fixed. (from dev)", resolved=True)):
             self.assertEqual(work.review_items([story()], [pr(lead=self.passed, threads=[t])]), [])
 
-    def test_a_thread_the_lead_did_not_start_is_not_its_work(self):
-        t = thread("Why this? (from qa)", "Because. (from dev)")
-        self.assertEqual(work.review_items([story()], [pr(lead=self.passed, threads=[t])]), [])
+    def test_an_answered_thread_with_no_severity_wakes_the_lead_too(self):
+        for first in ("Why this? (from qa)", "Can this wait? (from lead)", "Why this?"):
+            t = thread(first, "Because. (from dev)")
+            items = work.review_items([story()], [pr(lead=self.passed, threads=[t])])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("threads", ["lead"])])
 
     def test_a_review_item_already_carries_the_threads(self):
         items = work.review_items([story()], [pr(threads=[thread("blocking: x", "Done.")])])
@@ -159,6 +161,32 @@ class Developer(unittest.TestCase):
         items = work.developer_items([story()], [pr(lead=[verdict("pass", HEAD[:7])],
                                                     threads=[thread])])
         self.assertEqual(items, [])
+
+    def test_a_pass_with_an_unanswered_thread_wakes_the_developer(self):
+        for t in (thread("should: x"), thread("should: x", "a (from dev2)", "b (from lead)")):
+            items = work.developer_items([story(labels=["dev2"])],
+                                         [pr(lead=[verdict("pass", HEAD[:7])], threads=[t])])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items],
+                             [("answer-threads", ["dev2"])])
+
+    def test_a_thread_the_developer_answered_last_waits_on_the_lead(self):
+        t = thread("should: x", "Kept as is. (from dev2)")
+        items = work.developer_items([story(labels=["dev2"])],
+                                     [pr(lead=[verdict("pass", HEAD[:7])], threads=[t])])
+        self.assertEqual(items, [])
+
+    def test_a_thread_with_no_severity_the_developer_answered_still_wakes_someone(self):
+        t = thread("Why this? (from qa)", "Because. (from dev2)")
+        passed = pr(lead=[verdict("pass", HEAD[:7])], threads=[t])
+        self.assertEqual(work.developer_items([story(labels=["dev2"])], [passed]), [])
+        self.assertEqual(kinds(work.review_items([story(labels=["dev2"])], [passed])),
+                         ["threads"])
+
+    def test_each_new_lead_reply_is_new_work_for_the_developer(self):
+        def one(*texts):
+            return work.developer_items([story(labels=["dev2"])], [pr(
+                lead=[verdict("pass", HEAD[:7])], threads=[thread(*texts)])])[0]["fingerprint"]
+        self.assertNotEqual(one("nit: x"), one("nit: x", "a (from dev2)", "b (from lead)"))
 
     def test_merged_at_the_passed_sha_goes_to_qa(self):
         merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
