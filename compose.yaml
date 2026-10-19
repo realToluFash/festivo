@@ -128,7 +128,7 @@ services:
       ASSISTANT_ENABLED: ${ASSISTANT_ENABLED:-true}
       ASSISTANT_PROVIDER: ${ASSISTANT_PROVIDER:-scripted}
       ASSISTANT_API_KEY: ${ASSISTANT_API_KEY:-}
-      ASSISTANT_MODEL: ${ASSISTANT_MODEL:-claude-opus-5}
+      ASSISTANT_MODEL: ${ASSISTANT_MODEL:-claude-opus-5-5}
       ASSISTANT_EFFORT: ${ASSISTANT_EFFORT:-medium}
       ASSISTANT_MAX_TOKENS: ${ASSISTANT_MAX_TOKENS:-16000}
       # FrankenPHP serves plain HTTP here; TLS terminates upstream in deployment.
