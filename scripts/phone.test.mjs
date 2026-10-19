@@ -2,7 +2,16 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { firewallAdvice, KEPT, lanAddress, parseEnv, phoneConfig, wifiDevices } from './phone.mjs';
+import { renderDevEnv, roleConfig } from './dev-env.mjs';
+import {
+  envSource,
+  firewallAdvice,
+  KEPT,
+  lanAddress,
+  parseEnv,
+  phoneConfig,
+  wifiDevices,
+} from './phone.mjs';
 import { stackConfig } from './qa-env.mjs';
 
 const v4 = (address, internal = false) => ({ family: 'IPv4', address, internal });
@@ -71,11 +80,21 @@ describe('the stack and the bundle, pointed at that address', () => {
     expect(role.SMS_AUTH_TOKEN).toBe('development-token');
   });
 
-  it('works from a .env copied from .env.example, on the development ports', () => {
-    const fresh = phoneConfig(parseEnv(readFileSync('.env.example', 'utf8')), '192.168.1.164');
-    expect(fresh.url).toBe('exp://192.168.1.164:8081');
-    expect(fresh.ports.METRO_PORT).toBe(8081);
-    expect(fresh.stack.OAUTH_GOOGLE_ISSUERS.split(',')).toContain('http://localhost:8089/google');
+  it('works from the .env a role worktree is given, on that role’s ports', () => {
+    const written = renderDevEnv(readFileSync('.env.example', 'utf8'), roleConfig('ops'));
+    const fresh = phoneConfig(parseEnv(written), '192.168.1.164');
+    expect(fresh.url).toBe('exp://192.168.1.164:58081');
+    expect(fresh.ports.POSTGRES_PORT).toBe(55432);
+    expect(fresh.stack.OAUTH_GOOGLE_ISSUERS.split(',')).toContain('http://localhost:58089/google');
+  });
+
+  it('writes a role’s .env where there is none, and refuses outside a role worktree', () => {
+    expect(envSource('/home/me/Projects/soirely-ops', true)).toBeNull();
+    expect(envSource('/home/me/Projects/soirely-ops', false)).toBe('ops');
+    expect(envSource('/home/me/Projects/soirely-lead', false)).toBe('lead');
+    expect(() => envSource('/home/me/Projects/soirely', false)).toThrow(
+      /just dev-env setup --role ops/,
+    );
   });
 
   it('finds a role’s ports from its API port', () => {

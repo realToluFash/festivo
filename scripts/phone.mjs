@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // The app in Expo Go on a real phone on this network, at the latest main. How: CONTRIBUTING.md.
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { roleConfig, roleOf, startStack, writeEnv } from './dev-env.mjs';
 import { DEVELOPMENT_PORTS, expoGoApk, stackConfig } from './qa-env.mjs';
 
 const PRIVATE = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
@@ -76,6 +77,18 @@ export function phoneConfig(env, address) {
   };
 }
 
+// .env.example's ports are the main checkout's, so a stack started from it collides with it.
+export function envSource(root, hasEnv) {
+  if (hasEnv) return null;
+  const role = roleOf(root);
+  if (!role) {
+    throw new Error(
+      'no .env here: run it from a role worktree, such as one `just dev-env setup --role ops` makes',
+    );
+  }
+  return role;
+}
+
 export function firewallAdvice(platform, address, ports) {
   if (platform === 'darwin') {
     return [
@@ -141,9 +154,10 @@ function address() {
 function stack(config) {
   step('The stack, reachable from the phone');
   // The shell's values win over .env, so a plain `docker compose up` puts the stack back on localhost.
-  run('docker', ['compose', 'up', '-d', '--build', '--wait', 'api'], { env: config.stack });
+  startStack(ROOT, config.stack);
   const console_ = ['compose', 'exec', '-T', 'api', 'php', 'bin/console'];
   run('docker', [...console_, 'lexik:jwt:generate-keypair', '--skip-if-exists']);
+  run('docker', [...console_, 'doctrine:database:create', '--if-not-exists']);
   run('docker', [...console_, 'doctrine:migrations:migrate', '-n', '--allow-no-migration']);
 }
 
@@ -180,7 +194,11 @@ async function main() {
     latestMain();
     rerunIfMoved(before);
   }
-  // Setup writes .env on a fresh checkout, so it is read only afterwards.
+  const role = envSource(ROOT, existsSync(join(ROOT, '.env')));
+  if (role) {
+    step(`The ${role} stack's environment`);
+    writeEnv(ROOT, roleConfig(role));
+  }
   run('node', ['scripts/setup.mjs']);
   const config = phoneConfig(parseEnv(readFileSync(join(ROOT, '.env'), 'utf8')), host);
   stack(config);
