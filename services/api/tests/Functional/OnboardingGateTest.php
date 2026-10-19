@@ -14,6 +14,7 @@ use App\Enum\ErrorCode;
 use App\Repository\MembershipRepository;
 use App\Repository\PhoneNumberRepository;
 use App\Tests\ApiTestCase;
+use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,6 +29,7 @@ use Symfony\Component\Routing\RouterInterface;
 
 final class OnboardingGateTest extends ApiTestCase
 {
+    use InvitesPeople;
     use OnboardsAccounts;
 
     /** @mago-expect lint:no-literal-password */
@@ -144,6 +146,9 @@ final class OnboardingGateTest extends ApiTestCase
         yield 'a phone code' => ['POST', '/api/auth/verify/phone', ['code' => '000000']];
         yield 'the phone cooldown' => ['GET', '/api/auth/verify/phone/resend', null];
         yield 'a phone resend' => ['POST', '/api/auth/verify/phone/resend', null];
+        yield 'invitations waiting' => ['GET', '/api/invitations', null];
+        yield 'accepting one' => ['POST', '/api/invitations/018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f/accept', null];
+        yield 'declining one' => ['POST', '/api/invitations/018f3a4c-7b2e-7c3d-9e1f-2a3b4c5d6e7f/decline', null];
     }
 
     /** @param array<string, mixed>|null $body */
@@ -254,7 +259,7 @@ final class OnboardingGateTest extends ApiTestCase
     #[Test]
     public function anInvitedAccountIsCompleteWithANameAndOneSave(): void
     {
-        $invited = self::service(UserRegistrar::class)->registerFromInvitation('invited@example.com', 'Invited', self::PASSWORD)->user;
+        $invited = self::service(UserRegistrar::class)->registerFromInvitation(self::invitationTo('invited@example.com')[0], 'Invited', self::PASSWORD)->user;
         self::service(EntityManagerInterface::class)->flush();
         $this->signIn($invited);
 
@@ -269,7 +274,7 @@ final class OnboardingGateTest extends ApiTestCase
     #[Test]
     public function theAccountSaysItsOrganisationsCountryBehindTheGate(): void
     {
-        $invited = self::service(UserRegistrar::class)->registerFromInvitation('invited@example.com', 'Invited', self::PASSWORD)->user;
+        $invited = self::service(UserRegistrar::class)->registerFromInvitation(self::invitationTo('invited@example.com')[0], 'Invited', self::PASSWORD)->user;
         self::service(EntityManagerInterface::class)->flush();
         $this->signIn($invited);
         self::assertNull($this->call('GET', '/api/auth/me')['organisationCountry'], 'in no organisation yet');

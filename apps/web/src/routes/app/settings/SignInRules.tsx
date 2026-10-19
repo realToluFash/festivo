@@ -1,4 +1,5 @@
 import {
+  ApiError,
   type Membership,
   type SignInRuleChange,
   type SignInRulesChanges,
@@ -8,6 +9,7 @@ import { formatDay, formatTimeOfDay, roleName } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
@@ -154,6 +156,7 @@ function Editable({
   const { t } = useTranslation();
   const [rules, setRules] = useState<Rules>(() => rulesOf(page));
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved' | 'failed'>('editing');
+  const [needsOwnTwoFactor, setNeedsOwnTwoFactor] = useState(false);
   const changed = differences(rulesOf(page), rules);
   const dirty = Object.keys(changed).length > 0;
   const stranded = page.passwordOnly ?? [];
@@ -171,9 +174,29 @@ function Editable({
     try {
       onSaved(await api.updateSignInRules(organisation.id, changed));
       setStatus('saved');
-    } catch {
+    } catch (error) {
+      // Two-factor removed in another tab, say: the switch goes back off and the other choices stay, unsaved.
+      if (error instanceof ApiError && error.is('two_factor_off')) {
+        setRules((previous) => ({ ...previous, administratorsNeedTwoFactor: false }));
+        setNeedsOwnTwoFactor(true);
+        setStatus('editing');
+        return;
+      }
+
       setStatus('failed');
     }
+  }
+
+  function switchTwoFactor(): void {
+    const required = !rules.administratorsNeedTwoFactor;
+
+    if (required && !page.ownTwoFactor) {
+      setNeedsOwnTwoFactor(true);
+      return;
+    }
+
+    setNeedsOwnTwoFactor(false);
+    pick({ administratorsNeedTwoFactor: required });
   }
 
   return (
@@ -256,7 +279,11 @@ function Editable({
           <section className="card settings-card" aria-labelledby="rules-idle">
             <h2 id="rules-idle">{t('signInRules.idleTitle')}</h2>
             <p className="muted">{t('signInRules.idleIntro')}</p>
-            <div className="roles-levels" role="group" aria-label={t('signInRules.idleTitle')}>
+            <div
+              className="sign-in-rules-choices"
+              role="group"
+              aria-label={t('signInRules.idleTitle')}
+            >
               {[...page.inactivityChoices, null].map((days) => (
                 <button
                   key={String(days)}
@@ -286,15 +313,27 @@ function Editable({
                 className="roles-level"
                 aria-pressed={rules.administratorsNeedTwoFactor}
                 aria-label={t('signInRules.twoFactorLabel')}
-                onClick={() =>
-                  pick({ administratorsNeedTwoFactor: !rules.administratorsNeedTwoFactor })
-                }
+                onClick={switchTwoFactor}
               >
                 {t(
                   rules.administratorsNeedTwoFactor ? 'signInRules.turnOff' : 'signInRules.turnOn',
                 )}
               </button>
             </div>
+            {needsOwnTwoFactor && (
+              <div className="notice notice-attention sign-in-rules-needs-own" role="alert">
+                <span className="mark mark-attention" aria-hidden="true">
+                  !
+                </span>
+                <div className="notice-body">
+                  <p className="notice-title">{t('signInRules.needsOwnTitle')}</p>
+                  <p>{t('signInRules.needsOwnBody')}</p>
+                  <Link className="button" to="/app/account/security">
+                    {t('signInRules.needsOwnTurnOn')}
+                  </Link>
+                </div>
+              </div>
+            )}
             <p className="muted">
               {t(
                 rules.administratorsNeedTwoFactor

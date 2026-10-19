@@ -231,6 +231,7 @@ describe('setting a new password from the link', () => {
             status: 403,
             organisation: 'Ìrè Events',
             providers: ['google'],
+            email: 'folake@ire.events',
           },
           403,
         ),
@@ -248,7 +249,9 @@ describe('setting a new password from the link', () => {
         /Ìrè Events signs in with Google or Apple only/,
       ),
     );
-    expect(screen.getByLabelText('Password').closest('form')?.hidden).toBe(true);
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
   });
 
   it('with two-factor on, asks for the code before the new password, and changes nothing first', async () => {

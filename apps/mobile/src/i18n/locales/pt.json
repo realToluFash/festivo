@@ -71,6 +71,7 @@
     "timedOutBody_other": "{{organisation}} signs people out after {{count}} days without use. Sign in again to carry on.",
     "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
     "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
+    "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it.",
     "anotherAccount": "Sign in with another account"
   },
   "register": {
@@ -656,7 +657,9 @@
     "remembered": "A Soirely lembra a sua escolha neste dispositivo.",
     "label": "Organização: {{name}}, a sua função {{role}}",
     "labelSwitch": "Organização: {{name}}, a sua função {{role}}. Mudar de organização",
-    "close": "Fechar"
+    "close": "Fechar",
+    "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
+    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
   },
   "roles": {
     "owner": "Proprietário",
@@ -746,6 +749,54 @@
     "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
     "searchCurrency": "Pesquisar moedas",
     "searchTimezone": "Pesquisar fusos horários"
+  },
+  "invitations": {
+    "heading": "Invitations",
+    "count_one": "{{count}} invitation",
+    "count_other": "{{count}} invitations",
+    "from": "Invitation from {{inviter}} · {{role}}",
+    "fromNobody": "Invitation · {{role}}",
+    "until": "Works until {{date}}",
+    "untilSentTo": "Works until {{date}} · Sent to {{email}}",
+    "accept": "Accept and join",
+    "acceptLabel": "Accept and join {{organisation}}",
+    "decline": "Decline",
+    "declineLabel": "Decline the invitation to {{organisation}}",
+    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
+    "declineNoteNobody": "Declining changes nothing else.",
+    "joined": "You joined {{organisation}} as {{role}}.",
+    "open": "Open {{organisation}}",
+    "declined": "You declined. {{inviter}} will see that you said no.",
+    "declinedNobody": "You declined.",
+    "failed": "Your answer did not reach us. Check your connection and try again.",
+    "refused": {
+      "invitation_expired": {
+        "word": "Expired",
+        "body": "This invitation has expired. Ask {{inviter}} to send a new one.",
+        "bodyNobody": "This invitation has expired. Ask whoever invited you to send a new one."
+      },
+      "invitation_revoked": {
+        "word": "Withdrawn",
+        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+      },
+      "invitation_accepted": {
+        "word": "Already accepted",
+        "body": "You already accepted this invitation."
+      },
+      "invitation_declined": {
+        "word": "Already declined",
+        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
+        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+      },
+      "invitation_not_yours": {
+        "word": "Signed in as someone else",
+        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+      },
+      "organisation_deleted": {
+        "word": "Organisation deleted",
+        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+      }
+    }
   },
   "signInRules": {
     "readTitle": "{{organisation}}’s sign-in rules",

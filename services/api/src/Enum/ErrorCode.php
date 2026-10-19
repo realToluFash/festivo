@@ -29,6 +29,16 @@ enum ErrorCode: string
     case ProviderKeptByRule = 'provider_kept_by_rule';
     case UnsupportedMediaType = 'unsupported_media_type';
 
+    case AlreadyAMember = 'already_a_member';
+    case EmailTaken = 'email_taken';
+    case InvitationNotFound = 'invitation_not_found';
+    case InvitationExpired = 'invitation_expired';
+    case InvitationRevoked = 'invitation_revoked';
+    case InvitationAccepted = 'invitation_accepted';
+    case InvitationDeclined = 'invitation_declined';
+    case InvitationNotYours = 'invitation_not_yours';
+    case OrganisationDeleted = 'organisation_deleted';
+
     case Unauthenticated = 'unauthenticated';
     case InvalidCredentials = 'invalid_credentials';
     case InvalidRefreshToken = 'invalid_refresh_token';
@@ -86,6 +96,10 @@ enum ErrorCode: string
             self::OwnerRoleFixed, self::SeededRoleKept, self::LastOwner => 409,
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
+            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined => 409,
+            self::InvitationNotFound => 404,
+            self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
+            self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,

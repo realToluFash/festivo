@@ -14,6 +14,7 @@ use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeMailer;
 use App\Entity\EmailAddress;
+use App\Entity\Invitation;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
@@ -58,18 +59,18 @@ final readonly class UserRegistrar
     }
 
     /**
-     * The address arrives verified: the token reached this person at this
-     * address, which is what a verification code proves. A phone is not, since
-     * nothing was sent to one.
+     * The address arrives verified: the token reached this person at this address, which is
+     * what a verification code proves. Only InvitationResponder calls this, after it has checked
+     * the token and that the address typed is the invitation's (sc-67).
      */
     public function registerFromInvitation(
-        string $email,
+        Invitation $invitation,
         string $name,
         #[SensitiveParameter]
         string $password,
         ?Request $request = null,
     ): RegistrationResult {
-        $user = $this->build($email, $name, $password, AccountOrigin::Invitation);
+        $user = $this->build($invitation->getEmail(), $name, $password, AccountOrigin::Invitation);
         $user->getPrimaryEmailAddress()?->setVerifiedAt(new DateTimeImmutable());
 
         return $this->persist($user, $request);
@@ -224,7 +225,7 @@ final readonly class UserRegistrar
     private static function taken(?Throwable $previous = null): ApiException
     {
         // Reached only by an invitation or a race: a password sign-up never says an address is taken (sc-512).
-        return new ApiException(ErrorCode::Conflict, 'That email address cannot be used.', [], $previous);
+        return new ApiException(ErrorCode::EmailTaken, 'That email address cannot be used.', [], $previous);
     }
 
     /**

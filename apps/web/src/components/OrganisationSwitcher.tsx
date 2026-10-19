@@ -1,21 +1,27 @@
 import type { Membership } from '@soirely/api-client';
-import { initials, roleName } from '@soirely/domain';
+import { initials, roleName, waitingInvitations } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import type { WaitingInvitations } from '../invitations.ts';
+import { InvitationRows } from './InvitationRows.tsx';
 
 export function OrganisationSwitcher({
   current,
   organisations,
+  waiting,
   onSwitch,
 }: {
   current: Membership;
   organisations: readonly Membership[];
+  waiting: WaitingInvitations;
   onSwitch: (organisation: Membership) => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const role = roleName(t, current.role);
+  const count = waitingInvitations(waiting.invitations, waiting.outcomes);
 
   useEffect(() => {
     if (!open) return;
@@ -39,7 +45,7 @@ export function OrganisationSwitcher({
     };
   }, [open]);
 
-  if (organisations.length < 2) {
+  if (organisations.length < 2 && waiting.invitations.length === 0) {
     return (
       <div
         className="org-switcher org-switcher-single"
@@ -58,11 +64,15 @@ export function OrganisationSwitcher({
         className="org-switcher-button"
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={t('switcher.labelSwitch', { name: current.name, role })}
+        aria-label={
+          count > 0
+            ? t('switcher.labelSwitchWaiting', { name: current.name, role, count })
+            : t('switcher.labelSwitch', { name: current.name, role })
+        }
         onClick={() => setOpen((shown) => !shown)}
       >
         <Tile name={current.name} />
-        <Naming name={current.name} role={role} />
+        <Naming name={current.name} role={role} waiting={count} />
         <svg
           className="org-switcher-chevron"
           aria-hidden="true"
@@ -112,6 +122,26 @@ export function OrganisationSwitcher({
               );
             })}
           </ul>
+          {waiting.invitations.length > 0 && (
+            <section
+              className="org-switcher-invitations"
+              aria-labelledby="org-switcher-invitations"
+            >
+              <p id="org-switcher-invitations" className="org-switcher-heading">
+                {t('invitations.heading')}
+              </p>
+              <InvitationRows
+                waiting={waiting}
+                place="menu"
+                onOpen={(id) => {
+                  const joined = organisations.find((organisation) => organisation.id === id);
+
+                  setOpen(false);
+                  if (joined != null) onSwitch(joined);
+                }}
+              />
+            </section>
+          )}
           <p className="org-switcher-note">{t('switcher.remembered')}</p>
         </div>
       )}
@@ -127,13 +157,19 @@ function Tile({ name }: { name: string }) {
   );
 }
 
-function Naming({ name, role }: { name: string; role: string }) {
+function Naming({ name, role, waiting = 0 }: { name: string; role: string; waiting?: number }) {
   const { t } = useTranslation();
 
   return (
     <span className="org-naming">
       <span className="org-name">{name}</span>
       <span className="org-role">{t('switcher.yourRole', { role })}</span>
+      {waiting > 0 && (
+        <span className="org-switcher-waiting">
+          <span className="org-switcher-ring" aria-hidden="true" />
+          <span>{t('invitations.count', { count: waiting })}</span>
+        </span>
+      )}
     </span>
   );
 }

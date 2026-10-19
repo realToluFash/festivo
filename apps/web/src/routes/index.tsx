@@ -5,6 +5,7 @@ import { Security } from './app/account/Security.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
 import { General } from './app/settings/General.tsx';
+import { Members } from './app/settings/Members.tsx';
 import { Roles } from './app/settings/Roles.tsx';
 import { SignInRules } from './app/settings/SignInRules.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
@@ -13,6 +14,7 @@ import { ChangePhone } from './public/ChangePhone.tsx';
 import { CompleteProfile } from './public/CompleteProfile.tsx';
 import { ForgotPassword } from './public/ForgotPassword.tsx';
 import { Home } from './public/Home.tsx';
+import { Join } from './public/Join.tsx';
 import { LostTwoFactor } from './public/LostTwoFactor.tsx';
 import { NotFound } from './public/NotFound.tsx';
 import { OAuthCallback } from './public/OAuthCallback.tsx';
@@ -59,6 +61,7 @@ export const routes = [
   { path: '/phone', element: <ChangePhone /> },
   { path: '/complete-profile', element: <CompleteProfile /> },
   { path: '/status', element: <Status /> },
+  { path: '/join/:token', element: <Join /> },
   {
     path: '/app',
     element: <AppLayout />,
@@ -69,6 +72,7 @@ export const routes = [
       { path: 'account', element: <Account /> },
       { path: 'account/security', element: <Security /> },
       { path: 'settings', element: <General /> },
+      { path: 'settings/members', element: <Members /> },
       { path: 'settings/roles', element: <Roles /> },
       { path: 'settings/sign-in-rules', element: <SignInRules /> },
     ],

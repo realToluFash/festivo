@@ -52,6 +52,28 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /** @return list<Membership> in every state, oldest first */
+    public function findInOrganisation(Organisation $organisation): array
+    {
+        return $this->findBy(['organisation' => $organisation], ['createdAt' => 'ASC', 'id' => 'ASC']);
+    }
+
+    /** Through a verified address only, as accepting counts: an unverified one proves nobody is that person. */
+    public function findOneByAddress(Organisation $organisation, string $normalisedEmail): ?Membership
+    {
+        return $this->createQueryBuilder('m')
+            ->join('m.user', 'u')
+            ->join('u.emailAddresses', 'e')
+            ->andWhere('m.organisation = :organisation')
+            ->andWhere('e.address = :email')
+            ->andWhere('e.verifiedAt IS NOT NULL')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('email', $normalisedEmail)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     /** @return list<Membership> */
     public function findActiveIn(Organisation $organisation): array
     {
