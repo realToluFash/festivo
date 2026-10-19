@@ -51,10 +51,11 @@ export interface TimedOut {
   email: string;
 }
 
-/** An organisation's Google-or-Apple-only rule turned a password away (sc-69): sign-in names it and shows the buttons. */
+/** An organisation's Google-or-Apple-only rule turned a password away (sc-69): sign-in names it, keeps the address and shows the linked buttons. */
 export interface ProviderOnly {
   organisation: string;
   providers: string[];
+  email: string;
 }
 
 /** Per device, as the switcher promises: "Soirely remembers your choice on this device". */
@@ -185,7 +186,7 @@ export function providerOnlyBy(why: Problem | undefined): ProviderOnly | undefin
   if (why == null || !new ApiError(why).is('oauth_only') || why.organisation == null)
     return undefined;
 
-  return { organisation: why.organisation, providers: why.providers ?? [] };
+  return { organisation: why.organisation, providers: why.providers ?? [], email: why.email ?? '' };
 }
 
 function sessionFrom(account: Account, organisations: readonly Membership[]): Session {

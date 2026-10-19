@@ -332,7 +332,7 @@ describe('signing in, for real', () => {
 });
 
 describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
-  it('says which organisation turned passwords off, and leaves the provider buttons', async () => {
+  it('says which organisation turned passwords off, leaving the address and the linked provider only', async () => {
     answering({
       'POST /api/auth/login': () =>
         json(
@@ -342,6 +342,7 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
             status: 403,
             organisation: 'Ìrè Events',
             providers: ['google'],
+            email: 'folake@ire.events',
           },
           403,
         ),
@@ -353,12 +354,20 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
     const banner = await screen.findByRole('alert');
     expect(banner.textContent).toMatch(/Ìrè Events signs in with Google or Apple only/);
     expect(banner.textContent).toMatch(/Use Google instead/);
-    expect(screen.getByLabelText('Password').closest('form')?.hidden).toBe(true);
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Forgot your password?' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign in' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
+    expect(
+      screen.getByText('A rule set by Ìrè Events: password sign-in is off for everyone in it.'),
+    ).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in with another account' }));
 
-    expect(screen.getByLabelText('Password').closest('form')?.hidden).toBe(false);
+    expect(screen.getByLabelText('Password')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeDefined();
   });
 
   it('after an inactivity limit, names the rule and keeps the address, asking for the password', () => {
@@ -395,7 +404,13 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
           initialEntries: [
             {
               pathname: '/sign-in',
-              state: { providerOnly: { organisation: 'Ìrè Events', providers: ['google'] } },
+              state: {
+                providerOnly: {
+                  organisation: 'Ìrè Events',
+                  providers: ['apple'],
+                  email: 'folake@ire.events',
+                },
+              },
             },
           ],
         })}
@@ -405,6 +420,9 @@ describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
     expect(screen.getByRole('alert').textContent).toMatch(
       /Ìrè Events signs in with Google or Apple only/,
     );
-    expect(screen.getByLabelText('Password').closest('form')?.hidden).toBe(true);
+    expect(screen.queryByLabelText('Password')).toBeNull();
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+    expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Continue with Google' })).toBeNull();
   });
 });

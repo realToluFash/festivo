@@ -93,7 +93,8 @@
     "timedOutBody_other": "{{organisation}} signs people out after {{count}} days without use. Sign in again to carry on.",
     "providerOnlyTitle": "{{organisation}} signs in with Google or Apple only",
     "providerOnlyBody": "Password sign-in is off in {{organisation}}. Use {{providers}} instead.",
-    "anotherAccount": "Sign in with another account"
+    "anotherAccount": "Sign in with another account",
+    "providerOnlyFootnote": "A rule set by {{organisation}}: password sign-in is off for everyone in it."
   },
   "register": {
     "title": "Crie a sua conta",
@@ -914,6 +915,9 @@
     "turnOff": "Turn off",
     "twoFactorOn": "Anyone without two-factor keeps working events and is asked to set it up before their next change to members, roles, billing or security.",
     "twoFactorOff": "Off. Anyone with an owner’s or administrator’s password can change members, roles and billing.",
+    "needsOwnTitle": "Turn on two-factor for yourself first",
+    "needsOwnBody": "Then you can require it here.",
+    "needsOwnTurnOn": "Turn on two-factor",
     "effectsTitle": "What happens when you save",
     "effectStranded": "{{names}} can read but not change anything until they link Google or Apple. Their password still signs them in.",
     "effectProviderOnly": "Everyone signs in with Google or Apple. Anybody with one linked who signed in with a password is asked to sign in again with it.",

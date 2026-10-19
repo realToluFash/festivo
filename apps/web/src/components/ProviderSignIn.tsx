@@ -3,42 +3,55 @@ import { useNavigate } from 'react-router';
 
 import { startProviderSignIn } from '../providerSignIn.ts';
 
+type Provider = 'google' | 'apple';
+
 /** Both are built to their owners' published specification; the marks are copied, not redrawn. */
-export function ProviderSignIn() {
+export function ProviderSignIn({ only }: { only?: readonly string[] } = {}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const shown = (['google', 'apple'] as const).filter(
+    (provider: Provider) => only == null || only.length === 0 || only.includes(provider),
+  );
 
   return (
     <>
-      <div className="auth-or">
-        <span className="auth-or-rule" />
-        <span>{t('signIn.or')}</span>
-        <span className="auth-or-rule" />
-      </div>
+      {only == null && (
+        <div className="auth-or">
+          <span className="auth-or-rule" />
+          <span>{t('signIn.or')}</span>
+          <span className="auth-or-rule" />
+        </div>
+      )}
 
-      <button
-        className="button button-google"
-        type="button"
-        onClick={() => {
-          void startProviderSignIn('google').catch(() =>
-            navigate('/sign-in?provider-failed=Google'),
-          );
-        }}
-      >
-        <GoogleMark />
-        <span>{t('signIn.withGoogle', { provider: 'Google' })}</span>
-      </button>
+      {shown.includes('google') && (
+        <button
+          className="button button-google"
+          type="button"
+          onClick={() => {
+            void startProviderSignIn('google').catch(() =>
+              navigate('/sign-in?provider-failed=Google'),
+            );
+          }}
+        >
+          <GoogleMark />
+          <span>{t('signIn.withGoogle', { provider: 'Google' })}</span>
+        </button>
+      )}
 
-      <button
-        className="button button-apple"
-        type="button"
-        onClick={() => {
-          void startProviderSignIn('apple').catch(() => navigate('/sign-in?provider-failed=Apple'));
-        }}
-      >
-        <AppleMark />
-        <span>{t('signIn.withApple', { provider: 'Apple' })}</span>
-      </button>
+      {shown.includes('apple') && (
+        <button
+          className="button button-apple"
+          type="button"
+          onClick={() => {
+            void startProviderSignIn('apple').catch(() =>
+              navigate('/sign-in?provider-failed=Apple'),
+            );
+          }}
+        >
+          <AppleMark />
+          <span>{t('signIn.withApple', { provider: 'Apple' })}</span>
+        </button>
+      )}
     </>
   );
 }

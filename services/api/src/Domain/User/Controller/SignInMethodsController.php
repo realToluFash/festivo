@@ -73,7 +73,7 @@ final readonly class SignInMethodsController
         // The proof first: a stale one must not spend a provider's one-time code.
         $this->recentProof->require($this->user(), $body['proof'] ?? null);
         $claims = $this->providerAssertion->claims($identityProvider, $body['providerSignIn'] ?? []);
-        $identity = $this->providerLinking->link($this->user(), $identityProvider, $claims, $body['proof'] ?? null, $request);
+        $identity = $this->providerLinking->link($this->user(), $identityProvider, $claims, $body['proof'] ?? null, $this->callerSession->chain(), $request);
 
         return new JsonResponse(['provider' => $identity->getProvider()->value, 'email' => $identity->getEmail()], Response::HTTP_CREATED);
     }

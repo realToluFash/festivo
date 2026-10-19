@@ -26,6 +26,7 @@ const PROVIDER_ONLY = {
   status: 403,
   organisation: 'Ìrè Events',
   providers: ['google'],
+  email: 'folake@ire.events',
 };
 
 function membership(overrides: Partial<Membership> = {}): Membership {
@@ -62,6 +63,7 @@ describe('why a rule sent somebody to sign-in (sc-69)', () => {
       kind: 'providerOnly',
       organisation: 'Ìrè Events',
       providers: ['google'],
+      email: 'folake@ire.events',
     });
     expect(
       ruleRefusal({

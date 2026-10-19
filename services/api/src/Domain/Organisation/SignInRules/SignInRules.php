@@ -41,7 +41,7 @@ final readonly class SignInRules
         return $this->requiringProvider($user);
     }
 
-    /** `oauth_only`, naming the organisation and the providers to use instead: one refusal for sign-in, reset and refresh alike. */
+    /** `oauth_only`, naming the organisation, the address and the providers to use instead: one refusal for sign-in, reset and refresh alike. */
     public function passwordRefusal(User $user): ?ApiException
     {
         $organisation = $this->refusingPassword($user);
@@ -58,6 +58,7 @@ final readonly class SignInRules
             [],
             [
                 'organisation' => $organisation->getName(),
+                'email' => $user->getPrimaryEmailAddress()?->getAddress() ?? '',
                 'providers' => Vec\map(
                     $this->providerIdentityRepository->findBy(['user' => $user], ['provider' => 'ASC']),
                     static fn (ProviderIdentity $identity): string => $identity->getProvider()->value,

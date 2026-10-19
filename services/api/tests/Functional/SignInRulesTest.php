@@ -23,6 +23,7 @@ use App\Enum\MembershipStatus;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use App\Tests\Traits\OnboardsAccounts;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -79,6 +80,7 @@ final class SignInRulesTest extends ApiTestCase
         self::assertSame(ErrorCode::OAuthOnly->type(), $body['type'] ?? null);
         self::assertSame('Ìrè Events', $body['organisation'] ?? null);
         self::assertSame(['google'], $body['providers'] ?? null);
+        self::assertSame('folake@ire.events', $body['email'] ?? null, 'sign-in fills in the address beside the provider buttons');
     }
 
     #[Test]
@@ -139,6 +141,25 @@ final class SignInRulesTest extends ApiTestCase
         $this->as($bisi, 'PATCH', '/api/orgs/' . $this->organisation->getId()->toRfc4122(), ['name' => 'Bisi Events']);
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    /** Linking is itself a sign-in with the provider: the session it was linked from is not ended at its next refresh. */
+    #[Test]
+    public function thePasswordSessionAProviderIsLinkedFromCarriesOnPastItsRefreshes(): void
+    {
+        $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->set(['providerOnly' => true]);
+        $session = $this->signIn('bisi@ire.events');
+        $accessToken = Type\string()->coerce($session['accessToken'] ?? null);
+        $proof = $this->bearing($accessToken, '/api/auth/proof', ['password' => self::PASSWORD]);
+
+        $linked = $this->bearing($accessToken, '/api/auth/providers/google', ['proof' => $proof['proof'] ?? null, 'providerSignIn' => ['idToken' => $this->googleToken('g-bisi', 'bisi@gmail.com')]]);
+        self::assertSame(201, $this->statusCode(), Json\encode($linked));
+
+        $first = $this->refresh(Type\string()->coerce($session['refreshToken'] ?? null));
+        self::assertSame(200, $this->statusCode(), Json\encode($first));
+        $second = $this->refresh(Type\string()->coerce($first['refreshToken'] ?? null));
+        self::assertSame(200, $this->statusCode(), Json\encode($second));
     }
 
     #[Test]
@@ -220,6 +241,7 @@ final class SignInRulesTest extends ApiTestCase
     public function requiredTwoFactorWithholdsAdministrationAndNothingElse(): void
     {
         $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
 
         $this->as($bisi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/roles');
@@ -243,6 +265,7 @@ final class SignInRulesTest extends ApiTestCase
     {
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
         $before = $this->as($chidi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions');
+        $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
 
         self::assertSame($before, $this->as($chidi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/permissions'));
@@ -253,15 +276,49 @@ final class SignInRulesTest extends ApiTestCase
     public function settingUpTwoFactorRestoresAdministrationOnTheNextRequest(): void
     {
         $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->turnOnTwoFactor($this->owner);
         $this->set(['administratorsNeedTwoFactor' => true]);
-        $factor = new TwoFactorFactor($this->fresh($bisi), self::service(SecretBox::class)->seal(self::SECRET));
-        $factor->activate(new Clock()->now());
-        self::em()->persist($factor);
-        self::em()->flush();
+        $this->turnOnTwoFactor($bisi);
 
         $this->as($bisi, 'GET', '/api/orgs/' . $this->organisation->getId()->toRfc4122() . '/roles');
 
         self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function requiringTwoFactorOfAdministratorsIsRefusedToSomebodyWithoutItAndChangesNothing(): void
+    {
+        self::assertFalse($this->as($this->owner, 'GET', $this->path())['ownTwoFactor'] ?? null);
+
+        $body = $this->set(['administratorsNeedTwoFactor' => true, 'inactivityTimeoutDays' => 30]);
+
+        self::assertSame(409, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::TwoFactorOff->type(), $body['type'] ?? null);
+        $rules = $this->as($this->owner, 'GET', $this->path());
+        self::assertSame([false, null, []], [$rules['administratorsNeedTwoFactor'] ?? null, $rules['inactivityTimeoutDays'] ?? null, $rules['changes'] ?? null]);
+        self::assertNull(self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'sign_in_rules.changed']));
+        self::assertSame([], $this->mails());
+    }
+
+    #[Test]
+    public function requiringTwoFactorOfAdministratorsGoesThroughOnceTheSaverHasIt(): void
+    {
+        $this->turnOnTwoFactor($this->owner);
+        self::assertTrue($this->as($this->owner, 'GET', $this->path())['ownTwoFactor'] ?? null);
+
+        $body = $this->set(['administratorsNeedTwoFactor' => true]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertTrue($body['administratorsNeedTwoFactor'] ?? null);
+    }
+
+    #[Test]
+    public function everyOtherRuleIsSavedBySomebodyWithoutTwoFactor(): void
+    {
+        $body = $this->set(['providerOnly' => true, 'inactivityTimeoutDays' => 7, 'administratorsNeedTwoFactor' => false]);
+
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+        self::assertSame([true, 7], [$body['providerOnly'] ?? null, $body['inactivityTimeoutDays'] ?? null]);
     }
 
     #[Test]
@@ -283,7 +340,9 @@ final class SignInRulesTest extends ApiTestCase
         $mails = $this->mails();
         self::assertSame(['bisi@ire.events', 'chidi@ire.events', 'folake@ire.events'], Vec\sort(Vec\map($mails, static fn (Email $mail): string => $mail->getTo()[0]->getAddress())));
         $toBisi = Iter\first(Vec\filter($mails, static fn (Email $mail): bool => 'bisi@ire.events' === $mail->getTo()[0]->getAddress()));
-        self::assertStringContainsString('until you link Google or Apple', (string) $toBisi?->getTextBody());
+        self::assertStringContainsString('until you link Google or Apple. Your password still signs you in.', (string) $toBisi?->getTextBody());
+        self::assertStringNotContainsString('Nobody is signed out', (string) $toBisi?->getTextBody());
+        self::assertStringNotContainsString('Passwords stop working', (string) $toBisi?->getTextBody());
         $toFolake = Iter\first(Vec\filter($mails, static fn (Email $mail): bool => 'folake@ire.events' === $mail->getTo()[0]->getAddress()));
         self::assertStringNotContainsString('until you link Google or Apple', (string) $toFolake?->getTextBody());
     }
@@ -340,6 +399,7 @@ final class SignInRulesTest extends ApiTestCase
         $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
         $own = self::service(OrganisationFounder::class)->found($this->fresh($bisi), 'Bisi Studio', 'NG', 'Africa/Lagos');
         self::em()->flush();
+        $this->turnOnTwoFactor($this->owner);
         $this->set(['providerOnly' => true, 'administratorsNeedTwoFactor' => true]);
 
         $this->as($bisi, 'PATCH', '/api/orgs/' . $own->getId()->toRfc4122(), ['name' => 'Bisi Studio Ltd']);
@@ -479,6 +539,14 @@ final class SignInRulesTest extends ApiTestCase
         self::em()->flush();
     }
 
+    private function turnOnTwoFactor(User $user): void
+    {
+        $factor = new TwoFactorFactor($this->fresh($user), self::service(SecretBox::class)->seal(self::SECRET));
+        $factor->activate(new Clock()->now());
+        self::em()->persist($factor);
+        self::em()->flush();
+    }
+
     private function fresh(User $user): User
     {
         return self::em()->find(User::class, $user->getId()) ?? self::fail('no user');
@@ -571,6 +639,36 @@ final class SignInRulesTest extends ApiTestCase
         ], content: null === $body ? null : Json\encode([] === $body ? new stdClass() : $body));
 
         return $this->last();
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return array<string, mixed>
+     */
+    private function bearing(#[SensitiveParameter] string $accessToken, string $path, array $body): array
+    {
+        $this->client->request('POST', $path, server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . $accessToken,
+        ], content: Json\encode($body));
+
+        return $this->last();
+    }
+
+    private function googleToken(string $subject, string $email): string
+    {
+        $configured = static fn (string $name): string => Str\trim(Str\split(Type\string()->coerce($_SERVER[$name] ?? $_ENV[$name] ?? ''), ',')[0] ?? '');
+
+        return self::service(TestSigningKeys::class)->sign([
+            'iss' => $configured('OAUTH_GOOGLE_ISSUERS'),
+            'aud' => $configured('OAUTH_GOOGLE_CLIENT_IDS'),
+            'iat' => new Clock()->now()->modify('-1 minute'),
+            'exp' => new Clock()->now()->modify('+1 hour'),
+            'sub' => $subject,
+            'email' => $email,
+            'email_verified' => true,
+        ]);
     }
 
     /** @return array<string, mixed> */

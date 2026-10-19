@@ -87,6 +87,7 @@ final readonly class SignInRulesController
         return [
             ...SignInRulesEditor::rulesOf($organisation),
             'inactivityChoices' => SignInRules::INACTIVITY_DAYS,
+            'ownTwoFactor' => $this->signInRules->hasTwoFactor($this->user()),
             'changedAt' => $organisation->getSignInRulesChangedAt()?->format(DateTimeInterface::ATOM),
             'changes' => $this->changes($organisation),
             // The shortest across the caller's organisations, which may be another's (sc-69).

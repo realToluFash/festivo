@@ -9,7 +9,7 @@ import { type TFunction } from 'i18next';
 /** Why an organisation's sign-in rule (sc-69) sent somebody to sign-in, named so the screen can say whose rule it was. */
 export type RuleRefusal =
   | { kind: 'timedOut'; organisation: string; days: number; email: string }
-  | { kind: 'providerOnly'; organisation: string; providers: string[] };
+  | { kind: 'providerOnly'; organisation: string; providers: string[]; email: string };
 
 /** From the API's refusal: a session the inactivity limit ended, or a password the provider-only rule turned away. */
 export function ruleRefusal(why: Problem | undefined): RuleRefusal | null {
@@ -27,7 +27,12 @@ export function ruleRefusal(why: Problem | undefined): RuleRefusal | null {
   }
 
   if (error.is('oauth_only')) {
-    return { kind: 'providerOnly', organisation: why.organisation, providers: why.providers ?? [] };
+    return {
+      kind: 'providerOnly',
+      organisation: why.organisation,
+      providers: why.providers ?? [],
+      email: why.email ?? '',
+    };
   }
 
   return null;
@@ -48,6 +53,7 @@ export function signInRoute(refusal: RuleRefusal | null, ended: boolean): `/sign
     query.set('rule', 'providerOnly');
     query.set('organisation', refusal.organisation);
     query.set('providers', refusal.providers.join(','));
+    query.set('email', refusal.email);
   }
 
   return `/sign-in?${query.toString()}`;
@@ -69,7 +75,7 @@ export function refusalFromParams(params: Partial<Record<string, string>>): Rule
   if (params.rule === 'providerOnly') {
     const providers = (params.providers ?? '').split(',').filter((provider) => provider !== '');
 
-    return { kind: 'providerOnly', organisation, providers };
+    return { kind: 'providerOnly', organisation, providers, email: params.email ?? '' };
   }
 
   return null;
