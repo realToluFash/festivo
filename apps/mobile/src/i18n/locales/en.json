@@ -822,7 +822,7 @@
     "valueTwoFactor": "Two-factor required for people who can manage members, roles, billing or security",
     "valueNoTwoFactor": "Two-factor not required",
     "unlinkedTitle": "Read-only until you link Google or Apple",
-    "unlinkedBody": "{{organisation}} now signs in with Google or Apple only. Your password still works for now, but until you link one of them you can read and not change anything in {{organisation}}.",
+    "unlinkedBody": "{{organisation}} now signs in with Google or Apple only. Your password still works for now, but until you link one of them you can read but not change anything in {{organisation}}.",
     "unlinkedLink": "Link Google or Apple",
     "gateTitle": "Two-factor required by {{organisation}}",
     "gateBody": "{{organisation}} asks people who can manage members, roles, billing or security to use two-factor. Until you turn it on, those wait. Your events keep working.",
