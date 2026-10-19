@@ -252,7 +252,7 @@ function Editing({
   const title = role == null ? '' : roleName(t, role);
   // The API refuses a seeded role's label in every language (sc-2301), whatever the caller reads.
   const everyLanguage = LOCALE_CODES.map((locale) => i18next.getFixedT(locale));
-  const renamed = !creating && naming && roleNameOf(typed) !== role.name;
+  const renamed = !creating && naming && roleNameOf(typed) !== roleNameOf(role.name ?? '');
   const dirty = creating || renamed || !sameGrant(grant, startingGrant);
   const areas = catalogue.areas.map((entry) => entry.area);
   // A caller changes only what they hold (sc-66): a row with nothing left to pick is locked.

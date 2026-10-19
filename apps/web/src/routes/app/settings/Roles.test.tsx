@@ -307,6 +307,20 @@ describe('Settings > Roles', () => {
     expect(level('Seating', 'Read').getAttribute('aria-pressed')).toBe('true');
   });
 
+  it('opens a role whose name was stored with its accents decomposed with nothing unsaved', async () => {
+    const crew = role('role_7', null, 'E\u0301quipe bar', ['events.read']);
+    answering((method) =>
+      method === 'GET'
+        ? new Response(JSON.stringify({ roles: [...ROLES, crew], areas: AREAS }), { status: 200 })
+        : null,
+    );
+    await roles();
+    pick(/^E\u0301quipe bar/);
+
+    expect(screen.queryByText(/Unsaved changes/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Discard changes' })).toBeNull();
+  });
+
   it('takes a role’s own name in another case as a rename, and Discard puts the name back', async () => {
     const sent = answering((method, body) =>
       method === 'PATCH'
