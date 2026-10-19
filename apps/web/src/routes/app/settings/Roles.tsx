@@ -10,6 +10,7 @@ import {
   ROLE_NAME_MAXIMUM,
   levelOf,
   roleName,
+  roleNameOf,
   roleNameProblem,
   sameGrant,
   settableLevels,
@@ -29,6 +30,9 @@ import { Forbidden } from '../Forbidden.tsx';
 
 type Load =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; catalogue: RolesCatalogue };
+
+/** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
+const TYPED_MAXIMUM = ROLE_NAME_MAXIMUM * 4;
 
 /** What the detail pane shows: a role, a role being made, or a role being removed. */
 type Pane = { kind: 'role'; id: string } | { kind: 'new' } | { kind: 'removing'; id: string };
@@ -289,7 +293,7 @@ function Editing({
 
     try {
       const result = creating
-        ? await api.createRole(organisation.id, { name: typed.trim(), permissions: grant })
+        ? await api.createRole(organisation.id, { name: roleNameOf(typed), permissions: grant })
         : await api.updateRole(organisation.id, role.id, { permissions: grant });
 
       setStatus('editing');
@@ -320,7 +324,7 @@ function Editing({
                 className={nameError == null ? 'input' : 'input input-wrong'}
                 type="text"
                 value={typed}
-                maxLength={ROLE_NAME_MAXIMUM + 10}
+                maxLength={TYPED_MAXIMUM}
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}

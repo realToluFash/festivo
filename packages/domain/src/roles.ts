@@ -72,13 +72,19 @@ export function sameGrant(a: readonly string[], b: readonly string[]): boolean {
 
 export type RoleNameProblem = 'nameBlank' | 'nameTooLong' | 'nameTaken';
 
-/** Trimmed, required, at most 40, and unique in the organisation ignoring case, as the API checks it. */
+/** Trimmed and in NFC, as the API saves it (sc-2766): composed and decomposed accents are one name. */
+export function roleNameOf(typed: string): string {
+  return typed.trim().normalize('NFC');
+}
+
+/** Required, at most 40, and unique in the organisation ignoring case, as the API checks it. */
 export function roleNameProblem(typed: string, taken: readonly string[]): RoleNameProblem | null {
-  const name = typed.trim();
+  const name = roleNameOf(typed);
+  const folded = name.toLowerCase();
 
   if (name === '') return 'nameBlank';
   if ([...name].length > ROLE_NAME_MAXIMUM) return 'nameTooLong';
-  if (taken.some((other) => other.toLowerCase() === name.toLowerCase())) return 'nameTaken';
+  if (taken.some((other) => roleNameOf(other).toLowerCase() === folded)) return 'nameTaken';
 
   return null;
 }

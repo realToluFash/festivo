@@ -347,6 +347,27 @@ describe('Settings > Roles', () => {
     expect(sent.some((request) => request.method === 'POST')).toBe(false);
   });
 
+  it('refuses a seeded role’s name typed with its accent decomposed, before sending', async () => {
+    const sent = answering();
+    await roles();
+    fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'So\u0301 leitura' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create role' }));
+
+    expect(screen.getByText('A role with that name already exists.')).toBeDefined();
+    expect(sent.some((request) => request.method === 'POST')).toBe(false);
+  });
+
+  it('lets a forty-letter name typed with decomposed accents be typed in full', async () => {
+    answering();
+    await roles();
+    fireEvent.click(screen.getByRole('button', { name: 'New role' }));
+
+    const maximum = Number(screen.getByLabelText('Role name').getAttribute('maxlength'));
+    expect(maximum).toBeGreaterThanOrEqual('e\u0301'.repeat(40).length);
+  });
+
   it('opens a role on its own page at narrow widths, with Roles to go back', async () => {
     answering();
     await roles();
