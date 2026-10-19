@@ -71,33 +71,45 @@ function liftAboveKeyboard(
   });
 }
 
+/** Where the keyboard's top edge sits in the window, or null while the keys are down. */
+function keyboardTopNow(): number | null {
+  return Keyboard.isVisible() ? (Keyboard.metrics()?.screenY ?? null) : null;
+}
+
+/** Calls `changed` with the keyboard's new top edge each time the keys go up or down. Returns the unsubscribe. */
+function watchKeyboardTop(changed: (top: number | null) => void): () => void {
+  const shown = Keyboard.addListener('keyboardDidShow', (event) =>
+    changed(event.endCoordinates.screenY),
+  );
+  const hidden = Keyboard.addListener('keyboardDidHide', () => changed(null));
+
+  return () => {
+    shown.remove();
+    hidden.remove();
+  };
+}
+
 /** For a field and the button under it, spread on their View. It lifts again when an error grows the group. */
 export function useAboveKeyboard(): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
-  const keyboardTop = useRef<number | null>(
-    Keyboard.isVisible() ? (Keyboard.metrics()?.screenY ?? null) : null,
-  );
+  const keyboardTop = useRef<number | null>(keyboardTopNow());
 
   useEffect(() => {
     const lift = () => {
       if (keyboardTop.current != null)
         liftAboveKeyboard(scroll?.ref, ref.current, keyboardTop.current);
     };
-    const shown = Keyboard.addListener('keyboardDidShow', (event) => {
-      keyboardTop.current = event.endCoordinates.screenY;
+    const unwatch = watchKeyboardTop((top) => {
+      keyboardTop.current = top;
       lift();
-    });
-    const hidden = Keyboard.addListener('keyboardDidHide', () => {
-      keyboardTop.current = null;
     });
     // On Android the avoiding view shrinks the scroll view after keyboardDidShow, and a scroll
     // asked for before that is clamped short.
     scroll?.resized.add(lift);
 
     return () => {
-      shown.remove();
-      hidden.remove();
+      unwatch();
       scroll?.resized.delete(lift);
     };
   }, [scroll]);
@@ -114,9 +126,7 @@ export function useRoomAboveKeyboard(): number | null {
   const [room, setRoom] = useState<number | null>(null);
 
   useEffect(() => {
-    let keyboardTop: number | null = Keyboard.isVisible()
-      ? (Keyboard.metrics()?.screenY ?? null)
-      : null;
+    let keyboardTop = keyboardTopNow();
     const measure = () => {
       const scrollHost = scroll?.ref.current?.getNativeScrollRef();
       if (keyboardTop == null || scrollHost == null) {
@@ -128,20 +138,15 @@ export function useRoomAboveKeyboard(): number | null {
         setRoom(top - scrollTop - 2 * tokens.spaceLg);
       });
     };
-    const shown = Keyboard.addListener('keyboardDidShow', (event) => {
-      keyboardTop = event.endCoordinates.screenY;
-      measure();
-    });
-    const hidden = Keyboard.addListener('keyboardDidHide', () => {
-      keyboardTop = null;
+    const unwatch = watchKeyboardTop((top) => {
+      keyboardTop = top;
       measure();
     });
     scroll?.resized.add(measure);
     measure();
 
     return () => {
-      shown.remove();
-      hidden.remove();
+      unwatch();
       scroll?.resized.delete(measure);
     };
   }, [scroll]);

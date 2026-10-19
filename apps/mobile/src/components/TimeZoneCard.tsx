@@ -12,7 +12,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { useAboveKeyboard, useRoomAboveKeyboard } from './Screen.tsx';
+import { useAboveKeyboard, useRoomAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** How many rows the list shows at once; the search narrows the rest. */
@@ -21,8 +21,10 @@ const SHOWN = 30;
 /** The list scrolls inside this height, so the field and Save stay on screen (Account-*, Tweak `tz`). */
 const LIST_HEIGHT = 264;
 
-/** The list's padding and border around its rows. */
-const LIST_FRAME = 2 * tokens.spaceXxs + 2;
+/** The list's padding and border, which the one-row floor counts along with the row. */
+const LIST_PADDING = tokens.spaceXxs;
+const LIST_BORDER = 1;
+const LIST_FRAME = 2 * (LIST_PADDING + LIST_BORDER);
 
 /** Your account > Account, the time zone the times sent to this person are written in (sc-868). */
 export function TimeZoneCard({
@@ -131,6 +133,8 @@ function Choosing({
   const input = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
   const room = useRoomAboveKeyboard();
+  // With no on-screen keyboard (a hardware one), nothing lifts, so the card is brought up on opening.
+  const top = useScrolledToTop();
   const [groupHeight, setGroupHeight] = useState(0);
   const [listHeight, setListHeight] = useState(0);
   const [rowHeight, setRowHeight] = useState<number>(tokens.sizeHit);
@@ -191,6 +195,7 @@ function Choosing({
     <>
       <View {...aboveKeyboard}>
         <View
+          ref={top}
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
@@ -281,10 +286,10 @@ const styles = StyleSheet.create({
   choosing: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
   list: {
-    borderWidth: 1,
+    borderWidth: LIST_BORDER,
     borderColor: tokens.colorBorder,
     borderRadius: tokens.radiusField,
-    padding: tokens.spaceXxs,
+    padding: LIST_PADDING,
   },
   option: {
     minHeight: tokens.sizeHit,
