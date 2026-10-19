@@ -840,7 +840,7 @@
     "gateTurnOn": "Ativar a autenticação de dois fatores",
     "gateLater": "Agora não",
     "changedTitle": "As regras de início de sessão mudaram",
-    "changedBody": "{{organisation}} alterou as regras de início de sessão a {{day}}.",
+    "changedBody": "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}",
     "changedSee": "Ver o que mudou",
     "changedClose": "Fechar este aviso",
     "limitApplies_one": "No seu caso, a sessão é encerrada após {{count}} dia sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações.",
