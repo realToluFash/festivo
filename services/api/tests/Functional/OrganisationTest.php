@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Organisation;
+use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\ErrorCode;
+use App\Enum\MembershipChannel;
+use App\Enum\MembershipStatus;
+use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\EventDirectoryInterface;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
@@ -25,6 +30,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
+use Psl\Vec;
 use Symfony\Component\Uid\Uuid;
 
 final class OrganisationTest extends ApiTestCase
@@ -47,6 +53,7 @@ final class OrganisationTest extends ApiTestCase
         self::assertSame('NGN', $organisation->getCurrency(), 'the currency follows the country');
         self::assertSame('Africa/Lagos', $organisation->getTimezone(), 'the timezone is the device\'s');
         self::assertSame('folake@ire.events', $organisation->getContactAddress(), 'the contact is the owner\'s address');
+        self::assertSame('en', $organisation->getLocale(), 'the language is the founder\'s');
 
         $membership = self::service(MembershipRepository::class)->findActive($owner, $organisation->getId());
         self::assertNotNull($membership);
@@ -121,6 +128,69 @@ final class OrganisationTest extends ApiTestCase
         self::assertSame('USD', $body['currency']);
         self::assertSame('NG', $body['countryCode'], 'a field left out keeps its value');
         self::assertSame('Africa/Lagos', $body['timezone']);
+    }
+
+    #[Test]
+    public function aFounderReadingFrenchFoundsAFrenchOrganisation(): void
+    {
+        $owner = $this->account('fr@example.com');
+        $owner->setLocale('fr');
+
+        self::assertSame('fr', $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos')->getLocale());
+    }
+
+    #[Test]
+    public function theOwnerChangesTheLanguageAndEveryListReadsIt(): void
+    {
+        $owner = $this->account('language@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        $body = $this->patch($organisation, ['locale' => ' FR ']);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame('fr', $body['locale']);
+        self::assertSame('Ìrè Events', $body['name'], 'the rest stay');
+        self::assertSame('fr', $this->list()[0]['locale']);
+    }
+
+    #[Test]
+    public function aLanguageThatIsNotOneOfTheFourIsRefusedAndNothingChanges(): void
+    {
+        $owner = $this->account('german@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        $body = $this->patch($organisation, ['locale' => 'de', 'name' => 'Ìrè Events Ltd']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(
+            [['propertyPath' => 'locale', 'message' => 'Choose English, Español, Français or Português.']],
+            Vec\map(
+                Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($body['violations']),
+                static fn (array $violation): array => ['propertyPath' => $violation['propertyPath'], 'message' => $violation['message']],
+            ),
+        );
+        self::assertSame(['en', 'Ìrè Events'], [$this->list()[0]['locale'], $this->list()[0]['name']]);
+    }
+
+    #[Test]
+    public function aRoleWithoutTheOrganisationPermissionCannotChangeTheLanguage(): void
+    {
+        $owner = $this->account('keeps-it@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $coordinator = $this->account('coordinator@example.com');
+        $role = Type\instance_of(Role::class)->coerce(
+            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation->getId(), 'seededAs' => SeededRole::Coordinator]),
+        );
+        self::service(MembershipMachine::class)->join($organisation, $coordinator, $role, MembershipStatus::Active, MembershipChannel::Invitation, $coordinator);
+        $this->signIn($coordinator);
+
+        $body = $this->patch($organisation, ['locale' => 'pt']);
+
+        self::assertResponseStatusCodeSame(403);
+        self::assertSame(ErrorCode::PermissionRequired->type(), $body['type']);
+        self::assertSame('en', $this->list()[0]['locale']);
     }
 
     #[Test]

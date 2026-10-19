@@ -24,6 +24,7 @@ final readonly class OrganisationSerialiser
             'currency' => $organisation->getCurrency(),
             'timezone' => $organisation->getTimezone(),
             'contactAddress' => $organisation->getContactAddress(),
+            'locale' => $organisation->getLocale(),
         ];
     }
 

@@ -41,6 +41,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Linked (to an account)    | Associé                 | Settled 18 Oct: as `waysCard`    |
 | Unverified                | À vérifier              | Settled 18 Oct: no agreement     |
 | Account mail              | Les e-mails du compte   | Settled 18 Oct                   |
+| Sign-in rules             | Règles de connexion     | Settled 19 Oct                   |
 
 ## Never translated
 
@@ -51,6 +52,26 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **19 Oct 2026. A `{{day}}` opens the sentence, never closes it** (`signInRules.changedBody`,
+  web and app, sc-3030). `{{day}}` is « lundi 19 oct. », whose abbreviated month brings its own
+  full stop, so a sentence ending on it reads « 19 oct.. ». It reads « Le {{day}},
+  {{organisation}} a modifié ses règles de connexion. » The same goes for any later string
+  with a short date. `errors:session_timed_out` is « Session fermée après une période
+  d'inactivité. », as the sign-in screen's title, not « Vous avez été déconnecté », which
+  agrees with a man.
+
+- **19 Oct 2026. Sign-in rules are « Règles de connexion »** (`signInRules.*`, web and app,
+  and `emails:signInRules.*`, sc-3030). A member held back by one « peut tout consulter, sans
+  rien pouvoir modifier », the same words on the banner, the owner's preview and the email.
+  A session that ends is « fermée », never « expirée »; its title names the session,
+  « Session fermée par une règle de {{organisation}} », so nothing agrees with the person.
+  Where a list of names is the subject (`effectStranded`'s `{{names}}`), the sentence opens
+  « Concerne {{names}} : » and goes on with « on », so no verb has to agree with a count the
+  string does not have. "Turn on two-factor" is « Activer la double authentification », as
+  `twoFactorCard.turnOn`; "the shortest of your organisations" is « la plus stricte », since
+  the shortest limit is the strictest rule. People who can manage are « les personnes qui
+  peuvent gérer les membres, les rôles… », each noun with its article.
 
 - **18 Oct 2026. One non-breaking space, U+00A0, before `: ; ? !` and inside « »** (sc-2504),
   so that a colon, a question mark or a closing guillemet never starts a line on a phone:
@@ -104,7 +125,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Ajout effectué. Reste la vérification : … », and the server's « Ces coordonnées ».
   Where no neutral form reads well (`verified`, `primary`, `makePrimary`, `removeConfirm`,
   `removeKeep`), the key holds the feminine for addresses and the number gets a key of its
-  own, asked of [dev] on sc-2149. Never « principal·e » or « Vérifié(e) ».
+  own (`verifiedPhone` « Vérifié », `primaryPhone` « Principal », `makePrimaryPhone`
+  « Définir comme principal », `removeConfirmPhone` « Le retirer », `removeKeepPhone`
+  « Le garder », sc-2149). Never « principal·e » or « Vérifié(e) ».
   The cap's `_one` reads « Vous pouvez encore ajouter une adresse » (« un numéro »), with no
   `{{count}}`, as the English does. French `one` also covers 0, but the cap line shows only
   while at least one is left: 0 left shows `capFullEmails`/`capFullPhones` instead

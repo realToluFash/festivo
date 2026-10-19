@@ -46,3 +46,19 @@ export function offsetAboveKeyboard({
 
   return Math.max(0, Math.min(bottomAboveKeys, contentY - margin));
 }
+
+export interface ListRoom {
+  /** The height between the scroll view's top and the keyboard, less a margin at each end. */
+  room: number;
+  /** The height of everything in the group but the list. */
+  rest: number;
+  /** The list's height at one whole row. */
+  oneRow: number;
+  /** The list's height with the keyboard down. */
+  most: number;
+}
+
+/** The tallest a list may grow so its group fits above the keyboard, never under one whole row. */
+export function listRoom({ room, rest, oneRow, most }: ListRoom): number {
+  return Math.max(oneRow, Math.min(most, room - rest));
+}

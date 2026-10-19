@@ -9,6 +9,7 @@ use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Repository\MembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Type;
@@ -22,6 +23,7 @@ final readonly class RecoveryApprovers
 
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private MembershipRepository $membershipRepository,
     ) {
     }
 
@@ -55,12 +57,7 @@ final readonly class RecoveryApprovers
     /** @return list<Organisation> the person's own, oldest membership first */
     public function organisationsOf(User $user): array
     {
-        $memberships = $this->entityManager->getRepository(Membership::class)->findBy(
-            ['user' => $user, 'status' => MembershipStatus::Active],
-            ['createdAt' => 'ASC'],
-        );
-
-        return Vec\map($memberships, static fn (Membership $membership): Organisation => $membership->getOrganisation());
+        return Vec\map($this->membershipRepository->findActiveFor($user), static fn (Membership $membership): Organisation => $membership->getOrganisation());
     }
 
     /** @return list<Organisation> the ones the approver answers for that the person belongs to */
@@ -68,7 +65,7 @@ final readonly class RecoveryApprovers
     {
         $mine = [];
 
-        foreach ($this->entityManager->getRepository(Membership::class)->findBy(['user' => $approver, 'status' => MembershipStatus::Active]) as $membership) {
+        foreach ($this->membershipRepository->findActiveFor($approver) as $membership) {
             if (Iter\contains(self::ROLES, $membership->getRole()->getSeededAs())) {
                 $mine[$membership->getOrganisation()->getId()->toRfc4122()] = true;
             }

@@ -8,6 +8,7 @@
     "owner_role_fixed": "Propriétaire ne peut être ni modifié ni supprimé.",
     "seeded_role_kept": "Un rôle intégré ne peut pas être supprimé.",
     "last_owner": "Une organisation a toujours au moins un propriétaire.",
+    "owner_required": "Seul un propriétaire de l'organisation peut faire cela.",
     "grant_not_held": "Un rôle ne peut recevoir que ce que vous avez vous-même.",
     "already_linked": "C'est déjà lié à un compte Soirely.",
     "address_limit_reached": "Ce compte en a déjà autant qu'il peut en avoir.",
@@ -61,9 +62,9 @@
     "invitation_declined": "Cette invitation a été refusée.",
     "invitation_not_yours": "Cette invitation est destinée à une autre adresse e-mail.",
     "organisation_deleted": "Cette organisation n'existe plus, l'invitation ne peut donc pas être acceptée.",
-    "provider_kept_by_rule": "Votre organisation n'accepte que Google ou Apple : le dernier compte associé est conservé.",
+    "provider_kept_by_rule": "Votre organisation n'accepte que Google ou Apple : le dernier compte associé est conservé.",
     "oauth_only": "Cette organisation n'accepte que la connexion avec Google ou Apple.",
     "oauth_only_unlinked": "Lecture seule tant que vous n'avez pas associé Google ou Apple.",
     "organisation_two_factor_required": "Cette organisation demande d'abord la double authentification.",
-    "session_timed_out": "Vous avez été déconnecté après une période d'inactivité."
+    "session_timed_out": "Session fermée après une période d'inactivité."
 }

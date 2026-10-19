@@ -73,6 +73,7 @@ final class TwoFactorRecoveryRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('r')
             ->innerJoin(Membership::class, 'theirs', 'WITH', 'theirs.user = r.user AND theirs.status = :active')
             ->innerJoin(Membership::class, 'mine', 'WITH', 'mine.organisation = theirs.organisation AND mine.user = :approver AND mine.status = :active')
+            ->innerJoin('mine.organisation', 'organisation')
             ->innerJoin('mine.role', 'role')
             ->where('r.status = :waiting')
             ->andWhere('r.expiresAt > :now')
