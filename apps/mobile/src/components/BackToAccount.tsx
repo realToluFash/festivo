@@ -15,14 +15,14 @@ function backToAccount(verified: string | null): void {
   );
 }
 
-/** "← Back to Account" on a verify screen opened from Account (sc-2304), where onboarding shows its steps. */
-export function BackToAccount({ verified }: { verified: string | null }) {
+/** "← Back to Account" on a verify screen opened from Account (sc-2304), until the code is accepted: then its one button says it. */
+export function BackToAccount() {
   const { t } = useTranslation();
 
   return (
     <Pressable
       style={styles.back}
-      onPress={() => backToAccount(verified)}
+      onPress={() => backToAccount(null)}
       accessibilityRole="link"
       accessibilityLabel={t('contacts.backToAccount')}
       testID="verify.backToAccount"

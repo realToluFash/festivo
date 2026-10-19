@@ -1,6 +1,6 @@
 # Spanish at Soirely
 
-Kept by `/soirely-linguist es`. Read it before writing a string in Spanish, and add to it
+Kept by `/soirely-linguist`. Read it before writing a string in Spanish, and add to it
 whenever you decide something a second string will need.
 
 ## Variant and register
@@ -48,6 +48,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 ## Decided phrasings
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
+
+- **18 Oct 2026. An alternative address or number, verified from Account.** "Alternative"
+  is «alternativa» / «alternativo», a plain Spanish adjective here, never «secundaria», which
+  ranks it. The verified line agrees with the noun: «{{address}} está verificada», because
+  the sentence goes on «una dirección alternativa… hasta que la haga principal», and
+  «{{number}} está verificado». "It stays" is «Seguirá siendo», since it was alternative
+  before it was verified. A section is its bare label after «a» and «en», as «volver a
+  Seguridad» already says it: «Volver a Cuenta», «en Cuenta». "Remove it in Account" after
+  the question is the infinitive, «Quitarla en Cuenta» / «Quitarlo en Cuenta», the shape of
+  «¿Número equivocado? Cambiarlo» (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, sc-2594).
 
 - **18 Oct 2026. Who decides, for someone who cannot.** A line shown to a viewer without the
   power names who has it with `lockedLine`'s words, «alguien que pueda cambiar {{area}}»,
