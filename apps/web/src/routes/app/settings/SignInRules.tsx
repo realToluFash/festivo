@@ -157,24 +157,55 @@ function Editable({
   const [rules, setRules] = useState<Rules>(() => rulesOf(page));
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved' | 'failed'>('editing');
   const [needsOwnTwoFactor, setNeedsOwnTwoFactor] = useState(false);
+  const [needsOwnProvider, setNeedsOwnProvider] = useState(false);
+  const [hasProvider, setHasProvider] = useState(page.ownProvider);
   const changed = differences(rulesOf(page), rules);
   const dirty = Object.keys(changed).length > 0;
   const stranded = page.passwordOnly ?? [];
   const name = organisation.name;
+  const requiresProvider = rules.providerOnly && !needsOwnProvider;
+  const effective: SignInRulesChanges = { ...changed };
+  if (needsOwnProvider) delete effective.providerOnly;
 
   function pick(next: SignInRulesChanges): void {
     setRules((previous) => ({ ...previous, ...next }));
     setStatus('editing');
   }
 
+  function pickMethod(providerOnly: boolean): void {
+    setNeedsOwnProvider(providerOnly && !hasProvider && !page.providerOnly);
+    pick({ providerOnly });
+  }
+
+  /** The choice goes back to "Any method" with the notice kept up, and the other choices stay, unsaved. */
+  function refuseProvider(): void {
+    setRules((previous) => ({ ...previous, providerOnly: false }));
+    setNeedsOwnProvider(true);
+    setStatus('editing');
+  }
+
   async function save(): Promise<void> {
     if (!dirty || status === 'saving') return;
+
+    if (needsOwnProvider && rules.providerOnly) {
+      refuseProvider();
+      return;
+    }
+
     setStatus('saving');
 
     try {
       onSaved(await api.updateSignInRules(organisation.id, changed));
+      setNeedsOwnProvider(false);
       setStatus('saved');
     } catch (error) {
+      // Google or Apple unlinked in another tab, say.
+      if (error instanceof ApiError && error.is('oauth_only_unlinked') && changed.providerOnly) {
+        setHasProvider(false);
+        refuseProvider();
+        return;
+      }
+
       // Two-factor removed in another tab, say: the switch goes back off and the other choices stay, unsaved.
       if (error instanceof ApiError && error.is('two_factor_off')) {
         setRules((previous) => ({ ...previous, administratorsNeedTwoFactor: false }));
@@ -235,7 +266,7 @@ function Editable({
                     type="radio"
                     name="rules-method"
                     checked={rules.providerOnly === providerOnly}
-                    onChange={() => pick({ providerOnly })}
+                    onChange={() => pickMethod(providerOnly)}
                   />
                   <span className="roles-row-name">
                     {t(providerOnly ? 'signInRules.providerOnly' : 'signInRules.anyMethod')}
@@ -251,7 +282,21 @@ function Editable({
                 </label>
               ))}
             </fieldset>
-            {rules.providerOnly && stranded.length > 0 && (
+            {needsOwnProvider && (
+              <div className="notice notice-attention sign-in-rules-needs-own" role="alert">
+                <span className="mark mark-attention" aria-hidden="true">
+                  !
+                </span>
+                <div className="notice-body">
+                  <p className="notice-title">{t('signInRules.needsOwnProviderTitle')}</p>
+                  <p>{t('signInRules.needsOwnProviderBody')}</p>
+                  <Link className="button" to="/app/account/security">
+                    {t('signInRules.unlinkedLink')}
+                  </Link>
+                </div>
+              </div>
+            )}
+            {requiresProvider && stranded.length > 0 && (
               <div className="notice notice-attention">
                 <span className="mark mark-attention" aria-hidden="true">
                   !
@@ -350,7 +395,7 @@ function Editable({
             <ul className="sign-in-rules-effects">
               {effects(
                 t,
-                changed,
+                effective,
                 stranded.map(({ name: who }) => who),
               ).map((effect) => (
                 <li key={effect}>{effect}</li>
@@ -372,7 +417,7 @@ function Editable({
             <p className="muted">{t('signInRules.emailNote')}</p>
           </section>
 
-          {(rules.providerOnly || rules.inactivityTimeoutDays != null) && (
+          {(requiresProvider || rules.inactivityTimeoutDays != null) && (
             <section className="card settings-card" aria-labelledby="rules-see">
               <h2 id="rules-see">{t('signInRules.seeTitle')}</h2>
               <div className="notice notice-quiet">
@@ -380,7 +425,7 @@ function Editable({
                   i
                 </span>
                 <div className="notice-body">
-                  {rules.providerOnly ? (
+                  {requiresProvider ? (
                     <>
                       <p className="notice-title">
                         {t('signIn.providerOnlyTitle', { organisation: name })}

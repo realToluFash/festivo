@@ -25,7 +25,32 @@ const PAGE = {
     },
     { userId: 'user_3', name: 'Chidi Okoro', role: COORDINATOR },
   ],
+  ownProvider: true,
 };
+
+const UNLINKED = { ...PAGE, ownProvider: false };
+
+function refusingUnlinked(page: unknown) {
+  const sent: { method: string; body: unknown }[] = [];
+
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
+    const method = init?.method ?? 'GET';
+    sent.push({ method, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null });
+
+    return method === 'PATCH'
+      ? new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/oauth_only_unlinked',
+            title: 'Link Google or Apple before requiring it.',
+            status: 403,
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/problem+json' } },
+        )
+      : new Response(JSON.stringify(page), { status: 200 });
+  });
+
+  return sent;
+}
 
 function signedIn(organisation: Membership): void {
   const session: Session = {
@@ -202,6 +227,139 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(idle.getByRole('button', { name: '7 days' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'Save rules' })).toBeDefined();
     expect(screen.queryByText(/The rules were not saved/)).toBeNull();
+  });
+
+  it('refuses requiring Google or Apple while the person saving has neither linked, in place of its effects', async () => {
+    signedIn(membership());
+    const sent = answering(UNLINKED);
+    open();
+
+    const provider = await screen.findByLabelText(/Google or Apple only/);
+    fireEvent.click(provider);
+
+    const notice = screen.getByRole('alert');
+    expect(within(notice).getByText('Link Google or Apple for yourself first')).toBeDefined();
+    expect(within(notice).getByText('Then you can require it here.')).toBeDefined();
+    expect(
+      within(notice).getByRole('link', { name: 'Link Google or Apple' }).getAttribute('href'),
+    ).toBe('/app/account/security');
+    expect((provider as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByRole('list', { name: 'People affected' })).toBeNull();
+    expect(screen.queryByText(/sign in with a password only/)).toBeNull();
+    expect(screen.getByText('Nothing changes. These are the rules in force.')).toBeDefined();
+    expect(screen.queryByText(/asked to sign in again with it/)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
+    expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByText('Link Google or Apple for yourself first')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+  });
+
+  it('keeps the other unsaved choices when the provider choice is refused, and saves them on a second press', async () => {
+    signedIn(membership());
+    const sent = answering(UNLINKED, { ...UNLINKED, inactivityTimeoutDays: 7 });
+    open();
+
+    const idle = within(
+      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
+    );
+    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
+    fireEvent.click(screen.getByLabelText(/Google or Apple only/));
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
+    expect(idle.getByRole('button', { name: '7 days' }).getAttribute('aria-pressed')).toBe('true');
+    expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(await screen.findByText(/Rules saved/)).toBeDefined();
+    expect(sent.at(-1)?.body).toEqual({ inactivityTimeoutDays: 7 });
+    expect(screen.queryByText('Link Google or Apple for yourself first')).toBeNull();
+  });
+
+  it('clears the notice when "Any method" is chosen by hand', async () => {
+    signedIn(membership());
+    answering(UNLINKED);
+    open();
+
+    fireEvent.click(await screen.findByLabelText(/Google or Apple only/));
+    fireEvent.click(screen.getByLabelText(/Any method/));
+
+    expect(screen.queryByText('Link Google or Apple for yourself first')).toBeNull();
+  });
+
+  it('when the server refuses it, the method goes back to "Any method" and the other choices stay unsaved', async () => {
+    signedIn(membership());
+    const sent = refusingUnlinked(PAGE);
+    open();
+
+    const idle = within(
+      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
+    );
+    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
+    fireEvent.click(screen.getByLabelText(/Google or Apple only/));
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(await screen.findByText('Link Google or Apple for yourself first')).toBeDefined();
+    expect(sent.filter(({ method }) => method === 'PATCH')).toHaveLength(1);
+    expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
+    expect(idle.getByRole('button', { name: '7 days' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Save rules' })).toBeDefined();
+    expect(screen.queryByText(/The rules were not saved/)).toBeNull();
+    expect(screen.queryByText(/Read-only until you link/)).toBeNull();
+  });
+
+  it('after the server refuses it, choosing it again brings the notice back without a round trip', async () => {
+    signedIn(membership());
+    const sent = refusingUnlinked(PAGE);
+    open();
+
+    fireEvent.click(await screen.findByLabelText(/Google or Apple only/));
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+    await screen.findByText('Link Google or Apple for yourself first');
+
+    fireEvent.click(screen.getByLabelText(/Any method/));
+    fireEvent.click(screen.getByLabelText(/Google or Apple only/));
+
+    expect(screen.getByText('Link Google or Apple for yourself first')).toBeDefined();
+    expect(screen.queryByRole('list', { name: 'People affected' })).toBeNull();
+    expect(sent.filter(({ method }) => method === 'PATCH')).toHaveLength(1);
+  });
+
+  it('when the rule is already required, a refused save of another rule leaves the method alone', async () => {
+    signedIn(membership());
+    const sent = refusingUnlinked({ ...PAGE, providerOnly: true });
+    open();
+
+    const idle = within(
+      await screen.findByRole('group', { name: 'How long a sign-in lasts unused' }),
+    );
+    fireEvent.click(idle.getByRole('button', { name: '7 days' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(await screen.findByText(/The rules were not saved/)).toBeDefined();
+    expect(sent.at(-1)?.body).toEqual({ inactivityTimeoutDays: 7 });
+    expect((screen.getByLabelText(/Google or Apple only/) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByText('Link Google or Apple for yourself first')).toBeNull();
+  });
+
+  it('sends requiring Google or Apple once the person saving has one linked', async () => {
+    signedIn(membership());
+    const sent = answering(PAGE, { ...PAGE, providerOnly: true });
+    open();
+
+    fireEvent.click(await screen.findByLabelText(/Google or Apple only/));
+    expect(screen.queryByText('Link Google or Apple for yourself first')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(await screen.findByText(/Rules saved/)).toBeDefined();
+    expect(sent.at(-1)?.body).toEqual({ providerOnly: true });
   });
 
   it('offers no save while the rules are the ones in force', async () => {
