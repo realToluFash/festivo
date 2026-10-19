@@ -504,9 +504,11 @@ function Switcher({
                 </Text>
                 <InvitationRows
                   waiting={waiting}
-                  onOpen={(id) => {
-                    onClose();
-                    switchOrganisation(id);
+                  after={{
+                    open: (id) => {
+                      onClose();
+                      switchOrganisation(id);
+                    },
                   }}
                 />
               </View>

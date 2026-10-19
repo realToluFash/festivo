@@ -132,6 +132,11 @@ export function landingFor(gate: Awaiting | null): string {
   return gate === 'details' ? '/complete-profile' : '/app';
 }
 
+/** Before the organisations are read, so the next read opens in this one: an invitation accepted while onboarding. */
+export function rememberOrganisation(id: string): void {
+  remember(id);
+}
+
 /** Remembered on this device, so the next visit opens where this one left off. */
 export function switchOrganisation(id: string): void {
   if (state.status !== 'signedIn') return;

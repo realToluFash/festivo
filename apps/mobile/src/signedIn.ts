@@ -102,6 +102,11 @@ function load(): Promise<boolean> {
   return loading;
 }
 
+/** Before the organisations are read, so the next read opens in this one: an invitation accepted while onboarding. */
+export function rememberOrganisation(id: string): Promise<void> {
+  return AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+}
+
 export function switchOrganisation(id: string): void {
   const organisation = state.organisations.find((membership) => membership.id === id);
   if (organisation == null) return;

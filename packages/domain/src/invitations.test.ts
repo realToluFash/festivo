@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  answeringInvitation,
   type InvitationOutcome,
   invitationRefusal,
   invitationWording,
@@ -26,6 +27,23 @@ describe('invitations waiting in the product', () => {
       }),
     ).toBe(0);
     expect(waitingInvitations(two, { kbc: { kind: 'declined' } })).toBe(1);
+  });
+
+  it('holds a save while any accept or decline is in flight, and only then', () => {
+    expect(answeringInvitation({})).toBe(false);
+    expect(
+      answeringInvitation({
+        adw: { kind: 'accepted', organisationId: 'org_9' },
+        kbc: { kind: 'busy', answer: 'accept' },
+      }),
+    ).toBe(true);
+    expect(answeringInvitation({ kbc: { kind: 'busy', answer: 'decline' } })).toBe(true);
+    expect(
+      answeringInvitation({
+        adw: { kind: 'failed' },
+        kbc: { kind: 'refused', refusal: 'invitation_expired' },
+      }),
+    ).toBe(false);
   });
 
   it('reads the refusal a stale invitation is answered with, and nothing else', () => {
