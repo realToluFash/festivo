@@ -158,6 +158,7 @@ function Editable({
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved' | 'failed'>('editing');
   const [needsOwnTwoFactor, setNeedsOwnTwoFactor] = useState(false);
   const [needsOwnProvider, setNeedsOwnProvider] = useState(false);
+  const [hasProvider, setHasProvider] = useState(page.ownProvider);
   const changed = differences(rulesOf(page), rules);
   const dirty = Object.keys(changed).length > 0;
   const stranded = page.passwordOnly ?? [];
@@ -172,7 +173,7 @@ function Editable({
   }
 
   function pickMethod(providerOnly: boolean): void {
-    setNeedsOwnProvider(providerOnly && !page.ownProvider && !page.providerOnly);
+    setNeedsOwnProvider(providerOnly && !hasProvider && !page.providerOnly);
     pick({ providerOnly });
   }
 
@@ -199,7 +200,8 @@ function Editable({
       setStatus('saved');
     } catch (error) {
       // Google or Apple unlinked in another tab, say.
-      if (error instanceof ApiError && error.is('oauth_only_unlinked')) {
+      if (error instanceof ApiError && error.is('oauth_only_unlinked') && changed.providerOnly) {
+        setHasProvider(false);
         refuseProvider();
         return;
       }
