@@ -13,6 +13,7 @@ import {
   expoGoApk,
   expoSdkMajor,
   forAndroid,
+  linkIntent,
   parseTarget,
   QA_OVERRIDES,
   QA_PORTS,
@@ -351,5 +352,26 @@ describe('the three QA testers', () => {
 
   it('stop at three', () => {
     expect(() => qaConfig(4)).toThrow(/no QA tester 4/);
+  });
+});
+
+describe('handing a provider redirect to Expo Go', () => {
+  it('reaches the running experience with the whole link, query and all', () => {
+    const intent = linkIntent('soirely://oauth/google?code=a&state=b');
+    expect(intent).toContain('host.exp.exponent/host.exp.exponent.experience.ExperienceActivity');
+    expect(intent.slice(intent.indexOf('-f'), intent.indexOf('-f') + 2)).toEqual([
+      '-f',
+      '0x20000000',
+    ]);
+    expect(intent.at(-1)).toBe("'soirely://oauth/google?code=a&state=b'");
+  });
+
+  it("survives a quote in the link on the device's shell", () => {
+    expect(linkIntent("soirely://oauth/x?s=it's").at(-1)).toBe("'soirely://oauth/x?s=it'\\''s'");
+  });
+
+  it('refuses anything but the app scheme', () => {
+    expect(() => linkIntent(undefined)).toThrow(/which link/);
+    expect(() => linkIntent('https://soirely.com/oauth')).toThrow(/which link/);
   });
 });
