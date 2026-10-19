@@ -191,6 +191,32 @@ export interface Account {
   twoFactorSetupPrompt: boolean;
   emailAddresses: LinkedAddress[];
   phoneNumbers: LinkedPhone[];
+  /** An account in no organisation that asked to join one at its domain (sc-561), until somebody answers. */
+  waitingFor: JoinRequest | null;
+}
+
+export interface JoinOffer {
+  id: string;
+  name: string;
+}
+
+export interface JoinRequest {
+  organisation: JoinOffer;
+  askedAt: string;
+}
+
+export interface JoinOffers {
+  domain: string | null;
+  offers: JoinOffer[];
+  /** A request still waiting, while which nothing else is offered. */
+  request: JoinRequest | null;
+}
+
+/** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved. */
+export interface CompanyDomains {
+  domains: { domain: string; stopped: boolean }[];
+  most: number;
+  ownAddress: string | null;
 }
 
 export interface Organisation {
@@ -370,6 +396,7 @@ export interface ProfileDetails {
   /** Optional; an empty number means no phone, and removes the one there was. */
   phoneCountryCode?: string;
   phoneNumber?: string;
+  askToJoin?: string;
 }
 
 /** `userAgent` and `ipAddress` are what the client claimed; nothing verifies either. */
@@ -1282,6 +1309,96 @@ export class ApiClient {
     return body.invitations.map((one: unknown) => this.invitationPreview(one));
   }
 
+  async joinOffers(): Promise<JoinOffers> {
+    const raw = await this.get<Record<string, unknown>>('/api/join-offers');
+    const offers = Array.isArray(raw?.offers) ? raw.offers.map(asJoinOffer) : null;
+
+    if (offers == null || offers.some((offer) => offer == null)) {
+      throw new Error(
+        'The API answered GET /api/join-offers in a shape this client does not know. Check JoinOffersController in services/api.',
+      );
+    }
+
+    return {
+      domain: typeof raw.domain === 'string' ? raw.domain : null,
+      offers: offers as JoinOffer[],
+      request: asJoinRequest(raw.request),
+    };
+  }
+
+  /** Refused `join_offer_unavailable` once it is no longer offered, or while another request waits. */
+  async askToJoin(organisationId: string): Promise<JoinRequest> {
+    const raw = await this.post<Record<string, unknown>>(
+      `/api/join-offers/${encodeURIComponent(organisationId)}/ask`,
+      {},
+    );
+    const request = asJoinRequest(raw?.request);
+
+    if (request == null) {
+      throw new Error(
+        'The API answered an ask to join without the request. Check JoinOffersController in services/api.',
+      );
+    }
+
+    return request;
+  }
+
+  async dismissJoinOffer(organisationId: string): Promise<void> {
+    await this.post<unknown>(`/api/join-offers/${encodeURIComponent(organisationId)}/dismiss`, {});
+  }
+
+  async withdrawJoinRequest(): Promise<void> {
+    await this.delete<unknown>('/api/join-offers/request');
+  }
+
+  async companyDomains(organisationId: string): Promise<CompanyDomains> {
+    return this.readCompanyDomains(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/domains`),
+    );
+  }
+
+  async addCompanyDomain(organisationId: string, domain: string): Promise<CompanyDomains> {
+    return this.readCompanyDomains(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/domains`, {
+        domain,
+      }),
+    );
+  }
+
+  async removeCompanyDomain(organisationId: string, domain: string): Promise<CompanyDomains> {
+    return this.readCompanyDomains(
+      await this.delete<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/domains/${encodeURIComponent(domain)}`,
+      ),
+    );
+  }
+
+  private readCompanyDomains(raw: unknown): CompanyDomains {
+    const body = raw as Record<string, unknown> | null;
+    const domains = Array.isArray(body?.domains) ? body.domains : null;
+
+    if (
+      body == null ||
+      domains == null ||
+      typeof body.most !== 'number' ||
+      domains.some((one) => typeof (one as Record<string, unknown>)?.domain !== 'string')
+    ) {
+      throw new Error(
+        'The API answered /api/orgs/{id}/domains in a shape this client does not know. Check CompanyDomainsController in services/api.',
+      );
+    }
+
+    return {
+      domains: domains.map((one) => {
+        const row = one as Record<string, unknown>;
+
+        return { domain: row.domain as string, stopped: row.stopped === true };
+      }),
+      most: body.most,
+      ownAddress: typeof body.ownAddress === 'string' ? body.ownAddress : null,
+    };
+  }
+
   /** The membership it made, as `organisations()` lists it. Refused `invitation_not_yours` for another address. */
   async acceptInvitation(invitationId: string): Promise<Membership> {
     const body = await this.post<{ organisation?: unknown }>(
@@ -1612,11 +1729,12 @@ export function phoneAwaitingCode(account: Pick<Account, 'phoneNumbers'>): Linke
   );
 }
 
-export type Awaiting = 'email' | 'phone' | 'details';
+export type Awaiting = 'email' | 'phone' | 'details' | 'approval';
 
-/** The gate an account is behind, in the API's order: the email, then a phone it has, then the details. */
+/** The gate an account is behind, in the API's order: the email, a phone it has, the details, then approval. */
 export function awaiting(
-  account: Pick<Account, 'verified' | 'complete' | 'emailAddresses'>,
+  account: Pick<Account, 'verified' | 'complete' | 'emailAddresses'> &
+    Partial<Pick<Account, 'waitingFor'>>,
 ): Awaiting | null {
   if (!account.verified) {
     const email = account.emailAddresses.find((address) => address.primary);
@@ -1624,7 +1742,26 @@ export function awaiting(
     return email?.verified === true ? 'phone' : 'email';
   }
 
-  return account.complete ? null : 'details';
+  if (!account.complete) return 'details';
+
+  return account.waitingFor == null ? null : 'approval';
+}
+
+function asJoinOffer(raw: unknown): JoinOffer | null {
+  const candidate = raw as Record<string, unknown> | null;
+
+  if (typeof candidate?.id !== 'string' || typeof candidate.name !== 'string') return null;
+
+  return { id: candidate.id, name: candidate.name };
+}
+
+function asJoinRequest(raw: unknown): JoinRequest | null {
+  const candidate = raw as Record<string, unknown> | null;
+  const organisation = asJoinOffer(candidate?.organisation);
+
+  if (organisation == null || typeof candidate?.askedAt !== 'string') return null;
+
+  return { organisation, askedAt: candidate.askedAt };
 }
 
 function asLinkedAddress(raw: unknown): LinkedAddress | null {
@@ -1697,6 +1834,7 @@ function asAccount(raw: unknown): Account | null {
       : [],
     emailAddresses,
     phoneNumbers,
+    waitingFor: asJoinRequest(candidate.waitingFor),
   };
 }
 

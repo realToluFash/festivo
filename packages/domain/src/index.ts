@@ -25,3 +25,4 @@ export * from './organisations.ts';
 export * from './roles.ts';
 export * from './members.ts';
 export * from './invitations.ts';
+export * from './companyDomains.ts';
