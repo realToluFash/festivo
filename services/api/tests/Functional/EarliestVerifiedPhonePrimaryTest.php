@@ -16,6 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psl\Dict;
 use Psl\Type;
 use Psl\Vec;
+use RuntimeException;
 
 final class EarliestVerifiedPhonePrimaryTest extends FunctionalTestCase
 {
@@ -79,6 +80,16 @@ final class EarliestVerifiedPhonePrimaryTest extends FunctionalTestCase
         $this->migrate();
 
         self::assertSame(['+2348035550501' => true], $this->primaries($user));
+    }
+
+    #[Test]
+    public function theBackfillRefusesToBeReversed(): void
+    {
+        $factory = self::serviceById('doctrine.migrations.dependency_factory', DependencyFactory::class);
+        $migration = $factory->getMigrationRepository()->getMigration(new Version('DoctrineMigrations\Version20261018230000'))->getMigration();
+
+        $this->expectException(RuntimeException::class);
+        $migration->down(new Schema());
     }
 
     private function migrate(): void

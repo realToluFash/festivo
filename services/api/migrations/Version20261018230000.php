@@ -6,6 +6,7 @@ namespace DoctrineMigrations;
 
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
+use RuntimeException;
 
 final class Version20261018230000 extends AbstractMigration
 {
@@ -51,5 +52,6 @@ final class Version20261018230000 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
+        throw new RuntimeException('This backfill cannot be reversed: the rows it made primary cannot be told apart from ones promoted since.');
     }
 }
