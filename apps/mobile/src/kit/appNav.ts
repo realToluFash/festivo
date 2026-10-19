@@ -1,3 +1,5 @@
+import { roleHolds } from '@soirely/domain';
+
 export type Destination = 'home' | 'settings';
 
 /** Only what a story has built: Calendar, Guests and Messages each add their own (sc-722, #727). */
@@ -8,12 +10,13 @@ export const DESTINATION_HREF = { home: '/', settings: '/settings' } as const sa
   string
 >;
 
-export type SettingsSection = 'account' | 'security' | 'organisation' | 'signInRules';
+export type SettingsSection = 'account' | 'security' | 'organisation' | 'members' | 'signInRules';
 
 export const SECTION_HREF = {
   account: '/settings/account',
   security: '/settings/security',
   organisation: '/settings/organisation',
+  members: '/settings/members',
   signInRules: '/settings/sign-in-rules',
 } as const satisfies Record<SettingsSection, string>;
 
@@ -32,10 +35,22 @@ export interface SettingsGroup {
   sections: readonly SettingsSection[];
 }
 
-export function settingsGroups(inOrganisation: boolean): readonly SettingsGroup[] {
+/** Members only for a role that can read them, as on the web. */
+export function settingsGroups(
+  organisation: { permissions: readonly string[] } | null,
+): readonly SettingsGroup[] {
   const yours: SettingsGroup = { heading: 'yourAccount', sections: ['account', 'security'] };
+  if (organisation == null) return [yours];
 
-  return inOrganisation
-    ? [yours, { heading: 'organisationHeading', sections: ['organisation', 'signInRules'] }]
-    : [yours];
+  const members = roleHolds(organisation, 'members.read');
+
+  return [
+    yours,
+    {
+      heading: 'organisationHeading',
+      sections: members
+        ? ['organisation', 'members', 'signInRules']
+        : ['organisation', 'signInRules'],
+    },
+  ];
 }

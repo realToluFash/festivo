@@ -9,7 +9,7 @@ use App\Enum\AccountOrigin;
 use App\Repository\MembershipRepository;
 use Psl\Str;
 
-/** A name, the details screen saved once, and for an account that founded its own, an organisation. */
+/** A name and the details screen saved once; losing every organisation later leaves the account complete (sc-68). */
 final readonly class AccountCompleteness
 {
     public function __construct(
@@ -19,17 +19,15 @@ final readonly class AccountCompleteness
 
     public function isComplete(User $user): bool
     {
-        if ('' === Str\trim($user->getName()) || !$user->hasSavedDetails()) {
-            return false;
-        }
-
-        return !$this->needsOrganisation($user);
+        return '' !== Str\trim($user->getName()) && $user->hasSavedDetails();
     }
 
-    /** The details screen asks for one: a self-registered account in none. An invited one joins the inviting one. */
+    /** The details screen asks for one: a self-registered account in none that has not saved it yet. An invited one joins the inviting one. */
     public function needsOrganisation(User $user): bool
     {
-        return AccountOrigin::SelfRegistered === $user->getOrigin() && !$this->hasOrganisation($user);
+        return AccountOrigin::SelfRegistered === $user->getOrigin()
+            && !$user->hasSavedDetails()
+            && !$this->hasOrganisation($user);
     }
 
     public function hasOrganisation(User $user): bool

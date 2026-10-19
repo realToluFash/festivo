@@ -114,6 +114,49 @@ final class MemberActionsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAccountRemovedFromItsOnlyOrganisationStaysComplete(): void
+    {
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+
+        $this->as($this->owner, 'DELETE', $this->path('/members/' . $this->membershipOf($chidi)));
+        self::assertSame(204, $this->statusCode());
+
+        self::assertSame([], $this->as($chidi, 'GET', '/api/orgs')['organisations'] ?? null);
+        self::assertTrue($this->as($chidi, 'GET', '/api/auth/me')['complete'] ?? null);
+    }
+
+    #[Test]
+    public function anAccountInNoOrganisationStartsItsOwnAsOwner(): void
+    {
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $this->as($this->owner, 'DELETE', $this->path('/members/' . $this->membershipOf($chidi)));
+
+        $founded = $this->as($chidi, 'POST', '/api/orgs', ['name' => '  Okoro Weddings ', 'countryCode' => 'gh', 'timezone' => 'Africa/Accra']);
+
+        self::assertSame(201, $this->statusCode(), Json\encode($founded));
+        $organisation = Type\shape(['name' => Type\string(), 'currency' => Type\string(), 'role' => Type\shape(['seededAs' => Type\string()], true)], true)->coerce($founded['organisation'] ?? null);
+        self::assertSame('Okoro Weddings', $organisation['name']);
+        self::assertSame('GHS', $organisation['currency']);
+        self::assertSame(SeededRole::Owner->value, $organisation['role']['seededAs']);
+        self::assertCount(1, Type\vec(Type\mixed())->coerce($this->as($chidi, 'GET', '/api/orgs')['organisations'] ?? null));
+    }
+
+    #[Test]
+    public function startingOneWithNoNameOrCountrySendsNothing(): void
+    {
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $this->as($this->owner, 'DELETE', $this->path('/members/' . $this->membershipOf($chidi)));
+
+        $refused = $this->as($chidi, 'POST', '/api/orgs', ['name' => ' ', 'countryCode' => '', 'timezone' => 'Africa/Lagos']);
+
+        self::assertSame(422, $this->statusCode());
+        $paths = \array_column(Type\vec(Type\dict(Type\string(), Type\string()))->coerce($refused['violations'] ?? null), 'propertyPath');
+        self::assertContains('name', $paths);
+        self::assertContains('countryCode', $paths);
+        self::assertSame([], $this->as($chidi, 'GET', '/api/orgs')['organisations'] ?? null);
+    }
+
+    #[Test]
     public function aMemberLeavesAndIsListedAsLeft(): void
     {
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
@@ -122,8 +165,11 @@ final class MemberActionsTest extends ApiTestCase
         self::assertSame(204, $this->statusCode());
 
         $this->as($chidi, 'GET', $this->path('/permissions'));
-        self::assertSame(403, $this->statusCode());
-        self::assertSame(ErrorCode::ProfileIncomplete->type(), $this->as($chidi, 'GET', '/api/orgs')['type'] ?? null, 'asked to create one');
+        self::assertSame(404, $this->statusCode());
+        self::assertSame([], $this->as($chidi, 'GET', '/api/orgs')['organisations'] ?? null, 'in none, and still let in');
+        $account = $this->as($chidi, 'GET', '/api/auth/me');
+        self::assertTrue($account['complete'] ?? null, 'not sent back to the details screen');
+        self::assertFalse($account['needsOrganisation'] ?? null);
         self::assertSame(1, $this->audited(MemberActions::LEFT));
     }
 
@@ -143,7 +189,7 @@ final class MemberActionsTest extends ApiTestCase
         self::assertSame(204, $this->statusCode());
 
         $this->as($this->owner, 'GET', $this->path('/permissions'));
-        self::assertSame(403, $this->statusCode());
+        self::assertSame(404, $this->statusCode());
 
         $demoted = $this->as($bisi, 'PATCH', $this->path('/members/' . $this->membershipOf($bisi)), ['roleId' => $this->roleId(SeededRole::ReadOnly)]);
         self::assertSame(ErrorCode::Conflict->type(), $demoted['type'] ?? null);
@@ -228,6 +274,7 @@ final class MemberActionsTest extends ApiTestCase
 
         self::assertSame(403, $this->statusCode(), Json\encode($body));
         self::assertSame(ErrorCode::OwnerRequired->type(), $body['type'] ?? null);
+        self::assertSame('Only an owner can transfer ownership.', $body['detail'] ?? null);
     }
 
     /** @return array<string, mixed> */

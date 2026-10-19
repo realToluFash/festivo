@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Deletion;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\Members\OwnerCheck;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\Actor;
-use App\Enum\ErrorCode;
 use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
@@ -27,6 +27,7 @@ final readonly class OrganisationDeleter
 
     public function __construct(
         private MembershipRepository $membershipRepository,
+        private OwnerCheck $ownerCheck,
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private AfterResponse $afterResponse,
@@ -39,7 +40,7 @@ final readonly class OrganisationDeleter
     /** The name is typed as shown: exact and case-sensitive once the spaces around it are gone. */
     public function delete(Organisation $organisation, User $by, string $typedName, ?string $asked = null): DateTimeImmutable
     {
-        $this->ownerOf($organisation, $by);
+        $this->ownerCheck->require($organisation, $by, 'organisation.owner_required');
 
         if (Str\trim($typedName) !== $organisation->getName()) {
             throw ApiException::validation([[
@@ -60,15 +61,5 @@ final readonly class OrganisationDeleter
         $this->afterResponse->defer(fn () => $this->organisationDeletionMailer->sendDeleted($organisation, $by, $members, $at, $asked));
 
         return $at;
-    }
-
-    /** Only an owner deletes, whatever else a role is given. */
-    public function ownerOf(Organisation $organisation, User $user): void
-    {
-        $membership = $this->membershipRepository->findActive($user, $organisation->getId());
-
-        if (null === $membership || !$membership->getRole()->isOwner()) {
-            throw new ApiException(ErrorCode::OwnerRequired, $this->translator->trans('organisation.owner_required'));
-        }
     }
 }

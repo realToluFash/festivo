@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   chooseOrganisation,
   organisationChanges,
+  newOrganisationProblem,
   organisationProblem,
   roleHolds,
   roleName,
@@ -112,5 +113,24 @@ describe('withCurrent', () => {
       'Africa/Lagos',
       'Europe/Kyiv',
     ]);
+  });
+});
+
+describe('newOrganisationProblem', () => {
+  it('asks for a name that is only spaces', () => {
+    expect(newOrganisationProblem('name', '   ')).toEqual({ kind: 'nameBlank' });
+  });
+
+  it('counts the name after trimming, in characters rather than bytes', () => {
+    expect(newOrganisationProblem('name', `  ${'é'.repeat(100)}  `)).toBeNull();
+    expect(newOrganisationProblem('name', 'é'.repeat(101))).toEqual({
+      kind: 'nameLong',
+      length: 101,
+    });
+  });
+
+  it('asks for a country when the device named none', () => {
+    expect(newOrganisationProblem('countryCode', '')).toEqual({ kind: 'countryBlank' });
+    expect(newOrganisationProblem('countryCode', 'NG')).toBeNull();
   });
 });

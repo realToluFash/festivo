@@ -33,6 +33,58 @@ function inTwo(): void {
   });
 }
 
+function inOne(): void {
+  __setSessionState({
+    status: 'signedIn',
+    session: {
+      name: 'Folake',
+      email: 'f@ire.events',
+      verified: true,
+      complete: true,
+      awaiting: null,
+      providers: [],
+      needsOrganisation: false,
+      hasPassword: true,
+      organisation: IRE,
+      organisations: [IRE],
+      organisationCountry: null,
+      timezone: null,
+    },
+  });
+}
+
+function json(body: unknown, status: number, headers: Record<string, string> = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  });
+}
+
+function problem(code: string, status: number, headers: Record<string, string> = {}): Response {
+  return json(
+    { type: `https://soirely.com/errors/${code}`, title: 'No.', status },
+    status,
+    headers,
+  );
+}
+
+/** POST /api/orgs answers `created`; anything else the shell asks for on the way is empty. */
+function creating(created: () => Response) {
+  return vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (input, init) =>
+      init?.method === 'POST' && new URL(String(input)).pathname === '/api/orgs'
+        ? created()
+        : json({ invitations: [] }, 200),
+    );
+}
+
+function openCreate(): void {
+  at('/app');
+  fireEvent.click(screen.getByRole('button', { name: /Organisation: Ìrè Events/ }));
+  fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
+}
+
 function at(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
@@ -101,27 +153,138 @@ describe('switching organisation', () => {
     expect(screen.getByRole('button', { name: /Organisation: Okafor Family/ })).toBeDefined();
   });
 
-  it('is a plain tile, not a menu, for somebody in one organisation', () => {
-    __setSessionState({
-      status: 'signedIn',
-      session: {
-        name: 'Folake',
-        email: 'f@ire.events',
-        verified: true,
-        complete: true,
-        awaiting: null,
-        providers: [],
-        needsOrganisation: false,
-        hasPassword: true,
-        organisation: IRE,
-        organisations: [IRE],
-        organisationCountry: null,
-        timezone: null,
-      },
-    });
+  it('opens for somebody in one organisation, so creating another can be reached', () => {
+    inOne();
     at('/app');
 
-    expect(screen.queryByRole('button', { name: /Switch organisation/ })).toBeNull();
-    expect(screen.getByLabelText('Organisation: Ìrè Events, your role Owner')).toBeDefined();
+    fireEvent.click(
+      screen.getByRole('button', { name: /Organisation: Ìrè Events, your role Owner/ }),
+    );
+
+    expect(within(screen.getByRole('listbox')).getAllByRole('option')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Create an organisation' })).toBeDefined();
+  });
+});
+
+describe('creating an organisation', () => {
+  it('shows the defaults it will use, with the primary email', () => {
+    inOne();
+    openCreate();
+
+    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
+
+    expect(
+      within(dialog).getByText(/contact address is your primary email, f@ire\.events\./),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(within(dialog).getByLabelText('Organisation name'));
+  });
+
+  it('checks the name before sending: blank, then over 100 characters after trimming', () => {
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), {
+      target: { value: ` ${'é'.repeat(101)} ` },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    expect(screen.getByText('That name is 101 characters. Use 100 or fewer.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('asks for a country when this device named none', () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue([]);
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+
+    expect(screen.getByText('Choose a country.')).toBeDefined();
+  });
+
+  it('sends the name, country and device timezone, then works in the new one and says so', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    const created = membership({ id: 'org_9', name: 'Lagos Supper Club' });
+    const fetch = creating(() => json({ organisation: created }, 201));
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), {
+      target: { value: '  Lagos Supper Club ' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+
+    expect(await screen.findByText('Now working in Lagos Supper Club.')).toBeDefined();
+    const [url, init] = fetch.mock.calls.find(([, sent]) => sent?.method === 'POST') ?? [];
+    expect(new URL(String(url)).pathname).toBe('/api/orgs');
+    expect(JSON.parse(String(init?.body))).toEqual({
+      name: 'Lagos Supper Club',
+      countryCode: 'NG',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /Organisation: Lagos Supper Club, your role Owner/ }),
+    ).toBeDefined();
+    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
+  });
+
+  it('says when the limit lifts, from Retry-After, and keeps what was typed', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    creating(() => problem('too_many_attempts', 429, { 'Retry-After': '600' }));
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Six' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+
+    const alert = await screen.findByText('Too many new organisations for now.');
+    expect(alert.parentElement?.textContent).toMatch(/Try again at \d{2}:\d{2}\./);
+    expect((screen.getByLabelText('Organisation name') as HTMLInputElement).value).toBe('Six');
+  });
+
+  it('says it did not work when the refusal names no field the dialog has', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    creating(() =>
+      json(
+        {
+          type: 'https://soirely.com/errors/validation_failed',
+          title: 'No.',
+          status: 422,
+          violations: [
+            { propertyPath: 'contactAddress', message: 'Bad address.', code: 'validation_failed' },
+          ],
+        },
+        422,
+      ),
+    );
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+
+    expect(
+      await screen.findByText(
+        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('cancels with nothing created', () => {
+    const fetch = vi.spyOn(globalThis, 'fetch');
+    inOne();
+    openCreate();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });

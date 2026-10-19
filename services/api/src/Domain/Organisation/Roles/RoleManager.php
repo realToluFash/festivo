@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Roles;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\Members\OwnerCheck;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -17,7 +18,6 @@ use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
 use App\Locale\SupportedLocales;
 use App\Repository\InvitationRepository;
-use App\Repository\MembershipRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -40,7 +40,7 @@ final readonly class RoleManager
         private MembershipDirectoryInterface $membershipDirectory,
         private SeededRoleLabels $seededRoleLabels,
         private InvitationRepository $invitationRepository,
-        private MembershipRepository $membershipRepository,
+        private OwnerCheck $ownerCheck,
     ) {
     }
 
@@ -91,7 +91,7 @@ final readonly class RoleManager
             throw new ApiException(ErrorCode::OwnerRoleFixed, $this->translator->trans('roles.owner_fixed'));
         }
 
-        if (null !== $name && Str\trim($name) !== $this->currentName($role)) {
+        if (null !== $name && RoleName::of($name) !== RoleName::of($this->currentName($role) ?? '')) {
             if (null !== $role->getSeededAs()) {
                 throw $this->invalid('name', 'roles.name_builtin');
             }
@@ -176,10 +176,10 @@ final readonly class RoleManager
         return null === $seeded ? $role->getName() : $this->seededRoleLabels->label($seeded, SupportedLocales::DEFAULT);
     }
 
-    /** Trimmed, required, at most 40, and unique ignoring case among the organisation's own roles and the seeded labels in every language. */
+    /** Trimmed and in NFC, required, at most 40, and unique ignoring case among the organisation's own roles and the seeded labels in every language. */
     private function name(Organisation $organisation, string $typed, ?Role $self): string
     {
-        $name = Str\trim($typed);
+        $name = RoleName::of($typed);
 
         if ('' === $name) {
             throw $this->invalid('name', 'roles.name_required');
@@ -191,7 +191,7 @@ final readonly class RoleManager
 
         $taken = $this->seededRoleLabels->includes($name) || Iter\any(
             $this->rolesOf($organisation),
-            static fn (Role $role): bool => $role !== $self && Str\lowercase($role->getName() ?? '') === Str\lowercase($name),
+            static fn (Role $role): bool => $role !== $self && RoleName::same($role->getName() ?? '', $name),
         );
 
         if ($taken) {
@@ -222,7 +222,7 @@ final readonly class RoleManager
     {
         $this->withinHeld($organisation, $by, $role->getPermissions());
 
-        if ($role->isOwner() && true !== $this->membershipRepository->findActive($by, $organisation->getId())?->getRole()->isOwner()) {
+        if ($role->isOwner() && !$this->ownerCheck->holds($organisation, $by)) {
             throw new ApiException(ErrorCode::GrantNotHeld, $this->translator->trans('roles.grant_not_held'));
         }
     }

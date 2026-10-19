@@ -10,16 +10,18 @@ import { useTranslation } from 'react-i18next';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { switchOrganisation, useSignedIn } from '../signedIn.ts';
+import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
+import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
 const RAIL_WIDTH = 220;
 
 const OpenSwitcher = createContext<(() => void) | undefined>(undefined);
 
-/** Opens the frame's organisation switcher; undefined while there is one organisation and no invitation. */
+/** Opens the frame's organisation switcher; undefined while there is no organisation and no invitation. */
 export function useOpenSwitcher(): (() => void) | undefined {
   return useContext(OpenSwitcher);
 }
@@ -52,14 +54,21 @@ export function AppFrame({
   back?: { label: string; onPress: () => void } | undefined;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const { kind } = useLayout();
   const [choosing, setChoosing] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState<string | null>(null);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
+  // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
-    signedIn.organisations.length > 1 || waiting.invitations.length > 0
-      ? () => setChoosing(true)
+    signedIn.organisation != null || waiting.invitations.length > 0
+      ? () => {
+          setCreated(null);
+          setChoosing(true);
+        }
       : undefined;
 
   return (
@@ -84,6 +93,15 @@ export function AppFrame({
           onSwitch={openSwitcher}
         />
         <View style={styles.body}>
+          {created != null && (
+            <View style={styles.created} accessibilityLiveRegion="polite">
+              <Notice
+                tone="done"
+                mark={tokens.marks.done.glyph}
+                body={t('switcher.switched', { name: created })}
+              />
+            </View>
+          )}
           <OpenSwitcher.Provider value={openSwitcher}>{children}</OpenSwitcher.Provider>
         </View>
         {kind === 'phone' && <TabBar current={current} />}
@@ -94,6 +112,21 @@ export function AppFrame({
         current={signedIn.organisation}
         waiting={waiting}
         onClose={() => setChoosing(false)}
+        onCreate={() => {
+          setChoosing(false);
+          setCreating(true);
+        }}
+      />
+      <CreateOrganisation
+        open={creating}
+        email={signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '')}
+        onCancel={() => setCreating(false)}
+        onCreated={(organisation) => {
+          setCreating(false);
+          joinOrganisation(organisation);
+          switchOrganisation(organisation.id);
+          setCreated(organisation.name);
+        }}
       />
     </View>
   );
@@ -408,12 +441,14 @@ function Switcher({
   current,
   waiting,
   onClose,
+  onCreate,
 }: {
   open: boolean;
   organisations: readonly Membership[];
   current: Membership | null;
   waiting: WaitingInvitations;
   onClose: () => void;
+  onCreate: () => void;
 }) {
   const { t } = useTranslation();
 
@@ -481,6 +516,23 @@ function Switcher({
             <Text size={tokens.typeBody.size} muted>
               {t('switcher.remembered')}
             </Text>
+            {current != null && (
+              <Pressable
+                style={[styles.option, styles.create]}
+                onPress={onCreate}
+                accessibilityRole="button"
+                testID="switcher.create"
+              >
+                <View style={[styles.tile, styles.createTile]}>
+                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 5v14M5 12h14" {...STROKE} stroke={tokens.colorAccentText} />
+                  </Svg>
+                </View>
+                <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
+                  {t('createOrganisation.row')}
+                </Text>
+              </Pressable>
+            )}
           </ScrollView>
         </View>
       </Pressable>
@@ -688,4 +740,12 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusField,
   },
   optionOn: { backgroundColor: tokens.colorRowSelected },
+  create: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder, borderRadius: 0 },
+  createTile: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: tokens.colorAccentTintBorder,
+    backgroundColor: tokens.colorCard,
+  },
+  created: { paddingTop: tokens.spaceLg, paddingHorizontal: tokens.spaceXl },
 });

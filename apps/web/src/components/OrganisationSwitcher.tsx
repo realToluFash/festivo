@@ -11,11 +11,13 @@ export function OrganisationSwitcher({
   organisations,
   waiting,
   onSwitch,
+  onCreate,
 }: {
   current: Membership;
   organisations: readonly Membership[];
   waiting: WaitingInvitations;
   onSwitch: (organisation: Membership) => void;
+  onCreate: () => void;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -44,18 +46,6 @@ export function OrganisationSwitcher({
       document.removeEventListener('keydown', close);
     };
   }, [open]);
-
-  if (organisations.length < 2 && waiting.invitations.length === 0) {
-    return (
-      <div
-        className="org-switcher org-switcher-single"
-        aria-label={t('switcher.label', { name: current.name, role })}
-      >
-        <Tile name={current.name} />
-        <Naming name={current.name} role={role} />
-      </div>
-    );
-  }
 
   return (
     <div className="org-switcher" ref={container}>
@@ -145,6 +135,21 @@ export function OrganisationSwitcher({
             </section>
           )}
           <p className="org-switcher-note">{t('switcher.remembered')}</p>
+          <button
+            type="button"
+            className="org-switcher-create"
+            onClick={() => {
+              setOpen(false);
+              onCreate();
+            }}
+          >
+            <span className="org-tile org-tile-create" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </span>
+            <span>{t('createOrganisation.row')}</span>
+          </button>
         </div>
       )}
     </div>

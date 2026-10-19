@@ -220,6 +220,10 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const scrollView = useRef<ScrollView>(null);
+  const root = useRef<View>(null);
+  // The avoiding view measures itself against its parent but the keyboard against the window,
+  // so under the app's header it pads short by the header and leaves the content's end under the keys.
+  const [rootTop, setRootTop] = useState(0);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
@@ -252,11 +256,19 @@ export function Screen({
 
   return (
     <ScreenScroll.Provider value={scroll ? screenScroll : null}>
-      <View style={[styles.root, padding, style]}>
+      <View
+        ref={root}
+        onLayout={() => root.current?.measureInWindow((_x, y) => setRootTop(y))}
+        style={[styles.root, padding, style]}
+      >
         {LIFT.avoid == null ? (
           body
         ) : (
-          <KeyboardAvoidingView style={styles.fill} behavior={LIFT.avoid}>
+          <KeyboardAvoidingView
+            style={styles.fill}
+            behavior={LIFT.avoid}
+            keyboardVerticalOffset={rootTop}
+          >
             {body}
           </KeyboardAvoidingView>
         )}

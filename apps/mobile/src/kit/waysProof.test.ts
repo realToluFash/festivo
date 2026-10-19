@@ -9,18 +9,25 @@ import {
   keptProof,
   keptProofRanOut,
   provingRefusal,
+  signedInWith,
   tripRefused,
 } from './waysProof.ts';
 
 const t = ((key: string, values?: Record<string, string>) =>
   values == null ? key : `${key} ${JSON.stringify(values)}`) as unknown as TFunction;
 
-function refusal(code: string, status: number, pendingProof?: string): ApiError {
+function refusal(
+  code: string,
+  status: number,
+  pendingProof?: string,
+  providerEmail?: string,
+): ApiError {
   const problem = {
     type: `https://soirely.com/errors/${code}`,
     title: 'No.',
     status,
     ...(pendingProof == null ? {} : { pendingProof }),
+    ...(providerEmail == null ? {} : { providerEmail }),
   };
 
   return new ApiError(problem, new Response(JSON.stringify(problem), { status }));
@@ -83,5 +90,44 @@ describe('proving it is you, from Security', () => {
     expect(keptProofRanOut(refusal('proof_required', 403), true)).toBe(true);
     expect(keptProofRanOut(refusal('proof_required', 403), false)).toBe(false);
     expect(keptProofRanOut(refusal('two_factor_code_invalid', 422, 'p-1'), true)).toBe(false);
+  });
+});
+
+describe('step two after Google or Apple (sc-2197)', () => {
+  const asked = refusal('two_factor_required', 403, 'p-1', 'folake.adeyemi@gmail.com');
+
+  it('names the address the provider vouched for once the code is asked for', () => {
+    expect(signedInWith('google', asked, null)).toEqual({ email: 'folake.adeyemi@gmail.com' });
+    expect(
+      signedInWith(
+        'apple',
+        refusal('two_factor_required', 403, 'p-1', 'x7@privaterelay.appleid.com'),
+        null,
+      ),
+    ).toEqual({ email: 'x7@privaterelay.appleid.com' });
+  });
+
+  it('shows the box alone when the provider gave no address', () => {
+    expect(signedInWith('google', refusal('two_factor_required', 403, 'p-1'), null)).toEqual({
+      email: null,
+    });
+  });
+
+  it('keeps the box and the address across a wrong code', () => {
+    const shown = signedInWith('google', asked, null);
+
+    expect(signedInWith('google', refusal('two_factor_code_invalid', 422, 'p-1'), shown)).toBe(
+      shown,
+    );
+    expect(signedInWith('google', refusal('recovery_code_used', 422, 'p-1'), shown)).toBe(shown);
+    expect(signedInWith('google', new TypeError('offline'), shown)).toBe(shown);
+  });
+
+  it('drops it when the trip has to be made again, and never shows it beside a password', () => {
+    const shown = signedInWith('google', asked, null);
+
+    expect(signedInWith('google', refusal('proof_required', 403), shown)).toBeNull();
+    expect(signedInWith('google', refusal('invalid_credentials', 401), shown)).toBeNull();
+    expect(signedInWith('password', refusal('two_factor_required', 403), null)).toBeNull();
   });
 });

@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
+import { refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { reloadSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -20,6 +21,7 @@ import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
+import { useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Step =
@@ -31,10 +33,6 @@ type Step =
 /** After leaving or deleting: launch reads the account again and opens its gate, or the app. */
 function landAfterLeaving(): void {
   router.replace('/');
-}
-
-function failure(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? error.problem.title : fallback;
 }
 
 /** Settings > Organisation's "Ownership and leaving" (sc-68), `OrgGeneral-*`: transfer, leave, delete. */
@@ -394,7 +392,7 @@ function Leave({
     } catch (error) {
       setBusy(false);
       if (error instanceof ApiError && error.is('last_owner')) setRefusedLast(true);
-      else setRefused(failure(error, t('ownership.failed')));
+      else setRefused(refusalTitle(error, t('ownership.failed')));
     }
   }
 
@@ -454,6 +452,7 @@ function Delete({
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const input = useRef<TextInput>(null);
+  const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
   const matches = typed.trim() === name;
 
@@ -481,7 +480,7 @@ function Delete({
           : undefined;
 
       if (violation != null) setMismatch(violation.message);
-      else setFailed(failure(error, t('ownership.failed')));
+      else setFailed(refusalTitle(error, t('ownership.failed')));
     }
   }
 
@@ -509,32 +508,34 @@ function Delete({
           <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
         </View>
       )}
-      <Field
-        label={t('ownership.deleteType', { organisation: name })}
-        error={mismatch}
-        help={matches ? t('ownership.deleteMatches') : t('ownership.deleteExactly')}
-      >
-        <TextField
-          ref={input}
-          value={typed}
-          wrong={mismatch != null}
-          editable={!busy}
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="off"
-          onChangeText={(value) => {
-            setTyped(value);
-            if (value.trim() === name) setMismatch(null);
-          }}
-          testID="ownership.delete.name"
+      <View {...aboveKeyboard} style={styles.form}>
+        <Field
+          label={t('ownership.deleteType', { organisation: name })}
+          error={mismatch}
+          help={matches ? t('ownership.deleteMatches') : t('ownership.deleteExactly')}
+        >
+          <TextField
+            ref={input}
+            value={typed}
+            wrong={mismatch != null}
+            editable={!busy}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            onChangeText={(value) => {
+              setTyped(value);
+              if (value.trim() === name) setMismatch(null);
+            }}
+            testID="ownership.delete.name"
+          />
+        </Field>
+        <PrimaryButton
+          label={t('ownership.deleteButton', { organisation: name })}
+          busy={busy}
+          onPress={() => void submit()}
+          testID="ownership.delete.send"
         />
-      </Field>
-      <PrimaryButton
-        label={t('ownership.deleteButton', { organisation: name })}
-        busy={busy}
-        onPress={() => void submit()}
-        testID="ownership.delete.send"
-      />
+      </View>
       <QuietButton
         label={t('ownership.deleteKeep', { organisation: name })}
         onPress={onKeep}

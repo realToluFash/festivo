@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Outlet, useLocation } from 'react-router';
 
+import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
 import { OrganisationSwitcher } from '../../components/OrganisationSwitcher.tsx';
@@ -10,6 +11,7 @@ import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
 import {
+  joinOrganisation,
   landingFor,
   restoreSession,
   switchOrganisation,
@@ -72,8 +74,10 @@ function Shell() {
   const session = useSession();
   const { pathname } = useLocation();
   const [switched, setSwitched] = useState<{ name: string; at: string } | null>(null);
+  const [creating, setCreating] = useState(false);
   const organisation = session.organisation;
   const waiting = useWaitingInvitations();
+  const closeCreate = useCallback(() => setCreating(false), []);
 
   return (
     <div className="shell">
@@ -93,6 +97,7 @@ function Shell() {
               switchOrganisation(next.id);
               setSwitched({ name: next.name, at: pathname });
             }}
+            onCreate={() => setCreating(true)}
           />
         )}
 
@@ -138,12 +143,29 @@ function Shell() {
                 switchOrganisation(id);
                 if (joined != null) setSwitched({ name: joined.name, at: pathname });
               }}
+              onStarted={(started) => {
+                switchOrganisation(started.id);
+                setSwitched({ name: started.name, at: pathname });
+              }}
             />
           ) : (
             <Outlet />
           )}
         </ErrorBoundary>
       </main>
+
+      {creating && (
+        <CreateOrganisation
+          email={session.email}
+          onCancel={closeCreate}
+          onCreated={(created) => {
+            setCreating(false);
+            joinOrganisation(created);
+            switchOrganisation(created.id);
+            setSwitched({ name: created.name, at: pathname });
+          }}
+        />
+      )}
     </div>
   );
 }

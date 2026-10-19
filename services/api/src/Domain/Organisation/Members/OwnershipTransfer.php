@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Members;
 
 use App\Audit\Auditor;
-use App\Domain\Organisation\Deletion\OrganisationDeleter;
 use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\User\SignInMethods\RecentProof;
 use App\Entity\Membership;
@@ -29,9 +28,9 @@ final readonly class OwnershipTransfer
     public const string TRANSFERRED = 'organisation.ownership_transferred';
 
     public function __construct(
-        private OrganisationDeleter $organisationDeleter,
         private RecentProof $recentProof,
         private MembershipRepository $membershipRepository,
+        private OwnerCheck $ownerCheck,
         private RoleAssignment $roleAssignment,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
@@ -44,7 +43,7 @@ final readonly class OwnershipTransfer
     /** `$proof` is the caller's from /api/auth/proof: nobody who picks up a signed-in device gives the organisation away. */
     public function transfer(Organisation $organisation, User $by, string $membershipId, #[SensitiveParameter] ?string $proof, ?string $asked = null): Membership
     {
-        $this->organisationDeleter->ownerOf($organisation, $by);
+        $this->ownerCheck->require($organisation, $by, 'organisation.transfer_owner_required');
         $to = $this->candidate($organisation, $membershipId, $by);
         $this->recentProof->require($by, $proof);
 

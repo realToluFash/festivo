@@ -310,6 +310,10 @@ phone's button: every session but this device's ends at once.
   as `pendingProof`. The retry sends `{pendingProof, code}` in place of the first factor,
   because a provider's authorization code is single-use (RFC 6749 §4.1.2). It stands for no
   change itself, lapses with the five minutes, and is spent once the code passes.
+- **Asked for the code straight after Google or Apple**, the `two_factor_required` answer
+  also carries `providerEmail`: the address that sign-in vouched for, as the provider wrote
+  it, so step two can say which account was used (sc-2197). Without a vouched address it is
+  absent, never filled in from the account; no other answer carries it.
 - **Then the limit**: `sign_out_elsewhere_account`, five proved calls per account in a fixed
   fifteen-minute window. Past it, `429 too_many_attempts` with `Retry-After` and the time
   in the detail, and nothing ends. The proof is checked before the budget is spent, so
