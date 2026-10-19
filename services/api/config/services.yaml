@@ -139,6 +139,9 @@ services:
     App\Domain\User\SignInMethods\SignInMethodMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\SignInRules\SignInRulesMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\TwoFactor\Recovery\NotMeLink:
         arguments:
             $secret: '%kernel.secret%'

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Controller;
 
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Http\IssuedTokensResponse;
 use App\Domain\User\TokenIssuer;
 use App\Entity\RefreshToken;
@@ -14,8 +15,11 @@ use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Http\RefreshTokenCookies;
 use App\Repository\RefreshTokenRepository;
+use DateInterval;
 use Doctrine\ORM\EntityManagerInterface;
+use Psl\Str;
 use Psl\Type;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -31,6 +35,8 @@ final class TokenController
         private readonly TokenIssuer $tokenIssuer,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
+        private readonly SignInRules $signInRules,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -57,6 +63,8 @@ final class TokenController
         if (!$token->isUsable()) {
             throw $this->refuse();
         }
+
+        $this->endIfIdle($token);
 
         $tokens = $this->tokenIssuer->rotate($token, $request);
         $this->entityManager->flush();
@@ -87,6 +95,33 @@ final class TokenController
         $this->entityManager->flush();
 
         return $response;
+    }
+
+    /** A token is issued at each use, so its age is how long the session has gone unused. */
+    private function endIfIdle(#[SensitiveParameter] RefreshToken $token): void
+    {
+        $user = $token->getUser();
+        $limit = $this->signInRules->inactivityLimit($user);
+
+        if (null === $limit || $token->getCreatedAt() > $this->clock->now()->sub(new DateInterval(Str\format('P%dD', $limit->days)))) {
+            return;
+        }
+
+        $this->tokenIssuer->revokeChain($token);
+        $this->entityManager->flush();
+
+        throw new ApiException(
+            ErrorCode::SessionTimedOut,
+            Str\format('%s signs people out after %d days without use. Sign in again to carry on.', $limit->organisation->getName(), $limit->days),
+            [],
+            null,
+            [],
+            [
+                'organisation' => $limit->organisation->getName(),
+                'days' => $limit->days,
+                'email' => $user->getPrimaryEmailAddress()?->getAddress() ?? '',
+            ],
+        );
     }
 
     /** @return array{refreshToken?: string, refreshTokenIn?: RefreshTokenDelivery} */

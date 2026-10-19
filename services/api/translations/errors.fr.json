@@ -51,5 +51,10 @@
     "recovery_request_closed": "Cette demande est déjà terminée.",
     "recovery_request_proved": "Cette demande attend déjà une réponse.",
     "recovery_request_replaced": "Une demande plus récente a été lancée sur un autre appareil.",
-    "registration_expired": "Recommencez l'inscription."
+    "registration_expired": "Recommencez l'inscription.",
+    "provider_kept_by_rule": "Votre organisation n'accepte que Google ou Apple : le dernier compte associé est conservé.",
+    "oauth_only": "Cette organisation n'accepte que la connexion avec Google ou Apple.",
+    "oauth_only_unlinked": "Lecture seule tant que vous n'avez pas associé Google ou Apple.",
+    "organisation_two_factor_required": "Cette organisation demande d'abord la double authentification.",
+    "session_timed_out": "Vous avez été déconnecté après une période d'inactivité."
 }

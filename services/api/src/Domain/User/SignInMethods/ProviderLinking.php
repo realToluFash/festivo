@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\SignInMethods;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\User\Provider\ProviderClaims;
 use App\Domain\User\TokenIssuer;
 use App\Entity\ProviderIdentity;
@@ -38,6 +39,7 @@ final readonly class ProviderLinking
         private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private SignInRules $signInRules,
     ) {
     }
 
@@ -125,7 +127,19 @@ final readonly class ProviderLinking
                 throw new ApiException(ErrorCode::LastSignInMethod, 'Set a password or link another account before removing this one.');
             }
 
-            // sc-69 refuses here too, when an organisation requires Google or Apple and this is the member's last one.
+            $requiring = [] === $kept ? $this->signInRules->requiringProvider($user) : null;
+
+            if (null !== $requiring) {
+                throw new ApiException(
+                    ErrorCode::ProviderKeptByRule,
+                    'Your organisation signs in with Google or Apple only. Link the other one first.',
+                    [],
+                    null,
+                    [],
+                    ['organisation' => $requiring->getName(), 'provider' => $provider->value],
+                );
+            }
+
             foreach ($removed as $identity) {
                 $this->entityManager->remove($identity);
             }
