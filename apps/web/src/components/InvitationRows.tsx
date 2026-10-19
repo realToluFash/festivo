@@ -12,15 +12,19 @@ import { useTranslation } from 'react-i18next';
 import { currentLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 
+/** What follows "You joined": a button into it, or, on `/complete-profile`, a line saying where finishing goes. */
+export type AfterJoining =
+  { open: (organisationId: string) => void } | { note: (invitationId: string) => string };
+
 /** `OrgSwitcher-*` Tweaks `invitation` to `no_org_invitation`: each one waiting, and what came of answering it. */
 export function InvitationRows({
   waiting,
   place,
-  onOpen,
+  after,
 }: {
   waiting: WaitingInvitations;
-  place: 'menu' | 'page';
-  onOpen: (organisationId: string) => void;
+  place: 'menu' | 'page' | 'profile';
+  after: AfterJoining;
 }) {
   return (
     <>
@@ -30,7 +34,7 @@ export function InvitationRows({
           invitation={invitation}
           waiting={waiting}
           headingId={`invitation-${invitation.id}-${place}`}
-          onOpen={onOpen}
+          after={after}
         />
       ))}
     </>
@@ -41,12 +45,12 @@ function InvitationRow({
   invitation,
   waiting,
   headingId,
-  onOpen,
+  after,
 }: {
   invitation: InvitationPreview;
   waiting: WaitingInvitations;
   headingId: string;
-  onOpen: (organisationId: string) => void;
+  after: AfterJoining;
 }) {
   const { t } = useTranslation();
   const outcome = waiting.outcomes[invitation.id];
@@ -113,24 +117,37 @@ function InvitationRow({
         </div>
       )}
 
-      {outcome?.kind === 'accepted' && (
-        <div className="invitation-row-answer">
-          <div className="invitation-row-said invitation-row-joined" role="status">
+      {outcome?.kind === 'accepted' &&
+        ('open' in after ? (
+          <div className="invitation-row-answer">
+            <div className="invitation-row-said invitation-row-joined" role="status">
+              <span className="mark mark-done" aria-hidden="true">
+                ✓
+              </span>
+              <p>{t('invitations.joined', { organisation, role })}</p>
+            </div>
+            <button
+              className="button button-primary invitation-row-open"
+              type="button"
+              title={t('invitations.open', { organisation })}
+              onClick={() => after.open(outcome.organisationId)}
+            >
+              {t('invitations.open', { organisation })}
+            </button>
+          </div>
+        ) : (
+          <div className="invitation-row-said" role="status">
             <span className="mark mark-done" aria-hidden="true">
               ✓
             </span>
-            <p>{t('invitations.joined', { organisation, role })}</p>
+            <div className="invitation-row-joined-saying">
+              <p className="invitation-row-joined">
+                {t('invitations.joined', { organisation, role })}
+              </p>
+              <p className="invitation-row-next">{after.note(invitation.id)}</p>
+            </div>
           </div>
-          <button
-            className="button button-primary invitation-row-open"
-            type="button"
-            title={t('invitations.open', { organisation })}
-            onClick={() => onOpen(outcome.organisationId)}
-          >
-            {t('invitations.open', { organisation })}
-          </button>
-        </div>
-      )}
+        ))}
 
       {outcome?.kind === 'declined' && (
         <div className="invitation-row-said" role="status">

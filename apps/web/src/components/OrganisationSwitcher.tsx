@@ -129,11 +129,13 @@ export function OrganisationSwitcher({
               <InvitationRows
                 waiting={waiting}
                 place="menu"
-                onOpen={(id) => {
-                  const joined = organisations.find((organisation) => organisation.id === id);
+                after={{
+                  open: (id) => {
+                    const joined = organisations.find((organisation) => organisation.id === id);
 
-                  setOpen(false);
-                  if (joined != null) onSwitch(joined);
+                    setOpen(false);
+                    if (joined != null) onSwitch(joined);
+                  },
                 }}
               />
             </section>

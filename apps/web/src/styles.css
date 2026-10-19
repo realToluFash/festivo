@@ -1485,11 +1485,67 @@ h2 {
   color: var(--colorAccentText);
 }
 
+.invitation-row-joined-saying {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceHair);
+  min-width: 0;
+}
+
+.invitation-row-next {
+  font: var(--typeSmall);
+  color: var(--colorInk);
+}
+
 .invitation-row-open {
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.profile-invitations {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+  min-width: 0;
+}
+
+.profile-invitations-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxs);
+}
+
+.profile-invitations-head p {
+  margin: 0;
+}
+
+.profile-invitations-heading {
+  font: var(--typeButton);
+}
+
+.profile-invitations-intro {
+  font: var(--typeSmall);
+  color: var(--colorInkSecondary);
+}
+
+.or-rule {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceLg);
+  min-width: 0;
+  margin: 0;
+  font: var(--typeButton);
+  color: var(--markInfoInk);
+}
+
+.or-rule::before,
+.or-rule::after {
+  flex: 1;
+  height: 1px;
+  background: var(--colorInsetBorder);
+  content: '';
 }
 
 .no-organisation-invitations {

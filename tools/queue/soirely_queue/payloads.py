@@ -122,6 +122,17 @@ def threads(p, pr, story, row):
                f"{SQ} lead done {row['id']} --note \"<one line>\"")
 
 
+def answer_threads(p, pr, story, row):
+    p.add(*V.header(story))
+    V.notes(p, story)
+    V.pr_status(p, pr)
+    n = pr["number"]
+    p.add("", "The lead passed this head, but an open thread holds the merge. Fix it and push "
+              "(the push voids the pass), or answer it so the lead can resolve it.")
+    next_lines(p, f"{SQ} {p.role} pr-reply {n} <comment id> --text \"…\"",
+               f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+
+
 def checks_red(p, pr, story, row):
     V.pr_status(p, pr, compact=True)
     failed = [c for c in github.pr_checks(pr["number"]) if c.get("bucket") == "fail"]
@@ -177,6 +188,8 @@ def render(p, db, row, cache):
         return review(p, db, row, story, pr, cache)
     if kind == "threads":
         return threads(p, pr, story, row)
+    if kind == "answer-threads":
+        return answer_threads(p, pr, story, row)
     if kind == "checks-red":
         p.add(*V.header(story))
         return checks_red(p, pr, story, row)

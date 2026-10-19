@@ -462,16 +462,25 @@ function Request({
         saying={
           <Saying
             title={t('lostTwoFactor.endedTitle')}
-            intro={t('lostTwoFactor.endedIntro')}
+            intro={t(recoveryIntroKey('expired', state.nobody))}
             mark={{ tone: 'skipped', word: t('lostTwoFactor.endedMark') }}
           />
         }
       >
-        <PrimaryButton
-          label={t('lostTwoFactor.askAgain')}
-          onPress={onAskAgain}
-          testID="lostTwoFactor.askAgain"
-        />
+        {state.nobody && supportAddress !== '' && (
+          <SecondaryButton
+            label={t('lostTwoFactor.emailSupport', { address: supportAddress })}
+            onPress={() => void Linking.openURL(`mailto:${supportAddress}`)}
+            testID="lostTwoFactor.support"
+          />
+        )}
+        {!state.nobody && (
+          <PrimaryButton
+            label={t('lostTwoFactor.askAgain')}
+            onPress={onAskAgain}
+            testID="lostTwoFactor.askAgain"
+          />
+        )}
         <BackToSignIn />
       </AuthFrame>
     );

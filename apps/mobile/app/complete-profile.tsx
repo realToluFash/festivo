@@ -1,5 +1,6 @@
 import { ApiError, type Account, type JoinOffers, awaiting } from '@soirely/api-client';
 import {
+  answeringInvitation,
   deviceRegion,
   followCountry,
   formatDay,
@@ -7,6 +8,7 @@ import {
   phoneLengthProblem,
   pickPhoneCountry,
   startingPhoneCountry,
+  waitingInvitations,
 } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
 import { router } from 'expo-router';
@@ -24,14 +26,17 @@ import {
 } from '../src/components/Buttons.tsx';
 import { CountryPicker, focusPicker } from '../src/components/CountryPicker.tsx';
 import { Field, TextField } from '../src/components/Field.tsx';
+import { InvitationRows } from '../src/components/InvitationRows.tsx';
 import { LinkedNotice } from '../src/components/LinkedNotice.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
+import { type WaitingInvitations, useInvitationsOnOpen } from '../src/invitations.ts';
 import { landingFor } from '../src/landing.ts';
 import { phoneProblemMessage } from '../src/phoneProblem.ts';
+import { rememberOrganisation } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
 /** The API's OrganisationRules::NAME_MAXIMUM. */
@@ -344,6 +349,23 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
   const phoneInput = useRef<TextInput>(null);
   const countryPicker = useRef<View>(null);
 
+  // Read once, when the screen opens asking for an organisation; the rows stay until the person leaves (sc-3353).
+  const loaded = useInvitationsOnOpen(account.needsOrganisation);
+  // Finishing lands in the first one accepted; another is a membership reached from the switcher.
+  const [firstJoined, setFirstJoined] = useState<string | null>(null);
+  const waiting: WaitingInvitations = {
+    ...loaded,
+    answer: async (invitation, choice) => {
+      const outcome = await loaded.answer(invitation, choice);
+      if (outcome.kind === 'accepted') setFirstJoined((first) => first ?? outcome.organisationId);
+
+      return outcome;
+    },
+  };
+  const stillOpen = waitingInvitations(loaded.invitations, loaded.outcomes);
+  const needsOne = account.needsOrganisation && firstJoined == null;
+  const answering = answeringInvitation(loaded.outcomes);
+
   // Only a self-registered account in no organisation is offered one at its domain (sc-561).
   const [offered, setOffered] = useState<JoinOffers | null>(null);
   const [own, setOwn] = useState(false);
@@ -367,11 +389,11 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
   }, [account.needsOrganisation]);
 
   const offers = offered?.offers ?? [];
-  const showOffers = offers.length > 0 && !own;
-  const asksForOrganisation = account.needsOrganisation && !showOffers;
+  const showOffers = needsOne && offers.length > 0 && !own;
+  const asksForOrganisation = needsOne && !showOffers;
 
   async function save(askToJoin: string | null = null): Promise<void> {
-    if (saving) return;
+    if (saving || answering) return;
     if (showOffers && askToJoin == null) return;
 
     const founds = asksForOrganisation && askToJoin == null;
@@ -379,7 +401,11 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
     const checked: Errors = {};
     if (name.trim() === '') checked.name = t('completeProfile.nameBlank');
     if (founds && organisationName.trim() === '') {
-      checked.organisationName = t('completeProfile.organisationBlank');
+      checked.organisationName = t(
+        stillOpen > 0
+          ? 'completeProfile.organisationOrInvitation'
+          : 'completeProfile.organisationBlank',
+      );
     }
     // Nothing named a country, so the field started blank: the person chooses rather than us guessing.
     if (founds && countryCode === '') checked.countryCode = t('forms.countryBlank');
@@ -431,6 +457,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
         phoneNumber: phoneNumber.trim(),
       });
 
+      if (firstJoined != null) await rememberOrganisation(firstJoined);
       // A changed number is texted even while the account still counts as verified.
       if (saved.verificationNeeded) router.replace('/verify-phone?from=onboarding');
       else if (saved.account.waitingFor != null) onAsked(saved.account);
@@ -492,6 +519,47 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
         />
       </Field>
 
+      {loaded.invitations.length > 0 && (
+        <View style={styles.invitations}>
+          <View style={styles.invitationsHead}>
+            <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+              {t('invitations.heading')}
+            </Text>
+            <Text size={tokens.typeSmall.size} muted>
+              {firstJoined != null
+                ? t('completeProfile.invitationsJoined')
+                : stillOpen === 0
+                  ? t('completeProfile.invitationsNone')
+                  : t('completeProfile.invitationsWaiting', { count: stillOpen })}
+            </Text>
+          </View>
+          <InvitationRows
+            waiting={waiting}
+            after={{
+              note: (id) => {
+                const outcome = loaded.outcomes[id];
+                const first =
+                  outcome?.kind === 'accepted' && outcome.organisationId === firstJoined;
+
+                return t(
+                  first ? 'completeProfile.joinedGoesThere' : 'completeProfile.joinedSwitchLater',
+                );
+              },
+            }}
+          />
+        </View>
+      )}
+
+      {needsOne && stillOpen > 0 && (
+        <View style={styles.orRule}>
+          <View style={styles.rule} />
+          <Text size={tokens.typeButton.size} weight="semibold" muted>
+            {t('completeProfile.orStartOwn')}
+          </Text>
+          <View style={styles.rule} />
+        </View>
+      )}
+
       {unavailable && (
         <Notice
           tone="broken"
@@ -549,7 +617,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
         </View>
       )}
 
-      {offers.length > 0 && own && (
+      {needsOne && offers.length > 0 && own && (
         <QuietButton
           label={t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
           onPress={() => setOwn(false)}
@@ -637,6 +705,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
           label={saving ? t('completeProfile.saving') : t('completeProfile.save')}
           onPress={() => void save()}
           busy={saving}
+          off={answering}
           testID="completeProfile.save"
         />
       )}
@@ -665,6 +734,10 @@ function SignedInAs({ email }: { email: string }) {
 
 const styles = StyleSheet.create({
   form: { gap: tokens.spaceXl },
+  invitations: { gap: tokens.spaceMd },
+  invitationsHead: { gap: tokens.spaceXxs },
+  orRule: { flexDirection: 'row', alignItems: 'center', gap: tokens.spaceLg },
+  rule: { flex: 1, height: 1, backgroundColor: tokens.colorInsetBorder },
   offers: { gap: tokens.spaceMd },
   offersIntro: { gap: tokens.spaceXxs },
   offer: {

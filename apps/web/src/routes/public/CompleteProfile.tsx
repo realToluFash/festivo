@@ -1,5 +1,11 @@
-import { ApiError, type JoinOffers, type JoinRequest } from '@soirely/api-client';
 import {
+  ApiError,
+  type InvitationPreview,
+  type JoinOffers,
+  type JoinRequest,
+} from '@soirely/api-client';
+import {
+  answeringInvitation,
   countryChoices,
   deviceCountry,
   followCountry,
@@ -8,6 +14,7 @@ import {
   phoneLengthProblem,
   pickPhoneCountry,
   startingPhoneCountry,
+  waitingInvitations,
 } from '@soirely/domain';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,17 +22,20 @@ import { Navigate, useNavigate } from 'react-router';
 
 import { api } from '../../api.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { InvitationRows } from '../../components/InvitationRows.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { currentLocale } from '../../i18n/index.ts';
+import { type WaitingInvitations, useWaitingInvitations } from '../../invitations.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import {
   adoptAccount,
   forgetSession,
   landingFor,
+  rememberOrganisation,
   restoreSession,
   useSessionState,
 } from '../../session.ts';
@@ -234,6 +244,22 @@ function Details({
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Read once, when the page opens asking for an organisation; the rows stay until the person leaves (sc-3353).
+  const loaded = useWaitingInvitations(needsOrganisation);
+  // Finishing lands in the first one accepted; another is a membership reached from the switcher.
+  const [firstJoined, setFirstJoined] = useState<string | null>(null);
+  const waiting: WaitingInvitations = {
+    ...loaded,
+    answer: async (invitation: InvitationPreview, choice: 'accept' | 'decline') => {
+      const outcome = await loaded.answer(invitation, choice);
+      if (outcome.kind === 'accepted') setFirstJoined((first) => first ?? outcome.organisationId);
+
+      return outcome;
+    },
+  };
+  const stillOpen = waitingInvitations(loaded.invitations, loaded.outcomes);
+  const asksForOrganisation = needsOrganisation && firstJoined == null;
+  const answering = answeringInvitation(loaded.outcomes);
   const nameInput = useRef<HTMLInputElement>(null);
   const organisationInput = useRef<HTMLInputElement>(null);
   const phoneInput = useRef<HTMLInputElement>(null);
@@ -261,8 +287,8 @@ function Details({
   }, [needsOrganisation]);
 
   const offers = offered?.offers ?? [];
-  const showOffers = offers.length > 0 && !own;
-  const founding = needsOrganisation && !showOffers;
+  const showOffers = asksForOrganisation && offers.length > 0 && !own;
+  const founding = asksForOrganisation && !showOffers;
 
   function change(field: Exclude<Field, 'timezone'>, value: string): void {
     setValues((previous) => {
@@ -292,7 +318,7 @@ function Details({
   async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    if (showOffers) return;
+    if (answering || showOffers) return;
 
     await send(null);
   }
@@ -304,7 +330,11 @@ function Details({
     const checked: Errors = {};
     if (values.name.trim() === '') checked.name = t('completeProfile.nameBlank');
     if (founds && values.organisationName.trim() === '') {
-      checked.organisationName = t('completeProfile.organisationBlank');
+      checked.organisationName = t(
+        stillOpen > 0
+          ? 'completeProfile.organisationOrInvitation'
+          : 'completeProfile.organisationBlank',
+      );
     }
     if (founds && values.countryCode === '') {
       checked.countryCode = t('forms.countryBlank');
@@ -352,6 +382,7 @@ function Details({
         phoneNumber: values.phoneNumber.trim(),
       });
 
+      if (firstJoined != null) rememberOrganisation(firstJoined);
       await adoptAccount(saved.account);
       onSaved(saved.verificationNeeded, askToJoin != null);
     } catch (error) {
@@ -411,6 +442,42 @@ function Details({
         {errors.name != null && <FieldError id="name-error" message={errors.name} />}
       </div>
 
+      {loaded.invitations.length > 0 && (
+        <section className="profile-invitations" aria-labelledby="profile-invitations-heading">
+          <div className="profile-invitations-head">
+            <p id="profile-invitations-heading" className="profile-invitations-heading">
+              {t('invitations.heading')}
+            </p>
+            <p className="profile-invitations-intro">
+              {firstJoined != null
+                ? t('completeProfile.invitationsJoined')
+                : stillOpen === 0
+                  ? t('completeProfile.invitationsNone')
+                  : t('completeProfile.invitationsWaiting', { count: stillOpen })}
+            </p>
+          </div>
+          <InvitationRows
+            waiting={waiting}
+            place="profile"
+            after={{
+              note: (id) => {
+                const outcome = loaded.outcomes[id];
+                const first =
+                  outcome?.kind === 'accepted' && outcome.organisationId === firstJoined;
+
+                return t(
+                  first ? 'completeProfile.joinedGoesThere' : 'completeProfile.joinedSwitchLater',
+                );
+              },
+            }}
+          />
+        </section>
+      )}
+
+      {asksForOrganisation && stillOpen > 0 && (
+        <p className="or-rule">{t('completeProfile.orStartOwn')}</p>
+      )}
+
       {unavailable && (
         <div className="notice notice-broken" role="alert">
           <span className="mark mark-broken" aria-hidden="true">
@@ -455,7 +522,7 @@ function Details({
         </div>
       )}
 
-      {offers.length > 0 && own && (
+      {asksForOrganisation && offers.length > 0 && own && (
         <button
           className="link-button join-offers-back"
           type="button"
@@ -545,7 +612,12 @@ function Details({
       />
 
       {!showOffers && (
-        <button className="button button-primary" type="submit" aria-busy={saving}>
+        <button
+          className="button button-primary"
+          type="submit"
+          aria-busy={saving}
+          disabled={answering}
+        >
           {saving ? t('completeProfile.saving') : t('completeProfile.save')}
         </button>
       )}

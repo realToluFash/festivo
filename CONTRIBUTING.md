@@ -39,9 +39,15 @@ scripts remain the contract.
 ```bash
 just qa-account              # a throwaway account, registered through the API
 just qa-ios                  # the app in Expo Go on a simulator
+just phone                   # the app in Expo Go on your own phone, at the latest main
 just qa-mobile sign-in       # one Maestro flow from apps/mobile/.maestro
 just qa-chrome               # a browser with a debugging port, on its own profile
 ```
+
+`just phone` moves a detached checkout to the latest `main`, starts its stack so a phone on
+the same Wi-Fi can reach it, and runs Metro there. It prints the Expo Go build for this SDK,
+the `exp://` address to enter, where email and SMS codes land, and the firewall rule to open
+when nothing loads. Run it from `../soirely-ops`, never a checkout with a branch in progress.
 
 None of these run in CI, deliberately: they need a simulator, a browser and a person — or
 an agent in QA mode. `.claude/skills/soirely-qa-tester` is what a pass does with them, how

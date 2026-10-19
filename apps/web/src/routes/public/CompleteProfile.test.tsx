@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -45,7 +45,7 @@ function at(path: string, session: Session = FOLAKE) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
-function answering(answers: Record<string, (body: unknown) => Response>) {
+function answering(answers: Record<string, (body: unknown) => Response | Promise<Response>>) {
   const sent: { method: string; path: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -407,5 +407,259 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Start my own organisation instead' }));
 
     await waitFor(() => expect(sent.some((request) => request.method === 'DELETE')).toBe(true));
+  });
+});
+
+// Every key InvitationsController::preview writes, as GET /api/invitations lists them.
+function preview(id: string, organisation: { id: string; name: string }, inviter: string | null) {
+  return {
+    id,
+    organisation,
+    email: 'folake@ire.events',
+    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+    invitedBy: inviter == null ? null : { name: inviter },
+    expiresAt: '2026-10-23T09:00:00+00:00',
+    refusal: null,
+    forYou: true,
+    signedInAs: 'folake@ire.events',
+  };
+}
+
+const ADUNNI = { id: 'org_7', name: 'Adunni Weddings' };
+const KOLA = { id: 'org_9', name: 'Kola Bello Catering' };
+const ROLE = { id: 'role_3', seededAs: 'event_manager', name: null };
+
+function invited(...invitations: unknown[]) {
+  return { 'GET /api/invitations': () => json({ invitations }) };
+}
+
+describe('a few details, with invitations waiting (sc-3353)', () => {
+  it('lists each invitation after the name and above the organisation, with a rule between', async () => {
+    answering(invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')));
+    at('/complete-profile');
+
+    const group = await screen.findByRole('group', { name: 'Adunni Weddings' });
+    expect(within(group).getByText('Invitation from Bisi Adeyemi · Event manager')).toBeDefined();
+    expect(
+      within(group).getByRole('button', { name: 'Accept and join Adunni Weddings' }),
+    ).toBeDefined();
+    expect(
+      within(group).getByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'You have an invitation waiting. Accept it to join that organisation, or start your own below.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('Or start your own organisation')).toBeDefined();
+
+    const name = screen.getByLabelText('Full name');
+    const organisation = screen.getByLabelText('Organisation name');
+    expect(name.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      group.compareDocumentPosition(organisation) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('counts two waiting in the plural', async () => {
+    answering(
+      invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi'), preview('inv_2', KOLA, 'Kola Bello')),
+    );
+    at('/complete-profile');
+
+    expect(
+      await screen.findByText(
+        'You have 2 invitations waiting. Accept one to join that organisation, or start your own below.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('asks for an organisation or an invitation when Save is pressed with neither', async () => {
+    const sent = answering(invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')));
+    at('/complete-profile');
+    await screen.findByRole('group', { name: 'Adunni Weddings' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+    expect(
+      screen.getByText('Name your organisation, or accept an invitation above.'),
+    ).toBeDefined();
+    expect(sent.filter((request) => request.method !== 'GET')).toEqual([]);
+  });
+
+  it('accepting drops the organisation fields, keeps the rest, and finishing lands in it', async () => {
+    window.localStorage.removeItem('soirely.organisation');
+    const sent = answering({
+      ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')),
+      'POST /api/invitations/inv_1/accept': () =>
+        json({ organisation: membership({ ...ADUNNI, role: ROLE }) }),
+      'PATCH /api/auth/complete-profile': () =>
+        json({ account: ACCOUNT, verificationNeeded: false }),
+      'GET /api/orgs': () => json({ organisations: [membership({ ...ADUNNI, role: ROLE })] }),
+    });
+    at('/complete-profile');
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Typed then dropped' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    expect(screen.getByText('Save and continue takes you there.')).toBeDefined();
+    expect(screen.getByText('You do not need to start an organisation now.')).toBeDefined();
+    expect(screen.queryByLabelText('Organisation name')).toBeNull();
+    expect(screen.queryByLabelText('Country')).toBeNull();
+    expect(screen.queryByText('Or start your own organisation')).toBeNull();
+    expect(screen.getByLabelText('Full name')).toBeDefined();
+    expect(screen.getByLabelText(/Mobile number/)).toBeDefined();
+    expect(sent.filter((request) => request.path === '/api/invitations')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
+    const saved = sent.find((request) => request.method === 'PATCH');
+    expect(saved?.body).toEqual({
+      name: 'Folake Adeyemi',
+      phoneCountryCode: expect.any(String),
+      phoneNumber: '',
+    });
+    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_7');
+  });
+
+  it('holds Save while an accept is in flight, so a typed organisation is never sent beside it', async () => {
+    let accepted: (response: Response) => void = () => {};
+    const sent = answering({
+      ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')),
+      'POST /api/invitations/inv_1/accept': () =>
+        new Promise<Response>((resolve) => {
+          accepted = resolve;
+        }),
+      'PATCH /api/auth/complete-profile': () =>
+        json({ account: ACCOUNT, verificationNeeded: false }),
+      'GET /api/orgs': () => json({ organisations: [membership({ ...ADUNNI, role: ROLE })] }),
+    });
+    at('/complete-profile');
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Typed then dropped' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+    await waitFor(() => expect(sent.some((request) => request.method === 'POST')).toBe(true));
+
+    const save = screen.getByRole('button', { name: 'Save and continue' });
+    expect(save).toHaveProperty('disabled', true);
+    fireEvent.submit(save.closest('form')!);
+    expect(sent.filter((request) => request.method === 'PATCH')).toEqual([]);
+
+    accepted(json({ organisation: membership({ ...ADUNNI, role: ROLE }) }));
+    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    expect(save).toHaveProperty('disabled', false);
+
+    fireEvent.click(save);
+
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
+    expect(sent.find((request) => request.method === 'PATCH')?.body).not.toHaveProperty(
+      'organisationName',
+    );
+  });
+
+  it('with two accepted, finishing lands in the first and the second can be switched to later', async () => {
+    window.localStorage.removeItem('soirely.organisation');
+    answering({
+      ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi'), preview('inv_2', KOLA, 'Kola Bello')),
+      'POST /api/invitations/inv_2/accept': () =>
+        json({ organisation: membership({ ...KOLA, role: ROLE }) }),
+      'POST /api/invitations/inv_1/accept': () =>
+        json({ organisation: membership({ ...ADUNNI, role: ROLE }) }),
+      'PATCH /api/auth/complete-profile': () =>
+        json({ account: ACCOUNT, verificationNeeded: false }),
+      'GET /api/orgs': () =>
+        json({
+          organisations: [
+            membership({ ...ADUNNI, role: ROLE }),
+            membership({ ...KOLA, role: ROLE }),
+          ],
+        }),
+    });
+    at('/complete-profile');
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Accept and join Kola Bello Catering' }),
+    );
+    await screen.findByText('You joined Kola Bello Catering as Event manager.');
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+    await screen.findByText('You joined Adunni Weddings as Event manager.');
+
+    const kola = screen.getByRole('group', { name: 'Kola Bello Catering' });
+    const adunni = screen.getByRole('group', { name: 'Adunni Weddings' });
+    expect(within(kola).getByText('Save and continue takes you there.')).toBeDefined();
+    expect(
+      within(adunni).getByText('It is in your organisations. You can switch to it later.'),
+    ).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Events' })).toBeDefined());
+    expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
+  });
+
+  it('declining every one leaves the organisation fields as they were, and the row says so', async () => {
+    answering({
+      ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')),
+      'POST /api/invitations/inv_1/decline': () => new Response(null, { status: 204 }),
+    });
+    at('/complete-profile');
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    );
+
+    expect(
+      await screen.findByText('You declined. Bisi Adeyemi will see that you said no.'),
+    ).toBeDefined();
+    expect(screen.getByText('Nothing is waiting. Name your organisation below.')).toBeDefined();
+    expect(screen.queryByText('Or start your own organisation')).toBeNull();
+    expect(screen.getByLabelText('Organisation name')).toBeDefined();
+    expect(screen.getByRole('group', { name: 'Adunni Weddings' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save and continue' }));
+    expect(screen.getByText("Add your organisation's name to carry on.")).toBeDefined();
+  });
+
+  it('keeps the organisation fields when a press is refused', async () => {
+    answering({
+      ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')),
+      'POST /api/invitations/inv_1/accept': () =>
+        json(
+          { type: 'https://soirely.com/errors/invitation_expired', title: 'No.', status: 409 },
+          409,
+        ),
+    });
+    at('/complete-profile');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    expect(await screen.findByText('Expired')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Accept and join Adunni Weddings' })).toBeNull();
+    expect(screen.getByLabelText('Organisation name')).toBeDefined();
+  });
+
+  it('with none waiting, shows no invitations group', async () => {
+    const sent = answering(invited());
+    at('/complete-profile');
+
+    await waitFor(() =>
+      expect(sent.some((request) => request.path === '/api/invitations')).toBe(true),
+    );
+    expect(screen.queryByText('Invitations')).toBeNull();
+    expect(screen.queryByText('Or start your own organisation')).toBeNull();
+    expect(screen.getByLabelText('Organisation name')).toBeDefined();
+  });
+
+  it('does not ask an account that needs no organisation for its invitations', () => {
+    const sent = answering(invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')));
+    at('/complete-profile', { ...FOLAKE, needsOrganisation: false });
+
+    expect(sent.filter((request) => request.path === '/api/invitations')).toEqual([]);
   });
 });

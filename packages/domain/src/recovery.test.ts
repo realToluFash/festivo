@@ -14,16 +14,18 @@ describe('where the lost-two-factor screen starts', () => {
   });
 });
 
-describe('the sentence under an answered request’s heading', () => {
+describe('the sentence under an asked request’s heading', () => {
   it('names the organisations while somebody is left to answer', () => {
     expect(recoveryIntroKey('waiting', false)).toBe('lostTwoFactor.waitingIntro');
     expect(recoveryIntroKey('approved', false)).toBe('lostTwoFactor.approvedIntro');
     expect(recoveryIntroKey('turned_down', false)).toBe('lostTwoFactor.turnedDownIntro');
+    expect(recoveryIntroKey('expired', false)).toBe('lostTwoFactor.endedIntro');
   });
 
   it('names none once nobody is left, so no slot is ever empty', () => {
     expect(recoveryIntroKey('waiting', true)).toBe('lostTwoFactor.nobodyIntro');
     expect(recoveryIntroKey('approved', true)).toBe('lostTwoFactor.approvedIntroNobody');
     expect(recoveryIntroKey('turned_down', true)).toBe('lostTwoFactor.nobodyIntro');
+    expect(recoveryIntroKey('expired', true)).toBe('lostTwoFactor.nobodyIntro');
   });
 });

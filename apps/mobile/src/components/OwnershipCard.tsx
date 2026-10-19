@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
+import { refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { reloadSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -32,10 +33,6 @@ type Step =
 /** After leaving or deleting: launch reads the account again and opens its gate, or the app. */
 function landAfterLeaving(): void {
   router.replace('/');
-}
-
-function failure(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? error.problem.title : fallback;
 }
 
 /** Settings > Organisation's "Ownership and leaving" (sc-68), `OrgGeneral-*`: transfer, leave, delete. */
@@ -395,7 +392,7 @@ function Leave({
     } catch (error) {
       setBusy(false);
       if (error instanceof ApiError && error.is('last_owner')) setRefusedLast(true);
-      else setRefused(failure(error, t('ownership.failed')));
+      else setRefused(refusalTitle(error, t('ownership.failed')));
     }
   }
 
@@ -483,7 +480,7 @@ function Delete({
           : undefined;
 
       if (violation != null) setMismatch(violation.message);
-      else setFailed(failure(error, t('ownership.failed')));
+      else setFailed(refusalTitle(error, t('ownership.failed')));
     }
   }
 
