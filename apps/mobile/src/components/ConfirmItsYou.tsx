@@ -162,9 +162,14 @@ export function ConfirmItsYou({
       )}
 
       {stepTwo != null && (
-        <SignedInWith
-          email={signedIn?.email ?? null}
+        <Notice
+          tone="quiet"
+          mark={tokens.marks.done.glyph}
+          markTone="done"
           title={t('waysCard.signedInWith', { provider: PROVIDER_NAMES[stepTwo] })}
+          accentTitle
+          detail={signedIn?.email ?? null}
+          announce
         />
       )}
 
@@ -254,50 +259,7 @@ export function ConfirmItsYou({
   );
 }
 
-function SignedInWith({ title, email }: { title: string; email: string | null }) {
-  return (
-    <View style={styles.signedIn} accessible accessibilityLiveRegion="polite">
-      <View style={styles.doneMark}>
-        <Text size={tokens.typePill.size} weight="bold" style={styles.doneInk}>
-          {tokens.marks.done.glyph}
-        </Text>
-      </View>
-      <View style={styles.signedInBody}>
-        <Text size={tokens.typeRowTitle.size} weight="bold" style={styles.accent}>
-          {title}
-        </Text>
-        {email != null && (
-          <Text size={tokens.typeSmall.size} style={styles.secondary}>
-            {email}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   group: { gap: tokens.spaceLg },
   secondary: { color: tokens.colorInkSecondary },
-  accent: { color: tokens.colorAccentText },
-  signedIn: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: tokens.spaceMd,
-    padding: tokens.spaceLg,
-    borderRadius: tokens.radiusInset,
-    borderWidth: 1,
-    backgroundColor: tokens.colorInset,
-    borderColor: tokens.colorInsetBorder,
-  },
-  signedInBody: { flex: 1, gap: tokens.spaceHair },
-  doneMark: {
-    width: tokens.sizePill,
-    height: tokens.sizePill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: tokens.sizePill / 2,
-    backgroundColor: tokens.marks.done.fill,
-  },
-  doneInk: { color: tokens.marks.done.ink },
 });
