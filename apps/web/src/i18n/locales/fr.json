@@ -326,7 +326,11 @@
     "contactBlank": "Indiquez une adresse e-mail de contact.",
     "contactInvalid": "Cela ne ressemble pas à une adresse e-mail. Vérifiez qu'elle contient un @ et un domaine.",
     "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les propriétaires le peuvent.",
-    "failed": "L'enregistrement n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant."
+    "failed": "L'enregistrement n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant.",
+    "language": "Language",
+    "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
+    "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
+    "refused": "Nothing was saved. Your role does not include the permission this needs."
   },
   "completeProfile": {
     "title": "Quelques informations",
@@ -1211,5 +1215,11 @@
     "changedClose": "Close this notice",
     "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
     "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
+  },
+  "languageNames": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
   }
 }

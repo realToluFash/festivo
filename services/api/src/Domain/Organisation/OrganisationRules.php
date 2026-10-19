@@ -8,10 +8,11 @@ use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\TimeZone\AccountTimeZone;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Locale\SupportedLocales;
 use Psl\Str;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** The five fields, checked the same way when an organisation is founded and when it is edited. */
+/** The six fields, checked the same way when an organisation is founded and when it is edited. */
 final readonly class OrganisationRules
 {
     public const int NAME_MAXIMUM = 100;
@@ -22,9 +23,9 @@ final readonly class OrganisationRules
     }
 
     /**
-     * @param array{name: string, countryCode: string, currency: string, timezone: string, contactAddress: string} $fields
+     * @param array{name: string, countryCode: string, currency: string, timezone: string, contactAddress: string, locale: string} $fields
      *
-     * @return array{name: string, countryCode: string, currency: string, timezone: string, contactAddress: string}
+     * @return array{name: string, countryCode: string, currency: string, timezone: string, contactAddress: string, locale: string}
      */
     public function check(array $fields): array
     {
@@ -34,6 +35,7 @@ final readonly class OrganisationRules
             'currency' => Str\uppercase(Str\trim($fields['currency'])),
             'timezone' => Str\trim($fields['timezone']),
             'contactAddress' => EmailAddressNormaliser::normalise($fields['contactAddress']),
+            'locale' => Str\trim($fields['locale']),
         ];
 
         $violations = [];
@@ -66,6 +68,12 @@ final readonly class OrganisationRules
             $violations[] = $this->violation('contactAddress', 'validation.contact_address_required');
         } elseif (!\filter_var($checked['contactAddress'], \FILTER_VALIDATE_EMAIL)) {
             $violations[] = $this->violation('contactAddress', 'validation.contact_address_invalid');
+        }
+
+        if (SupportedLocales::supports($checked['locale'])) {
+            $checked['locale'] = SupportedLocales::narrow($checked['locale']);
+        } else {
+            $violations[] = $this->violation('locale', 'validation.locale_invalid');
         }
 
         if ([] !== $violations) {
