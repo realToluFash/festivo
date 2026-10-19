@@ -431,6 +431,31 @@ final class RegisterTest extends ApiTestCase
         }
     }
 
+    #[Test]
+    public function anInvitedRegistrationSpendsTheSameBudgetBeforeItsTokenIsRead(): void
+    {
+        $controller = new RegisterController(
+            self::service(AccountSerialiser::class),
+            self::service(PendingRegistrations::class),
+            new RefusingRateLimiterFactory(),
+            self::service(CodeField::class),
+            self::service(InvitationResponder::class),
+        );
+        $body = Json\encode([
+            'email' => 'kemi.l@example.com',
+            'name' => 'Kemi Lawal',
+            'password' => self::GOOD_PASSWORD,
+            'invitationToken' => Str\repeat('ab', 32),
+        ]);
+
+        try {
+            $controller->register(Request::create('/api/auth/register', 'POST', content: $body));
+            self::fail('the invited path skipped the registration budget');
+        } catch (ApiException $e) {
+            self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode, 'refused for the budget, not for the invented token');
+        }
+    }
+
     private function owner(string $address): void
     {
         $user = self::service(UserRegistrar::class)->register($address, 'Owner', self::GOOD_PASSWORD)->user;
