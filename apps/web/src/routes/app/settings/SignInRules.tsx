@@ -487,14 +487,15 @@ function ruleValue(t: TFunction, rule: SignInRuleChange['rule'], value: unknown)
 function effects(t: TFunction, changed: SignInRulesChanges, stranded: string[]): string[] {
   const said: string[] = [];
 
-  if (changed.providerOnly === true)
-    said.push(
-      stranded.length > 0
-        ? t('signInRules.effectStranded', {
-            names: new Intl.ListFormat(currentLocale(), { type: 'conjunction' }).format(stranded),
-          })
-        : t('signInRules.effectProviderOnly'),
-    );
+  if (changed.providerOnly === true) {
+    said.push(t('signInRules.effectProviderOnly'));
+    if (stranded.length > 0)
+      said.push(
+        t('signInRules.effectStranded', {
+          names: new Intl.ListFormat(currentLocale(), { type: 'conjunction' }).format(stranded),
+        }),
+      );
+  }
   if (changed.providerOnly === false) said.push(t('signInRules.effectAnyMethod'));
   if (changed.inactivityTimeoutDays !== undefined)
     said.push(

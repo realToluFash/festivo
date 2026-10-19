@@ -81,7 +81,10 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(screen.getByText('2 people sign in with a password only')).toBeDefined();
     const affected = within(screen.getByRole('list', { name: 'People affected' }));
     expect(affected.getByText('Bisi Adeyemi · Administrator · password')).toBeDefined();
-    expect(screen.getByText(/Bisi Adeyemi and Chidi Okoro can read but not change/)).toBeDefined();
+    expect(screen.getByText(/asked to sign in again with it/)).toBeDefined();
+    expect(
+      screen.getByText(/Bisi Adeyemi and Chidi Okoro can read but not change/).textContent,
+    ).toMatch(/Their password still signs them in\.$/);
     expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
   });
 
