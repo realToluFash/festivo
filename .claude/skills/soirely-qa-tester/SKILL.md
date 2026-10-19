@@ -287,6 +287,7 @@ developer's bundler and whichever simulator happens to be booted.
 ```sh
 node .qa/bin/qa-env.mjs android [--tablet]               # the bundler, in Expo Go, on the phone (or tablet); stops the other
 node .qa/bin/qa-env.mjs maestro sign-in --android EMAIL=… PASSWORD=…  # one flow, on whichever is running
+node .qa/bin/qa-env.mjs link 'soirely://oauth/…'          # hand a provider redirect back to Expo Go
 node .qa/bin/qa-env.mjs android --stop                   # the emulator, when the pass is done
 ```
 
