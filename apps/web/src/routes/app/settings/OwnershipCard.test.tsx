@@ -53,6 +53,22 @@ function signedIn(organisation = IRE): void {
   __setSessionState({ status: 'signedIn', session });
 }
 
+const ME = {
+  id: 'u_folake',
+  name: 'Folake Adeyemi',
+  businessName: null,
+  countryCode: null,
+  locale: 'en',
+  timezone: null,
+  verified: true,
+  complete: true,
+  needsOrganisation: false,
+  hasPassword: true,
+  providers: [],
+  emailAddresses: [{ id: 'a1', address: 'folake@ire.events', verified: true, primary: true }],
+  phoneNumbers: [],
+};
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -190,6 +206,31 @@ describe('Settings > General, ownership and leaving', () => {
     await waitFor(() =>
       expect(sent.some((one) => one.line === 'POST /api/orgs/org_1/leave')).toBe(true),
     );
+  });
+
+  it('lands an account that left its only organisation on the page that says so', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        role: { id: 'role_4', seededAs: 'coordinator', name: null },
+        permissions: ['events.read'],
+      }),
+    );
+    answering({
+      'POST /api/orgs/org_1/leave': () => new Response(null, { status: 204 }),
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'GET /api/invitations/mine': () => json({ invitations: [] }),
+    });
+    settings();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'You are not in an organisation' }),
+    ).toBeDefined();
   });
 
   it('states what deleting destroys and until when support can restore it', async () => {
