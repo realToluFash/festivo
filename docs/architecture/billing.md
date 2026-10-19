@@ -128,10 +128,11 @@ can see.
 ## Changed, 19 Oct: owner decisions on epic 37
 
 The owner approved the prices and limits recorded in epic 37, "Decided, 19 Oct: prices and
-limits" (memo sc-3928 #4131). Three lines above changed with them:
+limits" (memo sc-3928 #4131). Two lines above changed with them, and one rule is new:
 
 - **Guests per event is not a limit on any plan, Free included** (#3835). The Hard row read
-  "guests per event, team seats, active events", and the first bullet of this section read
+  "guests per event, team seats, active events", and the first bullet of "A paywall must never
+  ruin somebody's wedding" read
   "when the event is made, the guest added, the member invited". A guest who is not messaged
   costs nothing measurable, and a cap would refuse a host mid-list.
 - **WhatsApp is on every plan, Free included, paid per message in credits** (#4152, #4169).
@@ -139,5 +140,7 @@ limits" (memo sc-3928 #4131). Three lines above changed with them:
   read "messages, AI requests, storage". The credit is the only gate, so a plan never
   carries a WhatsApp flag.
 - **SMS and WhatsApp are priced by destination**: credits per message = ⌈provider cost ÷
-  0.0063⌉, about a 30% margin in the smallest pack, with the table by country in #4131. An
-  AI request is 13 credits. Guest email takes no credits and has no quota.
+  0.0063⌉, about a 30% margin in the smallest pack, with the table by country in #4131. SMS
+  is charged per segment, and WhatsApp by the category Meta charged for the message. AI is
+  13 credits per delivered proposal on the model in force (claude-opus-5-5); questions about
+  the host's own event cost 0 (sc-3928 #4278). Guest email takes no credits and has no quota.
