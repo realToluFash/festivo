@@ -11,7 +11,7 @@ final class Version20261019120000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Invitations as their own record, every membership transition with who, when and through which channel, and the language a stranger is invited in.';
+        return 'Invitations as their own record, every membership transition with who, when and through which channel, and the language a stranger is invited in. Left and removed become one state, so rolling back returns every former membership as removed.';
     }
 
     public function up(Schema $schema): void
@@ -108,5 +108,10 @@ final class Version20261019120000 extends AbstractMigration
         $this->addSql('ALTER TABLE organisations DROP locale');
         $this->addSql('DROP TABLE invitations');
         $this->addSql('DROP TABLE membership_transitions');
+        $this->addSql(<<<'SQL'
+            UPDATE memberships
+               SET status = 'removed'
+             WHERE status = 'left_or_removed'
+            SQL);
     }
 }
