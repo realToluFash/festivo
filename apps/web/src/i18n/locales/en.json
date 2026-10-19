@@ -569,7 +569,7 @@
     "confirmEmailed": "We email every verified address on your account to say {{provider}} was unlinked.",
     "confirmUnlink": "Unlink {{provider}}",
     "keep": "Keep it linked",
-    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one cannot be removed.",
+    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one can't be removed.",
     "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
   "timeZone": {

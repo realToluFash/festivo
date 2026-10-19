@@ -521,7 +521,7 @@ describe('unlinking a provider', () => {
 
     expect(
       await screen.findByText(
-        'A rule set by Ìrè Events: everyone in it signs in with Google or Apple, so your last one cannot be removed.',
+        "A rule set by Ìrè Events: everyone in it signs in with Google or Apple, so your last one can't be removed.",
       ),
     ).toBeDefined();
     expect(screen.getByText('Link Apple first if you want to unlink Google.')).toBeDefined();
