@@ -682,7 +682,7 @@
     "capPhones_other": "Puede añadir {{count}} más. Una cuenta admite hasta {{most}} números de teléfono, incluido el principal.",
     "capFullEmails": "Tiene {{most}}, el máximo que admite una cuenta. Quite una para añadir otra.",
     "capFullPhones": "Tiene {{most}}, el máximo que admite una cuenta. Quite uno para añadir otro.",
-    "verified": "Verificado",
+    "verified": "Verificada",
     "verifiedPhone": "Verificado",
     "unverified": "Sin verificar",
     "primary": "Principal",

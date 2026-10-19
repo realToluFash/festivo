@@ -117,7 +117,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Ajout effectué. Reste la vérification : … », and the server's « Ces coordonnées ».
   Where no neutral form reads well (`verified`, `primary`, `makePrimary`, `removeConfirm`,
   `removeKeep`), the key holds the feminine for addresses and the number gets a key of its
-  own, asked of [dev] on sc-2149. Never « principal·e » or « Vérifié(e) ».
+  own (`verifiedPhone` « Vérifié », `primaryPhone` « Principal », `makePrimaryPhone`
+  « Définir comme principal », `removeConfirmPhone` « Le retirer », `removeKeepPhone`
+  « Le garder », sc-2149). Never « principal·e » or « Vérifié(e) ».
   The cap's `_one` reads « Vous pouvez encore ajouter une adresse » (« un numéro »), with no
   `{{count}}`, as the English does. French `one` also covers 0, but the cap line shows only
   while at least one is left: 0 left shows `capFullEmails`/`capFullPhones` instead
