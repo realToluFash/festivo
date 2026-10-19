@@ -4,7 +4,7 @@ export type MemberFilter = 'all' | 'active' | 'invited' | 'waiting' | 'suspended
 export type MemberState = 'pending_approval' | 'active' | 'suspended' | 'left_or_removed';
 
 export type JoinChannel =
-  'invitation' | 'self_created' | 'join_code' | 'domain' | 'request' | 'directory';
+  'invitation' | 'self_created' | 'join_code' | 'domain' | 'request' | 'directory' | 'settings';
 
 /** Whether a membership in `status` is listed under `filter`; former members are only under Former. */
 export function memberIsShown(status: MemberState, filter: MemberFilter): boolean {

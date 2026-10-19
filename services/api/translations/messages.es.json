@@ -17,6 +17,8 @@
     "gate.phone_unverified": "Verifique su número de móvil para continuar.",
     "proof.required": "Para esto hace falta que haya confirmado su contraseña o iniciado sesión con Google o Apple en los últimos {minutes} minutos, además de su código de verificación en dos pasos si la tiene activada.",
     "roles.last_owner": "Es el único propietario de la organización. Antes, haga propietario a otra persona.",
+    "organisation.owner_required": "Only an owner can delete the organisation.",
+    "organisation.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
     "roles.grant_not_held": "Solo puede conceder, retirar o pasar personas a permisos que tiene su propio rol. No se ha cambiado nada.",
     "roles.name_builtin": "A un rol predefinido no se le puede cambiar el nombre, pero sí lo que incluye.",
     "roles.name_required": "Póngale un nombre al rol.",
@@ -67,5 +69,7 @@
     "invitations.revoked": "This invitation was withdrawn.",
     "invitations.expired": "This invitation has expired. Ask whoever invited you to send a new one.",
     "validation.invite_email_required": "Enter their email address.",
-    "validation.invite_email_invalid": "That does not look like an email address. Check it has an @ and a domain."
+    "validation.invite_email_invalid": "That does not look like an email address. Check it has an @ and a domain.",
+    "members.own_membership": "You cannot change your own role or remove yourself. Another owner or administrator can, or you can leave from General.",
+    "members.choose_new_owner": "Choose who becomes the owner."
 }

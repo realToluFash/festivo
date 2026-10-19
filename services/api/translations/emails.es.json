@@ -121,5 +121,13 @@
     "signInRules.changed.link": "Hasta que vincule Google o Apple, podrá consultar, pero no cambiar nada en {organisation}. Su contraseña le sigue sirviendo para iniciar sesión.",
     "signInRules.changed.linkWhere": "Para vincular Google o Apple, vaya a Seguridad: {link}",
     "signInRules.changed.see": "Ver las normas vigentes: {link}",
-    "signInRules.changed.footer": "Recibe este correo porque es miembro de {organisation}."
+    "signInRules.changed.footer": "Recibe este correo porque es miembro de {organisation}.",
+    "organisationDeleted.subject": "{organisation} has been deleted",
+    "organisationDeleted.body": "{name} deleted {organisation} on {when}. From that moment nobody can reach it, its events or anything in them.",
+    "organisationDeleted.restore": "Soirely support can restore it until {deadline}; after that it is gone for good.",
+    "organisationDeleted.footer": "You're getting this because you were a member of {organisation}.",
+    "ownershipTransferred.subject": "{organisation} has a new owner",
+    "ownershipTransferred.youGaveIt": "You made {to} the owner of {organisation}. You are now an Administrator: you can still run it day to day, but you cannot hand it on or delete it.",
+    "ownershipTransferred.youHaveIt": "{from} made you the owner of {organisation}. You can now change billing, members, roles and its settings, and you can delete it. {from} is now an Administrator.",
+    "ownershipTransferred.footer": "You're getting this because you are a member of {organisation}."
 }

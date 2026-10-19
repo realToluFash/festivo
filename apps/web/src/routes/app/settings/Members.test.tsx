@@ -384,4 +384,95 @@ describe('inviting somebody', () => {
       expect(screen.getByText('bisi@ire.events is already a member of Ìrè Events.')).toBeDefined(),
     );
   });
+
+  it("changes a member's role, which takes effect on their next request", async () => {
+    signedIn();
+    const sent = answering({
+      ...READS,
+      'PATCH /api/orgs/org_1/members/m_bisi': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    const save = screen.getByRole('button', { name: 'Pick a different role' });
+    expect(save.hasAttribute('disabled')).toBe(true);
+    fireEvent.click(screen.getByRole('radio', { name: /Read-only/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change their role to Read-only' }));
+
+    expect(
+      await screen.findByText(
+        'Bisi Adeyemi is now Read-only. Takes effect on their next request; nobody is signed out.',
+      ),
+    ).toBeDefined();
+    expect(sent.find((one) => one.line === 'PATCH /api/orgs/org_1/members/m_bisi')?.body).toEqual({
+      roleId: 'role_5',
+    });
+  });
+
+  it('removes a member only once it is confirmed', async () => {
+    signedIn();
+    const sent = answering({
+      ...READS,
+      'DELETE /api/orgs/org_1/members/m_bisi': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
+
+    expect(
+      await screen.findByText('Bisi Adeyemi was removed. Their events stay with Ìrè Events.'),
+    ).toBeDefined();
+  });
+
+  it('offers neither a role change nor removal on your own row', async () => {
+    signedIn();
+    answering(READS);
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
+
+    expect(screen.getByText(/You can't change your own role/)).toBeDefined();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('says the only owner can be neither changed nor removed', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: OWNER_PERMISSIONS.filter((one) => !one.startsWith('billing')),
+      }),
+    );
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          members: [
+            member({ self: false }),
+            member({
+              id: 'm_bisi',
+              user: { ...BISI, email: 'bisi@ire.events' },
+              role: { id: 'role_2', seededAs: 'administrator', name: null },
+              self: true,
+            }),
+          ],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
+
+    expect(screen.getByText(/Folake Adeyemi is the only owner/)).toBeDefined();
+    expect(
+      screen.getByText('Only an owner can make somebody else an owner. Ask Folake Adeyemi.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
 });

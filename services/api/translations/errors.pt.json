@@ -8,6 +8,7 @@
     "owner_role_fixed": "Proprietário não pode ser editado nem removido.",
     "seeded_role_kept": "Uma função predefinida não pode ser removida.",
     "last_owner": "Uma organização tem sempre pelo menos um proprietário.",
+    "owner_required": "Só um proprietário da organização pode fazer isto.",
     "grant_not_held": "Uma função só pode receber o que você tem.",
     "already_linked": "Já está ligado a uma conta Soirely.",
     "address_limit_reached": "Esta conta já tem tantos quantos pode ter.",
