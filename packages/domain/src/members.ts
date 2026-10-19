@@ -1,3 +1,5 @@
+import { roleName } from './organisations.ts';
+
 /** The chips on Settings > Members (sc-67). `invited` lists invitations, which are not memberships. */
 export type MemberFilter = 'all' | 'active' | 'invited' | 'waiting' | 'suspended' | 'former';
 
@@ -71,4 +73,63 @@ export function memberStanding(
   if (owner && !caller.owns) return 'ownerOnly';
 
   return 'manageable';
+}
+
+type Word = (key: string, values: Record<string, string>) => string;
+
+/** What a member's row says, on the web and in the app alike. */
+interface RowMember {
+  status: MemberState;
+  former: 'left' | 'removed' | null;
+  channel: JoinChannel | null;
+  since: string | null;
+  invitedBy: { name: string } | null;
+  self: boolean;
+  role: { seededAs: string | null; name: string | null };
+}
+
+export function memberStatusWord(word: Word, member: RowMember): string {
+  if (member.status === 'left_or_removed')
+    return word(`membersScreen.state.${member.former ?? 'removed'}`, {});
+
+  return word(`membersScreen.state.${member.status}`, {});
+}
+
+export function memberChannelWords(word: Word, member: RowMember, organisation: string): string {
+  if (member.channel === 'invitation' && member.invitedBy != null) {
+    return word('membersScreen.how.invitationFrom', { inviter: member.invitedBy.name });
+  }
+
+  return word(`membersScreen.how.${member.channel ?? 'invitation'}`, { organisation });
+}
+
+export type MemberRowVerb = 'since' | 'asked' | 'suspended' | 'left' | 'removed';
+
+export function memberRowVerb(member: RowMember): MemberRowVerb {
+  switch (member.status) {
+    case 'pending_approval':
+      return 'asked';
+    case 'suspended':
+      return 'suspended';
+    case 'left_or_removed':
+      return member.former ?? 'removed';
+    case 'active':
+      return 'since';
+  }
+}
+
+export function memberRowLine(
+  word: Word,
+  member: RowMember,
+  organisation: string,
+  day: (at: string) => string,
+): string {
+  return [
+    roleName((key) => word(key, {}), member.role),
+    ...(member.self ? [word('membersScreen.you', {})] : []),
+    memberChannelWords(word, member, organisation),
+    word(`membersScreen.when.${memberRowVerb(member)}`, {
+      date: member.since == null ? '' : day(member.since),
+    }),
+  ].join(' · ');
 }

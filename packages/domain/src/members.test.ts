@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { historyLine, memberIsShown, memberStanding } from './members.ts';
+import {
+  historyLine,
+  memberChannelWords,
+  memberIsShown,
+  memberRowLine,
+  memberRowVerb,
+  memberStanding,
+  memberStatusWord,
+} from './members.ts';
 
 describe('which members a chip lists', () => {
   it('lists everybody but former members under All', () => {
@@ -96,5 +104,52 @@ describe("what a member's page offers", () => {
 
   it('offers a role change and removal for everybody else', () => {
     expect(memberStanding(coordinator, [owner, coordinator], admin)).toBe('manageable');
+  });
+});
+
+describe("what a member's row says", () => {
+  const word = (key: string, values: Record<string, string>) =>
+    Object.keys(values).length === 0 ? key : `${key}(${Object.values(values).join(',')})`;
+  const member = {
+    status: 'active' as const,
+    former: null,
+    channel: 'join_code' as const,
+    since: '2026-10-01T09:00:00Z',
+    invitedBy: null,
+    self: false,
+    role: { seededAs: 'coordinator', name: null },
+  };
+
+  it('dates a row by what happened last', () => {
+    expect(memberRowVerb(member)).toBe('since');
+    expect(memberRowVerb({ ...member, status: 'pending_approval' })).toBe('asked');
+    expect(memberRowVerb({ ...member, status: 'suspended' })).toBe('suspended');
+    expect(memberRowVerb({ ...member, status: 'left_or_removed', former: 'left' })).toBe('left');
+    expect(memberRowVerb({ ...member, status: 'left_or_removed', former: null })).toBe('removed');
+  });
+
+  it('names a former member as left or removed', () => {
+    expect(memberStatusWord(word, member)).toBe('membersScreen.state.active');
+    expect(memberStatusWord(word, { ...member, status: 'left_or_removed', former: 'left' })).toBe(
+      'membersScreen.state.left',
+    );
+    expect(memberStatusWord(word, { ...member, status: 'left_or_removed', former: null })).toBe(
+      'membersScreen.state.removed',
+    );
+  });
+
+  it('names the inviter when there is one', () => {
+    const invited = { ...member, channel: 'invitation' as const, invitedBy: { name: 'Ada' } };
+
+    expect(memberChannelWords(word, invited, 'Ìrè')).toBe('membersScreen.how.invitationFrom(Ada)');
+    expect(memberChannelWords(word, { ...invited, invitedBy: null }, 'Ìrè')).toBe(
+      'membersScreen.how.invitation(Ìrè)',
+    );
+  });
+
+  it('joins role, you, channel and date', () => {
+    expect(memberRowLine(word, { ...member, self: true }, 'Ìrè', () => '1 Oct')).toBe(
+      'roles.coordinator · membersScreen.you · membersScreen.how.join_code(Ìrè) · membersScreen.when.since(1 Oct)',
+    );
   });
 });
