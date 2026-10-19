@@ -18,6 +18,7 @@ use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
+use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -38,6 +39,7 @@ use Symfony\Component\Mime\Email;
 final class OrganisationDeletionTest extends ApiTestCase
 {
     use ClockSensitiveTrait;
+    use InvitesPeople;
     use OnboardsAccounts;
 
     /** @mago-expect lint:no-literal-password */
@@ -155,6 +157,29 @@ final class OrganisationDeletionTest extends ApiTestCase
             self::assertSame(404, $this->statusCode());
             self::assertNotContains($this->organisation->getId()->toRfc4122(), $this->organisationsOf($member));
         }
+    }
+
+    #[Test]
+    public function aPendingInvitationIntoItIsRefusedWithoutHidingTheOthersAndComesBackWithTheRestore(): void
+    {
+        $dayo = self::inviter('dayo@ire.events', 'Dayo Bello');
+        [$invitation, $token] = self::invitationTo('dayo@ire.events', $this->organisation);
+        [$elsewhere] = self::invitationTo('dayo@ire.events', $this->found($this->owner, 'Elsewhere'));
+        $this->delete($this->owner, 'Ìrè Events');
+        self::em()->clear();
+
+        self::assertSame([$elsewhere->getId()->toRfc4122()], $this->invitationsOf($dayo));
+        $link = $this->as($dayo, 'POST', '/api/invitations/link', ['token' => $token]);
+        self::assertSame(['organisation_deleted', 'Ìrè Events'], [$link['refusal'] ?? null, Type\shape(['name' => Type\string()], true)->coerce($link['organisation'])['name']]);
+        foreach (['accept', 'decline'] as $answer) {
+            $body = $this->as($dayo, 'POST', '/api/invitations/' . $invitation->getId()->toRfc4122() . '/' . $answer);
+            self::assertSame(410, $this->statusCode(), $answer);
+            self::assertSame(ErrorCode::OrganisationDeleted->type(), $body['type'] ?? null, $answer);
+        }
+
+        $this->restore('Adaeze from support');
+
+        self::assertSame([$elsewhere->getId()->toRfc4122(), $invitation->getId()->toRfc4122()], $this->invitationsOf($dayo));
     }
 
     #[Test]
@@ -334,6 +359,18 @@ final class OrganisationDeletionTest extends ApiTestCase
         return Vec\map(
             Type\vec(Type\shape(['id' => Type\string()], true))->coerce($this->as($user, 'GET', '/api/orgs')['organisations']),
             static fn (array $organisation): string => $organisation['id'],
+        );
+    }
+
+    /** @return list<string> */
+    private function invitationsOf(User $user): array
+    {
+        $body = $this->as($user, 'GET', '/api/invitations');
+        self::assertSame(200, $this->statusCode(), Json\encode($body));
+
+        return Vec\map(
+            Type\vec(Type\shape(['id' => Type\string()], true))->coerce($body['invitations']),
+            static fn (array $invitation): string => $invitation['id'],
         );
     }
 

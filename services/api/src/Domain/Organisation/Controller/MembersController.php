@@ -155,7 +155,7 @@ final readonly class MembersController
 
     /** `proof` comes from /api/auth/proof, which takes the password and, when it is on, the two-factor code. */
     #[Route('/api/orgs/{organisationId}/ownership', name: 'orgs_ownership_transfer', methods: ['POST'])]
-    #[InOrganisation(null)]
+    #[InOrganisation(Permission::OrganisationManage)]
     public function transfer(Request $request, string $organisationId): Response
     {
         $body = Input::body($request, Type\shape([

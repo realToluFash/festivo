@@ -66,10 +66,9 @@ final readonly class OwnershipTransfer
 
     private function candidate(Organisation $organisation, string $membershipId, User $by): Membership
     {
-        $membership = Uuid::isValid($membershipId) ? $this->membershipRepository->find($membershipId) : null;
+        $membership = Uuid::isValid($membershipId) ? $this->membershipRepository->findOneBy(['id' => $membershipId, 'organisation' => $organisation]) : null;
         $chosen = null !== $membership
             && $membership->isActive()
-            && $membership->getOrganisation()->getId()->equals($organisation->getId())
             && !$membership->getUser()->getId()->equals($by->getId());
 
         if (!$chosen) {

@@ -9,7 +9,9 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Enum\InvitationStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Symfony\Component\Uid\Uuid;
 
 /** @extends ServiceEntityRepository<Invitation> */
 final class InvitationRepository extends ServiceEntityRepository
@@ -21,7 +23,12 @@ final class InvitationRepository extends ServiceEntityRepository
 
     public function findOneByHash(string $tokenHash): ?Invitation
     {
-        return $this->findOneBy(['tokenHash' => $tokenHash]);
+        return $this->withOrganisation()->andWhere('i.tokenHash = :hash')->setParameter('hash', $tokenHash)->getQuery()->getOneOrNullResult();
+    }
+
+    public function findWithOrganisation(Uuid $id): ?Invitation
+    {
+        return $this->withOrganisation()->andWhere('i.id = :id')->setParameter('id', $id, 'uuid')->getQuery()->getOneOrNullResult();
     }
 
     /** The one row the partial index allows, lapsed or not. */
@@ -48,9 +55,10 @@ final class InvitationRepository extends ServiceEntityRepository
         }
 
         return $this->createQueryBuilder('i')
+            ->addSelect('o')
+            ->innerJoin('i.organisation', 'o')
             ->andWhere('i.email IN (:emails)')
             ->andWhere('i.status = :pending')
-            ->andWhere('i.organisation IS NOT NULL')
             ->setParameter('emails', $normalisedEmails)
             ->setParameter('pending', InvitationStatus::Pending)
             ->orderBy('i.createdAt', 'DESC')
@@ -63,5 +71,11 @@ final class InvitationRepository extends ServiceEntityRepository
     public function findPendingWithRole(Role $role): array
     {
         return $this->findBy(['role' => $role, 'status' => InvitationStatus::Pending]);
+    }
+
+    /** The soft-delete filter sits on the join, so an organisation deleted but restorable comes back null, as a purged one does, rather than as a proxy that cannot load. */
+    private function withOrganisation(): QueryBuilder
+    {
+        return $this->createQueryBuilder('i')->addSelect('o')->leftJoin('i.organisation', 'o');
     }
 }

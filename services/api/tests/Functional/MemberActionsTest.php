@@ -195,6 +195,20 @@ final class MemberActionsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aTransferIsWithheldFromAnOwnerWithoutTheTwoFactorTheOrganisationRequires(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $this->organisation->setAdministratorsNeedTwoFactor(true);
+        self::em()->flush();
+
+        $body = $this->transfer($this->membershipOf($bisi));
+
+        self::assertSame(403, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::OrganisationTwoFactorRequired->type(), $body['type'] ?? null);
+        self::assertSame([SeededRole::Owner, SeededRole::Administrator], [$this->roleOf($this->owner), $this->roleOf($bisi)]);
+    }
+
+    #[Test]
     public function aNewOwnerMustBeChosenFromTheOtherActiveMembers(): void
     {
         $body = $this->transfer($this->membershipOf($this->owner));
