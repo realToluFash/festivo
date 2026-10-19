@@ -840,7 +840,7 @@
     "gateTurnOn": "Activer la double authentification",
     "gateLater": "Pas maintenant",
     "changedTitle": "Les règles de connexion ont changé",
-    "changedBody": "{{organisation}} a modifié ses règles de connexion le {{day}}.",
+    "changedBody": "Le {{day}}, {{organisation}} a modifié ses règles de connexion.",
     "changedSee": "Voir les modifications",
     "changedClose": "Fermer cet avis",
     "limitApplies_one": "Pour vous, la session se ferme après {{count}} jour d'inactivité : c'est la règle de {{organisation}}, la plus stricte de vos organisations.",

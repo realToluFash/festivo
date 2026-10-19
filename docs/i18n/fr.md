@@ -53,6 +53,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **19 Oct 2026. A `{{day}}` opens the sentence, never closes it** (`signInRules.changedBody`,
+  web and app, sc-3030). `{{day}}` is « lundi 19 oct. », whose abbreviated month brings its own
+  full stop, so a sentence ending on it reads « 19 oct.. ». It reads « Le {{day}},
+  {{organisation}} a modifié ses règles de connexion. » The same goes for any later string
+  with a short date. `errors:session_timed_out` is « Session fermée après une période
+  d'inactivité. », as the sign-in screen's title, not « Vous avez été déconnecté », which
+  agrees with a man.
+
 - **19 Oct 2026. Sign-in rules are « Règles de connexion »** (`signInRules.*`, web and app,
   and `emails:signInRules.*`, sc-3030). A member held back by one « peut tout consulter, sans
   rien pouvoir modifier », the same words on the banner, the owner's preview and the email.
