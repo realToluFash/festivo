@@ -243,6 +243,83 @@ class Queue(unittest.TestCase):
         items = work.queue_items([story(state="To Do", labels=["translation"])])
         self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"])
 
+    def test_a_role_s_own_move_is_no_wake_for_it(self):
+        moved = story(state="To Do", moved_at="t1")
+        items = work.queue_items([moved], {(1, "To Do", "t1"): "pm"})
+        woken = sorted(r for i in items for r in i["roles"])
+        self.assertNotIn("pm", woken)
+        self.assertEqual(woken, ["bm", "dev", "dev2", "ux"])
+
+    def test_the_same_move_by_another_role_still_wakes_it(self):
+        moved = story(state="In Progress", labels=["dev2"], moved_at="t1")
+        by_lead = work.queue_items([moved], {(1, "In Progress", "t1"): "lead"})
+        self.assertEqual([i["roles"] for i in by_lead], [["dev2"]])
+        by_itself = work.queue_items([moved], {(1, "In Progress", "t1"): "dev2"})
+        self.assertEqual(by_itself, [])
+
+    def test_a_move_recorded_earlier_does_not_hide_the_next_one(self):
+        moved_again = story(state="To Do", moved_at="t2")
+        items = work.queue_items([moved_again], {(1, "To Do", "t1"): "pm"})
+        self.assertIn("pm", [r for i in items for r in i["roles"]])
+
+
+class EveryWakeStillHappens(unittest.TestCase):
+    """Each wake from before a role's own moves stopped waking it, with such a move on record."""
+
+    now = 10_000_000
+
+    def woken(self, stories=(), prs=(), main_run=None, moves=None, last_runs=None):
+        runs = last_runs if last_runs is not None else {r: self.now for r in roles.ROLES}
+        items = work.derive(list(stories), list(prs), main_run, runs, set(), self.now,
+                            frozenset(), moves or {})
+        return {(i["kind"], r) for i in items for r in i["roles"]}
+
+    def test_a_tagged_question(self):
+        asked = story(state="In Progress", labels=["dev2"], moved_at="t1",
+                      comments=[comment(1, "[pm] (from dev2)\nWhich limit?")])
+        found = self.woken([asked], moves={(1, "In Progress", "t1"): "dev2"})
+        self.assertIn(("inbox", "pm"), found)
+
+    def test_a_story_new_in_the_role_s_queue(self):
+        failed = story(state="Failed QA", labels=["dev2"], moved_at="t1")
+        found = self.woken([failed], moves={(1, "Failed QA", "t1"): "qa2"})
+        self.assertIn(("story", "dev2"), found)
+        self.assertIn(("story", "pm"), found)
+
+    def test_a_pull_request_s_checks_and_review_steps(self):
+        moves = {(1, "In Progress", "t1"): "dev2", (1, "In Review", "t1"): "dev2"}
+        building = story(state="In Progress", labels=["dev2"], moved_at="t1")
+        self.assertIn(("checks-red", "dev2"),
+                      self.woken([building], [pr(checks="red")], moves=moves))
+        self.assertIn(("to-review", "dev2"), self.woken([building], [pr()], moves=moves))
+        reviewing = story(state="In Review", labels=["dev2"], moved_at="t1")
+        self.assertIn(("review", "lead"), self.woken([reviewing], [pr()], moves=moves))
+        passed = pr(lead=[verdict("pass", HEAD[:7])])
+        self.assertIn(("merge", "dev2"), self.woken([reviewing], [passed], moves=moves))
+        merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
+        self.assertIn(("to-qa", "dev2"), self.woken([reviewing], [merged], moves=moves))
+
+    def test_main_going_red_for_ops(self):
+        red = {"conclusion": "failure", "headSha": HEAD, "url": "u"}
+        self.assertIn(("main", "ops"), self.woken(main_run=red))
+
+    def test_each_role_s_heartbeat(self):
+        waiting = story(state="Ready For QA", moved_at="t1")
+        found = self.woken([waiting], moves={(1, "Ready For QA", "t1"): "dev2"}, last_runs={})
+        for role in ("pm", "ux", "bm", "ops", "l10n", "cd"):
+            self.assertIn(("sweep", role), found)
+        for role in ("qa", "qa2", "qa3"):
+            self.assertIn(("pick", role), found)
+
+    def test_a_developer_s_heartbeat_after_moving_its_own_story(self):
+        building = [story(1, state="In Progress", labels=["dev2"], moved_at="t1"),
+                    story(2, state="In Progress", labels=["dev1"], moved_at="t1")]
+        moves = {(1, "In Progress", "t1"): "dev2", (2, "In Progress", "t1"): "dev"}
+        found = self.woken(building, moves=moves, last_runs={})
+        self.assertIn(("pick", "dev2"), found)
+        self.assertIn(("pick", "dev"), found)
+        self.assertNotIn("lead", {r for _, r in found})
+
 
 class Heartbeat(unittest.TestCase):
     def test_a_role_with_a_queue_picks_after_its_heartbeat(self):

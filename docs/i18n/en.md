@@ -35,7 +35,7 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 | Password                      |                                                                                                                                                                                                                                                              |
 | Continue                      |                                                                                                                                                                                                                                                              |
 | Cancel                        |                                                                                                                                                                                                                                                              |
-| Two-factor authentication     |                                                                                                                                                                                                                                                              |
+| Two-factor authentication     | Settled 19 Oct 2026: "two-factor" alone in running text and labels; enabling it is "turn on" (see Decided phrasings).                                                                                                                                        |
 | Recovery code                 |                                                                                                                                                                                                                                                              |
 | Carry on                      | Settled 17 Oct 2026: "… to carry on" is the house phrase for resuming (20 strings). Not "continue", which is the button.                                                                                                                                     |
 | Signed out (a device)         | Settled 17 Oct 2026: "is signed out" for the state, "has been signed out" in emails. Never "logged out".                                                                                                                                                     |
@@ -51,6 +51,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **19 Oct 2026. Two-factor is "turned on", the first time (sc-3030, sc-609, sc-69 #3210).**
+  "Turn on two-factor" is the button wherever a person enables it, and a sentence says "turn
+  it on" (`twoFactorCard.turnOn`, `signInRules.gateTurnOn`, `needsOwnTurnOn`, `twoFactorOn`,
+  sc-609's blocked screen and email). "Set up two-factor again" stays only after account
+  recovery, where it was on before (`lostTwoFactor.*`). Won over "set it up", which made one
+  act two verbs on one page.
+- **19 Oct 2026. A member a sign-in rule holds back "can read but not change anything"
+  (sc-3030, `signInRules.unlinkedBody`, `seeProviderBody`, `strandedBody`, `effectStranded`,
+  `emails:signInRules.changed.link`).** One phrase, always with "anything", so the banner, the
+  owner's preview and the email say the same. Won over "read and not change", which reads as
+  a choice, and over a bare "read but not change", which leaves the verb hanging. "Anyone",
+  never "anybody", as "someone" over "somebody".
 - **18 Oct 2026. A sentence that ends on a name the host typed (sc-2251, #2550,
   `rolesScreen.describeCustom`, `describeCustomReadOnly` and every line like them).** The
   name goes where the sentence wants it, at the end as well, so "Made by {{name}}." stays. A

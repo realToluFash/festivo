@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation;
 
-use App\Entity\Membership;
+use App\Domain\Organisation\Members\MembershipMachine;
+use App\Domain\User\Mail\AccountLanguage;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
+use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,6 +22,8 @@ final readonly class OrganisationFounder
 {
     public function __construct(
         private OrganisationRules $organisationRules,
+        private MembershipMachine $membershipMachine,
+        private AccountLanguage $accountLanguage,
         private EntityManagerInterface $entityManager,
     ) {
     }
@@ -38,6 +42,7 @@ final readonly class OrganisationFounder
             'currency' => Regions::isCountry($country) ? Regions::currencyOf($country) : '',
             'timezone' => $timezone,
             'contactAddress' => $contact,
+            'locale' => $this->accountLanguage->of($owner),
         ]);
 
         $organisation = new Organisation(
@@ -46,6 +51,7 @@ final readonly class OrganisationFounder
             $fields['currency'],
             $fields['timezone'],
             $fields['contactAddress'],
+            $fields['locale'],
         );
         $this->entityManager->persist($organisation);
         $roles = Vec\map(SeededRole::cases(), static fn (SeededRole $seeded): Role => Role::seeded($organisation, $seeded));
@@ -54,7 +60,7 @@ final readonly class OrganisationFounder
             $this->entityManager->persist($role);
         }
 
-        $this->entityManager->persist(new Membership($organisation, $owner, $roles[0], MembershipStatus::Active));
+        $this->membershipMachine->join($organisation, $owner, $roles[0], MembershipStatus::Active, MembershipChannel::SelfCreated, $owner);
 
         return $organisation;
     }

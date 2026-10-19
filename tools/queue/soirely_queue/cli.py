@@ -45,7 +45,7 @@ def refresh_work(db, now):
     busy_roles = {role for roles_ in busy for role in roles_.split(",")}
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
-                        last_runs, busy_roles, now, store.handled(db))
+                        last_runs, busy_roles, now, store.handled(db), store.moves(db))
     store.record(db, items, now)
     return items
 
@@ -345,7 +345,8 @@ WRITES = [
      lambda p: (p.add_argument("story"), p.add_argument("--to"),
                 p.add_argument("--reply-to", type=int),
                 p.add_argument("--untagged", action="store_true",
-                               help="no addressee: a record that wakes nobody"), body(p))),
+                               help="no addressee: a record, or with --reply-to a reply "
+                                    "that only confirms; wakes nobody"), body(p))),
     ("note", actions.note, "a private note your next run on this story sees",
      lambda p: (p.add_argument("story"), body(p))),
     ("claim", actions.claim, "take a story from your queue, then print it",

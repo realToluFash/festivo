@@ -12,7 +12,7 @@ import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { SecondFactorStep } from '../../components/SecondFactorStep.tsx';
 import { useFormChecks } from '../../formChecks.ts';
-import { adoptAccount, landingFor } from '../../session.ts';
+import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
 
 type Dead = 'used' | 'expired' | 'invalid';
 
@@ -82,8 +82,12 @@ export function ResetPassword() {
       setStatus({ kind: 'done', email, account });
     } catch (error) {
       const dead = deadFrom(error);
+      const providerOnly = error instanceof ApiError ? providerOnlyBy(error.problem) : undefined;
 
-      if (dead != null) {
+      // The password is set, but signs in only where a password sign-in would (sc-69).
+      if (providerOnly != null) {
+        navigate('/sign-in', { replace: true, state: { providerOnly } });
+      } else if (dead != null) {
         setStatus({ kind: dead });
       } else if (error instanceof ApiError && error.is('validation_failed')) {
         const violation = error.problem.violations?.find((v) => v.propertyPath === 'password');

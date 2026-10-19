@@ -8,6 +8,7 @@
     "owner_role_fixed": "Propietario no se puede editar ni eliminar.",
     "seeded_role_kept": "Un rol predefinido no se puede eliminar.",
     "last_owner": "Una organización siempre tiene al menos un propietario.",
+    "owner_required": "Solo un propietario de la organización puede hacer esto.",
     "grant_not_held": "Un rol solo puede recibir lo que usted tiene.",
     "already_linked": "Ya está vinculado a una cuenta de Soirely.",
     "address_limit_reached": "Esta cuenta ya tiene tantos como admite.",
@@ -51,5 +52,19 @@
     "recovery_request_closed": "Esta solicitud ya ha terminado.",
     "recovery_request_proved": "Esta solicitud ya está esperando una respuesta.",
     "recovery_request_replaced": "Se ha iniciado una solicitud más reciente en otro dispositivo.",
-    "registration_expired": "Vuelva a empezar el registro."
+    "registration_expired": "Vuelva a empezar el registro.",
+    "already_a_member": "Esa persona ya es miembro de esta organización.",
+    "email_taken": "Esa dirección de correo ya tiene una cuenta de Soirely. Inicie sesión con ella para aceptar la invitación.",
+    "invitation_not_found": "No hemos encontrado esa invitación. Compruebe el enlace del correo.",
+    "invitation_expired": "Esta invitación ha caducado. Pida a quien le invitó que le envíe una nueva.",
+    "invitation_revoked": "Esta invitación se ha retirado.",
+    "invitation_accepted": "Esta invitación ya se ha aceptado.",
+    "invitation_declined": "Esta invitación se ha rechazado.",
+    "invitation_not_yours": "Esta invitación es para otra dirección de correo.",
+    "organisation_deleted": "Esta organización ya no existe, así que no se puede aceptar la invitación.",
+    "provider_kept_by_rule": "Su organización solo admite Google o Apple, así que la última cuenta vinculada se mantiene.",
+    "oauth_only": "Esta organización solo admite el inicio de sesión con Google o Apple.",
+    "oauth_only_unlinked": "Solo lectura hasta que vincule Google o Apple.",
+    "organisation_two_factor_required": "Esta organización pide primero la verificación en dos pasos.",
+    "session_timed_out": "Se cerró la sesión tras un tiempo sin uso."
 }

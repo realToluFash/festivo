@@ -32,6 +32,8 @@ export default function VerifyPhone() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
+  // From the verify answer, never the list read before it: the server decides (sc-2244).
+  const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
   const wording = codeWording(route);
   const lastRoute = useRef<PhoneCodeRoute | null>(null);
 
@@ -130,7 +132,7 @@ export default function VerifyPhone() {
     setStatus({ kind: 'verifying' });
 
     try {
-      await api.verifyPhone(code, alternative);
+      setMadePrimary((await api.verifyPhone(code, alternative)).primary);
       setStatus({ kind: 'verified' });
       // Account, under this screen, shows the row verified however it is reached.
       if (alternative != null) void rereadAccount().catch(() => {});
@@ -203,7 +205,9 @@ export default function VerifyPhone() {
                 ? line
                 : alternative == null
                   ? t('verifyPhone.doneBody', { number })
-                  : t('verifyPhone.doneBodyAlternative', { number })
+                  : (madePrimary ?? phone.primary)
+                    ? t('contacts.verifiedPrimaryPhone', { number })
+                    : t('verifyPhone.doneBodyAlternative', { number })
             }
             introLive={!verified}
           />

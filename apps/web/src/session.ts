@@ -1,9 +1,11 @@
 import {
   type Account,
+  ApiError,
   ApiUnreachableError,
   type Awaiting,
   type LinkedProvider,
   type Membership,
+  type Problem,
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
@@ -40,7 +42,21 @@ export type SessionState =
   | { status: 'checking' }
   | { status: 'signedIn'; session: Session }
   | { status: 'unreachable'; retrying: boolean }
-  | { status: 'signedOut'; ended: boolean };
+  | { status: 'signedOut'; ended: boolean; timedOut?: TimedOut; providerOnly?: ProviderOnly };
+
+/** An organisation's inactivity rule ended the session (sc-69): sign-in names it and keeps the address. */
+export interface TimedOut {
+  organisation: string;
+  days: number;
+  email: string;
+}
+
+/** An organisation's Google-or-Apple-only rule turned a password away (sc-69): sign-in names it, keeps the address and shows the linked buttons. */
+export interface ProviderOnly {
+  organisation: string;
+  providers: string[];
+  email: string;
+}
 
 /** Per device, as the switcher promises: "Soirely remembers your choice on this device". */
 const ACTIVE_ORGANISATION = 'soirely.organisation';
@@ -128,6 +144,19 @@ export function switchOrganisation(id: string): void {
   set({ status: 'signedIn', session: { ...state.session, organisation } });
 }
 
+/** An invitation accepted in the product: the organisation joins the list, and nobody is moved into it. */
+export function joinOrganisation(joined: Membership): void {
+  if (state.status !== 'signedIn') return;
+
+  const current = state.session;
+  const organisations = [
+    ...current.organisations.filter((membership) => membership.id !== joined.id),
+    joined,
+  ];
+
+  set({ status: 'signedIn', session: { ...current, organisations } });
+}
+
 /** After an edit, so the switcher and every page read the new name at once. */
 export function replaceOrganisation(next: Membership): void {
   if (state.status !== 'signedIn') return;
@@ -142,12 +171,35 @@ export function replaceOrganisation(next: Membership): void {
   set({ status: 'signedIn', session: { ...current, organisations, organisation } });
 }
 
-export function forgetSession(ended = false): void {
-  set({ status: 'signedOut', ended });
+export function forgetSession(ended = false, why?: Problem): void {
+  const timedOut = timedOutBy(why);
+  const providerOnly = providerOnlyBy(why);
+
+  set({
+    status: 'signedOut',
+    ended,
+    ...(timedOut == null ? {} : { timedOut }),
+    ...(providerOnly == null ? {} : { providerOnly }),
+  });
 }
 
 export function __setSessionState(next: SessionState): void {
   set(next);
+}
+
+function timedOutBy(why: Problem | undefined): TimedOut | undefined {
+  if (why == null || !new ApiError(why).is('session_timed_out')) return undefined;
+  if (why.organisation == null || why.days == null) return undefined;
+
+  return { organisation: why.organisation, days: why.days, email: why.email ?? '' };
+}
+
+/** The `oauth_only` refusal, from a sign-in, a completed reset or a session the rule ended. */
+export function providerOnlyBy(why: Problem | undefined): ProviderOnly | undefined {
+  if (why == null || !new ApiError(why).is('oauth_only') || why.organisation == null)
+    return undefined;
+
+  return { organisation: why.organisation, providers: why.providers ?? [], email: why.email ?? '' };
 }
 
 function sessionFrom(account: Account, organisations: readonly Membership[]): Session {
@@ -200,8 +252,8 @@ function subscribe(listener: () => void): () => void {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener(SIGNED_OUT, () => {
-    forgetSession(true);
+  window.addEventListener(SIGNED_OUT, (event) => {
+    forgetSession(true, (event as CustomEvent<Problem | undefined>).detail);
   });
 
   // The API said the account is behind a gate this session did not know about, so read it again.

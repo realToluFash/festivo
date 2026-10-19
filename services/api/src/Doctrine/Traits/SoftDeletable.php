@@ -33,9 +33,9 @@ trait SoftDeletable
         return $this->deletedBy;
     }
 
-    public function softDelete(?Uuid $by = null): void
+    public function softDelete(?Uuid $by = null, ?DateTimeImmutable $at = null): void
     {
-        $this->deletedAt = new DateTimeImmutable();
+        $this->deletedAt = $at ?? new DateTimeImmutable();
         $this->deletedBy = $by;
     }
 

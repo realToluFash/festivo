@@ -23,8 +23,8 @@ export const api = new ApiClient({
   timeZone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
   tokens,
   refreshTokenIn: 'cookie',
-  onSignedOut: () => {
-    window.dispatchEvent(new Event(SIGNED_OUT));
+  onSignedOut: (why) => {
+    window.dispatchEvent(new CustomEvent(SIGNED_OUT, { detail: why }));
   },
   onGate: () => {
     window.dispatchEvent(new Event(GATED));

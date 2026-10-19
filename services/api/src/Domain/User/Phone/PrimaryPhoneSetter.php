@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\Phone;
 
+use App\Domain\User\Contacts\PhonePromotion;
 use App\Domain\User\Verification\VerificationCodeIssuer;
 use App\Domain\User\Verification\VerificationCodeSender;
 use App\Entity\PhoneNumber;
@@ -21,6 +22,7 @@ final readonly class PrimaryPhoneSetter
         private VerificationCodeIssuer $verificationCodeIssuer,
         private VerificationCodeSender $verificationCodeSender,
         private EntityManagerInterface $entityManager,
+        private PhonePromotion $phonePromotion,
     ) {
     }
 
@@ -92,6 +94,12 @@ final readonly class PrimaryPhoneSetter
     {
         if ($phone->isPending()) {
             $this->promote($phone, $phone->getUser()->getPrimaryPhoneNumber());
+
+            return;
+        }
+
+        if (!$phone->isPrimary()) {
+            $this->phonePromotion->promoteIfNoneVerified($phone);
         }
     }
 

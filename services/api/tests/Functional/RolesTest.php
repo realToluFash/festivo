@@ -139,6 +139,20 @@ final class RolesTest extends ApiTestCase
     }
 
     #[Test]
+    public function anAdministratorHoldingEveryPermissionStillCannotMovePeopleOntoOwner(): void
+    {
+        $administrator = self::em()->find(Role::class, $this->seeded(SeededRole::Administrator)) ?? self::fail('no administrator role');
+        $administrator->setPermissions(Permission::cases());
+        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $door = Type\string()->coerce($this->as($admin, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+        $this->member('tope@ire.events', null, $door);
+
+        $this->as($admin, 'DELETE', $this->path('roles/' . $door), ['replacement' => $this->seeded(SeededRole::Owner)]);
+
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
     public function ownerCannotBeEditedOrDeleted(): void
     {
         $owner = $this->seeded(SeededRole::Owner);
@@ -189,6 +203,52 @@ final class RolesTest extends ApiTestCase
         self::assertSame('A role with that name already exists.', $this->violation('name'));
         $this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['made.up']]);
         self::assertSame(422, $this->statusCode());
+    }
+
+    #[Test]
+    public function aCustomRoleIsRenamedAndItsHoldersKeepIt(): void
+    {
+        $door = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+        $tope = $this->member('tope@ire.events', null, $door);
+
+        $renamed = $this->as($this->owner, 'PATCH', $this->path('roles/' . $door), ['name' => '  Door crew ', 'permissions' => ['events.read', 'seating.read']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($renamed));
+        self::assertSame('Door crew', $renamed['name']);
+        self::assertSame(1, $renamed['holders']);
+        self::assertSame(['events.read', 'seating.read'], $this->as($tope, 'GET', $this->path('permissions'))['permissions']);
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $door), ['name' => 'door CREW']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('door CREW', $this->last()['name']);
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $door), ['name' => 'coordinator', 'permissions' => ['events.read']]);
+        self::assertSame('A role with that name already exists.', $this->violation('name'));
+        self::assertSame(['events.read', 'seating.read'], $this->permissionsOf($door));
+        self::assertContains('door CREW', Vec\map($this->roles(), static fn (array $role): mixed => $role['name']));
+    }
+
+    #[Test]
+    public function aSeededRoleKeepsItsName(): void
+    {
+        $coordinator = $this->seeded(SeededRole::Coordinator);
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $coordinator), ['name' => 'Planners']);
+        self::assertSame('Built-in roles cannot be renamed. You can still change what this one holds.', $this->violation('name'));
+
+        $this->as($this->owner, 'PATCH', $this->path('roles/' . $coordinator), ['name' => 'Coordinator', 'permissions' => ['events.read']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function renamingNeedsOnlyRoleManagementNotWhatTheRoleHolds(): void
+    {
+        $admin = $this->member('admin@ire.events', SeededRole::Administrator);
+        $finance = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Finance', 'permissions' => ['billing.read', 'billing.manage']])['id']);
+
+        $this->as($admin, 'PATCH', $this->path('roles/' . $finance), ['name' => 'Accounts', 'permissions' => ['billing.read', 'billing.manage']]);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        self::assertSame('Accounts', $this->last()['name']);
+        self::assertSame(['billing.read', 'billing.manage'], $this->permissionsOf($finance));
     }
 
     #[Test]

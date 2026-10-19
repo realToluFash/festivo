@@ -41,6 +41,28 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **19 Oct 2026. Sign-in rules are "Regras de início de sessão"** (`signInRules.*`, web and
+  app, and `emails:signInRules.*`, sc-3030). A member held back by one "pode consultar tudo,
+  mas sem alterar nada", the same words on the banner, the owner's preview and the email;
+  the state is "Só de leitura". A session that ends "é encerrada", as the glossary says, and
+  `errors:session_timed_out` now says so too. In prose a provider is "uma conta Google ou
+  Apple", which needs no article for either; a button keeps "Associar Google ou Apple", as
+  `waysCard.link`. Where a list of names is the subject (`effectStranded`'s `{{names}}`), the
+  sentence opens "Abrange {{names}}:" and goes on with "é possível", so no verb has to agree
+  with a count the string does not have. "Turn on two-factor" is "Ativar a autenticação de
+  dois fatores", as `twoFactorCard.turnOn`; "the shortest of your organisations" is "a mais
+  exigente", since the shortest limit is the strictest rule. Roles are "funções", as on the
+  Roles screen; people who can manage are "quem pode gerir".
+
+- **18 Oct 2026. The contact cap is "Uma conta pode ter até {{most}} …, incluindo o
+  principal"** (`contacts.capEmails_*`, `capPhones_*`, `capFullEmails`, `capFullPhones`, web
+  and app), as `contacts.limitEmails` and `limitPhones` already say. One more is "Pode
+  adicionar mais um"; the full line is "Já tem {{most}}, o máximo que uma conta pode ter.
+  Remova um para adicionar outro." "Endereço" and "número" are both masculine, so a number's
+  own keys (`contacts.verifiedPhone`, `primaryPhone`, `makePrimaryPhone`, `removeConfirmPhone`,
+  `removeKeepPhone`) hold the address card's words, and "Não verificado" serves both, with no
+  `unverifiedPhone`. The count is never 0 here (the full line shows instead) and never large,
+  so `_one` and `_other` cover it.
 - **18 Oct 2026. Verifying an alternative from Account (sc-2594)** (`verifyEmail.doneBodyAlternative`,
   `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
   `contacts.removeInAccount*`, web and app): "{{address}} está verificado. Continua a ser um
@@ -79,6 +101,17 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   with no article: "conta Soirely", "código Soirely", "Aplicação Soirely". A number is
   contacted as "contactar o {{number}}" (`verifyPhone.doneBody`), not "contactá-lo", whose
   clitic assumes a man; "on the night" is "na noite do evento".
+- **19 Oct 2026. A weekday date is never preceded by "a"** (`signInRules.changedBody`, web and
+  app, sc-3030). `{{day}}` is "segunda-feira, 19 de out.": before a weekday PT-PT says "na" or
+  "no" (sábado, domingo), which the copy cannot agree with, and the abbreviated month brings
+  its own full stop. It is a label at the end, with no full stop after the slot:
+  "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}". The
+  "a {when}" rule below stays for a date without a weekday. A period without use is "Quem
+  passar {{count}} dias sem utilizar a Soirely terá de…" (`effectIdle_*`,
+  `emails+intl-icu:signInRules.rule.inactivity`), not "Quem não utilizar… há", which mixes a
+  future subjunctive with "há". ICU's and i18next's 'pt' count 0 as one, the Brazilian rule:
+  an ICU plural in PT-PT carries `=0 {# dias}`; the clients' `_one` needs `[dev]` (sc-3030).
+
 - **18 Oct 2026. Other addresses and numbers "servem para contacto"** (`contacts.*`, web and
   app, and `messages:contacts.*`). The primary "serve para iniciar sessão e recebe o e-mail da
   conta"; the others "servem para contacto, mas não permitem iniciar sessão". Rejected "podem

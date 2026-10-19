@@ -49,6 +49,40 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **19 Oct 2026. Sign-in rules are «Normas de inicio de sesión»** (`signInRules.*`, web and
+  app, and `emails:signInRules.*`, sc-3030). «Normas», not «reglas», because they are set by
+  an organisation for its members. A member held back by one «podrá consultar, pero no cambiar
+  nada», the same words on the banner, the owner's preview and the email. Where a list of
+  names is the subject (`effectStranded`'s `{{names}}`, one name or several), the sentence is
+  impersonal, «Afecta a {{names}}: … se puede consultar…», so no verb has to agree with a count
+  the string does not have. "Turn on two-factor" is «Activar la verificación en dos pasos», as
+  `twoFactorCard.turnOn`, and a sentence says «la active». "The shortest of your organisations"
+  is «la más estricta», since the shortest limit is the strictest rule and «la más corta» reads
+  as a short rule. People who can manage are «quienes puedan gestionar»; roles are «roles»,
+  as on the Roles screen.
+
+- **18 Oct 2026. The contact cap says the refusal's words.** Under each Account card:
+  «Puede añadir una más» / «uno más», then «Una cuenta admite hasta {{most}} direcciones de
+  correo electrónico, incluida la principal» / «… números de teléfono, incluido el
+  principal»; when full, «Tiene {{most}}, el máximo que admite una cuenta. Quite una para
+  añadir otra.» / «Quite uno para añadir otro.» «Admite» and «Quite una…» as the server's
+  `contacts.limit_*` and the card's `limit*` already say it, so the line and the refusal
+  read alike. The number before the noun is left to the card title, as the English does;
+  the gender of «una», «incluida» and «otra» is why each card has its own key
+  (`contacts.cap*`, sc-2149).
+
+- **18 Oct 2026. An alternative address or number, verified from Account.** "Alternative"
+  is «alternativa» / «alternativo», a plain Spanish adjective here, never «secundaria», which
+  ranks it. The verified line agrees with the noun: «{{address}} está verificada», because
+  the sentence goes on «una dirección alternativa… hasta que la haga principal», and
+  «{{number}} está verificado». "It stays" is «Seguirá siendo», since it was alternative
+  before it was verified. A section is its bare label after «a» and «en», as «volver a
+  Seguridad» already says it: «Volver a Cuenta», «en Cuenta». "Remove it in Account" after
+  the question is the infinitive, «Quitarla en Cuenta» / «Quitarlo en Cuenta», the shape of
+  «¿Número equivocado? Cambiarlo» (`verifyEmail.doneBodyAlternative`,
+  `verifyPhone.doneBodyAlternative`, `contacts.verifiedDone*`, `contacts.backToAccount`,
+  `contacts.removeInAccount*`, sc-2594).
+
 - **18 Oct 2026. Who decides, for someone who cannot.** A line shown to a viewer without the
   power names who has it with `lockedLine`'s words, «alguien que pueda cambiar {{area}}»,
   and never «Usted»: «Lo que incluye lo decide alguien que pueda cambiar {{area}}» is the
@@ -73,8 +107,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   principal», short enough for the row button; "Make another one primary first" puts
   «Antes» first and names the noun, «Antes, haga principal otra dirección» / «… otro
   número». A key shared by addresses and numbers takes no gender: «Quitar», «Conservar»,
-  «Sin verificar», «Este dato ya está vinculado…», and «Verificado» as the generic status
-  word. "Remove" is «Quitar», never «Eliminar», because the address still exists (sc-2149).
+  «Sin verificar», «Este dato ya está vinculado…». Since the number card has its own
+  `verifiedPhone`, «Verificado», the address card's `verified` agrees with «dirección»:
+  «Verificada». "Remove" is «Quitar», never «Eliminar», because the address still exists (sc-2149).
 
 - **18 Oct 2026. The new-device email.** The subject is «Nuevo inicio de sesión en
   Soirely», a noun phrase that fits a phone inbox. The body puts the device first, «Un

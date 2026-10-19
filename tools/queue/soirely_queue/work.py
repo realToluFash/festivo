@@ -119,11 +119,15 @@ def queued(role, stories):
             and config["filter"](set(story["labels"]), story["state"])]
 
 
-def queue_items(stories):
-    """A story entering a role's queue is work once. One sitting there waits for a pick."""
+def queue_items(stories, moves=None):
+    """A story entering a role's queue is work once, unless the role moved it there itself.
+    One sitting there waits for a pick."""
+    moves = moves or {}
     merged = {}
     for role, config in R.ROLES.items():
         for story in queued(role, stories):
+            if moves.get((story["id"], story["state"], story["moved_at"])) == role:
+                continue
             pool = R.pool(role, story["state"], story["labels"])
             fingerprint = f"{pool}:story:sc-{story['id']}:{story['state']}:{story['moved_at']}"
             if fingerprint in merged:
@@ -263,7 +267,7 @@ def heartbeat_items(stories, last_runs, busy_roles, now):
 
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
-           handled=frozenset()):
+           handled=frozenset(), moves=None):
     return (inbox_items(stories, handled) + developer_items(stories, prs) + review_items(stories, prs)
-            + queue_items(stories) + main_items(main_run)
+            + queue_items(stories, moves) + main_items(main_run)
             + heartbeat_items(stories, last_runs or {}, set(busy_roles), now))

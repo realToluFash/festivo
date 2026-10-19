@@ -111,6 +111,24 @@ async function roles(): Promise<void> {
   await screen.findByRole('heading', { level: 1, name: 'Roles' });
 }
 
+function nameTaken(): Response {
+  return new Response(
+    JSON.stringify({
+      type: 'https://soirely.com/errors/validation_failed',
+      title: 'No.',
+      status: 422,
+      violations: [
+        {
+          propertyPath: 'name',
+          message: 'A role with that name already exists.',
+          code: 'role_name_taken',
+        },
+      ],
+    }),
+    { status: 422 },
+  );
+}
+
 function pick(name: RegExp): void {
   fireEvent.click(screen.getByRole('button', { name }));
 }
@@ -218,25 +236,7 @@ describe('Settings > Roles', () => {
   });
 
   it('checks a new role’s name before sending, and says the server’s refusal under it', async () => {
-    const sent = answering((method) =>
-      method === 'POST'
-        ? new Response(
-            JSON.stringify({
-              type: 'https://soirely.com/errors/validation_failed',
-              title: 'No.',
-              status: 422,
-              violations: [
-                {
-                  propertyPath: 'name',
-                  message: 'A role with that name already exists.',
-                  code: 'role_name_taken',
-                },
-              ],
-            }),
-            { status: 422 },
-          )
-        : null,
-    );
+    const sent = answering((method) => (method === 'POST' ? nameTaken() : null));
     await roles();
     fireEvent.click(screen.getByRole('button', { name: 'New role' }));
 
@@ -256,6 +256,119 @@ describe('Settings > Roles', () => {
     expect(sent.find((request) => request.method === 'POST')?.body).toEqual({
       name: 'Venue lead',
       permissions: ['events.read'],
+    });
+  });
+
+  it('renames a custom role with its permissions in one save, under its old name until it lands', async () => {
+    const sent = answering((method, body) =>
+      method === 'PATCH'
+        ? new Response(JSON.stringify({ ...ROLES[5], ...(body as object) }), { status: 200 })
+        : null,
+    );
+    await roles();
+    pick(/^Door team/);
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: ' Door crew ' } });
+    fireEvent.click(level('Seating', 'Read'));
+
+    expect(screen.getByText(/Unsaved changes to Door team\. 2 people get them/)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Save Door team' }));
+
+    await screen.findByText("Saved. Applies on each person's next request.");
+    const patch = sent.find((request) => request.method === 'PATCH');
+    expect(patch?.path).toBe('/api/orgs/org_1/roles/role_6');
+    expect(patch?.body).toEqual({
+      name: 'Door crew',
+      permissions: ['events.read', 'guests.read', 'seating.read'],
+    });
+    expect(screen.getByRole('button', { name: /^Door crew/ })).toBeDefined();
+    expect((screen.getByLabelText('Role name') as HTMLInputElement).value).toBe('Door crew');
+  });
+
+  it('refuses another role’s name in any case, keeping the edit and moving focus to the name', async () => {
+    const sent = answering((method) => (method === 'PATCH' ? nameTaken() : null));
+    await roles();
+    pick(/^Door team/);
+    fireEvent.click(level('Seating', 'Read'));
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'coordinator' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Door team' }));
+
+    expect(screen.getByText('A role with that name already exists.')).toBeDefined();
+    expect(sent.some((request) => request.method === 'PATCH')).toBe(false);
+    expect(document.activeElement).toBe(screen.getByLabelText('Role name'));
+    expect(level('Seating', 'Read').getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Venue crew' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Door team' }));
+
+    await screen.findByText('A role with that name already exists.');
+    expect(document.activeElement).toBe(screen.getByLabelText('Role name'));
+    expect(level('Seating', 'Read').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('takes a role’s own name in another case as a rename, and Discard puts the name back', async () => {
+    const sent = answering((method, body) =>
+      method === 'PATCH'
+        ? new Response(JSON.stringify({ ...ROLES[5], ...(body as object) }), { status: 200 })
+        : null,
+    );
+    await roles();
+    pick(/^Door team/);
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Door crew' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect((screen.getByLabelText('Role name') as HTMLInputElement).value).toBe('Door team');
+    expect(screen.queryByRole('button', { name: 'Save Door team' })).toBeNull();
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'DOOR team' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Door team' }));
+
+    await screen.findByText("Saved. Applies on each person's next request.");
+    expect(sent.find((request) => request.method === 'PATCH')?.body).toEqual({
+      name: 'DOOR team',
+      permissions: ['events.read', 'guests.read'],
+    });
+  });
+
+  it('keeps the name as a heading on Owner and the seeded roles', async () => {
+    answering();
+    await roles();
+
+    for (const name of ['Owner', 'Administrator', 'Coordinator']) {
+      pick(new RegExp(`^${name}`));
+
+      expect(screen.getByRole('heading', { level: 2, name })).toBeDefined();
+      expect(screen.queryByLabelText('Role name')).toBeNull();
+    }
+  });
+
+  it('lets an Administrator rename a role holding more than they do, leaving its locked rows', async () => {
+    const finance = role('role_7', null, 'Finance', ['billing.read', 'billing.manage']);
+    signedIn(
+      membership({
+        ...IRE,
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: ROLES[1]?.permissions ?? [],
+      }),
+    );
+    const sent = answering((method, body) =>
+      method === 'GET'
+        ? new Response(JSON.stringify({ roles: [...ROLES, finance], areas: AREAS }), {
+            status: 200,
+          })
+        : new Response(JSON.stringify({ ...finance, ...(body as object) }), { status: 200 }),
+    );
+    await roles();
+    pick(/^Finance/);
+
+    fireEvent.change(screen.getByLabelText('Role name'), { target: { value: 'Accounts' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Finance' }));
+
+    await screen.findByText("Saved. Applies on each person's next request.");
+    expect(sent.find((request) => request.method === 'PATCH')?.body).toEqual({
+      name: 'Accounts',
+      permissions: ['billing.read', 'billing.manage'],
     });
   });
 
@@ -389,6 +502,10 @@ describe('Settings > Roles', () => {
     expect(screen.queryByRole('button', { name: 'New role' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Events' })).toBeNull();
     expect(screen.getAllByText('Change').length).toBeGreaterThan(0);
+
+    pick(/^Door team/);
+    expect(screen.getByRole('heading', { level: 2, name: 'Door team' })).toBeDefined();
+    expect(screen.queryByLabelText('Role name')).toBeNull();
   });
 
   it('tells a viewer who cannot change roles who decides, and promises them no removal', async () => {

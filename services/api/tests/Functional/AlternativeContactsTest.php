@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\User\Contacts\LinkedContacts;
+use App\Domain\User\Contacts\PhonePromotion;
 use App\Domain\User\UserRegistrar;
 use App\Domain\User\Verification\RecordingTextMessageSender;
 use App\Entity\AuditEntry;
@@ -20,6 +21,7 @@ use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Iter;
 use Psl\Json;
 use Psl\Regex;
 use Psl\Str;
@@ -269,6 +271,117 @@ final class AlternativeContactsTest extends ApiTestCase
     }
 
     #[Test]
+    public function theFirstNumberVerifiedOnAnAccountWithNoPrimaryBecomesPrimary(): void
+    {
+        $first = $this->addPhone('0803 555 0143');
+        $second = $this->addPhone('0803 555 0144');
+
+        $verified = $this->call('POST', '/api/auth/verify/phone', ['phone' => $first, 'code' => $this->codeTo('+2348035550143')]);
+        self::assertSame(200, $this->statusCode(), Json\encode($verified));
+        self::assertTrue($verified['primary']);
+        $this->call('POST', '/api/auth/verify/phone', ['phone' => $second, 'code' => $this->codeTo('+2348035550144')]);
+        self::assertFalse($this->last()['primary']);
+
+        self::assertSame([
+            ['number' => '+2348035550143', 'verified' => true, 'primary' => true],
+            ['number' => '+2348035550144', 'verified' => true, 'primary' => false],
+        ], $this->phones());
+        self::assertSame(['phone.added', 'phone.added', 'phone.primary'], $this->audited());
+    }
+
+    #[Test]
+    public function aVerifiedNumberTakesPrimaryFromAnUnverifiedOneWhichStaysLinked(): void
+    {
+        $added = $this->addPhone('0803 555 0143');
+        $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0144']);
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+        $this->call('GET', '/api/auth/sessions');
+        self::assertSame(ErrorCode::AccountUnverified->type(), $this->last()['type'] ?? null, 'held by the unverified primary');
+
+        $verified = $this->call('POST', '/api/auth/verify/phone', ['phone' => $added, 'code' => $this->codeTo('+2348035550143')]);
+
+        self::assertTrue($verified['primary']);
+        self::assertSame([
+            ['number' => '+2348035550143', 'verified' => true, 'primary' => true],
+            ['number' => '+2348035550144', 'verified' => false, 'primary' => false],
+        ], $this->phones());
+        $this->call('GET', '/api/auth/sessions');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
+    public function aNumberPromotedOnVerifyLeavesTheTrailOfOneMadePrimary(): void
+    {
+        $first = $this->addPhone('0803 555 0143');
+        $second = $this->addPhone('0803 555 0144');
+        $this->call('POST', '/api/auth/verify/phone', ['phone' => $first, 'code' => $this->codeTo('+2348035550143')]);
+        $this->call('POST', '/api/auth/verify/phone', ['phone' => $second, 'code' => $this->codeTo('+2348035550144')]);
+
+        $this->call('PATCH', '/api/auth/phones/' . $second . '/primary');
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+
+        $entries = self::em()->getRepository(AuditEntry::class)->findBy(['subjectId' => $this->user->getId(), 'action' => 'phone.primary'], ['occurredAt' => 'ASC', 'id' => 'ASC']);
+        self::assertSame([
+            ['primary' => [null, '+2348035550143']],
+            ['primary' => ['+2348035550143', '+2348035550144']],
+        ], Vec\map($entries, static fn (AuditEntry $entry): array => $entry->changes()));
+    }
+
+    #[Test]
+    public function aPromotionOnVerifyReadsThePrimaryUnderTheLock(): void
+    {
+        $first = $this->addPhone('0803 555 0143');
+        $second = $this->addPhone('0803 555 0144');
+        $stale = Iter\search($this->fresh()->getPhoneNumbers(), static fn (PhoneNumber $phone): bool => $phone->getId()->equals(Uuid::fromString($second))) ?? self::fail('the second number is linked');
+        self::assertNull($stale->getUser()->getPrimaryPhoneNumber());
+        $connection = self::em()->getConnection();
+        $connection->executeStatement('UPDATE phone_numbers SET verified_at = NOW()');
+        $connection->executeStatement('UPDATE phone_numbers SET is_primary = true WHERE id = ?', [$first]);
+        $stale->setVerifiedAt(new DateTimeImmutable());
+
+        self::service(PhonePromotion::class)->promoteIfNoneVerified($stale);
+
+        self::assertSame('+2348035550143', $this->fresh()->getPrimaryPhoneNumber()?->getNumber());
+        self::assertSame(['phone.added', 'phone.added'], $this->audited());
+    }
+
+    #[Test]
+    public function theOnboardingNumberStaysPrimaryWhenItIsVerified(): void
+    {
+        $this->call('PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '0803 555 0144']);
+
+        $verified = $this->call('POST', '/api/auth/verify/phone', ['code' => $this->codeTo('+2348035550144')]);
+
+        self::assertTrue($verified['primary']);
+        self::assertSame([['number' => '+2348035550144', 'verified' => true, 'primary' => true]], $this->phones());
+    }
+
+    #[Test]
+    public function aNumberVerifiedBesideAPrimaryStaysAnAlternative(): void
+    {
+        $this->primaryPhone();
+        $added = $this->addPhone('0803 555 0143');
+
+        $verified = $this->call('POST', '/api/auth/verify/phone', ['phone' => $added, 'code' => $this->codeTo('+2348035550143')]);
+
+        self::assertFalse($verified['primary']);
+        self::assertSame('+2348035550142', $this->fresh()->getPrimaryPhoneNumber()?->getNumber());
+        self::assertSame(['phone.added'], $this->audited());
+    }
+
+    #[Test]
+    public function anUnverifiedNumberNeverBecomesPrimary(): void
+    {
+        $added = $this->addPhone('0803 555 0143');
+        $wrong = '000000' === $this->codeTo('+2348035550143') ? '111111' : '000000';
+
+        $this->call('POST', '/api/auth/verify/phone', ['phone' => $added, 'code' => $wrong]);
+
+        self::assertSame(ErrorCode::VerificationCodeInvalid->type(), $this->last()['type'] ?? null);
+        self::assertSame([['number' => '+2348035550143', 'verified' => false, 'primary' => false]], $this->phones());
+    }
+
+    #[Test]
     public function addingIsRateLimited(): void
     {
         self::getContainer()->set('limiter.contact_add_account', new RefusingRateLimiterFactory());
@@ -305,6 +418,27 @@ final class AlternativeContactsTest extends ApiTestCase
         $phone->setVerifiedAt(new DateTimeImmutable());
         self::em()->persist($phone);
         self::em()->flush();
+    }
+
+    private function addPhone(string $number): string
+    {
+        $added = $this->call('POST', '/api/auth/phones', ['countryCode' => 'NG', 'number' => $number]);
+        self::assertSame(201, $this->statusCode(), Json\encode($added));
+        self::assertFalse($added['primary']);
+
+        return Type\string()->coerce($added['id']);
+    }
+
+    /** @return list<array{number: string, verified: bool, primary: bool}> */
+    private function phones(): array
+    {
+        $me = $this->call('GET', '/api/auth/me');
+        $phones = Vec\map(
+            Type\vec(Type\shape(['number' => Type\string(), 'verified' => Type\bool(), 'primary' => Type\bool()], true))->coerce($me['phoneNumbers']),
+            static fn (array $phone): array => ['number' => $phone['number'], 'verified' => $phone['verified'], 'primary' => $phone['primary']],
+        );
+
+        return Vec\sort_by($phones, static fn (array $phone): string => $phone['number']);
     }
 
     private function signInAs(User $user): void

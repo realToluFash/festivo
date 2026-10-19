@@ -44,3 +44,14 @@ export function narrowLocale(locale: string | null | undefined): LocaleCode {
 function language(locale: string): string {
   return locale.trim().replace(/_/g, '-').split('-')[0]!.toLowerCase();
 }
+
+/** "French · Français": the reader's word, then the language's own, so each is findable in its own words. */
+export function languageChoices(
+  word: (key: string) => string,
+): { code: LocaleCode; name: string }[] {
+  return LOCALES.map(({ code, nativeName }) => {
+    const name = word(`languageNames.${code}`);
+
+    return { code, name: name === nativeName ? name : `${name} · ${nativeName}` };
+  });
+}

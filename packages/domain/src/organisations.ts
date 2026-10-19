@@ -24,7 +24,8 @@ export function roleHolds(
   return permission !== '' && membership.permissions.includes(permission);
 }
 
-export type OrganisationField = 'name' | 'countryCode' | 'contactAddress' | 'currency' | 'timezone';
+export type OrganisationField =
+  'name' | 'countryCode' | 'contactAddress' | 'currency' | 'timezone' | 'locale';
 
 export type OrganisationDetails = Record<OrganisationField, string>;
 
@@ -35,12 +36,13 @@ export const ORGANISATION_FIELDS: readonly OrganisationField[] = [
   'contactAddress',
   'currency',
   'timezone',
+  'locale',
 ];
 
 /** The API's OrganisationRules::NAME_MAXIMUM. */
 export const ORGANISATION_NAME_MAXIMUM = 100;
 
-/** What a client checks before saving. Country, currency and time zone come from pickers, so they cannot be wrong. */
+/** What a client checks before saving. Country, currency, time zone and language come from pickers, so they cannot be wrong. */
 export function organisationProblem(
   field: OrganisationField,
   value: string,

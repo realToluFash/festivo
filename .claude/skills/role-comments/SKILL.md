@@ -84,6 +84,11 @@ the address the person typed.
   is an answer the next role builds against the old AC.
 - **Can't answer?** Say why and re-address it: `[pm] (from ux)` with what you need. Do not
   leave it unanswered — an open thread is somebody else's blocked work.
+- **A reply that only confirms carries no tag.** "Read, no questions", "Noted, nothing to
+  change", a relay checked and found right: nothing in it is for the asker to act on, so
+  post it with `sq <role> comment sc-N --reply-to <id> --untagged --text "…"`. It reads
+  `(from <role>)` alone, closes the thread for you, and opens nothing for anyone. A reply
+  that answers, asks, or needs the asker to do anything keeps its tag.
 - The asker does not reply to say thanks. The answer closes the thread.
 
 ## 3. What counts as open

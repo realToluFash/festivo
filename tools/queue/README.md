@@ -68,7 +68,7 @@ story or pull request, read fresh rather than from the last sync, and says why i
 
 | Write                                                | Who                                | Does                                                                                                                                                                                                                                                                       |
 | ---------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `comment sc-N --to r,r \| --reply-to ID`             | all                                | posts `[r] (from role)`; a reply goes on the thread's root and defaults to the asker                                                                                                                                                                                       |
+| `comment sc-N --to r,r \| --reply-to ID`             | all                                | posts `[r] (from role)`; a reply goes on the thread's root and defaults to the asker. `--untagged` posts `(from role)` alone, a record or a reply that only confirms, and wakes nobody                                                                                     |
 | `note sc-N`                                          | all                                | a private line the role's next run on the story sees                                                                                                                                                                                                                       |
 | `claim sc-N`                                         | developers, testers                | developer: adds its label, moves to In Progress. Tester: In QA plus `QA claim: qaN`; a claim over three hours old can be taken over. The first claim recorded wins. Prints the story                                                                                       |
 | `move sc-N "<state>"`                                | per `roles.MOVES`                  | only the moves the role's skill makes, from the states it makes them from                                                                                                                                                                                                  |
@@ -100,7 +100,9 @@ story or pull request, read fresh rather than from the last sync, and says why i
   and fail. Every `gh` call names the repository, so `sq` works from any directory.
 - **`work.py`** turns the stored stories and pull requests into work items, with no network
   calls. Each item has a fingerprint, such as `lead:review:#176@e9ced78:<moved_at>`, so
-  finished work stays finished and a change makes a new item.
+  finished work stays finished and a change makes a new item. Every move a role makes
+  through `sq` is recorded with the `moved_at` it landed at, and a story a role moved into
+  its own queue is no work for it; the same move by anyone else still is.
 - **`store.py`** holds the claims. A role holds one item at a time, a pooled item (Ready For
   QA, unlabelled To Do) goes to one role only, and a claim lapses after 90 minutes.
 

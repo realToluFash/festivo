@@ -5,7 +5,7 @@
  * the correlation id and the error shape are decided once. Written per client,
  * each grows its own error path and most of those are never exercised.
  */
-import { type Account, ApiClient, awaiting } from '@soirely/api-client';
+import { type Account, ApiClient, type Problem, awaiting } from '@soirely/api-client';
 import { getCalendars } from 'expo-localization';
 import { router } from 'expo-router';
 
@@ -14,10 +14,11 @@ import { config } from './config.ts';
 import { currentLocale } from './i18n/index.ts';
 import { installId } from './installId.ts';
 import { landingFor } from './landing.ts';
+import { ruleRefusal, signInRoute } from './kit/signInRules.ts';
 import { signedOutHold } from './signedOutHold.ts';
 import { tokens } from './tokens.ts';
 
-const hold = signedOutHold(() => router.replace('/sign-in?signedOut=1'));
+const hold = signedOutHold((why) => router.replace(signInRoute(ruleRefusal(why), true)));
 
 export const api = new ApiClient({
   baseUrl: () => config.apiBaseUrl,
@@ -28,7 +29,7 @@ export const api = new ApiClient({
   tokens,
   // Stated rather than defaulted: the web client states the opposite deliberately.
   refreshTokenIn: 'body',
-  onSignedOut: () => hold.onSignedOut(),
+  onSignedOut: (why) => hold.onSignedOut(why),
   // A refusal names the gate but not whether the email or a phone is unproved, so ask the account.
   onGate: () => {
     void api
@@ -40,7 +41,7 @@ export const api = new ApiClient({
 
 /** Launch's own `me()`: an ended session is reported back rather than redirected (sc-927). */
 export async function meAtLaunch(): Promise<
-  { account: Account } | { error: unknown; ended: boolean }
+  { account: Account } | { error: unknown; ended: boolean; why?: Problem }
 > {
   const answer = await hold.during(() => api.me());
 

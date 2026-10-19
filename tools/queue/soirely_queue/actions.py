@@ -76,15 +76,24 @@ def signature(role):
     return role
 
 
+def resync(c):
+    """The write is done by now, so a failed refresh must not read as a failed write: it
+    is reported after what was done, and the next tick's sync catches up."""
+    try:
+        sync.sync_github(c.db)
+    except github.GitHubError as error:
+        return f" (done; the refresh after it failed: {error})"
+    return ""
+
+
 def guard(c, command):
     if not R.may(c.role, command):
         raise Refused(f"{c.role} may not {command}: see `sq {c.role} help`")
 
 
 def post(c, story, to, body, parent=None):
-    head = " ".join(f"[{t}]" for t in to) + f" (from {signature(c.role)})"
-    text = f"{head}\n{body.strip()}" if head else body.strip()
-    return c.shortcut.comment(story["id"], text, parent)
+    head = " ".join([*(f"[{t}]" for t in to), f"(from {signature(c.role)})"])
+    return c.shortcut.comment(story["id"], f"{head}\n{body.strip()}", parent)
 
 
 def set_state(c, story, name, check=True):
@@ -98,7 +107,9 @@ def set_state(c, story, name, check=True):
         froms = " or ".join(allowed) if allowed else "nowhere"
         raise Refused(f"{c.role} moves a story to {state} only from {froms}; "
                       f"sc-{story['id']} is {story['state']}")
-    c.shortcut.update(story["id"], workflow_state_id=state_id)
+    moved = c.shortcut.update(story["id"], workflow_state_id=state_id)
+    if moved and moved.get("moved_at"):
+        store.mark_move(c.db, story["id"], state, moved["moved_at"], c.role)
     return state
 
 
@@ -123,6 +134,8 @@ def comment(c, a):
     guard(c, "comment")
     story = c.story(a.story, fresh=False)
     to = [t for t in (a.to or "").replace(",", " ").split() if t]
+    if to and a.untagged:
+        raise Refused("--untagged posts no tag: drop --to, or drop --untagged to address it")
     parent = None
     if a.reply_to:
         replied = next((x for x in story["comments"] if x["id"] == a.reply_to), None)
@@ -133,11 +146,11 @@ def comment(c, a):
             raise Refused(f"no comment #{a.reply_to} on sc-{story['id']}")
         # Shortcut threads one level deep, so a reply to a reply goes on the thread's root.
         parent = replied["parent"] or replied["id"]
-        if not to and R.author(replied["text"]):
+        if not to and not a.untagged and R.author(replied["text"]):
             to = [R.author(replied["text"])]
     if not to and not a.untagged:
         raise Refused("say who it is for: --to pm,ux (a reply defaults to the asker), "
-                      "or --untagged for a note that wakes nobody")
+                      "or --untagged for a record or a confirmation that wakes nobody")
     unknown = [t for t in to if t not in R.ROLES and t != "dev"]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
@@ -385,10 +398,10 @@ def review(c, a):
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              "Answer each finding in its thread, fix, push, and hand it back to In Review.")
-    sync.sync_github(c.db)
+    stale = resync(c)
     if story:
         c.refresh(story["id"])
-    return f"posted the review on PR #{a.pr} ({len(items)} inline, {last})"
+    return f"posted the review on PR #{a.pr} ({len(items)} inline, {last}){stale}"
 
 
 def thread_of(pr, comment_id):
@@ -405,8 +418,7 @@ def pr_reply(c, a):
     first = thread_of(pr, a.comment)["comments"][0]["id"]
     # Signed, so the queue knows whose word a thread ends on.
     github.reply(owner, name, a.pr, first, f"{a.text.rstrip()} (from {signature(c.role)})")
-    sync.sync_github(c.db)
-    return f"replied on PR #{a.pr}"
+    return f"replied on PR #{a.pr}{resync(c)}"
 
 
 def resolve(c, a):
@@ -418,8 +430,7 @@ def resolve(c, a):
     github.resolve(found["id"])
     if a.text:
         github.reply(owner, name, a.pr, found["comments"][0]["id"], a.text)
-    sync.sync_github(c.db)
-    return f"resolved {found['path']}:{found['line'] or '-'} on PR #{a.pr}"
+    return f"resolved {found['path']}:{found['line'] or '-'} on PR #{a.pr}{resync(c)}"
 
 
 def pr_create(c, a):
@@ -427,8 +438,7 @@ def pr_create(c, a):
     if a.draft and c.role != "ops":
         raise Refused("pull requests open ready for review, not as drafts")
     url = github.create_pr(a.head, a.title, a.text, draft=a.draft)
-    sync.sync_github(c.db)
-    return f"opened {url}"
+    return f"opened {url}{resync(c)}"
 
 
 def hand_to_qa(c, story, pr, merge_sha, note=""):
@@ -452,10 +462,6 @@ def merge(c, a):
                       "the push voids the pass, so the story stays In Review for the lead")
     if live["mergeable"] != "MERGEABLE":
         raise Refused(f"GitHub says {live['mergeable']}; try again in a minute")
-    if live.get("mergeStateStatus") == "BEHIND":
-        raise Refused("main has moved on. Merge origin/main into the branch and push; once its "
-                      "checks are green, a pass carries over if the merge changed nothing of the "
-                      "pull request's own")
     if c.role in R.LINGUISTS:
         mine = R.linguist_files()
         stray = [path for path, _, _ in github.files(a.pr) if path not in mine]
@@ -476,9 +482,9 @@ def merge(c, a):
         raise Refused(f"{len(unresolved)} review threads are open; the lead resolves them")
     github.merge(a.pr, head)
     merged = github.live(a.pr)["mergeCommit"]
-    sync.sync_github(c.db)
     hand_to_qa(c, story, pr, merged, a.text)
-    return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is Ready For QA and QA is told"
+    return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} is Ready For QA and QA is told"
+            f"{resync(c)}")
 
 
 def to_qa(c, a):
