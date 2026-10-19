@@ -149,6 +149,33 @@ describe('Settings > General', () => {
       screen.getByText(/Your role, Coordinator, can see these but not change them/),
     ).toBeDefined();
   });
+
+  it('lists the details in the order of the form, then the defaults note, then the role line', () => {
+    signedIn(
+      membership({
+        role: { id: 'role_2', seededAs: 'coordinator', name: null },
+        permissions: ['events.read'],
+      }),
+    );
+    settings();
+
+    expect(screen.getAllByRole('term').map((term) => term.textContent)).toEqual([
+      'Name',
+      'Country',
+      'Contact address',
+      'Currency',
+      'Time zone',
+    ]);
+
+    const note = screen.getByText(
+      'Currency and time zone: new events start with these. Events you already have keep theirs.',
+    );
+    const role = screen.getByText(/Your role, Coordinator, can see these but not change them/);
+    const list = document.querySelector('dl.settings-read-only');
+
+    expect(list?.compareDocumentPosition(note)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(note.compareDocumentPosition(role)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
 });
 
 describe('Settings > General, a request to get back in', () => {
