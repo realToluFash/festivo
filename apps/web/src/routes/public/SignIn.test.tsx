@@ -330,3 +330,61 @@ describe('signing in, for real', () => {
     expect(screen.getByRole('alert').textContent).toMatch(/Try again in a moment/);
   });
 });
+
+describe('signing in under an organisation’s sign-in rules (sc-69)', () => {
+  it('says which organisation turned passwords off, and leaves the provider buttons', async () => {
+    answering({
+      'POST /api/auth/login': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/oauth_only',
+            title: 'No.',
+            status: 403,
+            organisation: 'Ìrè Events',
+            providers: ['google'],
+          },
+          403,
+        ),
+    });
+
+    at('/sign-in');
+    fillIn();
+
+    const banner = await screen.findByRole('alert');
+    expect(banner.textContent).toMatch(/Ìrè Events signs in with Google or Apple only/);
+    expect(banner.textContent).toMatch(/Use Google instead/);
+    expect(screen.getByLabelText('Password').closest('form')?.hidden).toBe(true);
+    expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in with another account' }));
+
+    expect(screen.getByLabelText('Password').closest('form')?.hidden).toBe(false);
+  });
+
+  it('after an inactivity limit, names the rule and keeps the address, asking for the password', () => {
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: [
+            {
+              pathname: '/sign-in',
+              search: '?signed-out',
+              state: {
+                timedOut: { organisation: 'Ìrè Events', days: 30, email: 'folake@ire.events' },
+              },
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByRole('status').textContent).toMatch(
+      /Ìrè Events signs people out after 30 days without use/,
+    );
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('folake@ire.events');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(screen.getByText('Enter your password.')).toBeDefined();
+  });
+});

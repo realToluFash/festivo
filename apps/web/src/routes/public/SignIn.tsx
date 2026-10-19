@@ -2,13 +2,14 @@ import { formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
 import { ApiError } from '@soirely/api-client';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { currentLocale } from '../../i18n/index.ts';
+import type { TimedOut } from '../../session.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
@@ -20,16 +21,20 @@ type Status =
   | { kind: 'rateLimited'; retryAt: string; liftsAt: number }
   | { kind: 'providerFailed'; provider: string }
   | { kind: 'failed' }
-  | { kind: 'sessionEnded' };
+  | { kind: 'sessionEnded' }
+  | { kind: 'timedOut'; rule: TimedOut }
+  | { kind: 'providerOnly'; organisation: string; providers: string[] };
 
 export function SignIn() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const { state: carried } = useLocation() as { state: { timedOut?: TimedOut } | null };
   const [status, setStatus] = useState<Status>(() => {
     const provider = params.get('provider-failed');
 
     if (provider != null) return { kind: 'providerFailed', provider };
+    if (carried?.timedOut != null) return { kind: 'timedOut', rule: carried.timedOut };
 
     return params.has('signed-out') ? { kind: 'sessionEnded' } : { kind: 'ready' };
   });
@@ -100,6 +105,44 @@ export function SignIn() {
         </div>
       )}
 
+      {status.kind === 'timedOut' && (
+        <div className="notice notice-quiet" role="status">
+          <span className="mark mark-info" aria-hidden="true">
+            i
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">
+              {t('signIn.timedOutTitle', { organisation: status.rule.organisation })}
+            </p>
+            <p>
+              {t('signIn.timedOutBody', {
+                organisation: status.rule.organisation,
+                count: status.rule.days,
+              })}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {status.kind === 'providerOnly' && (
+        <div className="notice notice-quiet" role="alert">
+          <span className="mark mark-info" aria-hidden="true">
+            i
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">
+              {t('signIn.providerOnlyTitle', { organisation: status.organisation })}
+            </p>
+            <p>
+              {t('signIn.providerOnlyBody', {
+                organisation: status.organisation,
+                providers: providerList(status.providers),
+              })}
+            </p>
+          </div>
+        </div>
+      )}
+
       {status.kind === 'failed' && (
         <div className="notice notice-broken" role="alert">
           <span className="mark mark-broken" aria-hidden="true">
@@ -141,7 +184,14 @@ export function SignIn() {
         </div>
       )}
 
-      <form ref={form} className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+      {/* A password cannot sign this account in, so the form gives way to the provider buttons. */}
+      <form
+        ref={form}
+        className="auth-form"
+        hidden={status.kind === 'providerOnly'}
+        noValidate
+        onSubmit={(event) => void submit(event)}
+      >
         <div className="field">
           <label htmlFor="email">{t('signIn.email')}</label>
           <input
@@ -152,6 +202,7 @@ export function SignIn() {
             autoComplete="email"
             autoCorrect="off"
             spellCheck={false}
+            defaultValue={status.kind === 'timedOut' ? status.rule.email : undefined}
             disabled={busy}
             required
             aria-invalid={checks.errors.email != null}
@@ -214,6 +265,12 @@ export function SignIn() {
 
       <ProviderSignIn />
 
+      {status.kind === 'providerOnly' && (
+        <button className="link-button" type="button" onClick={() => setStatus({ kind: 'ready' })}>
+          {t('signIn.anotherAccount')}
+        </button>
+      )}
+
       <div className="auth-footnote">
         <span>{t('signIn.newHere')}</span>
         <Link className="link-button" to="/register">
@@ -229,6 +286,14 @@ function refusalFrom(error: unknown): Status {
 
   if (error.is('invalid_credentials')) return { kind: 'refused' };
 
+  if (error.is('oauth_only') && error.problem.organisation != null) {
+    return {
+      kind: 'providerOnly',
+      organisation: error.problem.organisation,
+      providers: error.problem.providers ?? [],
+    };
+  }
+
   if (error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
 
@@ -242,4 +307,15 @@ function refusalFrom(error: unknown): Status {
   }
 
   return { kind: 'failed' };
+}
+
+const PROVIDER_NAMES: Record<string, string> = { google: 'Google', apple: 'Apple' };
+
+/** "Google or Apple", in the reader's language; the names are the providers' own. */
+function providerList(providers: string[]): string {
+  const names = (providers.length > 0 ? providers : ['google', 'apple']).map(
+    (provider) => PROVIDER_NAMES[provider] ?? provider,
+  );
+
+  return new Intl.ListFormat(currentLocale(), { type: 'disjunction' }).format(names);
 }

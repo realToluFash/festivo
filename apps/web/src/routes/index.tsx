@@ -6,6 +6,7 @@ import { AppLayout } from './app/AppLayout.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
 import { General } from './app/settings/General.tsx';
 import { Roles } from './app/settings/Roles.tsx';
+import { SignInRules } from './app/settings/SignInRules.tsx';
 import { GuestLayout } from './guest/GuestLayout.tsx';
 import { Invitation } from './guest/Invitation.tsx';
 import { ChangePhone } from './public/ChangePhone.tsx';
@@ -69,6 +70,7 @@ export const routes = [
       { path: 'account/security', element: <Security /> },
       { path: 'settings', element: <General /> },
       { path: 'settings/roles', element: <Roles /> },
+      { path: 'settings/sign-in-rules', element: <SignInRules /> },
     ],
   },
   {
