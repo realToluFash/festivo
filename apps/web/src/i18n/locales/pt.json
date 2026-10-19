@@ -565,7 +565,9 @@
     "confirmWarning": "A sessão é encerrada nos dispositivos que entraram com o {{provider}}",
     "confirmEmailed": "Enviamos um email a todos os endereços verificados da sua conta a avisar que o {{provider}} foi desassociado.",
     "confirmUnlink": "Desassociar o {{provider}}",
-    "keep": "Manter associada"
+    "keep": "Manter associada",
+    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one can't be removed.",
+    "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
   "timeZone": {
     "title": "Fuso horário",

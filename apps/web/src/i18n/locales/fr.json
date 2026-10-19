@@ -565,7 +565,9 @@
     "confirmWarning": "Les appareils connectés avec {{provider}} seront déconnectés",
     "confirmEmailed": "Nous écrivons à chaque adresse vérifiée de votre compte pour signaler que {{provider}} a été dissocié.",
     "confirmUnlink": "Dissocier {{provider}}",
-    "keep": "Le garder associé"
+    "keep": "Le garder associé",
+    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one can't be removed.",
+    "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
   "timeZone": {
     "title": "Fuseau horaire",

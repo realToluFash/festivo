@@ -565,7 +565,9 @@
     "confirmWarning": "Se cerrará la sesión de los dispositivos que entraron con {{provider}}",
     "confirmEmailed": "Avisaremos por correo a todas las direcciones verificadas de su cuenta de que {{provider}} se ha desvinculado.",
     "confirmUnlink": "Desvincular {{provider}}",
-    "keep": "Mantenerla vinculada"
+    "keep": "Mantenerla vinculada",
+    "keptByRule": "A rule set by {{organisation}}: everyone in it signs in with Google or Apple, so your last one can't be removed.",
+    "keptByRuleNext": "Link {{other}} first if you want to unlink {{provider}}."
   },
   "timeZone": {
     "title": "Zona horaria",
