@@ -160,6 +160,25 @@ class Developer(unittest.TestCase):
                                                     threads=[thread])])
         self.assertEqual(items, [])
 
+    def test_a_pass_with_an_unanswered_thread_wakes_the_developer(self):
+        for t in (thread("should: x"), thread("should: x", "a (from dev2)", "b (from lead)")):
+            items = work.developer_items([story(labels=["dev2"])],
+                                         [pr(lead=[verdict("pass", HEAD[:7])], threads=[t])])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items],
+                             [("answer-threads", ["dev2"])])
+
+    def test_a_thread_the_developer_answered_last_waits_on_the_lead(self):
+        t = thread("should: x", "Kept as is. (from dev2)")
+        items = work.developer_items([story(labels=["dev2"])],
+                                     [pr(lead=[verdict("pass", HEAD[:7])], threads=[t])])
+        self.assertEqual(items, [])
+
+    def test_each_new_lead_reply_is_new_work_for_the_developer(self):
+        def one(*texts):
+            return work.developer_items([story(labels=["dev2"])], [pr(
+                lead=[verdict("pass", HEAD[:7])], threads=[thread(*texts)])])[0]["fingerprint"]
+        self.assertNotEqual(one("nit: x"), one("nit: x", "a (from dev2)", "b (from lead)"))
+
     def test_merged_at_the_passed_sha_goes_to_qa(self):
         merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
         self.assertEqual(kinds(work.developer_items([story()], [merged])), ["to-qa"])

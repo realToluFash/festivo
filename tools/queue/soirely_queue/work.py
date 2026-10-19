@@ -91,6 +91,19 @@ def answered_findings(pr):
     return found
 
 
+def unanswered_by(role, pr):
+    """Open threads whose last word is not the role's own, so the role has a reply to give."""
+    found = []
+    for t in open_threads(pr):
+        if not t["comments"]:
+            continue
+        signed = SIGNED.findall(t["comments"][-1]["text"])
+        if signed and signed[-1] == role:
+            continue
+        found.append(t)
+    return found
+
+
 def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None, comments=None):
     return {"fingerprint": fingerprint, "pool": pool, "roles": roles, "kind": kind,
             "reason": reason, "priority": priority, "comments": comments,
@@ -230,6 +243,14 @@ def developer_items(stories, prs):
         elif pr["checks"] == "green" and story["state"] == "In Review" \
                 and covered and verdict["verdict"] == "pass":
             if open_threads(pr):
+                unanswered = unanswered_by(role, pr)
+                if unanswered:
+                    last = max(t["comments"][-1]["id"] for t in unanswered)
+                    items.append(_item(f"{role}:answer-threads:#{number}@{sha}:{last}", role,
+                                       [role], "answer-threads",
+                                       f"PR #{number} passed at {sha} with {len(unanswered)} "
+                                       "open threads to answer or fix before it can merge",
+                                       PULL_REQUEST, story, pr))
                 continue
             conflict = ", but it conflicts with main" if pr["mergeable"] == "conflicting" else ""
             add("merge", f"PR #{number} passed at {sha}{conflict}: merge it")
