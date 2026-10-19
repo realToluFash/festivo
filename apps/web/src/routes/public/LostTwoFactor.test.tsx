@@ -106,7 +106,7 @@ async function atTheStart(answers: Record<string, () => Response>) {
     'heading',
     {
       level: 1,
-      name: /Get back in|Contact Soirely support|Enter both codes|Waiting|Two-factor is off|turned down/,
+      name: /Get back in|Contact Soirely support|Enter both codes|Waiting|Two-factor is off|turned down|request ended/,
     },
     THE_WAY_IN,
   );
@@ -305,6 +305,80 @@ describe('getting back in without the authenticator', () => {
     ).toBeDefined();
     expect(screen.queryByText(/Ask an owner or admin of/)).toBeNull();
     expect(screen.getAllByRole('link', { name: 'Email support@soirely.com' })).toHaveLength(1);
+  });
+
+  it('ended with nobody left, says nobody can confirm it and offers support, not Ask again', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({
+          ...OPENING,
+          recovery: 'handle',
+          state: { ...WAITING, status: 'expired', organisations: [], nobody: true },
+        }),
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Your request ended' }),
+    ).toBeDefined();
+    expect(screen.getByText('Ended')).toBeDefined();
+    expect(
+      screen.getByText('Nobody in your organisation can confirm this. Contact Soirely support.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/Nobody answered within 7 days/)).toBeNull();
+    expect(
+      screen.getByRole('link', { name: 'Email support@soirely.com' }).getAttribute('href'),
+    ).toBe('mailto:support@soirely.com');
+    expect(screen.queryByRole('button', { name: 'Ask again' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
+  });
+
+  it('ended with nobody left and no support address, offers neither support nor Ask again', async () => {
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        json({
+          ...OPENING,
+          recovery: 'handle',
+          state: {
+            ...WAITING,
+            status: 'expired',
+            organisations: [],
+            nobody: true,
+            supportAddress: '',
+          },
+        }),
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Your request ended' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('link', { name: /^Email/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Ask again' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Back to sign in' })).toBeDefined();
+  });
+
+  it('ended once somebody can answer again, offers Ask again, which starts a new request', async () => {
+    let openings = 0;
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery/opening': () =>
+        openings++ === 0
+          ? json({ ...OPENING, recovery: 'handle', state: { ...WAITING, status: 'expired' } })
+          : json(OPENING),
+      'POST /api/auth/two-factor/recovery': () => json({ recovery: 'handle', state: PROVING }, 201),
+    });
+
+    expect(
+      await screen.findByText(
+        'Nobody answered within 7 days. Two-factor is still on. You can ask again.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('link', { name: 'Email support@soirely.com' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask again' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send the codes' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Enter both codes' }),
+    ).toBeDefined();
   });
 
   it('opens the waiting screen when the codes were already proved on another device', async () => {

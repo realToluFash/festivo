@@ -10,14 +10,16 @@ export function recoveryFirstStep(
   return held != null ? 'held' : 'signIn';
 }
 
-export type AnsweredRecovery = 'waiting' | 'approved' | 'turned_down';
+export type AskedRecovery = 'waiting' | 'approved' | 'turned_down' | 'expired';
 
-/** The sentence under the heading: with nobody left to answer, one that names no organisation (sc-1848). */
-export function recoveryIntroKey(status: AnsweredRecovery, nobody: boolean): string {
+/** The sentence under the heading: with nobody left to answer, one that names no organisation (sc-1848, sc-3477). */
+export function recoveryIntroKey(status: AskedRecovery, nobody: boolean): string {
   if (status === 'approved') {
     return nobody ? 'lostTwoFactor.approvedIntroNobody' : 'lostTwoFactor.approvedIntro';
   }
   if (nobody) return 'lostTwoFactor.nobodyIntro';
+
+  if (status === 'expired') return 'lostTwoFactor.endedIntro';
 
   return status === 'waiting' ? 'lostTwoFactor.waitingIntro' : 'lostTwoFactor.turnedDownIntro';
 }

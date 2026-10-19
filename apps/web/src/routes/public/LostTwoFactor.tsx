@@ -491,12 +491,19 @@ function Request({
       <>
         <Heading
           title={t('lostTwoFactor.endedTitle')}
-          intro={t('lostTwoFactor.endedIntro')}
+          intro={t(recoveryIntroKey('expired', state.nobody))}
           mark={{ tone: 'ended', glyph: '–', word: t('lostTwoFactor.endedMark') }}
         />
-        <button className="button button-primary" type="button" onClick={onAskAgain}>
-          {t('lostTwoFactor.askAgain')}
-        </button>
+        {state.nobody && supportAddress !== '' && (
+          <a className="button" href={`mailto:${supportAddress}`}>
+            {t('lostTwoFactor.emailSupport', { address: supportAddress })}
+          </a>
+        )}
+        {!state.nobody && (
+          <button className="button button-primary" type="button" onClick={onAskAgain}>
+            {t('lostTwoFactor.askAgain')}
+          </button>
+        )}
         <BackToSignIn />
       </>
     );
