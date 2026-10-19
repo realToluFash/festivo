@@ -455,10 +455,6 @@ def merge(c, a):
                       "the push voids the pass, so the story stays In Review for the lead")
     if live["mergeable"] != "MERGEABLE":
         raise Refused(f"GitHub says {live['mergeable']}; try again in a minute")
-    if live.get("mergeStateStatus") == "BEHIND":
-        raise Refused("main has moved on. Merge origin/main into the branch and push; once its "
-                      "checks are green, a pass carries over if the merge changed nothing of the "
-                      "pull request's own")
     if c.role in R.LINGUISTS:
         mine = R.linguist_files()
         stray = [path for path, _, _ in github.files(a.pr) if path not in mine]

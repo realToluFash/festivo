@@ -10,6 +10,7 @@ use App\Entity\ProviderIdentity;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Uid\Uuid;
 
@@ -23,22 +24,32 @@ final class MembershipRepository extends ServiceEntityRepository
 
     public function findActive(User $user, Uuid $organisationId): ?Membership
     {
-        return $this->findOneBy([
-            'user' => $user,
-            'organisation' => $organisationId,
-            'status' => MembershipStatus::Active,
-        ]);
+        return $this->findActiveByUserId($user->getId(), $organisationId);
     }
 
     public function findActiveByUserId(Uuid $userId, Uuid $organisationId): ?Membership
     {
-        return $this->findOneBy(['user' => $userId, 'organisation' => $organisationId, 'status' => MembershipStatus::Active]);
+        /** @var ?Membership */
+        return $this->active()
+            ->andWhere('m.user = :user')
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('user', $userId, 'uuid')
+            ->setParameter('organisation', $organisationId, 'uuid')
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     /** @return list<Membership> oldest first, so the organisation somebody founded leads */
     public function findActiveFor(User $user): array
     {
-        return $this->findBy(['user' => $user, 'status' => MembershipStatus::Active], ['createdAt' => 'ASC', 'id' => 'ASC']);
+        /** @var list<Membership> */
+        return $this->active()
+            ->andWhere('m.user = :user')
+            ->setParameter('user', $user)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 
     /** @return list<Membership> in every state, oldest first */
@@ -66,7 +77,24 @@ final class MembershipRepository extends ServiceEntityRepository
     /** @return list<Membership> */
     public function findActiveIn(Organisation $organisation): array
     {
-        return $this->findBy(['organisation' => $organisation, 'status' => MembershipStatus::Active], ['createdAt' => 'ASC', 'id' => 'ASC']);
+        /** @var list<Membership> */
+        return $this->active()
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('organisation', $organisation)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** The organisation is joined so the soft-delete filter applies to it: a deleted one's members hold nothing (sc-68). */
+    private function active(): QueryBuilder
+    {
+        return $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.status = :active')
+            ->setParameter('active', MembershipStatus::Active);
     }
 
     /** @return list<Membership> the members with no Google or Apple linked, by name */

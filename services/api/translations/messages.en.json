@@ -17,6 +17,8 @@
     "gate.phone_unverified": "Verify your mobile number to carry on.",
     "proof.required": "This needs your password, or a sign-in with Google or Apple, in the last {minutes} minutes, and your two-factor code if two-factor is on.",
     "roles.last_owner": "This is the organisation's only owner. Make someone else an owner first.",
+    "organisation.owner_required": "Only an owner can delete the organisation.",
+    "organisation.delete_name_mismatch": "Type {name} exactly as shown to delete it.",
     "roles.grant_not_held": "You can only grant, remove or move people onto permissions your own role holds. Nothing was changed.",
     "roles.name_builtin": "Built-in roles cannot be renamed. You can still change what this one holds.",
     "roles.name_required": "Give the role a name.",
@@ -68,5 +70,7 @@
     "invitations.revoked": "This invitation was withdrawn.",
     "invitations.expired": "This invitation has expired. Ask whoever invited you to send a new one.",
     "validation.invite_email_required": "Enter their email address.",
-    "validation.invite_email_invalid": "That does not look like an email address. Check it has an @ and a domain."
+    "validation.invite_email_invalid": "That does not look like an email address. Check it has an @ and a domain.",
+    "members.own_membership": "You cannot change your own role or remove yourself. Another owner or administrator can, or you can leave from General.",
+    "members.choose_new_owner": "Choose who becomes the owner."
 }

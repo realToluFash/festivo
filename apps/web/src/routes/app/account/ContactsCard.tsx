@@ -258,9 +258,15 @@ function ContactsCard({
                     {row.verified ? '✓' : ''}
                   </span>
                   <span className={row.verified ? 'way-state-on' : undefined}>
-                    {row.verified ? t('contacts.verified') : t('contacts.unverified')}
+                    {row.verified
+                      ? t(email ? 'contacts.verified' : 'contacts.verifiedPhone')
+                      : t('contacts.unverified')}
                   </span>
-                  {row.primary && <span className="pill-quiet">{t('contacts.primary')}</span>}
+                  {row.primary && (
+                    <span className="pill-quiet">
+                      {t(email ? 'contacts.primary' : 'contacts.primaryPhone')}
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -286,7 +292,7 @@ function ContactsCard({
                           : void act(row, 'promote')
                       }
                     >
-                      {t('contacts.makePrimary')}
+                      {t(email ? 'contacts.makePrimary' : 'contacts.makePrimaryPhone')}
                     </button>
                   )}
                   {offers.remove && (
@@ -357,10 +363,10 @@ function ContactsCard({
                         type="button"
                         onClick={() => void act(row, 'remove')}
                       >
-                        {t('contacts.removeConfirm')}
+                        {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
                       </button>
                       <button className="button" type="button" onClick={() => setAsking(null)}>
-                        {t('contacts.removeKeep')}
+                        {t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')}
                       </button>
                     </div>
                   </div>

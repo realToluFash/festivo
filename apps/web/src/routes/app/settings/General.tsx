@@ -17,6 +17,7 @@ import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { OwnershipCard } from './OwnershipCard.tsx';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
@@ -72,6 +73,8 @@ export function General() {
           <ReadOnly organisation={organisation} />
         )}
       </section>
+
+      <OwnershipCard key={organisation.id} organisation={organisation} />
     </div>
   );
 }

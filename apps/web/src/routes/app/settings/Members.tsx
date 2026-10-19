@@ -18,6 +18,7 @@ import {
 import type { TFunction } from 'i18next';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
@@ -156,9 +157,14 @@ function MembersLoaded({
   if (member != null) {
     return (
       <MemberDetail
+        key={member.id}
         organisation={organisation}
         member={member}
+        list={list}
+        roles={grantable(roles, organisation)}
+        manages={manages}
         caller={list.members.find((one) => one.self)?.user.id ?? null}
+        onChanged={onChange}
         onBack={() => setView({ kind: 'list', flash: null })}
       />
     );
@@ -460,18 +466,75 @@ function InvitationRow({
   );
 }
 
+type Removal = 'resting' | 'confirming' | 'removing' | 'removed';
+
 function MemberDetail({
   organisation,
   member,
+  list,
+  roles,
+  manages,
   caller,
+  onChanged,
   onBack,
 }: {
   organisation: Membership;
   member: OrganisationMember;
+  list: MembersList;
+  roles: OrganisationRole[];
+  manages: boolean;
   caller: string | null;
+  onChanged: (list: MembersList) => void;
   onBack: () => void;
 }) {
   const { t } = useTranslation();
+  const [removal, setRemoval] = useState<Removal>('resting');
+  const [failed, setFailed] = useState<string | null>(null);
+  const owner = member.role.seededAs === 'owner';
+  const owners = list.members.filter(
+    (one) => one.status === 'active' && one.role.seededAs === 'owner',
+  );
+  const lastOwner = owner && member.status === 'active' && owners.length === 1;
+  const callerOwns = organisation.role.seededAs === 'owner';
+  const ownerOnly = owner && !callerOwns;
+  const acts = manages && !member.self && !lastOwner && !ownerOnly;
+
+  async function remove(): Promise<void> {
+    setRemoval('removing');
+    setFailed(null);
+
+    try {
+      await api.removeMember(organisation.id, member.id);
+      setRemoval('removed');
+      onChanged(await api.members(organisation.id));
+    } catch (error) {
+      setRemoval('confirming');
+      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+    }
+  }
+
+  if (removal === 'removed') {
+    return (
+      <div className="members">
+        <div className="notice notice-done" role="status">
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <p>
+            {t('membersScreen.removed', {
+              name: member.user.name,
+              organisation: organisation.name,
+            })}
+          </p>
+        </div>
+        <p className="muted">{t('membersScreen.removedNext')}</p>
+        <button type="button" className="link-button" onClick={onBack}>
+          {t('membersScreen.backToMembers')}
+        </button>
+      </div>
+    );
+  }
+
   const steps = member.history.map((step) => {
     const line = historyLine({ ...step, by: step.by?.id ?? null }, member.user.id);
     const by =
@@ -516,6 +579,44 @@ function MemberDetail({
           {member.user.email != null && <p className="muted">{member.user.email}</p>}
         </div>
       </div>
+      <section className="card" aria-labelledby="role-title">
+        <h2 id="role-title">{t('membersScreen.roleTitle')}</h2>
+        {member.self ? (
+          <>
+            <p className="members-row-name">{roleName(t, member.role)}</p>
+            <p className="muted">{t('membersScreen.ownRole')}</p>
+            <Link className="link-button" to="/app/settings">
+              {t('membersScreen.goToGeneral')}
+            </Link>
+          </>
+        ) : lastOwner ? (
+          <>
+            <p className="members-row-name">{roleName(t, member.role)}</p>
+            <div className="notice notice-quiet">
+              <span className="mark mark-info" aria-hidden="true">
+                i
+              </span>
+              <p>{t('membersScreen.onlyOwner', { name: member.user.name })}</p>
+            </div>
+            {!callerOwns && (
+              <p className="muted">{t('membersScreen.askOwner', { name: member.user.name })}</p>
+            )}
+          </>
+        ) : ownerOnly || !manages ? (
+          <>
+            <p className="members-row-name">{roleName(t, member.role)}</p>
+            {ownerOnly && manages && <p className="muted">{t('membersScreen.ownerOnly')}</p>}
+          </>
+        ) : (
+          <RolePicker
+            organisation={organisation}
+            member={member}
+            roles={roles}
+            onChanged={onChanged}
+          />
+        )}
+      </section>
+
       <section className="card" aria-labelledby="history-title">
         <h2 id="history-title">{t('membersScreen.howTheyGotHere')}</h2>
         <ul className="members-history">
@@ -527,7 +628,158 @@ function MemberDetail({
           ))}
         </ul>
       </section>
+
+      {acts && (
+        <section className="card" aria-labelledby="remove-title">
+          {removal === 'resting' ? (
+            <>
+              <h2 id="remove-title">
+                {t('membersScreen.removeTitle', { name: member.user.name })}
+              </h2>
+              <p className="muted">
+                {t('membersScreen.removeBody', { organisation: organisation.name })}
+              </p>
+              <button
+                type="button"
+                className="button button-danger"
+                onClick={() => setRemoval('confirming')}
+              >
+                {t('membersScreen.removeButton', { organisation: organisation.name })}
+              </button>
+            </>
+          ) : (
+            <>
+              <h2 id="remove-title">
+                {t('membersScreen.removeConfirmTitle', { name: member.user.name })}
+              </h2>
+              <p>
+                {t('membersScreen.removeConfirmBody', {
+                  name: member.user.name,
+                  organisation: organisation.name,
+                })}
+              </p>
+              {failed != null && <FieldError id="remove-failed" message={failed} />}
+              <div className="actions">
+                <button
+                  type="button"
+                  className="button button-danger"
+                  aria-busy={removal === 'removing'}
+                  disabled={removal === 'removing'}
+                  onClick={() => void remove()}
+                >
+                  {t('membersScreen.removeConfirm', { name: member.user.name })}
+                </button>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    setFailed(null);
+                    setRemoval('resting');
+                  }}
+                >
+                  {t('membersScreen.removeKeep', { name: member.user.name })}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      )}
     </div>
+  );
+}
+
+function RolePicker({
+  organisation,
+  member,
+  roles,
+  onChanged,
+}: {
+  organisation: Membership;
+  member: OrganisationMember;
+  roles: OrganisationRole[];
+  onChanged: (list: MembersList) => void;
+}) {
+  const { t } = useTranslation();
+  const [picked, setPicked] = useState(member.role.id);
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const [failed, setFailed] = useState<string | null>(null);
+  const offered = roles.some((one) => one.id === member.role.id)
+    ? roles
+    : [{ ...member.role, fixed: false, removable: false, permissions: [], holders: 0 }, ...roles];
+  const role = offered.find((one) => one.id === picked);
+  const changed = picked !== member.role.id && role != null;
+
+  async function save(): Promise<void> {
+    if (!changed) return;
+
+    setBusy(true);
+    setFailed(null);
+
+    try {
+      await api.changeMemberRole(organisation.id, member.id, picked);
+      setDone(t('membersScreen.roleChanged', { name: member.user.name, role: roleName(t, role) }));
+      onChanged(await api.members(organisation.id));
+    } catch (error) {
+      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      {done != null && (
+        <div className="notice notice-done" role="status">
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <p>{done}</p>
+        </div>
+      )}
+      <fieldset className="members-roles">
+        <legend>{t('membersScreen.roleFor', { name: member.user.name })}</legend>
+        {offered.map((one) => (
+          <label key={one.id} className="members-role">
+            <input
+              type="radio"
+              name="member-role"
+              value={one.id}
+              checked={picked === one.id}
+              disabled={busy}
+              onChange={() => {
+                setDone(null);
+                setPicked(one.id);
+              }}
+            />
+            <span className="members-role-text">
+              <span className="members-row-name">{roleName(t, one)}</span>
+              {one.seededAs != null && (
+                <span className="muted">{t(`membersScreen.roleMeans.${one.seededAs}`)}</span>
+              )}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      <Link className="link-button" to="/app/settings/roles">
+        {t('membersScreen.seeRoles')}
+      </Link>
+      <p className="muted">{t('membersScreen.roleTakesEffect')}</p>
+      {failed != null && <FieldError id="role-failed" message={failed} />}
+      <div className="actions">
+        <button
+          type="button"
+          className="button button-primary"
+          disabled={!changed || busy}
+          aria-busy={busy}
+          onClick={() => void save()}
+        >
+          {changed
+            ? t('membersScreen.roleSave', { role: roleName(t, role) })
+            : t('membersScreen.rolePick')}
+        </button>
+      </div>
+    </>
   );
 }
 

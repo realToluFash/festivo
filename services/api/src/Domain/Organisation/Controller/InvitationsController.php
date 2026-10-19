@@ -114,7 +114,7 @@ final readonly class InvitationsController
 
     private function invitation(string $id): Invitation
     {
-        $invitation = Uuid::isValid($id) ? $this->invitationRepository->find($id) : null;
+        $invitation = Uuid::isValid($id) ? $this->invitationRepository->findWithOrganisation(Uuid::fromString($id)) : null;
 
         return $invitation ?? throw new ApiException(ErrorCode::InvitationNotFound, $this->translator->trans('invitations.not_found'));
     }

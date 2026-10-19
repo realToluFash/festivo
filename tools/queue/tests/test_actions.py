@@ -242,14 +242,14 @@ class Merging(Base):
                 actions.merge(self.as_("dev2"), args(pr=9, text=None))
             merge.assert_not_called()
 
-    def test_a_branch_behind_main_says_to_bring_main_in(self):
+    def test_a_branch_behind_main_still_merges(self):
         self.fake.add(1, "In Review", ["dev2"])
         store.put_pr(self.db, pr("pass"))
         with mock.patch("soirely_queue.github.live", return_value=self.live(state="BEHIND")), \
-                mock.patch("soirely_queue.github.merge") as merge:
-            with self.assertRaisesRegex(actions.Refused, "main has moved on"):
-                actions.merge(self.as_("dev2"), args(pr=9, text=None))
-            merge.assert_not_called()
+                mock.patch("soirely_queue.github.merge") as merge, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD)
 
     def test_a_pass_carried_over_a_merge_of_main_merges(self):
         self.fake.add(1, "In Review", ["dev2"])

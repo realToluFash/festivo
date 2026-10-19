@@ -78,7 +78,7 @@ final readonly class SignInRulesController
         return new JsonResponse($this->rules($organisation));
     }
 
-    /** @return array<string, mixed> the password-only list only for somebody who can change the rules */
+    /** @return array<string, mixed> the password-only list only for somebody who can change the rules, and never naming them */
     private function rules(Organisation $organisation): array
     {
         $grants = $this->membershipDirectory->grantsIn($this->user(), $organisation->getId());
@@ -88,6 +88,7 @@ final readonly class SignInRulesController
             ...SignInRulesEditor::rulesOf($organisation),
             'inactivityChoices' => SignInRules::INACTIVITY_DAYS,
             'ownTwoFactor' => $this->signInRules->hasTwoFactor($this->user()),
+            'ownProvider' => $this->signInRules->isLinked($this->user()),
             'changedAt' => $organisation->getSignInRulesChangedAt()?->format(DateTimeInterface::ATOM),
             'changes' => $this->changes($organisation),
             // The shortest across the caller's organisations, which may be another's (sc-69).
@@ -97,7 +98,13 @@ final readonly class SignInRulesController
                 'days' => $limit->days,
             ],
             ...(true === $grants?->holds(Permission::OrganisationManage)
-                ? ['passwordOnly' => Vec\map($this->membershipRepository->findActiveWithoutProviderIn($organisation), self::member(...))]
+                ? ['passwordOnly' => Vec\map(
+                    Vec\filter(
+                        $this->membershipRepository->findActiveWithoutProviderIn($organisation),
+                        fn (Membership $membership): bool => !$membership->getUser()->getId()->equals($this->user()->getId()),
+                    ),
+                    self::member(...),
+                )]
                 : []),
         ];
     }
