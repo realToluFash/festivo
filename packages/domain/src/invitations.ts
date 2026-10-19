@@ -35,6 +35,13 @@ export function waitingInvitations(
   return invitations.filter(({ id }) => isWaiting(outcomes[id])).length;
 }
 
+/** An accept or decline still in flight, which a save sent now would race. */
+export function answeringInvitation(
+  outcomes: Readonly<Record<string, InvitationOutcome>>,
+): boolean {
+  return Object.values(outcomes).some((outcome) => outcome.kind === 'busy');
+}
+
 /** The refusal an error carries, when it is one of the codes a row has words for. */
 export function invitationRefusal(
   is: (code: InvitationRefusalCode) => boolean,

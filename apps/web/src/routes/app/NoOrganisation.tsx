@@ -23,7 +23,7 @@ export function NoOrganisation({
       {waiting.invitations.length > 0 ? (
         <div className="no-organisation-invitations">
           <p className="no-organisation-heading">{t('invitations.heading')}</p>
-          <InvitationRows waiting={waiting} place="page" onOpen={onOpen} />
+          <InvitationRows waiting={waiting} place="page" after={{ open: onOpen }} />
         </div>
       ) : (
         <p>{t('noOrganisation.wayOn', { email: session.email })}</p>

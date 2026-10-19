@@ -17,13 +17,17 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
+/** What follows "You joined": a button into it, or, on `/complete-profile`, a line saying where finishing goes. */
+export type AfterJoining =
+  { open: (organisationId: string) => void } | { note: (invitationId: string) => string };
+
 /** `OrgSwitcher-*` Tweaks `invitation` to `invitation_sparse`: each one waiting, and what came of answering it. */
 export function InvitationRows({
   waiting,
-  onOpen,
+  after,
 }: {
   waiting: WaitingInvitations;
-  onOpen: (organisationId: string) => void;
+  after: AfterJoining;
 }) {
   return (
     <>
@@ -32,7 +36,7 @@ export function InvitationRows({
           key={invitation.id}
           invitation={invitation}
           waiting={waiting}
-          onOpen={onOpen}
+          after={after}
         />
       ))}
     </>
@@ -42,11 +46,11 @@ export function InvitationRows({
 function InvitationRow({
   invitation,
   waiting,
-  onOpen,
+  after,
 }: {
   invitation: InvitationPreview;
   waiting: WaitingInvitations;
-  onOpen: (organisationId: string) => void;
+  after: AfterJoining;
 }) {
   const { t } = useTranslation();
   const outcome = waiting.outcomes[invitation.id];
@@ -108,16 +112,24 @@ function InvitationRow({
         </View>
       )}
 
-      {outcome?.kind === 'accepted' && (
-        <View style={styles.answer}>
-          <Notice tone="done" mark="✓" body={t('invitations.joined', { organisation, role })} />
-          <PrimaryButton
-            label={t('invitations.open', { organisation })}
-            onPress={() => onOpen(outcome.organisationId)}
-            testID={`invitation.${invitation.id}.open`}
+      {outcome?.kind === 'accepted' &&
+        ('open' in after ? (
+          <View style={styles.answer}>
+            <Notice tone="done" mark="✓" body={t('invitations.joined', { organisation, role })} />
+            <PrimaryButton
+              label={t('invitations.open', { organisation })}
+              onPress={() => after.open(outcome.organisationId)}
+              testID={`invitation.${invitation.id}.open`}
+            />
+          </View>
+        ) : (
+          <Notice
+            tone="done"
+            mark="✓"
+            title={t('invitations.joined', { organisation, role })}
+            body={after.note(invitation.id)}
           />
-        </View>
-      )}
+        ))}
 
       {outcome?.kind === 'declined' && (
         <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} />
