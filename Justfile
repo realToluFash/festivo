@@ -216,6 +216,11 @@ qa-env *args:
 qa-account *args:
     node scripts/qa-account.mjs {{args}}
 
+# The app in Expo Go on a phone on this network, at the latest main. Leave it running.
+# Run it from a detached checkout such as ../soirely-ops; `just phone 192.168.1.20` picks the address.
+phone *args:
+    node scripts/phone.mjs {{args}}
+
 # The app in Expo Go on a booted simulator, for Maestro to drive. Leave it running.
 qa-ios device="iPhone 17 Pro":
     #!/usr/bin/env sh
