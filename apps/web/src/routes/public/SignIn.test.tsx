@@ -102,6 +102,7 @@ const ORGANISATION = {
   currency: 'NGN',
   timezone: 'Africa/Lagos',
   contactAddress: 'hello@ire.events',
+  locale: 'en',
   role: { id: 'role_1', seededAs: 'owner', name: null },
 };
 

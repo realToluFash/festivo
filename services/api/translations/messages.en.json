@@ -43,6 +43,7 @@
     "validation.country_invalid": "Choose a country.",
     "validation.currency_invalid": "Choose a currency.",
     "validation.email_invalid": "Enter an email address.",
+    "validation.locale_invalid": "Choose English, Español, Français or Português.",
     "validation.name_required": "Enter your name.",
     "validation.organisation_name_required": "Enter the organisation's name.",
     "validation.organisation_name_too_long": "That is longer than {count} characters.",

@@ -200,6 +200,8 @@ export interface Organisation {
   currency: string;
   timezone: string;
   contactAddress: string;
+  /** What an invitation to somebody with no account is written in (sc-2914). */
+  locale: string;
 }
 
 /** A seeded role is named by `seededAs`, which each client words itself; a custom one by `name`. */
@@ -1747,7 +1749,15 @@ function asOrganisation(raw: unknown): Organisation | null {
   if (typeof raw !== 'object' || raw == null) return null;
 
   const candidate = raw as Record<string, unknown>;
-  const fields = ['id', 'name', 'countryCode', 'currency', 'timezone', 'contactAddress'] as const;
+  const fields = [
+    'id',
+    'name',
+    'countryCode',
+    'currency',
+    'timezone',
+    'contactAddress',
+    'locale',
+  ] as const;
 
   if (fields.some((field) => typeof candidate[field] !== 'string')) return null;
 
@@ -1758,6 +1768,7 @@ function asOrganisation(raw: unknown): Organisation | null {
     currency: candidate.currency as string,
     timezone: candidate.timezone as string,
     contactAddress: candidate.contactAddress as string,
+    locale: candidate.locale as string,
   };
 }
 

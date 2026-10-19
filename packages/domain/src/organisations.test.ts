@@ -70,6 +70,7 @@ describe('organisationProblem', () => {
     expect(organisationProblem('countryCode', '')).toBeNull();
     expect(organisationProblem('currency', '')).toBeNull();
     expect(organisationProblem('timezone', '')).toBeNull();
+    expect(organisationProblem('locale', '')).toBeNull();
   });
 });
 
@@ -80,12 +81,17 @@ describe('organisationChanges', () => {
     contactAddress: 'hello@ire.events',
     currency: 'NGN',
     timezone: 'Africa/Lagos',
+    locale: 'en',
   };
 
   it('sends only what changed, trimmed', () => {
     expect(organisationChanges(saved, { ...saved, name: ' Ìrè Events Ltd ' })).toEqual({
       name: 'Ìrè Events Ltd',
     });
+  });
+
+  it('sends a new language like any other field', () => {
+    expect(organisationChanges(saved, { ...saved, locale: 'pt' })).toEqual({ locale: 'pt' });
   });
 
   it('sends nothing when nothing changed', () => {

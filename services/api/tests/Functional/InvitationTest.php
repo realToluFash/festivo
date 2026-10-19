@@ -453,12 +453,26 @@ final class InvitationTest extends ApiTestCase
     public function aStrangerIsWrittenToInTheOrganisationsLanguage(): void
     {
         [$organisation, $owner] = $this->organisation();
-        $organisation->setLocale('fr');
-        self::em()->flush();
+        $this->as($owner)->call('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), ['locale' => 'fr']);
+        self::assertSame(200, $this->statusCode());
 
-        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        $this->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
 
         self::assertStringContainsString('Coordinateur', $this->lastText(), 'the role in French');
+    }
+
+    /** sc-2914: a new language is for what is sent after it; nothing already sent goes out again. */
+    #[Test]
+    public function changingTheLanguageSendsNothingAgain(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        $this->as($owner)->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+        self::assertNotEmpty(self::getMailerMessages(), 'the invitation went out with its request');
+
+        $this->call('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), ['locale' => 'pt']);
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame([], self::getMailerMessages(), 'the save sends nothing');
     }
 
     #[Test]

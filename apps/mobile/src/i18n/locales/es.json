@@ -754,7 +754,12 @@
     "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
     "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento.",
     "searchCurrency": "Buscar monedas",
-    "searchTimezone": "Buscar zonas horarias"
+    "searchTimezone": "Buscar zonas horarias",
+    "language": "Language",
+    "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
+    "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
+    "refused": "Nothing was saved. Your role does not include the permission this needs.",
+    "searchLanguage": "Search languages"
   },
   "invitations": {
     "heading": "Invitations",
@@ -840,6 +845,18 @@
     "changedClose": "Cerrar este aviso",
     "limitApplies_one": "En su caso, la sesión se cierra tras {{count}} día sin uso: es la norma de {{organisation}}, la más estricta de sus organizaciones.",
     "limitApplies_other": "En su caso, la sesión se cierra tras {{count}} días sin uso: es la norma de {{organisation}}, la más estricta de sus organizaciones."
+  },
+  "languageNames": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
+  },
+  "languageNamesInSentence": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
   },
   "ownership": {
     "title": "Ownership and leaving",

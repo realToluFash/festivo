@@ -754,7 +754,12 @@
     "readOnly": "Votre rôle, {{role}}, permet de voir ces informations mais pas de les modifier. Les propriétaires le peuvent.",
     "failed": "L'enregistrement n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant.",
     "searchCurrency": "Rechercher une devise",
-    "searchTimezone": "Rechercher un fuseau horaire"
+    "searchTimezone": "Rechercher un fuseau horaire",
+    "language": "Language",
+    "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
+    "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
+    "refused": "Nothing was saved. Your role does not include the permission this needs.",
+    "searchLanguage": "Search languages"
   },
   "invitations": {
     "heading": "Invitations",
@@ -840,6 +845,18 @@
     "changedClose": "Fermer cet avis",
     "limitApplies_one": "Pour vous, la session se ferme après {{count}} jour d'inactivité : c'est la règle de {{organisation}}, la plus stricte de vos organisations.",
     "limitApplies_other": "Pour vous, la session se ferme après {{count}} jours d'inactivité : c'est la règle de {{organisation}}, la plus stricte de vos organisations."
+  },
+  "languageNames": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
+  },
+  "languageNamesInSentence": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
   },
   "ownership": {
     "title": "Ownership and leaving",
