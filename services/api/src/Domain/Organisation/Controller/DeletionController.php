@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Controller;
 use App\Domain\Organisation\Deletion\OrganisationDeleter;
 use App\Domain\Organisation\Deletion\OrganisationHoldings;
 use App\Domain\Organisation\Deletion\RestoreWindow;
+use App\Domain\Organisation\Members\OwnerCheck;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
 use App\Entity\User;
@@ -31,6 +32,7 @@ final readonly class DeletionController
         private Security $security,
         private OrganisationRepository $organisationRepository,
         private OrganisationDeleter $organisationDeleter,
+        private OwnerCheck $ownerCheck,
         private OrganisationHoldings $organisationHoldings,
         private UserMailer $userMailer,
         private ClockInterface $clock,
@@ -43,7 +45,7 @@ final readonly class DeletionController
     public function preview(Request $request, string $organisationId): JsonResponse
     {
         $organisation = $this->organisation($organisationId);
-        $this->organisationDeleter->ownerOf($organisation, $this->user());
+        $this->ownerCheck->require($organisation, $this->user(), 'organisation.owner_required');
 
         return new JsonResponse([
             ...$this->organisationHoldings->of($organisation),

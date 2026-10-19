@@ -30,6 +30,7 @@ final readonly class OwnershipTransfer
     public function __construct(
         private RecentProof $recentProof,
         private MembershipRepository $membershipRepository,
+        private OwnerCheck $ownerCheck,
         private RoleAssignment $roleAssignment,
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
@@ -42,7 +43,7 @@ final readonly class OwnershipTransfer
     /** `$proof` is the caller's from /api/auth/proof: nobody who picks up a signed-in device gives the organisation away. */
     public function transfer(Organisation $organisation, User $by, string $membershipId, #[SensitiveParameter] ?string $proof, ?string $asked = null): Membership
     {
-        $this->ownerOf($organisation, $by);
+        $this->ownerCheck->require($organisation, $by, 'organisation.transfer_owner_required');
         $to = $this->candidate($organisation, $membershipId, $by);
         $this->recentProof->require($by, $proof);
 
@@ -60,13 +61,6 @@ final readonly class OwnershipTransfer
         $this->afterResponse->defer(fn () => $this->ownershipTransferMailer->sendTransferred($organisation, $by, $to->getUser(), $asked));
 
         return $to;
-    }
-
-    private function ownerOf(Organisation $organisation, User $user): void
-    {
-        if (true !== $this->membershipRepository->findActive($user, $organisation->getId())?->getRole()->isOwner()) {
-            throw new ApiException(ErrorCode::OwnerRequired, $this->translator->trans('organisation.transfer_owner_required'));
-        }
     }
 
     private function candidate(Organisation $organisation, string $membershipId, User $by): Membership
