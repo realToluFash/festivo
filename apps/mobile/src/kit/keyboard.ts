@@ -23,6 +23,20 @@ export function coveredBy(keyboardTop: number, group: Rect, margin: number): boo
   return group.y + group.height + margin > keyboardTop;
 }
 
+export interface GroupInScroll {
+  /** The scroll view's top in the window. */
+  scrollTop: number;
+  /** The group's top inside the scroll content. */
+  contentY: number;
+  /** The scroll offset the native scroll view last reported. */
+  offset: number;
+}
+
+/** The group's top in the window, from where it sits in a scrolled view. */
+export function groupInWindow({ scrollTop, contentY, offset }: GroupInScroll): number {
+  return scrollTop + contentY - offset;
+}
+
 export interface Lift {
   /** The group's top inside the scroll content. */
   contentY: number;

@@ -535,12 +535,12 @@ function Delete({
           onPress={() => void submit()}
           testID="ownership.delete.send"
         />
+        <QuietButton
+          label={t('ownership.deleteKeep', { organisation: name })}
+          onPress={onKeep}
+          testID="ownership.delete.keep"
+        />
       </View>
-      <QuietButton
-        label={t('ownership.deleteKeep', { organisation: name })}
-        onPress={onKeep}
-        testID="ownership.delete.keep"
-      />
     </View>
   );
 }

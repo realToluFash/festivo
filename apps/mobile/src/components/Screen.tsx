@@ -10,6 +10,8 @@ import {
 import {
   Keyboard,
   KeyboardAvoidingView,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,7 +20,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { keyboardLift, coveredBy, offsetAboveKeyboard } from '../kit/keyboard.ts';
+import { coveredBy, groupInWindow, keyboardLift, offsetAboveKeyboard } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 
 const LIFT = keyboardLift(Platform.OS);
@@ -29,6 +31,8 @@ interface ScreenScrollView {
   ref: RefObject<ScrollView | null>;
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
+  /** The offset the native scroll view last reported. */
+  offset: RefObject<number>;
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
@@ -40,32 +44,33 @@ export interface AboveKeyboard {
 
 // Not scrollResponderScrollNativeHandleToKeyboard: it measures as if the scroll view began at
 // the top of the window, so under a header it stops short and leaves the button behind the keys.
+// Not measureInWindow on the group either: under Fabric it reads a scroll offset that can lag the
+// native one, so after the keys' own scroll to the field it can find the button uncovered.
 function liftAboveKeyboard(
-  scroll: RefObject<ScrollView | null> | undefined,
+  scroll: ScreenScrollView | null,
   group: View | null,
   keyboardTop: number | null,
 ): void {
-  const view = scroll?.current;
+  const view = scroll?.ref.current;
   const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
-  if (view == null || content == null || scrollHost == null) return;
+  if (scroll == null || view == null || content == null || scrollHost == null) return;
   if (group == null || keyboardTop == null) return;
 
-  group.measureInWindow((_gx, groupY, _gw, groupHeight) => {
-    if (!coveredBy(keyboardTop, { y: groupY, height: groupHeight }, tokens.spaceLg)) return;
+  group.measureLayout(content, (_x, contentY, _w, height) => {
+    scrollHost.measureInWindow((_sx, scrollTop) => {
+      const groupY = groupInWindow({ scrollTop, contentY, offset: scroll.offset.current });
+      if (!coveredBy(keyboardTop, { y: groupY, height }, tokens.spaceLg)) return;
 
-    group.measureLayout(content, (_x, contentY, _w, height) => {
-      scrollHost.measureInWindow((_sx, scrollTop) => {
-        view.scrollTo({
-          y: offsetAboveKeyboard({
-            contentY,
-            height,
-            scrollTop,
-            keyboardTop,
-            margin: tokens.spaceLg,
-          }),
-          animated: true,
-        });
+      view.scrollTo({
+        y: offsetAboveKeyboard({
+          contentY,
+          height,
+          scrollTop,
+          keyboardTop,
+          margin: tokens.spaceLg,
+        }),
+        animated: true,
       });
     });
   });
@@ -96,10 +101,7 @@ export function useAboveKeyboard(): AboveKeyboard {
   const keyboardTop = useRef<number | null>(keyboardTopNow());
 
   useEffect(() => {
-    const lift = () => {
-      if (keyboardTop.current != null)
-        liftAboveKeyboard(scroll?.ref, ref.current, keyboardTop.current);
-    };
+    const lift = () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
     const unwatch = watchKeyboardTop((top) => {
       keyboardTop.current = top;
       lift();
@@ -116,7 +118,7 @@ export function useAboveKeyboard(): AboveKeyboard {
 
   return {
     ref,
-    onLayout: () => liftAboveKeyboard(scroll?.ref, ref.current, keyboardTop.current),
+    onLayout: () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current),
   };
 }
 
@@ -224,10 +226,16 @@ export function Screen({
   // The avoiding view measures itself against its parent but the keyboard against the window,
   // so under the app's header it pads short by the header and leaves the content's end under the keys.
   const [rootTop, setRootTop] = useState(0);
+  const offset = useRef(0);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
+    offset,
   }));
+
+  const followOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    offset.current = event.nativeEvent.contentOffset.y;
+  };
 
   const padding: ViewStyle = {
     paddingTop: edges.includes('top') ? insets.top : 0,
@@ -240,6 +248,9 @@ export function Screen({
     <ScrollView
       ref={scrollView}
       onLayout={() => screenScroll.resized.forEach((resized) => resized())}
+      onScroll={followOffset}
+      onScrollEndDrag={followOffset}
+      onMomentumScrollEnd={followOffset}
       style={styles.fill}
       contentContainerStyle={[styles.content, contentStyle]}
       // So the first tap after typing hits the control rather than only

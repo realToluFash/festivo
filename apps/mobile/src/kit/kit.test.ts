@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
 import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
-import { coveredBy, keyboardLift, listRoom, offsetAboveKeyboard } from './keyboard.ts';
+import {
+  coveredBy,
+  groupInWindow,
+  keyboardLift,
+  listRoom,
+  offsetAboveKeyboard,
+} from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
   it('on iOS, by the scroll view alone', () => {
@@ -44,6 +50,24 @@ describe('a field and its button rest above the keyboard', () => {
 
   it('never past the top of the content', () => {
     expect(offsetAboveKeyboard({ ...underHeader, contentY: 0, height: 40 })).toBe(0);
+  });
+
+  it('finding the group in the window from a scrolled view', () => {
+    expect(groupInWindow({ scrollTop: 100, contentY: 600, offset: 0 })).toBe(700);
+    expect(groupInWindow({ scrollTop: 100, contentY: 600, offset: 366 })).toBe(334);
+  });
+
+  it('judging a scrolled group uncovered once the keys have scrolled to it', () => {
+    const y = groupInWindow({ scrollTop: 100, contentY: 600, offset: 366 });
+
+    expect(coveredBy(500, { y, height: 150 }, 16)).toBe(false);
+    expect(
+      coveredBy(
+        500,
+        { y: groupInWindow({ scrollTop: 100, contentY: 600, offset: 300 }), height: 150 },
+        16,
+      ),
+    ).toBe(true);
   });
 
   it('only when the keyboard covers the group or its margin', () => {
