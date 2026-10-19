@@ -9,7 +9,7 @@ from . import github, store, sync
 from . import roles as R
 from . import text as T
 from . import work as W
-from .shortcut import Shortcut
+from .shortcut import Shortcut, ShortcutError
 
 
 class Refused(RuntimeError):
@@ -179,6 +179,10 @@ def holder(c, story):
     labelled = sorted(set(story["labels"]) & set(R.DEVELOPERS.values()))
     if labelled:
         return f"it carries {', '.join(labelled)}"
+    try:
+        sync.sync_github(c.db)
+    except github.GitHubError as error:
+        return f"its open pull requests could not be read ({error})"
     branch = re.compile(rf"(?<!\d)sc-{story['id']}(?!\d)")
     open_prs = [pr for pr in store.prs(c.db)
                 if pr["state"] == "open" and branch.search(pr.get("branch") or "")]
@@ -309,8 +313,15 @@ def edit_line(c, a):
         raise Refused(f"{'; '.join(problems)}; nothing changed")
     if a.dry:
         return "would change " + ", ".join(target for target, _, _ in found)
-    for _, body, save in found:
-        save(body)
+    saved = []
+    for target, body, save in found:
+        try:
+            save(body)
+        except ShortcutError as error:
+            rest = [t for t, _, _ in found[len(saved) + 1:]]
+            raise Refused(f"changed {', '.join(saved) or 'nothing'}; {target} failed: {error}"
+                          + (f"; not tried: {', '.join(rest)}" if rest else "")) from error
+        saved.append(target)
     return "changed " + ", ".join(target for target, _, _ in found)
 
 

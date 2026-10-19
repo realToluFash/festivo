@@ -210,6 +210,12 @@ class LanguageTags(Base):
 
 
 class Releasing(Base):
+    def setUp(self):
+        super().setUp()
+        synced = mock.patch("soirely_queue.sync.sync_github")
+        self.sync_github = synced.start()
+        self.addCleanup(synced.stop)
+
     def move(self, state="Backlog"):
         return actions.move(self.as_("pm"), args(story="sc-1", state=state))
 
@@ -241,6 +247,20 @@ class Releasing(Base):
             self.move()
         store.put_prs(self.db, [{**pr(), "number": 8, "branch": "chore/model"}])
         self.assertEqual(self.move(), "sc-1 is now Backlog")
+
+    def test_a_pr_opened_since_the_last_sync_holds_it(self):
+        self.fake.add(1, "In Progress")
+        self.sync_github.side_effect = lambda db: store.put_pr(
+            db, {**pr(), "number": 9, "branch": "feature/sc-1/catalogue"})
+        with self.assertRaisesRegex(actions.Refused, "PR #9 is open on its branch"):
+            self.move()
+
+    def test_unreadable_pull_requests_hold_it(self):
+        self.fake.add(1, "In Progress")
+        self.sync_github.side_effect = github.GitHubError("API rate limit exceeded")
+        with self.assertRaisesRegex(actions.Refused, "could not be read"):
+            self.move()
+        self.assertEqual(self.state(1), "In Progress")
 
     def test_other_moves_are_refused_as_before(self):
         self.fake.add(1, "In Review")
@@ -288,6 +308,21 @@ class LineEdits(Base):
         self.assertEqual(said, "would change sc-1, sc-2")
         self.assertEqual(self.body(1), "# AC\n- works\n- shows a total")
 
+    def test_a_failed_save_says_what_changed_and_what_did_not(self):
+        self.fake.add(3, "To Do")
+        self.fake.raw[3]["description"] = "- works"
+        real = self.fake.update
+
+        def update(story_id, **fields):
+            if story_id == 2:
+                raise actions.ShortcutError("Shortcut 500 on PUT /api/v3/stories/2")
+            return real(story_id, **fields)
+        self.fake.update = update
+        with self.assertRaisesRegex(actions.Refused,
+                                    "changed sc-1; sc-2 failed: Shortcut 500.*not tried: sc-3"):
+            actions.edit(self.as_("pm"), line_edit(["sc-1", "sc-2", "sc-3"], "- works", "- x"))
+        self.assertEqual(self.body(3), "- works")
+
     def test_a_section_edit_still_names_one_story(self):
         with self.assertRaisesRegex(actions.Refused, "edit one story"):
             actions.edit(self.as_("pm"), args(targets=["sc-1", "sc-2"], replace=None,
@@ -305,6 +340,14 @@ class Relating(Base):
         a = args(story="sc-1", other="sc-2", verb="blocks")
         self.assertEqual(actions.relate(self.as_("pm"), a), "sc-1 blocks sc-2")
         self.assertEqual(actions.relate(self.as_("pm"), a), "already linked: sc-1 blocks sc-2")
+
+    def test_relates_to_stored_the_other_way_round_is_already_linked(self):
+        self.fake.add(1, "To Do")
+        self.fake.add(2, "To Do")
+        self.fake.relate(2, 1, "relates to")
+        a = args(story="sc-1", other="sc-2", verb="relates to")
+        self.assertEqual(actions.relate(self.as_("pm"), a),
+                         "already linked: sc-1 relates to sc-2")
 
 
 class Replies(Base):
