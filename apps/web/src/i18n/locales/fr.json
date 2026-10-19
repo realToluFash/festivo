@@ -311,6 +311,10 @@
     "start": "Start organisation",
     "starting": "Starting…",
     "startFailed": "Starting it did not work. Try again in a moment.",
+    "nameHelp": "Your team and guests see this name. You can rename it later.",
+    "nameTooLong_one": "That name is {{count}} character. Use {{most}} or fewer.",
+    "nameTooLong_other": "That name is {{count}} characters. Use {{most}} or fewer.",
+    "derived": "The currency follows the country, the time zone comes from this device, and the contact address is your primary email, {{email}}. You can change them in Settings > General.",
     "signedInAs": "Connecté en tant que {{email}}.",
     "account": "Votre compte"
   },

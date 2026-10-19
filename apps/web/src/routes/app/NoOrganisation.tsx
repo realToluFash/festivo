@@ -1,4 +1,4 @@
-import { ApiError } from '@soirely/api-client';
+import { ApiError, type Membership } from '@soirely/api-client';
 import { countryChoices, deviceCountry } from '@soirely/domain';
 import { type FormEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -15,9 +15,11 @@ import { joinOrganisation, useSession } from '../../session.ts';
 export function NoOrganisation({
   waiting,
   onOpen,
+  onStarted,
 }: {
   waiting: WaitingInvitations;
   onOpen: (organisationId: string) => void;
+  onStarted: (started: Membership) => void;
 }) {
   const { t } = useTranslation();
   const session = useSession();
@@ -34,7 +36,7 @@ export function NoOrganisation({
       ) : (
         <p>{t('noOrganisation.wayOn', { email: session.email })}</p>
       )}
-      <StartOrganisation onStarted={onOpen} />
+      <StartOrganisation email={session.email} onStarted={onStarted} />
       <div className="auth-footnote">
         <span>{t('noOrganisation.signedInAs', { email: session.email })}</span>
         <Link className="link-button" to="/app/account/security">
@@ -48,7 +50,15 @@ export function NoOrganisation({
 type Field = 'name' | 'countryCode' | 'timezone';
 type Errors = Partial<Record<Field, string>>;
 
-function StartOrganisation({ onStarted }: { onStarted: (organisationId: string) => void }) {
+const NAME_MOST = 100;
+
+function StartOrganisation({
+  email,
+  onStarted,
+}: {
+  email: string;
+  onStarted: (started: Membership) => void;
+}) {
   const { t } = useTranslation();
   const locale = currentLocale();
   const countries = useMemo(() => countryChoices(locale), [locale]);
@@ -75,7 +85,11 @@ function StartOrganisation({ onStarted }: { onStarted: (organisationId: string) 
     event.preventDefault();
 
     const checked: Errors = {};
-    if (values.name.trim() === '') checked.name = t('completeProfile.organisationBlank');
+    const name = values.name.trim();
+    const length = Array.from(name).length;
+    if (name === '') checked.name = t('orgGeneral.nameBlank');
+    else if (length > NAME_MOST)
+      checked.name = t('noOrganisation.nameTooLong', { count: length, most: NAME_MOST });
     if (values.countryCode === '') checked.countryCode = t('forms.countryBlank');
 
     if (Object.keys(checked).length > 0) {
@@ -95,7 +109,7 @@ function StartOrganisation({ onStarted }: { onStarted: (organisationId: string) 
       });
 
       joinOrganisation(membership);
-      onStarted(membership.id);
+      onStarted(membership);
     } catch (error) {
       setSaving(false);
 
@@ -139,7 +153,6 @@ function StartOrganisation({ onStarted }: { onStarted: (organisationId: string) 
           autoComplete="organization"
           autoCorrect="off"
           spellCheck={false}
-          maxLength={100}
           value={values.name}
           disabled={saving}
           aria-invalid={errors.name != null}
@@ -152,7 +165,7 @@ function StartOrganisation({ onStarted }: { onStarted: (organisationId: string) 
         />
         {errors.name != null && <FieldError id="start-organisation-error" message={errors.name} />}
         <p className="field-help" id="start-organisation-help">
-          {t('completeProfile.organisationHelp')}
+          {t('noOrganisation.nameHelp')}
         </p>
       </div>
 
@@ -185,6 +198,10 @@ function StartOrganisation({ onStarted }: { onStarted: (organisationId: string) 
       {errors.timezone != null && (
         <FieldError id="start-organisation-timezone-error" message={errors.timezone} />
       )}
+
+      <div className="notice notice-quiet">
+        <p>{t('noOrganisation.derived', { email })}</p>
+      </div>
 
       <button className="button button-primary" type="submit" aria-busy={saving}>
         {saving ? t('noOrganisation.starting') : t('noOrganisation.start')}

@@ -1512,6 +1512,15 @@ h2 {
   border-top: var(--borderDivider);
 }
 
+.no-organisation-start .field,
+.no-organisation-start .notice {
+  max-width: 27.5rem;
+}
+
+.no-organisation-start .button {
+  align-self: flex-start;
+}
+
 .no-organisation .no-organisation-heading {
   margin-top: var(--spaceXs);
   font: var(--typeLabel);

@@ -69,8 +69,23 @@ describe('No organisation', () => {
     fireEvent.change(await screen.findByLabelText('Country'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
 
-    expect(screen.getByText("Add your organisation's name to carry on.")).toBeDefined();
+    expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
     expect(screen.getByText('Choose a country.')).toBeDefined();
+    expect(sent.some((one) => one.line === 'POST /api/orgs')).toBe(false);
+  });
+
+  it('refuses a name over 100 characters, saying how long it is', async () => {
+    inNone();
+    const sent = answering({ 'GET /api/invitations': () => json({ invitations: [] }) });
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'a'.repeat(101) },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+
+    expect(screen.getByText('That name is 101 characters. Use 100 or fewer.')).toBeDefined();
     expect(sent.some((one) => one.line === 'POST /api/orgs')).toBe(false);
   });
 
@@ -92,6 +107,7 @@ describe('No organisation', () => {
     await waitFor(() =>
       expect(screen.queryByRole('heading', { name: 'You are not in an organisation' })).toBeNull(),
     );
+    expect(screen.getByText('Now working in Okoro Weddings.')).toBeDefined();
     expect(sent.find((one) => one.line === 'POST /api/orgs')?.body).toMatchObject({
       name: 'Okoro Weddings',
       countryCode: 'GH',
