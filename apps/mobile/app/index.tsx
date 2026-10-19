@@ -13,6 +13,7 @@ import { followAccount } from '../src/accountLanguage.ts';
 import { landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { launchRoute } from '../src/resumeSignUp.ts';
+import { ruleRefusal, signInRoute } from '../src/kit/signInRules.ts';
 import { launchSignedIn } from '../src/signedIn.ts';
 
 /**
@@ -94,7 +95,11 @@ export default function Home() {
         },
         onLaunch,
       ).then((route) => {
-        if (route != null) router.replace(route);
+        if (route == null) return;
+        // An organisation's rule that ended the session is named on sign-in (sc-69).
+        router.replace(
+          route === '/sign-in?signedOut=1' ? signInRoute(ruleRefusal(answer.why), true) : route,
+        );
       });
     });
 
