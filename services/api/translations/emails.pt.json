@@ -116,5 +116,9 @@
     "signInRules.changed.link": "You sign in with a password only. It still works, but until you link Google or Apple you can read and not change anything in {organisation}. Nobody is signed out.",
     "signInRules.changed.linkWhere": "Link Google or Apple from Security: {link}",
     "signInRules.changed.see": "See the rules in force: {link}",
-    "signInRules.changed.footer": "You're getting this because you're a member of {organisation}."
+    "signInRules.changed.footer": "You're getting this because you're a member of {organisation}.",
+    "organisationDeleted.subject": "{organisation} has been deleted",
+    "organisationDeleted.body": "{name} deleted {organisation} on {when}. From that moment nobody can reach it, its events or anything in them.",
+    "organisationDeleted.restore": "Soirely support can restore it until {deadline}; after that it is gone for good.",
+    "organisationDeleted.footer": "You're getting this because you were a member of {organisation}."
 }

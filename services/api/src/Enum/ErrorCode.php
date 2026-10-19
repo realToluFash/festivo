@@ -17,6 +17,7 @@ enum ErrorCode: string
     case OwnerRoleFixed = 'owner_role_fixed';
     case SeededRoleKept = 'seeded_role_kept';
     case LastOwner = 'last_owner';
+    case OwnerRequired = 'owner_required';
     case GrantNotHeld = 'grant_not_held';
     case AlreadyLinked = 'already_linked';
     case AddressLimitReached = 'address_limit_reached';
@@ -88,7 +89,7 @@ enum ErrorCode: string
             self::UnsupportedMediaType => 415,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
-            self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired => 403,
+            self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OwnerRequired => 403,
             self::TooManyRequests, self::TooManyAttempts => 429,
             self::VerificationCodeInvalid, self::VerificationCodeExpired => 422,
             self::VerificationCodeExhausted => 422,

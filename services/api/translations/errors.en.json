@@ -8,6 +8,7 @@
     "owner_role_fixed": "Owner can't be edited or removed.",
     "seeded_role_kept": "A built-in role can't be removed.",
     "last_owner": "An organisation always has at least one owner.",
+    "owner_required": "Only an owner of the organisation can do this.",
     "grant_not_held": "A role can only be given what you hold yourself.",
     "already_linked": "That is already linked to a Soirely account.",
     "address_limit_reached": "This account already has as many as it can hold.",

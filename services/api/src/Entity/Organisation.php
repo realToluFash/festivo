@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Doctrine\Traits\SoftDeletable;
 use App\Doctrine\Traits\Timestampable;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -13,8 +14,10 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'organisations')]
+#[ORM\Index(name: 'idx_organisation_deleted', columns: ['deleted_at'])]
 class Organisation
 {
+    use SoftDeletable;
     use Timestampable;
 
     #[ORM\Id]
