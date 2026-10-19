@@ -6,6 +6,8 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationSender;
+use App\Domain\Organisation\Members\MemberActions;
+use App\Domain\Organisation\Members\OwnershipTransfer;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Entity\Invitation;
 use App\Entity\Membership;
@@ -34,7 +36,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** Settings > Organisation > Members (sc-67): every membership in every state, and the invitations. */
+/** Settings > Organisation > Members (sc-67): every membership in every state, the invitations, and the moves on them (sc-68). */
 final readonly class MembersController
 {
     public function __construct(
@@ -45,6 +47,8 @@ final readonly class MembersController
         private InvitationRepository $invitationRepository,
         private InvitationSender $invitationSender,
         private RoleManager $roleManager,
+        private MemberActions $memberActions,
+        private OwnershipTransfer $ownershipTransfer,
         private TranslatorInterface $translator,
     ) {
     }
@@ -115,6 +119,52 @@ final readonly class MembersController
         $this->invitationSender->revoke($invitation, $this->user());
 
         return new JsonResponse(['invitation' => MemberSerialiser::invitation($invitation, new DateTimeImmutable())]);
+    }
+
+    /** Takes effect on the member's next request: grants are read from the membership every time. */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}', name: 'orgs_members_change_role', methods: ['PATCH'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function changeRole(Request $request, string $organisationId, string $membershipId): Response
+    {
+        $organisation = $this->organisation($organisationId);
+        $body = Input::body($request, Type\shape(['roleId' => Type\string()]));
+        $membership = $this->memberActions->find($organisation, $membershipId, $this->user());
+        $this->memberActions->changeRole($membership, $this->role($organisation, $body['roleId']), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}', name: 'orgs_members_remove', methods: ['DELETE'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function remove(string $organisationId, string $membershipId): Response
+    {
+        $organisation = $this->organisation($organisationId);
+        $this->memberActions->remove($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/api/orgs/{organisationId}/leave', name: 'orgs_leave', methods: ['POST'])]
+    #[InOrganisation(null)]
+    public function leave(string $organisationId): Response
+    {
+        $this->memberActions->leave($this->organisation($organisationId), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** `proof` comes from /api/auth/proof, which takes the password and, when it is on, the two-factor code. */
+    #[Route('/api/orgs/{organisationId}/ownership', name: 'orgs_ownership_transfer', methods: ['POST'])]
+    #[InOrganisation(null)]
+    public function transfer(Request $request, string $organisationId): Response
+    {
+        $body = Input::body($request, Type\shape([
+            'membershipId' => Type\string(),
+            'proof' => Type\optional(Type\nullable(Type\string())),
+        ]));
+        $this->ownershipTransfer->transfer($this->organisation($organisationId), $this->user(), $body['membershipId'], $body['proof'] ?? null, $request->getLocale());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
     private function role(Organisation $organisation, string $roleId): Role

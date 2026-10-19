@@ -69,5 +69,7 @@
     "invitations.revoked": "This invitation was withdrawn.",
     "invitations.expired": "This invitation has expired. Ask whoever invited you to send a new one.",
     "validation.invite_email_required": "Enter their email address.",
-    "validation.invite_email_invalid": "That does not look like an email address. Check it has an @ and a domain."
+    "validation.invite_email_invalid": "That does not look like an email address. Check it has an @ and a domain.",
+    "members.own_membership": "You cannot change your own role or remove yourself. Another owner or administrator can, or you can leave from General.",
+    "members.choose_new_owner": "Choose who becomes the owner."
 }
