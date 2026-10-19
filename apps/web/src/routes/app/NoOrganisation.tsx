@@ -102,7 +102,7 @@ function StartOrganisation({
     setFailed(false);
 
     try {
-      const membership = await api.foundOrganisation({
+      const membership = await api.createOrganisation({
         name: values.name.trim(),
         countryCode: values.countryCode,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -114,8 +114,13 @@ function StartOrganisation({
       setSaving(false);
 
       if (error instanceof ApiError && error.is('validation_failed')) {
-        setErrors(error.fieldErrors() as Errors);
-        return;
+        const fields = error.fieldErrors();
+
+        // A refusal naming only a field this form lacks, such as the derived contact address.
+        if (fields.name != null || fields.countryCode != null) {
+          setErrors({ name: fields.name, countryCode: fields.countryCode } as Errors);
+          return;
+        }
       }
 
       setFailed(true);

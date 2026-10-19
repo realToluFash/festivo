@@ -290,10 +290,25 @@
     "current": "Current",
     "remembered": "Soirely remembers your choice on this device.",
     "switched": "Now working in {{name}}.",
-    "label": "Organisation: {{name}}, your role {{role}}",
     "labelSwitch": "Organisation: {{name}}, your role {{role}}. Switch organisation",
     "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
     "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
+  },
+  "createOrganisation": {
+    "row": "Create an organisation",
+    "title": "Create an organisation",
+    "intro": "You will be its owner. Your other organisations stay as they are.",
+    "name": "Organisation name",
+    "nameHelp": "Your team and guests see this name. You can rename it later.",
+    "nameLong": "That name is {{length}} characters. Use 100 or fewer.",
+    "country": "Country",
+    "defaults": "The currency follows the country, the time zone comes from this device, and the contact address is your primary email, {{email}}. You can change them in Settings > General.",
+    "limitedTitle": "Too many new organisations for now.",
+    "limitedBody": "Try again at {{time}}.",
+    "failed": "Creating the organisation did not work. Nothing was created. Try again in a moment.",
+    "cancel": "Cancel",
+    "create": "Create organisation",
+    "creating": "Creating…"
   },
   "roles": {
     "owner": "Owner",

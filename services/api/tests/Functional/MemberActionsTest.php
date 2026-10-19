@@ -142,16 +142,6 @@ final class MemberActionsTest extends ApiTestCase
     }
 
     #[Test]
-    public function startingOneIsRefusedWhileInOne(): void
-    {
-        $refused = $this->as($this->owner, 'POST', '/api/orgs', ['name' => 'A second one', 'countryCode' => 'NG', 'timezone' => 'Africa/Lagos']);
-
-        self::assertSame(409, $this->statusCode());
-        self::assertSame('You already belong to an organisation.', $refused['detail'] ?? null);
-        self::assertCount(1, Type\vec(Type\mixed())->coerce($this->as($this->owner, 'GET', '/api/orgs')['organisations'] ?? null));
-    }
-
-    #[Test]
     public function startingOneWithNoNameOrCountrySendsNothing(): void
     {
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
