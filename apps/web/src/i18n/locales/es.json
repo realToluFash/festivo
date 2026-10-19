@@ -214,7 +214,7 @@
     "signOut": "Cerrar sesión",
     "doneTitle": "Correo verificado",
     "doneBody": "{{address}} está confirmado. A continuación, unos datos para que su equipo sepa quién es quién.",
-    "doneBodyAlternative": "{{address}} is verified. It stays an alternative address until you make it primary in Account.",
+    "doneBodyAlternative": "{{address}} está verificada. Seguirá siendo una dirección alternativa hasta que la haga principal en Cuenta.",
     "continue": "Continuar",
     "failedTitle": "No ha funcionado",
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
@@ -247,7 +247,7 @@
     "carryOnWithout": "Continuar sin él",
     "doneTitle": "Número verificado",
     "doneBody": "Soirely puede contactarle en {{number}} si algo sale mal esa noche.",
-    "doneBodyAlternative": "{{number}} is verified. It stays an alternative number until you make it primary in Account.",
+    "doneBodyAlternative": "{{number}} está verificado. Seguirá siendo un número alternativo hasta que lo haga principal en Cuenta.",
     "continue": "Continuar a Soirely",
     "changeTitle": "Cambie su número de móvil",
     "nowVerified": "Ahora: {{number}} · verificado",
@@ -857,8 +857,8 @@
     "promoted": "{{address}} ya es su dirección principal. A partir de ahora, inicie sesión con ella.",
     "promotedPhone": "{{number}} ya es su número principal.",
     "removed": "Se ha quitado {{address}}.",
-    "verifiedDone": "{{address}} is verified.",
-    "verifiedDonePhone": "{{number}} is verified.",
+    "verifiedDone": "{{address}} está verificada.",
+    "verifiedDonePhone": "{{number}} está verificado.",
     "refusedPrimary": "Esta es la dirección con la que inicia sesión. Antes, haga principal otra dirección.",
     "refusedPrimaryPhone": "Este es su número principal. Antes, haga principal otro número.",
     "refusedLastVerified": "Esta es su única dirección verificada, la única prueba de que la cuenta es suya. Verifique otra antes de quitar esta.",
@@ -867,8 +867,8 @@
     "refusedNotVerifiedPhone": "Verifique este número antes de hacerlo principal.",
     "failed": "No ha funcionado. Inténtelo de nuevo.",
     "proveIntro": "Confirme que es usted antes de cambiar la dirección con la que inicia sesión.",
-    "backToAccount": "Back to Account",
-    "removeInAccount": "Remove it in Account",
-    "removeInAccountPhone": "Remove it in Account"
+    "backToAccount": "Volver a Cuenta",
+    "removeInAccount": "Quitarla en Cuenta",
+    "removeInAccountPhone": "Quitarlo en Cuenta"
   }
 }
