@@ -1,0 +1,506 @@
+# How a session is held
+
+A session is two tokens. The **access token** is a JWT, good for fifteen minutes, and
+every request carries it. The **refresh token** is a random 256-bit value stored as a
+SHA-256 hash, good for thirty days, rotated on every use, and a replay of a used one
+revokes the whole chain it belongs to.
+
+Where the client **keeps** those two is the decision this page records, because it is the
+one that cannot be changed quietly later.
+
+## The decision
+
+**The access token lives in memory. The refresh token is carried in a cookie the page
+cannot read, set by the API itself.**
+
+This is the "token-mediating backend" of RFC 10017 (_OAuth 2.0 for Browser-Based
+Applications_, BCP 212), with the Symfony API as the mediator rather than a separate
+service. The RFC presents three architectures in decreasing order of security — a
+backend-for-frontend, a token-mediating backend, and a browser-based client holding
+everything — and this is the middle one.
+
+A client says which it wants, per request:
+
+```json
+{ "email": "ada@example.com", "password": "…", "refreshTokenIn": "cookie" }
+```
+
+| `refreshTokenIn` | Who asks for it | What comes back                                                                                                                                                     |
+| ---------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cookie`         | `apps/web`      | `accessToken` in the body. The refresh token is a `Secure`, `HttpOnly`, `SameSite=Strict` cookie scoped to `/api/auth`, and **does not appear in the body at all**. |
+| `body` (default) | `apps/mobile`   | `accessToken` and `refreshToken` in the body. No cookie is set.                                                                                                     |
+
+`POST /api/auth/register`, `/login`, `/refresh` and `/logout` all take the field.
+`IssuedTokensResponse` is the one place that acts on it.
+
+## Why not a backend-for-frontend
+
+A BFF is the RFC's first recommendation and it is the right call for a product that can
+afford another deployable. This one cannot yet, and the gap between the two is narrow
+while the cost is not:
+
+- **It would be a new service to build, deploy, monitor and keep in step.** Every route
+  the API gains, the BFF has to proxy, and a routing table in two places drifts.
+- **The API is already the natural mediator.** Setting a cookie in Symfony is a few lines
+  in a class that already exists. A BFF adds a hop in front of every request.
+- **`packages/api-client` stays one thing.** Both clients call the API directly and only
+  the credential differs. With a BFF the web client talks to something else entirely and
+  that package stops being shared.
+- **It is reversible upward.** A BFF would set the same cookie, so this is most of the
+  groundwork rather than a detour.
+
+## Why not localStorage
+
+Because `HttpOnly` is the only thing that survives a cross-site script. A token in
+`localStorage` can be read and sent elsewhere, and it stays valid for its full lifetime
+wherever it lands — for the refresh token, thirty days of someone else's sessions.
+
+It is worth being precise about the ceiling, though. **`HttpOnly` stops exfiltration, not
+abuse.** A script running in the page can still call the API as the signed-in person for
+as long as the page is open; what it cannot do is take the session away with it. That is
+a real difference and a smaller one than it sounds, which is why the content security
+policy below matters more than this choice does.
+
+## The hostnames this depends on
+
+**The web app and the API share a registrable domain, in every environment. That is
+decided rather than assumed** — `soirely.com` and `api.soirely.com`, and whatever the
+equivalent pair is wherever else this runs.
+
+`SameSite=Strict` is what makes it matter. The cookie is sent only to the same _site_ as
+the page, and a site is the scheme plus the registrable domain: `soirely.com` and
+`api.soirely.com` are one, `soirely.com` and `soirely-api.com` are two. The second
+arrangement would force `SameSite=None`, which discards the cross-site request forgery
+protection the attribute exists for.
+
+`requireSameSiteApi` in `apps/web/src/sameSite.ts` refuses to start the application when
+the configured `apiBaseUrl` breaks the rule, and says so on the page. The failure is
+otherwise quiet in the worst way: sign-in works, the next fifteen minutes work, and then
+every refresh fails with nothing connecting it to the hostname somebody typed. The check
+is schemeful too, because browsers are — an `https` API served to an `http` page is
+cross-site however well the hostnames match — and it allows a relative `apiBaseUrl`, which
+is same-origin by construction.
+
+If the API ever has to live elsewhere, two answers are better than relaxing the cookie:
+serve it through the web container's nginx at `/api`, which makes it same-origin and makes
+the question disappear, or move to a full BFF.
+
+## Cross-site request forgery
+
+Three things answer it, and the first two are the ones that matter:
+
+1. **`SameSite=Strict`.** The cookie is not sent on a cross-site request at all, so a
+   forged one arrives with nothing to spend.
+2. **The request must be JSON with no unknown fields.** `Input::body` parses the raw body
+   as JSON and `Psl\Type\shape` rejects unknown keys, and an HTML form cannot be made to
+   produce that — a `text/plain` form always appends `=` somewhere, and absorbing it needs
+   a field the shape refuses. `RefreshTokenCookieTest` holds a test for this with the
+   cookie present, asserting the forged request is refused **and that the token survives
+   unspent**.
+3. **The cookie is scoped to `/api/auth`**, so it is not attached to anything else, and
+   the client only sends `credentials: 'include'` on refresh and sign-out.
+
+## Who may call the API from a browser
+
+`config/packages/nelmio_cors.yaml`, with `allow_credentials: true` because a cross-origin
+request sends no cookie without it. Origins are **exact strings**, never a regex: with
+credentials allowed, an unanchored pattern is the one mistake worth putting out of reach,
+because `^https://soirely\.com$` missing its `$` also matches
+`https://soirely.com.example.net`. `CrossOriginTest` tries that string and three other
+near misses.
+
+`Retry-After` and `Link` are in `expose_headers`. A header a browser cannot read is a
+header the client does not have, and `Retry-After` is the entire content of "try again at
+14:32" on a rate-limited sign-in.
+
+## The content security policy
+
+A policy is worth more than the storage choice above, because an active cross-site script
+defeats every storage option and a policy is what stops the script running.
+
+`apps/web/nginx.conf` includes `/etc/nginx/soirely-security-headers.conf`, which the
+container's entrypoint writes at start-up. It is generated rather than committed because
+`connect-src` has to name the API and Mercure origins and those differ per deployment;
+nginx refuses to start if the file is missing, which is the right direction for that to
+fail in. The snippet is included in **every** `location` as well as the server block,
+because a location that adds a header of its own discards everything inherited.
+
+Two things to know before changing it:
+
+- **`style-src` has no `'unsafe-inline'`**, and that directive governs inline `style`
+  attributes as well as `<style>` elements. A `style={{…}}` prop renders nothing in a
+  deployed build while working perfectly in `vite dev`, where no policy is served. The
+  `react/forbid-dom-props` rule in `eslint.config.mjs` is what keeps that from being
+  found in production instead of at commit time.
+- **Google Fonts is the one third party the page loads** — the stylesheet from
+  `fonts.googleapis.com`, the font files it names from `fonts.gstatic.com`. Self-hosting
+  Instrument Sans and JetBrains Mono would remove both sources and is the better end
+  state.
+- Images are `'self' data:` only. The first avatar served from object storage will be
+  blocked, loudly, with the origin named in the console — add it to `img-src` then.
+
+`Strict-Transport-Security` is deliberately absent. TLS terminates upstream, so it belongs
+on the terminator where its `max-age` sits beside the certificate it depends on.
+
+## What a reload does
+
+Nothing, from the person's point of view. The access token is gone, the cookie is not, so
+the first request after a reload goes out unauthenticated, comes back `401`, and
+`ApiClient` renews from the cookie and retries it. One wasted request per page load and no
+sign-in screen, which is the right way round.
+
+## Lifetimes
+
+Both are configuration in `services/api/.env`, in seconds:
+
+| Variable            | Default   | What it bounds                                                          |
+| ------------------- | --------- | ----------------------------------------------------------------------- |
+| `JWT_TOKEN_TTL`     | `900`     | how long an ended session keeps working; see the next section           |
+| `REFRESH_TOKEN_TTL` | `2592000` | how long a device may go unused before it has to sign in again, 30 days |
+
+A refresh issues a new token with the full lifetime, so a device in use never expires.
+Lowering `REFRESH_TOKEN_TTL` applies to tokens issued from then on; rows already stored
+keep the expiry they were issued with.
+
+## The sign-in limit
+
+Two fixed windows of fifteen minutes, in `config/packages/rate_limiter.yaml`: **5 refused
+passwords per address** and **30 per network address**. Only a refused password spends
+either. A correct one spends nothing, so somebody signing in on several devices is never
+locked out by it.
+
+Past either, `POST /api/auth/login` answers `429 too_many_attempts` with `Retry-After`, and
+does not check the password at all. The time is the window's end, so it does not move while
+nobody is trying, and the right password at that time signs in. The clients round it up to
+the minute they show and lift the lock themselves when it arrives.
+
+The budgets live in Redis (`cache.rate_limiter`), so every API container counts against the
+same one. In the test environment they are in memory; `cache.yaml` says why.
+
+## An organisation's inactivity limit
+
+sc-69. An organisation may sign people out after 7 or 30 days without use. A refresh token is
+issued at every use, so the presented token's age is how long the session has gone unused,
+to within one access token's fifteen minutes. `POST /api/auth/refresh` checks it against
+the **shortest** limit of every organisation the account belongs to (the earliest joined wins
+a tie), and past it revokes the chain and answers **401 `session_timed_out`** with
+`organisation`, `days` and the account's `email`, so the client can name whose rule it was
+and fill the address in. A limit set later applies to sessions already open.
+
+## Pruning spent sessions
+
+`bin/console app:prune-refresh-tokens` deletes every `refresh_tokens` row whose `expires_at`
+has passed, revoked or not, in batches of 1,000 (`RefreshTokenPruner::BATCH_SIZE`).
+`--dry-run` counts them and deletes nothing. Two runs at once are safe: each batch skips
+rows the other has locked.
+
+It never deletes a row that is revoked but not expired. That row is how a replayed token is
+told apart from an unknown one: delete it and a replay no longer revokes the chain, so the
+thief keeps the newest token, and the response looks exactly the same.
+
+**It runs once a day, at 03:00 UTC**, from `services/api/config/crontab`, alongside
+`app:prune-unverified-accounts` at 03:10 and `app:prune-pending-registrations` at 03:20.
+The prod image carries [supercronic](https://github.com/aptible/supercronic), pinned by
+version and checksum; every deployed environment runs one more container from that image
+with `supercronic /app/config/crontab` as its command. Each run logs its count, 0 included;
+a run that exits non-zero is logged at `level=error` and the next day's run still happens.
+The local stack schedules none of them: run them by hand there.
+
+## Ending a session takes effect at once
+
+Revoking a refresh token stops a session being renewed; on its own it would leave the access
+token in hand working for its fifteen minutes (`JWT_TOKEN_TTL=900`, which
+`TokenLifetimeTest` holds there). sc-117 closes that:
+
+- **The access token carries its session**, as OpenID Connect's `sid` claim
+  (`TokenIssuer::SESSION_CLAIM`): the refresh chain's id, which every access token of the
+  session shares across rotations.
+- **Every way a session ends records it** in `RevokedSessions`: one device from the list or
+  from itself (`TokenIssuer::end()`), a replayed chain, everything but this one (sc-115,
+  sc-116), and everything (a password reset, a two-factor recovery). A new revocation path
+  goes through `TokenIssuer`, or it quietly reverts to fifteen minutes.
+- **One Redis key per ended session**, `revoked_session:<chain>`, set to expire after
+  `JWT_TOKEN_TTL` itself, by which time every access token of that session has expired
+  anyway. No database read: `RevokedSessionListener` asks Redis once per authenticated
+  request, and marks the token invalid, so it is refused exactly as an expired one is.
+- **It fails open** (sc-117, Decided 16 Oct). With Redis unreachable nothing is refused,
+  revocation falls back to the fifteen minutes, and each failed write or check is logged at
+  `critical` with `RevokedSessions::UNREACHABLE`. Failing closed would sign everybody out
+  at once, mid-event.
+- **A token with no `sid`** has nothing to look up and is not refused. Every token the API
+  issues carries one.
+- **This device is the session the caller holds, never one it names.** Whatever answers
+  about the caller's own session, such as `thisDevice`, reads `CallerSession` (the `sid`
+  claim). A `sessionId` in the body may choose what to keep, never who the caller is.
+  Signing out everywhere else (sc-115) and unlinking a provider (sc-510) both follow it,
+  and with no `sid` both answer `thisDevice: true`, since the caller cannot be told it
+  stays in.
+
+## Where a native client keeps its half
+
+`apps/mobile/src/tokens.ts`: the access token in memory, the refresh token in the
+platform keystore through `expo-secure-store` — Keychain on iOS, Keystore-backed storage on
+Android, written `AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY` so a session is not restored onto
+another device from a backup. That is better than the browser's cookie rather than a
+compromise with it: nothing else on the device can read it, and there is no cross-site
+request forgery to answer for.
+
+**The keystore is not everywhere.** `expo-secure-store` has no implementation on web, where
+this app also runs through React Native Web, and a device can refuse the keystore. Both
+fall back to memory for the launch, so the session ends when the app closes. The honest
+outcome: the alternative is writing a thirty-day credential somewhere readable.
+
+## Recovering a password
+
+`POST /api/auth/password/forgot` always answers `202 {}`, so it cannot be used to find out
+who has an account: a password account is emailed a link, an account with no password is
+told how it signs in, and an unknown address is sent nothing. The answer is also the same
+in time: the lookup and the email happen on `kernel.terminate`, after the response has
+gone (`AfterResponse`, the one home for work the client must not wait for), so a
+registered address is no slower to answer. Under
+FrankenPHP that needs `FinishResponseListener`, which ends the response first: Symfony
+only does so itself for FastCGI and LiteSpeed. It is limited per
+address (keyed on what was typed) and per IP, and a refusal states a time.
+
+- **The link** carries 32 random bytes, kept only as their SHA-256, and works once for
+  `PasswordResetToken::LIFETIME_MINUTES` (10), shorter than a verification code's 15.
+  `POST /api/auth/password/reset/check` says whose link it is, or `reset_link_invalid`
+  (404), `reset_link_used` or `reset_link_expired` (410), each with its own page.
+- **The reset** (`POST /api/auth/password/reset`) takes registration's rules
+  (`NewPasswordRules`), and a refused password changes nothing. A new one spends every
+  link the account was sent, revokes every refresh token, signs this device in, and emails
+  a notice saying when. Access tokens already issued stop at once (see above).
+- **Two-factor** (sc-60) will ask for the code before this device is signed in.
+
+## Changing a password
+
+`PATCH /api/auth/password` takes `currentPassword`, `newPassword` and the caller's own
+`sessionId`, the refresh token's id the client holds. It
+answers `{signedOut}`, the number of other sessions it ended.
+
+- **The current password comes first.** A wrong one is `invalid_credentials` and changes
+  nothing. It is a guessing surface like sign-in, so it has the same kind of limit:
+  `password_change_account`, five wrong current passwords per account in a fixed
+  fifteen-minute window, peeked before the check and spent only by a wrong one. Past it,
+  `too_many_attempts` with `Retry-After`, even for the right password.
+- **The new one** is held to `NewPasswordRules`, registration's and the reset's, on the
+  `newPassword` field, and hashed through `PasswordResolver`. One the same as the current
+  password is `password_unchanged`, checked before the breach corpus is asked.
+- **Every other session ends, this one stays**: `TokenIssuer::revokeAllExcept()` revokes
+  every live refresh token but the chain of the session named, in the same transaction as
+  the new hash. A `sessionId` that is not this account's keeps nothing. Other devices are
+  refused on their next request (see above).
+- **The primary address is emailed** after the response (`AfterResponse`): when, and the
+  device as the devices card reads it (`ReadableAgent`, the PHP twin of `readableAgent()`)
+  with the network address and no place, and to reset by "Forgot your password?" if it was
+  not them. It links only to sign-in, carries no part of either password, and a failed send
+  leaves the change made.
+
+## Signing out everywhere else
+
+`POST /api/auth/sessions/others` takes the `proof` from `POST /api/auth/proof` and the
+caller's own `sessionId`, and answers `{signedOut, thisDevice}` (sc-115). It is the lost
+phone's button: every session but this device's ends at once.
+
+- **The proof comes first**, the same five-minute proof that linking a provider takes: the
+  password or Google or Apple, then the code with two-factor on, an app code or an unused
+  recovery code, which is spent. Without one it is `proof_required` and nothing ends.
+- **A refused code keeps the first factor.** With two-factor on, a passed password or
+  provider sign-in is held as a proof awaiting its code, and the code's refusal carries it
+  as `pendingProof`. The retry sends `{pendingProof, code}` in place of the first factor,
+  because a provider's authorization code is single-use (RFC 6749 §4.1.2). It stands for no
+  change itself, lapses with the five minutes, and is spent once the code passes.
+- **Asked for the code straight after Google or Apple**, the `two_factor_required` answer
+  also carries `providerEmail`: the address that sign-in vouched for, as the provider wrote
+  it, so step two can say which account was used (sc-2197). Without a vouched address it is
+  absent, never filled in from the account; no other answer carries it.
+- **Then the limit**: `sign_out_elsewhere_account`, five proved calls per account in a fixed
+  fifteen-minute window. Past it, `429 too_many_attempts` with `Retry-After` and the time
+  in the detail, and nothing ends. The proof is checked before the budget is spent, so
+  whoever holds an unlocked device cannot use up the owner's.
+- **One statement**: `TokenIssuer::revokeAllExcept()` ends every live session but the chain
+  of the one named, and puts each on the revoked-session list, so the other devices are
+  refused on their next request. `signedOut` is the rows it ended; a second call answers 0.
+- **Without a `sessionId` that is this account's**, the caller's session ends as well.
+- **`thisDevice` is the caller's own chain**, the access token's `sid` claim, not the
+  `sessionId` the client named: `true` when that chain was among those ended, and the
+  client signs out. A stale or wrong `sessionId` is told the truth.
+- **One audit entry**, `sessions.signed_out_elsewhere`, carrying the count.
+
+## Adding a password
+
+An account made with Google or Apple has no password (`hasPassword: false`), and adds one
+from the same card (sc-391). The provider session is not enough on its own, so the primary
+address is proved first:
+
+- `POST /api/auth/password/set/start` emails a 6-digit code under sc-56's rules: fifteen
+  minutes, five tries a code, a sixty-second resend cooldown (`429` with `Retry-After`).
+  One row per account in `password_set_codes`; a resend replaces the code and its tries.
+- `POST /api/auth/password/set/code` checks it under the account's row lock, with the
+  `password_set_account` budget (five wrong codes per fifteen minutes, across resends),
+  as "Attempt budgets" in symfony-api asks. A right code answers a one-time `stepUp` token,
+  kept hashed, good for fifteen minutes: the pass belongs to the client that entered the
+  code, not to the account, so another session on it cannot spend it (OWASP ASVS V2.5).
+- `POST /api/auth/password/set` takes `newPassword` under `NewPasswordRules` and that
+  `stepUp`, consumed under the account's row lock (else `verification_code_expired`; a wrong
+  token burns nothing). **No session ends**, since nothing was
+  replaced; the address is emailed that a password was added, with the device and network
+  address as the change email words them.
+- An account that already has a password is `409` at every step.
+
+## Registering
+
+A password sign-up does not sign in, and does not make the account. `POST /api/auth/register`
+answers `202 {registration, email}` for every address, new or held by an account, with the
+same shape and in the same time: the password is hashed either way, and every email goes
+after the response (`RegistrationMail`, through `AfterResponse`). The handle lasts 24 hours and works once.
+
+- **New address:** the code goes to it. `POST /api/auth/register/verify` with the handle and
+  the code makes the account, its address verified, and signs it in. An unverified holder of
+  the address is released then, as before. Wrong, exhausted and expired codes follow sc-56.
+- **Taken address:** a code is made and never sent, so every guess reads as wrong, and the
+  address is emailed "You already have a Soirely account" instead, at most once an hour.
+- Resend (`/api/auth/register/resend`) keeps sc-56's 60-second cooldown. Until the code is
+  entered nothing exists to sign in to, so sign-in answers `invalid_credentials`.
+  `app:prune-pending-registrations` deletes expired attempts.
+
+Google and Apple sign-up are unchanged: the provider vouches for the address.
+
+## Signing in with Google
+
+`POST /api/auth/oauth/google` answers as password sign-in does. Both clients run the
+provider's authorization-code flow with PKCE, sending the provider the nonce's SHA-256 (hex)
+and keeping the nonce itself, which they give the API. What they send differs:
+
+- **The app** redeems its own code, as a native client may without a secret, and sends the
+  ID token with the raw nonce.
+- **The web** sends the code, its PKCE verifier and the redirect URI with the raw nonce, and
+  the API redeems the code with the client secret (`HttpCodeRedeemer`). A browser is a
+  public client and cannot keep a secret (RFC 6749 §2.1); PKCE binds the code to the
+  browser that asked (RFC 7636). The ID token that comes back takes the same checks.
+- **Production values:** `OAUTH_GOOGLE_ISSUERS` is `https://accounts.google.com,accounts.google.com`,
+  `OAUTH_GOOGLE_JWKS_URI` is `https://www.googleapis.com/oauth2/v3/certs`,
+  `OAUTH_GOOGLE_TOKEN_URI` is `https://oauth2.googleapis.com/token`, and the client ids and
+  the web client's secret come from the owner's Google Cloud project.
+
+- **The token is checked in full** (`OpenIdTokenVerifier`): RS256 only, the signature
+  against the provider's published keys, the issuer, an audience that is one of our client
+  ids, and the expiry, with a minute's leeway. Any failure is `401 oauth_token_invalid`.
+- **The nonce binds the token to the client that asked for it.** A token whose `nonce`
+  claim does not equal the hash of the nonce sent with it is refused, so a captured token
+  replays nowhere. **A token with no `nonce` claim is accepted**, because a sandbox or a
+  test may issue one; Google always includes it when the client asked.
+- **Keys are cached for an hour and fetched again once** when a key id is unknown or a
+  signature fails. The local sandbox rotates its key under the same id on restart, and a
+  verifier that trusted its cache would refuse every token after that.
+- **Who it is.** A `provider_identities` row (provider, `sub`) seen before signs that
+  account in. Otherwise a **verified** address matching an account's **primary** address
+  links to it, and only when that account verified the address itself; an account that
+  never did is released, as registration releases it, so a password typed by somebody else
+  cannot stay in. Otherwise a new account, with the address already verified and no
+  password. A token whose address the provider did not verify is refused.
+- **Linking waits for the second factor.** With two-factor on, the challenge carries the
+  provider and `sub`, and the `provider_identities` row is written only when its code
+  passes; the `202` says nothing about linking, and `two-factor/verify` answers `linked`.
+
+## Signing in with Apple
+
+`POST /api/auth/oauth/apple` is the Google endpoint with Apple's issuer, keys and client ids:
+the same checks, nonce binding and account paths. What differs is what Apple sends.
+
+- **The name comes once.** Apple puts no name in its ID token and hands the client one only
+  on the very first authorisation, so the client sends it as `name`. It fills a blank name
+  and never overwrites a stored one, so a later sign-in without it changes nothing.
+- **On web Apple answers with `form_post`** whenever the name or email is asked for, which a
+  page cannot receive. It posts to `POST /api/auth/oauth/apple/return`, which sends the
+  browser on, with a 303, to the web's `/oauth/apple` carrying `code`, `state` and `user`.
+  The target is the configured web origin, never one read from the request. The web then
+  hands the code to the API, as for Google.
+- **On iOS the native sheet** gives an ID token signed by the real Apple, so development
+  trusts Apple's issuer and keys and Expo Go's bundle id beside the sandbox's.
+- **Revoking and coming back** keeps Apple's `sub`, so it is the same account, not a second.
+  A private-relay address is an address like any other.
+- **Production values:** `OAUTH_APPLE_ISSUERS` is `https://appleid.apple.com`,
+  `OAUTH_APPLE_JWKS_URIS` is `https://appleid.apple.com/auth/keys`, `OAUTH_APPLE_TOKEN_URI`
+  is `https://appleid.apple.com/auth/token`, and the client ids are the Services ID (web) and
+  the bundle id (iOS). Apple's client secret is not a fixed string but a JWT signed with the
+  team's Sign in with Apple key, which expires within six months and has to be issued again.
+
+- **Android.** Apple will not redirect to an app's custom scheme, and returns the name only
+  by `form_post`, so on Android the app starts an attempt with the API first
+  (`POST /api/auth/oauth/apple/attempts`, its state and PKCE challenge), then opens Apple in
+  Custom Tabs. Apple posts to `/api/auth/oauth/apple/return`, which recognises the app's
+  state, keeps Apple's code, and 303s to the verified App Link `OAUTH_APPLE_APP_LINK` with a
+  one-time handle (60 seconds, `AppleAppAttempt::HANDLE_SECONDS`). The app trades the handle
+  and its PKCE verifier at `POST /api/auth/oauth/apple/handle`, and the API redeems the code
+  at `OAUTH_APPLE_RETURN_URI`, its own return route; a different `redirectUri` from the client
+  is refused. Neither the code nor tokens travel in the App Link URL. An app state already
+  spent or expired goes back to the App Link with `error=expired` and no code; only a state
+  the API never saw is the web's.
+
+## Two-factor authentication
+
+An account with two-factor on is never issued tokens by its first factor alone.
+`SignInGate` stands where password sign-in, Google and Apple sign-in let an existing
+account in, and with a factor active it answers `202` with a `twoFactorChallenge` (a
+single-use token kept as its SHA-256, for `TwoFactorChallenge::LIFETIME_MINUTES`, 5)
+and nothing about the account. `POST /api/auth/two-factor/verify` takes the challenge
+with a `code` or a `recoveryCode` and only then issues tokens.
+
+- **Codes** are RFC 6238: six digits, thirty-second steps, SHA-1, a 160-bit secret.
+  A code is accepted **one step either side of now** (`AuthenticatorCodes::DRIFT_STEPS`),
+  so a clock up to thirty seconds out still works. The step a code was accepted for is
+  kept, and a code for that step or an earlier one is refused as a wrong code, so a
+  code cannot be replayed inside its own window.
+- **The secret is encrypted at rest** with libsodium's secretbox, keyed by
+  `TWO_FACTOR_KEY` (32 bytes, base64). It has to be readable to check a code, so it
+  cannot be hashed. `.env` leaves it empty and `.env.dev` holds development's, so an
+  environment that sets none refuses two-factor rather than using a published key;
+  changing it strands every enrolled factor.
+- **Attempts** share one budget per account across sign-in, setup and turning it off:
+  five wrong codes in a fixed **fifteen-minute** window (`two_factor_account`) pause
+  code entry until the window ends, and the refusal is `too_many_attempts` with the time.
+  Each check holds a row lock on the factor from the peek to the charge, so parallel
+  requests queue rather than all passing the peek, and a replay sees the newest step.
+- **A password reset** asks for the code before anything changes: with two-factor on,
+  `reset/check` says so, `POST /api/auth/password/reset/code` takes an app code or a
+  recovery code for that link (sharing the attempt budget), and only then does
+  `POST /api/auth/password/reset` set the password, end every session and sign this device
+  in. Until the code passes, the old password and every session stand.
+- **Setup** stays off until a code from the new secret matches, so a misconfigured app
+  cannot lock anybody out. Activating returns ten recovery codes, shown once. Each is
+  forty bits, so it is kept as a salted slow hash (the password hasher), as NIST SP 800-63B
+  5.1.2.2 asks of look-up secrets under 112 bits. Making new codes takes the current factor
+  and deletes every old one, so an old code is refused exactly as a wrong one is. Turning it off takes an app code or an unused recovery code, and emails
+  the address.
+
+## A sign-in from a new device
+
+sc-511. After every sign-in that lets somebody in (password, Google or Apple, after the
+second factor when it is on: `SignInGate::issue()`), `KnownDevices` asks whether this device
+has signed in to this account before, and if not emails the primary address "New sign-in to
+Soirely".
+
+- **The device is the identifier the client keeps, never the user agent.** The app sends
+  its install identifier as `X-Device-Id` (`apps/mobile/src/installId.ts`, in AsyncStorage
+  so that a reinstall is a new device). The web gets a `soirely_device` cookie, set by the
+  API the first time it asks (`DeviceIdentity`, `DeviceCookieListener`): `HttpOnly`,
+  `SameSite=Strict`, on `/api/auth` as the refresh cookie is, for 400 days, renewed each
+  sign-in. A cleared cookie or a reinstall is a new device, and emails.
+- **`known_devices` holds it, hashed**, one row per account and device, apart from
+  `refresh_tokens`: those are pruned when they expire, and the device is still known after.
+  The insert is `ON CONFLICT DO NOTHING`, so only one sign-in can be the first on a device,
+  and only that one emails.
+- **Registering and recovering a password remember the device and email nothing.** A
+  refresh never asks.
+- **At most `KnownDevices::DAILY_CAP` (10) emails per account in 24 hours.** Past it the
+  device is still remembered, and the sign-in is still on the devices list.
+- The email carries the time in the account's zone, the device as the devices card names it,
+  and the network address. No location is guessed from the address.
+
+## What is not built yet
+
+- **Signing in with Apple.** The button is drawn and does nothing until sc-59.
+- **An organisation.** `apps/web/src/session.ts` reads the account from `GET /api/auth/me`
+  and that part is real; the organisation and the permissions beside it are still a
+  stand-in, marked as one, because epic 28 is where organisations get a record.
