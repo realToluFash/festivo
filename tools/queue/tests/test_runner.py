@@ -133,6 +133,13 @@ class Run(unittest.TestCase):
         self.run_once()
         self.assertIn(f"refused: lead: no checkout at {self.root / 'soirely-lead'}", self.said)
 
+    def test_a_null_runtime_on_a_role_keeps_the_floor(self):
+        self.config["roles"]["lead"] = {"maxRuntime": None}
+        store.record(self.db, [work("lead"), work("ops")], ON_ZERO)
+        self.run_once()
+        self.assertEqual(sorted((r, v["maxRuntimeMinutes"]) for r, _, v in self.platform.launched),
+                         [("lead", 90), ("ops", 90)])
+
     def test_a_missing_runtime_claims_nothing_it_cannot_launch(self):
         self.config["defaults"].pop("maxRuntime")
         store.record(self.db, [work("lead"), work("ops")], ON_ZERO)

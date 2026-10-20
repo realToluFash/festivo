@@ -82,14 +82,15 @@ def checkout(config, role):
 
 def settings(config, role):
     """The built-in floor, then `defaults`, then the role's own starting values in `ROLES`
-    (the testers' larger memory), then the role's entry in the file."""
+    (the testers' larger memory), then the role's entry in the file. A null is not set,
+    at every level, so it never removes the floor."""
     merged = {key: BUILT_IN.get(key) for key in SETTINGS}
     merged.update({key: value for key, value in (config.get("defaults") or {}).items()
                    if key in SETTINGS and value is not None})
     merged.update({key: value for key, value in (roles.ROLES.get(role) or {}).items()
                    if key in SETTINGS})
     merged.update({key: value for key, value in (config.get("roles", {}).get(role) or {}).items()
-                   if key in SETTINGS})
+                   if key in SETTINGS and value is not None})
     return merged
 
 
