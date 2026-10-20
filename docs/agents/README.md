@@ -4,10 +4,10 @@ How the Soirely roles (`/soirely-developer`, `/soirely-qa-tester` and the rest) 
 own: what checks for work, what does it, what it costs, and the commands that start and
 stop it all.
 
-**Status: agreed with the owner on 20 Oct, not yet built.** Today each role runs as a
-`CronCreate` routine inside an open Claude Code session (`role-routine`). This folder
-describes what replaces it. Ops owns the work; it lands in three pull requests, listed at
-the end.
+**Status: agreed with the owner on 20 Oct. The Linux runner is #276; the rest is later
+work, marked where it is described.** Until a role is moved over, it runs as a `CronCreate`
+routine inside an open Claude Code session (`role-routine`). Ops owns the work; it lands in
+the pull requests listed under [Delivery](#delivery).
 
 - [How work moves between roles](workflow.md): the Shortcut states, the labels and which
   role each one wakes.
@@ -104,25 +104,30 @@ stopped run then loses minutes, not the thread.
 
 ## Commands
 
-| Command                              | What it does                                                                                            |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| `just agents setup`                  | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer   |
-| `just agents up`                     | starts the manager for the roles in this machine's `agents.json`                                        |
-| `just agents down`                   | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks               |
-| `just agents down --now`             | the same, stopping running workers at once and giving their items back                                  |
-| `sq start <role>` / `sq stop <role>` | starts or stops one role on this machine                                                                |
-| `sq status`                          | every role: running here, held elsewhere, standby or skipped and why; the timer; the last report        |
-| `sq run --dry-run`                   | syncs, then says which ready role would wake for what, started or not; starts nothing, installs nothing |
-| `sq pause` / `sq resume`             | no role ticks on this machine until resumed; running workers finish their item                          |
-| `sq cost [--days N]`                 | what the workers cost, per day and role, from the run log                                               |
+| Command                              | What it does                                                                                                                     |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `just agents setup`                  | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer                            |
+| `just agents up`                     | starts the manager for the roles in this machine's `agents.json`                                                                 |
+| `just agents down`                   | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks                                        |
+| `just agents down --now`             | the same, stopping running workers at once and giving their items back                                                           |
+| `sq start <role>` / `sq stop <role>` | starts or stops one role on this machine                                                                                         |
+| `sq status`                          | each role here: started or stopped, its model, refused and why; the manager; the last report. _(Later: held elsewhere, standby)_ |
+| `sq run --dry-run`                   | syncs, then says which ready role would wake for what, started or not; starts nothing, installs nothing                          |
+| `sq pause` / `sq resume`             | no role ticks on this machine until resumed; running workers finish their item                                                   |
+| `sq cost [--days N]`                 | what the workers cost, per day and role, from the run log                                                                        |
 
 `just agents down` uses `docker compose down` without `-v`: databases and volumes are kept,
 and `just agents up` comes back with the same data. Developer 1 works in the main checkout,
 so its stack is the owner's own `soirely` stack; `down` stops it only when `dev` is listed
 in this machine's file, and says so first.
 
-`sq start` and `sq stop` are admin commands, not role commands, so no worker can start or
-stop a routine.
+`sq start`, `sq stop`, `sq pause`, `sq resume`, `sq run` and `just agents` refuse to run
+inside a worker: its unit sets `SOIRELY_WORKER`, and `sq` prints `error:` and exits. That
+guards against a worker that reads "stop the routine" in a thread and acts on it. It is not
+a security boundary, since a worker with a shell could unset the variable. The boundary is
+that workers are only ever asked to do their role's work, and what they run is in the run
+log. _(Later, with the permission asks: deny rules for these commands in the workers'
+settings, written by setup.)_
 
 ## Limits
 
@@ -130,7 +135,8 @@ stop a routine.
   workers together on Linux. These are starting values, tuned at the cut-over against
   `/proc/pressure/memory`. They exist because on 18 Oct systemd-oomd killed the owner's
   whole session over memory stall, with 25 GiB still free. Macs have no hard limit, so
-  there `sq run` watches each worker and stops one that goes over.
+  there `sq run` will watch each worker and stop one that goes over. _(Later, with the Mac
+  runner)_
 - **Spending.** A per-run ceiling (`--max-budget-usd`) can be set per role in
   `agents.json`. No role has one until the owner picks a number.
 - **No token, no tick.** The Shortcut token is read from `~/.config/soirely/env` (mode 600,
