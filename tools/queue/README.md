@@ -111,6 +111,16 @@ story or pull request, read fresh rather than from the last sync, and says why i
 The database is `.git/soirely-roles/queue.db`, shared by every worktree and never committed.
 `SQ_HOME` points it somewhere else, for trying changes against a copy.
 
+## Running unattended
+
+`sq run` is what the systemd timer runs every minute: it syncs, then starts one worker,
+`claude -p` in a capped unit of its own, for each started role whose minute it is and that
+has work. `machine.py` reads `~/.config/soirely/agents.json`, `runner.py` decides and
+launches, `systemd.py` writes the units, `checkout.py` brings each checkout up to `main`
+before a worker starts, `update.py` keeps the installed `sq` on a `main` CI passed, and
+`runlog.py` records each run's cost and report in `<sq home>/runs/<role>.jsonl`. The
+design, the commands and the guards are in [docs/agents](../../docs/agents/README.md).
+
 ## Tests
 
 `npm run test:queue`. The write tests run against fakes and never reach Shortcut or GitHub.
