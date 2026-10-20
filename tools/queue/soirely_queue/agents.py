@@ -130,6 +130,27 @@ def up(db, home, platform, say=print, only=None):
             say(f"note: {note}")
     platform.enable()
     say(f"started {', '.join(names) or 'no role'}; the first tick is within a minute")
+    return 1 if only and set(only) - set(names) else 0
+
+
+def start(db, home, platform, names, say=print):
+    listed = list(machine.load().get("roles") or {})
+    unlisted = [name for name in names if name not in listed]
+    if unlisted:
+        say(f"error: {', '.join(unlisted)} not in {machine.path()}, so not started here; "
+            "which roles a machine runs is the owner's choice")
+        return 1
+    return up(db, home, platform, say, only=names or None)
+
+
+def stop(db, names, say=print):
+    listed = list(machine.load().get("roles") or {})
+    unlisted = [name for name in names if name not in listed]
+    if unlisted:
+        say(f"error: {', '.join(unlisted)} not in {machine.path()}; nothing stopped")
+        return 1
+    runner.set_started(db, names, False)
+    say(f"stopped {', '.join(names) or 'no role'}; a running worker finishes its item")
     return 0
 
 

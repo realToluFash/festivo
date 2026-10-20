@@ -58,3 +58,53 @@ class Down(unittest.TestCase):
         self.down()
         self.assertTrue(self.platform.stopped)
         self.assertTrue(self.said[1].startswith("waiting for ops to finish"))
+
+
+class StartStop(unittest.TestCase):
+    """Through `sq start` and `sq stop` themselves, as the owner and the skill run them."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.folder.name)
+        for name in ("festivo", "soirely-ops", "soirely-dev2"):
+            (self.root / name).mkdir()
+        self.db = store.connect(":memory:")
+        self.platform = FakePlatform()
+        settings = config(self.root, roles={"ops": {}, "dev2": {}, "lead": {}})
+        for patch in (mock.patch("soirely_queue.machine.load", return_value=settings),
+                      mock.patch("soirely_queue.cli.open_db", return_value=self.db),
+                      mock.patch("soirely_queue.cli.home", return_value=self.root / "home"),
+                      mock.patch("soirely_queue.systemd.platform", return_value=self.platform),
+                      mock.patch("soirely_queue.update.check", return_value=False)):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def sq(self, *argv):
+        from soirely_queue import cli
+        with mock.patch("sys.stdout"), self.assertRaises(SystemExit) as ended:
+            cli.admin(list(argv))
+        return ended.exception.code
+
+    def test_start_sets_and_stop_clears_the_started_flag(self):
+        self.assertEqual(self.sq("start", "ops", "dev2"), 0)
+        self.assertEqual(runner.started(self.db), {"ops", "dev2"})
+        self.assertTrue(self.platform.enabled)
+        self.assertEqual(self.sq("stop", "dev2"), 0)
+        self.assertEqual(runner.started(self.db), {"ops"})
+
+    def test_all_starts_every_ready_role(self):
+        self.assertEqual(self.sq("start", "--all"), 1)  # lead has no checkout
+        self.assertEqual(runner.started(self.db), {"ops", "dev2"})
+
+    def test_a_role_this_machine_does_not_list_is_refused(self):
+        self.assertEqual(self.sq("start", "qa"), 1)
+        self.assertEqual(self.sq("stop", "qa"), 1)
+        self.assertEqual(runner.started(self.db), set())
+        self.assertFalse(hasattr(self.platform, "enabled"))
+
+    def test_a_listed_role_that_cannot_run_is_not_started(self):
+        self.assertEqual(self.sq("start", "lead"), 1)
+        self.assertEqual(runner.started(self.db), set())

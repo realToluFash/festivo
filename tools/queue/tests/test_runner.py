@@ -38,6 +38,9 @@ class FakePlatform:
     def notify(self, title, body):
         self.notes.append((title, body))
 
+    def enable(self):
+        self.enabled = True
+
 
 def config(root, **changes):
     base = {"machine": "here", "workspace": str(root), "mainCheckout": "festivo",
@@ -116,12 +119,26 @@ class Run(unittest.TestCase):
         synced.assert_not_called()
         self.assertTrue(self.said[0].startswith("error: SHORTCUT_API_TOKEN is not set"))
 
-    def test_a_role_without_its_checkout_is_refused_and_the_rest_run(self):
+    def test_a_started_role_without_its_checkout_is_an_error_and_the_rest_run(self):
         (self.root / "soirely-lead").rmdir()
         store.record(self.db, [work("lead"), work("ops")], ON_ZERO)
         self.run_once()
-        self.assertIn(f"refused lead: no checkout at {self.root / 'soirely-lead'}", self.said)
+        self.assertIn(f"error: lead: no checkout at {self.root / 'soirely-lead'}", self.said)
         self.assertEqual([r for r, _, _ in self.platform.launched], ["ops"])
+        self.assertTrue(store.waiting(self.db, "lead"))
+
+    def test_a_listed_role_not_started_is_only_refused(self):
+        (self.root / "soirely-lead").rmdir()
+        runner.set_started(self.db, ["lead"], False)
+        self.run_once()
+        self.assertIn(f"refused: lead: no checkout at {self.root / 'soirely-lead'}", self.said)
+
+    def test_a_missing_runtime_claims_nothing_it_cannot_launch(self):
+        self.config["defaults"].pop("maxRuntime")
+        store.record(self.db, [work("lead"), work("ops")], ON_ZERO)
+        self.run_once()
+        self.assertEqual(sorted((r, v["maxRuntimeMinutes"]) for r, _, v in self.platform.launched),
+                         [("lead", 90), ("ops", 90)])
 
     def test_paused_wakes_nobody(self):
         store.set_meta(self.db, "paused", "2026-10-20 09:00")
@@ -138,6 +155,15 @@ class Run(unittest.TestCase):
         self.assertEqual(self.platform.launched, [])
         self.assertEqual(len(self.platform.notes), 1)
         self.assertIn("only 4 GB free", self.platform.notes[0][1])
+
+    def test_a_disk_that_moves_under_the_floor_notifies_once(self):
+        store.record(self.db, [work("ops")], ON_ZERO)
+        for minute, free in enumerate((4.0, 3.0, 3.6, 2.1)):
+            with mock.patch("soirely_queue.machine.free_gb", return_value=free):
+                self.run_once(ON_ZERO + minute * 3 * MINUTE)
+        self.assertEqual(len(self.platform.notes), 1)
+        self.assertEqual(store.get_meta(self.db, "told:disk"),
+                         runner.datetime.date.today().isoformat())
 
     def test_the_daily_cap_holds_new_workers(self):
         self.config["dailyBudgetUsd"] = 5
@@ -183,6 +209,19 @@ class Run(unittest.TestCase):
         self.run_once()
         self.assertFalse(store.held_by(self.db, "ops", ON_ZERO))
         self.assertEqual(store.waiting(self.db, "ops")[0]["id"], 1)
+
+
+class Command(unittest.TestCase):
+    VALUES = {"model": "claude-opus-5-5", "effort": "medium"}
+
+    def test_no_spending_ceiling_by_default(self):
+        argv, env = runner.command(dict(self.VALUES, maxBudgetUsd=None), "~/.claude-soirely")
+        self.assertNotIn("--max-budget-usd", argv)
+        self.assertTrue(env["CLAUDE_CONFIG_DIR"].endswith(".claude-soirely"))
+
+    def test_a_set_ceiling_is_passed_to_claude(self):
+        argv, _ = runner.command(dict(self.VALUES, maxBudgetUsd=2.5), "~/.claude-soirely")
+        self.assertEqual(argv[argv.index("--max-budget-usd") + 1], "2.5")
 
 
 class Worker(unittest.TestCase):

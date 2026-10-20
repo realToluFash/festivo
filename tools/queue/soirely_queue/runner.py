@@ -70,21 +70,22 @@ def drift(config, version):
 
 def guards(config, home, platform, db, ready, say):
     """Reasons no new worker may start right now, each told to the owner once a day."""
-    reasons = []
+    reasons = {}
     free, floor = machine.free_gb(config), config.get("minFreeGb", 15)
     if floor and free < floor:
-        reasons.append(f"only {free:.0f} GB free, under minFreeGb {floor}: no new workers")
+        reasons["disk"] = f"only {free:.0f} GB free, under minFreeGb {floor}: no new workers"
     cap = config.get("dailyBudgetUsd")
     if cap:
         total = sum(runlog.spent(home, ready).values())
         if total >= cap:
-            reasons.append(f"${total:.2f} spent today, at dailyBudgetUsd {cap}: no new workers")
+            reasons["budget"] = (f"${total:.2f} spent today, at dailyBudgetUsd {cap}: "
+                                 "no new workers")
     today = datetime.date.today().isoformat()
-    for reason in reasons:
+    for guard, reason in reasons.items():
         say(f"held: {reason}")
-        if once(db, f"told:{reason.split(':')[0]}", today):
+        if once(db, f"told:{guard}", today):
             platform.notify("Soirely agents held", reason)
-    return reasons
+    return list(reasons.values())
 
 
 def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
@@ -112,8 +113,10 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
             platform.notify("Soirely: claude version drifted", late)
         if config.get("onVersionDrift") == "stop":
             return say("held: onVersionDrift is stop, so no role ticks until the pin matches")
+    running = started(db)
     for role, why in refused.items():
-        say(f"refused {role}: {why}")
+        # A started role that cannot run is an error, for whatever alerts on the journal.
+        say(f"{'error' if role in running else 'refused'}: {role}: {why}")
     errors = sync.sync(db, now)
     if errors and not store.get_meta(db, "synced_ok_at"):
         return say(f"error: {'; '.join(errors)}")
@@ -141,11 +144,11 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
             continue
         if held:
             continue
+        values = dict(ready[role], maxRuntimeMinutes=machine.minutes(ready[role]["maxRuntime"]))
         row = store.claim(db, role, now)
         if not row:
             say(f"{role}: idle")
             continue
-        values = dict(ready[role], maxRuntimeMinutes=machine.minutes(ready[role]["maxRuntime"]))
         try:
             platform.launch(role, row["id"], values, sq, python, machine.checkout(config, role),
                             machine.env_file())

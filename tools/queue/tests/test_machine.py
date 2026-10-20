@@ -73,6 +73,17 @@ class Checked(unittest.TestCase):
         own = config(self.root, roles={"ux": {"checkout": "~/design/ux"}})
         self.assertEqual(machine.checkout(own, "ux"), pathlib.Path("~/design/ux").expanduser())
 
+    def test_no_runtime_anywhere_still_stops_a_worker_at_90_minutes(self):
+        changed = config(self.root)
+        changed["defaults"].pop("maxRuntime")
+        self.assertEqual(machine.check(changed)[2]["ops"]["maxRuntime"], "90m")
+
+    def test_the_testers_start_with_more_memory(self):
+        changed = config(self.root, roles={"qa2": {}, "qa3": {"memoryMax": "12G"}})
+        self.assertEqual(machine.settings(changed, "qa2")["memoryMax"], "8G")
+        self.assertEqual(machine.settings(changed, "qa3")["memoryMax"], "12G")
+        self.assertEqual(machine.settings(changed, "ops")["memoryMax"], "3G")
+
     def test_bad_limits_are_refused(self):
         changed = config(self.root, roles={"ops": {"memoryMax": "lots", "maxRuntime": "soon",
                                                    "maxBudgetUsd": -1}})

@@ -581,12 +581,10 @@ def admin(argv):
     elif a.command == "worker-ended":
         runner.worker_ended(home(), platform, a.role, a.item)
     elif a.command in ("start", "stop"):
-        config = machine.load()
-        names = list(config.get("roles") or {}) if a.all else a.roles
+        names = list(machine.load().get("roles") or {}) if a.all else a.roles
         if a.command == "start":
-            return sys.exit(agents.up(db, home(), platform, only=names or None))
-        runner.set_started(db, names, False)
-        print(f"stopped {', '.join(names) or 'no role'}; a running worker finishes its item")
+            return sys.exit(agents.start(db, home(), platform, names))
+        return sys.exit(agents.stop(db, names))
     elif a.command == "pause":
         store.set_meta(db, "paused", time.strftime("%d %b %H:%M"))
         print("paused: no role ticks, running workers finish their item")

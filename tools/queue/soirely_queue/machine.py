@@ -17,6 +17,8 @@ MODELS = HERE.parent / "models.json"
 SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
+# Under everything in agents.json: a worker is never left without a time limit.
+BUILT_IN = {"maxRuntime": "90m"}
 
 
 class ConfigError(RuntimeError):
@@ -79,7 +81,13 @@ def checkout(config, role):
 
 
 def settings(config, role):
-    merged = {key: (config.get("defaults") or {}).get(key) for key in SETTINGS}
+    """The built-in floor, then `defaults`, then the role's own starting values in `ROLES`
+    (the testers' larger memory), then the role's entry in the file."""
+    merged = {key: BUILT_IN.get(key) for key in SETTINGS}
+    merged.update({key: value for key, value in (config.get("defaults") or {}).items()
+                   if key in SETTINGS and value is not None})
+    merged.update({key: value for key, value in (roles.ROLES.get(role) or {}).items()
+                   if key in SETTINGS})
     merged.update({key: value for key, value in (config.get("roles", {}).get(role) or {}).items()
                    if key in SETTINGS})
     return merged

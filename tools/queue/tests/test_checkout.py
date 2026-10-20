@@ -76,6 +76,14 @@ class Prepare(unittest.TestCase):
         self.assertEqual(git(self.role, "rev-parse", "HEAD"), before)
         self.assertEqual((self.role / "a.txt").read_text(), "mine")
 
+    def test_an_untracked_file_does_not_hold_the_checkout_back(self):
+        self.commit(self.origin, "b.txt", "two")
+        (self.role / "stray.yaml").write_text("left by a flow")
+        main, note = checkout.prepare(self.role, "lead")
+        self.assertIsNone(note)
+        self.assertEqual(git(self.role, "rev-parse", "HEAD"), main)
+        self.assertTrue((self.role / "stray.yaml").exists())
+
     def test_a_conflicting_merge_is_undone_and_explained(self):
         git(self.role, "checkout", "-q", "-b", "feature/sc-7/x")
         self.commit(self.role, "a.txt", "branch")

@@ -32,7 +32,7 @@ def prepare(path, role, story=None):
     git(path, "fetch", "--quiet", "--prune", "origin")
     main = git(path, "rev-parse", "origin/main").stdout.strip()
     branch = git(path, "symbolic-ref", "--quiet", "--short", "HEAD", check=False).stdout.strip()
-    dirty = bool(git(path, "status", "--porcelain").stdout.strip())
+    dirty = bool(git(path, "status", "--porcelain", "--untracked-files=no").stdout.strip())
     action = decide(role, branch or None, dirty, story)
     if action == "leave-dirty":
         return main, ("Your checkout has changes nobody committed, so it was not brought up to "
