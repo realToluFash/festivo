@@ -95,6 +95,20 @@ def holding(db, now):
         "and kind != 'machine'", (now,))}
 
 
+def void_passes(db, now, say):
+    from . import actions
+    from .cli import refresh_work
+    try:
+        moved = actions.void_passes(actions.Context(db, "runner", None))
+    except Exception as error:  # noqa: BLE001 — Shortcut down: the lead's review item stands
+        return say(f"warning: could not move a voided pass back to In Review ({error})"[:240])
+    for story_id in moved:
+        say(f"sc-{story_id}: pushed after its pass, back to In Review")
+    if moved:
+        refresh_work(db, now)
+    return None
+
+
 def agree(db, config, platform, now, say, remote, ready):
     """Settles with the other machines. Returns `(view, mine, elsewhere)`, or None when
     GitHub cannot be reached: then another machine may be taking this one's roles over, so
@@ -141,6 +155,8 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
     from .cli import refresh_work
     local.checks(db, config, now)
     refresh_work(db, now)
+    if not dry_run:
+        void_passes(db, now, say)
     if not dry_run and update.check(db, home, now, say):
         say("the new sq takes over from the next minute")
     if not dry_run:
