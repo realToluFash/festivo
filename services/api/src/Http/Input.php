@@ -1,0 +1,76 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http;
+
+use App\Enum\ErrorCode;
+use App\Http\Exception\ApiException;
+use Psl\Json;
+use Psl\Type\Exception\CoercionException;
+use Psl\Type\TypeInterface;
+use Symfony\Component\HttpFoundation\Request;
+
+// A body that is not JSON is 400; a body that is JSON but the wrong shape is
+// 422. Collapsing them loses the only signal that says which end is wrong.
+final readonly class Input
+{
+    /**
+     * @template T
+     *
+     * @param TypeInterface<T> $shape
+     *
+     * @return T
+     */
+    public static function body(Request $request, TypeInterface $shape): mixed
+    {
+        $raw = $request->getContent();
+
+        if ('' === \trim($raw)) {
+            throw new ApiException(ErrorCode::BadRequest, 'A JSON body is required.');
+        }
+
+        try {
+            $decoded = Json\decode($raw);
+        } catch (Json\Exception\DecodeException $e) {
+            throw new ApiException(ErrorCode::BadRequest, 'The request body is not valid JSON.', [], $e);
+        }
+
+        return self::coerce($decoded, $shape);
+    }
+
+    /**
+     * @template T
+     *
+     * @param TypeInterface<T> $shape
+     *
+     * @return T
+     */
+    public static function query(Request $request, TypeInterface $shape): mixed
+    {
+        return self::coerce($request->query->all(), $shape);
+    }
+
+    /**
+     * @template T
+     *
+     * @param TypeInterface<T> $shape
+     *
+     * @return T
+     */
+    public static function coerce(mixed $value, TypeInterface $shape): mixed
+    {
+        try {
+            return $shape->coerce($value);
+        } catch (CoercionException $e) {
+            throw ApiException::validation(
+                [[
+                    'propertyPath' => \implode('.', $e->getPaths()),
+                    'message' => $e->getMessage(),
+                    'code' => 'invalid_shape',
+                ]],
+                'The request does not have the expected shape.',
+            );
+        }
+    }
+}

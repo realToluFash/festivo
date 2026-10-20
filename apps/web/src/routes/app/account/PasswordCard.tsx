@@ -1,0 +1,608 @@
+import { ApiError, type LinkedProvider } from '@soirely/api-client';
+import {
+  cleanCode,
+  codeProblem,
+  formatCountdown,
+  formatTimeOfDay,
+  lockLiftsAt,
+  meetsPasswordLength,
+} from '@soirely/domain';
+import { type TFunction } from 'i18next';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
+
+import { api } from '../../../api.ts';
+import { FieldError } from '../../../components/FieldError.tsx';
+import { PasswordField } from '../../../components/PasswordField.tsx';
+import { PasswordRule } from '../../../components/PasswordRule.tsx';
+import { useFormChecks } from '../../../formChecks.ts';
+import { currentLocale } from '../../../i18n/index.ts';
+import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
+import { currentSessionId } from '../../../tokens.ts';
+
+type Stage =
+  | { kind: 'at-rest'; signedOut: number | null; added: string | null }
+  | { kind: 'changing' }
+  | { kind: 'setting' };
+
+/** Settings > Security, the first card: change the password (sc-116), or add one to a Google or Apple account (sc-391). */
+export function PasswordCard({
+  email,
+  hasPassword,
+  providers,
+  onChanged,
+  onAdded,
+  setting = false,
+  onSetting,
+}: {
+  email: string;
+  hasPassword: boolean;
+  providers: readonly LinkedProvider[];
+  onChanged: () => void;
+  onAdded: () => void | Promise<void>;
+  /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
+  setting?: boolean;
+  onSetting?: (on: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const [stage, setStage] = useState<Stage>({ kind: 'at-rest', signedOut: null, added: null });
+  const open = (next: Stage) => {
+    setStage(next);
+    onSetting?.(next.kind === 'setting');
+  };
+  const first = providers[0]?.provider;
+  const provider = first == null ? '' : PROVIDER_NAMES[first];
+
+  if (!hasPassword) {
+    return (
+      <section className="card" aria-labelledby="password-title">
+        {stage.kind === 'setting' || setting ? (
+          <Setting
+            email={email}
+            onAdded={async () => {
+              await onAdded();
+              open({ kind: 'at-rest', signedOut: null, added: provider });
+            }}
+            onCancel={() => open({ kind: 'at-rest', signedOut: null, added: null })}
+          />
+        ) : (
+          <>
+            <h2 id="password-title">{t('passwordCard.title')}</h2>
+            <p>{t('passwordCard.setRest', { provider })}</p>
+            <div className="actions">
+              <button className="button" type="button" onClick={() => open({ kind: 'setting' })}>
+                {t('passwordCard.set')}
+              </button>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
+
+  return (
+    <section className="card" aria-labelledby="password-title">
+      {stage.kind === 'changing' ? (
+        <Changing
+          email={email}
+          onChanged={(signedOut) => {
+            setStage({ kind: 'at-rest', signedOut, added: null });
+            onChanged();
+          }}
+          onCancel={() => setStage({ kind: 'at-rest', signedOut: null, added: null })}
+        />
+      ) : (
+        <>
+          <h2 id="password-title">{t('passwordCard.title')}</h2>
+          {stage.kind === 'at-rest' && (stage.signedOut != null || stage.added != null) && (
+            <p className="status-done" role="status">
+              <span className="mark mark-done" aria-hidden="true">
+                ✓
+              </span>
+              {stage.added != null
+                ? t('passwordCard.added', { provider: stage.added })
+                : t('passwordCard.done', { count: stage.signedOut ?? 0 })}
+            </p>
+          )}
+          <p>{t('passwordCard.intro')}</p>
+          <div className="actions">
+            <button className="button" type="button" onClick={() => setStage({ kind: 'changing' })}>
+              {t('passwordCard.change')}
+            </button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+type SetStep =
+  | { kind: 'code'; refusal: string | null; paused: string | null }
+  | { kind: 'password'; stepUp: string };
+
+/** The code from the email first, then the password: the provider session alone may not add one. */
+function Setting({
+  email,
+  onAdded,
+  onCancel,
+}: {
+  email: string;
+  onAdded: () => Promise<void>;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [step, setStep] = useState<SetStep>({ kind: 'code', refusal: null, paused: null });
+  const [cooldown, setCooldown] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordRefusal, setPasswordRefusal] = useState<string | null>(null);
+  const codeInput = useRef<HTMLInputElement>(null);
+  const passwordInput = useRef<HTMLInputElement>(null);
+  const codeChecks = useFormChecks(
+    ['code'] as const,
+    (_field, value) => {
+      const problem = codeProblem(value);
+      if (problem == null) return null;
+
+      return problem === 'blank' ? t('passwordCard.setCodeBlank') : t('passwordCard.setCodeShort');
+    },
+    () => codeInput.current?.focus(),
+  );
+  const passwordChecks = useFormChecks(
+    ['password'] as const,
+    (_field, value) => (value === '' ? t('passwordCard.setNewBlank') : null),
+    () => passwordInput.current?.focus(),
+  );
+
+  async function send(): Promise<void> {
+    setFailed(false);
+
+    try {
+      setCooldown(await api.startSettingPassword());
+    } catch (error) {
+      const seconds =
+        error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
+
+      if (Number.isFinite(seconds) && seconds > 0) setCooldown(seconds);
+      else setFailed(true);
+    }
+  }
+
+  // Sent once, when the step opens; Send a new code sends again.
+  const sent = useRef(false);
+  useEffect(() => {
+    if (sent.current) return;
+    sent.current = true;
+    void send();
+  });
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
+
+    return () => clearTimeout(tick);
+  }, [cooldown]);
+
+  async function passCode(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (busy || !codeChecks.passes({ code })) return;
+
+    setBusy(true);
+
+    try {
+      setStep({ kind: 'password', stepUp: await api.passPasswordCode(cleanCode(code)) });
+    } catch (error) {
+      setStep({ kind: 'code', ...codeRefusal(error, t) });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (step.kind !== 'password' || busy || !passwordChecks.passes({ password })) return;
+
+    // The rule is stated before submit, so a short password is never sent.
+    if (!meetsPasswordLength(password)) {
+      passwordInput.current?.focus();
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      await api.setPassword(password, step.stepUp);
+      await onAdded();
+    } catch (error) {
+      setBusy(false);
+
+      if (error instanceof ApiError && error.is('verification_code_expired')) {
+        setCode('');
+        setStep({ kind: 'code', refusal: t('passwordCard.setCodeExpired'), paused: null });
+        return;
+      }
+
+      const violation =
+        error instanceof ApiError
+          ? error.problem.violations?.find((v) => v.propertyPath === 'newPassword')
+          : undefined;
+      setPasswordRefusal(
+        violation?.code === 'password_breached'
+          ? t('register.breached')
+          : (violation?.message ?? t('passwordCard.failedBody')),
+      );
+    }
+  }
+
+  if (step.kind === 'password') {
+    const error = passwordChecks.errors.password ?? passwordRefusal;
+
+    return (
+      <>
+        <h2 id="password-title">{t('passwordCard.setNewTitle')}</h2>
+        <form className="auth-form" noValidate onSubmit={(event) => void save(event)}>
+          <div className="field">
+            <label htmlFor="set-password">{t('passwordCard.setNewLabel')}</label>
+            <PasswordField
+              id="set-password"
+              autoComplete="new-password"
+              inputRef={passwordInput}
+              value={password}
+              onChange={(value) => {
+                setPassword(value);
+                setPasswordRefusal(null);
+                passwordChecks.edited('password', value);
+              }}
+              onBlur={(value) => passwordChecks.left('password', value)}
+              wrong={error != null}
+              disabled={busy}
+              submitting={busy}
+              describedBy={
+                error == null ? 'set-password-rule' : 'set-password-error set-password-rule'
+              }
+            />
+            {error != null && <FieldError id="set-password-error" message={error} />}
+          </div>
+
+          <PasswordRule met={meetsPasswordLength(password)} id="set-password-rule" />
+
+          <p className="muted">{t('passwordCard.setEmailed', { email })}</p>
+
+          <div className="actions">
+            <button className="button button-primary" type="submit" aria-busy={busy}>
+              {busy ? t('passwordCard.saving') : t('passwordCard.setSave')}
+            </button>
+            <button className="button" type="button" onClick={onCancel} disabled={busy}>
+              {t('passwordCard.cancel')}
+            </button>
+          </div>
+        </form>
+      </>
+    );
+  }
+
+  const codeError = codeChecks.errors.code ?? step.refusal;
+
+  return (
+    <>
+      <h2 id="password-title">{t('passwordCard.setCodeTitle')}</h2>
+
+      {step.paused != null && (
+        <div className="notice notice-attention" role="alert">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('passwordCard.pausedTitle')}</p>
+            <p>{step.paused}</p>
+          </div>
+        </div>
+      )}
+
+      {failed && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('passwordCard.failedTitle')}</p>
+            <p>{t('passwordCard.setSendFailed')}</p>
+          </div>
+        </div>
+      )}
+
+      <p className="muted">{t('passwordCard.setCodeIntro', { email })}</p>
+
+      <form className="auth-form" noValidate onSubmit={(event) => void passCode(event)}>
+        <div className="field">
+          <label htmlFor="set-code">{t('passwordCard.setCodeLabel')}</label>
+          <input
+            ref={codeInput}
+            className={codeError == null ? 'code-input' : 'code-input input-wrong'}
+            id="set-code"
+            name="set-code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoCorrect="off"
+            spellCheck={false}
+            value={code}
+            aria-invalid={codeError != null}
+            aria-describedby={codeError == null ? undefined : 'set-code-error'}
+            onChange={(event) => {
+              setCode(event.target.value);
+              if (step.refusal != null)
+                setStep({ kind: 'code', refusal: null, paused: step.paused });
+              codeChecks.edited('code', event.target.value);
+            }}
+            onBlur={(event) => codeChecks.left('code', event.target.value)}
+          />
+          {codeError != null && <FieldError id="set-code-error" message={codeError} />}
+        </div>
+
+        <p className="muted">{t('passwordCard.setCodeNote')}</p>
+
+        <div className="actions">
+          <button className="button button-primary" type="submit" aria-busy={busy}>
+            {t('passwordCard.continue')}
+          </button>
+          <button
+            className="button"
+            type="button"
+            disabled={cooldown > 0}
+            onClick={() => void send()}
+          >
+            {cooldown > 0
+              ? t('passwordCard.resendIn', { time: formatCountdown(cooldown) })
+              : t('passwordCard.resend')}
+          </button>
+          <button className="button" type="button" onClick={onCancel}>
+            {t('passwordCard.cancel')}
+          </button>
+        </div>
+      </form>
+    </>
+  );
+}
+
+/** A refused code, in the card's words: a pause states its time, in the reader's clock. */
+function codeRefusal(
+  error: unknown,
+  t: TFunction,
+): { refusal: string | null; paused: string | null } {
+  if (error instanceof ApiError && error.is('too_many_attempts')) {
+    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
+
+    return {
+      refusal: null,
+      paused:
+        liftsAt == null
+          ? t('passwordCard.pausedSoon')
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) }),
+    };
+  }
+
+  if (error instanceof ApiError && error.is('verification_code_expired')) {
+    return { refusal: t('passwordCard.setCodeExpired'), paused: null };
+  }
+
+  if (error instanceof ApiError && error.is('verification_code_exhausted')) {
+    return { refusal: t('passwordCard.setCodeSpent'), paused: null };
+  }
+
+  if (
+    error instanceof ApiError &&
+    (error.is('verification_code_invalid') || error.is('validation_failed'))
+  ) {
+    return { refusal: t('passwordCard.setCodeWrong'), paused: null };
+  }
+
+  return { refusal: t('passwordCard.failedBody'), paused: null };
+}
+
+type Refusal =
+  | { field: 'currentPassword'; message: string }
+  | { field: 'newPassword'; message: string }
+  | { field: 'paused'; message: string }
+  | { field: 'failed'; message: string };
+
+function Changing({
+  email,
+  onChanged,
+  onCancel,
+}: {
+  email: string;
+  onChanged: (signedOut: number) => void;
+  onCancel: () => void;
+}) {
+  const { t } = useTranslation();
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const currentInput = useRef<HTMLInputElement>(null);
+  const nextInput = useRef<HTMLInputElement>(null);
+  const checks = useFormChecks(
+    ['currentPassword', 'newPassword'] as const,
+    (field, value) =>
+      value !== ''
+        ? null
+        : field === 'currentPassword'
+          ? t('passwordCard.currentBlank')
+          : t('passwordCard.newBlank'),
+    (field) => (field === 'currentPassword' ? currentInput : nextInput).current?.focus(),
+  );
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (saving) return;
+    if (!checks.passes({ currentPassword: current, newPassword: next })) return;
+
+    // The rule is stated before submit, so a short password is never sent.
+    if (!meetsPasswordLength(next)) {
+      nextInput.current?.focus();
+      return;
+    }
+
+    setSaving(true);
+    setRefusal(null);
+
+    try {
+      const { signedOut } = await api.changePassword({
+        currentPassword: current,
+        newPassword: next,
+        sessionId: currentSessionId(),
+      });
+      onChanged(signedOut);
+    } catch (error) {
+      setSaving(false);
+      setRefusal(refusalFrom(error, t));
+    }
+  }
+
+  const currentError =
+    checks.errors.currentPassword ??
+    (refusal?.field === 'currentPassword' ? refusal.message : null);
+  const nextError =
+    checks.errors.newPassword ?? (refusal?.field === 'newPassword' ? refusal.message : null);
+
+  return (
+    <>
+      <h2 id="password-title">{t('passwordCard.formTitle')}</h2>
+
+      {refusal?.field === 'paused' && (
+        <div className="notice notice-attention" role="alert">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('passwordCard.pausedTitle')}</p>
+            <p>{refusal.message}</p>
+          </div>
+        </div>
+      )}
+
+      {refusal?.field === 'failed' && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <div className="notice-body">
+            <p className="notice-title">{t('passwordCard.failedTitle')}</p>
+            <p>{refusal.message}</p>
+          </div>
+        </div>
+      )}
+
+      <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
+        <div className="field">
+          <div className="field-heading">
+            <label htmlFor="current-password">{t('passwordCard.current')}</label>
+            <Link className="link-button" to="/forgot-password">
+              {t('passwordCard.forgot')}
+            </Link>
+          </div>
+          <PasswordField
+            id="current-password"
+            autoComplete="current-password"
+            inputRef={currentInput}
+            value={current}
+            onChange={(value) => {
+              setCurrent(value);
+              if (refusal?.field === 'currentPassword') setRefusal(null);
+              checks.edited('currentPassword', value);
+            }}
+            onBlur={(value) => checks.left('currentPassword', value)}
+            wrong={currentError != null}
+            disabled={saving}
+            submitting={saving}
+            describedBy={currentError == null ? undefined : 'current-password-error'}
+          />
+          {currentError != null && (
+            <FieldError id="current-password-error" message={currentError} />
+          )}
+        </div>
+
+        <div className="field">
+          <label htmlFor="new-password">{t('passwordCard.new')}</label>
+          <PasswordField
+            id="new-password"
+            autoComplete="new-password"
+            inputRef={nextInput}
+            value={next}
+            onChange={(value) => {
+              setNext(value);
+              if (refusal?.field === 'newPassword') setRefusal(null);
+              checks.edited('newPassword', value);
+            }}
+            onBlur={(value) => checks.left('newPassword', value)}
+            wrong={nextError != null}
+            disabled={saving}
+            submitting={saving}
+            describedBy={
+              nextError == null ? 'new-password-rule' : 'new-password-error new-password-rule'
+            }
+          />
+          {nextError != null && <FieldError id="new-password-error" message={nextError} />}
+        </div>
+
+        <PasswordRule met={meetsPasswordLength(next)} id="new-password-rule" />
+
+        <p className="muted">{t('passwordCard.signsOut')}</p>
+        <p className="muted">{t('passwordCard.emailed', { email })}</p>
+
+        <div className="actions">
+          <button className="button button-primary" type="submit" aria-busy={saving}>
+            {saving ? t('passwordCard.saving') : t('passwordCard.save')}
+          </button>
+          <button className="button" type="button" onClick={onCancel} disabled={saving}>
+            {t('passwordCard.cancel')}
+          </button>
+        </div>
+      </form>
+    </>
+  );
+}
+
+/** Each refusal under the field it is about; the pause states its time, in the reader's clock. */
+function refusalFrom(error: unknown, t: TFunction): Refusal {
+  if (!(error instanceof ApiError))
+    return { field: 'failed', message: t('passwordCard.failedBody') };
+
+  if (error.is('invalid_credentials')) {
+    return { field: 'currentPassword', message: t('passwordCard.wrongCurrent') };
+  }
+
+  if (error.is('too_many_attempts')) {
+    const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
+
+    return {
+      field: 'paused',
+      message:
+        liftsAt == null
+          ? t('passwordCard.pausedSoon')
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) }),
+    };
+  }
+
+  const violation = error.is('validation_failed')
+    ? error.problem.violations?.find((v) => v.propertyPath === 'newPassword')
+    : undefined;
+
+  if (violation != null) {
+    return {
+      field: 'newPassword',
+      message:
+        violation.code === 'password_breached'
+          ? t('register.breached')
+          : violation.code === 'password_unchanged'
+            ? t('passwordCard.same')
+            : violation.message,
+    };
+  }
+
+  return { field: 'failed', message: t('passwordCard.failedBody') };
+}
