@@ -104,14 +104,17 @@ stopped run then loses minutes, not the thread.
 
 ## Commands
 
-| Command                              | What it does                                                                                          |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `just agents setup`                  | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer |
-| `just agents up`                     | starts the manager for the roles in this machine's `agents.json`                                      |
-| `just agents down`                   | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks             |
-| `just agents down --now`             | the same, stopping running workers at once and giving their items back                                |
-| `sq start <role>` / `sq stop <role>` | starts or stops one role on this machine                                                              |
-| `sq status`                          | every role: running here, held elsewhere, standby or skipped and why; the timer; the last report      |
+| Command                              | What it does                                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `just agents setup`                  | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer   |
+| `just agents up`                     | starts the manager for the roles in this machine's `agents.json`                                        |
+| `just agents down`                   | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks               |
+| `just agents down --now`             | the same, stopping running workers at once and giving their items back                                  |
+| `sq start <role>` / `sq stop <role>` | starts or stops one role on this machine                                                                |
+| `sq status`                          | every role: running here, held elsewhere, standby or skipped and why; the timer; the last report        |
+| `sq run --dry-run`                   | syncs, then says which ready role would wake for what, started or not; starts nothing, installs nothing |
+| `sq pause` / `sq resume`             | no role ticks on this machine until resumed; running workers finish their item                          |
+| `sq cost [--days N]`                 | what the workers cost, per day and role, from the run log                                               |
 
 `just agents down` uses `docker compose down` without `-v`: databases and volumes are kept,
 and `just agents up` comes back with the same data. Developer 1 works in the main checkout,
@@ -134,6 +137,31 @@ stop a routine.
   outside the repository). Without it `sq run` prints `error:`, ticks nothing and never
   carries on from an old sync.
 
+## Guards and alerts
+
+Each guard holds new workers back; a worker already running finishes its item. Each is
+printed on every run, for the journal, and told to the owner once (a desktop notification
+through `notify-send`), not once a minute.
+
+- **Disk.** Under `minFreeGb` free (15 by default) on the workspace's disk, no worker
+  starts. BuildKit's cache has filled this disk before; `just prune-build-cache` is the
+  usual way back.
+- **Daily cap.** When the run log's spend for today reaches `dailyBudgetUsd`, no worker
+  starts until midnight. Unset by default, like the per-run ceiling.
+- **The claude version.** `claudeVersion` pins the CLI the workers were tested on. When the
+  installed `claude --version` differs, every run prints a `warning:` naming both versions
+  and saying to update `claudeVersion` once the new one is trusted, and the owner gets one
+  notification per new version. The roles carry on, unless `onVersionDrift` is `"stop"`,
+  which holds every role until the pin matches. Unset, nothing is pinned. Each run's log
+  line records the version it ran on, so a change in quality can be traced to an update.
+- **Waiting on the owner.** A report with a line that waits on the owner (a merge, a
+  decision, a go-ahead) notifies the owner with that line, and `sq status` shows it until
+  the role's next run.
+- **A worker that ended without a report**, stopped by its time or memory limit or a crash,
+  leaves a line in the run log saying why, and notifies the owner.
+- **Pause.** `sq pause` holds every role on this machine. Pausing every machine at once
+  comes with the GitHub leases (Delivery, step 2).
+
 ## Decided, 20 Oct
 
 - **The check is a script, not a model.** Rejected: running the tick on a cheaper model
@@ -154,14 +182,16 @@ stop a routine.
 ## Delivery
 
 1. **The Linux runner**: `sq run`, `sq start` and `sq stop`, the systemd units, the run log,
-   milestone notes, `agents.json` with its workspace, `just agents down`, keeping
-   checkouts on `main`, and the GitHub role leases and story claims, so a second machine
-   is safe from the start. Tests run without systemd. Cut-over is one role at a time, ops
-   first and measured over a quiet hour; each role's `CronCreate` job is deleted before its
-   `sq start`, never both at once.
-2. **The workflow**: the new Shortcut states, the QA labels and the wake fixes
+   milestone notes, `agents.json` with its workspace, models and effort, `just agents`,
+   keeping checkouts on `main`, the self-update, and the guards and alerts above. Tests run
+   without systemd. Cut-over is one role at a time, ops first and measured over a quiet
+   hour; each role's `CronCreate` job is deleted before its `sq start`, never both at once.
+   Until step 2 lands, run the agents on one machine only.
+2. **More than one machine**: the GitHub role leases and story claims, `ops@<machine>`,
+   `sq pause --everywhere`, and the permission asks ([machines.md](machines.md)).
+3. **The workflow**: the new Shortcut states, the QA labels and the wake fixes
    ([workflow.md](workflow.md)).
-3. **The Mac**: the launchd runner and `just agents setup` on macOS
+4. **The Mac**: the launchd runner and `just agents setup` on macOS
    ([machines.md](machines.md)).
 
 Story: sc-2864, which started as the product manager's idea; the owner gave it to ops on

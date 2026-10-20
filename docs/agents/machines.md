@@ -4,7 +4,8 @@ Where the agents run: the per-machine `agents.json`, setting up from a fresh clo
 or a Mac, running agents on more than one computer without conflicts, and keeping every
 checkout on the latest `main`.
 
-**Status: agreed with the owner on 20 Oct, not yet built.**
+**Status: agreed with the owner on 20 Oct. `agents.json`, setup and staying on `main` are
+built for Linux; more than one machine, the permission asks and the Mac are not yet.**
 
 ## `agents.json`
 
@@ -36,16 +37,20 @@ repository because it describes the machine, not the project. The repository shi
 }
 ```
 
-| Field                                     | Meaning                                                                                      |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `machine`                                 | this machine's name, shown to other machines that try to start a role it holds               |
-| `workspace`                               | where checkouts live: each role's is `<workspace>/soirely-<role>`                            |
-| `mainCheckout`                            | the folder of the main checkout, developer 1's. `festivo` here; `soirely` on a fresh machine |
-| `roles`                                   | the roles this machine may run. A role not listed never ticks here                           |
-| `checkout`                                | per role: overrides the path for that one role                                               |
-| `standby`                                 | per role: runs here only while no other machine holds it                                     |
-| `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                      |
-| `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                    |
+| Field                                     | Meaning                                                                                                              |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `machine`                                 | this machine's name, shown to other machines that try to start a role it holds                                       |
+| `workspace`                               | where checkouts live: each role's is `<workspace>/soirely-<role>`                                                    |
+| `mainCheckout`                            | the folder of the main checkout, developer 1's. `festivo` here; `soirely` on a fresh machine                         |
+| `roles`                                   | the roles this machine may run. A role not listed never ticks here                                                   |
+| `checkout`                                | per role: overrides the path for that one role                                                                       |
+| `standby`                                 | per role: runs here only while no other machine holds it                                                             |
+| `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                                              |
+| `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                                            |
+| `claudeConfigDir`                         | the Claude config the workers use, `~/.claude-soirely` by default                                                    |
+| `claudeVersion`, `onVersionDrift`         | the pinned CLI version, and `"warn"` (default) or `"stop"` when it drifts. See [Guards](README.md#guards-and-alerts) |
+| `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                         |
+| `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                               |
 
 - **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
   role's running worker finishes its item and takes no more.
