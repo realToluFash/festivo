@@ -1,0 +1,152 @@
+# Machines
+
+Where the agents run: the per-machine `agents.json`, setting up from a fresh clone on Linux
+or a Mac, running agents on more than one computer without conflicts, and keeping every
+checkout on the latest `main`.
+
+**Status: agreed with the owner on 20 Oct, not yet built.**
+
+## `agents.json`
+
+Each machine has its own file at `~/.config/soirely/agents.json`. It lives outside the
+repository because it describes the machine, not the project. The repository ships
+`agents.example.json`, and `just agents setup` creates the file from it.
+
+```json
+{
+  "machine": "tolu-linux",
+  "workspace": "~/personal",
+  "mainCheckout": "festivo",
+  "roles": {
+    "dev": {},
+    "dev2": {},
+    "lead": {},
+    "ops": {},
+    "qa": { "memoryMax": "8G" },
+    "qa2": { "standby": true },
+    "ux": { "checkout": "~/design/soirely-ux" }
+  },
+  "defaults": {
+    "memoryMax": "3G",
+    "maxRuntime": "90m",
+    "maxBudgetUsd": null
+  }
+}
+```
+
+| Field                                     | Meaning                                                                                      |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `machine`                                 | this machine's name, shown to other machines that try to start a role it holds               |
+| `workspace`                               | where checkouts live: each role's is `<workspace>/soirely-<role>`                            |
+| `mainCheckout`                            | the folder of the main checkout, developer 1's. `festivo` here; `soirely` on a fresh machine |
+| `roles`                                   | the roles this machine may run. A role not listed never ticks here                           |
+| `checkout`                                | per role: overrides the path for that one role                                               |
+| `standby`                                 | per role: runs here only while no other machine holds it                                     |
+| `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                    |
+
+- **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
+  role's running worker finishes its item and takes no more.
+- **`~` is expanded**, so one file works for any user name, on Linux or a Mac.
+- **Links are followed.** On this machine `~/Projects` links into `~/personal`, so either
+  works as the workspace. `~/personal` is preferred, so paths show where files really are.
+- **Mistakes are refused, never guessed.** An unknown role stops `sq run` with an `error:`
+  naming the role and the file. A role whose checkout is missing is skipped, and `sq status`
+  names the path it expected. A changed `workspace` moves nothing: each role not at the new
+  path is reported, and `just agents setup` offers fresh checkouts there. It never moves or
+  deletes old ones, which may hold work nobody committed.
+
+### When no workspace is set
+
+A command the owner runs (`just agents setup`, `just agents up`, `sq start`) asks:
+
+```
+No workspace is set in ~/.config/soirely/agents.json.
+Where should the agents' checkouts live? [~/Projects]: ~/personal
+
+  ~/personal exists. Role checkouts will be created here as soirely-<role>,
+  for the 6 roles in this file (about 1 GB each, 92 GB free).
+  Save "workspace": "~/personal" and continue? [Y/n]
+```
+
+- The default offered is `~/Projects` if it exists, otherwise `~/soirely`.
+- A path that does not exist is offered for creation; one that cannot be written to is
+  asked again; too little disk for the listed roles is said before anything is created.
+- The answer is saved, so each machine is asked once. `--workspace <path>` answers without
+  asking, for scripts.
+
+The timer's `sq run` never asks and never guesses. It logs
+`error: no workspace in ~/.config/soirely/agents.json; run just agents setup`, ticks no role
+and starts no worker. `sq status` shows the same line.
+
+## Setting up from a fresh clone
+
+`just agents setup` does everything after `git clone`:
+
+1. **Checks prerequisites**: `claude` signed in, `gh` signed in, Docker, Python 3, and the
+   Shortcut token in `~/.config/soirely/env` (mode 600). It names what is missing and stops.
+2. **Asks for the workspace** if none is set, as above.
+3. **Makes each listed role's checkout and stack** with `just dev-env setup --role <role>`.
+4. **Installs the runner for this system.** The `sq` commands are the same on both.
+
+|                                   | Linux                              | Mac                                                                    |
+| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------- |
+| Timer every minute                | systemd user timer                 | launchd agent, `StartInterval 60`                                      |
+| Each worker                       | its own unit, `systemd-run --user` | its own launchd job                                                    |
+| Worker memory ceiling             | hard, by systemd (`MemoryMax`)     | none in the system: `sq run` watches and stops a worker over its limit |
+| Stops at logout, resumes at login | yes                                | yes                                                                    |
+
+The tests cover both versions without either system installed.
+
+## More than one machine
+
+**The risk.** Claims live in a SQLite file on each machine. Two machines would each claim the
+same story: two workers building one story on one branch, comments posted twice, one story
+tested twice.
+
+**The fix: claims live in GitHub, which every machine sees.**
+
+- **A role runs on one machine at a time.** `sq start dev` takes a lease, a git reference
+  such as `refs/soirely/roles/dev` naming the machine, renewed every minute. Creating a
+  reference that exists is refused, so only one machine can hold it. Another machine's
+  `sq start dev` prints `dev is running on tolu-linux, last seen 20s ago` and starts
+  nothing. A lease not renewed for 5 minutes lapses, and a standby machine takes over.
+- **A story is claimed in GitHub too**, as `refs/soirely/claims/sc-<id>`, with the 90-minute
+  lapse. This matters because the developers share Ready For Dev and the testers share
+  Ready For QA, even when they run on different machines.
+- **Pushes do not collide.** A story's branch belongs to its developer's label, so it is
+  pushed from the one machine running that developer.
+
+**The file says what may run here; the lease decides what does.** If two machines' files
+list the same role, only one runs it, and `sq status` on each says which. A role listed on
+two machines without `standby` is also reported as a conflict.
+
+**Using two machines.** Split the roles: for example, developers, lead and ops on the Linux
+machine, the testers, linguist and designer on the Mac. `sq start --all` on both is safe.
+More capacity comes from more instances (`dev3`), never the same role twice. Stacks, ports
+and simulators stay local to each machine; only claims are shared. Two machines syncing once
+a minute is well inside Shortcut's and GitHub's rate limits.
+
+**To check before relying on it.** That GitHub accepts references outside `refs/heads`; if it
+does not, lock branches under `soirely-locks/` through GitHub's API give the same
+refuse-if-it-exists guarantee. And that branch protection on `main` does not affect them.
+Writing locks to the shared repository is an outside change, part of what the owner
+approves with the pull request.
+
+## Staying on the latest `main`
+
+Every worker starts from an up-to-date checkout. The script prepares it before the model
+runs, so it costs no tokens.
+
+| Role's situation                                                                                 | Before the worker starts                                                                                                                                |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No branch of its own (lead, product manager, designer, business manager, creative, ops, testers) | `git fetch`, then the checkout moves to the newest `origin/main`                                                                                        |
+| Developer building (In Progress, Failed QA, Failed Code Review)                                  | `git fetch`, then `origin/main` is merged into the branch. No rebase, no force-push. A conflicting merge is undone and the worker is told to resolve it |
+| Developer in review (In Review, Passed Code Review)                                              | `git fetch` only: merging `main` would void the lead's pass                                                                                             |
+| Changes nobody committed                                                                         | nothing is touched; the worker is told, and `sq status` shows it                                                                                        |
+
+- Each worker's prompt starts with the `main` commit it was prepared against, so its report
+  says which code it worked from.
+- The skills come from the checkout, so updating the checkout updates the instructions.
+- `sq` itself is reinstalled from `main` when `tools/queue` changes, and only once CI is
+  green on that commit. A broken `sq` reaching `main` would otherwise stop every role on
+  every machine at once.

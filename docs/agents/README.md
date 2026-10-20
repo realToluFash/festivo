@@ -1,0 +1,168 @@
+# Running the agents
+
+How the Soirely roles (`/soirely-developer`, `/soirely-qa-tester` and the rest) run on their
+own: what checks for work, what does it, what it costs, and the commands that start and
+stop it all.
+
+**Status: agreed with the owner on 20 Oct, not yet built.** Today each role runs as a
+`CronCreate` routine inside an open Claude Code session (`role-routine`). This folder
+describes what replaces it. Ops owns the work; it lands in three pull requests, listed at
+the end.
+
+- [How work moves between roles](workflow.md): the Shortcut states, the labels and which
+  role each one wakes.
+- [Machines](machines.md): `agents.json`, Linux and Mac, running agents on more than one
+  computer, and keeping every checkout on the latest `main`.
+
+## The idea
+
+**No model runs while there is nothing to do.** A plain script checks for work every
+minute. A model starts only when the script finds some, and it stops when that piece of
+work is done.
+
+Measured from the role sessions on 18 Oct:
+
+| Part                          | Cost   | Calls | Context per call |
+| ----------------------------- | ------ | ----- | ---------------- |
+| Hand-started runs             | $19.78 | 526   | 60k–107k         |
+| Workers started by a tick     | $9.88  | 336   | 34k–104k         |
+| Idle ticks that found nothing | $5.22  | 186   | 72k–171k         |
+
+An idle tick costs about $0.03 to print `idle`, because it re-reads the role's whole
+session. Ten roles ticking every three minutes is about $12 an hour of nothing. Workers are
+already lean: each starts at 29k tokens and writes 15–40 tokens per call, so their cost is
+the reading their work needs. Cutting that is cutting quality, so this design leaves
+workers as they are and removes the ticks.
+
+## The pieces
+
+```
+ timer, every minute                                       one per wake
+ ┌───────────────────┐   wake:   ┌──────────────────────────────────────┐
+ │ sq run            │ ────────▶ │ claude -p, in the role's checkout,   │
+ │  sync once        │           │ the role's skill, one piece of work, │
+ │  tick each role   │           │ ends with sq <role> done             │
+ │  (no model)       │           └──────────────────────────────────────┘
+ └───────────────────┘                      │ one JSON line per run
+        idle / busy: nothing                ▼
+                                   <sq home>/runs/<role>.jsonl
+```
+
+- **`sq run`** syncs Shortcut and GitHub once, then ticks each role this machine runs, in
+  plain Python. `idle`, `busy` and `error:` start nothing.
+- **A wake starts one worker**: a fresh `claude -p --permission-mode auto` run in that
+  role's own checkout, with the same model, effort, skills and prompt as today's workers.
+  It runs as its own unit (systemd on Linux, launchd on Mac), so it outlives the tick that
+  started it.
+- **One worker per role at a time.** While a role's worker runs, its tick is skipped.
+- **The run log.** Each run appends one line to `runs/<role>.jsonl`: time, item, exit code,
+  cost, token usage and the worker's report. `sq status` shows the last report per role.
+  This is how we know what each role costs, and whether a change saved anything.
+
+## How long a worker lives
+
+**One piece of work, then it exits.** One story built, one review, one test pass, one memo.
+A story passes through several short workers on its way: the developer builds and opens the
+pull request, the tech lead reviews, the developer merges, QA tests.
+
+- A worker is stopped at **90 minutes**, the same as a claim's lapse. Its item stays
+  claimed until the lapse, so a run that fails the same way every time is not retried
+  every minute.
+- Of the 22 workers recorded by 20 Oct, half finished in about 2 minutes and the longest, a
+  QA pass, took 49. None was a developer build, so the run log is where we learn whether
+  builds fit in 90 minutes. If they do not, the ceiling rises for developers only.
+
+## Why workers start fresh
+
+Starting fresh costs about $0.10–0.20: the 29k-token start, 18k of it already cached, plus
+the story or pull request that `sq <role> next` prints.
+
+Staying awake costs more. A session that keeps 70k tokens of earlier work re-reads them on
+every call, about $0.21 over a typical 15-call item. It has to keep ticking to stay warm,
+about $0.80 an hour while idle. After an hour of quiet its cache expires and the next call
+re-writes the whole context, about $0.80. And it gets worse as it fills: old stories bleed
+into new ones, and at 300k it is compacted anyway.
+
+Within one item a worker keeps its context: it is one continuous run from claim to `done`.
+
+## Context that outlives a worker
+
+A worker's memory ends with it, so what matters is written where the next one reads it.
+
+| Context                             | Where it lives                                |
+| ----------------------------------- | --------------------------------------------- |
+| What was asked, and the decisions   | the Shortcut story                            |
+| Questions and answers between roles | tagged comment threads (`role-comments`)      |
+| Code and review                     | the branch, its commits, the pull request     |
+| What the last run learned           | `sq <role> done --note`, and `sq <role> note` |
+| Lasting lessons                     | the memory files                              |
+
+**Milestone notes.** A worker stopped part way, by its time or memory limit or a crash,
+never writes its closing note. So a worker writes a short `sq <role> note` at each
+milestone ("branch pushed, API done, web half done") and pushes its branch as it goes. A
+stopped run then loses minutes, not the thread.
+
+## Commands
+
+| Command                              | What it does                                                                                          |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `just agents setup`                  | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer |
+| `just agents up`                     | starts the manager for the roles in this machine's `agents.json`                                      |
+| `just agents down`                   | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks             |
+| `just agents down --now`             | the same, stopping running workers at once and giving their items back                                |
+| `sq start <role>` / `sq stop <role>` | starts or stops one role on this machine                                                              |
+| `sq status`                          | every role: running here, held elsewhere, standby or skipped and why; the timer; the last report      |
+
+`just agents down` uses `docker compose down` without `-v`: databases and volumes are kept,
+and `just agents up` comes back with the same data. Developer 1 works in the main checkout,
+so its stack is the owner's own `soirely` stack; `down` stops it only when `dev` is listed
+in this machine's file, and says so first.
+
+`sq start` and `sq stop` are admin commands, not role commands, so no worker can start or
+stop a routine.
+
+## Limits
+
+- **Memory.** Each worker has a ceiling: 3G by default, 8G for the QA testers, 16G for all
+  workers together on Linux. These are starting values, tuned at the cut-over against
+  `/proc/pressure/memory`. They exist because on 18 Oct systemd-oomd killed the owner's
+  whole session over memory stall, with 25 GiB still free. Macs have no hard limit, so
+  there `sq run` watches each worker and stops one that goes over.
+- **Spending.** A per-run ceiling (`--max-budget-usd`) can be set per role in
+  `agents.json`. No role has one until the owner picks a number.
+- **No token, no tick.** The Shortcut token is read from `~/.config/soirely/env` (mode 600,
+  outside the repository). Without it `sq run` prints `error:`, ticks nothing and never
+  carries on from an old sync.
+
+## Decided, 20 Oct
+
+- **The check is a script, not a model.** Rejected: running the tick on a cheaper model
+  (Haiku 5.5), and one dispatcher session ticking every role. Both cut idle to cents rather
+  than zero, and both keep the open terminal and the seven-day expiry of `CronCreate`.
+- **One timer for every role, each worker in its own unit.** Rejected: one timer per role,
+  where ten syncs would race. Rejected: the worker as a child of the tick, because systemd
+  stops a finished oneshot service's whole control group (systemd.kill(5)) and the worker
+  would die with it.
+- **Routines run while the owner is logged in.** Rejected: `loginctl enable-linger`, since
+  Docker Desktop stops at logout and a worker woken then would find no stack.
+- **Nothing is trimmed before it is measured.** No worker's model or effort is lowered
+  until a week of the run log shows quality holds.
+- **The workers are unattended `claude -p` runs, so building this waits for the owner's
+  go-ahead in person.** Auto mode refused creating them once (sc-2784, #2834), so the
+  owner will likely add a permission rule as well.
+
+## Delivery
+
+1. **The Linux runner**: `sq run`, `sq start` and `sq stop`, the systemd units, the run log,
+   milestone notes, `agents.json` with its workspace, `just agents down`, keeping
+   checkouts on `main`, and the GitHub role leases and story claims, so a second machine
+   is safe from the start. Tests run without systemd. Cut-over is one role at a time, ops
+   first and measured over a quiet hour; each role's `CronCreate` job is deleted before its
+   `sq start`, never both at once.
+2. **The workflow**: the new Shortcut states, the QA labels and the wake fixes
+   ([workflow.md](workflow.md)).
+3. **The Mac**: the launchd runner and `just agents setup` on macOS
+   ([machines.md](machines.md)).
+
+Story: sc-2864, which started as the product manager's idea; the owner gave it to ops on
+20 Oct.
