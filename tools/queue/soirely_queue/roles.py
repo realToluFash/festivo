@@ -4,7 +4,13 @@ import re
 
 DEVELOPERS = {"dev": "dev1", "dev2": "dev2"}
 
-TRANSLATION_QUEUE = ["To Do", "In Progress", "Failed QA"]
+TRANSLATION_QUEUE = ["To Do", "Failed Code Review", "In Progress", "Failed QA"]
+# A developer's queue, rework first: findings, then a failed test, then its own build, then
+# a new story. Passed Code Review is not queued: the pull request's pass wakes the merge.
+BUILD_QUEUE = ["Failed Code Review", "Failed QA", "In Progress", "Ready For Dev"]
+TESTERS_LABELS = {"qa": "qa1", "qa2": "qa2", "qa3": "qa3"}
+# A story failed and sent back is offered first to the tester who failed it, for this long.
+RETEST_MINUTES = 30
 
 
 # A story labelled `ops` is infra work ops filed for itself: ops builds it, the lead reviews
@@ -42,7 +48,7 @@ def dev1_filter(labels, state):
 
 
 def dev2_filter(labels, state):
-    if state == "To Do":
+    if state == "Ready For Dev":
         return "translation" not in labels and "dev1" not in labels and OPS_LABEL not in labels
     return "dev2" in labels
 
@@ -52,14 +58,14 @@ def everything(labels, state):
 
 
 ROLES = {
-    "pm": {"skill": "soirely-product-manager", "queue": ["To Do", "Failed QA"],
+    "pm": {"skill": "soirely-product-manager", "queue": ["To Do"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
-    "ux": {"skill": "soirely-designer", "queue": ["To Do", "Failed QA"],
+    "ux": {"skill": "soirely-designer", "queue": ["Needs Design"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
-    "dev": {"skill": "soirely-developer", "queue": ["Failed QA", "In Progress", "To Do"],
+    "dev": {"skill": "soirely-developer", "queue": BUILD_QUEUE,
             "filter": dev1_filter, "heartbeat": 30, "prs": True},
     "dev2": {"skill": "soirely-developer", "invoke": "/soirely-developer dev2",
-             "queue": ["Failed QA", "In Progress", "To Do"], "filter": dev2_filter,
+             "queue": BUILD_QUEUE, "filter": dev2_filter,
              "heartbeat": 30, "prs": True, "offset": 1},
     "qa": {"skill": "soirely-qa-tester", "queue": ["Ready For QA"], "filter": everything,
            "heartbeat": 30, "memoryMax": "8G"},
@@ -71,9 +77,9 @@ ROLES = {
             "memoryMax": "8G"},
     "lead": {"skill": "soirely-tech-lead", "queue": [], "filter": everything,
              "heartbeat": 30, "reviews": True},
-    "bm": {"skill": "soirely-business-manager", "queue": ["Backlog", "To Do"],
+    "bm": {"skill": "soirely-business-manager", "queue": ["Backlog"],
            "filter": not_translation, "heartbeat": 720, "sweeps": True},
-    "ops": {"skill": "soirely-ops", "queue": ["Failed QA", "In Progress", "To Do"],
+    "ops": {"skill": "soirely-ops", "queue": BUILD_QUEUE + ["To Do"],
             "filter": ops_story, "heartbeat": 360, "sweeps": True, "main": True, "prs": True},
     "l10n": {"skill": "soirely-linguist", "queue": TRANSLATION_QUEUE, "filter": translation,
              "heartbeat": 120, "sweeps": True},
@@ -94,7 +100,7 @@ def pool(role, state, labels):
     """Roles that share a queue claim from one pool, so two never take the same story."""
     if role.startswith("qa"):
         return "qa"
-    if role in DEVELOPERS and state == "To Do" and not {"dev1", "dev2"} & set(labels):
+    if role in DEVELOPERS and state == "Ready For Dev" and not {"dev1", "dev2"} & set(labels):
         return "dev"
     return role
 
@@ -142,8 +148,9 @@ EVERYONE = tuple(ROLES)
 MAY = {
     "comment": EVERYONE,
     "note": EVERYONE,
+    "permission-ask": EVERYONE,
     "claim": DEVS + TESTERS,
-    "move": DEVS + TESTERS + LINGUISTS + ("lead", "pm", "ops"),
+    "move": DEVS + TESTERS + LINGUISTS + ("lead", "pm", "ux", "ops"),
     "label": DEVS + TESTERS + LINGUISTS + ("pm", "cd", "ops"),
     "edit": LINGUISTS + ("pm", "ux", "cd", "bm"),
     "new-story": DEVS + LINGUISTS + ("pm", "cd", "ops"),
@@ -162,28 +169,41 @@ MAY = {
 }
 
 # The states each role may move a story into, and from.
+WAITING = "Waiting On Owner"
+# Where a story waits for its merge: In Review only for one passed before these states.
+MERGING = ("Passed Code Review", "In Review")
 MOVES = {
-    "dev": {"In Progress": ("To Do", "Failed QA", "In Review"), "In Review": ("In Progress",),
-            "Ready For QA": ("In Review",)},
-    "lead": {"In Progress": ("In Review",)},
-    "pm": {"To Do": ("Backlog",), "Backlog": ("To Do",)},
+    "dev": {"In Progress": ("Ready For Dev", "Failed QA", "Failed Code Review", "In Review"),
+            "In Review": ("In Progress", "Failed Code Review", "Passed Code Review"),
+            "Ready For QA": ("In Review", "Passed Code Review"),
+            WAITING: ("Ready For Dev", "In Progress", "Failed QA", "Failed Code Review")},
+    # In Progress: a story handed over with no pull request or red checks is not ready.
+    "lead": {"In Progress": ("In Review",), "Passed Code Review": ("In Review",),
+             "Failed Code Review": ("In Review", "Passed Code Review")},
+    "pm": {"To Do": ("Backlog",), "Backlog": ("To Do",), "Needs Design": ("To Do",),
+           "Ready For Dev": ("To Do", "Needs Design"),
+           WAITING: ("Backlog", "To Do", "Needs Design", "Ready For Dev")},
+    "ux": {"Ready For Dev": ("Needs Design",), WAITING: ("Needs Design",)},
     "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
            "Failed QA": ("In QA",)},
-    "l10n": {"In Progress": ("To Do", "Failed QA"), "Ready For QA": ("In Progress",)},
+    "l10n": {"In Progress": ("To Do", "Failed QA", "Failed Code Review"),
+             "Ready For QA": ("In Progress",)},
     # Only on a story labelled ops. Ready For QA and Done come with the merge.
-    "ops": {"In Progress": ("Backlog", "To Do", "Ready For Dev", "Failed QA", "In Review"),
-            "In Review": ("In Progress",)},
+    "ops": {"In Progress": ("Backlog", "To Do", "Ready For Dev", "Failed QA",
+                            "Failed Code Review", "In Review"),
+            "In Review": ("In Progress", "Failed Code Review", "Passed Code Review"),
+            WAITING: ("In Progress", "Ready For Dev")},
 }
 # The product manager also takes back an In Progress story that nobody holds: no role moved
 # it there, no developer label, no open pull request on its branch (`actions.holder`).
-PM_RELEASES = ("Backlog", "To Do")
+PM_RELEASES = ("Backlog", "To Do", "Ready For Dev")
 MOVES["dev2"] = MOVES["dev"]
 for _tester in TESTERS:
     MOVES[_tester] = MOVES["qa"]
 
 # A role that labels may only touch these labels; the product manager may touch any.
 OWN_LABELS = {"dev": {"dev1"}, "dev2": {"dev2"}, "cd": {"idea"},
-              **{t: {"qa passed", "qa failed", "needs qa"} for t in TESTERS},
+              **{t: {"qa passed", "qa failed", "needs qa", TESTERS_LABELS[t]} for t in TESTERS},
               "l10n": {"translation"}, "ops": {OPS_LABEL, "needs qa"}}
 
 CATALOGUES = [
@@ -204,6 +224,15 @@ def locale_files(locale):
 
 def linguist_files():
     return set().union(*(locale_files(locale) for locale in LOCALES))
+
+
+def last_tester(story):
+    """The tester whose claim on the story came last, from its `QA claim:` comments."""
+    for comment in reversed(story.get("comments") or []):
+        if comment["text"].startswith("QA claim:"):
+            who = comment["text"].split(":", 1)[1].split(",")[0].strip()
+            return who if who in TESTERS else None
+    return None
 
 
 def may(role, command):

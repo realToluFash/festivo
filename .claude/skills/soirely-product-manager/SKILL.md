@@ -46,7 +46,7 @@ replies to the ones you asked. Resolve those, then pick the work below.
 
 `/soirely-product-manager sc-56` works on that story (`sq pm story sc-56`, and
 `sq pm comments sc-56` for its threads). With no argument, `sq pm next` prints the sweep
-digest — To Do without AC, QA outstanding items, ideas and epics — with `Next:` commands,
+digest — To Do, what waits on the owner, QA outstanding items, ideas and epics — with `Next:` commands,
 ids filled in; `sq pm queue` prints the same list one line per story. Something you have
 already read prints as a one-line reference; use `--again` only if you truly need its full
 text again. Take the work in this order:
@@ -59,8 +59,11 @@ text again. Take the work in this order:
      says which reading to push back on
    - a story whose description carries an open decision, as sc-56's typo dead-end did
      ("That is a product and design decision, not a schema one. Settle it before build.")
-2. **A story about to be built with AC that cannot be verified** — the next few in `To Do`.
-   Run `/review-ac` on it rather than reading it by eye.
+2. **`To Do`, your queue: a story about to be built with AC that cannot be verified.**
+   Run `/review-ac` on it rather than reading it by eye. Once its AC is settled and no
+   product question on it is open, send it on: `sq pm move sc-N "Needs Design"` when it
+   needs a screen nobody has drawn, `sq pm move sc-N "Ready For Dev"` when it needs none.
+   The developers build only from Ready For Dev.
 3. **An idea waiting on a decision**: a `Backlog` story labelled `idea` with a `[pm]
 (from cd)` question. Accept (write the AC, or fold it into a story, and move it to
    `To Do`), park, or reject (archive), each with a one-line reason. The creative director
@@ -156,13 +159,15 @@ Half of this job is refusing to answer in the wrong place.
 - **Never move a story to Done.** That is the user's, after a merge. `In Review` and
   `Ready For QA` are the developer's moves, the second after the lead's pass and the merge,
   and `Passsed QA` / `Failed QA` the QA agent's.
-- **Backlog to `To Do` is yours.** Move a story there once the designer says its design is
-  ready, or that it needs none, and no product question on it is open. The owner delegated
-  this on 16 Oct: their sign-off of the screens is not a condition for it. Say in the
-  designer's thread that you moved it. `sq pm move sc-N "To Do"` makes the move, and
-  refuses any move that is not Backlog to To Do or back. A story that waits on the owner for a decision only
-  they can make, such as a money or policy call, stays in Backlog until they make it. Tag
-  `[bm]` on it, so the owner decides from a memo rather than from scratch.
+- **Backlog, `To Do`, `Needs Design` and `Ready For Dev` are yours to move between.**
+  Backlog to To Do when you take a story up, To Do to Needs Design or Ready For Dev once
+  its AC is settled, and back when a question reopens. The designer moves a drawn story
+  from Needs Design to Ready For Dev. The owner delegated this on 16 Oct: their sign-off of
+  the screens is not a condition for it. `sq pm move` refuses any other move.
+- **A story that waits on the owner** for a decision only they can make, such as a money
+  or policy call, goes to `Waiting On Owner` (`sq pm move sc-N "Waiting On Owner"`), which
+  wakes nobody. Tag `[bm]` on it, so the owner decides from a memo rather than from
+  scratch. Once they decide, move it back to where it came from.
 - **Do not weaken an AC to make a build pass.** A criterion the build fails is either a
   defect or a decision to reverse deliberately, in writing, with the reason. Quietly
   deleting it is how a product ships something nobody chose.

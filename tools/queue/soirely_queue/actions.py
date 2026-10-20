@@ -3,6 +3,7 @@ sent. A refusal says why and what to do instead."""
 
 import datetime
 import re
+import socket
 import time
 
 from . import github, store, sync
@@ -63,6 +64,25 @@ class Context:
             if state.lower() == wanted:
                 return int(state_id), state
         raise Refused(f"no state {name!r}: one of {', '.join(sorted(set(states.values())))}")
+
+
+def void_passes(c):
+    """A push after the pass, such as main merged in to fix a conflict, sends the story back
+    to In Review, so the board never shows a pass the head no longer has. No role makes the
+    move, so it wakes the lead like any other."""
+    moved = []
+    for story, pr in W.voided_passes(store.stories(c.db), store.prs(c.db)):
+        story = c.story(story["id"])
+        if story["state"] != "Passed Code Review":
+            continue
+        state_id, state = c.state_id("In Review")
+        c.shortcut.update(story["id"], workflow_state_id=state_id)
+        c.shortcut.comment(story["id"], f"PR #{pr['number']} moved on to "
+                                        f"{pr['head_sha'][:7]} after its pass: back to {state} "
+                                        "for the lead.")
+        c.story(story["id"])
+        moved.append(story["id"])
+    return moved
 
 
 def story_number(ref):
@@ -259,7 +279,7 @@ def claim(c, a):
     guard(c, "claim")
     story = c.story(a.story)
     if c.role in R.DEVS:
-        if story["state"] not in ("To Do", "Failed QA", "In Progress") \
+        if story["state"] not in R.BUILD_QUEUE \
                 or not R.ROLES[c.role]["filter"](set(story["labels"]), story["state"]):
             raise Refused(f"sc-{story['id']} is {story['state']} "
                           f"({', '.join(story['labels']) or 'no labels'}), not in your queue")
@@ -283,10 +303,16 @@ def claim(c, a):
                 takeover = f", taking over from {who}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
+        else:
+            first = W.retester(story)
+            if first and first != c.role:
+                raise Refused(f"sc-{story['id']} came back after {first} failed it, and is "
+                              f"{first}'s to retest for {R.RETEST_MINUTES} minutes: pick another")
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
         set_state(c, story, "In QA")
+        set_labels(c, story["id"], add={R.TESTERS_LABELS[c.role]})
         c.shortcut.comment(story["id"], f"QA claim: {c.role}{takeover}")
     c.refresh(story["id"])
     return None
@@ -517,18 +543,20 @@ def review(c, a):
     summary = a.text.strip()
     if not summary.startswith("## Review (from lead)"):
         summary = "## Review (from lead)\n\n" + summary
-    last = f"Review passed at {head}. Ready to merge." if a.verdict == "pass" else \
-        f"Back to In Progress: {blocking} blocking."
+    last = github.PASS_LINE.format(sha=head) if a.verdict == "pass" else \
+        github.BACK_LINE.format(blocking=blocking)
     owner, name = c.repository()
     posted = github.post_review(owner, name, a.pr, head, f"{summary}\n\n{last}",
                                 [{"path": i["path"], "line": i["line"], "body": i["body"]}
                                  for i in items])
     url = posted.get("html_url", pr["url"])
+    # Only a story in review moves: a linguist's ticket, say, keeps its own state.
+    if story and story["state"] in W.REVIEWED:
+        set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
     if story and a.verdict == "pass":
         post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
-        set_state(c, story, "In Progress")
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
              "Answer each finding in its thread, fix, push, and hand it back to In Review.")
@@ -588,7 +616,7 @@ def hand_to_qa(c, story, pr, merge_sha, note=""):
     if others:
         # The story is done when its last pull request is.
         c.refresh(story["id"])
-        return f"In Review, waiting on #{', #'.join(map(str, others))}"
+        return f"{story['state']}, waiting on #{', #'.join(map(str, others))}"
     if not needs_qa(story):
         set_state(c, story, "Done", check=False)
         post(c, story, [], f"PR #{pr['number']} merged as {merge_sha}. Infra with no QA "
@@ -612,12 +640,49 @@ def finish_handover(c, story, pr, note):
     return f"sc-{story['id']} is {went} after {pr['merge_sha'][:7]}"
 
 
+PERMISSIONS_STORY = 4992
+ASK_PARTS = ("Machine", "Rule", "For", "Without it")
+
+
+def this_machine():
+    from . import machine
+    try:
+        return machine.load().get("machine") or socket.gethostname()
+    except machine.ConfigError:
+        return socket.gethostname()
+
+
+def permission_ask(c, a):
+    """An ask on the standing story, in the format the owner answers. The answer is a
+    record; only the owner, merging permissions.json and applying it, grants anything."""
+    guard(c, "permission-ask")
+    rule = a.rule.strip()
+    from .permissions import RULE
+    if not RULE.match(rule):
+        raise Refused(f"{rule!r} is not a permission rule such as Bash(xcrun simctl boot:*)")
+    story = c.story(PERMISSIONS_STORY)
+    for thread in W.threads(story):
+        if re.search(rf"^Rule: {re.escape(rule)}$", thread[0]["text"], re.M):
+            answer = next((x["text"] for x in thread[1:] if not R.author(x["text"])), None)
+            raise Refused(f"{rule} was asked in #{thread[0]['id']} on sc-{PERMISSIONS_STORY}"
+                          + (f"; the owner answered: {answer.strip()[:200]}" if answer
+                             else "; it is waiting on the owner. Note it on your story and "
+                             "move on"))
+    text = "\n".join([f"Permission ask (from {signature(c.role)})",
+                      f"Machine: {this_machine()}", f"Rule: {rule}", f"For: {a.for_.strip()}",
+                      f"Without it: {a.without.strip()}"])
+    posted = c.shortcut.comment(PERMISSIONS_STORY, text, None)
+    c.refresh(PERMISSIONS_STORY)
+    return (f"asked in #{posted['id']} on sc-{PERMISSIONS_STORY}. Don't wait: note it on your story, finish what you can "
+            "without it, and say so in your report")
+
+
 def merge(c, a):
     guard(c, "merge")
     pr = c.pr(a.pr)
     if pr["state"] == "merged" and pr["story_id"] and c.role not in R.LINGUISTS:
         story = c.story(pr["story_id"])
-        if story["state"] == "In Review":
+        if story["state"] in R.MERGING:
             return f"PR #{a.pr} was already merged; " + finish_handover(c, story, pr, a.text)
     if pr["state"] != "open":
         raise Refused(f"PR #{a.pr} is {pr['state']}")
@@ -627,9 +692,12 @@ def merge(c, a):
         raise Refused(f"checks are {pr['checks']} at {head[:7]}")
     if live["mergeable"] == "CONFLICTING":
         raise Refused("it conflicts with main. Merge origin/main into the branch and push; "
-                      "the push voids the pass, so the story stays In Review for the lead")
+                      "the push voids the pass, and the lead reviews the new head")
     if live["mergeable"] != "MERGEABLE":
         raise Refused(f"GitHub says {live['mergeable']}; try again in a minute")
+    if any(path == "tools/queue/permissions.json" for path, _, _ in github.files(a.pr)):
+        raise Refused("it changes tools/queue/permissions.json, which grants the workers "
+                      "commands: only the owner merges it, even after the lead's pass")
     if c.role in R.LINGUISTS:
         mine = R.linguist_files()
         stray = [path for path, _, _ in github.files(a.pr) if path not in mine]
@@ -639,8 +707,9 @@ def merge(c, a):
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"
     story = c.story(pr["story_id"]) if pr["story_id"] else None
-    if not story or story["state"] != "In Review":
-        raise Refused(f"its story is {story['state'] if story else 'unknown'}, not In Review")
+    if not story or story["state"] not in R.MERGING:
+        raise Refused(f"its story is {story['state'] if story else 'unknown'}, not "
+                      "Passed Code Review")
     if R.builder_of(story["labels"]) != c.role and not (
             c.role in R.DEVS and R.builder_of(story["labels"]) in R.DEVS):
         raise Refused(f"sc-{story['id']} is {R.builder_of(story['labels'])}'s to merge")

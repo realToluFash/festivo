@@ -4,11 +4,12 @@ How the Soirely roles (`/soirely-developer`, `/soirely-qa-tester` and the rest) 
 own: what checks for work, what does it, what it costs, and the commands that start and
 stop it all.
 
-**Status: agreed with the owner on 20 Oct. The Linux runner is #276; the rest is later
-work, marked where it is described.** Until a role is moved over, it runs as a `CronCreate`
+**Status: agreed with the owner on 20 Oct. The Linux runner is #276, more than one machine
+is #279, the Mac runner is #280 and the workflow states are sc-5148; the rest is later work, marked where it is described.** Until a role is moved over, it runs as a `CronCreate`
 routine inside an open Claude Code session (`role-routine`). Ops owns the work; it lands in
 the pull requests listed under [Delivery](#delivery).
 
+- [The roles](roles.md): each role, what it does, what wakes it, and where it works.
 - [How work moves between roles](workflow.md): the Shortcut states, the labels and which
   role each one wakes.
 - [Machines](machines.md): `agents.json`, Linux and Mac, running agents on more than one
@@ -52,8 +53,8 @@ workers as they are and removes the ticks.
   plain Python. `idle`, `busy` and `error:` start nothing.
 - **A wake starts one worker**: a fresh `claude -p --permission-mode auto` run in that
   role's own checkout, with the same model, effort, skills and prompt as today's workers.
-  It runs as its own unit (systemd on Linux, launchd on Mac), so it outlives the tick that
-  started it.
+  It runs apart from the tick that started it, so it outlives it: as its own systemd unit
+  on Linux, and on a Mac as a process in a session of its own, run by `sq worker-supervise`.
 - **One worker per role at a time.** While a role's worker runs, its tick is skipped.
 - **The run log.** Each run appends one line to `runs/<role>.jsonl`: time, item, exit code,
   cost, token usage and the worker's report. `sq status` shows the last report per role.
@@ -104,17 +105,20 @@ stopped run then loses minutes, not the thread.
 
 ## Commands
 
-| Command                              | What it does                                                                                                                     |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `just agents setup`                  | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer                            |
-| `just agents up`                     | starts the manager for the roles in this machine's `agents.json`                                                                 |
-| `just agents down`                   | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks                                        |
-| `just agents down --now`             | the same, stopping running workers at once and giving their items back                                                           |
-| `sq start <role>` / `sq stop <role>` | starts or stops one role on this machine                                                                                         |
-| `sq status`                          | each role here: started or stopped, its model, refused and why; the manager; the last report. _(Later: held elsewhere, standby)_ |
-| `sq run --dry-run`                   | syncs, then says which ready role would wake for what, started or not; starts nothing, installs nothing                          |
-| `sq pause` / `sq resume`             | no role ticks on this machine until resumed; running workers finish their item                                                   |
-| `sq cost [--days N]`                 | what the workers cost, per day and role, from the run log                                                                        |
+| Command                                            | What it does                                                                                                            |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `just agents setup`                                | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer                   |
+| `just agents up`                                   | starts the manager for the roles in this machine's `agents.json`                                                        |
+| `just agents down`                                 | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks                               |
+| `just agents down --now`                           | the same, stopping running workers at once and giving their items back                                                  |
+| `sq start <role>` / `sq stop <role>`               | starts or stops one role on this machine                                                                                |
+| `sq status`                                        | each role here: started or stopped, its model, refused and why, or the machine it runs on; the manager; the last report |
+| `sq run --dry-run`                                 | syncs, then says which ready role would wake for what, started or not; starts nothing, installs nothing                 |
+| `sq pause` / `sq resume`                           | no role ticks on this machine until resumed; running workers finish their item                                          |
+| `sq pause --everywhere` / `sq resume --everywhere` | the same on every machine, through GitHub                                                                               |
+| `just agents permissions [apply]`                  | what `main` grants the workers that this machine has not applied; `apply` applies it, after a typed yes                 |
+| `sq <role> permission-ask`                         | a worker's ask for a command it was refused, posted on sc-4992 ([Permission asks](machines.md#permission-asks))         |
+| `sq cost [--days N]`                               | what the workers cost, per day and role, from the run log                                                               |
 
 `just agents down` uses `docker compose down` without `-v`: databases and volumes are kept,
 and `just agents up` comes back with the same data. Developer 1 works in the main checkout,
@@ -126,8 +130,9 @@ inside a worker: its unit sets `SOIRELY_WORKER`, and `sq` prints `error:` and ex
 guards against a worker that reads "stop the routine" in a thread and acts on it. It is not
 a security boundary, since a worker with a shell could unset the variable. The boundary is
 that workers are only ever asked to do their role's work, and what they run is in the run
-log. _(Later, with the permission asks: deny rules for these commands in the workers'
-settings, written by setup.)_
+log. Each worker is also started with these commands, `just agents`, `systemctl --user`
+and edits of the config and Claude folders denied (`--disallowedTools`); that, too, guards
+against a misreading rather than an attack.
 
 ## Limits
 
@@ -135,8 +140,9 @@ settings, written by setup.)_
   workers together on Linux. These are starting values, tuned at the cut-over against
   `/proc/pressure/memory`. They exist because on 18 Oct systemd-oomd killed the owner's
   whole session over memory stall, with 25 GiB still free. Macs have no hard limit, so
-  there `sq run` will watch each worker and stop one that goes over. _(Later, with the Mac
-  runner)_
+  there each worker's supervisor checks its memory every 5 seconds and stops it over its
+  `memoryMax`, as it does at its `maxRuntime`. The 16G for all workers together holds on
+  Linux only.
 - **Spending.** A per-run ceiling (`--max-budget-usd`) can be set per role in
   `agents.json`. No role has one until the owner picks a number.
 - **No token, no tick.** The Shortcut token is read from `~/.config/soirely/env` (mode 600,
@@ -165,8 +171,9 @@ through `notify-send`), not once a minute.
   the role's next run.
 - **A worker that ended without a report**, stopped by its time or memory limit or a crash,
   leaves a line in the run log saying why, and notifies the owner.
-- **Pause.** `sq pause` holds every role on this machine. Pausing every machine at once
-  comes with the GitHub leases (Delivery, step 2).
+- **Pause.** `sq pause` holds every role on this machine, and `sq pause --everywhere`
+  every role on every machine. A machine paused here still renews its leases, so a pause
+  never hands its roles to another machine.
 
 ## Decided, 20 Oct
 
@@ -192,13 +199,14 @@ through `notify-send`), not once a minute.
    keeping checkouts on `main`, the self-update, and the guards and alerts above. Tests run
    without systemd. Cut-over is one role at a time, ops first and measured over a quiet
    hour; each role's `CronCreate` job is deleted before its `sq start`, never both at once.
-   Until step 2 lands, run the agents on one machine only.
-2. **More than one machine**: the GitHub role leases and story claims, `ops@<machine>`,
-   `sq pause --everywhere`, and the permission asks ([machines.md](machines.md)).
-3. **The workflow**: the new Shortcut states, the QA labels and the wake fixes
+2. **More than one machine**, #279: the GitHub role leases and story claims,
+   `ops@<machine>`, `sq pause --everywhere`, and the permission asks
+   ([machines.md](machines.md)). Until GitHub is seen to accept the leases on a first run,
+   run the agents on one machine only.
+3. **The workflow**, sc-5148: the new Shortcut states, the QA labels and the wake fixes
    ([workflow.md](workflow.md)).
-4. **The Mac**: the launchd runner and `just agents setup` on macOS
-   ([machines.md](machines.md)).
+4. **The Mac**, #280: the launchd runner and `just agents setup` on macOS
+   ([machines.md](machines.md#setting-up-from-a-fresh-clone)).
 
 Story: sc-2864, which started as the product manager's idea; the owner gave it to ops on
 20 Oct.

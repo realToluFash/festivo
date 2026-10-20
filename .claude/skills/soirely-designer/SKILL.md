@@ -62,7 +62,13 @@ truly need its full text again. Pick out the ones that need design:
   AC now asks for that no artboard draws, often after a PM decision dated later than the
   drawing;
 - a form whose AC does not say **which fields are required** or what counts as valid;
-- a story in `Failed QA` whose report blames a screen against the artboards.
+- a story in `Failed QA` whose report blames a screen against the artboards, which QA
+  tags `[ux]`.
+
+**`Needs Design` is your queue.** The product manager moves a story there once its AC is
+settled and it needs a screen. Draw it, write its Design section linking the artboard, and
+hand it to the developers: `sq ux move sc-N "Ready For Dev"`. A story you cannot draw until
+the owner decides goes to `Waiting On Owner`, with the question in a comment.
 
 Draw what each one needs, in its epic's artifact, and write its Design section. Where the
 AC leaves the answer undecided, ask `[pm]` on that story with your proposal
@@ -83,7 +89,8 @@ epic. With no argument:
    story whose Design section is settled is not — do not redraw a screen somebody has
    signed off because you would have done it differently.
 
-**A story in `Failed QA` with a design finding is yours too.** Read the QA report
+**A story in `Failed QA` with a design finding is yours too**, when QA tags `[ux]` on it:
+Failed QA itself wakes only the developer. Read the QA report
 (`sq ux comments sc-N --all`): if a
 screen fails because the artboards drew data that does not exist, the artboard is the
 defect, not the code.

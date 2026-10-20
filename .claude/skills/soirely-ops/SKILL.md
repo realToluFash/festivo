@@ -47,7 +47,7 @@ from the main checkout makes it).
      needs no QA, so the story goes to Done. One a person should check by hand (a stack
      that comes up differently, a script testers run) carries `needs qa` (add it before
      merging) and goes to Ready For QA instead. A story with another pull request still
-     open stays In Review until the last one merges.
+     open waits in Passed Code Review until the last one merges.
 - **No spending and no outside changes without the owner.** New servers, paid plans, DNS
   records, provider accounts and domain changes are the owner's calls. Bring a costed
   recommendation, tagging `[bm]` when the money needs weighing.
@@ -103,6 +103,10 @@ no argument, in this order:
    `[dev]` on the story that broke it (`sq ops comment sc-N --to dev`). A flaky run is
    rerun with `sq ops rerun --run <id>`.
 2. **The owner asked for a deploy.** Section 5.
+   **A `machine` item is `ops@<machine>`**: this machine's own disk, build cache, stacks or
+   daily sweep (`docs/agents/machines.md`, Ops on every machine). It comes to you even
+   when another machine holds the ops lease, and even while a full disk holds every other
+   role. Work only on this machine; never run a command on another computer.
 3. **CI failing for an infra reason** on an open pull request: a runner, an image, a cache, a
    flaky service start. `sq ops checks N` prints each failing check with the last 40 lines
    of its log, and `sq ops rerun N` reruns the failed jobs. The pull request's author should

@@ -10,6 +10,10 @@ from . import work as W
 SQ = V.SQ
 
 
+# The states a developer or tester claims a story from.
+CLAIMABLE = ("Ready For Dev", "Failed Code Review", "Failed QA", "Ready For QA")
+
+
 def cached_diff(cache, pr):
     path = cache / f"diff-{pr['number']}-{pr['head_sha'][:12]}.patch"
     if path.exists():
@@ -152,8 +156,8 @@ def merge(p, pr, story, row):
     live = github.live(pr["number"])
     if live["mergeable"] == "CONFLICTING":
         p.add("", "It conflicts with main, so it cannot merge as passed. Merge origin/main into "
-                  "the branch, push, and keep the story in In Review: the push voids the pass, "
-                  "and the lead reviews the new head.")
+                  "the branch and push. The push voids the pass, and the lead reviews the new "
+                  "head, wherever the story is.")
         return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"brought main in\"")
     next_lines(p, f"{SQ} {p.role} merge {pr['number']}   (checks every condition, merges at the "
                   "passed sha, moves the story to Ready For QA and tells QA)",
@@ -216,9 +220,16 @@ def render(p, db, row, cache):
         return digests.render(p, db, row)
     if kind == "story":
         story_for(p, db, story, p.role)
-        if p.role in R.DEVS + R.TESTERS and story["state"] in ("To Do", "Ready For QA",
-                                                                "Failed QA"):
+        if p.role in R.DEVS + R.TESTERS and story["state"] in CLAIMABLE:
             return next_lines(p, f"{SQ} {p.role} claim sc-{story['id']}",
                               f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+        return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+    if kind == "machine":
+        p.add(f"You are {row['pool']}: this machine only. Never run a command against another "
+              "computer, and leave CI, deploys and stories to the machine holding the ops "
+              "lease.", "",
+              "Look with `docker system df`, `df -h`, `sq status`; clean with "
+              "`just prune-build-cache` (volumes are kept). Never delete a volume, a database "
+              "or data you did not create.")
         return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
     p.add(f"(no payload for {kind})")

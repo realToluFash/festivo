@@ -58,16 +58,17 @@ def untaken(db, role, stories):
 
 def developer(p, db, stories):
     mine = untaken(db, p.role, W.queued(p.role, stories))
-    order = {"Failed QA": 0, "In Progress": 1, "To Do": 2}
-    # Failed QA longest-waiting first; the rest by their place in Shortcut's list.
-    mine.sort(key=lambda s: (order[s["state"]], s["moved_at"] or "" if s["state"] == "Failed QA"
+    order = {state: i for i, state in enumerate(R.BUILD_QUEUE)}
+    # Rework longest-waiting first; the rest by their place in Shortcut's list.
+    rework = ("Failed Code Review", "Failed QA")
+    mine.sort(key=lambda s: (order[s["state"]], s["moved_at"] or "" if s["state"] in rework
                              else "", s["position"] or 0))
     p.add(f"Your queue ({len(mine)}), in the order the skill picks:")
     p.add(*[line(s, ", ".join(s["labels"]) or "-") for s in mine[:12]])
     if mine:
         top = mine[0]
-        todo = [s for s in mine if s["state"] == "To Do"]
-        if top["state"] == "To Do" and p.role == "dev2" and len(todo) >= 2:
+        todo = [s for s in mine if s["state"] == "Ready For Dev"]
+        if top["state"] == "Ready For Dev" and p.role == "dev2" and len(todo) >= 2:
             top = todo[1]
         verb = "story" if R.OWN_LABELS[p.role] & set(top["labels"]) else "claim"
         p.add("", "Next:", f"  {SQ} {p.role} {verb} sc-{top['id']}")
@@ -91,14 +92,19 @@ def tester(p, db, stories):
 
 
 def designer(p, db, stories):
+    waiting = [s for s in ordered(stories) if s["state"] == "Needs Design"
+               and "translation" not in s["labels"]]
+    p.add(f"Needs Design ({len(waiting)}): draw each, link it, then move it to Ready For Dev:")
+    p.add(*[line(s) for s in waiting])
     candidates = [s for s in ordered(stories) if s["state"] in ("To Do", "Backlog")
                   and "translation" not in s["labels"]
                   and not any(T.is_design(h) for h in section_names(s))]
-    p.add(f"Stories with no Design section ({len(candidates)}), first 12:")
+    p.add("", f"Not yet in Needs Design, with no Design section ({len(candidates)}), first 12:")
     p.add(*[line(s) for s in candidates[:12]])
     changed = []
     for story in ordered(stories):
-        if story["state"] not in ("To Do", "In Progress") or "translation" in story["labels"]:
+        if story["state"] not in ("Ready For Dev", "In Progress") \
+                or "translation" in story["labels"]:
             continue
         design = T.find(story["description"], "design")
         ac = T.find(story["description"], "ac")
@@ -115,7 +121,8 @@ def designer(p, db, stories):
 def product_manager(p, db, stories):
     todo = ordered([s for s in stories if s["state"] == "To Do"
                     and "translation" not in s["labels"]])
-    p.add(f"To Do ({len(todo)}), next 10:")
+    p.add(f"To Do ({len(todo)}), next 10: give each its AC, then move it to Needs Design, "
+          "or to Ready For Dev when it needs no new screens:")
     for story in todo[:10]:
         flags = [] if any(T.is_ac(h) for h in section_names(story)) else ["no AC"]
         p.add(line(story, ", ".join(flags)))
@@ -128,6 +135,9 @@ def product_manager(p, db, stories):
     ideas = [s for s in stories if "idea" in s["labels"] and s["state"] == "Backlog"]
     if ideas:
         p.add("", "Ideas waiting on a decision:", *[line(s) for s in ideas])
+    owner = [s for s in ordered(stories) if s["state"] == R.WAITING]
+    if owner:
+        p.add("", f"{R.WAITING} ({len(owner)}):", *[line(s) for s in owner])
     backlog = [s for s in stories if s["state"] == "Backlog"]
     p.add("", f"Backlog: {len(backlog)} stories (`{SQ} pm find state:Backlog`).")
     epics = store.get_meta(db, "epics") or {}
@@ -141,11 +151,12 @@ def business_manager(p, db, stories):
                  and ("owner decision" in s["description"].lower() or "decision" in s["labels"])]
     p.add(f"Backlog stories awaiting an owner decision ({len(decisions)}):",
           *[line(s) for s in decisions])
-    billing = [s for s in ordered(stories) if s["state"] == "To Do"
+    billing = [s for s in ordered(stories) if s["state"] in ("To Do", "Needs Design",
+                                                             "Ready For Dev")
                and any(word in (s["epic"] or "").lower()
                        for word in ("billing", "enterprise", "pricing", "plan"))]
     if billing:
-        p.add("", "To Do in billing epics:", *[line(s) for s in billing])
+        p.add("", "Coming up in billing epics:", *[line(s) for s in billing])
 
 
 def creative(p, db, stories):

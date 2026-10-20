@@ -74,7 +74,8 @@ class StartStop(unittest.TestCase):
         for patch in (mock.patch("soirely_queue.machine.load", return_value=settings),
                       mock.patch("soirely_queue.cli.open_db", return_value=self.db),
                       mock.patch("soirely_queue.cli.home", return_value=self.root / "home"),
-                      mock.patch("soirely_queue.systemd.platform", return_value=self.platform),
+                      mock.patch("soirely_queue.cli.this_platform", return_value=self.platform),
+                      mock.patch("soirely_queue.machine.load_env"),
                       mock.patch("soirely_queue.update.check", return_value=False)):
             patch.start()
             self.addCleanup(patch.stop)

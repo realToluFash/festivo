@@ -7,7 +7,9 @@ import tempfile
 import unittest
 from unittest import mock
 
-from soirely_queue import runlog, runner, store
+from soirely_queue import runlog, runner, shared, store
+
+from .fakes import FakeRefs
 
 MINUTE = 60
 ON_ZERO = 3 * MINUTE * 1000  # a minute whose offset is 0
@@ -38,6 +40,9 @@ class FakePlatform:
     def notify(self, title, body):
         self.notes.append((title, body))
 
+    def after_run(self):
+        pass
+
     def enable(self):
         self.enabled = True
 
@@ -63,7 +68,7 @@ def config(root, **changes):
 
 
 def work(role, fingerprint=None):
-    return {"fingerprint": fingerprint or f"inbox:{role}", "pool": "role", "roles": [role],
+    return {"fingerprint": fingerprint or f"inbox:{role}", "pool": role, "roles": [role],
             "kind": "inbox", "reason": f"[{role}] on sc-1", "priority": 1}
 
 
@@ -83,10 +88,12 @@ class Run(unittest.TestCase):
                       mock.patch("soirely_queue.sync.sync", return_value=[]),
                       mock.patch("soirely_queue.cli.refresh_work"),
                       mock.patch("soirely_queue.update.check", return_value=False),
-                      mock.patch("soirely_queue.machine.free_gb", return_value=100.0)):
+                      mock.patch("soirely_queue.machine.free_gb", return_value=100.0),
+                      mock.patch("soirely_queue.local.build_cache_gb", return_value=1.0)):
             patch.start()
             self.addCleanup(patch.stop)
         runner.set_started(self.db, ["ops", "dev2", "lead"], True)
+        self.remote = FakeRefs()
 
     def tearDown(self):
         self.folder.cleanup()
@@ -94,7 +101,8 @@ class Run(unittest.TestCase):
     def run_once(self, now=ON_ZERO, **kwargs):
         runner.run(self.db, self.home, self.platform, "sq", "python3", now=now,
                    say=self.said.append, load=lambda: self.config,
-                   probe=lambda: kwargs.pop("version", "2.1.304"), **kwargs)
+                   probe=lambda: kwargs.pop("version", "2.1.304"),
+                   remote=kwargs.pop("remote", self.remote), **kwargs)
 
     def test_a_due_role_with_work_gets_one_worker(self):
         store.record(self.db, [work("ops")], ON_ZERO)
@@ -228,6 +236,81 @@ class Run(unittest.TestCase):
         self.assertFalse(store.held_by(self.db, "ops", ON_ZERO))
         self.assertEqual(store.waiting(self.db, "ops")[0]["id"], 1)
 
+    def machine_work(self, key="disk"):
+        return {"fingerprint": f"ops@here:{key}:1", "pool": "ops@here", "roles": ["ops"],
+                "kind": "machine", "reason": f"{key} on here", "priority": 20}
+
+    def test_a_role_another_machine_runs_does_not_wake_here(self):
+        self.remote.beat("tolu-mac", ON_ONE, started={"dev2"})
+        self.remote.create(shared.role_ref("dev2"), shared.record("role", role="dev2",
+                                                                  machine="tolu-mac"))
+        store.record(self.db, [work("dev2")], ON_ONE)
+        self.run_once(ON_ONE + 30)
+        self.assertEqual(self.platform.launched, [])
+        self.assertIn("dev2: running on tolu-mac, last seen 30s ago", self.said)
+
+    def test_ops_on_a_machine_without_the_ops_lease_does_only_this_machines_work(self):
+        self.remote.beat("tolu-mac", ON_ZERO, started={"ops"})
+        self.remote.create(shared.role_ref("ops"), shared.record("role", role="ops",
+                                                                 machine="tolu-mac"))
+        store.record(self.db, [work("ops"), self.machine_work()], ON_ZERO)
+        self.run_once()
+        self.assertEqual([r for r, _, _ in self.platform.launched], ["ops"])
+        self.assertEqual(store.held_by(self.db, "ops", ON_ZERO)["kind"], "machine")
+
+    def test_a_full_disk_still_lets_ops_clear_it(self):
+        store.record(self.db, [work("dev2"), work("ops"), self.machine_work()], ON_ONE)
+        with mock.patch("soirely_queue.machine.free_gb", return_value=4.0):
+            self.run_once(ON_ZERO)
+            self.run_once(ON_ONE)
+        self.assertEqual([r for r, _, _ in self.platform.launched], ["ops"])
+        self.assertEqual(store.held_by(self.db, "ops", ON_ONE)["kind"], "machine")
+
+    def test_a_shared_story_taken_on_another_machine_is_left_to_it(self):
+        self.config["roles"]["qa"] = {}
+        (self.root / "soirely-qa").mkdir()
+        runner.set_started(self.db, ["qa"], True)
+        self.remote.beat("tolu-mac", ON_ZERO, started={"qa2"})
+        self.remote.create(shared.claim_ref("qa", "sc-7"), shared.record(
+            "claim", pool="qa", key="sc-7", role="qa2", machine="tolu-mac", at=ON_ZERO))
+        store.record(self.db, [dict(work("qa", "qa:7"), pool="qa", story_id=7),
+                               dict(work("qa", "qa:8"), pool="qa", story_id=8)], ON_ZERO)
+        self.run_once()
+        self.assertEqual(store.held_by(self.db, "qa", ON_ZERO)["story_id"], 8)
+        self.assertEqual(self.remote.data(shared.claim_ref("qa", "sc-8"))["machine"], "here")
+
+    def test_work_with_no_story_is_claimed_by_its_kind(self):
+        store.record(self.db, [dict(work("ops"), kind="main")], ON_ZERO)
+        self.run_once()
+        self.assertEqual(self.remote.data(shared.claim_ref("ops", "main"))["machine"], "here")
+
+    def test_without_github_only_this_machines_own_ops_work_starts(self):
+        self.run_once()
+        store.record(self.db, [work("ops"), work("lead"), self.machine_work()], ON_ZERO)
+        self.remote.list = mock.Mock(side_effect=RuntimeError("offline"))
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertEqual([r for r, _, _ in self.platform.launched], ["ops"])
+        self.assertEqual(store.held_by(self.db, "ops", ON_ZERO + 3 * MINUTE)["kind"], "machine")
+        self.assertIn("lead: held back, offline", self.said)
+        self.assertTrue(any(s.startswith("warning: could not reach the shared leases")
+                            for s in self.said))
+
+    def test_a_pause_everywhere_wakes_nobody_here(self):
+        shared.pause_everywhere(self.remote, "tolu-mac", ON_ZERO)
+        store.record(self.db, [work("ops")], ON_ZERO)
+        self.run_once()
+        self.assertEqual(self.platform.launched, [])
+        self.assertIn("paused everywhere by tolu-mac", self.said[-1])
+
+    def test_a_local_pause_keeps_this_machines_roles(self):
+        self.run_once()
+        store.set_meta(self.db, "paused", "now")
+        self.run_once(ON_ZERO + 10 * MINUTE)
+        self.assertEqual(self.remote.data(shared.role_ref("ops"))["machine"], "here")
+
+    def test_a_dry_run_writes_nothing_shared(self):
+        self.run_once(ON_ONE, dry_run=True)
+        self.assertEqual(self.remote.refs, {})
 
 class Command(unittest.TestCase):
     VALUES = {"model": "claude-opus-5-5", "effort": "medium"}
@@ -247,6 +330,12 @@ class Command(unittest.TestCase):
     def test_a_set_ceiling_is_passed_to_claude(self):
         argv, _ = runner.command(dict(self.VALUES, maxBudgetUsd=2.5), "~/.claude-soirely")
         self.assertEqual(argv[argv.index("--max-budget-usd") + 1], "2.5")
+
+    def test_granted_and_denied_rules_go_on_the_command_line_only(self):
+        argv, _ = runner.command(dict(self.VALUES, maxBudgetUsd=None), "~/.claude-soirely",
+                                 ["Bash(xcrun simctl boot:*)"], ["Bash(just agents:*)"])
+        self.assertEqual(argv[argv.index("--allowedTools") + 1], "Bash(xcrun simctl boot:*)")
+        self.assertEqual(argv[argv.index("--disallowedTools") + 1], "Bash(just agents:*)")
 
 
 class Worker(unittest.TestCase):
