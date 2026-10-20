@@ -68,8 +68,16 @@ ticks carry on from the last good sync, and `sq status` shows the error.
 ## 1. Scheduling, at the end of a run started by hand
 
 A run the owner started, as opposed to one a tick woke, ends by making sure its routine
-exists. Do this after the report, every time; it takes three steps and stops at the first
-that says it is already done.
+exists. Do this after the report, every time.
+
+**Where the manager is installed** (`sq status` starts with `<machine>: manager …`; see
+`docs/agents`), the routine is the systemd timer, not this session. Run `sq start <role>`
+and tell the owner in one line that the role now ticks within a minute, with no terminal
+left open and no expiry. If it is refused because the role is not in this machine's
+`agents.json`, say so and stop: which roles a machine runs is the owner's choice. Never
+also schedule a `CronCreate` job for a role the manager runs, or the role works twice.
+
+**Elsewhere**, it takes three steps and stops at the first that says it is already done.
 
 1. **`CronList`.** A job whose prompt starts `Soirely <role> routine` means it is already
    scheduled. Say so in one line and stop.
@@ -145,6 +153,9 @@ watching, so:
   - The tech lead, product manager, designer, business manager and creative director read
     code at a pull request's head with `sq <role> diff <pr> [paths…]` and
     `git show origin/<branch>:<path>`, and never check anything out.
+- **Write a note at each milestone.** A branch pushed, a part built, a result found: one
+  line with `sq <role> note sc-<n> --text "<what>"`, and push what you have. A run stopped by its
+  time or memory limit writes no closing note, so these are what the next run picks up.
 - **The report is ten lines at most.** What you did, which stories moved, the questions
   you left and where, and anything waiting on the owner. The evidence lives on the story
   and the pull request, not in the report.

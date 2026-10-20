@@ -208,6 +208,11 @@ prune-build-cache:
 dev-env *args:
     node scripts/dev-env.mjs {{args}}
 
+# The roles this machine runs, from ~/.config/soirely/agents.json (docs/agents).
+# `just agents setup` once, then `just agents up`; `just agents down [--now]` before switching off.
+agents *args:
+    python3 tools/queue/sq agents {{args}}
+
 # A tester's own QA stack: `just qa-env setup --tester N`, then work from its worktree.
 qa-env *args:
     node scripts/qa-env.mjs {{args}}

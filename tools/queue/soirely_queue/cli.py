@@ -4,21 +4,24 @@ Every read prints a slice and goes through the ledger, so a role is never shown 
 it already has. Every write is checked against what the role may do before it is sent."""
 
 import argparse
+import datetime
 import os
 import pathlib
-import shutil
 import subprocess
 import sys
 import time
 
-from . import actions, digests, github, payloads, roles, store, sync, work
+from . import (actions, agents, digests, github, machine, payloads, roles, runlog, runner, store,
+               sync, systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
 from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
-ADMIN = ("status", "sync", "install")
+OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents")
+ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "start", "stop", "pause",
+         "resume", "cost", "agents")
 
 
 def home():
@@ -473,39 +476,144 @@ def role_parser(role):
     return p
 
 
+def status(db, platform, now):
+    synced_at = store.get_meta(db, "synced_ok_at")
+    errors = store.get_meta(db, "sync_errors") or []
+    print(f"synced {int(now - synced_at)}s ago" if synced_at else "never synced",
+          f"· last errors: {'; '.join(errors)}" if errors else "")
+    try:
+        config = machine.load()
+    except machine.ConfigError as error:
+        config = None
+        print(f"error: {error}")
+    if config:
+        problems, refused, ready = machine.check(config)
+        print(f"{config.get('machine')}: manager "
+              f"{'running' if platform.timer_active() else 'stopped'}"
+              + (f" · paused since {runner.paused(db)}" if runner.paused(db) else "")
+              + f" · {machine.free_gb(config):.0f} GB free")
+        for problem in problems:
+            print(f"error: {problem}")
+        late = runner.drift(config, (store.get_meta(db, "claude_version") or {}).get("version"))
+        if late:
+            print(f"warning: {late}")
+        on = runner.started(db)
+        for role in config.get("roles") or {}:
+            if role in refused:
+                print(f"{role:5} refused: {refused[role]}")
+                continue
+            if role not in ready:
+                continue
+            state = "running a worker" if platform.worker_active(role) else \
+                "started" if role in on else "stopped"
+            print(f"{role:5} {state} · {ready[role]['model']} {ready[role]['effort']}")
+            note = machine.price_note(role, ready[role]["model"], config)
+            if note:
+                print(f"      note: {note}")
+            last = runlog.last(home(), role)
+            if last:
+                first = (last.get("report") or "").strip().splitlines()[:1]
+                print(f"      last run {time.strftime('%d %b %H:%M', time.localtime(last['at']))}"
+                      f", ${last.get('cost_usd') or 0:.2f}: {first[0][:100] if first else '-'}")
+            owner = store.get_meta(db, f"owner:{role}")
+            if owner:
+                print(f"      waiting on the owner: {owner['lines'][0][:120]}")
+    for role in roles.ROLES:
+        held, waiting = store.held_by(db, role, now), store.waiting(db, role)
+        if held or waiting:
+            line = f"{role:5} " + (f"working on {held['id']} ({held['reason']}); "
+                                   if held else "")
+            line += f"{len(waiting)} waiting"
+            if waiting:
+                line += ": " + "; ".join(f"{w['id']} {w['reason']}" for w in waiting[:4])
+            print(line)
+
+
+def cost(days):
+    today = datetime.date.today()
+    total = 0
+    for back in range(days):
+        on = today - datetime.timedelta(days=back)
+        spent = {r: v for r, v in runlog.spent(home(), roles.ROLES, on).items() if v}
+        total += sum(spent.values())
+        print(f"{on.isoformat()}: ${sum(spent.values()):.2f}"
+              + ("  " + ", ".join(f"{r} ${v:.2f}" for r, v in
+                                  sorted(spent.items(), key=lambda x: -x[1])) if spent else ""))
+    if days > 1:
+        print(f"total: ${total:.2f}")
+
+
 def admin(argv):
     p = argparse.ArgumentParser(prog="sq", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
-    sub.add_parser("status", help="what every role holds and has waiting")
+    sub.add_parser("status", help="what every role holds and has waiting, and this machine's "
+                                  "manager")
     sub.add_parser("sync", help="sync now").add_argument("--full", action="store_true")
     sub.add_parser("install", help="copy sq where no branch switch removes it")
+    sub.add_parser("run", help="the timer's minute: sync, then tick each started role") \
+        .add_argument("--dry-run", action="store_true", help="say what would wake, start nothing")
+    for name in ("worker", "worker-ended"):
+        worker = sub.add_parser(name, help=argparse.SUPPRESS)
+        worker.add_argument("role")
+        worker.add_argument("item", type=int)
+    for name, help_ in (("start", "start roles on this machine"),
+                        ("stop", "stop roles on this machine")):
+        sp = sub.add_parser(name, help=help_)
+        sp.add_argument("roles", nargs="*")
+        sp.add_argument("--all", action="store_true")
+    sub.add_parser("pause", help="no role ticks until sq resume")
+    sub.add_parser("resume", help="end a pause")
+    sub.add_parser("cost", help="what the workers cost, per day and role") \
+        .add_argument("--days", type=int, default=1)
+    ag = sub.add_parser("agents", help="setup, up or down: the whole machine")
+    ag.add_argument("action", choices=["setup", "up", "down"])
+    ag.add_argument("--now", action="store_true", help="down: stop running workers at once")
+    ag.add_argument("--workspace", help="setup: the workspace, without asking")
     a = p.parse_args(argv)
+    # A guard against a worker that reads "stop the routine" in a thread, not a boundary.
+    if a.command in OWNER_ONLY and os.environ.get("SOIRELY_WORKER"):
+        print(f"error: sq {a.command} is the owner's, and this is "
+              f"{os.environ['SOIRELY_WORKER']}'s worker; say what you need in your report")
+        return sys.exit(1)
     db = open_db()
+    platform = systemd.platform()
+    sq_path = home() / "sq" / "sq"
     if a.command == "status":
-        now = time.time()
-        synced_at = store.get_meta(db, "synced_ok_at")
-        errors = store.get_meta(db, "sync_errors") or []
-        print(f"synced {int(now - synced_at)}s ago" if synced_at else "never synced",
-              f"· last errors: {'; '.join(errors)}" if errors else "")
-        for role in roles.ROLES:
-            held, waiting = store.held_by(db, role, now), store.waiting(db, role)
-            if held or waiting:
-                line = f"{role:5} " + (f"working on {held['id']} ({held['reason']}); "
-                                       if held else "")
-                line += f"{len(waiting)} waiting"
-                if waiting:
-                    line += ": " + "; ".join(f"{w['id']} {w['reason']}" for w in waiting[:4])
-                print(line)
+        status(db, platform, time.time())
+    elif a.command == "run":
+        runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
+    elif a.command == "worker":
+        runner.worker(db, home(), platform, a.role, a.item)
+    elif a.command == "worker-ended":
+        runner.worker_ended(home(), platform, a.role, a.item)
+    elif a.command in ("start", "stop"):
+        names = list(machine.load().get("roles") or {}) if a.all else a.roles
+        if a.command == "start":
+            return sys.exit(agents.start(db, home(), platform, names))
+        return sys.exit(agents.stop(db, names))
+    elif a.command == "pause":
+        store.set_meta(db, "paused", time.strftime("%d %b %H:%M"))
+        print("paused: no role ticks, running workers finish their item")
+    elif a.command == "resume":
+        store.set_meta(db, "paused", None)
+        print("resumed")
+    elif a.command == "cost":
+        cost(a.days)
+    elif a.command == "agents":
+        if a.action == "setup":
+            sys.exit(agents.setup(home(), platform, workspace=a.workspace))
+        if a.action == "up":
+            sys.exit(agents.up(db, home(), platform))
+        sys.exit(agents.down(db, home(), platform, now=a.now))
     elif a.command == "sync":
         errors = sync.sync(db, force=True, full=a.full)
         refresh_work(db, time.time())
         print("error: " + "; ".join(errors) if errors else "synced")
     else:
         target = home() / "sq"
-        if target.exists():
-            shutil.rmtree(target)
-        shutil.copytree(HERE.parent, target,
-                        ignore=shutil.ignore_patterns("tests", "__pycache__", "*.md"))
+        tree = subprocess.run(["git", "rev-parse", "HEAD:tools/queue"], cwd=HERE.parent,
+                              capture_output=True, text=True).stdout.strip() or "local"
+        update.copy(HERE.parent, home(), tree)
         if not store.get_meta(db, "baselined_at"):
             errors = sync.sync(db, force=True, full=True)
             if errors:
@@ -518,7 +626,9 @@ def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     if not argv or argv[0] in ("-h", "--help", "help"):
         return print(f"usage: sq <role> <command> …   (sq <role> help lists your commands)\n"
-                     f"       sq status | sync [--full] | install\n"
+                     f"       sq status | sync [--full] | install | cost [--days N]\n"
+                     f"       sq start | stop [roles | --all] | pause | resume | run [--dry-run]\n"
+                     f"       sq agents setup | up | down [--now]\n"
                      f"roles: {', '.join(roles.ROLES)}")
     try:
         if argv[0] in ADMIN:

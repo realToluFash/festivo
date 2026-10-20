@@ -1,0 +1,20 @@
+{
+  "machine": "my-computer",
+  "workspace": null,
+  "mainCheckout": "soirely",
+  "claudeConfigDir": "~/.claude-soirely",
+  "claudeVersion": null,
+  "onVersionDrift": "warn",
+  "dailyBudgetUsd": null,
+  "minFreeGb": 15,
+  "roles": {
+    "ops": {}
+  },
+  "defaults": {
+    "model": "claude-opus-5-5",
+    "effort": "medium",
+    "memoryMax": "3G",
+    "maxRuntime": "90m",
+    "maxBudgetUsd": null
+  }
+}
