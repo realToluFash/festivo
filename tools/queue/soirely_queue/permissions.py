@@ -16,7 +16,10 @@ import sys
 from . import machine
 
 FILE = "tools/queue/permissions.json"
-RULE = re.compile(r"^[A-Za-z]+(\(.+\))?$")
+RULE = re.compile(r"^([A-Za-z]+)(?:\((.+)\))?$")
+# Tools a rule must narrow: bare, or with only wildcards, each grants the whole tool.
+NARROW = {"Bash", "Edit", "Write", "MultiEdit", "NotebookEdit", "WebFetch"}
+WILDCARD = re.compile(r"^[\s*:/~.]*$")
 
 
 class Invalid(RuntimeError):
@@ -38,9 +41,13 @@ def parse(text, where):
     from . import roles
     for entry in rules:
         rule, names = entry.get("rule"), entry.get("roles")
-        if not isinstance(rule, str) or not RULE.match(rule):
+        match = RULE.match(rule) if isinstance(rule, str) else None
+        if not match:
             raise Invalid(f"{where}: {rule!r} is not a permission rule such as "
                                    "Bash(xcrun simctl boot:*)")
+        if match.group(1) in NARROW and WILDCARD.match(match.group(2) or ""):
+            raise Invalid(f"{where}: {rule} grants every {match.group(1)} call; name the "
+                          f"command or path, such as Bash(xcrun simctl boot:*)")
         if not isinstance(names, list) or not names or any(
                 n != "all" and n not in roles.ROLES for n in names):
             raise Invalid(f"{where}: {rule} names no roles, or one sq does not know")
@@ -124,11 +131,9 @@ def apply(home, say=print, ask=input, interactive=None, show=None):
         subprocess.run(git + ["show", f"origin/main:{FILE}"], capture_output=True,
                        text=True).stdout)[1:])
     sha, text = show()
-    if not text:
-        say(f"main at {sha[:7]} has no {FILE}; nothing to apply")
-        return 0
     try:
-        rules = parse(text, f"{FILE} at {sha[:7]}")
+        # A file deleted from main revokes everything it granted.
+        rules = parse(text, f"{FILE} at {sha[:7]}") if text else []
         added, removed = difference(applied(), rules)
     except Invalid as error:
         say(f"error: {error}")

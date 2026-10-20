@@ -530,7 +530,8 @@ def status(db, platform, now):
         # The account is shown only when this machine's roles use more than one.
         folders = {role: machine.claude_dir(config, role) for role in ready}
         several = len(set(folders.values())) > 1
-        for role in config.get("roles") or {}:
+        listed = config.get("roles") or {}
+        for role in [r for r in refused if r not in listed] + list(listed):
             if role in refused:
                 print(f"{role:5} refused: {refused[role]}")
                 continue

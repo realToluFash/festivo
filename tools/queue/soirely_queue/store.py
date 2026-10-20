@@ -178,10 +178,15 @@ def waiting(db, role):
                       (f"%,{role},%",)).fetchall()
 
 
+def claim_key(row):
+    """What a claim on another machine is about: the item's story, or with none its kind."""
+    return f"sc-{row['story_id']}" if row["story_id"] else row["kind"]
+
+
 def claim(db, role, now=None, kinds=None, skip=()):
     """The role's top open item, or None. One claim per role, and one per pool item.
-    `kinds` limits it to some kinds of work; `skip` holds the (pool, story) pairs taken on
-    another machine."""
+    `kinds` limits it to some kinds of work; `skip` holds the (pool, claim key) pairs taken
+    on another machine."""
     now = now or time.time()
     db.execute("begin immediate")
     try:
@@ -190,7 +195,7 @@ def claim(db, role, now=None, kinds=None, skip=()):
             return None
         rows = [row for row in waiting(db, role)
                 if (kinds is None or row["kind"] in kinds)
-                and (row["pool"], row["story_id"]) not in skip]
+                and (row["pool"], claim_key(row)) not in skip]
         if not rows:
             db.execute("commit")
             return None

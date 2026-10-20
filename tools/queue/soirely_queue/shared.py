@@ -1,6 +1,6 @@
 """What more than one machine must agree on, kept as git references in the repository that
-every machine already reaches: which machine runs each role, which story a shared queue's
-worker has taken, each machine's heartbeat, and a pause for all of them.
+every machine already reaches: which machine runs each role, which work each worker has
+taken, each machine's heartbeat, and a pause for all of them.
 
 A reference points at a commit whose message holds the record as JSON. Creating a
 reference that exists is refused, and a non-forced update must descend from what is there,
@@ -18,8 +18,6 @@ PREFIX = "refs/soirely"
 HEARTBEAT_SECONDS = 5 * 60
 CLAIM_SECONDS = 90 * 60
 PAUSE = f"{PREFIX}/pause"
-# The queues two roles share, and so two machines could both take a story from.
-POOLS = ("dev", "qa")
 UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
 
 
@@ -31,8 +29,8 @@ def role_ref(role):
     return f"{PREFIX}/roles/{role}"
 
 
-def claim_ref(pool, story_id):
-    return f"{PREFIX}/claims/{pool}/sc-{story_id}"
+def claim_ref(pool, key):
+    return f"{PREFIX}/claims/{safe(pool)}/{safe(key)}"
 
 
 def machine_ref(machine):
@@ -157,16 +155,14 @@ class View:
         return data.get("machine") if data else None
 
     def claims(self):
-        """Every live story claim, as {(pool, story id): record}. A claim lapses after 90
-        minutes, or as soon as its machine stops writing its heartbeat."""
+        """Every live claim, as {(pool, key): record}. A claim lapses only after 90 minutes,
+        the local lease: a machine gone quiet may still have a worker running."""
         found = {}
         for ref in self.refs:
-            match = re.fullmatch(rf"{PREFIX}/claims/([a-z0-9]+)/sc-(\d+)", ref)
+            match = re.fullmatch(rf"{PREFIX}/claims/([^/]+)/([^/]+)", ref)
             data = self.get(ref) if match else None
-            if not data:
-                continue
-            if self.now - data.get("at", 0) < CLAIM_SECONDS and self.alive(data.get("machine")):
-                found[(match.group(1), int(match.group(2)))] = data
+            if data and self.now - data.get("at", 0) < CLAIM_SECONDS:
+                found[(data.get("pool", match.group(1)), data.get("key", match.group(2)))] = data
         return found
 
     def taken_elsewhere(self):
@@ -247,30 +243,31 @@ def leases(remote, view, config, started, busy):
     return mine, elsewhere
 
 
-def claim_story(remote, view, pool, story_id, role):
-    """Takes a story from a shared queue for one of this machine's workers. False when
-    another machine has it."""
-    ref = claim_ref(pool, story_id)
-    message = record("claim", pool=pool, story=story_id, role=role, machine=view.machine,
+def claim_item(remote, view, pool, key, role):
+    """Takes a piece of work for one of this machine's workers: a story, or a kind of work
+    with no story. False when another machine has it."""
+    ref = claim_ref(pool, key)
+    message = record("claim", pool=pool, key=key, role=role, machine=view.machine,
                      at=view.now)
     current = view.get(ref) if ref in view.refs else None
     try:
         if current is None:
-            remote.create(ref, message)
-        elif (pool, story_id) in view.taken_elsewhere():
+            sha = remote.create(ref, message)
+        elif (pool, key) in view.taken_elsewhere():
             return False
         else:
-            remote.advance(ref, view.refs[ref], message)
+            sha = remote.advance(ref, view.refs[ref], message)
     except Taken:
         return False
+    view.refs[ref], view.records[sha] = sha, parse(message)
     return True
 
 
 def release_claims(remote, view, holding):
     """Gives back each claim of this machine whose story no local worker holds now."""
-    for (pool, story_id), data in view.claims().items():
-        if data.get("machine") == view.machine and (pool, story_id) not in holding:
-            remote.delete(claim_ref(pool, story_id))
+    for (pool, key), data in view.claims().items():
+        if data.get("machine") == view.machine and (pool, key) not in holding:
+            remote.delete(claim_ref(pool, key))
 
 
 def conflicts(view, config):

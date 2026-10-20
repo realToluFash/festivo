@@ -65,7 +65,7 @@ def config(root, **changes):
 
 
 def work(role, fingerprint=None):
-    return {"fingerprint": fingerprint or f"inbox:{role}", "pool": "role", "roles": [role],
+    return {"fingerprint": fingerprint or f"inbox:{role}", "pool": role, "roles": [role],
             "kind": "inbox", "reason": f"[{role}] on sc-1", "priority": 1}
 
 
@@ -268,21 +268,27 @@ class Run(unittest.TestCase):
         (self.root / "soirely-qa").mkdir()
         runner.set_started(self.db, ["qa"], True)
         self.remote.beat("tolu-mac", ON_ZERO, started={"qa2"})
-        self.remote.create(shared.claim_ref("qa", 7), shared.record(
-            "claim", pool="qa", story=7, role="qa2", machine="tolu-mac", at=ON_ZERO))
+        self.remote.create(shared.claim_ref("qa", "sc-7"), shared.record(
+            "claim", pool="qa", key="sc-7", role="qa2", machine="tolu-mac", at=ON_ZERO))
         store.record(self.db, [dict(work("qa", "qa:7"), pool="qa", story_id=7),
                                dict(work("qa", "qa:8"), pool="qa", story_id=8)], ON_ZERO)
         self.run_once()
         self.assertEqual(store.held_by(self.db, "qa", ON_ZERO)["story_id"], 8)
-        self.assertEqual(self.remote.data(shared.claim_ref("qa", 8))["machine"], "here")
+        self.assertEqual(self.remote.data(shared.claim_ref("qa", "sc-8"))["machine"], "here")
 
-    def test_without_github_only_the_roles_held_a_minute_ago_run(self):
+    def test_work_with_no_story_is_claimed_by_its_kind(self):
+        store.record(self.db, [dict(work("ops"), kind="main")], ON_ZERO)
         self.run_once()
-        store.record(self.db, [work("ops"), work("lead")], ON_ZERO)
+        self.assertEqual(self.remote.data(shared.claim_ref("ops", "main"))["machine"], "here")
+
+    def test_without_github_only_this_machines_own_ops_work_starts(self):
+        self.run_once()
+        store.record(self.db, [work("ops"), work("lead"), self.machine_work()], ON_ZERO)
         self.remote.list = mock.Mock(side_effect=RuntimeError("offline"))
-        store.set_meta(self.db, "shared_view", {"mine": ["ops"]})
         self.run_once(ON_ZERO + 3 * MINUTE)
         self.assertEqual([r for r, _, _ in self.platform.launched], ["ops"])
+        self.assertEqual(store.held_by(self.db, "ops", ON_ZERO + 3 * MINUTE)["kind"], "machine")
+        self.assertIn("lead: held back, offline", self.said)
         self.assertTrue(any(s.startswith("warning: could not reach the shared leases")
                             for s in self.said))
 

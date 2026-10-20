@@ -55,6 +55,19 @@ class Permissions(unittest.TestCase):
         unasked = json.dumps({"rules": [{"rule": "Bash(x:*)", "roles": ["qa"]}]})
         self.assertEqual(self.apply(text=unasked), 1)
 
+    def test_a_rule_granting_a_whole_tool_is_refused(self):
+        for rule in ("Bash", "Bash(*)", "Bash(:*)", "Edit(**)", "Write(~/**)", "*"):
+            broad = json.dumps({"rules": [{"rule": rule, "roles": ["all"], "ask": 1}]})
+            self.assertEqual(self.apply(text=broad), 1, rule)
+        self.assertEqual(permissions.applied(), [])
+        self.assertIn("grants every Write call", self.said[-2])
+
+    def test_a_file_deleted_from_main_revokes_what_it_granted(self):
+        self.apply()
+        self.assertEqual(self.apply(text=""), 0)
+        self.assertEqual(permissions.applied(), [])
+        self.assertTrue(any(line.startswith("  - Bash(maestro test:*)") for line in self.said))
+
     def test_status_names_what_main_has_that_this_machine_has_not_applied(self):
         (self.home / "sq" / "permissions.json").write_text(json.dumps(RULES))
         self.assertEqual(len(permissions.pending(self.home)), 2)

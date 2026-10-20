@@ -112,26 +112,51 @@ class Claims(unittest.TestCase):
 
     def test_a_shared_story_goes_to_one_machine(self):
         view, _, _ = self.linux.minute()
-        self.assertTrue(shared.claim_story(self.remote, view, "qa", 5, "qa"))
+        self.assertTrue(shared.claim_item(self.remote, view, "qa", "sc-5", "qa"))
         view, _, _ = self.mac.minute(NOW + 10, holding=())
-        self.assertIn(("qa", 5), view.taken_elsewhere())
-        self.assertFalse(shared.claim_story(self.remote, view, "qa", 5, "qa2"))
-        self.assertTrue(shared.claim_story(self.remote, view, "dev", 5, "qa2"))
+        self.assertIn(("qa", "sc-5"), view.taken_elsewhere())
+        self.assertFalse(shared.claim_item(self.remote, view, "qa", "sc-5", "qa2"))
+        self.assertTrue(shared.claim_item(self.remote, view, "dev", "sc-5", "qa2"))
 
-    def test_a_claim_lapses_after_ninety_minutes_or_when_its_machine_goes_quiet(self):
+    def test_a_claim_outlives_its_quiet_machine_and_lapses_only_after_ninety_minutes(self):
         view, _, _ = self.linux.minute()
-        shared.claim_story(self.remote, view, "qa", 5, "qa")
+        shared.claim_item(self.remote, view, "qa", "sc-5", "qa")
         view, _, _ = self.mac.minute(NOW + 6 * 60)
-        self.assertNotIn(("qa", 5), view.taken_elsewhere())
-        self.assertTrue(shared.claim_story(self.remote, view, "qa", 5, "qa2"))
+        self.assertIn(("qa", "sc-5"), view.taken_elsewhere())
+        self.assertFalse(shared.claim_item(self.remote, view, "qa", "sc-5", "qa2"))
+        view, _, _ = self.mac.minute(NOW + 91 * 60)
+        self.assertTrue(shared.claim_item(self.remote, view, "qa", "sc-5", "qa2"))
 
     def test_a_finished_story_is_given_back(self):
         view, _, _ = self.linux.minute()
-        shared.claim_story(self.remote, view, "qa", 5, "qa")
-        self.linux.minute(NOW + 60, holding={("qa", 5)})
-        self.assertIn(shared.claim_ref("qa", 5), self.remote.refs)
+        shared.claim_item(self.remote, view, "qa", "sc-5", "qa")
+        self.linux.minute(NOW + 60, holding={("qa", "sc-5")})
+        self.assertIn(shared.claim_ref("qa", "sc-5"), self.remote.refs)
         self.linux.minute(NOW + 120, holding=())
-        self.assertNotIn(shared.claim_ref("qa", 5), self.remote.refs)
+        self.assertNotIn(shared.claim_ref("qa", "sc-5"), self.remote.refs)
+
+
+class Offline(unittest.TestCase):
+    """The lead's case on #279: the Linux box loses GitHub for six minutes while its
+    developer builds a story, and the Mac takes the developer's lease."""
+
+    def test_a_role_taken_over_never_runs_the_story_twice(self):
+        remote = FakeRefs()
+        linux = Machine(remote, "tolu-linux", roles=("ops", "dev2"), busy={"dev2"})
+        mac = Machine(remote, "tolu-mac", roles=("ops", "dev2"), standby=("dev2",))
+        view, mine, _ = linux.minute()
+        self.assertIn("dev2", mine)
+        self.assertTrue(shared.claim_item(remote, view, "dev2", "sc-9", "dev2"))
+        # Linux is offline from here, its worker still building sc-9.
+        view, mine, _ = mac.minute(NOW + 6 * 60)
+        self.assertIn("dev2", mine)
+        self.assertFalse(shared.claim_item(remote, view, "dev2", "sc-9", "dev2"))
+        self.assertTrue(shared.claim_item(remote, view, "dev2", "sc-10", "dev2"))
+        # Back online with the worker still running: its claim is kept, the lease is not.
+        view, mine, elsewhere = linux.minute(NOW + 7 * 60, holding={("dev2", "sc-9")})
+        self.assertNotIn("dev2", mine)
+        self.assertEqual(elsewhere["dev2"][0], "tolu-mac")
+        self.assertEqual(remote.data(shared.claim_ref("dev2", "sc-9"))["machine"], "tolu-linux")
 
 
 class Pause(unittest.TestCase):

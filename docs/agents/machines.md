@@ -202,12 +202,12 @@ under `refs/soirely/` in the repository. Each points at a small commit whose mes
 the record. Creating a reference that exists is refused, and moving one only succeeds from
 the commit it was read at, so two machines can never both win.
 
-| Reference                           | Holds                                                                     |
-| ----------------------------------- | ------------------------------------------------------------------------- |
-| `refs/soirely/machines/<machine>`   | the heartbeat: which roles this machine lists, has started, keeps standby |
-| `refs/soirely/roles/<role>`         | the lease: the machine that runs this role                                |
-| `refs/soirely/claims/<pool>/sc-<n>` | a story taken from a shared queue (`dev` or `qa`), and by which machine   |
-| `refs/soirely/pause`                | the pause on every machine, and who set it                                |
+| Reference                          | Holds                                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `refs/soirely/machines/<machine>`  | the heartbeat: which roles this machine lists, has started, keeps standby                            |
+| `refs/soirely/roles/<role>`        | the lease: the machine that runs this role                                                           |
+| `refs/soirely/claims/<pool>/<key>` | the work a worker took, by its story (`sc-<n>`) or with none its kind (`main`), and on which machine |
+| `refs/soirely/pause`               | the pause on every machine, and who set it                                                           |
 
 Every minute `sq run` reads them all in one call, writes its heartbeat, and settles:
 
@@ -217,18 +217,25 @@ Every minute `sq run` reads them all in one call, writes its heartbeat, and sett
   `dev: running on tolu-linux, last seen 20s ago`. A stopped role's lease is given back the
   same minute.
 - **A lease lapses with its machine.** A machine whose heartbeat is 5 minutes old has gone
-  quiet, and any machine started with its roles takes them over.
+  quiet, and any machine started with its roles takes them over. A worker it left running
+  keeps its claim, below, so the new holder takes other work, never that one.
 - **`standby` hands a role back.** A standby machine takes a role only while no live machine
   has started it as a first choice, and gives it back once its own worker is done, never in
   the middle of one.
-- **A story is claimed in GitHub too**, before its worker starts. The developers share To
-  Do and the testers share Ready For QA, even on different machines, so a story claimed on
-  one is skipped on the other. A claim is given back when its worker finishes, and lapses
-  after 90 minutes or when its machine goes quiet.
+- **Every piece of work is claimed in GitHub too**, before its worker starts: a story by
+  its pool and number, work with no story (a red `main`, a sweep) by its pool and kind. The
+  developers share To Do and the testers share Ready For QA, even on different machines,
+  so work claimed on one is skipped on the other. A claim is given back when its worker
+  finishes, and otherwise lapses only after 90 minutes, the local lease and the longest a
+  worker runs. It does not lapse with its machine: a machine gone quiet, or a Mac asleep,
+  may still have that worker running. Only `ops@<machine>` work is never claimed, since no
+  other machine can do it.
 - **Pushes do not collide.** A story's branch belongs to its developer's label, so it is
   pushed from the one machine running that developer.
-- **GitHub out of reach** (offline, or a rate limit) runs only the roles this machine held at
-  its last good minute, with a `warning:`, so a dropped connection never starts a role twice.
+- **GitHub out of reach** (offline, or a rate limit) starts nothing shared: another machine
+  may be taking this one's roles over. Workers already running finish, and only this
+  machine's own `ops@<machine>` work starts, with a `warning:` each minute until GitHub
+  answers. So a dropped connection never starts a role, or a story, twice.
 
 **The file says what may run here; the lease decides what does.** A role listed on two
 machines, neither as `standby`, is reported in `sq status` as a conflict: one machine runs
@@ -241,8 +248,15 @@ machine holds its roles from its next minute; `sq resume --everywhere` lifts it.
 **Using two machines.** Split the roles: for example, developers, lead and ops on the Linux
 machine, the testers, linguist and designer on the Mac. `sq start --all` on both is safe.
 More capacity comes from more instances (`dev3`), never the same role twice. Stacks, ports
-and simulators stay local to each machine; only leases and claims are shared. One read and
-one write a minute per machine is well inside GitHub's rate limits.
+and simulators stay local to each machine; only leases and claims are shared. A minute
+costs each machine one listing, one read for each record it has not seen, and two writes
+for its heartbeat (a commit and the move of its reference), plus two for each claim, well
+inside GitHub's rate limits.
+
+**The records are public on a public repository.** Anyone can list `refs/soirely/` and
+read each machine's name, the roles it runs and the stories its workers hold. They carry no
+secret, path or account; a machine name that should stay private is changed in
+`agents.json`.
 
 **To check on the first run.** That GitHub accepts references outside `refs/heads`, and that
 branch protection on `main` does not affect them. The tests cover the rules with a pretend
@@ -263,8 +277,8 @@ date. Ops never applies permissions: only the owner does (below). So ops is spli
 | `ops@<machine>`        | on every machine, always listed in its `agents.json` | disk, build cache, stacks, the manager, the `claude` CLI version                   |
 | ops, the shared duties | on one machine, by lease (`refs/soirely/roles/ops`)  | `main` going red, CI on pull requests, advisories, deploys, the permissions ticket |
 
-**`ops` is required in every `agents.json`**: a file without it stops `sq run` with an
-`error:`. Each minute, with no model, `sq run` checks the machine and files what it finds as
+**`ops` belongs in every `agents.json`**: a file without it refuses ops, with the reason
+in `sq status` and the journal, and the other roles and the self-update carry on. Each minute, with no model, `sq run` checks the machine and files what it finds as
 ops work of its own kind, `machine`, in the queue `ops@<machine>`:
 
 | Check                                                   | Becomes                                          |
@@ -325,11 +339,15 @@ closes it.
    asked for and prints the owner's answer, if there is one.
 4. **The owner applies it on each machine** with `just agents permissions apply`, run in
    their own terminal. It reads `permissions.json` from `origin/main`, shows each rule it
-   adds or removes and for which roles, and only after `yes` typed at the keyboard copies
+   adds or removes and for which roles (a file deleted from `main` removes every rule), and only after `yes` typed at the keyboard copies
    it to `~/.config/soirely/permissions.json` (mode 600). It refuses without a terminal and
    inside a worker. `just agents permissions` alone shows what is pending, and `sq status`
    says when `main` grants rules this machine has not applied. `just agents setup` offers
    the apply at the end.
+
+**A rule names what it allows.** `Bash`, `Edit`, `Write` and the like, bare or with only
+wildcards (`Bash(*)`, `Edit(**)`), would grant the whole tool, so `apply` refuses a file
+holding one.
 
 **No Claude settings file is written by anyone.** Each worker is started with its role's
 applied rules as `--allowedTools`, and with `--disallowedTools` for what no worker may do

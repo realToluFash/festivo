@@ -89,22 +89,22 @@ def guards(config, home, platform, db, ready, say):
 
 
 def holding(db, now):
-    """The (pool, story) pairs this machine's workers hold right now."""
-    return {(row["pool"], row["story_id"]) for row in db.execute(
-        "select pool, story_id from work where status = 'claimed' and lease_until >= ? "
-        "and story_id is not null", (now,))}
+    """The (pool, claim key) pairs this machine's workers hold right now."""
+    return {(row["pool"], store.claim_key(row)) for row in db.execute(
+        "select pool, story_id, kind from work where status = 'claimed' and lease_until >= ? "
+        "and kind != 'machine'", (now,))}
 
 
 def agree(db, config, platform, now, say, remote, ready):
     """Settles with the other machines. Returns `(view, mine, elsewhere)`, or None when
-    GitHub cannot be reached: then only the roles held at the last good minute run."""
+    GitHub cannot be reached: then another machine may be taking this one's roles over, so
+    nothing shared starts here, and only this machine's own ops work runs."""
     try:
         return shared.reconcile(remote, db, config, started(db) & ready, platform.worker_active,
                                 holding(db, now), now, bool(paused(db)))
     except Exception as error:  # noqa: BLE001 — offline, rate-limited, or GitHub refusing
-        last = store.get_meta(db, "shared_view") or {}
-        say(f"warning: could not reach the shared leases ({str(error)[:160]}); running only "
-            f"what this machine held a minute ago: {', '.join(last.get('mine', [])) or 'none'}")
+        say(f"warning: could not reach the shared leases ({str(error)[:160]}); starting only "
+            "this machine's own ops work until it can")
         return None
 
 
@@ -159,8 +159,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
                        "starts every machine again")
         skip = view.taken_elsewhere()
     else:
-        view, mine = None, set((store.get_meta(db, "shared_view") or {}).get("mine", []))
-        elsewhere, skip = {}, set()
+        view, mine, elsewhere, skip = None, set(), {}, set()
     minute = int(now // 60)
     # A dry run previews every ready role, started or not, whatever the minute.
     for role in sorted(set(ready) if dry_run else set(ready) & started(db)):
@@ -172,7 +171,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
             if role != "ops":
                 where = elsewhere.get(role)
                 say(f"{role}: running on {where[0]}, last seen {where[1]}s ago" if where
-                    else f"{role}: not held here")
+                    else f"{role}: not held here" if view else f"{role}: held back, offline")
                 continue
             kinds = ("machine",)
         if platform.worker_active(role):
@@ -195,10 +194,11 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
         if not row:
             say(f"{role}: idle")
             continue
-        if view and row["story_id"] and row["pool"] in shared.POOLS and \
-                not shared.claim_story(remote, view, row["pool"], row["story_id"], role):
+        key = store.claim_key(row)
+        if view and row["kind"] != "machine" and \
+                not shared.claim_item(remote, view, row["pool"], key, role):
             store.release(db, row["id"])
-            say(f"{role}: sc-{row['story_id']} was just taken on another machine")
+            say(f"{role}: {key} was just taken on another machine")
             continue
         try:
             platform.launch(role, row["id"], values, sq, python, machine.checkout(config, role),
