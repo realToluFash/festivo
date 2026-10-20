@@ -5,7 +5,7 @@ own: what checks for work, what does it, what it costs, and the commands that st
 stop it all.
 
 **Status: agreed with the owner on 20 Oct. The Linux runner is #276, more than one machine
-is #279, and the Mac runner is sc-5147; the rest is later work, marked where it is described.** Until a role is moved over, it runs as a `CronCreate`
+is #279, the Mac runner is #280 and the workflow states are sc-5148; the rest is later work, marked where it is described.** Until a role is moved over, it runs as a `CronCreate`
 routine inside an open Claude Code session (`role-routine`). Ops owns the work; it lands in
 the pull requests listed under [Delivery](#delivery).
 
@@ -203,9 +203,9 @@ through `notify-send`), not once a minute.
    `ops@<machine>`, `sq pause --everywhere`, and the permission asks
    ([machines.md](machines.md)). Until GitHub is seen to accept the leases on a first run,
    run the agents on one machine only.
-3. **The workflow**: the new Shortcut states, the QA labels and the wake fixes
+3. **The workflow**, sc-5148: the new Shortcut states, the QA labels and the wake fixes
    ([workflow.md](workflow.md)).
-4. **The Mac**, sc-5147: the launchd runner and `just agents setup` on macOS
+4. **The Mac**, #280: the launchd runner and `just agents setup` on macOS
    ([machines.md](machines.md#setting-up-from-a-fresh-clone)).
 
 Story: sc-2864, which started as the product manager's idea; the owner gave it to ops on

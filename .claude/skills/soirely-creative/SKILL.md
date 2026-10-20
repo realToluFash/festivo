@@ -147,7 +147,7 @@ Only when words cannot carry it: a link to the section of the concepts artifact.
 The product manager replies on the story:
 
 - **Accepted**: the product manager writes the AC (or folds it into an existing story) and
-  moves it to `To Do`, and the designer draws it. Your part is done, except for questions
+  moves it to `To Do`, then to `Needs Design`, and the designer draws it. Your part is done, except for questions
   addressed to you. You do not write AC and you do not draw the final screens.
 - **Parked**: it stays in `Backlog` with the reason. Bring it back only when the reason
   changes, and say what changed.

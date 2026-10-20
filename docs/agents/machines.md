@@ -239,7 +239,7 @@ Every minute `sq run` reads them all in one call, writes its heartbeat, and sett
   the middle of one.
 - **Every piece of work is claimed in GitHub too**, before its worker starts: a story by
   its pool and number, work with no story (a red `main`, a sweep) by its pool and kind. The
-  developers share To Do and the testers share Ready For QA, even on different machines,
+  developers share Ready For Dev and the testers share Ready For QA, even on different machines,
   so work claimed on one is skipped on the other. A claim is given back when its worker
   finishes, and otherwise lapses only after 90 minutes, the local lease and the longest a
   worker runs. It does not lapse with its machine: a machine gone quiet, or a Mac asleep,

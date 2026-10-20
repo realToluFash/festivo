@@ -47,7 +47,7 @@ from the main checkout makes it).
      needs no QA, so the story goes to Done. One a person should check by hand (a stack
      that comes up differently, a script testers run) carries `needs qa` (add it before
      merging) and goes to Ready For QA instead. A story with another pull request still
-     open stays In Review until the last one merges.
+     open waits in Passed Code Review until the last one merges.
 - **No spending and no outside changes without the owner.** New servers, paid plans, DNS
   records, provider accounts and domain changes are the owner's calls. Bring a costed
   recommendation, tagging `[bm]` when the money needs weighing.
