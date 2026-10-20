@@ -213,7 +213,7 @@ def developer_items(stories, prs):
         story = by_id.get(pr["story_id"])
         if not story or story["done"]:
             continue
-        role = R.developer_of(story["labels"])
+        role = R.builder_of(story["labels"])
         sha = pr["head_sha"][:7]
         verdict = latest_verdict(pr)
         covered = covers(verdict, pr["head_sha"], pr.get("carried"))
@@ -226,8 +226,10 @@ def developer_items(stories, prs):
         if pr["state"] == "merged":
             if story["state"] == "In Review":
                 if covered and verdict["verdict"] == "pass":
+                    after = "Ready For QA" if role != "ops" or "needs qa" in story["labels"] \
+                        else "Done"
                     add("to-qa", f"PR #{number} merged at the passed {sha}: "
-                                 f"move sc-{story['id']} to Ready For QA")
+                                 f"move sc-{story['id']} to {after} with `to-qa`")
                 else:
                     add("merged-unpassed", f"PR #{number} merged at {sha}, "
                                            "which no lead pass covers: ask [lead]")
