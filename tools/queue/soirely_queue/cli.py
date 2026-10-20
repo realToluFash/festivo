@@ -11,8 +11,8 @@ import subprocess
 import sys
 import time
 
-from . import (actions, agents, digests, github, machine, payloads, permissions, roles, runlog,
-               runner, shared, store, sync, systemd, update, work)
+from . import (actions, agents, digests, github, launchd, machine, payloads, permissions, roles,
+               runlog, runner, shared, store, sync, systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -20,7 +20,8 @@ from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
 OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents")
-ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "start", "stop", "pause",
+ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "worker-supervise",
+         "start", "stop", "pause",
          "resume", "cost", "agents")
 
 
@@ -579,6 +580,10 @@ def cost(days):
         print(f"total: ${total:.2f}")
 
 
+def this_platform():
+    return launchd.Mac(home()) if sys.platform == "darwin" else systemd.platform()
+
+
 def admin(argv):
     p = argparse.ArgumentParser(prog="sq", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
@@ -588,10 +593,13 @@ def admin(argv):
     sub.add_parser("install", help="copy sq where no branch switch removes it")
     sub.add_parser("run", help="the timer's minute: sync, then tick each started role") \
         .add_argument("--dry-run", action="store_true", help="say what would wake, start nothing")
-    for name in ("worker", "worker-ended"):
+    for name in ("worker", "worker-ended", "worker-supervise"):
         worker = sub.add_parser(name, help=argparse.SUPPRESS)
         worker.add_argument("role")
         worker.add_argument("item", type=int)
+        if name == "worker-supervise":
+            worker.add_argument("--minutes", type=int, required=True)
+            worker.add_argument("--memory")
     for name, help_ in (("start", "start roles on this machine"),
                         ("stop", "stop roles on this machine")):
         sp = sub.add_parser(name, help=help_)
@@ -614,8 +622,9 @@ def admin(argv):
         print(f"error: sq {a.command} is the owner's, and this is "
               f"{os.environ['SOIRELY_WORKER']}'s worker; say what you need in your report")
         return sys.exit(1)
+    machine.load_env()
     db = open_db()
-    platform = systemd.platform()
+    platform = this_platform()
     sq_path = home() / "sq" / "sq"
     if a.command == "status":
         status(db, platform, time.time())
@@ -625,6 +634,15 @@ def admin(argv):
         runner.worker(db, home(), platform, a.role, a.item)
     elif a.command == "worker-ended":
         runner.worker_ended(home(), platform, a.role, a.item)
+    elif a.command == "worker-supervise":
+        result, status = launchd.supervise(
+            [sys.executable, str(sq_path), "worker", a.role, str(a.item)], a.minutes * 60,
+            launchd.size_bytes(a.memory))
+        os.environ.update(SERVICE_RESULT=result, EXIT_STATUS=str(status))
+        runner.worker_ended(home(), platform, a.role, a.item)
+        pidfile = platform.pidfile(a.role)
+        if pidfile.exists() and pidfile.read_text().strip() == str(os.getpid()):
+            pidfile.unlink()
     elif a.command in ("start", "stop"):
         names = list(machine.load().get("roles") or {}) if a.all else a.roles
         if a.command == "start":

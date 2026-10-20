@@ -4,8 +4,8 @@ How the Soirely roles (`/soirely-developer`, `/soirely-qa-tester` and the rest) 
 own: what checks for work, what does it, what it costs, and the commands that start and
 stop it all.
 
-**Status: agreed with the owner on 20 Oct. The Linux runner is #276, and more than one
-machine is #279; the rest is later work, marked where it is described.** Until a role is moved over, it runs as a `CronCreate`
+**Status: agreed with the owner on 20 Oct. The Linux runner is #276, more than one machine
+is #279, and the Mac runner is sc-5147; the rest is later work, marked where it is described.** Until a role is moved over, it runs as a `CronCreate`
 routine inside an open Claude Code session (`role-routine`). Ops owns the work; it lands in
 the pull requests listed under [Delivery](#delivery).
 
@@ -53,8 +53,8 @@ workers as they are and removes the ticks.
   plain Python. `idle`, `busy` and `error:` start nothing.
 - **A wake starts one worker**: a fresh `claude -p --permission-mode auto` run in that
   role's own checkout, with the same model, effort, skills and prompt as today's workers.
-  It runs as its own unit (systemd on Linux, launchd on Mac), so it outlives the tick that
-  started it.
+  It runs apart from the tick that started it, so it outlives it: as its own systemd unit
+  on Linux, and on a Mac as a process in a session of its own, run by `sq worker-supervise`.
 - **One worker per role at a time.** While a role's worker runs, its tick is skipped.
 - **The run log.** Each run appends one line to `runs/<role>.jsonl`: time, item, exit code,
   cost, token usage and the worker's report. `sq status` shows the last report per role.
@@ -140,8 +140,9 @@ against a misreading rather than an attack.
   workers together on Linux. These are starting values, tuned at the cut-over against
   `/proc/pressure/memory`. They exist because on 18 Oct systemd-oomd killed the owner's
   whole session over memory stall, with 25 GiB still free. Macs have no hard limit, so
-  there `sq run` will watch each worker and stop one that goes over. _(Later, with the Mac
-  runner)_
+  there each worker's supervisor checks its memory every 5 seconds and stops it over its
+  `memoryMax`, as it does at its `maxRuntime`. The 16G for all workers together holds on
+  Linux only.
 - **Spending.** A per-run ceiling (`--max-budget-usd`) can be set per role in
   `agents.json`. No role has one until the owner picks a number.
 - **No token, no tick.** The Shortcut token is read from `~/.config/soirely/env` (mode 600,
@@ -204,8 +205,8 @@ through `notify-send`), not once a minute.
    run the agents on one machine only.
 3. **The workflow**: the new Shortcut states, the QA labels and the wake fixes
    ([workflow.md](workflow.md)).
-4. **The Mac**: the launchd runner and `just agents setup` on macOS
-   ([machines.md](machines.md)).
+4. **The Mac**, sc-5147: the launchd runner and `just agents setup` on macOS
+   ([machines.md](machines.md#setting-up-from-a-fresh-clone)).
 
 Story: sc-2864, which started as the product manager's idea; the owner gave it to ops on
 20 Oct.

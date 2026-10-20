@@ -6,7 +6,8 @@ checkout on the latest `main`.
 
 **Status: agreed with the owner on 20 Oct.** #276 builds `agents.json`, `just agents` and
 staying on `main`, for Linux. #279 builds more than one machine, ops on every machine and
-the permission asks. The Mac is later work, and so is each line below marked _(later)_.
+the permission asks. sc-5147 builds the Mac runner. Each line below marked _(later)_ is
+later work.
 
 ## `agents.json`
 
@@ -139,7 +140,9 @@ with `~/.claude-soirely`.
 - **A folder with no login refuses its roles**, with the command to log in. The other
   roles keep running. `sq` reads only the account's email from `.claude.json`, never a
   token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
-  Keychain. _(To check with the Mac runner: that two folders keep two Keychain logins.)_
+  Keychain. _(To check on the Mac's first run with two folders: that each keeps its own
+  Keychain login, which `sq status` shows as each role's account and the run log as each
+  run's.)_
 - **Each run records its account** in the run log, and `sq status` shows each role's
   account when the machine uses more than one.
 - **Settings and memory are per folder; the workers' permissions are per machine.** What
@@ -182,14 +185,26 @@ and starts no worker. `sq status` shows the same line.
 3. **Makes each listed role's checkout and stack** with `just dev-env setup --role <role>`.
 4. **Installs the runner for this system.** The `sq` commands are the same on both.
 
-|                                   | Linux                              | Mac                                                                    |
-| --------------------------------- | ---------------------------------- | ---------------------------------------------------------------------- |
-| Timer every minute                | systemd user timer                 | launchd agent, `StartInterval 60`                                      |
-| Each worker                       | its own unit, `systemd-run --user` | its own launchd job                                                    |
-| Worker memory ceiling             | hard, by systemd (`MemoryMax`)     | none in the system: `sq run` watches and stops a worker over its limit |
-| Stops at logout, resumes at login | yes                                | yes                                                                    |
+|                                   | Linux                              | Mac                                                                     |
+| --------------------------------- | ---------------------------------- | ----------------------------------------------------------------------- |
+| Timer every minute                | systemd user timer                 | launchd agent `com.soirely.routine`, `StartInterval 60`                 |
+| Each worker                       | its own unit, `systemd-run --user` | its own session, run by `sq worker-supervise`                           |
+| Worker memory ceiling             | hard, by systemd (`MemoryMax`)     | the supervisor checks every 5 seconds and stops a worker over its limit |
+| Worker time limit                 | `RuntimeMaxSec`                    | the supervisor stops it at its `maxRuntime`                             |
+| An ending with no report          | `ExecStopPost` records it          | the supervisor records it, with the same reasons                        |
+| The token                         | `EnvironmentFile`                  | `sq` reads `~/.config/soirely/env` itself                               |
+| Logs                              | the journal                        | `~/Library/Logs/soirely/`, set aside past 10 MB                         |
+| Notifications                     | `notify-send`                      | `osascript`                                                             |
+| Stops at logout, resumes at login | yes                                | yes; `just agents down` keeps it off at the next login too              |
 
-The tests cover both versions without either system installed.
+**Why a Mac worker is not a launchd job.** launchd kills what is left in a job's process
+group when the job ends, so the worker starts in a session of its own and outlives the
+tick, as a transient unit does on Linux. Its supervisor runs it in a process group of its
+own, so stopping it at a limit, or with `just agents down --now`, stops everything it
+started too.
+
+The tests cover both versions without either system installed. On Linux the Mac's
+supervisor and its detached workers run for real; only `launchctl` is never called.
 
 ## More than one machine
 
@@ -365,11 +380,11 @@ a thread; the boundary is that granting needs the owner at a keyboard.
 3. Reinstall `sq` if it differs, and only if CI is green on that commit. If it is not, or
    the fetch fails because the machine is offline, start on the installed version and say
    why.
-4. Rewrite the systemd units if their text changed.
+4. Rewrite the systemd units, or the launchd agent on a Mac, if their text changed.
 
 While running, `sq run` repeats steps 2–4 every ten minutes, and checks the `claude` CLI
-against `claudeVersion` every run ([Guards](README.md#guards-and-alerts)). _(Later: the
-launchd job on a Mac, and `sq status` showing the last failed check.)_ Permissions are
+against `claudeVersion` every run ([Guards](README.md#guards-and-alerts)). _(Later:
+`sq status` showing the last failed check.)_ Permissions are
 never applied here; see [Permission asks](#permission-asks).
 
 ## Staying on the latest `main`
