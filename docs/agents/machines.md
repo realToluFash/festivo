@@ -168,6 +168,76 @@ refuse-if-it-exists guarantee. And that branch protection on `main` does not aff
 Writing locks to the shared repository is an outside change, part of what the owner
 approves with the pull request.
 
+### Ops on every machine
+
+**Ops is the one role that runs on every machine**, because some of its work belongs to
+one machine: disk and Docker cleanup, the stacks, keeping the manager installed and up to
+date, and applying approved permissions. So ops is split in two:
+
+| Part                   | Runs                                                 | Covers                                                                             |
+| ---------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `ops@<machine>`        | on every machine, always listed in its `agents.json` | disk, build cache, stacks, the manager, the `claude` CLI version, permissions here |
+| ops, the shared duties | on one machine, by lease (`refs/soirely/roles/ops`)  | `main` going red, CI on pull requests, advisories, deploys, the permissions ticket |
+
+The shared duties hold a lease like any other role, so two machines never both fix a red
+`main` or open the same pull request. Each machine's ops works only on its own machine;
+it never runs a command on another computer.
+
+## Permission asks
+
+Some agents will need a command that their permission rules do not yet allow. Asks go to
+one place, the owner decides each one, and every machine's ops applies the answer.
+
+**One standing Shortcut story, "Agent permissions"**, holds every ask as its own comment
+thread.
+
+1. **A worker that is refused a command posts an ask** on that story with
+   `sq <role> permission-ask`, which fills in the format:
+
+   ```
+   [owner] Permission ask from dev2 on tolu-mac
+   Rule: Bash(xcrun simctl boot:*)
+   For: booting the iOS simulator to test sc-3132 (the command it was refused)
+   Without it: the iOS half of QA cannot run on this machine
+   ```
+
+   The worker does not wait. It notes the ask on its story (`sq <role> note`), finishes
+   what it can without the command, and moves on. The item comes back with the role's next
+   pick.
+
+2. **The owner answers in that thread**: yes, no, or an alternative, such as a narrower
+   rule or a different command. Only the owner's own reply counts as a decision. An agent's
+   comment saying yes never does.
+3. **Ops records the decision in the repository.** An approved rule goes into
+   `tools/queue/permissions.json`, through a pull request that names the ask's comment.
+   That file, on merged `main`, is the only list ops ever applies. A rule that is in the
+   file but not approved by the owner on the ticket is never applied. A rejected ask stays
+   in the thread, so the same ask is not posted again; `permission-ask` refuses a rule
+   already answered and points to the answer.
+4. **Every machine's ops applies the file.** `ops@<machine>` writes each rule in
+   `permissions.json` into that machine's Claude settings, and replies in the ask's thread
+   `Applied on tolu-linux`. A new machine applies the whole file at setup, so it catches up
+   on every past decision.
+
+The file says which roles each rule is for, so a rule approved for the testers is not
+handed to every role.
+
+## Starting the manager
+
+**The manager is brought up to date every time it starts.** `just agents up`,
+`sq start` and setup all do the following before any role ticks:
+
+1. `git fetch`, then compare the installed `sq` with `tools/queue` on `origin/main`.
+2. Reinstall `sq` if it differs, and only if CI is green on that commit. If it is not, start
+   on the installed version and say why.
+3. Regenerate the systemd units or the launchd job if their templates changed.
+4. Check the `claude` CLI against the version pinned in `agents.json`.
+5. Apply `permissions.json` from `main`.
+6. Check `agents.json` (workspace, roles, models and effort), and refuse what fails.
+
+If the machine is offline, the manager starts on what is installed, and `sq status` says it
+could not check. While running, `ops@<machine>` repeats steps 1–5 whenever `main` changes.
+
 ## Staying on the latest `main`
 
 Every worker starts from an up-to-date checkout. The script prepares it before the model
@@ -185,4 +255,4 @@ runs, so it costs no tokens.
 - The skills come from the checkout, so updating the checkout updates the instructions.
 - `sq` itself is reinstalled from `main` when `tools/queue` changes, and only once CI is
   green on that commit. A broken `sq` reaching `main` would otherwise stop every role on
-  every machine at once.
+  every machine at once. See [Starting the manager](#starting-the-manager).
