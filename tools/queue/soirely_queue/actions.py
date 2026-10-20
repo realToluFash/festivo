@@ -214,15 +214,40 @@ def move(c, a):
     return f"sc-{story['id']} is now {state}"
 
 
+OPS_TAKES = ("Backlog", "Ready For Dev", "In Progress")
+
+
+def take_over(c, story):
+    """Only a story nobody is building, so no product story reaches Done unseen."""
+    if R.OPS_LABEL in story["labels"]:
+        return
+    if story["state"] not in OPS_TAKES:
+        raise Refused(f"sc-{story['id']} is {story['state']}; ops takes over only a story in "
+                      f"{', '.join(OPS_TAKES)}")
+    taken = {*R.DEVELOPERS.values(), "translation"} & set(story["labels"])
+    if taken:
+        raise Refused(f"sc-{story['id']} is labelled {', '.join(sorted(taken))}, so it is "
+                      "another role's to build")
+    held = story["state"] == "In Progress" and holder(c, story)
+    if held:
+        raise Refused(f"sc-{story['id']} is In Progress and held: {held}")
+
+
 def label(c, a):
     guard(c, "label")
     story_id = story_number(a.story)
-    if c.role == "ops" and R.OPS_LABEL in (a.add or ()):
-        taken = {"dev1", "dev2", "translation"} & set(c.story(story_id)["labels"])
-        if taken:
-            raise Refused(f"sc-{story_id} is labelled {', '.join(sorted(taken))}, so it is "
-                          "another role's to build")
+    taking = c.role == "ops" and R.OPS_LABEL in (a.add or ())
+    if c.role == "ops":
+        story = c.story(story_id)
+        if taking:
+            take_over(c, story)
+        if set(a.add or ()) - {R.OPS_LABEL} or a.remove:
+            ops_only(c, story)
     labels = set_labels(c, story_id, a.add or (), a.remove or ())
+    if taking and R.OPS_LABEL not in story["labels"]:
+        post(c, story, ["pm"], f"sc-{story_id} is now ops' to build, labelled "
+             f"{R.OPS_LABEL}, and has left your queue. A merged ops story goes to Done "
+             "without QA unless it carries needs qa.", None)
     c.refresh(story_id)
     return f"sc-{story_id} labels: {', '.join(labels) or 'none'}"
 

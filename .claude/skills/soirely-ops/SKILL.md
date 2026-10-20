@@ -36,7 +36,8 @@ from the main checkout makes it).
   1. **File the ticket**: `sq ops new-story --name "…" --state "In Progress"` (or
      `Backlog` for later), body on stdin. It is labelled `ops`, so only ops is woken for
      it. An existing story you are building gets the label with `sq ops label sc-N --add ops`;
-     sq refuses one a developer or the linguist holds.
+     sq takes only a story in Backlog, Ready For Dev or In Progress that nobody holds, and
+     tells `[pm]` it has left their queue. `needs qa` you change only on your own stories.
   2. **Open the pull request ready for review**, never as a draft:
      `sq ops pr-create --head <branch> --title "… (sc-N)"`, body on stdin. When its checks
      are green, `sq ops move sc-N "In Review"`, which wakes `[lead]`. Answer review

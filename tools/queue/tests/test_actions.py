@@ -687,6 +687,31 @@ class OpsOwnsItsTickets(Base):
         self.fake.add(2, "Ready For Dev", [])
         actions.label(self.as_("ops"), args(story="sc-2", add=["ops"], remove=None))
         self.assertEqual(self.labels(2), {"ops"})
+        self.assertIn("[pm] (from ops)", self.fake.comments[-1][1])
+        self.assertIn("left your queue", self.fake.comments[-1][1])
+
+    def test_ops_takes_no_story_further_along_than_in_progress(self):
+        for n, state in enumerate(("To Do", "In Review", "Ready For QA", "Failed QA"), 1):
+            self.fake.add(n, state, [])
+            with self.assertRaisesRegex(actions.Refused, "takes over only"):
+                actions.label(self.as_("ops"), args(story=f"sc-{n}", add=["ops"], remove=None))
+
+    def test_ops_takes_no_in_progress_story_someone_holds(self):
+        self.fake.add(1, "In Progress", [])
+        store.put_prs(self.db, [dict(pr("pass"), branch="feat/sc-1-thing")])
+        with mock.patch("soirely_queue.sync.sync_github"), \
+                self.assertRaisesRegex(actions.Refused, "held"):
+            actions.label(self.as_("ops"), args(story="sc-1", add=["ops"], remove=None))
+
+    def test_ops_changes_needs_qa_only_on_its_own_stories(self):
+        self.fake.add(1, "Ready For QA", ["backend", "needs qa"])
+        for change in ({"add": ["needs qa"], "remove": None},
+                       {"add": None, "remove": ["needs qa"]}):
+            with self.assertRaisesRegex(actions.Refused, "only its own stories"):
+                actions.label(self.as_("ops"), args(story="sc-1", **change))
+        self.fake.add(2, "In Progress", ["ops"])
+        actions.label(self.as_("ops"), args(story="sc-2", add=["needs qa"], remove=None))
+        self.assertEqual(self.labels(2), {"ops", "needs qa"})
 
     def test_no_role_opens_a_draft(self):
         with self.assertRaisesRegex(actions.Refused, "ready for review"):
