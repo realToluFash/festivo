@@ -7,6 +7,11 @@ DEVELOPERS = {"dev": "dev1", "dev2": "dev2"}
 TRANSLATION_QUEUE = ["To Do", "In Progress", "Failed QA"]
 
 
+# A story labelled `ops` is infra work ops filed for itself: ops builds it, the lead reviews
+# it, and no other role's queue lists it.
+OPS_LABEL = "ops"
+
+
 def developer_of(labels):
     names = set(labels or [])
     for role, label in DEVELOPERS.items():
@@ -15,8 +20,17 @@ def developer_of(labels):
     return "dev"
 
 
+def builder_of(labels):
+    """Who opens and merges the story's pull request, and is woken by its checks."""
+    return "ops" if OPS_LABEL in set(labels or []) else developer_of(labels)
+
+
 def not_translation(labels, state):
-    return "translation" not in labels
+    return "translation" not in labels and OPS_LABEL not in labels
+
+
+def ops_story(labels, state):
+    return OPS_LABEL in labels
 
 
 def translation(labels, state):
@@ -24,12 +38,12 @@ def translation(labels, state):
 
 
 def dev1_filter(labels, state):
-    return "translation" not in labels and "dev2" not in labels
+    return "translation" not in labels and "dev2" not in labels and OPS_LABEL not in labels
 
 
 def dev2_filter(labels, state):
     if state == "To Do":
-        return "translation" not in labels and "dev1" not in labels
+        return "translation" not in labels and "dev1" not in labels and OPS_LABEL not in labels
     return "dev2" in labels
 
 
@@ -59,8 +73,8 @@ ROLES = {
              "heartbeat": 30, "reviews": True},
     "bm": {"skill": "soirely-business-manager", "queue": ["Backlog", "To Do"],
            "filter": not_translation, "heartbeat": 720, "sweeps": True},
-    "ops": {"skill": "soirely-ops", "queue": [], "filter": everything, "heartbeat": 360,
-            "sweeps": True, "main": True},
+    "ops": {"skill": "soirely-ops", "queue": ["Failed QA", "In Progress", "To Do"],
+            "filter": ops_story, "heartbeat": 360, "sweeps": True, "main": True, "prs": True},
     "l10n": {"skill": "soirely-linguist", "queue": TRANSLATION_QUEUE, "filter": translation,
              "heartbeat": 120, "sweeps": True},
     "cd": {"skill": "soirely-creative", "queue": [], "filter": everything, "heartbeat": 1440,
@@ -117,6 +131,8 @@ def author(text):
 
 
 DEVS = ("dev", "dev2")
+# Every role that opens pull requests merges its own, once the lead has passed it.
+BUILDERS = DEVS + ("l10n", "ops")
 TESTERS = ("qa", "qa2", "qa3")
 LINGUISTS = ("l10n",)
 EVERYONE = tuple(ROLES)
@@ -127,21 +143,21 @@ MAY = {
     "comment": EVERYONE,
     "note": EVERYONE,
     "claim": DEVS + TESTERS,
-    "move": DEVS + TESTERS + LINGUISTS + ("lead", "pm"),
-    "label": DEVS + TESTERS + LINGUISTS + ("pm", "cd"),
+    "move": DEVS + TESTERS + LINGUISTS + ("lead", "pm", "ops"),
+    "label": DEVS + TESTERS + LINGUISTS + ("pm", "cd", "ops"),
     "edit": LINGUISTS + ("pm", "ux", "cd", "bm"),
-    "new-story": DEVS + LINGUISTS + ("pm", "cd"),
+    "new-story": DEVS + LINGUISTS + ("pm", "cd", "ops"),
     "new-epic": ("pm",),
     "task": LINGUISTS + ("pm",),
     "relate": LINGUISTS + ("pm", "cd"),
     "archive": ("pm",),
     "report": TESTERS,
-    "pr-create": DEVS + LINGUISTS + ("ops",),
+    "pr-create": BUILDERS,
     "review": ("lead",),
     "pr-reply": DEVS + LINGUISTS + ("lead", "ops"),
     "resolve": ("lead",),
-    "merge": DEVS + LINGUISTS,
-    "to-qa": DEVS,
+    "merge": BUILDERS,
+    "to-qa": DEVS + ("ops",),
     "rerun": DEVS + ("ops",),
 }
 
@@ -154,6 +170,9 @@ MOVES = {
     "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
            "Failed QA": ("In QA",)},
     "l10n": {"In Progress": ("To Do", "Failed QA"), "Ready For QA": ("In Progress",)},
+    # Only on a story labelled ops. Ready For QA and Done come with the merge.
+    "ops": {"In Progress": ("Backlog", "To Do", "Ready For Dev", "Failed QA", "In Review"),
+            "In Review": ("In Progress",)},
 }
 # The product manager also takes back an In Progress story that nobody holds: no role moved
 # it there, no developer label, no open pull request on its branch (`actions.holder`).
@@ -165,7 +184,7 @@ for _tester in TESTERS:
 # A role that labels may only touch these labels; the product manager may touch any.
 OWN_LABELS = {"dev": {"dev1"}, "dev2": {"dev2"}, "cd": {"idea"},
               **{t: {"qa passed", "qa failed", "needs qa"} for t in TESTERS},
-              "l10n": {"translation"}}
+              "l10n": {"translation"}, "ops": {OPS_LABEL, "needs qa"}}
 
 CATALOGUES = [
     "apps/web/src/i18n/locales/{locale}.json",
