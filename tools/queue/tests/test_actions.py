@@ -101,6 +101,10 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.db = store.connect(":memory:")
         self.fake = FakeShortcut()
+        # No test reads a pull request's files from GitHub; one that needs them patches this.
+        files = mock.patch("soirely_queue.github.files", return_value=[])
+        files.start()
+        self.addCleanup(files.stop)
 
     def as_(self, role):
         return FakeContext(self.db, role, self.fake)
@@ -732,3 +736,49 @@ class OpsOwnsItsTickets(Base):
         kinds = {(w["roles"], w["kind"]) for w in store.waiting(self.db, "ops")}
         self.assertIn(("ops", "merge"), kinds)
         self.assertFalse([w for w in store.waiting(self.db, "dev") if w["kind"] == "merge"])
+
+
+class PermissionAsks(Base):
+    def setUp(self):
+        super().setUp()
+        self.fake.add(4992, "Backlog", [])
+        patch = mock.patch("soirely_queue.actions.this_machine", return_value="tolu-mac")
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def ask(self, role="qa2", rule="Bash(xcrun simctl boot:*)"):
+        return actions.permission_ask(self.as_(role), args(
+            rule=rule, for_="booting the simulator for sc-3132", without="no iOS QA here"))
+
+    def test_an_ask_posts_the_five_parts_with_no_tag(self):
+        said = self.ask()
+        self.assertEqual(self.fake.comments[-1], (4992, "\n".join([
+            "Permission ask (from qa2)", "Machine: tolu-mac", "Rule: Bash(xcrun simctl boot:*)",
+            "For: booting the simulator for sc-3132", "Without it: no iOS QA here"])))
+        self.assertIn("Don't wait", said)
+        cli.refresh_work(self.db, 10_000_000)
+        self.assertEqual([w for w in store.waiting(self.db, "pm") if w["kind"] == "inbox"], [])
+
+    def test_the_same_rule_is_not_asked_twice_and_the_answer_is_given(self):
+        self.ask()
+        self.fake.comment(4992, "No: use the Android emulator instead.", parent_id=1)
+        with self.assertRaisesRegex(actions.Refused, "owner answered: No: use the Android"):
+            self.ask(role="qa3")
+
+    def test_a_rule_must_be_a_rule(self):
+        with self.assertRaisesRegex(actions.Refused, "not a permission rule"):
+            self.ask(rule="sudo everything")
+
+    def test_nobody_merges_a_change_to_the_granted_rules(self):
+        self.fake.add(1, "In Review", ["ops"])
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value={
+                "headRefOid": HEAD, "mergeable": "MERGEABLE", "draft": False}), \
+                mock.patch("soirely_queue.github.files",
+                           return_value=[("tools/queue/permissions.json", 1, 0)]), \
+                mock.patch("soirely_queue.github.merge") as merged, \
+                mock.patch("soirely_queue.sync.sync_github"), \
+                self.assertRaisesRegex(actions.Refused, "only the owner merges it"):
+            actions.merge(self.as_("ops"), args(pr=9, text=None))
+        merged.assert_not_called()
+

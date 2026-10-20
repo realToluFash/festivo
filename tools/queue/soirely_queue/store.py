@@ -178,15 +178,19 @@ def waiting(db, role):
                       (f"%,{role},%",)).fetchall()
 
 
-def claim(db, role, now=None):
-    """The role's top open item, or None. One claim per role, and one per pool item."""
+def claim(db, role, now=None, kinds=None, skip=()):
+    """The role's top open item, or None. One claim per role, and one per pool item.
+    `kinds` limits it to some kinds of work; `skip` holds the (pool, story) pairs taken on
+    another machine."""
     now = now or time.time()
     db.execute("begin immediate")
     try:
         if held_by(db, role, now):
             db.execute("commit")
             return None
-        rows = waiting(db, role)
+        rows = [row for row in waiting(db, role)
+                if (kinds is None or row["kind"] in kinds)
+                and (row["pool"], row["story_id"]) not in skip]
         if not rows:
             db.execute("commit")
             return None

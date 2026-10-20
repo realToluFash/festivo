@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-from . import checkout, machine, roles, runlog, store, sync, update
+from . import checkout, local, machine, permissions, roles, runlog, shared, store, sync, update
 
 VERSION_EVERY_SECONDS = 10 * 60
 MILESTONES = ("At each milestone (a branch pushed, a part built, a result found) write one "
@@ -85,11 +85,31 @@ def guards(config, home, platform, db, ready, say):
         say(f"held: {reason}")
         if once(db, f"told:{guard}", today):
             platform.notify("Soirely agents held", reason)
-    return list(reasons.values())
+    return reasons
+
+
+def holding(db, now):
+    """The (pool, story) pairs this machine's workers hold right now."""
+    return {(row["pool"], row["story_id"]) for row in db.execute(
+        "select pool, story_id from work where status = 'claimed' and lease_until >= ? "
+        "and story_id is not null", (now,))}
+
+
+def agree(db, config, platform, now, say, remote, ready):
+    """Settles with the other machines. Returns `(view, mine, elsewhere)`, or None when
+    GitHub cannot be reached: then only the roles held at the last good minute run."""
+    try:
+        return shared.reconcile(remote, db, config, started(db) & ready, platform.worker_active,
+                                holding(db, now), now, bool(paused(db)))
+    except Exception as error:  # noqa: BLE001 — offline, rate-limited, or GitHub refusing
+        last = store.get_meta(db, "shared_view") or {}
+        say(f"warning: could not reach the shared leases ({str(error)[:160]}); running only "
+            f"what this machine held a minute ago: {', '.join(last.get('mine', [])) or 'none'}")
+        return None
 
 
 def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
-        load=machine.load, probe=installed_claude):
+        load=machine.load, probe=installed_claude, remote=None):
     now = now or time.time()
     try:
         config = load()
@@ -103,8 +123,6 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
     if not os.environ.get("SHORTCUT_API_TOKEN"):
         return say(f"error: SHORTCUT_API_TOKEN is not set in {machine.env_file()}; "
                    "nothing synced, no role ticked")
-    if paused(db):
-        return say(f"paused since {paused(db)}: sq resume starts the roles again")
     version = claude_version(db, now, probe)
     late = drift(config, version)
     if late:
@@ -121,17 +139,42 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
     if errors and not store.get_meta(db, "synced_ok_at"):
         return say(f"error: {'; '.join(errors)}")
     from .cli import refresh_work
+    local.checks(db, config, now)
     refresh_work(db, now)
     if not dry_run and update.check(db, home, now, say):
         say("the new sq takes over from the next minute")
     if not dry_run:
         platform.install(sq, machine.env_file(), python)
+    remote = remote or shared.GitHubRefs()
+    # Settled even while paused, so a pause here never hands this machine's roles away.
+    agreed = None if dry_run else agree(db, config, platform, now, say, remote, set(ready))
+    if paused(db):
+        return say(f"paused since {paused(db)}: sq resume starts the roles again")
     held = guards(config, home, platform, db, list(ready), say)
+    if agreed:
+        view, mine, elsewhere = agreed
+        if view.paused():
+            pause = view.paused()
+            return say(f"paused everywhere by {pause.get('machine')}: sq resume --everywhere "
+                       "starts every machine again")
+        skip = view.taken_elsewhere()
+    else:
+        view, mine = None, set((store.get_meta(db, "shared_view") or {}).get("mine", []))
+        elsewhere, skip = {}, set()
     minute = int(now // 60)
     # A dry run previews every ready role, started or not, whatever the minute.
     for role in sorted(set(ready) if dry_run else set(ready) & started(db)):
         if not dry_run and not due(role, minute):
             continue
+        # ops@<machine> runs on every machine; the lease decides only ops' shared duties.
+        kinds = None
+        if role not in mine and not dry_run:
+            if role != "ops":
+                where = elsewhere.get(role)
+                say(f"{role}: running on {where[0]}, last seen {where[1]}s ago" if where
+                    else f"{role}: not held here")
+                continue
+            kinds = ("machine",)
         if platform.worker_active(role):
             say(f"{role}: worker still running")
             continue
@@ -143,11 +186,19 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
             say(f"{role}: would wake for {waiting[0]['reason']}" if waiting else f"{role}: idle")
             continue
         if held:
-            continue
+            # A full disk is the one hold ops@<machine> exists to clear.
+            if role != "ops" or set(held) - {"disk"}:
+                continue
+            kinds = ("machine",)
         values = dict(ready[role], maxRuntimeMinutes=machine.minutes(ready[role]["maxRuntime"]))
-        row = store.claim(db, role, now)
+        row = store.claim(db, role, now, kinds=kinds, skip=skip)
         if not row:
             say(f"{role}: idle")
+            continue
+        if view and row["story_id"] and row["pool"] in shared.POOLS and \
+                not shared.claim_story(remote, view, row["pool"], row["story_id"], role):
+            store.release(db, row["id"])
+            say(f"{role}: sc-{row['story_id']} was just taken on another machine")
             continue
         try:
             platform.launch(role, row["id"], values, sq, python, machine.checkout(config, role),
@@ -168,11 +219,15 @@ def prompt(row, role, main, note):
     return "\n".join(lines + ["", brief(row, role), MILESTONES.format(role=role)])
 
 
-def command(values, config_dir):
+def command(values, config_dir, allowed=(), denied=()):
     argv = ["claude", "-p", "--model", values["model"], "--effort", values["effort"],
             "--permission-mode", "auto", "--output-format", "json"]
     if values.get("maxBudgetUsd"):
         argv += ["--max-budget-usd", str(values["maxBudgetUsd"])]
+    if allowed:
+        argv += ["--allowedTools", *allowed]
+    if denied:
+        argv += ["--disallowedTools", *denied]
     env = dict(os.environ)
     folder = machine.expand(config_dir)
     # Claude's own folder runs as Claude does by default, with nothing set.
@@ -198,7 +253,8 @@ def worker(db, home, platform, role, item_id, run_claude=subprocess.run, load=ma
     entry["main"] = main
     folder = machine.claude_dir(config, role)
     entry["account"] = machine.account(folder)
-    argv, env = command(values, folder)
+    argv, env = command(values, folder, permissions.for_role(permissions.applied(), role),
+                        permissions.denied(home / "sq" / "sq", folder))
     finished = run_claude(argv, input=prompt(row, role, main, note), capture_output=True,
                           text=True, cwd=path, env=env)
     try:

@@ -221,4 +221,12 @@ def render(p, db, row, cache):
             return next_lines(p, f"{SQ} {p.role} claim sc-{story['id']}",
                               f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
         return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+    if kind == "machine":
+        p.add(f"You are {row['pool']}: this machine only. Never run a command against another "
+              "computer, and leave CI, deploys and stories to the machine holding the ops "
+              "lease.", "",
+              "Look with `docker system df`, `df -h`, `sq status`; clean with "
+              "`just prune-build-cache` (volumes are kept). Never delete a volume, a database "
+              "or data you did not create.")
+        return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
     p.add(f"(no payload for {kind})")

@@ -289,8 +289,22 @@ def heartbeat_items(stories, last_runs, busy_roles, now):
     return items
 
 
+def machine_items(checks):
+    """ops@<machine>'s work, from this machine's own checks. A finding wakes ops once a day
+    at most, and the sweep once a day."""
+    if not checks:
+        return []
+    name, items = checks["machine"], []
+    for found in checks["found"]:
+        items.append(_item(f"ops@{name}:{found['key']}:{found['period']}", f"ops@{name}", ["ops"],
+                           "machine", found["reason"],
+                           PULL_REQUEST if found.get("urgent") else SWEEP))
+    return items
+
+
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
-           handled=frozenset(), moves=None):
+           handled=frozenset(), moves=None, checks=None):
     return (inbox_items(stories, handled) + developer_items(stories, prs) + review_items(stories, prs)
             + queue_items(stories, moves) + main_items(main_run)
-            + heartbeat_items(stories, last_runs or {}, set(busy_roles), now))
+            + heartbeat_items(stories, last_runs or {}, set(busy_roles), now)
+            + machine_items(checks))

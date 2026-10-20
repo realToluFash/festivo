@@ -94,6 +94,10 @@ class Checked(unittest.TestCase):
         errors = machine.check(config(self.root, roles={"dev9": {}}))[0]
         self.assertIn("unknown role dev9", errors[0])
 
+    def test_every_machine_runs_ops(self):
+        errors = machine.check(config(self.root, roles={"dev2": {}}))[0]
+        self.assertTrue(any(e.startswith("ops is not listed") for e in errors))
+
     def test_a_missing_checkout_is_refused_by_its_path(self):
         refused = machine.check(config(self.root, roles={"lead": {}}))[1]
         self.assertEqual(refused["lead"], f"no checkout at {self.root / 'soirely-lead'}")
