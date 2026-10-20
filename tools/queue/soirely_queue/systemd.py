@@ -97,6 +97,10 @@ class Linux:
     def disable(self):
         systemctl("disable", "--now", f"{TIMER}.timer", check=False)
 
+    def after_run(self):
+        """A changed timer is reloaded by `install` itself: systemd's reload leaves the
+        running tick alone."""
+
     def timer_active(self):
         return systemctl("is-active", f"{TIMER}.timer", check=False).stdout.strip() == "active"
 

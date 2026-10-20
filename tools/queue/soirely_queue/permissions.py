@@ -89,7 +89,7 @@ def denied(sq, claude_folder):
     for command in OWNER_ONLY:
         rules += [f"Bash(python3 {sq} {command}:*)", f"Bash({sq} {command}:*)",
                   f"Bash(sq {command}:*)"]
-    rules += ["Bash(just agents:*)", "Bash(systemctl --user:*)"]
+    rules += ["Bash(just agents:*)", "Bash(systemctl --user:*)", "Bash(launchctl:*)"]
     for folder in (machine.config_dir(), claude_folder):
         if folder:
             rules += [f"Edit({as_path(folder)}/**)", f"Write({as_path(folder)}/**)"]

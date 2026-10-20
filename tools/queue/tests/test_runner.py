@@ -40,6 +40,9 @@ class FakePlatform:
     def notify(self, title, body):
         self.notes.append((title, body))
 
+    def after_run(self):
+        pass
+
     def enable(self):
         self.enabled = True
 
