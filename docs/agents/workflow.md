@@ -3,8 +3,12 @@
 Which Shortcut state a story is in decides which role it wakes. The aim is that **every
 step wakes exactly one role**, and that the board says truthfully where each story is.
 
-**Status: agreed with the owner on 20 Oct, not yet built.** The owner adds the new states
-in Shortcut; ops changes `sq` and the skills to match, in one pull request.
+**Status: agreed with the owner on 20 Oct. The owner has added all five new states in
+Shortcut (Needs Design, Ready For Dev, Passed Code Review, Failed Code Review, Waiting On
+Owner). `sq` and the skills do not use them yet:** no role's queue lists them, so a story
+moved into one wakes nobody. Until that pull request lands (step 3 under
+[Delivery](README.md#delivery)), move no story into them. The one there now, sc-2864 in
+Ready For Dev, is ops' own and worked by hand.
 
 ## The states
 

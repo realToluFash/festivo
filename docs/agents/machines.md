@@ -4,8 +4,9 @@ Where the agents run: the per-machine `agents.json`, setting up from a fresh clo
 or a Mac, running agents on more than one computer without conflicts, and keeping every
 checkout on the latest `main`.
 
-**Status: agreed with the owner on 20 Oct. `agents.json`, setup and staying on `main` are
-built for Linux; more than one machine, the permission asks and the Mac are not yet.**
+**Status: agreed with the owner on 20 Oct.** #276 builds `agents.json`, `just agents` and
+staying on `main`, for Linux. More than one machine, the permission asks and the Mac are
+later work, and so is each line below marked _(later)_.
 
 ## `agents.json`
 
@@ -37,20 +38,20 @@ repository because it describes the machine, not the project. The repository shi
 }
 ```
 
-| Field                                     | Meaning                                                                                                              |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `machine`                                 | this machine's name, shown to other machines that try to start a role it holds                                       |
-| `workspace`                               | where checkouts live: each role's is `<workspace>/soirely-<role>`                                                    |
-| `mainCheckout`                            | the folder of the main checkout, developer 1's. `festivo` here; `soirely` on a fresh machine                         |
-| `roles`                                   | the roles this machine may run. A role not listed never ticks here                                                   |
-| `checkout`                                | per role: overrides the path for that one role                                                                       |
-| `standby`                                 | per role: runs here only while no other machine holds it                                                             |
-| `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                                              |
-| `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                                            |
-| `claudeConfigDir`                         | the Claude config the workers use, `~/.claude-soirely` by default                                                    |
-| `claudeVersion`, `onVersionDrift`         | the pinned CLI version, and `"warn"` (default) or `"stop"` when it drifts. See [Guards](README.md#guards-and-alerts) |
-| `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                         |
-| `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                               |
+| Field                                     | Meaning                                                                                                                   |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `machine`                                 | this machine's name, in the run log and `sq status`. _(Later: shown to other machines that try to start a role it holds)_ |
+| `workspace`                               | where checkouts live: each role's is `<workspace>/soirely-<role>`                                                         |
+| `mainCheckout`                            | the folder of the main checkout, developer 1's. `festivo` here; `soirely` on a fresh machine                              |
+| `roles`                                   | the roles this machine may run. A role not listed never ticks here                                                        |
+| `checkout`                                | per role: overrides the path for that one role                                                                            |
+| `standby`                                 | per role: runs here only while no other machine holds it. _(Later, with the leases)_                                      |
+| `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                                                   |
+| `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                                                 |
+| `claudeConfigDir`                         | the Claude config the workers use, `~/.claude-soirely` by default                                                         |
+| `claudeVersion`, `onVersionDrift`         | the pinned CLI version, and `"warn"` (default) or `"stop"` when it drifts. See [Guards](README.md#guards-and-alerts)      |
+| `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                              |
+| `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                                    |
 
 - **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
   role's running worker finishes its item and takes no more.
@@ -82,9 +83,10 @@ each is checked against a list in the repository, `tools/queue/models.json`: eve
   starts no worker. `sq status` and the log name the role, the field, the value, and the
   accepted values. The other roles keep running. A bad `defaults` refuses every role that
   relies on it, since running them on anything else would be a guess.
-- **A missing default is treated like a missing workspace.** The timer's `sq run` logs
-  `error:` and starts nothing. A command the owner runs offers to write Opus 5.5 at medium
-  into the file.
+- **A missing default stops every role.** The timer's `sq run` logs `error:` and starts
+  nothing, and `sq status` says the same. The fix is to put `model` and `effort` back in
+  `defaults`; `agents.example.json` has Opus 5.5 at medium. _(Later: a command that offers
+  to write them.)_
 - **A model above the default's price is pointed out.** `sq start` and `sq status` say so,
   for example `lead runs claude-fable-5-1, 2.5× the default per token`, so a costly choice
   is always deliberate.
@@ -98,7 +100,8 @@ Adding a model is a pull request to `models.json`, reviewed like any other chang
 
 ### When no workspace is set
 
-A command the owner runs (`just agents setup`, `just agents up`, `sq start`) asks:
+`just agents setup` asks. `just agents up`, `sq start` and the timer stop with an
+`error:` that says to run it.
 
 ```
 No workspace is set in ~/.config/soirely/agents.json.
@@ -176,12 +179,12 @@ approves with the pull request.
 ### Ops on every machine
 
 **Ops is the one role that runs on every machine**, because some of its work belongs to
-one machine: disk and Docker cleanup, the stacks, keeping the manager installed and up to
-date, and applying approved permissions. So ops is split in two:
+one machine: disk and Docker cleanup, the stacks, and keeping the manager installed and up to
+date. Ops never applies permissions: only the owner does (below). So ops is split in two:
 
 | Part                   | Runs                                                 | Covers                                                                             |
 | ---------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `ops@<machine>`        | on every machine, always listed in its `agents.json` | disk, build cache, stacks, the manager, the `claude` CLI version, permissions here |
+| `ops@<machine>`        | on every machine, always listed in its `agents.json` | disk, build cache, stacks, the manager, the `claude` CLI version                   |
 | ops, the shared duties | on one machine, by lease (`refs/soirely/roles/ops`)  | `main` going red, CI on pull requests, advisories, deploys, the permissions ticket |
 
 The shared duties hold a lease like any other role, so two machines never both fix a red
@@ -191,7 +194,13 @@ it never runs a command on another computer.
 ## Permission asks
 
 Some agents will need a command that their permission rules do not yet allow. Asks go to
-one place, the owner decides each one, and every machine's ops applies the answer.
+one place, the owner decides each one, and **only the owner grants it**, by a command in a
+terminal of their own. _(Later work, after more than one machine.)_
+
+Every role writes to Shortcut with the owner's API token and to GitHub as the owner's
+user, so an agent's reply and the owner's look the same. A "yes" in a thread therefore
+grants nothing. The grant is an act no agent can perform alone: the owner merging the pull
+request and running the apply command.
 
 **One standing Shortcut story, [sc-4992 "Agent permissions"](https://app.shortcut.com/soirely/story/4992)**,
 holds every ask as its own comment thread. It stays in Backlog: nobody builds, tests or
@@ -214,37 +223,44 @@ closes it.
    pick.
 
 2. **The owner answers in that thread**: yes, no, or an alternative, such as a narrower
-   rule or a different command. Only the owner's own reply counts as a decision. An agent's
-   comment saying yes never does.
-3. **Ops records the decision in the repository.** An approved rule goes into
-   `tools/queue/permissions.json`, through a pull request that names the ask's comment.
-   That file, on merged `main`, is the only list ops ever applies. A rule that is in the
-   file but not approved by the owner on the ticket is never applied. A rejected ask stays
-   in the thread, so the same ask is not posted again; `permission-ask` refuses a rule
-   already answered and points to the answer.
-4. **Every machine's ops applies the file.** `ops@<machine>` writes each rule in
-   `permissions.json` into that machine's Claude settings, and replies in the ask's thread
-   `Applied on tolu-linux`. A new machine applies the whole file at setup, so it catches up
-   on every past decision.
+   rule or a different command. The answer is a record of the decision, not the grant.
+3. **Ops drafts the change.** An approved rule goes into `tools/queue/permissions.json`
+   through a draft pull request that names the ask's comment. **Only the owner merges it**,
+   even after the lead's pass: `sq` refuses to merge a pull request that touches
+   `permissions.json`, for every role. A rejected ask stays in the thread, so the same ask
+   is not posted again; `permission-ask` refuses a rule already answered and points to the
+   answer.
+4. **The owner applies it on each machine** with `just agents permissions apply`, run in
+   their own terminal. It reads `permissions.json` from `origin/main`, shows what it would
+   add to the workers' settings under `claudeConfigDir`, and writes them only after the
+   owner confirms at the keyboard; it refuses without a terminal and inside a worker.
+   `sq status` and ops' report say when `main` has rules this machine has not applied, so
+   the owner knows to run it. A new machine applies the whole file at setup.
+
+**No worker writes Claude settings.** Setup also writes deny rules for editing the
+workers' own settings files and for the admin commands (see the
+[README](README.md#commands)). Those guard against a worker that misreads a thread; the
+boundary is that granting needs the owner at a keyboard.
 
 The file says which roles each rule is for, so a rule approved for the testers is not
 handed to every role.
 
 ## Starting the manager
 
-**The manager is brought up to date every time it starts.** `just agents up`,
-`sq start` and setup all do the following before any role ticks:
+**The manager is brought up to date every time it starts.** `just agents up` and
+`sq start` do the following before any role ticks:
 
-1. `git fetch`, then compare the installed `sq` with `tools/queue` on `origin/main`.
-2. Reinstall `sq` if it differs, and only if CI is green on that commit. If it is not, start
-   on the installed version and say why.
-3. Regenerate the systemd units or the launchd job if their templates changed.
-4. Check the `claude` CLI against the version pinned in `agents.json`.
-5. Apply `permissions.json` from `main`.
-6. Check `agents.json` (workspace, roles, models and effort), and refuse what fails.
+1. Check `agents.json` (workspace, roles, models and effort), and refuse what fails.
+2. `git fetch`, then compare the installed `sq` with `tools/queue` on `origin/main`.
+3. Reinstall `sq` if it differs, and only if CI is green on that commit. If it is not, or
+   the fetch fails because the machine is offline, start on the installed version and say
+   why.
+4. Rewrite the systemd units if their text changed.
 
-If the machine is offline, the manager starts on what is installed, and `sq status` says it
-could not check. While running, `ops@<machine>` repeats steps 1–5 whenever `main` changes.
+While running, `sq run` repeats steps 2–4 every ten minutes, and checks the `claude` CLI
+against `claudeVersion` every run ([Guards](README.md#guards-and-alerts)). _(Later: the
+launchd job on a Mac, and `sq status` showing the last failed check.)_ Permissions are
+never applied here; see [Permission asks](#permission-asks).
 
 ## Staying on the latest `main`
 
@@ -256,7 +272,7 @@ runs, so it costs no tokens.
 | No branch of its own (lead, product manager, designer, business manager, creative, ops, testers) | `git fetch`, then the checkout moves to the newest `origin/main`                                                                                        |
 | Developer building (In Progress, Failed QA, Failed Code Review)                                  | `git fetch`, then `origin/main` is merged into the branch. No rebase, no force-push. A conflicting merge is undone and the worker is told to resolve it |
 | Developer in review (In Review, Passed Code Review)                                              | `git fetch` only: merging `main` would void the lead's pass                                                                                             |
-| Changes nobody committed                                                                         | nothing is touched; the worker is told, and `sq status` shows it                                                                                        |
+| Changes nobody committed (untracked files do not count)                                          | nothing is touched, and the worker is told. _(Later: `sq status` shows it too.)_                                                                        |
 
 - Each worker's prompt starts with the `main` commit it was prepared against, so its report
   says which code it worked from.
