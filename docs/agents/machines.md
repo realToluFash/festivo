@@ -193,20 +193,23 @@ it never runs a command on another computer.
 Some agents will need a command that their permission rules do not yet allow. Asks go to
 one place, the owner decides each one, and every machine's ops applies the answer.
 
-**One standing Shortcut story, "Agent permissions"**, holds every ask as its own comment
-thread.
+**One standing Shortcut story, [sc-4992 "Agent permissions"](https://app.shortcut.com/soirely/story/4992)**,
+holds every ask as its own comment thread. It stays in Backlog: nobody builds, tests or
+closes it.
 
 1. **A worker that is refused a command posts an ask** on that story with
    `sq <role> permission-ask`, which fills in the format:
 
    ```
-   [owner] Permission ask from dev2 on tolu-mac
+   Permission ask (from dev2)
+   Machine: tolu-mac
    Rule: Bash(xcrun simctl boot:*)
    For: booting the iOS simulator to test sc-3132 (the command it was refused)
    Without it: the iOS half of QA cannot run on this machine
    ```
 
-   The worker does not wait. It notes the ask on its story (`sq <role> note`), finishes
+   There is no owner tag, since the owner is not a role. An ask missing any of the five
+   parts is not answered. The worker does not wait. It notes the ask on its story (`sq <role> note`), finishes
    what it can without the command, and moves on. The item comes back with the role's next
    pick.
 
