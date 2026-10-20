@@ -9,6 +9,7 @@ work, marked where it is described.** Until a role is moved over, it runs as a `
 routine inside an open Claude Code session (`role-routine`). Ops owns the work; it lands in
 the pull requests listed under [Delivery](#delivery).
 
+- [The roles](roles.md): each role, what it does, what wakes it, and where it works.
 - [How work moves between roles](workflow.md): the Shortcut states, the labels and which
   role each one wakes.
 - [Machines](machines.md): `agents.json`, Linux and Mac, running agents on more than one
