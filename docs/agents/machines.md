@@ -122,11 +122,20 @@ to a folder the file does not name. `agents.example.json` sets Claude's own defa
 `~/.claude.json`, beside the folder). The owner's Linux machine keeps the agents apart from
 their own sessions, so its file names `~/.claude-soirely`, set by hand.
 
+**With `~/.claude`, the workers' settings are the owner's own.** The deny rules setup writes
+for the admin commands, and every rule `just agents permissions apply` grants the workers,
+then land in the owner's `~/.claude/settings.json` too. The owner's interactive sessions are
+denied `sq stop` and `just agents`, and each grant widens them as well. A machine where the
+owner also works in Claude names a folder of its own, as this one does with
+`~/.claude-soirely`.
+
 - **Logging in, once per folder:** `CLAUDE_CONFIG_DIR=~/.claude-b claude` (plain `claude` for
   `~/.claude`), then
   `/login` with that account. `just agents setup` makes each folder the roles name, copies
-  the default folder's `settings.json` into a new one so every account runs under the same
-  rules, and says which folders still need a login.
+  the default folder's `settings.json` into a new one, and says which folders still need a
+  login. The copy is made once. A later setup overwrites nothing; it names each folder
+  whose `settings.json` no longer matches the default's, so a rule added there is not
+  silently missing from the others.
 - **A folder with no login refuses its roles**, with the command to log in. The other
   roles keep running. `sq` reads only the account's email from `.claude.json`, never a
   token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
