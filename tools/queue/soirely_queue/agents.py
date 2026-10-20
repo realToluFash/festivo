@@ -77,7 +77,7 @@ def make_checkout(config, role, say, home):
 def accounts(config, say):
     """Each Claude config folder the roles use: made if missing, with the default folder's
     settings so every account runs under the same rules, and checked for a login."""
-    default = machine.expand(config.get("claudeConfigDir") or machine.DEFAULT_CLAUDE_DIR)
+    default = machine.expand(config.get("claudeConfigDir") or str(machine.CLAUDE_DEFAULT))
     folders = {}
     for role in config.get("roles") or {}:
         folders.setdefault(machine.claude_dir(config, role), []).append(role)
@@ -90,9 +90,11 @@ def accounts(config, say):
             shutil.copy2(source, folder / "settings.json")
             say(f"copied the settings of {default} into {folder}")
         email = machine.account(folder)
+        login = "claude" if machine.is_claude_default(folder) else \
+            f"CLAUDE_CONFIG_DIR={folder} claude"
         say(f"  {folder}: {email} for {', '.join(names)}" if email else
-            f"  {folder}: not logged in. Run CLAUDE_CONFIG_DIR={folder} claude, then /login "
-            f"with the account for {', '.join(names)}")
+            f"  {folder}: not logged in. Run {login}, then /login with the account for "
+            f"{', '.join(names)}")
     return folders
 
 

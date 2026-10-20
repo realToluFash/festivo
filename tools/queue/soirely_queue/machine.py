@@ -18,7 +18,8 @@ MODELS = HERE.parent / "models.json"
 SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
-DEFAULT_CLAUDE_DIR = "~/.claude-soirely"
+# Claude Code's own default folder, which keeps its account file beside it, not inside.
+CLAUDE_DEFAULT = pathlib.Path("~/.claude").expanduser()
 # Under everything in agents.json: a worker is never left without a time limit.
 BUILT_IN = {"maxRuntime": "90m"}
 
@@ -84,15 +85,23 @@ def checkout(config, role):
 
 def claude_dir(config, role):
     """The Claude config folder a role's workers run under, and so the account: the role's
-    own `claudeConfigDir`, then the machine's, then the default."""
+    own `claudeConfigDir`, then the machine's. `check` refuses a file with neither."""
     own = (config.get("roles", {}).get(role) or {}).get("claudeConfigDir")
-    return expand(own or config.get("claudeConfigDir") or DEFAULT_CLAUDE_DIR)
+    return expand(own or config.get("claudeConfigDir"))
+
+
+def is_claude_default(folder):
+    return folder.expanduser().resolve() == CLAUDE_DEFAULT.resolve()
+
+
+def account_file(folder):
+    return folder.parent / ".claude.json" if is_claude_default(folder) else folder / ".claude.json"
 
 
 def account(folder):
     """The email of the account logged in under `folder`, or None. No token is read."""
     try:
-        data = json.loads((folder / ".claude.json").read_text())
+        data = json.loads(account_file(folder).read_text())
     except (OSError, json.JSONDecodeError):
         return None
     email = (data.get("oauthAccount") or {}).get("emailAddress")
@@ -160,6 +169,9 @@ def check(config, known=None, logged_in=account):
         errors.append(f"unknown role {', '.join(unknown)} in {path()}: "
                       f"one of {', '.join(roles.ROLES)}")
     defaults = config.get("defaults") or {}
+    if not config.get("claudeConfigDir"):
+        errors.append(f"no claudeConfigDir in {path()}: the Claude config folder the workers "
+                      "use, ~/.claude (Claude's own) unless this machine keeps them apart")
     missing = [key for key in ("model", "effort") if not defaults.get(key)]
     if missing:
         errors.append(f"no default {' or '.join(missing)} in {path()}: defaults.model and "
@@ -186,9 +198,10 @@ def check(config, known=None, logged_in=account):
             refused[role] = f"no checkout at {place}"
             continue
         folder = claude_dir(config, role)
-        if not logged_in(folder):
-            refused[role] = (f"no Claude login in {folder}: run CLAUDE_CONFIG_DIR={folder} "
-                             "claude, then /login with the account this role should use")
+        if folder and not logged_in(folder):
+            login = "claude" if is_claude_default(folder) else f"CLAUDE_CONFIG_DIR={folder} claude"
+            refused[role] = (f"no Claude login in {folder}: run {login}, then /login with the "
+                             "account this role should use")
             continue
         ready[role] = values
     return errors, refused, ready

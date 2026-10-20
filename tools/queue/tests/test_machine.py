@@ -68,6 +68,24 @@ class Checked(unittest.TestCase):
         errors = machine.check(changed)[0]
         self.assertIn("no default model or effort", errors[0])
 
+    def test_no_claude_folder_stops_every_role(self):
+        changed = config(self.root)
+        changed.pop("claudeConfigDir")
+        errors = machine.check(changed)[0]
+        self.assertIn("no claudeConfigDir", errors[0])
+
+    def test_claudes_own_folder_keeps_its_account_beside_it(self):
+        own = self.root / "home" / ".claude"
+        own.mkdir(parents=True)
+        (own / ".credentials.json").write_text("{}")
+        (own.parent / ".claude.json").write_text(
+            json.dumps({"oauthAccount": {"emailAddress": "owner@example.test"}}))
+        with mock.patch.object(machine, "CLAUDE_DEFAULT", own), \
+                mock.patch.object(machine.sys, "platform", "linux"):
+            self.assertEqual(machine.account(own), "owner@example.test")
+            changed = config(self.root, claudeConfigDir=str(own))
+            self.assertIn("ops", machine.check(changed)[2])
+
     def test_no_workspace_is_an_error(self):
         errors = machine.check(config(self.root, workspace=None))[0]
         self.assertIn("no workspace", errors[0])

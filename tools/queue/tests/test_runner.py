@@ -237,6 +237,13 @@ class Command(unittest.TestCase):
         self.assertNotIn("--max-budget-usd", argv)
         self.assertTrue(env["CLAUDE_CONFIG_DIR"].endswith(".claude-soirely"))
 
+    def test_claudes_own_folder_runs_with_nothing_set(self):
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch("soirely_queue.machine.CLAUDE_DEFAULT", pathlib.Path(folder)), \
+                mock.patch.dict("os.environ", {"CLAUDE_CONFIG_DIR": "/elsewhere"}):
+            _, env = runner.command(dict(self.VALUES, maxBudgetUsd=None), folder)
+        self.assertNotIn("CLAUDE_CONFIG_DIR", env)
+
     def test_a_set_ceiling_is_passed_to_claude(self):
         argv, _ = runner.command(dict(self.VALUES, maxBudgetUsd=2.5), "~/.claude-soirely")
         self.assertEqual(argv[argv.index("--max-budget-usd") + 1], "2.5")
