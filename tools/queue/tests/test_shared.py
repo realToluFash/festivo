@@ -1,6 +1,9 @@
 """Leases, claims, heartbeats and the everywhere pause, between two pretend machines."""
 
+import os
+import subprocess
 import unittest
+from unittest import mock
 
 from soirely_queue import shared, store
 
@@ -169,6 +172,14 @@ class Pause(unittest.TestCase):
         shared.resume_everywhere(remote)
         view, _, _ = Machine(remote, "tolu-linux").minute(NOW + 60)
         self.assertIsNone(view.paused())
+
+    def test_the_tree_is_read_from_sqs_repository_wherever_the_tick_starts(self):
+        found = subprocess.CompletedProcess([], 0, stdout="5a86d09\n")
+        with mock.patch.object(shared.subprocess, "run", return_value=found) as run:
+            self.assertEqual(shared.GitHubRefs().tree(), "5a86d09")
+        argv = run.call_args.args[0]
+        self.assertEqual(argv[:2], ["git", "-C"])
+        self.assertEqual(argv[2], os.path.dirname(os.path.abspath(shared.__file__)))
 
     def test_a_machine_name_becomes_a_safe_reference(self):
         self.assertEqual(shared.machine_ref("Tolu's MacBook Pro"),

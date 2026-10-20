@@ -638,10 +638,10 @@ def admin(argv):
     elif a.command == "worker-ended":
         runner.worker_ended(home(), platform, a.role, a.item)
     elif a.command == "worker-supervise":
-        result, status = launchd.supervise(
+        result, exit_status = launchd.supervise(
             [sys.executable, str(sq_path), "worker", a.role, str(a.item)], a.minutes * 60,
             launchd.size_bytes(a.memory))
-        os.environ.update(SERVICE_RESULT=result, EXIT_STATUS=str(status))
+        os.environ.update(SERVICE_RESULT=result, EXIT_STATUS=str(exit_status))
         runner.worker_ended(home(), platform, a.role, a.item)
         pidfile = platform.pidfile(a.role)
         if pidfile.exists() and pidfile.read_text().strip() == str(os.getpid()):

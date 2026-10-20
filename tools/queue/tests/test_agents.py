@@ -119,6 +119,12 @@ class StartStop(unittest.TestCase):
         self.assertEqual(self.sq("start", "lead"), 1)
         self.assertEqual(runner.started(self.db), set())
 
+    def test_status_reaches_the_status_report(self):
+        from soirely_queue import cli
+        with mock.patch.object(cli, "status") as report, mock.patch("sys.stdout"):
+            cli.admin(["status"])
+        report.assert_called_once()
+
 
 class Accounts(unittest.TestCase):
     def test_setup_makes_each_folder_copies_settings_and_names_the_login(self):
