@@ -517,11 +517,13 @@ class Merging(Base):
         self.fake.add(1, "In Review", ["dev2"])
         store.put_pr(self.db, pr())
         with mock.patch("soirely_queue.github.live", return_value=self.live()), \
-                mock.patch("soirely_queue.github.post_review", return_value={}), \
+                mock.patch("soirely_queue.github.post_review", return_value={}) as post, \
                 mock.patch("soirely_queue.sync.sync_github"):
             actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
                                                   qa=None, text="summary"))
         self.assertEqual(self.state(1), "Passed Code Review")
+        body = post.call_args.args[4]
+        self.assertEqual(github.verdict({"body": body}), {"verdict": "pass", "sha": HEAD})
 
     def test_a_push_after_the_pass_reviewed_again_can_fail(self):
         self.fake.add(1, "Passed Code Review", ["dev2"])
@@ -598,6 +600,8 @@ class Merging(Base):
         body = post.call_args.args[4]
         self.assertTrue(body.startswith("## Review (from lead)"))
         self.assertTrue(body.endswith("Failed code review: 1 blocking."))
+        self.assertEqual(github.verdict({"body": body, "commit": {"oid": HEAD}}),
+                         {"verdict": "back", "sha": HEAD, "blocking": 1})
         self.assertEqual(self.state(1), "Failed Code Review")
         self.assertIn("[dev2] (from lead)", self.fake.comments[-1][1])
 

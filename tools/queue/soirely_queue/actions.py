@@ -543,8 +543,8 @@ def review(c, a):
     summary = a.text.strip()
     if not summary.startswith("## Review (from lead)"):
         summary = "## Review (from lead)\n\n" + summary
-    last = f"Review passed at {head}. Ready to merge." if a.verdict == "pass" else \
-        f"Failed code review: {blocking} blocking."
+    last = github.PASS_LINE.format(sha=head) if a.verdict == "pass" else \
+        github.BACK_LINE.format(blocking=blocking)
     owner, name = c.repository()
     posted = github.post_review(owner, name, a.pr, head, f"{summary}\n\n{last}",
                                 [{"path": i["path"], "line": i["line"], "body": i["body"]}
