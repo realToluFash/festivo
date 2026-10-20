@@ -8,6 +8,7 @@ so a take is a compare-and-swap: two machines can never both win. Commits never 
 each message is read once and kept by its id."""
 
 import json
+import os
 import re
 import subprocess
 import time
@@ -51,9 +52,11 @@ class GitHubRefs:
         return f"{github.repo_path()}/git/{rest}"
 
     def tree(self):
-        # Any tree GitHub has will do; the record lives in the message, not the files.
+        # Any tree GitHub has will do; the record lives in the message, not the files. Read
+        # from sq's own repository: the timer's tick starts outside any checkout.
         if not self._tree:
-            self._tree = subprocess.run(["git", "rev-parse", "origin/main^{tree}"],
+            here = os.path.dirname(os.path.abspath(__file__))
+            self._tree = subprocess.run(["git", "-C", here, "rev-parse", "origin/main^{tree}"],
                                         capture_output=True, text=True,
                                         check=True).stdout.strip()
         return self._tree
