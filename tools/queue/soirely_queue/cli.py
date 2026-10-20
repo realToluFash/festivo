@@ -629,7 +629,10 @@ def admin(argv):
     if a.command == "status":
         status(db, platform, time.time())
     elif a.command == "run":
-        runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
+        try:
+            runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
+        finally:
+            platform.after_run()
     elif a.command == "worker":
         runner.worker(db, home(), platform, a.role, a.item)
     elif a.command == "worker-ended":

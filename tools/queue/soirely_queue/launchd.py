@@ -44,11 +44,20 @@ def search_path():
                                            "/bin", "/usr/sbin", "/sbin"]))
 
 
+def stable_python(python):
+    """The `python3` on the agent's PATH when it is this interpreter: a versioned path such as
+    Homebrew's python3.14 disappears at the next upgrade, and the agent with it."""
+    found = shutil.which("python3", path=search_path())
+    if found and os.path.realpath(found) == os.path.realpath(python):
+        return found
+    return str(python)
+
+
 def agent(sq, python):
     log = str(log_dir() / "routine.log")
     return {
         "Label": LABEL,
-        "ProgramArguments": [str(python), str(sq), "run"],
+        "ProgramArguments": [stable_python(python), str(sq), "run"],
         "StartInterval": 60,
         "RunAtLoad": True,
         # The token is read from the env file by sq itself, never written here.
@@ -127,6 +136,7 @@ class Mac:
 
     def __init__(self, home):
         self.home = pathlib.Path(home)
+        self.reload_due = None
 
     def pidfile(self, role):
         return self.home / "workers" / f"{role}.pid"
@@ -150,17 +160,27 @@ class Mac:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(text)
         if self.loaded():
-            self.reload(target)
+            if os.environ.get("SOIRELY_TICK"):
+                # The tick is the agent itself: unloading it now would stop this very run.
+                self.reload_due = target
+            else:
+                self.reload(target)
         return True
 
-    def reload(self, target):
+    def reload(self, target, detached=False):
         steps = f"launchctl bootout {domain()}/{LABEL}; launchctl bootstrap {domain()} '{target}'"
-        if os.environ.get("SOIRELY_TICK"):
-            # The tick is the agent itself: unloading it here would stop this very run.
+        if detached:
             subprocess.Popen(["/bin/sh", "-c", f"sleep 5; {steps}"], start_new_session=True,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             subprocess.run(["/bin/sh", "-c", steps], capture_output=True)
+
+    def after_run(self):
+        """Reloads a changed agent once the tick has done everything else, from a process of
+        its own that the unload does not take down."""
+        if self.reload_due:
+            self.reload(self.reload_due, detached=True)
+            self.reload_due = None
 
     def enable(self):
         self.launchctl("enable", f"{domain()}/{LABEL}")

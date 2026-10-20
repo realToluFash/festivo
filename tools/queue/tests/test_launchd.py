@@ -22,7 +22,8 @@ def script(code):
 
 class Agent(unittest.TestCase):
     def test_the_agent_runs_sq_every_minute(self):
-        made = launchd.agent("/q/sq/sq", "/usr/bin/python3")
+        with mock.patch("shutil.which", return_value=None):
+            made = launchd.agent("/q/sq/sq", "/usr/bin/python3")
         self.assertEqual(made["ProgramArguments"], ["/usr/bin/python3", "/q/sq/sq", "run"])
         self.assertEqual(made["StartInterval"], 60)
         self.assertIn("/opt/homebrew/bin", made["EnvironmentVariables"]["PATH"])
@@ -31,6 +32,17 @@ class Agent(unittest.TestCase):
         with mock.patch.dict("os.environ", {"SHORTCUT_API_TOKEN": "secret-value"}):
             made = plistlib.dumps(launchd.agent("/q/sq/sq", "python3"))
         self.assertNotIn(b"secret-value", made)
+
+    def test_the_agent_runs_the_python3_on_its_path_when_that_is_this_python(self):
+        with tempfile.TemporaryDirectory() as folder:
+            versioned = pathlib.Path(folder) / "python3.14"
+            versioned.write_text("")
+            stable = pathlib.Path(folder) / "python3"
+            stable.symlink_to(versioned)
+            with mock.patch("shutil.which", return_value=str(stable)):
+                self.assertEqual(launchd.stable_python(versioned), str(stable))
+                self.assertEqual(launchd.stable_python("/elsewhere/python3"),
+                                 "/elsewhere/python3")
 
     def test_sizes_read_as_systemd_reads_them(self):
         self.assertEqual(launchd.size_bytes("3G"), 3 * 1024 ** 3)
@@ -99,6 +111,28 @@ class Mac(unittest.TestCase):
             self.mac.install("/q/sq/sq", "/c/env", "python3")
         self.assertTrue((self.root / "logs" / "routine.log.1").exists())
 
+    def test_a_tick_that_changes_its_agent_reloads_it_only_after_the_run(self):
+        with mock.patch.object(launchd.Mac, "loaded", return_value=True), \
+                mock.patch.dict("os.environ", {"SOIRELY_TICK": "1"}), \
+                mock.patch("subprocess.Popen") as popen, mock.patch("subprocess.run") as run:
+            self.assertTrue(self.mac.install("/q/sq/sq", "/c/env", "python3"))
+            popen.assert_not_called()
+            run.assert_not_called()
+            self.mac.after_run()
+            self.mac.after_run()
+        popen.assert_called_once()
+        self.assertIn("bootstrap", popen.call_args.args[0][-1])
+
+    def test_an_agent_changed_by_hand_is_reloaded_at_once(self):
+        with mock.patch.object(launchd.Mac, "loaded", return_value=True), \
+                mock.patch.dict("os.environ"), mock.patch("subprocess.Popen") as popen, \
+                mock.patch("subprocess.run") as run:
+            os.environ.pop("SOIRELY_TICK", None)
+            self.mac.install("/q/sq/sq", "/c/env", "python3")
+            self.mac.after_run()
+        popen.assert_not_called()
+        self.assertIn("bootstrap", run.call_args.args[0][-1])
+
     def test_down_unloads_the_agent_and_keeps_it_off_at_the_next_login(self):
         with mock.patch("subprocess.run") as run:
             self.mac.disable()
@@ -153,6 +187,7 @@ class SuperviseCommand(unittest.TestCase):
             home = pathlib.Path(folder)
             with mock.patch.dict("os.environ", {"SQ_HOME": folder}), \
                     mock.patch("sys.platform", "darwin"), \
+                    mock.patch.object(machine, "load_env"), \
                     mock.patch.object(launchd, "supervise", return_value=("oom-kill", -9)), \
                     mock.patch.object(launchd.Mac, "notify") as notify:
                 pidfile = launchd.Mac(home).pidfile("qa")
@@ -163,3 +198,15 @@ class SuperviseCommand(unittest.TestCase):
             self.assertEqual((entry["item"], entry["stopped"]), (41, "oom-kill"))
             notify.assert_called_once()
             self.assertFalse(pidfile.exists())
+
+
+class RunCommand(unittest.TestCase):
+    def test_the_platform_finishes_after_the_run_even_when_it_fails(self):
+        from soirely_queue import cli
+        platform = mock.Mock()
+        with mock.patch.object(cli, "this_platform", return_value=platform), \
+                mock.patch.object(cli, "open_db"), mock.patch.object(machine, "load_env"), \
+                mock.patch.object(cli.runner, "run", side_effect=RuntimeError("sync")):
+            with self.assertRaises(RuntimeError):
+                cli.admin(["run"])
+        platform.after_run.assert_called_once()
