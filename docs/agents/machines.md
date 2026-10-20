@@ -20,13 +20,15 @@ repository because it describes the machine, not the project. The repository shi
   "roles": {
     "dev": {},
     "dev2": {},
-    "lead": {},
     "ops": {},
     "qa": { "memoryMax": "8G" },
     "qa2": { "standby": true },
+    "lead": { "effort": "high" },
     "ux": { "checkout": "~/design/soirely-ux" }
   },
   "defaults": {
+    "model": "claude-opus-5-5",
+    "effort": "medium",
     "memoryMax": "3G",
     "maxRuntime": "90m",
     "maxBudgetUsd": null
@@ -42,6 +44,7 @@ repository because it describes the machine, not the project. The repository shi
 | `roles`                                   | the roles this machine may run. A role not listed never ticks here                           |
 | `checkout`                                | per role: overrides the path for that one role                                               |
 | `standby`                                 | per role: runs here only while no other machine holds it                                     |
+| `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                      |
 | `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                    |
 
 - **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
@@ -54,6 +57,39 @@ repository because it describes the machine, not the project. The repository shi
   names the path it expected. A changed `workspace` moves nothing: each role not at the new
   path is reported, and `just agents setup` offers fresh checkouts there. It never moves or
   deletes old ones, which may hold work nobody committed.
+
+### Models and effort
+
+**The default is Claude Opus 5.5 at medium effort, and it is read from the file**:
+`defaults.model` and `defaults.effort`. `sq` has no default of its own; the shipped
+`agents.example.json` carries `claude-opus-5-5` and `medium`. A role sets `model` or
+`effort` to differ from the default, and only that role changes.
+
+**Safeguards.** A typo in a model or effort is the costliest mistake this file can hold, so
+each is checked against a list in the repository, `tools/queue/models.json`: every model id
+`sq` accepts, with the effort levels that model takes.
+
+- **Exact ids only.** `claude-opus-5-5`, never `opus` or a date-suffixed id. An alias can
+  start pointing at another model with no commit, which is a change nobody reviewed.
+- **The effort must be one that model takes.** For the current Opus, Sonnet, Haiku and Fable
+  models that is `low`, `medium`, `high`, `xhigh` or `max`.
+- **A role whose model or effort fails the check is refused, never run on a guess.** It
+  starts no worker. `sq status` and the log name the role, the field, the value, and the
+  accepted values. The other roles keep running. A bad `defaults` refuses every role that
+  relies on it, since running them on anything else would be a guess.
+- **A missing default is treated like a missing workspace.** The timer's `sq run` logs
+  `error:` and starts nothing. A command the owner runs offers to write Opus 5.5 at medium
+  into the file.
+- **A model above the default's price is pointed out.** `sq start` and `sq status` say so,
+  for example `lead runs claude-fable-5-1, 2.5× the default per token`, so a costly choice
+  is always deliberate.
+- **A model the account cannot use** passes the check but fails its first run. That run's
+  exit and reason go to the run log and `sq status`. Its item waits out the lapse like any
+  other failed run, so it is not retried every minute.
+- **Each run records its model and effort** in `runs/<role>.jsonl`, so a change can be
+  measured against the default before it is kept.
+
+Adding a model is a pull request to `models.json`, reviewed like any other change.
 
 ### When no workspace is set
 
