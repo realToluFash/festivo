@@ -154,7 +154,7 @@ class RestCalls(unittest.TestCase):
             found = github.live(7)
         self.assertEqual(found, {"headRefOid": HEAD, "mergeable": "CONFLICTING",
                                  "mergeStateStatus": "DIRTY", "state": "OPEN",
-                                 "mergeCommit": None})
+                                 "draft": False, "mergeCommit": None})
 
     def test_a_merged_pull_request_gives_its_merge_commit(self):
         merged = {"mergeable": None, "head": {"sha": HEAD, "ref": "x"}, "state": "closed",

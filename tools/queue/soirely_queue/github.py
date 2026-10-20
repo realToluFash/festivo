@@ -352,6 +352,7 @@ def live(number):
     return {"headRefOid": pull["head"]["sha"], "mergeable": MERGEABLE[pull.get("mergeable")],
             "mergeStateStatus": (pull.get("mergeable_state") or "unknown").upper(),
             "state": "MERGED" if pull.get("merged") else pull["state"].upper(),
+            "draft": bool(pull.get("draft")),
             "mergeCommit": pull["merge_commit_sha"] if pull.get("merged") else None}
 
 
@@ -400,6 +401,12 @@ def merge(number, head, method="merge", delete_branch=False):
     if delete_branch:
         branch = api(path)["head"]["ref"]
         gh("api", f"{repo_path()}/git/refs/heads/{branch}", "--method", "DELETE")
+
+
+def ready(number):
+    """A draft cannot be merged; a passed one is marked ready first."""
+    owner, name = repository()
+    gh("pr", "ready", str(number), "--repo", f"{owner}/{name}")
 
 
 def create_pr(head, title, body, draft=False, base="main"):

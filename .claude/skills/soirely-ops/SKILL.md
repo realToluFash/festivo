@@ -31,10 +31,22 @@ from the main checkout makes it).
   (section 5) and a rollback you have checked exists. Without all three, it does not happen.
 - **Only merged `main` is deployed**, at a commit you name. Never a branch, never a working
   tree, never a commit CI has not passed.
-- **Never merge, never push to `main`, never force-push** anything shared. Infra changes go
-  through a draft pull request like everything else (`create-pr`, opened with
-  `sq ops pr-create --head <branch> --title "…" --draft` and the body on stdin), reviewed by
-  `[lead]` and merged by the owner. Answer review comments with `sq ops pr-reply N <comment id>`.
+- **Every infra change has a ticket and the lead's pass. Never push to `main`, never
+  force-push** anything shared. The owner gave ops its own tickets and merges on 20 Oct:
+  1. **File the ticket**: `sq ops new-story --name "…" --state "In Progress"` (or
+     `Backlog` for later), body on stdin. It is labelled `ops`, so only ops is woken for
+     it. An existing story you are building gets the label with `sq ops label sc-N --add ops`;
+     sq refuses one a developer or the linguist holds.
+  2. **Open the pull request ready for review**, never as a draft:
+     `sq ops pr-create --head <branch> --title "… (sc-N)"`, body on stdin. When its checks
+     are green, `sq ops move sc-N "In Review"`, which wakes `[lead]`. Answer review
+     comments with `sq ops pr-reply N <comment id>`.
+  3. **Merge it yourself once the lead passes it** at its head: `sq ops merge N`. sq
+     refuses without that pass, with open threads, or with red checks. An infra change
+     needs no QA, so the story goes to Done. One a person should check by hand (a stack
+     that comes up differently, a script testers run) carries `needs qa` (add it before
+     merging) and goes to Ready For QA instead. A story with another pull request still
+     open stays In Review until the last one merges.
 - **No spending and no outside changes without the owner.** New servers, paid plans, DNS
   records, provider accounts and domain changes are the owner's calls. Bring a costed
   recommendation, tagging `[bm]` when the money needs weighing.
@@ -151,7 +163,8 @@ rolled back, and why.
 
 - [ ] Nothing deployed that the owner did not ask for in this conversation.
 - [ ] Every deploy has its pre-flight, its backup where it applies, and its verification.
-- [ ] Every infra change is in a draft pull request, with its checks green.
+- [ ] Every infra change has an `ops` ticket and a pull request; none merged without the
+      lead's pass at its head.
 - [ ] No secret in anything you wrote.
 - [ ] Every product-code problem went to `[dev]` and every money decision to the owner.
 

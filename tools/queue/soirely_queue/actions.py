@@ -191,9 +191,16 @@ def holder(c, story):
     return None
 
 
+def ops_only(c, story):
+    if c.role == "ops" and R.OPS_LABEL not in story["labels"]:
+        raise Refused(f"ops moves only its own stories, labelled {R.OPS_LABEL}; "
+                      f"sc-{story['id']} is not")
+
+
 def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
+    ops_only(c, story)
     _, wanted = c.state_id(a.state)
     if c.role == "pm" and story["state"] == "In Progress" and wanted in R.PM_RELEASES:
         held = holder(c, story)
@@ -210,6 +217,11 @@ def move(c, a):
 def label(c, a):
     guard(c, "label")
     story_id = story_number(a.story)
+    if c.role == "ops" and R.OPS_LABEL in (a.add or ()):
+        taken = {"dev1", "dev2", "translation"} & set(c.story(story_id)["labels"])
+        if taken:
+            raise Refused(f"sc-{story_id} is labelled {', '.join(sorted(taken))}, so it is "
+                          "another role's to build")
     labels = set_labels(c, story_id, a.add or (), a.remove or ())
     c.refresh(story_id)
     return f"sc-{story_id} labels: {', '.join(labels) or 'none'}"
@@ -371,8 +383,12 @@ def new_story(c, a):
             raise Refused(f"{len(ideas)} ideas are open already; at most {MAX_IDEAS}")
     if c.role in R.LINGUISTS:
         labels.add("translation")
+    if c.role == "ops":
+        labels.add(R.OPS_LABEL)
     # A translation ticket is ready to work once filed, so a linguist files it in To Do.
-    allowed = {"Backlog", "To Do"} if c.role in R.LINGUISTS else {"Backlog"}
+    # Ops files infra work as it starts it, or for later.
+    allowed = {"Backlog", "To Do"} if c.role in R.LINGUISTS else \
+        {"Backlog", "In Progress"} if c.role == "ops" else {"Backlog"}
     if state not in allowed and c.role != "pm":
         raise Refused("a new story starts in Backlog; the product manager moves it on")
     fields = {"name": a.name, "description": a.text, "story_type": a.type or "feature",
@@ -528,17 +544,38 @@ def resolve(c, a):
 
 def pr_create(c, a):
     guard(c, "pr-create")
-    if a.draft and c.role != "ops":
-        raise Refused("pull requests open ready for review, not as drafts")
+    if a.draft:
+        raise Refused("pull requests open ready for review, not as drafts, so the lead is "
+                      "woken for them")
     url = github.create_pr(a.head, a.title, a.text, draft=a.draft)
     return f"opened {url}{resync(c)}"
 
 
+def needs_qa(story):
+    """An ops story goes to QA only when labelled `needs qa`; every other story always does."""
+    return R.OPS_LABEL not in story["labels"] or "needs qa" in story["labels"]
+
+
 def hand_to_qa(c, story, pr, merge_sha, note=""):
-    set_state(c, story, "Ready For QA")
+    """Returns where the story went."""
+    others = [p["number"] for p in store.prs_for_story(c.db, story["id"])
+              if p["state"] == "open" and p["number"] != pr["number"]]
+    if others:
+        # The story is done when its last pull request is.
+        c.refresh(story["id"])
+        return f"In Review, waiting on #{', #'.join(map(str, others))}"
+    if not needs_qa(story):
+        set_state(c, story, "Done", check=False)
+        post(c, story, [], f"PR #{pr['number']} merged as {merge_sha}. Infra with no QA "
+                           "needed, so ops moved it to Done."
+                           + (f"\n\n{note.strip()}" if note else ""))
+        c.refresh(story["id"])
+        return "Done"
+    set_state(c, story, "Ready For QA", check=c.role != "ops")
     post(c, story, ["qa"], f"PR #{pr['number']} merged as {merge_sha}. Test what landed."
                            + (f"\n\n{note.strip()}" if note else ""))
     c.refresh(story["id"])
+    return "Ready For QA"
 
 
 def finish_handover(c, story, pr, note):
@@ -546,8 +583,8 @@ def finish_handover(c, story, pr, note):
     if not (verdict and verdict["verdict"] == "pass"
             and W.covers(verdict, pr["head_sha"], pr.get("carried"))):
         raise Refused(f"PR #{pr['number']} merged at a head no lead pass covers: ask [lead]")
-    hand_to_qa(c, story, pr, pr["merge_sha"], note)
-    return f"sc-{story['id']} is Ready For QA; QA is told about {pr['merge_sha'][:7]}"
+    went = hand_to_qa(c, story, pr, pr["merge_sha"], note)
+    return f"sc-{story['id']} is {went} after {pr['merge_sha'][:7]}"
 
 
 def merge(c, a):
@@ -579,6 +616,9 @@ def merge(c, a):
     story = c.story(pr["story_id"]) if pr["story_id"] else None
     if not story or story["state"] != "In Review":
         raise Refused(f"its story is {story['state'] if story else 'unknown'}, not In Review")
+    if R.builder_of(story["labels"]) != c.role and not (
+            c.role in R.DEVS and R.builder_of(story["labels"]) in R.DEVS):
+        raise Refused(f"sc-{story['id']} is {R.builder_of(story['labels'])}'s to merge")
     verdict = W.latest_verdict(pr)
     carried = pr.get("carried") if head == pr["head_sha"] else None
     if not (verdict and verdict["verdict"] == "pass" and W.covers(verdict, head, carried)):
@@ -586,16 +626,18 @@ def merge(c, a):
     unresolved = W.open_threads(pr)
     if unresolved:
         raise Refused(f"{len(unresolved)} review threads are open; the lead resolves them")
+    if live.get("draft"):
+        github.ready(a.pr)
     github.merge(a.pr, head)
     merged = github.live(a.pr)["mergeCommit"]
     try:
-        hand_to_qa(c, story, pr, merged, a.text)
+        went = hand_to_qa(c, story, pr, merged, a.text)
     except ShortcutError as error:
-        raise Refused(f"merged PR #{a.pr} as {merged}, but the handover to QA failed "
+        raise Refused(f"merged PR #{a.pr} as {merged}, but the handover failed "
                       f"({error}); run `sq {c.role} to-qa sc-{story['id']}` to finish it"
                       f"{resync(c)}") from error
-    return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} is Ready For QA and QA is told"
-            f"{resync(c)}")
+    told = "; QA is told" if went == "Ready For QA" else ""
+    return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is {went}{told}{resync(c)}"
 
 
 def to_qa(c, a):

@@ -7,7 +7,8 @@ from unittest import mock
 from soirely_queue import actions, cli, github, roles, store, sync
 
 STATES = {"1": "To Do", "2": "In Progress", "3": "In Review", "4": "Ready For QA",
-          "5": "In QA", "6": "Passsed QA", "7": "Failed QA", "8": "Backlog"}
+          "5": "In QA", "6": "Passsed QA", "7": "Failed QA", "8": "Backlog", "9": "Done",
+          "10": "Ready For Dev"}
 IDS = {name: int(i) for i, name in STATES.items()}
 HEAD = "a" * 40
 OLD = "b" * 40
@@ -587,3 +588,122 @@ class Findings(unittest.TestCase):
         self.assertEqual([x["body"] for x in found],
                          ["blocking: The guard is missing.", "nit: a word."])
         self.assertEqual([x["blocking"] for x in found], [True, False])
+
+
+class OpsOwnsItsTickets(Base):
+    """Ops files, builds and merges its own infra work; the lead still reviews every one."""
+
+    def live(self, draft=False):
+        return {"headRefOid": HEAD, "mergeable": "MERGEABLE", "mergeStateStatus": "CLEAN",
+                "draft": draft, "mergeCommit": "m" * 40}
+
+    def merge(self, role="ops", draft=False):
+        with mock.patch("soirely_queue.github.live", return_value=self.live(draft)), \
+                mock.patch("soirely_queue.github.merge") as merged, \
+                mock.patch("soirely_queue.github.ready") as ready, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            said = actions.merge(self.as_(role), args(pr=9, text=None))
+        return said, merged, ready
+
+    def test_ops_files_its_own_story_labelled_ops(self):
+        self.fake.create_story = lambda **f: self.fake.raw.setdefault(
+            50, {"id": 50, "name": f["name"], "workflow_state_id": f["workflow_state_id"],
+                 "moved_at": "t0", "labels": f["labels"], "comments": [], "description": ""})
+        actions.new_story(self.as_("ops"), args(name="Pin the base images", text="why",
+                                                 type="chore", state="In Progress", label=None,
+                                                 epic=None, estimate=None))
+        self.assertEqual(self.state(50), "In Progress")
+        self.assertEqual(self.labels(50), {"ops"})
+
+    def test_ops_cannot_file_straight_into_review_or_qa(self):
+        with self.assertRaisesRegex(actions.Refused, "Backlog"):
+            actions.new_story(self.as_("ops"), args(name="x", text="y", type=None,
+                                                     state="Ready For QA", label=None,
+                                                     epic=None, estimate=None))
+
+    def test_a_passed_ops_pr_merges_and_its_story_is_done_without_qa(self):
+        self.fake.add(1, "In Review", ["ops"])
+        store.put_pr(self.db, pr("pass"))
+        said, merged, _ = self.merge()
+        merged.assert_called_once_with(9, HEAD)
+        self.assertEqual(self.state(1), "Done")
+        self.assertIn("sc-1 is Done", said)
+        self.assertNotIn("[qa]", self.fake.comments[-1][1])
+
+    def test_an_ops_story_that_needs_qa_goes_to_qa(self):
+        self.fake.add(1, "In Review", ["ops", "needs qa"])
+        store.put_pr(self.db, pr("pass"))
+        self.merge()
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertIn("[qa] (from ops)", self.fake.comments[-1][1])
+
+    def test_ops_never_merges_without_the_leads_pass(self):
+        self.fake.add(1, "In Review", ["ops"])
+        store.put_pr(self.db, pr("back"))
+        with self.assertRaisesRegex(actions.Refused, "no lead pass"):
+            self.merge()
+
+    def test_a_draft_is_marked_ready_before_it_merges(self):
+        self.fake.add(1, "In Review", ["ops"])
+        store.put_pr(self.db, pr("pass"))
+        _, merged, ready = self.merge(draft=True)
+        ready.assert_called_once_with(9)
+        merged.assert_called_once()
+
+    def test_the_story_waits_for_its_last_pull_request(self):
+        self.fake.add(1, "In Review", ["ops"])
+        store.put_pr(self.db, pr("pass"))
+        store.put_pr(self.db, dict(pr("pass"), number=10))
+        said, _, _ = self.merge()
+        self.assertEqual(self.state(1), "In Review")
+        self.assertIn("waiting on #10", said)
+
+    def test_each_builder_merges_only_its_own_stories(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, pr("pass"))
+        with self.assertRaisesRegex(actions.Refused, "dev2's to merge"):
+            self.merge("ops")
+        self.fake.add(1, "In Review", ["ops"])
+        with self.assertRaisesRegex(actions.Refused, "ops's to merge"):
+            self.merge("dev")
+
+    def test_ops_moves_only_its_own_stories(self):
+        self.fake.add(1, "Ready For Dev", ["backend"])
+        with self.assertRaisesRegex(actions.Refused, "only its own stories"):
+            actions.move(self.as_("ops"), args(story="sc-1", state="In Progress"))
+        self.fake.add(2, "Ready For Dev", ["ops"])
+        actions.move(self.as_("ops"), args(story="sc-2", state="In Progress"))
+        self.assertEqual(self.state(2), "In Progress")
+
+    def test_ops_never_moves_a_story_to_done_by_hand(self):
+        self.fake.add(1, "In Review", ["ops"])
+        with self.assertRaisesRegex(actions.Refused, "never moves a story to Done"):
+            actions.move(self.as_("ops"), args(story="sc-1", state="Done"))
+
+    def test_ops_takes_no_story_a_developer_holds(self):
+        self.fake.add(1, "In Progress", ["dev1"])
+        with self.assertRaisesRegex(actions.Refused, "another role's to build"):
+            actions.label(self.as_("ops"), args(story="sc-1", add=["ops"], remove=None))
+        self.fake.add(2, "Ready For Dev", [])
+        actions.label(self.as_("ops"), args(story="sc-2", add=["ops"], remove=None))
+        self.assertEqual(self.labels(2), {"ops"})
+
+    def test_no_role_opens_a_draft(self):
+        with self.assertRaisesRegex(actions.Refused, "ready for review"):
+            actions.pr_create(self.as_("ops"), args(head="b", title="t", text="x", draft=True))
+
+    def test_an_ops_story_wakes_ops_and_no_one_else(self):
+        self.fake.add(1, "To Do", ["ops"])
+        self.as_("ops").story("sc-1")
+        for role in ("pm", "ux", "dev", "dev2", "bm"):
+            self.assertEqual(self.queue_wakes(role), [], role)
+        self.assertEqual(self.queue_wakes("ops"), ["sc-1 moved to To Do"])
+
+    def test_a_passed_ops_pr_wakes_ops_to_merge_it(self):
+        self.fake.add(1, "In Review", ["ops"])
+        self.as_("ops").story("sc-1")
+        store.put_prs(self.db, [pr("pass")])
+        cli.refresh_work(self.db, 10_000_000)
+        kinds = {(w["roles"], w["kind"]) for w in store.waiting(self.db, "ops")}
+        self.assertIn(("ops", "merge"), kinds)
+        self.assertFalse([w for w in store.waiting(self.db, "dev") if w["kind"] == "merge"])
