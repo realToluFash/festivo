@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { tokens } from '../theme/tokens.ts';
 import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
 import {
+  belowScreenTop,
   coveredBy,
   groupInWindow,
+  keyboardInWindow,
   keyboardLift,
   listRoom,
   offsetAboveKeyboard,
@@ -74,6 +76,30 @@ describe('a field and its button rest above the keyboard', () => {
     expect(coveredBy(500, { y: 300, height: 150 }, 16)).toBe(false);
     expect(coveredBy(500, { y: 300, height: 190 }, 16)).toBe(true);
     expect(coveredBy(500, { y: 450, height: 150 }, 16)).toBe(true);
+  });
+});
+
+describe('the keyboard and a screen under the header share one frame', () => {
+  // Android with the status bar counted out: a view at the screen's top measures at -24, and the
+  // Screen under the frame's 80pt header measures at 56.
+  const origin = -24;
+  const screenRoot = 56;
+
+  it('moving the keyboard by the origin, not by where the screen starts', () => {
+    expect(keyboardInWindow(500, origin)).toBe(476);
+    expect(keyboardInWindow(500, 0)).toBe(500);
+  });
+
+  it('so a group under the header is judged against where the keys really are', () => {
+    const keyboardTop = keyboardInWindow(500, origin);
+
+    expect(coveredBy(keyboardTop, { y: 300, height: 150 }, 16)).toBe(false);
+    expect(coveredBy(keyboardTop, { y: 320, height: 150 }, 16)).toBe(true);
+  });
+
+  it('placing the screen as far below the top as the header is tall', () => {
+    expect(belowScreenTop(screenRoot, origin)).toBe(80);
+    expect(belowScreenTop(80, 0)).toBe(80);
   });
 });
 

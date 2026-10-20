@@ -37,6 +37,16 @@ export function groupInWindow({ scrollTop, contentY, offset }: GroupInScroll): n
   return scrollTop + contentY - offset;
 }
 
+/** The keyboard's top in measureInWindow's frame, which on Android can start below the status bar. */
+export function keyboardInWindow(screenY: number, origin: number): number {
+  return screenY + origin;
+}
+
+/** How far below the screen's top a view sits, from its measureInWindow top and the origin. */
+export function belowScreenTop(measured: number, origin: number): number {
+  return measured - origin;
+}
+
 export interface Lift {
   /** The group's top inside the scroll content. */
   contentY: number;

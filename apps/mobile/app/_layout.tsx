@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
+import { WindowOrigin } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { initI18n } from '../src/i18n/index.ts';
 import { loadInstallId } from '../src/installId.ts';
@@ -65,7 +66,9 @@ export default function RootLayout() {
       {/* No header: every screen is built on `Screen`, which owns its own
           insets. A native header plus a safe-area wrapper double-pads the top,
           and the result is a gap nobody can find the source of. */}
-      <Stack screenOptions={{ headerShown: false }} />
+      <WindowOrigin>
+        <Stack screenOptions={{ headerShown: false }} />
+      </WindowOrigin>
     </SafeAreaProvider>
   );
 }

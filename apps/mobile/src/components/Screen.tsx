@@ -20,7 +20,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { coveredBy, groupInWindow, keyboardLift, offsetAboveKeyboard } from '../kit/keyboard.ts';
+import {
+  belowScreenTop,
+  coveredBy,
+  groupInWindow,
+  keyboardInWindow,
+  keyboardLift,
+  offsetAboveKeyboard,
+} from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 
 const LIFT = keyboardLift(Platform.OS);
@@ -31,11 +38,31 @@ interface ScreenScrollView {
   ref: RefObject<ScrollView | null>;
   /** Called when the scroll view itself resizes, which a child's onLayout does not see. */
   resized: Set<() => void>;
+  /** Where a view at the screen's top measures in the window. */
+  origin: { current: number };
   /** The offset the native scroll view last reported. */
   offset: RefObject<number>;
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
+
+const Origin = createContext(0);
+
+// At the app's root, not a Screen's: under the frame's header a Screen's root starts lower.
+export function WindowOrigin({ children }: { children: ReactNode }) {
+  const probe = useRef<View>(null);
+  const [origin, setOrigin] = useState<number | null>(null);
+
+  return (
+    <View
+      ref={probe}
+      onLayout={() => probe.current?.measureInWindow((_x, y) => setOrigin(y))}
+      style={styles.fill}
+    >
+      {origin != null && <Origin.Provider value={origin}>{children}</Origin.Provider>}
+    </View>
+  );
+}
 
 export interface AboveKeyboard {
   ref: RefObject<View | null>;
@@ -77,14 +104,19 @@ function liftAboveKeyboard(
 }
 
 /** Where the keyboard's top edge sits in the window, or null while the keys are down. */
-function keyboardTopNow(): number | null {
-  return Keyboard.isVisible() ? (Keyboard.metrics()?.screenY ?? null) : null;
+function keyboardTopNow(origin: number): number | null {
+  const screenY = Keyboard.isVisible() ? Keyboard.metrics()?.screenY : undefined;
+
+  return screenY == null ? null : keyboardInWindow(screenY, origin);
 }
 
 /** Calls `changed` with the keyboard's new top edge each time the keys go up or down. Returns the unsubscribe. */
-function watchKeyboardTop(changed: (top: number | null) => void): () => void {
+function watchKeyboardTop(
+  scroll: ScreenScrollView | null,
+  changed: (top: number | null) => void,
+): () => void {
   const shown = Keyboard.addListener('keyboardDidShow', (event) =>
-    changed(event.endCoordinates.screenY),
+    changed(keyboardInWindow(event.endCoordinates.screenY, scroll?.origin.current ?? 0)),
   );
   const hidden = Keyboard.addListener('keyboardDidHide', () => changed(null));
 
@@ -98,11 +130,11 @@ function watchKeyboardTop(changed: (top: number | null) => void): () => void {
 export function useAboveKeyboard(): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
-  const keyboardTop = useRef<number | null>(keyboardTopNow());
+  const keyboardTop = useRef<number | null>(keyboardTopNow(scroll?.origin.current ?? 0));
 
   useEffect(() => {
     const lift = () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
-    const unwatch = watchKeyboardTop((top) => {
+    const unwatch = watchKeyboardTop(scroll, (top) => {
       keyboardTop.current = top;
       lift();
     });
@@ -128,7 +160,7 @@ export function useRoomAboveKeyboard(): number | null {
   const [room, setRoom] = useState<number | null>(null);
 
   useEffect(() => {
-    let keyboardTop = keyboardTopNow();
+    let keyboardTop = keyboardTopNow(scroll?.origin.current ?? 0);
     const measure = () => {
       const scrollHost = scroll?.ref.current?.getNativeScrollRef();
       if (keyboardTop == null || scrollHost == null) {
@@ -140,7 +172,7 @@ export function useRoomAboveKeyboard(): number | null {
         setRoom(top - scrollTop - 2 * tokens.spaceLg);
       });
     };
-    const unwatch = watchKeyboardTop((top) => {
+    const unwatch = watchKeyboardTop(scroll, (top) => {
       keyboardTop = top;
       measure();
     });
@@ -221,17 +253,22 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
+  const windowOrigin = useContext(Origin);
+  const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollView>(null);
   const root = useRef<View>(null);
-  // The avoiding view measures itself against its parent but the keyboard against the window,
-  // so under the app's header it pads short by the header and leaves the content's end under the keys.
-  const [rootTop, setRootTop] = useState(0);
   const offset = useRef(0);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
     resized: new Set(),
+    origin,
     offset,
   }));
+  useEffect(() => {
+    origin.current = windowOrigin;
+  }, [windowOrigin]);
+  // The avoiding view measures its frame from its parent and the keys from the screen's top.
+  const [rootY, setRootY] = useState(0);
 
   const followOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     offset.current = event.nativeEvent.contentOffset.y;
@@ -269,7 +306,9 @@ export function Screen({
     <ScreenScroll.Provider value={scroll ? screenScroll : null}>
       <View
         ref={root}
-        onLayout={() => root.current?.measureInWindow((_x, y) => setRootTop(y))}
+        onLayout={() =>
+          root.current?.measureInWindow((_x, y) => setRootY(belowScreenTop(y, origin.current)))
+        }
         style={[styles.root, padding, style]}
       >
         {LIFT.avoid == null ? (
@@ -278,7 +317,7 @@ export function Screen({
           <KeyboardAvoidingView
             style={styles.fill}
             behavior={LIFT.avoid}
-            keyboardVerticalOffset={rootTop}
+            keyboardVerticalOffset={rootY}
           >
             {body}
           </KeyboardAvoidingView>
