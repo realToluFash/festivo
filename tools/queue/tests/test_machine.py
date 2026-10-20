@@ -1,0 +1,113 @@
+import pathlib
+import tempfile
+import unittest
+from unittest import mock
+
+from soirely_queue import machine
+
+
+def config(root, **changes):
+    base = {"machine": "here", "workspace": str(root), "mainCheckout": "festivo",
+            "roles": {"ops": {}, "dev2": {}},
+            "defaults": {"model": "claude-opus-5-5", "effort": "medium", "memoryMax": "3G",
+                         "maxRuntime": "90m", "maxBudgetUsd": None}}
+    base.update(changes)
+    return base
+
+
+class Checked(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.folder.name)
+        for name in ("festivo", "soirely-ops", "soirely-dev2"):
+            (self.root / name).mkdir()
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def test_the_default_comes_from_the_file(self):
+        errors, refused, ready = machine.check(config(self.root))
+        self.assertEqual((errors, refused), ([], {}))
+        self.assertEqual(ready["ops"]["model"], "claude-opus-5-5")
+        self.assertEqual(ready["ops"]["effort"], "medium")
+
+    def test_a_role_overrides_only_what_it_names(self):
+        changed = config(self.root, roles={"ops": {"effort": "high"}, "dev2": {}})
+        ready = machine.check(changed)[2]
+        self.assertEqual((ready["ops"]["model"], ready["ops"]["effort"]),
+                         ("claude-opus-5-5", "high"))
+        self.assertEqual(ready["dev2"]["effort"], "medium")
+
+    def test_an_alias_or_unknown_model_refuses_that_role_only(self):
+        changed = config(self.root, roles={"ops": {"model": "opus"}, "dev2": {}})
+        errors, refused, ready = machine.check(changed)
+        self.assertEqual(errors, [])
+        self.assertIn("model 'opus' is not one sq accepts", refused["ops"])
+        self.assertIn("claude-opus-5-5", refused["ops"])
+        self.assertIn("dev2", ready)
+
+    def test_an_effort_the_model_does_not_take_is_refused(self):
+        changed = config(self.root, roles={"ops": {"effort": "extreme"}})
+        refused = machine.check(changed)[1]
+        self.assertIn("effort 'extreme' is not one claude-opus-5-5 takes", refused["ops"])
+
+    def test_a_missing_default_stops_every_role(self):
+        changed = config(self.root, defaults={"memoryMax": "3G", "maxRuntime": "90m"})
+        errors = machine.check(changed)[0]
+        self.assertIn("no default model or effort", errors[0])
+
+    def test_no_workspace_is_an_error(self):
+        errors = machine.check(config(self.root, workspace=None))[0]
+        self.assertIn("no workspace", errors[0])
+
+    def test_an_unknown_role_is_an_error(self):
+        errors = machine.check(config(self.root, roles={"dev9": {}}))[0]
+        self.assertIn("unknown role dev9", errors[0])
+
+    def test_a_missing_checkout_is_refused_by_its_path(self):
+        refused = machine.check(config(self.root, roles={"lead": {}}))[1]
+        self.assertEqual(refused["lead"], f"no checkout at {self.root / 'soirely-lead'}")
+
+    def test_developer_1_works_in_the_main_checkout(self):
+        self.assertEqual(machine.checkout(config(self.root), "dev"), self.root / "festivo")
+        own = config(self.root, roles={"ux": {"checkout": "~/design/ux"}})
+        self.assertEqual(machine.checkout(own, "ux"), pathlib.Path("~/design/ux").expanduser())
+
+    def test_bad_limits_are_refused(self):
+        changed = config(self.root, roles={"ops": {"memoryMax": "lots", "maxRuntime": "soon",
+                                                   "maxBudgetUsd": -1}})
+        refused = machine.check(changed)[1]["ops"]
+        for field in ("memoryMax", "maxRuntime", "maxBudgetUsd"):
+            self.assertIn(field, refused)
+
+    def test_machine_wide_limits_are_checked(self):
+        changed = config(self.root, onVersionDrift="halt", dailyBudgetUsd="ten", minFreeGb=-1)
+        errors = " ".join(machine.check(changed)[0])
+        for field in ("onVersionDrift", "dailyBudgetUsd", "minFreeGb"):
+            self.assertIn(field, errors)
+
+    def test_a_dearer_model_is_pointed_out(self):
+        note = machine.price_note("lead", "claude-fable-5-1", config(self.root))
+        self.assertEqual(note, "lead runs claude-fable-5-1, 2.5× the default per token")
+        self.assertIsNone(machine.price_note("lead", "claude-sonnet-5-5", config(self.root)))
+
+
+class Workspace(unittest.TestCase):
+    def test_the_answer_is_checked_and_saved(self):
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.dict("os.environ", {"SOIRELY_CONFIG": folder}):
+            answers = iter([folder, "y"])
+            said = []
+            saved = machine.ask_workspace({"roles": {"ops": {}}}, lambda _: next(answers),
+                                          said.append)
+            self.assertEqual(saved["workspace"], folder)
+            self.assertEqual(machine.load()["workspace"], folder)
+            self.assertIn("for the 1 roles", said[0])
+
+    def test_a_path_that_is_not_there_is_offered_for_creation(self):
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.dict("os.environ", {"SOIRELY_CONFIG": folder}):
+            wanted = pathlib.Path(folder) / "agents"
+            answers = iter([str(wanted), "y", "y"])
+            machine.ask_workspace({"roles": {}}, lambda _: next(answers), lambda _: None)
+            self.assertTrue(wanted.is_dir())
