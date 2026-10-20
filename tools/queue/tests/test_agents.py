@@ -1,6 +1,8 @@
 """`just agents up | down`, against a fake platform and a temporary workspace."""
 
 import pathlib
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -155,3 +157,39 @@ class Accounts(unittest.TestCase):
                                 for line in said))
             self.assertEqual((root / "claude-b" / "settings.json").read_text(),
                              '{"permissions": {}}')
+
+
+class Checkouts(unittest.TestCase):
+    """Against real git, in a temporary folder: a pretend origin and its clone."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        root = pathlib.Path(self.folder.name)
+        self.git("init", "-q", "-b", "main", str(root / "origin"))
+        self.git("-C", str(root / "origin"), "-c", "user.name=t", "-c", "user.email=t@t",
+                 "commit", "-q", "--allow-empty", "-m", "start")
+        self.git("clone", "-q", str(root / "origin"), str(root / "festivo"))
+        self.home = root / "festivo" / ".git" / "soirely-roles"
+        self.config = config(root, roles={"qa2": {}})
+        self.said = []
+
+    def git(self, *args):
+        subprocess.run(["git", *args], check=True, capture_output=True)
+
+    def test_a_checkout_deleted_by_hand_is_made_again(self):
+        path = pathlib.Path(self.folder.name) / "soirely-qa2"
+        agents.make_checkout(self.config, "qa2", self.said.append, self.home)
+        self.assertTrue((path / ".git").exists())
+        shutil.rmtree(path)
+        agents.make_checkout(self.config, "qa2", self.said.append, self.home)
+        self.assertTrue((path / ".git").exists())
+        self.assertFalse([line for line in self.said if "could not" in line])
+
+    def test_a_checkout_git_refuses_is_said_not_raised(self):
+        with mock.patch("soirely_queue.agents.subprocess.run",
+                        side_effect=[mock.Mock(returncode=0), mock.Mock(returncode=0),
+                                     mock.Mock(returncode=128, stderr="fatal: no\n")]):
+            agents.make_checkout(self.config, "qa2", self.said.append, self.home)
+        self.assertIn("could not create", self.said[-1])
+        self.assertIn("fatal: no", self.said[-1])
