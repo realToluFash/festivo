@@ -1,0 +1,3 @@
+{
+    "signInRules.rule.inactivity": "Quem passar {days, plural, =0 {# dias} one {# dia} other {# dias}} sem utilizar a Soirely terá de iniciar sessão novamente."
+}

@@ -1,0 +1,137 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+use App\Doctrine\Traits\Timestampable;
+use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Uid\Uuid;
+
+#[ORM\Entity]
+#[ORM\HasLifecycleCallbacks]
+#[ORM\Table(name: 'phone_numbers')]
+#[ORM\UniqueConstraint(name: 'uniq_phone_number', columns: ['number'])]
+#[ORM\Index(name: 'idx_phone_number_user', columns: ['user_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_primary_phone_per_user', columns: ['user_id'], options: ['where' => 'is_primary'])]
+#[ORM\UniqueConstraint(name: 'uniq_pending_phone_per_user', columns: ['user_id'], options: ['where' => 'is_pending'])]
+class PhoneNumber implements VerifiableContact
+{
+    use Timestampable;
+
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid')]
+    private Uuid $id;
+
+    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'phoneNumbers')]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private User $user;
+
+    /** E.164, so the same number typed three ways is one row. */
+    #[ORM\Column(type: Types::STRING, length: 32)]
+    private string $number;
+
+    /** The country it was entered for, which a number's own prefix does not always settle (+1 is several). */
+    #[ORM\Column(type: Types::STRING, length: 2, nullable: true)]
+    private ?string $countryCode;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $verifiedAt = null;
+
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $isPrimary;
+
+    /** Texted to replace the primary, which it does only once it is verified. */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $isPending = false;
+
+    /** Chose "Text it to me instead": later codes are texted too, until the number is verified (sc-750). */
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
+    private bool $codesByText = false;
+
+    public function __construct(User $user, string $number, bool $isPrimary = false, ?string $countryCode = null)
+    {
+        $this->id = Uuid::v7();
+        $this->user = $user;
+        $this->number = $number;
+        $this->countryCode = $countryCode;
+        $this->isPrimary = $isPrimary;
+
+        $user->addPhoneNumber($this);
+    }
+
+    public function getId(): Uuid
+    {
+        return $this->id;
+    }
+
+    public function getUser(): User
+    {
+        return $this->user;
+    }
+
+    public function getNumber(): string
+    {
+        return $this->number;
+    }
+
+    public function getCountryCode(): ?string
+    {
+        return $this->countryCode;
+    }
+
+    public function getVerifiedAt(): ?DateTimeImmutable
+    {
+        return $this->verifiedAt;
+    }
+
+    /** Verified ends the attempt, and the choice of texts with it (sc-750: "for the rest of that attempt"). */
+    public function setVerifiedAt(?DateTimeImmutable $verifiedAt): void
+    {
+        $this->verifiedAt = $verifiedAt;
+        $this->codesByText = null === $verifiedAt && $this->codesByText;
+    }
+
+    public function isPrimary(): bool
+    {
+        return $this->isPrimary;
+    }
+
+    public function setPrimary(bool $isPrimary): void
+    {
+        $this->isPrimary = $isPrimary;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->isPending;
+    }
+
+    public function setPending(bool $isPending): void
+    {
+        $this->isPending = $isPending;
+    }
+
+    public function isVerified(): bool
+    {
+        return null !== $this->verifiedAt;
+    }
+
+    public function wantsCodesByText(): bool
+    {
+        return $this->codesByText;
+    }
+
+    public function chooseCodesByText(): void
+    {
+        $this->codesByText = true;
+    }
+
+    /** A new attempt starts on WhatsApp again, as a new number's codes do (sc-750). */
+    public function forgetCodesByText(): void
+    {
+        $this->codesByText = false;
+    }
+}
