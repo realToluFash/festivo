@@ -1,3 +1,4 @@
+import json
 import pathlib
 import tempfile
 import unittest
@@ -6,8 +7,19 @@ from unittest import mock
 from soirely_queue import machine
 
 
+def login(folder, email="owner@example.test"):
+    """A Claude config folder that looks logged in, as `account` reads it: no real token."""
+    folder = pathlib.Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / ".claude.json").write_text(json.dumps({"oauthAccount": {"emailAddress": email}}))
+    (folder / ".credentials.json").write_text("{}")
+    return folder
+
+
 def config(root, **changes):
+    login(pathlib.Path(root) / "claude")
     base = {"machine": "here", "workspace": str(root), "mainCheckout": "festivo",
+            "claudeConfigDir": str(pathlib.Path(root) / "claude"),
             "roles": {"ops": {}, "dev2": {}},
             "defaults": {"model": "claude-opus-5-5", "effort": "medium", "memoryMax": "3G",
                          "maxRuntime": "90m", "maxBudgetUsd": None}}
@@ -83,6 +95,29 @@ class Checked(unittest.TestCase):
         self.assertEqual(machine.settings(changed, "qa2")["memoryMax"], "8G")
         self.assertEqual(machine.settings(changed, "qa3")["memoryMax"], "12G")
         self.assertEqual(machine.settings(changed, "ops")["memoryMax"], "3G")
+
+    def test_a_role_runs_under_its_own_account(self):
+        other = login(self.root / "claude-b", "second@example.test")
+        changed = config(self.root, roles={"ops": {}, "dev2": {"claudeConfigDir": str(other)}})
+        self.assertEqual(machine.claude_dir(changed, "dev2"), other)
+        self.assertEqual(machine.claude_dir(changed, "ops"), self.root / "claude")
+        self.assertEqual(machine.account(other), "second@example.test")
+        self.assertIn("dev2", machine.check(changed)[2])
+
+    def test_a_folder_with_no_login_refuses_only_its_roles(self):
+        changed = config(self.root, roles={"ops": {}, "dev2": {
+            "claudeConfigDir": str(self.root / "claude-empty")}})
+        errors, refused, ready = machine.check(changed)
+        self.assertIn(f"no Claude login in {self.root / 'claude-empty'}", refused["dev2"])
+        self.assertIn("ops", ready)
+
+    def test_without_its_credentials_file_a_linux_folder_is_not_logged_in(self):
+        folder = login(self.root / "half")
+        (folder / ".credentials.json").unlink()
+        with mock.patch.object(machine.sys, "platform", "linux"):
+            self.assertIsNone(machine.account(folder))
+        with mock.patch.object(machine.sys, "platform", "darwin"):
+            self.assertEqual(machine.account(folder), "owner@example.test")
 
     def test_bad_limits_are_refused(self):
         changed = config(self.root, roles={"ops": {"memoryMax": "lots", "maxRuntime": "soon",

@@ -8,6 +8,7 @@ import os
 import pathlib
 import re
 import shutil
+import sys
 
 from . import roles
 
@@ -17,6 +18,7 @@ MODELS = HERE.parent / "models.json"
 SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
+DEFAULT_CLAUDE_DIR = "~/.claude-soirely"
 # Under everything in agents.json: a worker is never left without a time limit.
 BUILT_IN = {"maxRuntime": "90m"}
 
@@ -80,6 +82,26 @@ def checkout(config, role):
         else root / f"soirely-{role}"
 
 
+def claude_dir(config, role):
+    """The Claude config folder a role's workers run under, and so the account: the role's
+    own `claudeConfigDir`, then the machine's, then the default."""
+    own = (config.get("roles", {}).get(role) or {}).get("claudeConfigDir")
+    return expand(own or config.get("claudeConfigDir") or DEFAULT_CLAUDE_DIR)
+
+
+def account(folder):
+    """The email of the account logged in under `folder`, or None. No token is read."""
+    try:
+        data = json.loads((folder / ".claude.json").read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    email = (data.get("oauthAccount") or {}).get("emailAddress")
+    # On Linux the login itself is a file beside it; a Mac keeps it in the Keychain.
+    if not email or (sys.platform != "darwin" and not (folder / ".credentials.json").exists()):
+        return None
+    return email
+
+
 def settings(config, role):
     """The built-in floor, then `defaults`, then the role's own starting values in `ROLES`
     (the testers' larger memory), then the role's entry in the file. A null is not set,
@@ -125,7 +147,7 @@ def setting_problems(values, known, where):
     return problems
 
 
-def check(config, known=None):
+def check(config, known=None, logged_in=account):
     """`(errors, refused, ready)`: errors stop every role, refused names each role that
     cannot run and why, ready holds each runnable role's merged settings."""
     known = known or models()
@@ -162,6 +184,11 @@ def check(config, known=None):
         place = checkout(config, role)
         if place and not place.exists():
             refused[role] = f"no checkout at {place}"
+            continue
+        folder = claude_dir(config, role)
+        if not logged_in(folder):
+            refused[role] = (f"no Claude login in {folder}: run CLAUDE_CONFIG_DIR={folder} "
+                             "claude, then /login with the account this role should use")
             continue
         ready[role] = values
     return errors, refused, ready

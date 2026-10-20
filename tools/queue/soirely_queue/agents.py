@@ -74,6 +74,28 @@ def make_checkout(config, role, say, home):
         say(f"  {role}: its stack is not set up; see CONTRIBUTING.md (dev-env, qa-env)")
 
 
+def accounts(config, say):
+    """Each Claude config folder the roles use: made if missing, with the default folder's
+    settings so every account runs under the same rules, and checked for a login."""
+    default = machine.expand(config.get("claudeConfigDir") or machine.DEFAULT_CLAUDE_DIR)
+    folders = {}
+    for role in config.get("roles") or {}:
+        folders.setdefault(machine.claude_dir(config, role), []).append(role)
+    for folder, names in folders.items():
+        if not folder.exists():
+            folder.mkdir(parents=True)
+            say(f"made {folder} for {', '.join(names)}")
+        source = default / "settings.json"
+        if folder != default and source.exists() and not (folder / "settings.json").exists():
+            shutil.copy2(source, folder / "settings.json")
+            say(f"copied the settings of {default} into {folder}")
+        email = machine.account(folder)
+        say(f"  {folder}: {email} for {', '.join(names)}" if email else
+            f"  {folder}: not logged in. Run CLAUDE_CONFIG_DIR={folder} claude, then /login "
+            f"with the account for {', '.join(names)}")
+    return folders
+
+
 def setup(home, platform, say=print, ask=input, workspace=None):
     try:
         config = machine.load()
@@ -101,6 +123,7 @@ def setup(home, platform, say=print, ask=input, workspace=None):
     say("Checkouts:")
     for role in config.get("roles") or {}:
         make_checkout(config, role, say, home)
+    accounts(config, say)
     tree = subprocess.run(["git", "rev-parse", "HEAD:tools/queue"], cwd=REPO, capture_output=True,
                           text=True).stdout.strip() or "local"
     update.copy(REPO / "tools" / "queue", home, tree)

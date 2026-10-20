@@ -7,7 +7,7 @@ from unittest import mock
 
 from soirely_queue import agents, runner, store
 
-from tests.test_runner import FakePlatform, config, work
+from tests.test_runner import FakePlatform, config, login, work
 
 
 class Down(unittest.TestCase):
@@ -117,3 +117,19 @@ class StartStop(unittest.TestCase):
     def test_a_listed_role_that_cannot_run_is_not_started(self):
         self.assertEqual(self.sq("start", "lead"), 1)
         self.assertEqual(runner.started(self.db), set())
+
+
+class Accounts(unittest.TestCase):
+    def test_setup_makes_each_folder_copies_settings_and_names_the_login(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = pathlib.Path(folder)
+            settings = config(root, roles={"ops": {}, "dev2": {
+                "claudeConfigDir": str(root / "claude-b")}})
+            (root / "claude" / "settings.json").write_text('{"permissions": {}}')
+            said = []
+            agents.accounts(settings, said.append)
+            self.assertEqual((root / "claude-b" / "settings.json").read_text(),
+                             '{"permissions": {}}')
+            self.assertIn(f"  {root / 'claude'}: owner@example.test for ops", said)
+            self.assertTrue(any(line.startswith(f"  {root / 'claude-b'}: not logged in")
+                                and "for dev2" in line for line in said))

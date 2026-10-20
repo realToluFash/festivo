@@ -498,6 +498,9 @@ def status(db, platform, now):
         if late:
             print(f"warning: {late}")
         on = runner.started(db)
+        # The account is shown only when this machine's roles use more than one.
+        folders = {role: machine.claude_dir(config, role) for role in ready}
+        several = len(set(folders.values())) > 1
         for role in config.get("roles") or {}:
             if role in refused:
                 print(f"{role:5} refused: {refused[role]}")
@@ -506,7 +509,8 @@ def status(db, platform, now):
                 continue
             state = "running a worker" if platform.worker_active(role) else \
                 "started" if role in on else "stopped"
-            print(f"{role:5} {state} · {ready[role]['model']} {ready[role]['effort']}")
+            print(f"{role:5} {state} · {ready[role]['model']} {ready[role]['effort']}"
+                  + (f" · {machine.account(folders[role])}" if several else ""))
             note = machine.price_note(role, ready[role]["model"], config)
             if note:
                 print(f"      note: {note}")

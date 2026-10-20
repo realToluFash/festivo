@@ -190,7 +190,9 @@ def worker(db, home, platform, role, item_id, run_claude=subprocess.run, load=ma
     path = machine.checkout(config, role)
     main, note = prepare(path, role, story)
     entry["main"] = main
-    argv, env = command(values, config.get("claudeConfigDir") or "~/.claude-soirely")
+    folder = machine.claude_dir(config, role)
+    entry["account"] = machine.account(folder)
+    argv, env = command(values, folder)
     finished = run_claude(argv, input=prompt(row, role, main, note), capture_output=True,
                           text=True, cwd=path, env=env)
     try:
