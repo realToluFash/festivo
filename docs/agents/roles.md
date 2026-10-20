@@ -27,9 +27,8 @@ developer 1's.
 
 ## Ops on each machine
 
-Today there is one `ops`, and the agents run on one machine at a time. When the agents run
-on more than one computer (step 2 of the [delivery](README.md#delivery)), ops splits in two,
-because some of its work belongs to the machine it runs on:
+Ops is the one role every machine runs, because some of its work belongs to the machine it
+runs on. So it is split in two:
 
 - **`ops@<machine>`**, one per machine and always listed in that machine's `agents.json`:
   disk and the build cache, the role stacks, the manager's install and self-update, and
@@ -38,7 +37,8 @@ because some of its work belongs to the machine it runs on:
 - **`ops`, the shared duties**, on whichever one machine holds its lease: `main` going red,
   CI on pull requests, advisories, deploys, and the permission asks on sc-4992.
 
-_(Later: `ops@<machine>` is not built yet; see [Ops on every machine](machines.md#ops-on-every-machine).)_
+How each machine finds its own ops work is in
+[Ops on every machine](machines.md#ops-on-every-machine).
 
 ## The owner
 
