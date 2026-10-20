@@ -19,6 +19,7 @@ from .ledger import Printer
 from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
+OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents")
 ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "start", "stop", "pause",
          "resume", "cost", "agents")
 
@@ -569,6 +570,11 @@ def admin(argv):
     ag.add_argument("--now", action="store_true", help="down: stop running workers at once")
     ag.add_argument("--workspace", help="setup: the workspace, without asking")
     a = p.parse_args(argv)
+    # A guard against a worker that reads "stop the routine" in a thread, not a boundary.
+    if a.command in OWNER_ONLY and os.environ.get("SOIRELY_WORKER"):
+        print(f"error: sq {a.command} is the owner's, and this is "
+              f"{os.environ['SOIRELY_WORKER']}'s worker; say what you need in your report")
+        return sys.exit(1)
     db = open_db()
     platform = systemd.platform()
     sq_path = home() / "sq" / "sq"

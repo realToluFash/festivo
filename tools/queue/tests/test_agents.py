@@ -105,6 +105,15 @@ class StartStop(unittest.TestCase):
         self.assertEqual(runner.started(self.db), set())
         self.assertFalse(hasattr(self.platform, "enabled"))
 
+    def test_a_worker_cannot_stop_pause_or_start_the_roles(self):
+        self.sq("start", "ops")
+        with mock.patch.dict("os.environ", {"SOIRELY_WORKER": "dev2"}):
+            for argv in (("stop", "ops"), ("pause",), ("resume",), ("start", "dev2"),
+                         ("run",), ("agents", "down", "--now")):
+                self.assertEqual(self.sq(*argv), 1, argv)
+        self.assertEqual(runner.started(self.db), {"ops"})
+        self.assertIsNone(store.get_meta(self.db, "paused"))
+
     def test_a_listed_role_that_cannot_run_is_not_started(self):
         self.assertEqual(self.sq("start", "lead"), 1)
         self.assertEqual(runner.started(self.db), set())

@@ -112,6 +112,7 @@ class Linux:
             f"--working-directory={cwd}",
             f"--property=EnvironmentFile=-{env_file}",
             f"--setenv=PATH={search_path()}",
+            f"--setenv=SOIRELY_WORKER={role}",
             *[f"--setenv={key}={os.environ[key]}" for key in DESKTOP if key in os.environ],
             f"--property=RuntimeMaxSec={values['maxRuntimeMinutes']}min",
             f"--property=ExecStopPost={ended}",

@@ -37,7 +37,7 @@ class Launch(unittest.TestCase):
         self.assertEqual(argv[:2], ["systemd-run", "--user"])
         for part in ("--unit=soirely-worker-dev2", "--slice=soirely.slice",
                      "--working-directory=/w/dev2", "--property=RuntimeMaxSec=90min",
-                     "--property=MemoryMax=3G",
+                     "--property=MemoryMax=3G", "--setenv=SOIRELY_WORKER=dev2",
                      "--property=ExecStopPost=python3 /q/sq/sq worker-ended dev2 41"):
             self.assertIn(part, argv)
         self.assertEqual(argv[argv.index("--"):], ["--", "python3", "/q/sq/sq", "worker",
