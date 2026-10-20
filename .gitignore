@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+vendor/
+
+# builds
+dist/
+build/
+.expo/
+ios/
+android/
+var/
+public/bundles/
+
+# local state
+.data/
+__pycache__/
+# Screenshots and logs from a QA pass. Evidence for a Shortcut comment, which
+# is where it belongs — not in the repository.
+.qa/
+# Anchored. Unanchored, it matched at every level — including
+# services/api/.env, which Symfony reads and which holds only non-secret
+# defaults (secrets go in .env.local, ignored by that package's own rules).
+# Ignoring it meant `composer install` failed on a fresh clone, because the
+# post-install cache:clear could not read an environment file nobody had.
+/.env
+/.env.local
+*.log
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/
+
+# Symfony Flex recipes install a compose file per service. The stack is defined
+# once at the root; a second one here would quietly claim ports and define
+# duplicate services.
+services/api/compose.yaml
+services/api/compose.override.yaml
+
+# The OpenAPI document is fetched to generate types; the generated file is
+# committed, the fetched document is not.
+packages/api-client/.openapi.json

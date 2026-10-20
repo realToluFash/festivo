@@ -1,0 +1,16 @@
+mercure:
+    hubs:
+        default:
+            # The hub in infra is dunglas/mercure v0.16, which speaks the 0.x protocol.
+            # The bundle now defaults to 1.0, whose RFC 9068 access tokens the hub does
+            # not accept — and the mismatch surfaces as a config error about missing
+            # claims rather than as a version mismatch, which is why it is stated here.
+            protocol_version: '0.x'
+            url: '%env(MERCURE_PUBLISH_URL)%'
+            public_url: '%env(MERCURE_PUBLIC_URL)%'
+            jwt:
+                # The PUBLISHER key. Clients are given the subscriber key, which the hub
+                # refuses to publish with. One shared key would let any guest's browser
+                # forge a service-floor update.
+                secret: '%env(MERCURE_PUBLISHER_KEY)%'
+                publish: ['*']

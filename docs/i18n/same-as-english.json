@@ -1,0 +1,38 @@
+{
+  "es": [
+    "web:app.name",
+    "web:orgGeneral.title",
+    "mobile:app.name",
+    "mobile:home.title",
+    "web:settings.sectionGeneral",
+    "web:settings.sectionRoles",
+    "web:rolesScreen.title"
+  ],
+  "fr": [
+    "mobile:app.name",
+    "mobile:devices.everywhereCode",
+    "mobile:frame.organisation",
+    "mobile:home.title",
+    "mobile:settings.organisation",
+    "mobile:settings.organisationHeading",
+    "mobile:twoFactor.code",
+    "mobile:waysCard.code",
+    "web:app.name",
+    "web:devices.everywhereCode",
+    "web:nav.organisation",
+    "web:orgGeneral.section",
+    "web:rolesScreen.area.budget",
+    "web:rolesScreen.area.menu",
+    "web:rolesScreen.area.messages",
+    "web:rolesScreen.area.organisation",
+    "web:twoFactor.code",
+    "web:waysCard.code"
+  ],
+  "pt": [
+    "web:app.name",
+    "mobile:app.name",
+    "mobile:home.title",
+    "mobile:layouts.itemCount_one",
+    "web:rolesScreen.area.menu"
+  ]
+}
