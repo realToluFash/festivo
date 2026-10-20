@@ -5,8 +5,8 @@ or a Mac, running agents on more than one computer without conflicts, and keepin
 checkout on the latest `main`.
 
 **Status: agreed with the owner on 20 Oct.** #276 builds `agents.json`, `just agents` and
-staying on `main`, for Linux. More than one machine, the permission asks and the Mac are
-later work, and so is each line below marked _(later)_.
+staying on `main`, for Linux. #279 builds more than one machine, ops on every machine and
+the permission asks. The Mac is later work, and so is each line below marked _(later)_.
 
 ## `agents.json`
 
@@ -41,12 +41,12 @@ repository because it describes the machine, not the project. The repository shi
 
 | Field                                     | Meaning                                                                                                                            |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `machine`                                 | this machine's name, in the run log and `sq status`. _(Later: shown to other machines that try to start a role it holds)_          |
+| `machine`                                 | this machine's name, in the run log and `sq status`, and shown to other machines for the roles it holds                            |
 | `workspace`                               | where checkouts live: each role's is `<workspace>/soirely-<role>`                                                                  |
 | `mainCheckout`                            | the folder of the main checkout, developer 1's. `festivo` here; `soirely` on a fresh machine                                       |
 | `roles`                                   | the roles this machine may run. A role not listed never ticks here                                                                 |
 | `checkout`                                | per role: overrides the path for that one role                                                                                     |
-| `standby`                                 | per role: runs here only while no other machine holds it. _(Later, with the leases)_                                               |
+| `standby`                                 | per role: runs here only while no other machine wants it. See [More than one machine](#more-than-one-machine)                      |
 | `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                                                            |
 | `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                                                          |
 | `claudeConfigDir`                         | required: the Claude config folder, and so the account, the workers use; per role as well. See [Claude accounts](#claude-accounts) |
@@ -122,12 +122,12 @@ to a folder the file does not name. `agents.example.json` sets Claude's own defa
 `~/.claude.json`, beside the folder). The owner's Linux machine keeps the agents apart from
 their own sessions, so its file names `~/.claude-soirely`, set by hand.
 
-**With `~/.claude`, the workers' settings are the owner's own.** The deny rules setup writes
-for the admin commands, and every rule `just agents permissions apply` grants the workers,
-then land in the owner's `~/.claude/settings.json` too. The owner's interactive sessions are
-denied `sq stop` and `just agents`, and each grant widens them as well. A machine where the
-owner also works in Claude names a folder of its own, as this one does with
-`~/.claude-soirely`.
+**With `~/.claude`, the workers share the owner's settings and memory.** No permission
+lands there: the workers' grants and denials are passed on each run's command line (see
+[Permission asks](#permission-asks)), so the owner's own sessions are never widened or
+denied by them. But what the owner's sessions allow, and remember, the workers see too. A
+machine where the owner also works in Claude names a folder of its own, as this one does
+with `~/.claude-soirely`.
 
 - **Logging in, once per folder:** `CLAUDE_CONFIG_DIR=~/.claude-b claude` (plain `claude` for
   `~/.claude`), then
@@ -142,9 +142,9 @@ owner also works in Claude names a folder of its own, as this one does with
   Keychain. _(To check with the Mac runner: that two folders keep two Keychain logins.)_
 - **Each run records its account** in the run log, and `sq status` shows each role's
   account when the machine uses more than one.
-- **Settings, permissions and memory are per folder.** A permission is applied to every
-  folder the roles use. What one account's sessions remember, the others do not see, so
-  anything every role needs belongs in the repository, a story or an `sq` note.
+- **Settings and memory are per folder; the workers' permissions are per machine.** What
+  one account's sessions remember, the others do not see, so anything every role needs
+  belongs in the repository, a story or an `sq` note.
 - _(Later: an account at its usage limit holds only its own roles until the limit resets,
   rather than each of their runs failing.)_
 
@@ -197,34 +197,74 @@ The tests cover both versions without either system installed.
 same story: two workers building one story on one branch, comments posted twice, one story
 tested twice.
 
-**The fix: claims live in GitHub, which every machine sees.**
+**The fix: what is shared lives in GitHub, which every machine sees**, as git references
+under `refs/soirely/` in the repository. Each points at a small commit whose message holds
+the record. Creating a reference that exists is refused, and moving one only succeeds from
+the commit it was read at, so two machines can never both win.
 
-- **A role runs on one machine at a time.** `sq start dev` takes a lease, a git reference
-  such as `refs/soirely/roles/dev` naming the machine, renewed every minute. Creating a
-  reference that exists is refused, so only one machine can hold it. Another machine's
-  `sq start dev` prints `dev is running on tolu-linux, last seen 20s ago` and starts
-  nothing. A lease not renewed for 5 minutes lapses, and a standby machine takes over.
-- **A story is claimed in GitHub too**, as `refs/soirely/claims/sc-<id>`, with the 90-minute
-  lapse. This matters because the developers share Ready For Dev and the testers share
-  Ready For QA, even when they run on different machines.
+| Reference                          | Holds                                                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `refs/soirely/machines/<machine>`  | the heartbeat: which roles this machine lists, has started, keeps standby                            |
+| `refs/soirely/roles/<role>`        | the lease: the machine that runs this role                                                           |
+| `refs/soirely/claims/<pool>/<key>` | the work a worker took, by its story (`sc-<n>`) or with none its kind (`main`), and on which machine |
+| `refs/soirely/pause`               | the pause on every machine, and who set it                                                           |
+
+Every minute `sq run` reads them all in one call, writes its heartbeat, and settles:
+
+- **A role runs on one machine at a time.** A started role takes its lease if nobody holds
+  it, and keeps it while it stays started. Another machine started with the same role ticks
+  it not at all, and `sq status` and its journal say
+  `dev: running on tolu-linux, last seen 20s ago`. A stopped role's lease is given back the
+  same minute.
+- **A lease lapses with its machine.** A machine whose heartbeat is 5 minutes old has gone
+  quiet, and any machine started with its roles takes them over. A worker it left running
+  keeps its claim, below, so the new holder takes other work, never that one.
+- **`standby` hands a role back.** A standby machine takes a role only while no live machine
+  has started it as a first choice, and gives it back once its own worker is done, never in
+  the middle of one.
+- **Every piece of work is claimed in GitHub too**, before its worker starts: a story by
+  its pool and number, work with no story (a red `main`, a sweep) by its pool and kind. The
+  developers share To Do and the testers share Ready For QA, even on different machines,
+  so work claimed on one is skipped on the other. A claim is given back when its worker
+  finishes, and otherwise lapses only after 90 minutes, the local lease and the longest a
+  worker runs. It does not lapse with its machine: a machine gone quiet, or a Mac asleep,
+  may still have that worker running. Only `ops@<machine>` work is never claimed, since no
+  other machine can do it.
 - **Pushes do not collide.** A story's branch belongs to its developer's label, so it is
   pushed from the one machine running that developer.
+- **GitHub out of reach** (offline, or a rate limit) starts nothing shared: another machine
+  may be taking this one's roles over. Workers already running finish, and only this
+  machine's own `ops@<machine>` work starts, with a `warning:` each minute until GitHub
+  answers. So a dropped connection never starts a role, or a story, twice.
 
-**The file says what may run here; the lease decides what does.** If two machines' files
-list the same role, only one runs it, and `sq status` on each says which. A role listed on
-two machines without `standby` is also reported as a conflict.
+**The file says what may run here; the lease decides what does.** A role listed on two
+machines, neither as `standby`, is reported in `sq status` as a conflict: one machine runs
+it and the other idles, which is rarely what the owner meant.
+
+**Pausing every machine.** `sq pause --everywhere` writes the pause reference, and every
+machine holds its roles from its next minute; `sq resume --everywhere` lifts it. A local
+`sq resume` does not lift it, and says so. Paused machines keep their heartbeats and leases.
 
 **Using two machines.** Split the roles: for example, developers, lead and ops on the Linux
 machine, the testers, linguist and designer on the Mac. `sq start --all` on both is safe.
 More capacity comes from more instances (`dev3`), never the same role twice. Stacks, ports
-and simulators stay local to each machine; only claims are shared. Two machines syncing once
-a minute is well inside Shortcut's and GitHub's rate limits.
+and simulators stay local to each machine; only leases and claims are shared. A minute
+costs each machine one listing, one read for each record it has not seen, and two writes
+for its heartbeat (a commit and the move of its reference), plus two for each claim, well
+inside GitHub's rate limits.
 
-**To check before relying on it.** That GitHub accepts references outside `refs/heads`; if it
-does not, lock branches under `soirely-locks/` through GitHub's API give the same
-refuse-if-it-exists guarantee. And that branch protection on `main` does not affect them.
-Writing locks to the shared repository is an outside change, part of what the owner
-approves with the pull request.
+**The records are public on a public repository.** Anyone can list `refs/soirely/` and
+read each machine's name, the roles it runs and the stories its workers hold. They carry no
+secret, path or account; a machine name that should stay private is changed in
+`agents.json`.
+
+**To check on the first run.** That GitHub accepts references outside `refs/heads`, and that
+branch protection on `main` does not affect them. The tests cover the rules with a pretend
+GitHub; the first `sq run` against the real one is the check, and `sq status` shows a
+failure as the `could not reach the shared leases` warning. If GitHub refuses them, lock
+branches under `soirely-locks/` give the same refuse-if-it-exists guarantee. Writing these
+references to the shared repository is an outside change, part of what the owner approves
+by merging #279.
 
 ### Ops on every machine
 
@@ -237,15 +277,32 @@ date. Ops never applies permissions: only the owner does (below). So ops is spli
 | `ops@<machine>`        | on every machine, always listed in its `agents.json` | disk, build cache, stacks, the manager, the `claude` CLI version                   |
 | ops, the shared duties | on one machine, by lease (`refs/soirely/roles/ops`)  | `main` going red, CI on pull requests, advisories, deploys, the permissions ticket |
 
+**`ops` belongs in every `agents.json`**: a file without it refuses ops, with the reason
+in `sq status` and the journal, and the other roles and the self-update carry on. Each minute, with no model, `sq run` checks the machine and files what it finds as
+ops work of its own kind, `machine`, in the queue `ops@<machine>`:
+
+| Check                                                   | Becomes                                          |
+| ------------------------------------------------------- | ------------------------------------------------ |
+| free disk under `minFreeGb`                             | urgent: free space so workers can start          |
+| Docker's build cache over 20 GB (read every 30 minutes) | urgent: `just prune-build-cache`                 |
+| once a day                                              | the sweep: disk, Docker, the stacks, the manager |
+
+- **This machine's ops takes its machine work whoever holds the ops lease.** A machine
+  without the lease runs ops for `ops@<machine>` items only.
+- **A full disk holds every other role, but not this.** The disk guard is the one hold
+  `ops@<machine>` may work through, since clearing it is the job. Any other hold (the daily
+  cap, a paused machine) holds ops too.
+- **It works only on its own machine**, and never runs a command on another computer. Its
+  brief names the machine and says so.
+
 The shared duties hold a lease like any other role, so two machines never both fix a red
-`main` or open the same pull request. Each machine's ops works only on its own machine;
-it never runs a command on another computer.
+`main` or open the same pull request.
 
 ## Permission asks
 
 Some agents will need a command that their permission rules do not yet allow. Asks go to
 one place, the owner decides each one, and **only the owner grants it**, by a command in a
-terminal of their own. _(Later work, after more than one machine.)_
+terminal of their own.
 
 Every role writes to Shortcut with the owner's API token and to GitHub as the owner's
 user, so an agent's reply and the owner's look the same. A "yes" in a thread therefore
@@ -257,7 +314,8 @@ holds every ask as its own comment thread. It stays in Backlog: nobody builds, t
 closes it.
 
 1. **A worker that is refused a command posts an ask** on that story with
-   `sq <role> permission-ask`, which fills in the format:
+   `sq <role> permission-ask --rule '<rule>' --for '<why>' --without '<what fails>'`,
+   which fills in the format, the role and the machine:
 
    ```
    Permission ask (from dev2)
@@ -267,33 +325,35 @@ closes it.
    Without it: the iOS half of QA cannot run on this machine
    ```
 
-   There is no owner tag, since the owner is not a role. An ask missing any of the five
-   parts is not answered. The worker does not wait. It notes the ask on its story (`sq <role> note`), finishes
-   what it can without the command, and moves on. The item comes back with the role's next
-   pick.
+   There is no owner tag, since the owner is not a role. The worker does not wait. It notes
+   the ask on its story (`sq <role> note`), finishes what it can without the command, and
+   moves on. The item comes back with the role's next pick.
 
 2. **The owner answers in that thread**: yes, no, or an alternative, such as a narrower
    rule or a different command. The answer is a record of the decision, not the grant.
-3. **Ops drafts the change.** An approved rule goes into `tools/queue/permissions.json`
-   through a draft pull request that names the ask's comment. **Only the owner merges it**,
-   even after the lead's pass: `sq` refuses to merge a pull request that touches
-   `permissions.json`, for every role. A rejected ask stays in the thread, so the same ask
-   is not posted again; `permission-ask` refuses a rule already answered and points to the
-   answer.
+3. **Ops drafts the change.** An approved rule goes into `tools/queue/permissions.json`,
+   with the roles it is for and the ask's comment, through a draft pull request.
+   **Only the owner merges it**, even after the lead's pass: `sq` refuses to merge a pull
+   request that touches `permissions.json`, for every role. A rejected ask stays in the
+   thread, so the same ask is not posted again; `permission-ask` refuses a rule already
+   asked for and prints the owner's answer, if there is one.
 4. **The owner applies it on each machine** with `just agents permissions apply`, run in
-   their own terminal. It reads `permissions.json` from `origin/main`, shows what it would
-   add to the workers' settings in every Claude config folder this machine's roles use, and writes them only after the
-   owner confirms at the keyboard; it refuses without a terminal and inside a worker.
-   `sq status` and ops' report say when `main` has rules this machine has not applied, so
-   the owner knows to run it. A new machine applies the whole file at setup.
+   their own terminal. It reads `permissions.json` from `origin/main`, shows each rule it
+   adds or removes and for which roles (a file deleted from `main` removes every rule), and only after `yes` typed at the keyboard copies
+   it to `~/.config/soirely/permissions.json` (mode 600). It refuses without a terminal and
+   inside a worker. `just agents permissions` alone shows what is pending, and `sq status`
+   says when `main` grants rules this machine has not applied. `just agents setup` offers
+   the apply at the end.
 
-**No worker writes Claude settings.** Setup also writes deny rules for editing the
-workers' own settings files and for the admin commands (see the
-[README](README.md#commands)). Those guard against a worker that misreads a thread; the
-boundary is that granting needs the owner at a keyboard.
+**A rule names what it allows.** `Bash`, `Edit`, `Write` and the like, bare or with only
+wildcards (`Bash(*)`, `Edit(**)`), would grant the whole tool, so `apply` refuses a file
+holding one.
 
-The file says which roles each rule is for, so a rule approved for the testers is not
-handed to every role.
+**No Claude settings file is written by anyone.** Each worker is started with its role's
+applied rules as `--allowedTools`, and with `--disallowedTools` for what no worker may do
+whatever it was granted: the owner's `sq` commands, `just agents`, `systemctl --user`, and
+editing `~/.config/soirely` or its Claude folder. Those guard against a worker that misreads
+a thread; the boundary is that granting needs the owner at a keyboard.
 
 ## Starting the manager
 

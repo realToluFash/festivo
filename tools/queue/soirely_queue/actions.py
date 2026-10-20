@@ -3,6 +3,7 @@ sent. A refusal says why and what to do instead."""
 
 import datetime
 import re
+import socket
 import time
 
 from . import github, store, sync
@@ -612,6 +613,43 @@ def finish_handover(c, story, pr, note):
     return f"sc-{story['id']} is {went} after {pr['merge_sha'][:7]}"
 
 
+PERMISSIONS_STORY = 4992
+ASK_PARTS = ("Machine", "Rule", "For", "Without it")
+
+
+def this_machine():
+    from . import machine
+    try:
+        return machine.load().get("machine") or socket.gethostname()
+    except machine.ConfigError:
+        return socket.gethostname()
+
+
+def permission_ask(c, a):
+    """An ask on the standing story, in the format the owner answers. The answer is a
+    record; only the owner, merging permissions.json and applying it, grants anything."""
+    guard(c, "permission-ask")
+    rule = a.rule.strip()
+    from .permissions import RULE
+    if not RULE.match(rule):
+        raise Refused(f"{rule!r} is not a permission rule such as Bash(xcrun simctl boot:*)")
+    story = c.story(PERMISSIONS_STORY)
+    for thread in W.threads(story):
+        if re.search(rf"^Rule: {re.escape(rule)}$", thread[0]["text"], re.M):
+            answer = next((x["text"] for x in thread[1:] if not R.author(x["text"])), None)
+            raise Refused(f"{rule} was asked in #{thread[0]['id']} on sc-{PERMISSIONS_STORY}"
+                          + (f"; the owner answered: {answer.strip()[:200]}" if answer
+                             else "; it is waiting on the owner. Note it on your story and "
+                             "move on"))
+    text = "\n".join([f"Permission ask (from {signature(c.role)})",
+                      f"Machine: {this_machine()}", f"Rule: {rule}", f"For: {a.for_.strip()}",
+                      f"Without it: {a.without.strip()}"])
+    posted = c.shortcut.comment(PERMISSIONS_STORY, text, None)
+    c.refresh(PERMISSIONS_STORY)
+    return (f"asked in #{posted['id']} on sc-{PERMISSIONS_STORY}. Don't wait: note it on your story, finish what you can "
+            "without it, and say so in your report")
+
+
 def merge(c, a):
     guard(c, "merge")
     pr = c.pr(a.pr)
@@ -630,6 +668,9 @@ def merge(c, a):
                       "the push voids the pass, so the story stays In Review for the lead")
     if live["mergeable"] != "MERGEABLE":
         raise Refused(f"GitHub says {live['mergeable']}; try again in a minute")
+    if any(path == "tools/queue/permissions.json" for path, _, _ in github.files(a.pr)):
+        raise Refused("it changes tools/queue/permissions.json, which grants the workers "
+                      "commands: only the owner merges it, even after the lead's pass")
     if c.role in R.LINGUISTS:
         mine = R.linguist_files()
         stray = [path for path, _, _ in github.files(a.pr) if path not in mine]

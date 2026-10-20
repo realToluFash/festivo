@@ -168,6 +168,10 @@ def check(config, known=None, logged_in=account):
     if unknown:
         errors.append(f"unknown role {', '.join(unknown)} in {path()}: "
                       f"one of {', '.join(roles.ROLES)}")
+    if "ops" not in listed:
+        # A refusal, not an error: an older file must not stop the self-update that fixes it.
+        refused["ops"] = (f"not listed in {path()}: every machine runs ops, for its own disk, "
+                          "Docker, stacks and manager (ops@<machine>)")
     defaults = config.get("defaults") or {}
     if not config.get("claudeConfigDir"):
         errors.append(f"no claudeConfigDir in {path()}: the Claude config folder the workers "

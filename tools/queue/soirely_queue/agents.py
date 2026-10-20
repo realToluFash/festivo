@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-from . import machine, runner, store, update
+from . import machine, permissions, runner, store, update
 
 WAIT_SECONDS = 10 * 60
 REPO = pathlib.Path(__file__).resolve().parents[3]
@@ -134,8 +134,14 @@ def setup(home, platform, say=print, ask=input, workspace=None):
                           text=True).stdout.strip() or "local"
     update.copy(REPO / "tools" / "queue", home, tree)
     platform.install(home / "sq" / "sq", machine.env_file(), sys.executable)
-    say(f"Installed sq in {home / 'sq'} and the {platform.name} units. "
-        "`just agents up` starts the roles.")
+    say(f"Installed sq in {home / 'sq'} and the {platform.name} units.")
+    if sys.stdin.isatty():
+        say("Permissions the owner has granted the workers, from main:")
+        permissions.apply(home, say, ask)
+    else:
+        say("Run `just agents permissions apply` in your own terminal to grant the workers "
+            "what main's permissions.json holds.")
+    say("`just agents up` starts the roles.")
     return 0
 
 

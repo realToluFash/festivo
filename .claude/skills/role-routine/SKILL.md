@@ -134,6 +134,11 @@ watching, so:
   run; each write checks the story or pull request fresh and says why it refused. The
   comment header, the reply threading, label unions and state names are all done for you.
 
+- **A command refused by your permissions is asked for, not worked around.** Post it on
+  sc-4992 with `sq <role> permission-ask --rule '<rule>' --for '<why>' --without '<what
+fails>'`, note it on your story, do what you can without it, and move on. Only the owner
+  grants a rule, at their own keyboard.
+
 - **One piece of work, then stop.** One story built, one pull request reviewed, one story
   tested, one memo. Whatever else is waiting is already queued, and the next tick starts a
   fresh worker for it. Several small runs beat one long run whose context fills with the

@@ -142,6 +142,7 @@ EVERYONE = tuple(ROLES)
 MAY = {
     "comment": EVERYONE,
     "note": EVERYONE,
+    "permission-ask": EVERYONE,
     "claim": DEVS + TESTERS,
     "move": DEVS + TESTERS + LINGUISTS + ("lead", "pm", "ops"),
     "label": DEVS + TESTERS + LINGUISTS + ("pm", "cd", "ops"),
