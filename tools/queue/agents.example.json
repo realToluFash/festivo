@@ -2,7 +2,7 @@
   "machine": "my-computer",
   "workspace": null,
   "mainCheckout": "soirely",
-  "claudeConfigDir": "~/.claude-soirely",
+  "claudeConfigDir": "~/.claude",
   "claudeVersion": null,
   "onVersionDrift": "warn",
   "dailyBudgetUsd": null,

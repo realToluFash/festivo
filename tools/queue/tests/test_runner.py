@@ -42,8 +42,19 @@ class FakePlatform:
         self.enabled = True
 
 
+def login(folder, email="owner@example.test"):
+    """A Claude config folder that looks logged in, as `account` reads it: no real token."""
+    folder = pathlib.Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / ".claude.json").write_text(json.dumps({"oauthAccount": {"emailAddress": email}}))
+    (folder / ".credentials.json").write_text("{}")
+    return folder
+
+
 def config(root, **changes):
+    login(pathlib.Path(root) / "claude")
     base = {"machine": "here", "workspace": str(root), "mainCheckout": "festivo",
+            "claudeConfigDir": str(pathlib.Path(root) / "claude"),
             "roles": {"ops": {}, "dev2": {}, "lead": {}},
             "defaults": {"model": "claude-opus-5-5", "effort": "medium", "memoryMax": "3G",
                          "maxRuntime": "90m", "maxBudgetUsd": None}}
@@ -226,6 +237,13 @@ class Command(unittest.TestCase):
         self.assertNotIn("--max-budget-usd", argv)
         self.assertTrue(env["CLAUDE_CONFIG_DIR"].endswith(".claude-soirely"))
 
+    def test_claudes_own_folder_runs_with_nothing_set(self):
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch("soirely_queue.machine.CLAUDE_DEFAULT", pathlib.Path(folder)), \
+                mock.patch.dict("os.environ", {"CLAUDE_CONFIG_DIR": "/elsewhere"}):
+            _, env = runner.command(dict(self.VALUES, maxBudgetUsd=None), folder)
+        self.assertNotIn("CLAUDE_CONFIG_DIR", env)
+
     def test_a_set_ceiling_is_passed_to_claude(self):
         argv, _ = runner.command(dict(self.VALUES, maxBudgetUsd=2.5), "~/.claude-soirely")
         self.assertEqual(argv[argv.index("--max-budget-usd") + 1], "2.5")
@@ -266,6 +284,8 @@ class Worker(unittest.TestCase):
         self.assertIn("origin/main at ccccccc", kwargs["input"])
         self.assertEqual(kwargs["cwd"], self.root / "soirely-ops")
         self.assertEqual(runlog.last(self.home, "ops")["cost_usd"], 0.42)
+        self.assertEqual(runlog.last(self.home, "ops")["account"], "owner@example.test")
+        self.assertEqual(kwargs["env"]["CLAUDE_CONFIG_DIR"], str(self.root / "claude"))
         self.assertEqual(self.platform.notes, [])
 
     def test_a_report_waiting_on_the_owner_notifies(self):

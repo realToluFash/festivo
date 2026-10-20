@@ -173,7 +173,13 @@ def command(values, config_dir):
             "--permission-mode", "auto", "--output-format", "json"]
     if values.get("maxBudgetUsd"):
         argv += ["--max-budget-usd", str(values["maxBudgetUsd"])]
-    env = dict(os.environ, CLAUDE_CONFIG_DIR=str(machine.expand(config_dir)))
+    env = dict(os.environ)
+    folder = machine.expand(config_dir)
+    # Claude's own folder runs as Claude does by default, with nothing set.
+    if machine.is_claude_default(folder):
+        env.pop("CLAUDE_CONFIG_DIR", None)
+    else:
+        env["CLAUDE_CONFIG_DIR"] = str(folder)
     return argv, env
 
 
@@ -190,7 +196,9 @@ def worker(db, home, platform, role, item_id, run_claude=subprocess.run, load=ma
     path = machine.checkout(config, role)
     main, note = prepare(path, role, story)
     entry["main"] = main
-    argv, env = command(values, config.get("claudeConfigDir") or "~/.claude-soirely")
+    folder = machine.claude_dir(config, role)
+    entry["account"] = machine.account(folder)
+    argv, env = command(values, folder)
     finished = run_claude(argv, input=prompt(row, role, main, note), capture_output=True,
                           text=True, cwd=path, env=env)
     try:

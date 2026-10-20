@@ -8,6 +8,7 @@ import os
 import pathlib
 import re
 import shutil
+import sys
 
 from . import roles
 
@@ -17,6 +18,8 @@ MODELS = HERE.parent / "models.json"
 SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
+# Claude Code's own default folder, which keeps its account file beside it, not inside.
+CLAUDE_DEFAULT = pathlib.Path("~/.claude").expanduser()
 # Under everything in agents.json: a worker is never left without a time limit.
 BUILT_IN = {"maxRuntime": "90m"}
 
@@ -80,6 +83,34 @@ def checkout(config, role):
         else root / f"soirely-{role}"
 
 
+def claude_dir(config, role):
+    """The Claude config folder a role's workers run under, and so the account: the role's
+    own `claudeConfigDir`, then the machine's. `check` refuses a file with neither."""
+    own = (config.get("roles", {}).get(role) or {}).get("claudeConfigDir")
+    return expand(own or config.get("claudeConfigDir"))
+
+
+def is_claude_default(folder):
+    return folder.expanduser().resolve() == CLAUDE_DEFAULT.resolve()
+
+
+def account_file(folder):
+    return folder.parent / ".claude.json" if is_claude_default(folder) else folder / ".claude.json"
+
+
+def account(folder):
+    """The email of the account logged in under `folder`, or None. No token is read."""
+    try:
+        data = json.loads(account_file(folder).read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    email = (data.get("oauthAccount") or {}).get("emailAddress")
+    # On Linux the login itself is a file beside it; a Mac keeps it in the Keychain.
+    if not email or (sys.platform != "darwin" and not (folder / ".credentials.json").exists()):
+        return None
+    return email
+
+
 def settings(config, role):
     """The built-in floor, then `defaults`, then the role's own starting values in `ROLES`
     (the testers' larger memory), then the role's entry in the file. A null is not set,
@@ -125,7 +156,7 @@ def setting_problems(values, known, where):
     return problems
 
 
-def check(config, known=None):
+def check(config, known=None, logged_in=account):
     """`(errors, refused, ready)`: errors stop every role, refused names each role that
     cannot run and why, ready holds each runnable role's merged settings."""
     known = known or models()
@@ -138,6 +169,9 @@ def check(config, known=None):
         errors.append(f"unknown role {', '.join(unknown)} in {path()}: "
                       f"one of {', '.join(roles.ROLES)}")
     defaults = config.get("defaults") or {}
+    if not config.get("claudeConfigDir"):
+        errors.append(f"no claudeConfigDir in {path()}: the Claude config folder the workers "
+                      "use, ~/.claude (Claude's own) unless this machine keeps them apart")
     missing = [key for key in ("model", "effort") if not defaults.get(key)]
     if missing:
         errors.append(f"no default {' or '.join(missing)} in {path()}: defaults.model and "
@@ -162,6 +196,12 @@ def check(config, known=None):
         place = checkout(config, role)
         if place and not place.exists():
             refused[role] = f"no checkout at {place}"
+            continue
+        folder = claude_dir(config, role)
+        if folder and not logged_in(folder):
+            login = "claude" if is_claude_default(folder) else f"CLAUDE_CONFIG_DIR={folder} claude"
+            refused[role] = (f"no Claude login in {folder}: run {login}, then /login with the "
+                             "account this role should use")
             continue
         ready[role] = values
     return errors, refused, ready

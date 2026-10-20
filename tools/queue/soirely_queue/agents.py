@@ -74,6 +74,34 @@ def make_checkout(config, role, say, home):
         say(f"  {role}: its stack is not set up; see CONTRIBUTING.md (dev-env, qa-env)")
 
 
+def accounts(config, say):
+    """Each Claude config folder the roles use: made if missing, given the default folder's
+    settings, told apart when its settings have drifted from them, and checked for a login."""
+    default = machine.expand(config.get("claudeConfigDir") or str(machine.CLAUDE_DEFAULT))
+    folders = {}
+    for role in config.get("roles") or {}:
+        folders.setdefault(machine.claude_dir(config, role), []).append(role)
+    for folder, names in folders.items():
+        if not folder.exists():
+            folder.mkdir(parents=True)
+            say(f"made {folder} for {', '.join(names)}")
+        source, own = default / "settings.json", folder / "settings.json"
+        if folder != default and source.exists():
+            if not own.exists():
+                shutil.copy2(source, own)
+                say(f"copied the settings of {default} into {folder}")
+            elif own.read_bytes() != source.read_bytes():
+                say(f"  {own} differs from {source}, so {', '.join(names)} may run under "
+                    "other rules. Bring the two in line")
+        email = machine.account(folder)
+        login = "claude" if machine.is_claude_default(folder) else \
+            f"CLAUDE_CONFIG_DIR={folder} claude"
+        say(f"  {folder}: {email} for {', '.join(names)}" if email else
+            f"  {folder}: not logged in. Run {login}, then /login with the account for "
+            f"{', '.join(names)}")
+    return folders
+
+
 def setup(home, platform, say=print, ask=input, workspace=None):
     try:
         config = machine.load()
@@ -101,6 +129,7 @@ def setup(home, platform, say=print, ask=input, workspace=None):
     say("Checkouts:")
     for role in config.get("roles") or {}:
         make_checkout(config, role, say, home)
+    accounts(config, say)
     tree = subprocess.run(["git", "rev-parse", "HEAD:tools/queue"], cwd=REPO, capture_output=True,
                           text=True).stdout.strip() or "local"
     update.copy(REPO / "tools" / "queue", home, tree)

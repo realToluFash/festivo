@@ -19,6 +19,7 @@ repository because it describes the machine, not the project. The repository shi
   "machine": "tolu-linux",
   "workspace": "~/personal",
   "mainCheckout": "festivo",
+  "claudeConfigDir": "~/.claude-soirely",
   "roles": {
     "dev": {},
     "dev2": {},
@@ -38,20 +39,20 @@ repository because it describes the machine, not the project. The repository shi
 }
 ```
 
-| Field                                     | Meaning                                                                                                                   |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `machine`                                 | this machine's name, in the run log and `sq status`. _(Later: shown to other machines that try to start a role it holds)_ |
-| `workspace`                               | where checkouts live: each role's is `<workspace>/soirely-<role>`                                                         |
-| `mainCheckout`                            | the folder of the main checkout, developer 1's. `festivo` here; `soirely` on a fresh machine                              |
-| `roles`                                   | the roles this machine may run. A role not listed never ticks here                                                        |
-| `checkout`                                | per role: overrides the path for that one role                                                                            |
-| `standby`                                 | per role: runs here only while no other machine holds it. _(Later, with the leases)_                                      |
-| `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                                                   |
-| `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                                                 |
-| `claudeConfigDir`                         | the Claude config the workers use, `~/.claude-soirely` by default                                                         |
-| `claudeVersion`, `onVersionDrift`         | the pinned CLI version, and `"warn"` (default) or `"stop"` when it drifts. See [Guards](README.md#guards-and-alerts)      |
-| `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                              |
-| `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                                    |
+| Field                                     | Meaning                                                                                                                            |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `machine`                                 | this machine's name, in the run log and `sq status`. _(Later: shown to other machines that try to start a role it holds)_          |
+| `workspace`                               | where checkouts live: each role's is `<workspace>/soirely-<role>`                                                                  |
+| `mainCheckout`                            | the folder of the main checkout, developer 1's. `festivo` here; `soirely` on a fresh machine                                       |
+| `roles`                                   | the roles this machine may run. A role not listed never ticks here                                                                 |
+| `checkout`                                | per role: overrides the path for that one role                                                                                     |
+| `standby`                                 | per role: runs here only while no other machine holds it. _(Later, with the leases)_                                               |
+| `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                                                            |
+| `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                                                          |
+| `claudeConfigDir`                         | required: the Claude config folder, and so the account, the workers use; per role as well. See [Claude accounts](#claude-accounts) |
+| `claudeVersion`, `onVersionDrift`         | the pinned CLI version, and `"warn"` (default) or `"stop"` when it drifts. See [Guards](README.md#guards-and-alerts)               |
+| `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                                       |
+| `minFreeGb`                               | no new worker under this much free disk; 15 by default                                                                             |
 
 - **Changes take effect within a minute.** `sq run` reads the file every minute. A removed
   role's running worker finishes its item and takes no more.
@@ -97,6 +98,55 @@ each is checked against a list in the repository, `tools/queue/models.json`: eve
   measured against the default before it is kept.
 
 Adding a model is a pull request to `models.json`, reviewed like any other change.
+
+### Claude accounts
+
+The roles can run under different Claude accounts, all the owner's own subscriptions. Each
+account is a Claude config folder logged in to it, and a role names its folder:
+
+```json
+{
+  "claudeConfigDir": "~/.claude",
+  "roles": {
+    "dev": { "claudeConfigDir": "~/.claude-b" },
+    "qa": { "claudeConfigDir": "~/.claude-b" },
+    "lead": {}
+  }
+}
+```
+
+A role's own folder wins, then the machine's. **`claudeConfigDir` is required**, like the
+default model: a file without it stops every role with an `error:`, and nothing falls back
+to a folder the file does not name. `agents.example.json` sets Claude's own default,
+`~/.claude`, which runs as `claude` does with nothing set (its account file is
+`~/.claude.json`, beside the folder). The owner's Linux machine keeps the agents apart from
+their own sessions, so its file names `~/.claude-soirely`, set by hand.
+
+**With `~/.claude`, the workers' settings are the owner's own.** The deny rules setup writes
+for the admin commands, and every rule `just agents permissions apply` grants the workers,
+then land in the owner's `~/.claude/settings.json` too. The owner's interactive sessions are
+denied `sq stop` and `just agents`, and each grant widens them as well. A machine where the
+owner also works in Claude names a folder of its own, as this one does with
+`~/.claude-soirely`.
+
+- **Logging in, once per folder:** `CLAUDE_CONFIG_DIR=~/.claude-b claude` (plain `claude` for
+  `~/.claude`), then
+  `/login` with that account. `just agents setup` makes each folder the roles name, copies
+  the default folder's `settings.json` into a new one, and says which folders still need a
+  login. The copy is made once. A later setup overwrites nothing; it names each folder
+  whose `settings.json` no longer matches the default's, so a rule added there is not
+  silently missing from the others.
+- **A folder with no login refuses its roles**, with the command to log in. The other
+  roles keep running. `sq` reads only the account's email from `.claude.json`, never a
+  token. On Linux the login is `.credentials.json` beside it; a Mac keeps it in the
+  Keychain. _(To check with the Mac runner: that two folders keep two Keychain logins.)_
+- **Each run records its account** in the run log, and `sq status` shows each role's
+  account when the machine uses more than one.
+- **Settings, permissions and memory are per folder.** A permission is applied to every
+  folder the roles use. What one account's sessions remember, the others do not see, so
+  anything every role needs belongs in the repository, a story or an `sq` note.
+- _(Later: an account at its usage limit holds only its own roles until the limit resets,
+  rather than each of their runs failing.)_
 
 ### When no workspace is set
 
@@ -232,7 +282,7 @@ closes it.
    answer.
 4. **The owner applies it on each machine** with `just agents permissions apply`, run in
    their own terminal. It reads `permissions.json` from `origin/main`, shows what it would
-   add to the workers' settings under `claudeConfigDir`, and writes them only after the
+   add to the workers' settings in every Claude config folder this machine's roles use, and writes them only after the
    owner confirms at the keyboard; it refuses without a terminal and inside a worker.
    `sq status` and ops' report say when `main` has rules this machine has not applied, so
    the owner knows to run it. A new machine applies the whole file at setup.
