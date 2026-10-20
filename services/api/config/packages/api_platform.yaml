@@ -1,0 +1,51 @@
+api_platform:
+    title: Soirely API
+    description: Event management for the people running the event.
+    version: 1.0.0
+
+    # Everything lives under /api. The health endpoint and any command-shaped
+    # controller sit alongside the resources under the same prefix.
+    defaults:
+        stateless: true
+        cache_headers:
+            vary: ['Content-Type', 'Authorization', 'Origin', 'Accept-Language']
+        pagination_enabled: true
+        pagination_items_per_page: 50
+        pagination_maximum_items_per_page: 200
+        pagination_client_items_per_page: true
+
+    # Plain JSON only.
+    #
+    # JSON-LD is API Platform's default and it is a good default for a public,
+    # self-describing API. This one has two known clients that we also write, and
+    # @context/@id/@type on every object is weight they would strip and ignore.
+    # The OpenAPI document is how they learn the shape.
+    formats:
+        json: ['application/json']
+    docs_formats:
+        json: ['application/json']
+        jsonopenapi: ['application/vnd.openapi+json']
+        html: ['text/html']
+
+    # RFC 7807 Problem Details, which is also the default from 4.x onward. Stated
+    # explicitly because it is a contract, not an implementation detail.
+    error_formats:
+        jsonproblem: ['application/problem+json']
+
+    exception_to_status:
+        App\Http\Exception\ApiException: 400
+
+    openapi:
+        contact:
+            name: Soirely
+        license:
+            name: proprietary
+
+    # Mercure, so a resource can publish its own updates rather than relying on
+    # somebody remembering to. A publish nobody wrote is the realtime failure that
+    # cost the previous build weeks, because it has no error and no log — the
+    # screen simply never updates.
+    mercure:
+        include_type: true
+
+    use_symfony_listeners: true
