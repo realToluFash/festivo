@@ -75,10 +75,12 @@ pull request and it has merged, and that is the handover:
 
 **Claiming a story** is how the other two know to leave it alone:
 
-`sq qa claim sc-55`, straight away. It moves the story to `In QA` and posts
-`QA claim: qa<n>`, with no tag, so it wakes nobody. The first claim recorded wins: if
-another tester got there first it refuses and says who, and you post nothing more on it and
-pick again. On success it prints the story.
+`sq qa claim sc-55`, straight away. It moves the story to `In QA`, adds your label (`qa1`,
+`qa2` or `qa3`, a record of who tested it), and posts `QA claim: qa<n>`, with no tag, so it
+wakes nobody. The first claim recorded wins: if another tester got there first it refuses
+and says who, and you post nothing more on it and pick again. On success it prints the
+story. A story back in Ready For QA after a failure is the failing tester's to retest for
+its first 30 minutes there: the claim refuses the others, who pick another.
 
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
@@ -427,15 +429,16 @@ missing state on an artboard, `[dev]` for a question about the build. See `role-
 Finish with `sq qa done <id> --note "<one line>"`; the note is what your next run on the
 story sees.
 
-| State            | Who moves it there                                     |
-| ---------------- | ------------------------------------------------------ |
-| In Progress      | the branch, when work starts                           |
-| In Review        | the developer, when the PR is open and green           |
-| **Ready For QA** | **the developer, after the lead's pass and the merge** |
-| **In QA**        | **you, when you claim it**                             |
-| **Passsed QA**   | **you**                                                |
-| **Failed QA**    | **you**                                                |
-| Done             | the user, after a merge. Never you.                    |
+| State              | Who moves it there                                     |
+| ------------------ | ------------------------------------------------------ |
+| In Progress        | the developer, when it claims the story                |
+| In Review          | the developer, when the PR is open and green           |
+| Passed Code Review | the lead, passing the pull request                     |
+| **Ready For QA**   | **the developer, after the lead's pass and the merge** |
+| **In QA**          | **you, when you claim it**                             |
+| **Passsed QA**     | **you**                                                |
+| **Failed QA**      | **you**                                                |
+| Done               | the user, after a merge. Never you.                    |
 
 If `report` says a state has gone missing, the screenshots and the report are already
 posted, so do not post them again:

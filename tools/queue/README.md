@@ -26,7 +26,7 @@ Every read goes through a ledger of what the role has already been shown.
   from `done --note` and `note`. Anything that changed prints in full.
 - **What the work needs is always in full**: the AC for a developer building or a tester
   testing, the Design section for a tester, the PR's Risks for a tester and for the lead,
-  the latest QA report on a Failed QA story, and every comment still open for the role.
+  the latest QA report on a Failed QA story, the review on a Failed Code Review one, and every comment still open for the role.
 - `--again` on any read prints it in full regardless.
 
 | Read                                                        | Prints                                                                                                                                          |
@@ -57,7 +57,7 @@ Every read goes through a ledger of what the role has already been shown.
 | `main`                         | ops         | main's last runs and the failed log                                                                                                |
 | `pick`, `sweep`                | the role    | the role's digest (below)                                                                                                          |
 
-The digests: queue order for developers and testers; To Do without AC, QA outstanding items,
+The digests: queue order for developers and testers; To Do and Waiting On Owner for the PM, Needs Design for the designer, QA outstanding items,
 ideas and epics for the PM; stories with no Design section, or whose AC changed since, for
 the designer; owner-decision and billing stories for the BM; ideas and QA friction for the
 creative; translation tickets with their tasks and blocking stories for linguists; main's
@@ -73,7 +73,7 @@ story or pull request, read fresh rather than from the last sync, and says why i
 | `comment sc-N --to r,r \| --reply-to ID`                                         | all                                | posts `[r] (from role)`; `en`, `es`, `fr` and `pt` post their language tag and reach the linguist; a reply goes on the thread's root and defaults to the asker. `--untagged` posts `(from role)` alone, a record or a reply that only confirms, and wakes nobody           |
 | `note sc-N`                                                                      | all                                | a private line the role's next run on the story sees                                                                                                                                                                                                                       |
 | `claim sc-N`                                                                     | developers, testers                | developer: adds its label, moves to In Progress. Tester: In QA plus `QA claim: qaN`; a claim over three hours old can be taken over. The first claim recorded wins. Prints the story                                                                                       |
-| `move sc-N "<state>"`                                                            | per `roles.MOVES`                  | only the moves the role's skill makes, from the states it makes them from; the PM also moves an In Progress story nobody holds (no role moved it there, no developer label, no open PR on its branch) to Backlog or To Do                                                  |
+| `move sc-N "<state>"`                                                            | per `roles.MOVES`                  | only the moves the role's skill makes, from the states it makes them from; the PM also moves an In Progress story nobody holds (no role moved it there, no developer label, no open PR on its branch) to Backlog, To Do or Ready For Dev                                   |
 | `label sc-N --add … --remove …`                                                  | per `roles.OWN_LABELS`             | sends the union, so no other label is lost                                                                                                                                                                                                                                 |
 | `report sc-N passed\|failed [--files …]`                                         | testers                            | uploads, posts the report, moves to Passsed QA or Failed QA, sets `qa passed` or `qa failed`                                                                                                                                                                               |
 | `edit sc-N\|epic-N --section S \| --dated T \| --replace OLD --with NEW [--dry]` | pm, ux (Design), bm, cd, linguists | replaces one section, or adds a dated one, leaving the rest as it was. `--replace` takes several targets and changes all or none: OLD must appear exactly once in each; `--dry` names what would change                                                                    |
@@ -106,7 +106,7 @@ story or pull request, read fresh rather than from the last sync, and says why i
   through `sq` is recorded with the `moved_at` it landed at, and a story a role moved into
   its own queue is no work for it; the same move by anyone else still is.
 - **`store.py`** holds the claims. A role holds one item at a time, a pooled item (Ready For
-  QA, unlabelled To Do) goes to one role only, and a claim lapses after 90 minutes.
+  QA, unlabelled Ready For Dev) goes to one role only, and a claim lapses after 90 minutes.
 
 The database is `.git/soirely-roles/queue.db`, shared by every worktree and never committed.
 `SQ_HOME` points it somewhere else, for trying changes against a copy.

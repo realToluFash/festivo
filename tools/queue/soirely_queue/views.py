@@ -185,8 +185,10 @@ def diff_stat(files):
 
 
 def queue_lines(stories):
-    order = {"Failed QA": 0, "In Progress": 1, "In Review": 2, "Ready For QA": 3, "In QA": 4,
-             "To Do": 5, "Backlog": 6}
+    order = {state: i for i, state in enumerate((
+        "Failed Code Review", "Failed QA", "In Progress", "In Review", "Passed Code Review",
+        "Ready For QA", "In QA", "Ready For Dev", "Needs Design", "To Do", R.WAITING,
+        "Backlog"))}
     out = []
     for story in sorted(stories, key=lambda s: (order.get(s["state"], 9), s["position"] or 0)):
         out.append(f"  sc-{story['id']} [{story['state']}] {story['name']}"
