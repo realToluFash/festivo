@@ -28,6 +28,29 @@ class Claims(unittest.TestCase):
         self.assertIsNone(store.claim(self.db, "dev", NOW))
         self.assertIsNotNone(store.held_by(self.db, "dev", NOW))
 
+    def test_a_role_with_several_workers_holds_one_item_each(self):
+        store.record(self.db, [dict(item(f, ["pm"]), story_id=n)
+                               for n, f in enumerate("abc")], NOW)
+        first = store.claim(self.db, "pm", NOW, worker="pm", workers=2)
+        second = store.claim(self.db, "pm", NOW, worker="pm-2", workers=2)
+        self.assertNotEqual(first["id"], second["id"])
+        self.assertIsNone(store.claim(self.db, "pm", NOW, worker="pm-3", workers=2))
+        self.assertIsNone(store.claim(self.db, "pm", NOW, worker="pm", workers=3))
+        self.assertEqual(store.held_by(self.db, "pm", NOW, "pm-2")["id"], second["id"])
+
+    def test_two_workers_never_hold_the_same_story(self):
+        store.record(self.db, [dict(item("a", ["pm"]), story_id=7),
+                               dict(item("b", ["pm"]), story_id=7),
+                               dict(item("c", ["pm"]), story_id=8)], NOW)
+        store.claim(self.db, "pm", NOW, worker="pm", workers=2)
+        self.assertEqual(store.claim(self.db, "pm", NOW, worker="pm-2", workers=2)["story_id"], 8)
+
+    def test_a_claim_made_by_hand_counts_as_the_first_worker_s(self):
+        store.record(self.db, [item("a", ["pm"]), item("b", ["pm"])], NOW)
+        store.claim(self.db, "pm", NOW)
+        self.assertIsNotNone(store.held_by(self.db, "pm", NOW, "pm"))
+        self.assertIsNone(store.held_by(self.db, "pm", NOW, "pm-2"))
+
     def test_a_lapsed_lease_puts_the_item_back(self):
         store.record(self.db, [item("a", ["dev"])], NOW)
         store.claim(self.db, "dev", NOW)

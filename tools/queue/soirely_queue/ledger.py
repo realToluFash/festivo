@@ -6,6 +6,7 @@ unless the work needs it in full every time: the AC a tester tests against, the 
 being answered.
 """
 
+import os
 import time
 
 MANUAL_HOURS = 2
@@ -13,7 +14,7 @@ MANUAL_HOURS = 2
 
 def run_key(db, role, now=None):
     from . import store
-    held = store.held_by(db, role, now)
+    held = store.held_by(db, role, now, os.environ.get("SOIRELY_WORKER"))
     return f"work:{held['id']}" if held else f"manual:{role}"
 
 

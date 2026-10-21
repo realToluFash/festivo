@@ -44,6 +44,16 @@ def fetch(path, tries=3, sleep=time.sleep):
     raise Unprepared(f"git fetch failed {tries} times: {done.stderr.strip()}")
 
 
+def ensure(base, path):
+    """A further worker's checkout: a worktree of the role's own, made the first time."""
+    if path.exists():
+        return
+    made = git(base, "worktree", "add", "--quiet", "--detach", str(path), "origin/main",
+               check=False)
+    if made.returncode:
+        raise Unprepared(f"git worktree add {path} failed: {made.stderr.strip()}")
+
+
 def prepare(path, role, story=None, sleep=time.sleep):
     """Returns `(main_sha, note)`; the note is what the worker is told, or None."""
     fetch(path, sleep=sleep)

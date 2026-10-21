@@ -58,6 +58,15 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   day starts with its weekday. dev2's drafts of the three `errors:` codes used «tú»; they now
   say «usted».
 
+- **21 Oct 2026. Creating an event** (`events.*`, `eventForm.*`, `eventPage.*`,
+  `rolesScreen.createEvents*`, `messages:validation.event_*`, sc-6302). A draft is «Borrador»;
+  the form's legends are «Inicio» and «Fin». An end before the start is «El evento termina
+  antes de empezar», so nothing names «el fin» twice. The organisation's defaults are «Valores
+  tomados de la configuración de {{name}}», so nothing agrees with zona and moneda. An owner
+  is «alguien con el rol Propietario», as in Members. The permission's states are «Permitido»
+  / «No permitido». A refused send closes «así que no se ha enviado nada», as en's wanted
+  shape.
+
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
   «exigir», as the server's errors; "for everyone" is «para todos». The date is «a partir del

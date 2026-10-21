@@ -20,7 +20,7 @@ export function providerRows(
 ): ProviderRow[] {
   return PROVIDERS.map((provider) => {
     const mine = linked.find((entry) => entry.provider === provider);
-    const another = hasPassword || linked.some((entry) => entry.provider !== provider);
+    const another = remainingWay(hasPassword, linked, provider) != null;
 
     return {
       provider,
@@ -43,6 +43,17 @@ export function proveWith(
   if (linked.some((entry) => entry.provider === actingOn)) return actingOn;
 
   return linked[0]?.provider ?? null;
+}
+
+/** The way in left once a provider is unlinked: the password if set, else the other provider. */
+export function remainingWay(
+  hasPassword: boolean,
+  linked: readonly { provider: SignInProvider }[],
+  unlinking: SignInProvider,
+): 'password' | SignInProvider | null {
+  if (hasPassword) return 'password';
+
+  return linked.find((entry) => entry.provider !== unlinking)?.provider ?? null;
 }
 
 /** The API's SignInProof::MINUTES: how long a proof stands, counted from its first factor. */

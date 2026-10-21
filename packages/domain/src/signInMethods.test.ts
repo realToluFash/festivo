@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { proofStands, proveWith, providerRows } from './signInMethods.ts';
+import { proofStands, proveWith, providerRows, remainingWay } from './signInMethods.ts';
 
 const GOOGLE = { provider: 'google' as const, email: 'folake.adeyemi@gmail.com' };
 const APPLE = { provider: 'apple' as const, email: null };
@@ -47,6 +47,17 @@ describe('confirming it is you', () => {
   it('else the provider being unlinked, or the one linked when linking another', () => {
     expect(proveWith(false, [GOOGLE, APPLE], 'apple')).toBe('apple');
     expect(proveWith(false, [GOOGLE], 'apple')).toBe('google');
+  });
+
+  it('names the password as the way in left when one is set, even with another provider', () => {
+    expect(remainingWay(true, [GOOGLE, APPLE], 'google')).toBe('password');
+    expect(remainingWay(true, [GOOGLE], 'google')).toBe('password');
+  });
+
+  it('else the other provider, and nothing when none is linked', () => {
+    expect(remainingWay(false, [GOOGLE, APPLE], 'google')).toBe('apple');
+    expect(remainingWay(false, [GOOGLE, APPLE], 'apple')).toBe('google');
+    expect(remainingWay(false, [GOOGLE], 'google')).toBeNull();
   });
 
   it('holds a proof until just before it lapses', () => {

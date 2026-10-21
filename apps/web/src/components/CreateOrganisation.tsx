@@ -45,6 +45,7 @@ export function CreateOrganisation({
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  const focusAfterSave = useRef<NewOrganisationField | null>(null);
   const checks = useFormChecks<NewOrganisationField>(
     FIELDS,
     (field, value) => problemMessage(field, value, t),
@@ -73,6 +74,14 @@ export function CreateOrganisation({
     return () => document.removeEventListener('keydown', keep);
   }, [onCancel]);
 
+  // A field disabled while saving cannot take focus until the render that enables it.
+  useEffect(() => {
+    if (saving || focusAfterSave.current == null) return;
+
+    (focusAfterSave.current === 'name' ? nameInput : countryInput).current?.focus();
+    focusAfterSave.current = null;
+  }, [saving]);
+
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
     setRefused((previous) => ({ ...previous, [field]: undefined }));
@@ -98,6 +107,7 @@ export function CreateOrganisation({
         }),
       );
     } catch (error) {
+      focusAfterSave.current = 'name';
       setSaving(false);
 
       if (error instanceof ApiError && error.is('too_many_attempts')) {
@@ -116,7 +126,7 @@ export function CreateOrganisation({
         }
 
         setRefused({ name: fields.name, countryCode: fields.countryCode });
-        (fields.name != null ? nameInput : countryInput).current?.focus();
+        if (fields.name == null) focusAfterSave.current = 'countryCode';
         return;
       }
 

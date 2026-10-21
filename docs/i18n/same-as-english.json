@@ -23,6 +23,7 @@
     "mobile:waysCard.code",
     "web:app.name",
     "web:devices.everywhereCode",
+    "web:eventForm.date",
     "web:nav.organisation",
     "web:orgGeneral.section",
     "web:rolesScreen.area.budget",
