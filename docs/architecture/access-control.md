@@ -33,7 +33,7 @@ a permission that is not in the registry cannot be asked for: it does not compil
 
 Each case names its **area** (a row of the roles screen's grid, `PermissionArea`) and the
 **seeded roles it starts on** (`defaultRoles()`). Areas hold a `read` and a `manage`
-permission, and `budget.margin` sits beside Budget's. `PermissionRegistryTest` fails for a
+permission, `budget.margin` sits beside Budget's and `events.create` beside Events'. `PermissionRegistryTest` fails for a
 permission that reaches no seeded role but Owner, unless it is listed there as Owner-only
 on purpose (`billing.manage`). A story that adds one names its defaults, and a migration
 grants it once to those seeded roles in every existing organisation (sc-66).
@@ -42,21 +42,21 @@ What each seeded role starts with. Owner holds everything, including what is add
 These are defaults, written when the organisation is founded, and the organisation changes
 them afterwards on Settings > Roles:
 
-| Area         | Administrator      | Event manager | Coordinator | Read-only |
-| ------------ | ------------------ | ------------- | ----------- | --------- |
-| Events       | manage             | manage        | manage      | read      |
-| Guests       | manage             | manage        | manage      | read      |
-| Seating      | manage             | manage        | manage      | read      |
-| Menu         | manage             | manage        | manage      | read      |
-| Run of show  | manage             | manage        | manage      | read      |
-| Staff        | manage             | manage        | read        | read      |
-| Messages     | manage             | manage        | manage      | read      |
-| Reports      | manage             | manage        | read        | read      |
-| Budget       | manage, and margin | manage        | read        | read      |
-| Vendors      | manage             | none          | none        | none      |
-| Members      | manage             | none          | none        | none      |
-| Billing      | read               | none          | none        | none      |
-| Organisation | manage             | none          | none        | none      |
+| Area         | Administrator      | Event manager      | Coordinator | Read-only |
+| ------------ | ------------------ | ------------------ | ----------- | --------- |
+| Events       | manage, and create | manage, and create | manage      | read      |
+| Guests       | manage             | manage             | manage      | read      |
+| Seating      | manage             | manage             | manage      | read      |
+| Menu         | manage             | manage             | manage      | read      |
+| Run of show  | manage             | manage             | manage      | read      |
+| Staff        | manage             | manage             | read        | read      |
+| Messages     | manage             | manage             | manage      | read      |
+| Reports      | manage             | manage             | read        | read      |
+| Budget       | manage, and margin | manage             | read        | read      |
+| Vendors      | manage             | none               | none        | none      |
+| Members      | manage             | none               | none        | none      |
+| Billing      | read               | none               | none        | none      |
+| Organisation | manage             | none               | none        | none      |
 
 **Nobody grants what they do not hold.** Creating or editing a role, a caller may add or
 remove only permissions their own role holds, and a deleted role's people may move only to
@@ -170,8 +170,8 @@ The listener asks two interfaces:
 table: only an `active` membership counts, and it grants what the member's role holds as
 the organisation last set it (`roles.permissions`). Owner holds everything.
 
-Until events exist, `NoEvents` answers that no event exists, so every event route refuses,
-which is the direction a gap should fail in.
+`App\Domain\Event\EventDirectory` answers the second from the `events` table, so an
+unknown event and another organisation's are the same 404.
 
 ## The onboarding gate
 

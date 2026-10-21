@@ -44,6 +44,7 @@ export function CreateOrganisation({
   const [saving, setSaving] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
   const checks = useFormChecks<NewOrganisationField>(
     FIELDS,
     (field, value) => problemMessage(field, value, t),
@@ -52,15 +53,24 @@ export function CreateOrganisation({
   const errors = { ...refused, ...checks.errors };
 
   useEffect(() => {
+    const opener = document.activeElement;
+
     nameInput.current?.focus();
 
-    const close = (event: KeyboardEvent): void => {
+    return () => {
+      if (opener instanceof HTMLElement) opener.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    const keep = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onCancel();
+      if (event.key === 'Tab' && dialog.current != null) keepFocusIn(dialog.current, event);
     };
 
-    document.addEventListener('keydown', close);
+    document.addEventListener('keydown', keep);
 
-    return () => document.removeEventListener('keydown', close);
+    return () => document.removeEventListener('keydown', keep);
   }, [onCancel]);
 
   function change(field: NewOrganisationField, value: string): void {
@@ -119,10 +129,12 @@ export function CreateOrganisation({
       <button
         type="button"
         className="dialog-scrim"
+        tabIndex={-1}
         aria-label={t('createOrganisation.cancel')}
         onClick={onCancel}
       />
       <div
+        ref={dialog}
         className="dialog"
         role="dialog"
         aria-modal="true"
@@ -230,6 +242,26 @@ export function CreateOrganisation({
       </div>
     </>
   );
+}
+
+function keepFocusIn(dialog: HTMLElement, event: KeyboardEvent): void {
+  const controls = [
+    ...dialog.querySelectorAll<HTMLElement>('input, select, textarea, button, a[href]'),
+  ].filter((control) => !control.matches(':disabled'));
+  const first = controls[0];
+  const last = controls[controls.length - 1];
+
+  if (first == null || last == null) return;
+
+  const inside = dialog.contains(document.activeElement);
+
+  if (event.shiftKey && (!inside || document.activeElement === first)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (!inside || document.activeElement === last)) {
+    event.preventDefault();
+    first.focus();
+  }
 }
 
 function problemMessage(field: NewOrganisationField, value: string, t: TFunction): string | null {

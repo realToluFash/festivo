@@ -175,8 +175,7 @@ services:
     App\Http\Access\Interfaces\MembershipDirectoryInterface: '@App\Domain\Organisation\MembershipDirectory'
     App\Http\Access\Interfaces\OnboardingGateInterface: '@App\Domain\User\Onboarding\OnboardingGate'
 
-    # Until events exist no event resolves, so every event route is not found.
-    App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Http\Access\Directory\NoEvents'
+    App\Http\Access\Interfaces\EventDirectoryInterface: '@App\Domain\Event\EventDirectory'
 
 when@test:
     services:

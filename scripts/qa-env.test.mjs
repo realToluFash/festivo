@@ -94,7 +94,12 @@ describe('the QA .env', () => {
 // the developer's port for every QA stack.
 describe('the QA .env against compose.yaml', () => {
   const compose = readFileSync(new URL('../compose.yaml', import.meta.url), 'utf8');
-  const readByTheHarness = ['COMPOSE_PROJECT_NAME', 'MAILPIT_URL', 'METRO_PORT'];
+  const readByTheHarness = [
+    'COMPOSE_PROJECT_NAME',
+    'MAILPIT_URL',
+    'METRO_PORT',
+    'AGENT_GATEWAY_PORT',
+  ];
 
   it('sets only what compose reads', () => {
     for (const key of Object.keys(QA_OVERRIDES)) {

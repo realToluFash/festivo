@@ -10,7 +10,6 @@ import {
   organisationProblem,
   roleName,
   timezoneLabel,
-  withCurrent,
 } from '@soirely/domain';
 import { type FormEvent, useMemo, useState } from 'react';
 import { type TFunction } from 'i18next';
@@ -24,6 +23,7 @@ import { RequestLinkCard } from './RequestLinkCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
+import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 
 type Field = OrganisationField;
 type Errors = Partial<Record<Field, string>>;
@@ -111,13 +111,10 @@ function Editable({
 
   const countries = useMemo(() => countryChoices(locale), [locale]);
   const currencies = useMemo(
-    () => withCurrent(Intl.supportedValuesOf('currency'), organisation.currency),
-    [organisation.currency],
+    () => currencyChoices(organisation.currency, locale),
+    [organisation.currency, locale],
   );
-  const timezones = useMemo(
-    () => withCurrent(Intl.supportedValuesOf('timeZone'), organisation.timezone),
-    [organisation.timezone],
-  );
+  const timezones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
 
   const busy = status.kind === 'saving';
 
@@ -229,7 +226,7 @@ function Editable({
           value={values.currency}
           error={errors.currency}
           busy={busy}
-          options={currencies.map((code) => ({ value: code, label: currencyLabel(code, locale) }))}
+          options={currencies}
           onChange={change}
         />
         <Choice
@@ -238,7 +235,7 @@ function Editable({
           value={values.timezone}
           error={errors.timezone}
           busy={busy}
-          options={timezones.map((zone) => ({ value: zone, label: timezoneLabel(zone) }))}
+          options={timezones}
           onChange={change}
         />
       </div>

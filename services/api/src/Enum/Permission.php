@@ -12,6 +12,7 @@ enum Permission: string
 {
     case EventsRead = 'events.read';
     case EventsManage = 'events.manage';
+    case EventsCreate = 'events.create';
     case GuestsRead = 'guests.read';
     case GuestsManage = 'guests.manage';
     case SeatingRead = 'seating.read';
@@ -48,10 +49,10 @@ enum Permission: string
         return Iter\contains([PermissionArea::Members, PermissionArea::Billing, PermissionArea::Organisation], $this->area());
     }
 
-    /** A `.manage` permission: what the read-only rule for an unlinked member keeps back (sc-69). */
+    /** A `.manage` permission or Create events: what the read-only rule for an unlinked member keeps back (sc-69). */
     public function isChange(): bool
     {
-        return Str\ends_with($this->value, '.manage');
+        return self::EventsCreate === $this || Str\ends_with($this->value, '.manage');
     }
 
     /** @return list<SeededRole> where a new organisation starts it; Owner holds every one regardless */
@@ -67,7 +68,7 @@ enum Permission: string
             self::MessagesRead, self::ReportsRead, self::BudgetRead => $everyone,
             self::EventsManage, self::GuestsManage, self::SeatingManage, self::MenuManage, self::RunOfShowManage,
             self::MessagesManage => $running,
-            self::StaffManage, self::ReportsManage, self::BudgetManage => $managers,
+            self::EventsCreate, self::StaffManage, self::ReportsManage, self::BudgetManage => $managers,
             self::BudgetMargin, self::VendorsRead, self::VendorsManage, self::MembersRead, self::MembersManage,
             self::BillingRead, self::OrganisationManage => $admins,
             self::BillingManage => [SeededRole::Owner],
