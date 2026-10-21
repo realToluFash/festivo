@@ -41,6 +41,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
+  app, sc-4188). An invitation is "convite", waiting is "pendente". With several, "that
+  organisation" is "a organização que o enviou", where "o" is the invitation, never the
+  person. A button in a sentence goes in «» after "Selecione": "Selecione «Guardar e
+  continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". No
+  `_many` yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is "Terá a função Proprietário", never "será o proprietário".
   The rate limit says what happened, "Por agora, não é possível criar mais organizações".

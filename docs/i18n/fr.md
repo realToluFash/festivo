@@ -53,6 +53,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
+  app, sc-4188). The invitation is the subject, « Une invitation vous attend », « {{count}}
+  invitations vous attendent », shorter than « Vous avez … en attente ». With several, "that
+  organisation" is « l'organisation qui vous invite ». A button in a sentence is chosen, as
+  `proofExpired_*`: « Choisissez « Enregistrer et continuer » pour y accéder ». No `_many`
+  yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is « Vous y aurez le rôle Propriétaire », as « le rôle
   Propriétaire » elsewhere. A length refusal says what to do, « Raccourcissez-le à 100
