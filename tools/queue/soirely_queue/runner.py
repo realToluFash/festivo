@@ -219,9 +219,9 @@ def wake(db, config, platform, role, name, values, now, say, sq, python, kinds, 
         say(f"{name}: worker still running")
         return True
     claimed = store.held_by(db, role, now, worker=name)
-    if claimed and store.get_meta(db, f"launched:{name}") == claimed["id"]:
+    if claimed and claimed["worker"]:
         # Its worker is gone without finishing it, a crash or a kill; a role run by hand
-        # claims its own item, so only an item this runner launched is given back.
+        # claims with no worker, so only a worker's item is given back.
         store.release(db, claimed["id"])
         say(f"{name}: item {claimed['id']} given back, its worker ended without "
             "finishing it")
@@ -261,7 +261,6 @@ def wake(db, config, platform, role, name, values, now, say, sq, python, kinds, 
         store.release(db, row["id"])
         say(f"error: {name}: the worker did not start ({error}); item {row['id']} released")
         return False
-    store.set_meta(db, f"launched:{name}", row["id"])
     say(f"{name}: woke for {row['reason']} (item {row['id']})")
     return True
 
