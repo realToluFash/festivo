@@ -19,7 +19,7 @@ import { tokens } from '../../src/theme/tokens.ts';
 export default function Security() {
   const { t } = useTranslation();
   const { kind } = useLayout();
-  const { account } = useSignedIn();
+  const { account, organisations } = useSignedIn();
   const [settingPassword, setSettingPassword] = useState(false);
   const [sessionsEnded, setSessionsEnded] = useState(0);
   const [codesSpent, setCodesSpent] = useState(0);
@@ -31,6 +31,7 @@ export default function Security() {
   return (
     <AppFrame
       current="settings"
+      aboutTheAccount
       title={phone ? t('security.title') : t('settings.title')}
       back={phone ? backToSettings(t('settings.title')) : undefined}
     >
@@ -72,7 +73,15 @@ export default function Security() {
                 onSignedOutHere={signOutHere}
                 onCodeSpent={codeSpent}
               />
-              <TwoFactorCard email={email} kind={kind} recount={codesSpent} />
+              <TwoFactorCard
+                email={email}
+                kind={kind}
+                recount={codesSpent}
+                keptBy={
+                  organisations.find((one) => one.signInRules.everyoneNeedsTwoFactor)?.name ?? null
+                }
+                onTurnedOn={() => void reloadSignedIn()}
+              />
               <DevicesCard
                 hasPassword={account.hasPassword}
                 providers={account.providers}

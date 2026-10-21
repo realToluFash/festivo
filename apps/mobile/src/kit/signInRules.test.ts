@@ -131,6 +131,16 @@ describe('what the rules ask of a member, on the home screen', () => {
     expect(rulesNotices(held, undefined, true)).toEqual(['readOnly']);
   });
 
+  it('puts the deadline for two-factor of everyone first, and nothing past it (sc-609)', () => {
+    const held = membership({
+      withheldUntilTwoFactor: ['members.read'],
+      twoFactorDue: { at: '2026-10-24T13:20:00+00:00', written: 'Saturday', overdue: false },
+    });
+
+    expect(rulesNotices(held, null, false, 'due')).toEqual(['due', 'twoFactor']);
+    expect(rulesNotices(held, null, false, 'overdue')).toEqual([]);
+  });
+
   it('words each rule’s value, a count with its plural', () => {
     const said: unknown[] = [];
     const t = ((key: string, options?: unknown) => {
@@ -142,12 +152,14 @@ describe('what the rules ask of a member, on the home screen', () => {
     ruleValue(t, 'inactivityTimeoutDays', 7);
     ruleValue(t, 'inactivityTimeoutDays', null);
     ruleValue(t, 'administratorsNeedTwoFactor', false);
+    ruleValue(t, 'everyoneNeedsTwoFactor', true);
 
     expect(said).toEqual([
       'signInRules.valueProviderOnly',
       ['signInRules.valueIdle', { count: 7 }],
       'signInRules.valueNoLimit',
       'signInRules.valueNoTwoFactor',
+      'signInRules.valueEveryone',
     ]);
   });
 

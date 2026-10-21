@@ -346,7 +346,8 @@
     "failedBody": "Algo correu mal do nosso lado. Tente novamente daqui a pouco.",
     "phoneSetupTitle": "Adicione a Soirely à sua aplicação de autenticação",
     "phoneCantScan": "Leia o código a partir de outro ecrã ou introduza esta chave na aplicação.",
-    "phoneKeepElsewhere": "Guarde-os noutro sítio que não este telemóvel."
+    "phoneKeepElsewhere": "Guarde-os noutro sítio que não este telemóvel.",
+    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
   },
   "security": {
     "title": "Segurança"
@@ -882,7 +883,18 @@
     "changedSee": "Ver o que mudou",
     "changedClose": "Fechar este aviso",
     "limitApplies_one": "No seu caso, a sessão é encerrada após {{count}} dia sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações.",
-    "limitApplies_other": "No seu caso, a sessão é encerrada após {{count}} dias sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações."
+    "limitApplies_other": "No seu caso, a sessão é encerrada após {{count}} dias sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações.",
+    "everyoneTitle": "Two-factor for everyone",
+    "everyoneRequiredFrom": "Required from {{deadline}}",
+    "valueEveryone": "Two-factor required for everyone",
+    "valueNoEveryone": "Two-factor not required of everyone",
+    "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
+    "dueSetUp": "Set it up now",
+    "overdueTitle": "Turn on two-factor to carry on",
+    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
+    "overdueElsewhere": "Your other organisations and single-event access are not affected.",
+    "overdueTurnOn": "Turn on two-factor",
+    "overdueSignOut": "Sign out"
   },
   "languageNames": {
     "en": "English",

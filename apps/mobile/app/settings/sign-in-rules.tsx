@@ -132,6 +132,16 @@ export default function SignInRules() {
                     load.page.administratorsNeedTwoFactor,
                   )}
                 />
+                <Rule
+                  label={t('signInRules.everyoneTitle')}
+                  value={
+                    load.page.everyoneNeedsTwoFactor
+                      ? t('signInRules.everyoneRequiredFrom', {
+                          deadline: load.page.twoFactorDeadline?.written ?? '',
+                        })
+                      : ruleValue(t, 'everyoneNeedsTwoFactor', false)
+                  }
+                />
                 <Text size={tokens.typeBody.size} muted>
                   {t('signInRules.askOwner', { organisation: organisation.name })}
                 </Text>

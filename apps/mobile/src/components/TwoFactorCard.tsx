@@ -35,16 +35,22 @@ export function TwoFactorCard({
   email,
   kind,
   recount,
+  keptBy = null,
+  onTurnedOn,
 }: {
   email: string;
   kind: LayoutKind;
   /** Changes when another card spent a code, so the unused count is asked for again. */
   recount: number;
+  /** An organisation that requires two-factor of everyone, so it stays on (sc-609). */
+  keptBy?: string | null;
+  onTurnedOn?: () => void;
 }) {
   const phone = kind === 'phone';
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refusedBy, setRefusedBy] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -117,7 +123,10 @@ export function TwoFactorCard({
         <AtRest
           status={stage.status}
           onTurnOn={() => void turnOn()}
-          onTurnOff={() => setStage({ kind: 'turningOff' })}
+          refusedBy={refusedBy}
+          onTurnOff={() =>
+            keptBy == null ? setStage({ kind: 'turningOff' }) : setRefusedBy(keptBy)
+          }
           onNewCodes={() => setStage({ kind: 'newCodes' })}
         />
       )}
@@ -126,7 +135,10 @@ export function TwoFactorCard({
         <SettingUp
           enrolment={stage.enrolment}
           phone={phone}
-          onActivated={(codes) => setStage({ kind: 'savingCodes', codes })}
+          onActivated={(codes) => {
+            setStage({ kind: 'savingCodes', codes });
+            onTurnedOn?.();
+          }}
           onCancel={reload}
         />
       )}
@@ -135,7 +147,16 @@ export function TwoFactorCard({
         <SavingCodes codes={stage.codes} phone={phone} onFinish={reload} />
       )}
 
-      {stage.kind === 'turningOff' && <TurningOff email={email} onDone={reload} />}
+      {stage.kind === 'turningOff' && (
+        <TurningOff
+          email={email}
+          onDone={reload}
+          onKept={(organisation) => {
+            setRefusedBy(organisation);
+            reload();
+          }}
+        />
+      )}
 
       {stage.kind === 'newCodes' && (
         <NewCodes onMade={(codes) => setStage({ kind: 'savingCodes', codes })} onKeep={reload} />
@@ -154,11 +175,13 @@ function Title({ text }: { text: string }) {
 
 function AtRest({
   status,
+  refusedBy,
   onTurnOn,
   onTurnOff,
   onNewCodes,
 }: {
   status: TwoFactorStatus;
+  refusedBy: string | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
   onNewCodes: () => void;
@@ -213,6 +236,13 @@ function AtRest({
             onPress={onTurnOff}
             testID="twoFactor.turnOff"
           />
+          {refusedBy != null && (
+            <Notice
+              tone="attention"
+              mark="!"
+              body={t('twoFactorCard.keptByRule', { organisation: refusedBy })}
+            />
+          )}
         </>
       ) : (
         <>
@@ -401,7 +431,15 @@ function SavingCodes({
   );
 }
 
-function TurningOff({ email, onDone }: { email: string; onDone: () => void }) {
+function TurningOff({
+  email,
+  onDone,
+  onKept,
+}: {
+  email: string;
+  onDone: () => void;
+  onKept: (organisation: string) => void;
+}) {
   const { t } = useTranslation();
   const typed = useRef('');
   const input = useRef<TextInput>(null);
@@ -423,6 +461,11 @@ function TurningOff({ email, onDone }: { email: string; onDone: () => void }) {
       await api.disableTwoFactor(typed.current.trim());
       onDone();
     } catch (refusal) {
+      if (refusal instanceof ApiError && refusal.is('two_factor_kept_by_rule')) {
+        onKept(refusal.problem.organisation ?? '');
+        return;
+      }
+
       setChecking(false);
       setError(refusalMessage(refusal, 'twoFactorCard.offWrong', t));
     }
