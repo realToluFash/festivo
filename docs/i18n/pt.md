@@ -41,6 +41,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
+  `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). A link
+  is "a ligação", never "o link" (dev2's draft of `errors:request_link_dead` said "link"); the
+  setting's is "a ligação de adesão". The setting is "Pedidos de adesão", so its state agrees:
+  "Ativados" / "Desativados". The act stays "pedir para aderir", as domain joining; what waits
+  is "o pedido de adesão … já aguarda resposta". `formatDay` ends on "nov.", so a date never
+  closes a sentence: "A partir de {{date}}, pode voltar a pedir para aderir."
+
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
   "exigir", as the server's errors; "for everyone" is "para todos". The date is "a partir de
