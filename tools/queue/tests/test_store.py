@@ -82,6 +82,15 @@ class Claims(unittest.TestCase):
         self.assertEqual(store.handled(self.db), {("lead", 11), ("lead", 12)})
         self.assertEqual(store.last_run(self.db, "lead"), NOW)
 
+    def test_worked_on_is_when_the_role_last_finished_an_item_on_each_story(self):
+        story = lambda fp, story_id: dict(item(fp, ["l10n", "pm"]), story_id=story_id)
+        store.record(self.db, [story("a", 1), story("b", 1), story("c", 2), story("d", 3)], NOW)
+        for role, at in (("l10n", NOW + 10), ("l10n", NOW + 20), ("pm", NOW + 30)):
+            store.finish(self.db, store.claim(self.db, role, NOW)["id"], None, at)
+        store.claim(self.db, "l10n", NOW + 40)
+        self.assertEqual(store.worked_on(self.db, "l10n"), {1: NOW + 20})
+        self.assertEqual(store.worked_on(self.db, "pm"), {2: NOW + 30})
+
 
 
 class FormerLinguists(unittest.TestCase):
