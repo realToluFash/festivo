@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Deletion;
 
 use App\Audit\Auditor;
+use App\Deletion\RestoreWindow;
 use App\Domain\Organisation\Members\OwnerCheck;
 use App\Entity\Membership;
 use App\Entity\Organisation;

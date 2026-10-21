@@ -158,6 +158,7 @@ domain_event = ["App\\Domain\\Event\\**"]
 ai = ["App\\AI\\**"]
 address = ["App\\Address\\**"]
 audit = ["App\\Audit\\**"]
+deletion = ["App\\Deletion\\**"]
 doctrine = ["App\\Doctrine\\**"]
 health = ["App\\Health\\**"]
 locale = ["App\\Locale\\**"]
@@ -182,6 +183,12 @@ permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:address",
 [[guard.perimeter.rules]]
 namespace = "App\\Audit\\"
 permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:audit"]
+
+# One deletion model for whatever support can restore (sc-68, sc-3592): the window,
+# the typed name, the restore and the purge. Each scope keeps its own deleter.
+[[guard.perimeter.rules]]
+namespace = "App\\Deletion\\"
+permit = ["@layer:native", "@layer:external", "@layer:shared", "@layer:deletion", "@layer:audit", "@layer:doctrine"]
 
 [[guard.perimeter.rules]]
 namespace = "App\\Doctrine\\"
@@ -233,7 +240,8 @@ permit = [
 # Organisations read the user scope's vocabulary (EmailAddressNormaliser for a
 # contact address); the user scope does not reach back. A role's changes go to the
 # audit trail (sc-66), as an account's do. A custom role's name is checked against
-# the seeded labels in every one of SupportedLocales (sc-2301).
+# the seeded labels in every one of SupportedLocales (sc-2301). Its deletion uses the
+# shared restore window and typed-name check (sc-3592).
 [[guard.perimeter.rules]]
 namespace = "App\\Domain\\Organisation\\"
 permit = [
@@ -244,6 +252,7 @@ permit = [
     "@layer:domain_user",
     "@layer:repository",
     "@layer:audit",
+    "@layer:deletion",
     "@layer:locale",
 ]
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Deletion;
 
+use App\Deletion\RestoreWindow;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
 use App\Entity\User;

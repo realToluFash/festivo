@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Command;
 
-use App\Domain\Organisation\Deletion\OrganisationRestorer;
+use App\Deletion\Restorer;
+use App\Entity\Organisation;
+use App\Enum\DeletedKind;
 use Psl\Str;
 use RuntimeException;
 use Symfony\Component\Console\Attribute\Argument;
@@ -21,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class RestoreOrganisationCommand
 {
     public function __construct(
-        private OrganisationRestorer $organisationRestorer,
+        private Restorer $restorer,
     ) {
     }
 
@@ -39,14 +41,14 @@ final readonly class RestoreOrganisationCommand
         }
 
         try {
-            $restored = $this->organisationRestorer->restore(Uuid::fromString($organisation), $agent);
+            $restored = $this->restorer->restore(DeletedKind::Organisation, Uuid::fromString($organisation), $agent);
         } catch (RuntimeException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;
         }
 
-        $io->success(Str\format('Restored %s.', $restored->getName()));
+        $io->success(Str\format('Restored %s.', $restored instanceof Organisation ? $restored->getName() : $organisation));
 
         return Command::SUCCESS;
     }
