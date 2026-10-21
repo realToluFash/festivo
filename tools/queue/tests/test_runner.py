@@ -273,6 +273,14 @@ class Run(unittest.TestCase):
                       self.said)
         self.assertEqual([item for _, item, _ in self.platform.launched], [1, 1])
 
+    def test_a_workers_item_is_given_back_when_the_runner_did_not_launch_it(self):
+        store.record(self.db, [work("ops", "inbox:a"), work("ops", "inbox:b")], ON_ZERO)
+        store.claim(self.db, "ops", ON_ZERO, worker="ops")
+        self.run_once()
+        self.assertIn("ops: item 1 given back, its worker ended without finishing it",
+                      self.said)
+        self.assertEqual([item for _, item, _ in self.platform.launched], [1])
+
     def test_an_item_a_running_worker_holds_is_kept(self):
         store.record(self.db, [work("ops")], ON_ZERO)
         self.run_once()
