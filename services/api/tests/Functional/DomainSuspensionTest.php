@@ -15,6 +15,7 @@ use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\EmailAddress;
 use App\Entity\Membership;
+use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
 use App\Entity\OrganisationDomain;
 use App\Entity\ProviderIdentity;
@@ -171,6 +172,26 @@ final class DomainSuspensionTest extends ApiTestCase
             'status' => ['suspended', 'left_or_removed'],
             'suspension' => ['address_gone', null],
         ], $this->audited(DomainSuspender::EXPIRED, $removed)->getChanges());
+    }
+
+    #[Test]
+    public function restoreAfterTheInstantIsRefusedAndTheRemovalIsRecordedAtTheInstant(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $tunde = $this->domainMember($organisation, 'tunde@ire.events');
+        $this->suspendAt($this->membershipOf($tunde, $organisation), new DateTimeImmutable('-720 hours -1 minute'));
+        $removesAt = $this->membershipOf($tunde, $organisation)->getRemovesAt() ?? self::fail('no removal instant');
+        $this->signIn($owner);
+
+        $this->send('POST', $this->restorePath($organisation, $tunde));
+
+        self::assertResponseStatusCodeSame(404);
+        $membership = $this->membershipOf($tunde, $organisation);
+        self::assertSame(MembershipStatus::LeftOrRemoved, $membership->getStatus());
+        $removal = Type\instance_of(MembershipTransition::class)->coerce(
+            self::service(EntityManagerInterface::class)->getRepository(MembershipTransition::class)->findOneBy(['membership' => $membership, 'toStatus' => MembershipStatus::LeftOrRemoved]),
+        );
+        self::assertEquals($removesAt, $removal->getOccurredAt());
     }
 
     #[Test]
@@ -553,7 +574,7 @@ final class DomainSuspensionTest extends ApiTestCase
         self::service(RemovalClock::class)->wind($membership);
 
         if (null !== $membership->getRemovesAt()) {
-            $membership->setRemovesAt($at->add(new DateInterval(RemovalClock::REMOVAL_AFTER)));
+            $membership->setRemovesAt($at->add(new DateInterval(Membership::UNANSWERED_FOR)));
         }
 
         self::service(EntityManagerInterface::class)->flush();

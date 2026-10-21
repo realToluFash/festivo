@@ -29,8 +29,8 @@ class Membership
 {
     use Timestampable;
 
-    /** A request to join is removed at the moment it was asked plus 30 × 24 h, one instant for every reader (sc-392). */
-    public const string REQUEST_LIFETIME = 'PT720H';
+    /** A request to join (sc-392) or a suspension (sc-564) nobody answers is removed 30 × 24 h on, one instant for every reader. */
+    public const string UNANSWERED_FOR = 'PT720H';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -100,7 +100,7 @@ class Membership
         }
 
         if (MembershipStatus::PendingApproval === $status) {
-            $this->requestExpiresAt = $at->add(new DateInterval(self::REQUEST_LIFETIME));
+            $this->requestExpiresAt = $at->add(new DateInterval(self::UNANSWERED_FOR));
         }
     }
 
@@ -147,7 +147,7 @@ class Membership
         }
 
         $this->status = $status;
-        $this->requestExpiresAt = MembershipStatus::PendingApproval === $status ? $at->add(new DateInterval(self::REQUEST_LIFETIME)) : null;
+        $this->requestExpiresAt = MembershipStatus::PendingApproval === $status ? $at->add(new DateInterval(self::UNANSWERED_FOR)) : null;
     }
 
     public function isActive(): bool

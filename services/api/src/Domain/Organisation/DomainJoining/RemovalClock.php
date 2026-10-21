@@ -15,9 +15,6 @@ use Psr\Clock\ClockInterface;
 /** A suspension's 30 days run only beside another active Owner, starting afresh when one arrives (sc-564). Flushing is the caller's. */
 final readonly class RemovalClock
 {
-    /** One instant, 30 × 24 hours on: never the end of a named day in somebody's zone (sc-868). */
-    public const string REMOVAL_AFTER = 'PT720H';
-
     public function __construct(
         private MembershipRepository $membershipRepository,
         private ClockInterface $clock,
@@ -53,7 +50,7 @@ final readonly class RemovalClock
         if ($held) {
             $membership->setRemovesAt(null);
         } elseif (null === $membership->getRemovesAt()) {
-            $membership->setRemovesAt($this->clock->now()->add(new DateInterval(self::REMOVAL_AFTER)));
+            $membership->setRemovesAt($this->clock->now()->add(new DateInterval(Membership::UNANSWERED_FOR)));
         }
     }
 }

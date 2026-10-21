@@ -41,9 +41,10 @@ final readonly class MemberActions
     ) {
     }
 
-    /** Somebody else's membership here that has begun and not ended: a request to join is answered through JoinRequests (sc-392). */
+    /** Somebody else's membership here that has begun and not ended, a suspension past its instant ended first: a request to join is answered through JoinRequests (sc-392). */
     public function find(Organisation $organisation, string $membershipId, User $by): Membership
     {
+        $this->domainSuspender->removeExpired($organisation);
         $membership = Uuid::isValid($membershipId)
             ? $this->membershipRepository->findOneBy(['id' => $membershipId, 'organisation' => $organisation])
             : null;

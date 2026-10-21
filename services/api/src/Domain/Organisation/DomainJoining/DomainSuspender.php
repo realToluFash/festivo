@@ -21,12 +21,13 @@ use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
 use DateTimeInterface;
-use Psl\Iter;
+use Doctrine\DBAL\LockMode;
+use Doctrine\ORM\EntityManagerInterface;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** A domain member keeps access only while the domain still brings them in (sc-564). Flushing is the caller's. */
+/** A domain member keeps access only while the domain still brings them in (sc-564). Flushing is the caller's, but for removeExpired. */
 final readonly class DomainSuspender
 {
     public const string SUBJECT = 'Membership';
@@ -42,6 +43,7 @@ final readonly class DomainSuspender
         private TranslatorInterface $translator,
         private UserMailer $userMailer,
         private AfterResponse $afterResponse,
+        private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
     ) {
     }
@@ -107,7 +109,9 @@ final readonly class DomainSuspender
         $suspension = $membership->getSuspension();
         $domain = $membership->getDomain();
 
-        if (MembershipStatus::Suspended !== $membership->getStatus() || null === $suspension) {
+        $removesAt = $membership->getRemovesAt();
+
+        if (MembershipStatus::Suspended !== $membership->getStatus() || null === $suspension || (null !== $removesAt && $removesAt <= $this->clock->now())) {
             throw new ApiException(ErrorCode::Conflict, $this->translator->trans('members.not_suspended'));
         }
 
@@ -125,21 +129,33 @@ final readonly class DomainSuspender
         ]);
     }
 
-    /** @return int how many were removed: a suspension nobody answered in 30 days ends as removed */
-    public function removeExpired(): int
+    /** @return int how many were removed, each as of its own instant rather than this run, as JoinRequests::expireDue does a request */
+    public function removeExpired(?Organisation $organisation = null): int
     {
-        $expired = $this->membershipRepository->findDueForRemoval($this->clock->now());
+        $removed = 0;
 
-        foreach ($expired as $membership) {
-            $suspension = $membership->getSuspension();
-            $this->membershipMachine->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Domain, null);
-            $this->auditor->record(self::EXPIRED, self::SUBJECT, $membership->getId(), changes: [
-                'status' => [MembershipStatus::Suspended->value, MembershipStatus::LeftOrRemoved->value],
-                'suspension' => [$suspension?->value, null],
-            ]);
+        foreach ($this->membershipRepository->findDueForRemoval($this->clock->now(), $organisation) as $membership) {
+            $removed += $this->entityManager->wrapInTransaction(function () use ($membership): int {
+                $this->entityManager->refresh($membership, LockMode::PESSIMISTIC_WRITE);
+                $suspension = $membership->getSuspension();
+                $at = $membership->getRemovesAt();
+
+                if (MembershipStatus::Suspended !== $membership->getStatus() || null === $at || $at > $this->clock->now()) {
+                    return 0;
+                }
+
+                $this->membershipMachine->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Domain, null, $at);
+                $this->auditor->record(self::EXPIRED, self::SUBJECT, $membership->getId(), changes: [
+                    'status' => [MembershipStatus::Suspended->value, MembershipStatus::LeftOrRemoved->value],
+                    'suspension' => [$suspension?->value, null],
+                ]);
+                $this->entityManager->flush();
+
+                return 1;
+            });
         }
 
-        return Iter\count($expired);
+        return $removed;
     }
 
     private function suspend(Membership $membership, DomainSuspension $why, ?User $by): void

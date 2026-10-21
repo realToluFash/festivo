@@ -142,10 +142,9 @@ final class MembershipRepository extends ServiceEntityRepository
     }
 
     /** @return list<Membership> suspended with a removal instant at or before now, the earliest first */
-    public function findDueForRemoval(DateTimeImmutable $now): array
+    public function findDueForRemoval(DateTimeImmutable $now, ?Organisation $organisation = null): array
     {
-        /** @var list<Membership> */
-        return $this->createQueryBuilder('m')
+        $query = $this->createQueryBuilder('m')
             ->select('m', 'o')
             ->innerJoin('m.organisation', 'o')
             ->where('m.status = :suspended')
@@ -153,8 +152,14 @@ final class MembershipRepository extends ServiceEntityRepository
             ->setParameter('suspended', MembershipStatus::Suspended)
             ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
             ->orderBy('m.removesAt', 'ASC')
-            ->getQuery()
-            ->getResult();
+            ->addOrderBy('m.id', 'ASC');
+
+        if (null !== $organisation) {
+            $query->andWhere('m.organisation = :organisation')->setParameter('organisation', $organisation);
+        }
+
+        /** @var list<Membership> */
+        return $query->getQuery()->getResult();
     }
 
     /** Read past the unit of work, which a rolled-back transaction leaves closed and holding what never committed. */
