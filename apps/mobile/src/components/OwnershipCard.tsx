@@ -4,7 +4,7 @@ import {
   type OrganisationDeletion,
   type OrganisationMember,
 } from '@soirely/api-client';
-import { roleName } from '@soirely/domain';
+import { roleName, typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type Ref, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
@@ -499,7 +499,7 @@ function Delete({
   const input = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
-  const matches = typed.trim() === name;
+  const matches = typedNameMatches(typed, name);
 
   useEffect(() => {
     let current = true;
@@ -583,7 +583,7 @@ function Delete({
             autoComplete="off"
             onChangeText={(value) => {
               setTyped(value);
-              if (value.trim() === name) setMismatch(null);
+              if (typedNameMatches(value, name)) setMismatch(null);
             }}
             testID="ownership.delete.name"
           />
