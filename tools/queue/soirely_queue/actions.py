@@ -766,6 +766,25 @@ def merge(c, a):
     return f"merged PR #{a.pr} as {merged}; sc-{story['id']} is {went}{told}{resync(c)}"
 
 
+def pr_close(c, a):
+    """Closes unmerged. The story's builder closes its own; ops, which keeps the queue, any."""
+    guard(c, "pr-close")
+    if not (a.text or "").strip():
+        raise Refused("say why it closes unmerged: --text")
+    pr = c.pr(a.pr)
+    if pr["state"] != "open":
+        raise Refused(f"PR #{a.pr} is {pr['state']}")
+    story = c.story(pr["story_id"]) if pr["story_id"] else None
+    labels = story["labels"] if story else []
+    builder = (None if not story else "l10n" if R.translation(labels, None)
+               and R.OPS_LABEL not in labels else R.builder_of(labels))
+    if c.role != "ops" and builder != c.role and not (
+            c.role in R.DEVS and builder in R.DEVS):
+        raise Refused(f"PR #{a.pr} is {builder or 'nobody'}'s to close; ask [ops]")
+    github.close(a.pr, f"{a.text.rstrip()} (from {signature(c.role)})")
+    return f"closed PR #{a.pr} unmerged{resync(c)}"
+
+
 def to_qa(c, a):
     guard(c, "to-qa")
     story = c.story(a.story)
