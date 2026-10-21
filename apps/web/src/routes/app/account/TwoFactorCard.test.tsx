@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { __setSessionState } from '../../../session.ts';
+import { membership } from '../../../test-memberships.ts';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
 
 const ENROLMENT = {
@@ -58,7 +60,10 @@ function card(onBusy = vi.fn()) {
 // Several round trips each, more than findBy's default second under the full suite's load.
 const UNDER_LOAD = { timeout: 3000 };
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  __setSessionState({ status: 'unknown' });
+});
 
 describe('turning two-factor on', () => {
   it('stays off until a code from the new key matches, then shows ten codes once', async () => {
@@ -185,5 +190,85 @@ describe('turning two-factor off', () => {
       undefined,
       UNDER_LOAD,
     );
+  });
+});
+
+describe('while an organisation requires two-factor of everyone (sc-609)', () => {
+  function requiredBy(): void {
+    const organisation = membership({
+      signInRules: {
+        providerOnly: false,
+        inactivityTimeoutDays: null,
+        administratorsNeedTwoFactor: false,
+        everyoneNeedsTwoFactor: true,
+        changedAt: null,
+      },
+    });
+
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation,
+        organisations: [organisation],
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+  }
+
+  it('refuses turning it off and keeps the card On, asking for no code', async () => {
+    requiredBy();
+    const sent = answering({
+      'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 10 }),
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD));
+
+    expect(
+      screen.getByText('Ìrè Events requires two-factor, so you can’t turn it off.'),
+    ).toBeDefined();
+    expect(screen.getByText('On')).toBeDefined();
+    expect(screen.queryByLabelText('Code')).toBeNull();
+    expect(sent.filter(({ path }) => path.endsWith('/disable'))).toEqual([]);
+  });
+
+  it('says the same when the server refuses it', async () => {
+    const sent = answering({
+      'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 10 }),
+      'POST /api/auth/two-factor/disable': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/two_factor_kept_by_rule',
+            title: 'No.',
+            status: 409,
+            organisation: 'Ìrè Events',
+          },
+          409,
+        ),
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD));
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Turn it off' }));
+
+    expect(
+      await screen.findByText(
+        'Ìrè Events requires two-factor, so you can’t turn it off.',
+        {},
+        UNDER_LOAD,
+      ),
+    ).toBeDefined();
+    expect(sent.some(({ path }) => path.endsWith('/disable'))).toBe(true);
   });
 });

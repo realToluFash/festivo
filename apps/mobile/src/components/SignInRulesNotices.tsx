@@ -9,23 +9,40 @@ import { currentLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { rulesNotices } from '../kit/signInRules.ts';
 import { markRulesSeen, useRulesSeen } from '../signInRulesSeen.ts';
+import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { tokens } from '../theme/tokens.ts';
 import { QuietButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
 
-/** What the organisation's sign-in rules ask of this member (sc-69), `PolicySignIn-*`, each naming the organisation. */
+/** What the organisation's sign-in rules ask of this member (sc-69, sc-609), `PolicySignIn-*`, each naming the organisation. */
 export function SignInRulesNotices({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const [putOff, setPutOff] = useState(false);
   const seen = useRulesSeen(organisation.id);
   const name = organisation.name;
-  const notices = rulesNotices(organisation, seen, putOff);
+  const notices = rulesNotices(organisation, seen, putOff, useTwoFactorStanding(organisation));
   const changedAt = organisation.signInRules.changedAt;
 
   if (notices.length === 0) return null;
 
   return (
     <View style={styles.stack}>
+      {notices.includes('due') && organisation.twoFactorDue != null && (
+        <Notice
+          tone="attention"
+          mark="!"
+          body={t('signInRules.dueBody', {
+            organisation: name,
+            deadline: organisation.twoFactorDue.written,
+          })}
+          action={{
+            label: t('signInRules.dueSetUp'),
+            onPress: () => router.navigate(SECTION_HREF.security),
+            testID: 'signInRules.dueSetUp',
+          }}
+        />
+      )}
+
       {notices.includes('readOnly') && (
         <Notice
           tone="attention"

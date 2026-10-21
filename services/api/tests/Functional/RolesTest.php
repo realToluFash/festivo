@@ -20,6 +20,7 @@ use App\Enum\SeededRole;
 use App\Http\Exception\ApiException;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -486,7 +487,7 @@ final class RolesTest extends ApiTestCase
             ? self::em()->find(Role::class, $roleId)
             : self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => $seeded]);
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
-        self::em()->persist(new Membership($organisation, $user, Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active));
+        self::em()->persist(new Membership($organisation, $user, Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
 
         return $user;

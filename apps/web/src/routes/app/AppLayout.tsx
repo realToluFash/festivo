@@ -10,6 +10,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
+import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import {
   joinOrganisation,
   landingFor,
@@ -22,6 +23,7 @@ import { useWaitingInvitations } from '../../invitations.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
+import { useTwoFactorStanding } from '../../twoFactorStanding.ts';
 
 /**
  * The signed-in shell, built for a desk.
@@ -80,6 +82,7 @@ function Shell() {
   const waiting = useWaitingInvitations();
   const closeCreate = useCallback(() => setCreating(false), []);
   const offer = useDomainOffer();
+  const overdue = useTwoFactorStanding(organisation) === 'overdue';
 
   return (
     <div className="shell">
@@ -152,6 +155,8 @@ function Shell() {
                 setSwitched({ name: started.name, at: pathname });
               }}
             />
+          ) : organisation != null && overdue && !pathname.startsWith('/app/account') ? (
+            <TwoFactorOverdue organisation={organisation} />
           ) : (
             <Outlet />
           )}

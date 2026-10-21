@@ -259,7 +259,20 @@ export interface Membership extends Organisation {
   withheldUntilTwoFactor: string[];
   /** Under a Google-or-Apple-only rule with no provider linked: may read, not change (sc-69). */
   readOnlyUntilLinked: boolean;
+  /** While this organisation requires two-factor of everyone and this account has none (sc-609). */
+  twoFactorDue: TwoFactorDue | null;
   signInRules: OrganisationSignInRules;
+}
+
+/** `written` is the instant in the account's own zone, as sc-868 writes it: "Saturday, Oct 24 at 14:20 WAT". */
+export interface TwoFactorDeadline {
+  at: string;
+  written: string;
+}
+
+export interface TwoFactorDue extends TwoFactorDeadline {
+  /** Past the deadline: nothing in the organisation opens until two-factor is on. */
+  overdue: boolean;
 }
 
 /** An organisation's sign-in rules (sc-69); a null timeout is no limit. */
@@ -267,6 +280,7 @@ export interface OrganisationSignInRules {
   providerOnly: boolean;
   inactivityTimeoutDays: number | null;
   administratorsNeedTwoFactor: boolean;
+  everyoneNeedsTwoFactor: boolean;
   changedAt: string | null;
 }
 
@@ -275,7 +289,7 @@ export type SignInRulesChanges = Partial<Omit<OrganisationSignInRules, 'changedA
 export interface SignInRuleChange {
   at: string;
   by: { name: string; role: MemberRole | null };
-  rule: 'providerOnly' | 'inactivityTimeoutDays' | 'administratorsNeedTwoFactor';
+  rule: (typeof RULES)[number];
   now: boolean | number | null;
   was: boolean | number | null;
 }
@@ -284,13 +298,23 @@ export interface SignInRulesPage extends OrganisationSignInRules {
   inactivityChoices: number[];
   changes: SignInRuleChange[];
   /** Members with no Google or Apple linked, never the caller; only for a caller who may change the rules. */
-  passwordOnly: { userId: string; name: string; role: MemberRole }[] | null;
+  passwordOnly: RulesMember[] | null;
+  /** Members with no two-factor, never the caller; only for a caller who may change the rules (sc-609). */
+  withoutTwoFactor: RulesMember[] | null;
+  /** Seven days from the switch-on, or from now while it is off. */
+  twoFactorDeadline: TwoFactorDeadline | null;
   /** The shortest limit across the caller's organisations, which may be another organisation's. */
   inactivityLimit: InactivityLimit | null;
   /** Whether the caller has two-factor, without which requiring it of administrators is refused. */
   ownTwoFactor: boolean;
   /** Whether the caller has Google or Apple linked, without which requiring it is refused. */
   ownProvider: boolean;
+}
+
+export interface RulesMember {
+  userId: string;
+  name: string;
+  role: MemberRole;
 }
 
 export interface InactivityLimit {
@@ -1075,7 +1099,7 @@ export class ApiClient {
     );
   }
 
-  /** Refused `validation_failed` for an unlisted length, `two_factor_off` for two-factor asked without it. */
+  /** Refused `validation_failed` for an unlisted length, `two_factor_off` for two-factor asked without it (sc-69, sc-609). */
   async updateSignInRules(
     organisationId: string,
     changes: SignInRulesChanges,
@@ -2121,10 +2145,12 @@ function asMembership(raw: unknown): Membership | null {
       : [],
     withheldUntilTwoFactor: stringList(candidate.withheldUntilTwoFactor) ?? [],
     readOnlyUntilLinked: candidate.readOnlyUntilLinked === true,
+    twoFactorDue: asTwoFactorDue(candidate.twoFactorDue),
     signInRules: asOrganisationSignInRules(candidate.signInRules) ?? {
       providerOnly: false,
       inactivityTimeoutDays: null,
       administratorsNeedTwoFactor: false,
+      everyoneNeedsTwoFactor: false,
       changedAt: null,
     },
   };
@@ -2146,11 +2172,46 @@ function asOrganisationSignInRules(raw: unknown): OrganisationSignInRules | null
     providerOnly: rules.providerOnly,
     inactivityTimeoutDays: rules.inactivityTimeoutDays as number | null,
     administratorsNeedTwoFactor: rules.administratorsNeedTwoFactor,
+    everyoneNeedsTwoFactor: rules.everyoneNeedsTwoFactor === true,
     changedAt: typeof rules.changedAt === 'string' ? rules.changedAt : null,
   };
 }
 
-const RULES = ['providerOnly', 'inactivityTimeoutDays', 'administratorsNeedTwoFactor'] as const;
+const RULES = [
+  'providerOnly',
+  'inactivityTimeoutDays',
+  'administratorsNeedTwoFactor',
+  'everyoneNeedsTwoFactor',
+] as const;
+
+function asTwoFactorDeadline(raw: unknown): TwoFactorDeadline | null {
+  const deadline = (raw ?? {}) as Record<string, unknown>;
+
+  return typeof deadline.at === 'string' && typeof deadline.written === 'string'
+    ? { at: deadline.at, written: deadline.written }
+    : null;
+}
+
+function asTwoFactorDue(raw: unknown): TwoFactorDue | null {
+  const deadline = asTwoFactorDeadline(raw);
+
+  return deadline == null
+    ? null
+    : { ...deadline, overdue: (raw as Record<string, unknown>).overdue === true };
+}
+
+function asRulesMembers(raw: unknown): (RulesMember | null)[] | null {
+  return Array.isArray(raw)
+    ? raw.map((entry: unknown) => {
+        const member = (entry ?? {}) as Record<string, unknown>;
+        const role = asMemberRole(member.role);
+
+        return typeof member.userId === 'string' && typeof member.name === 'string' && role != null
+          ? { userId: member.userId, name: member.name, role }
+          : null;
+      })
+    : null;
+}
 
 function asRuleValue(raw: unknown): boolean | number | null | undefined {
   return raw === null || typeof raw === 'boolean' || typeof raw === 'number' ? raw : undefined;
@@ -2179,25 +2240,20 @@ function asSignInRulesPage(raw: unknown): SignInRulesPage | null {
     ? page.inactivityChoices.filter((one): one is number => typeof one === 'number')
     : null;
   const changes = Array.isArray(page.changes) ? page.changes.map(asSignInRuleChange) : null;
-  const passwordOnly = Array.isArray(page.passwordOnly)
-    ? page.passwordOnly.map((entry: unknown) => {
-        const member = (entry ?? {}) as Record<string, unknown>;
-        const role = asMemberRole(member.role);
-
-        return typeof member.userId === 'string' && typeof member.name === 'string' && role != null
-          ? { userId: member.userId, name: member.name, role }
-          : null;
-      })
-    : null;
+  const passwordOnly = asRulesMembers(page.passwordOnly);
+  const withoutTwoFactor = asRulesMembers(page.withoutTwoFactor);
 
   if (choices == null || changes == null || changes.some((change) => change == null)) return null;
   if (passwordOnly?.some((member) => member == null)) return null;
+  if (withoutTwoFactor?.some((member) => member == null)) return null;
 
   return {
     ...rules,
     inactivityChoices: choices,
     changes: changes as SignInRuleChange[],
     passwordOnly: passwordOnly as SignInRulesPage['passwordOnly'],
+    withoutTwoFactor: withoutTwoFactor as SignInRulesPage['withoutTwoFactor'],
+    twoFactorDeadline: asTwoFactorDeadline(page.twoFactorDeadline),
     inactivityLimit: asInactivityLimit(page.inactivityLimit),
     ownTwoFactor: page.ownTwoFactor === true,
     ownProvider: page.ownProvider === true,

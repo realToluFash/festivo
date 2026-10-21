@@ -16,6 +16,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Every way into an organisation, and every move inside one, recorded as a transition (sc-67). Flushing is the caller's. */
@@ -25,6 +26,7 @@ final readonly class MembershipMachine
         private MembershipRepository $membershipRepository,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -34,9 +36,10 @@ final readonly class MembershipMachine
         $existing = $this->membershipRepository->findOneBy(['organisation' => $organisation, 'user' => $user]);
 
         if (null === $existing) {
-            $membership = new Membership($organisation, $user, $role, $entry);
+            $now = $this->clock->now();
+            $membership = new Membership($organisation, $user, $role, $entry, $now);
             $this->entityManager->persist($membership);
-            $this->record($membership, null, $entry, $channel, $actor);
+            $this->record($membership, null, $entry, $channel, $actor, $now);
 
             return $membership;
         }
@@ -56,13 +59,14 @@ final readonly class MembershipMachine
 
     public function move(Membership $membership, MembershipStatus $to, MembershipChannel $channel, ?User $actor): void
     {
+        $now = $this->clock->now();
         $from = $membership->getStatus();
-        $membership->setStatus($to);
-        $this->record($membership, $from, $to, $channel, $actor);
+        $membership->setStatus($to, $now);
+        $this->record($membership, $from, $to, $channel, $actor, $now);
     }
 
-    private function record(Membership $membership, ?MembershipStatus $from, MembershipStatus $to, MembershipChannel $channel, ?User $actor): void
+    private function record(Membership $membership, ?MembershipStatus $from, MembershipStatus $to, MembershipChannel $channel, ?User $actor, DateTimeImmutable $at): void
     {
-        $this->entityManager->persist(new MembershipTransition($membership, $from, $to, $channel, $actor, new DateTimeImmutable()));
+        $this->entityManager->persist(new MembershipTransition($membership, $from, $to, $channel, $actor, $at));
     }
 }

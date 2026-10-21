@@ -66,6 +66,8 @@
     "oauth_only": "This organisation signs in with Google or Apple only.",
     "oauth_only_unlinked": "Read-only until you link Google or Apple.",
     "organisation_two_factor_required": "This organisation asks for two-factor first.",
+    "organisation_two_factor_overdue": "This organisation requires two-factor.",
+    "two_factor_kept_by_rule": "Your organisation requires two-factor, so you cannot turn it off.",
     "session_timed_out": "Signed out after a time without use.",
     "join_offer_unavailable": "You cannot ask to join that organisation. Start your own, or ask somebody there to invite you."
 }

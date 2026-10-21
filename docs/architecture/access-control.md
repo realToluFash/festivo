@@ -126,9 +126,21 @@ only in the organisation that set it:
   on while the person saving has no two-factor of their own is **409 `two_factor_off`**,
   and nothing in that save is changed. The sign-in rules page
   (`GET /api/orgs/{id}/sign-in-rules`) carries `ownTwoFactor`, so it refuses before sending.
+- **Two-factor for everyone** (sc-609), for a member without it: nothing changes for 7 × 24
+  hours from the switch-on instant (`organisations.two_factor_required_since`), or from
+  joining, whichever is later. After that every request in the organisation is **403
+  `organisation_two_factor_overdue`**, however the session was opened, until two-factor is
+  on; the organisation stays in `GET /api/orgs` so the client can say why. Turning two-factor
+  off while any organisation requires it is **409 `two_factor_kept_by_rule`**, naming it.
+  Switching it on has the same `two_factor_off` refusal as the administrators' rule, and
+  emails every member without two-factor the deadline. The hold needs no job, but
+  `app:sign-in-rules:record-two-factor-holds` audits each member it holds, once
+  (`memberships.two_factor_blocked_at`).
 
 `GET /api/orgs` and `GET /api/orgs/{id}/permissions` carry `withheldUntilTwoFactor` and
-`readOnlyUntilLinked`, and leave the withheld permissions out of `permissions`.
+`readOnlyUntilLinked`, and leave the withheld permissions out of `permissions`. `GET
+/api/orgs` also carries `twoFactorDue` (`at`, `written` in the member's own zone by sc-868,
+`overdue`) while the member has a deadline to meet.
 
 ## Sub-resources are loaded through their event
 

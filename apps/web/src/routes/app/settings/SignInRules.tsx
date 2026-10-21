@@ -21,7 +21,7 @@ type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; page: S
 
 type Rules = Required<SignInRulesChanges>;
 
-/** Settings > Sign-in rules (sc-69): every member reads them, organisation.manage changes them. */
+/** Settings > Sign-in rules (sc-69, sc-609): every member reads them, organisation.manage changes them. */
 export function SignInRules() {
   const { t } = useTranslation();
   const session = useSession();
@@ -122,6 +122,7 @@ export function SignInRules() {
                 providerOnly,
                 inactivityTimeoutDays,
                 administratorsNeedTwoFactor,
+                everyoneNeedsTwoFactor,
                 changedAt,
               } = page;
               const saved = {
@@ -130,6 +131,7 @@ export function SignInRules() {
                   providerOnly,
                   inactivityTimeoutDays,
                   administratorsNeedTwoFactor,
+                  everyoneNeedsTwoFactor,
                   changedAt,
                 },
               };
@@ -157,11 +159,14 @@ function Editable({
   const [rules, setRules] = useState<Rules>(() => rulesOf(page));
   const [status, setStatus] = useState<'editing' | 'saving' | 'saved' | 'failed'>('editing');
   const [needsOwnTwoFactor, setNeedsOwnTwoFactor] = useState(false);
+  const [everyoneNeedsOwn, setEveryoneNeedsOwn] = useState(false);
   const [needsOwnProvider, setNeedsOwnProvider] = useState(false);
   const [hasProvider, setHasProvider] = useState(page.ownProvider);
   const changed = differences(rulesOf(page), rules);
   const dirty = Object.keys(changed).length > 0;
   const stranded = page.passwordOnly ?? [];
+  const withoutTwoFactor = page.withoutTwoFactor ?? [];
+  const deadline = page.twoFactorDeadline?.written ?? '';
   const name = organisation.name;
   const requiresProvider = rules.providerOnly && !needsOwnProvider;
   const effective: SignInRulesChanges = { ...changed };
@@ -208,8 +213,17 @@ function Editable({
 
       // Two-factor removed in another tab, say: the switch goes back off and the other choices stay, unsaved.
       if (error instanceof ApiError && error.is('two_factor_off')) {
-        setRules((previous) => ({ ...previous, administratorsNeedTwoFactor: false }));
-        setNeedsOwnTwoFactor(true);
+        setRules((previous) => ({
+          ...previous,
+          administratorsNeedTwoFactor: changed.administratorsNeedTwoFactor
+            ? false
+            : previous.administratorsNeedTwoFactor,
+          everyoneNeedsTwoFactor: changed.everyoneNeedsTwoFactor
+            ? false
+            : previous.everyoneNeedsTwoFactor,
+        }));
+        setNeedsOwnTwoFactor(changed.administratorsNeedTwoFactor === true);
+        setEveryoneNeedsOwn(changed.everyoneNeedsTwoFactor === true);
         setStatus('editing');
         return;
       }
@@ -228,6 +242,18 @@ function Editable({
 
     setNeedsOwnTwoFactor(false);
     pick({ administratorsNeedTwoFactor: required });
+  }
+
+  function switchEveryone(): void {
+    const required = !rules.everyoneNeedsTwoFactor;
+
+    if (required && !page.ownTwoFactor) {
+      setEveryoneNeedsOwn(true);
+      return;
+    }
+
+    setEveryoneNeedsOwn(false);
+    pick({ everyoneNeedsTwoFactor: required });
   }
 
   return (
@@ -381,9 +407,79 @@ function Editable({
             )}
             <p className="muted">
               {t(
-                rules.administratorsNeedTwoFactor
-                  ? 'signInRules.twoFactorOn'
-                  : 'signInRules.twoFactorOff',
+                rules.everyoneNeedsTwoFactor
+                  ? 'signInRules.twoFactorCovered'
+                  : rules.administratorsNeedTwoFactor
+                    ? 'signInRules.twoFactorOn'
+                    : 'signInRules.twoFactorOff',
+              )}
+            </p>
+          </section>
+
+          <section className="card settings-card" aria-labelledby="rules-everyone">
+            <div className="sign-in-rules-switch">
+              <h2 id="rules-everyone">{t('signInRules.everyoneTitle')}</h2>
+              <span className="muted">
+                {t(
+                  rules.everyoneNeedsTwoFactor ? 'signInRules.required' : 'signInRules.notRequired',
+                )}
+              </span>
+              <button
+                type="button"
+                className="roles-level"
+                aria-pressed={rules.everyoneNeedsTwoFactor}
+                aria-label={t('signInRules.everyoneLabel')}
+                onClick={switchEveryone}
+              >
+                {t(rules.everyoneNeedsTwoFactor ? 'signInRules.turnOff' : 'signInRules.turnOn')}
+              </button>
+            </div>
+            {everyoneNeedsOwn && (
+              <div className="notice notice-attention sign-in-rules-needs-own" role="alert">
+                <span className="mark mark-attention" aria-hidden="true">
+                  !
+                </span>
+                <div className="notice-body">
+                  <p className="notice-title">{t('signInRules.needsOwnTitle')}</p>
+                  <p>{t('signInRules.needsOwnBody')}</p>
+                  <Link className="button" to="/app/account/security">
+                    {t('signInRules.needsOwnTurnOn')}
+                  </Link>
+                </div>
+              </div>
+            )}
+            {rules.everyoneNeedsTwoFactor && page.everyoneNeedsTwoFactor && (
+              <p>{t('signInRules.everyoneRequiredFrom', { deadline })}</p>
+            )}
+            {rules.everyoneNeedsTwoFactor &&
+              !page.everyoneNeedsTwoFactor &&
+              withoutTwoFactor.length > 0 && (
+                <div className="notice notice-attention">
+                  <span className="mark mark-attention" aria-hidden="true">
+                    !
+                  </span>
+                  <div className="notice-body">
+                    <p className="notice-title">
+                      {t('signInRules.everyoneWithoutTitle', { count: withoutTwoFactor.length })}
+                    </p>
+                    <p>{t('signInRules.everyoneWithoutBody', { deadline, organisation: name })}</p>
+                    <ul aria-label={t('signInRules.everyoneWithoutList')}>
+                      {withoutTwoFactor.map((member) => (
+                        <li key={member.userId}>
+                          {t('signInRules.everyoneWithoutPerson', {
+                            name: member.name,
+                            role: roleName(t, member.role),
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            <p className="muted">
+              {t(
+                rules.everyoneNeedsTwoFactor ? 'signInRules.everyoneOn' : 'signInRules.everyoneOff',
+                { organisation: name },
               )}
             </p>
           </section>
@@ -486,6 +582,16 @@ function InForce({ organisation, page }: { organisation: Membership; page: SignI
                 {ruleValue(t, 'administratorsNeedTwoFactor', rules.administratorsNeedTwoFactor)}
               </dd>
             </div>
+            <div>
+              <dt>{t('signInRules.everyoneTitle')}</dt>
+              <dd>
+                {rules.everyoneNeedsTwoFactor
+                  ? t('signInRules.everyoneRequiredFrom', {
+                      deadline: page.twoFactorDeadline?.written ?? '',
+                    })
+                  : ruleValue(t, 'everyoneNeedsTwoFactor', false)}
+              </dd>
+            </div>
           </dl>
           <p className="muted">{t('signInRules.askOwner', { organisation: organisation.name })}</p>
         </section>
@@ -537,6 +643,7 @@ function rulesOf(page: SignInRulesPage): Rules {
     providerOnly: page.providerOnly,
     inactivityTimeoutDays: page.inactivityTimeoutDays,
     administratorsNeedTwoFactor: page.administratorsNeedTwoFactor,
+    everyoneNeedsTwoFactor: page.everyoneNeedsTwoFactor,
   };
 }
 
@@ -549,6 +656,8 @@ function differences(saved: Rules, chosen: Rules): SignInRulesChanges {
     changes.inactivityTimeoutDays = chosen.inactivityTimeoutDays;
   if (saved.administratorsNeedTwoFactor !== chosen.administratorsNeedTwoFactor)
     changes.administratorsNeedTwoFactor = chosen.administratorsNeedTwoFactor;
+  if (saved.everyoneNeedsTwoFactor !== chosen.everyoneNeedsTwoFactor)
+    changes.everyoneNeedsTwoFactor = chosen.everyoneNeedsTwoFactor;
 
   return changes;
 }
@@ -564,6 +673,8 @@ function ruleValue(t: TFunction, rule: SignInRuleChange['rule'], value: unknown)
     return typeof value === 'number'
       ? t('signInRules.valueIdle', { count: value })
       : t('signInRules.valueNoLimit');
+  if (rule === 'everyoneNeedsTwoFactor')
+    return t(value === true ? 'signInRules.valueEveryone' : 'signInRules.valueNoEveryone');
 
   return t(value === true ? 'signInRules.valueTwoFactor' : 'signInRules.valueNoTwoFactor');
 }
@@ -593,6 +704,14 @@ function effects(t: TFunction, changed: SignInRulesChanges, stranded: string[]):
         changed.administratorsNeedTwoFactor
           ? 'signInRules.effectTwoFactorOn'
           : 'signInRules.effectTwoFactorOff',
+      ),
+    );
+  if (changed.everyoneNeedsTwoFactor !== undefined)
+    said.push(
+      t(
+        changed.everyoneNeedsTwoFactor
+          ? 'signInRules.effectEveryoneOn'
+          : 'signInRules.effectEveryoneOff',
       ),
     );
 

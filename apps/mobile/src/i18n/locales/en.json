@@ -346,7 +346,8 @@
     "failedBody": "Something went wrong on our side. Try again in a moment.",
     "phoneSetupTitle": "Add Soirely to your authenticator app",
     "phoneCantScan": "Scan the code from another screen, or enter this key in the app.",
-    "phoneKeepElsewhere": "Keep them somewhere other than this phone."
+    "phoneKeepElsewhere": "Keep them somewhere other than this phone.",
+    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
   },
   "security": {
     "title": "Security"
@@ -882,7 +883,18 @@
     "changedSee": "See what changed",
     "changedClose": "Close this notice",
     "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
-    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
+    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations.",
+    "everyoneTitle": "Two-factor for everyone",
+    "everyoneRequiredFrom": "Required from {{deadline}}",
+    "valueEveryone": "Two-factor required for everyone",
+    "valueNoEveryone": "Two-factor not required of everyone",
+    "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
+    "dueSetUp": "Set it up now",
+    "overdueTitle": "Turn on two-factor to carry on",
+    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
+    "overdueElsewhere": "Your other organisations and single-event access are not affected.",
+    "overdueTurnOn": "Turn on two-factor",
+    "overdueSignOut": "Sign out"
   },
   "languageNames": {
     "en": "English",

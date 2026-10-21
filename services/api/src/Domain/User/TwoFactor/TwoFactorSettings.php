@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\User\TwoFactor;
 
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -32,6 +33,7 @@ final readonly class TwoFactorSettings
         private TwoFactorMailer $twoFactorMailer,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private SignInRules $signInRules,
     ) {
     }
 
@@ -106,6 +108,19 @@ final readonly class TwoFactorSettings
     public function turnOff(User $user, #[SensitiveParameter] string $typed): void
     {
         $factor = $this->active($user);
+        $requiring = $this->signInRules->requiringTwoFactor($user);
+
+        if (null !== $requiring) {
+            throw new ApiException(
+                ErrorCode::TwoFactorKeptByRule,
+                'Your organisation requires two-factor, so you cannot turn it off.',
+                [],
+                null,
+                [],
+                ['organisation' => $requiring->getName()],
+            );
+        }
+
         $this->secondFactorCheck->passEither($factor, $typed);
 
         $this->recoveryCodeRepository->deleteAllFor($user);

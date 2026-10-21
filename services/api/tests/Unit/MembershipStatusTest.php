@@ -11,6 +11,7 @@ use App\Entity\User;
 use App\Enum\AccountOrigin;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use DateTimeImmutable;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -48,7 +49,7 @@ final class MembershipStatusTest extends TestCase
         $membership = $this->membership(MembershipStatus::PendingApproval);
 
         $this->expectException(LogicException::class);
-        $membership->setStatus(MembershipStatus::Suspended);
+        $membership->setStatus(MembershipStatus::Suspended, new DateTimeImmutable());
     }
 
     #[Test]
@@ -62,15 +63,31 @@ final class MembershipStatusTest extends TestCase
     public function onlyActiveCountsAsActive(): void
     {
         $membership = $this->membership(MembershipStatus::Active);
-        $membership->setStatus(MembershipStatus::Suspended);
+        $membership->setStatus(MembershipStatus::Suspended, new DateTimeImmutable());
 
         self::assertFalse($membership->isActive());
+    }
+
+    #[Test]
+    public function reinstatementKeepsWhenTheMemberJoinedAndReturningRestartsIt(): void
+    {
+        $membership = $this->membership(MembershipStatus::PendingApproval);
+        self::assertNull($membership->getJoinedAt());
+
+        $membership->setStatus(MembershipStatus::Active, new DateTimeImmutable('2026-10-01'));
+        $membership->setStatus(MembershipStatus::Suspended, new DateTimeImmutable('2026-10-05'));
+        $membership->setStatus(MembershipStatus::Active, new DateTimeImmutable('2026-10-09'));
+        self::assertEquals(new DateTimeImmutable('2026-10-01'), $membership->getJoinedAt());
+
+        $membership->setStatus(MembershipStatus::LeftOrRemoved, new DateTimeImmutable('2026-10-12'));
+        $membership->setStatus(MembershipStatus::Active, new DateTimeImmutable('2026-10-20'));
+        self::assertEquals(new DateTimeImmutable('2026-10-20'), $membership->getJoinedAt());
     }
 
     private function membership(MembershipStatus $status): Membership
     {
         $organisation = new Organisation('Ìrè Events', 'NG', 'NGN', 'Africa/Lagos', 'hello@ire.events', 'en');
 
-        return new Membership($organisation, new User('Kemi', null, AccountOrigin::SelfRegistered), Role::seeded($organisation, SeededRole::Coordinator), $status);
+        return new Membership($organisation, new User('Kemi', null, AccountOrigin::SelfRegistered), Role::seeded($organisation, SeededRole::Coordinator), $status, new DateTimeImmutable());
     }
 }

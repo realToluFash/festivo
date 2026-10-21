@@ -13,11 +13,13 @@ import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
 const RAIL_WIDTH = 220;
 
@@ -48,10 +50,13 @@ export function AppFrame({
   current,
   title,
   back,
+  aboutTheAccount = false,
   children,
 }: {
   current: Destination;
   title: string;
+  /** Security and Account stay open past an organisation's two-factor deadline, to set it up (sc-609). */
+  aboutTheAccount?: boolean;
   /** On a phone, the page this one was opened from, as Security's "Settings". */
   back?: { label: string; onPress: () => void } | undefined;
   children: ReactNode;
@@ -74,6 +79,7 @@ export function AppFrame({
         }
       : undefined;
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
+  const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
 
   return (
     <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
@@ -106,7 +112,13 @@ export function AppFrame({
               />
             </View>
           )}
-          <OpenSwitcher.Provider value={openSwitcher}>{children}</OpenSwitcher.Provider>
+          <OpenSwitcher.Provider value={openSwitcher}>
+            {overdue && !aboutTheAccount && signedIn.organisation != null ? (
+              <TwoFactorOverdue organisation={signedIn.organisation} />
+            ) : (
+              children
+            )}
+          </OpenSwitcher.Provider>
         </View>
         {kind === 'phone' && <TabBar current={current} />}
       </View>

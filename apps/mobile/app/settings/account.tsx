@@ -24,6 +24,7 @@ export default function Account() {
   return (
     <AppFrame
       current="settings"
+      aboutTheAccount
       title={phone ? t('account.title') : t('settings.title')}
       back={phone ? backToSettings(t('settings.title')) : undefined}
     >

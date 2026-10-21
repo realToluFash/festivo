@@ -704,7 +704,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     {
         $organisation = Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, ($to ?? $this->organisation)->getId()));
         $role = Type\instance_of(Role::class)->coerce(self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $as]));
-        self::em()->persist(new Membership($organisation, $this->fresh($user), $role, MembershipStatus::Active));
+        self::em()->persist(new Membership($organisation, $this->fresh($user), $role, MembershipStatus::Active, new Clock()->now()));
     }
 
     private function phone(): PhoneNumber
