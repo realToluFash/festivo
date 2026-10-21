@@ -141,6 +141,29 @@ describe('a request link (sc-562)', () => {
     ).toBeNull();
   });
 
+  it('asks once when Ask to join is pressed twice', async () => {
+    signedIn();
+    const sent = answering({
+      [LINK]: () => json(PREVIEW),
+      [ASK]: () =>
+        json({ request: { organisation: { id: 'org_1', name: 'Ìrè Events' }, askedAt: 'x' } }, 201),
+      'GET /api/auth/me': () => json(ACCOUNT),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    open();
+
+    const ask = await screen.findByRole('button', { name: 'Ask to join' });
+    fireEvent.click(ask);
+    fireEvent.click(ask);
+
+    expect(
+      await screen.findByText(
+        "Your request has gone to Ìrè Events. We'll email you when they answer.",
+      ),
+    ).toBeDefined();
+    expect(sent.filter((one) => one.line === ASK)).toHaveLength(1);
+  });
+
   it('refuses a message over 500 characters before it is sent', async () => {
     signedIn();
     const sent = answering({ [LINK]: () => json(PREVIEW) });
