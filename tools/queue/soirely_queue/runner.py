@@ -265,7 +265,13 @@ def worker(db, home, platform, role, item_id, run_claude=subprocess.run, load=ma
              "model": values["model"], "effort": values["effort"],
              "claude": (store.get_meta(db, "claude_version") or {}).get("version")}
     path = machine.checkout(config, role)
-    main, note = prepare(path, role, story)
+    try:
+        main, note = prepare(path, role, story)
+    except checkout.Unprepared as error:
+        entry["report"] = f"the worker could not prepare its checkout: {error}"
+        runlog.append(home, role, entry)
+        platform.notify(f"Soirely: {role}'s worker stopped", entry["report"][:300])
+        return entry
     entry["main"] = main
     folder = machine.claude_dir(config, role)
     entry["account"] = machine.account(folder)
@@ -294,9 +300,11 @@ def worker_ended(home, platform, role, item_id, now=None):
     if any(e.get("item") == item_id for e in runlog.entries(home, role)[-5:]):
         return None
     reason = os.environ.get("SERVICE_RESULT", "unknown")
+    status = os.environ.get("EXIT_STATUS")
+    said = f"it exited with status {status}" if reason == "exit-code" and status else reason
     entry = {"at": now or time.time(), "item": item_id, "role": role,
-             "exit": os.environ.get("EXIT_STATUS"), "stopped": reason,
-             "report": f"the worker ended without a report: {reason}"}
+             "exit": status, "stopped": reason,
+             "report": f"the worker ended without a report: {said}"}
     runlog.append(home, role, entry)
     platform.notify(f"Soirely: {role}'s worker stopped", entry["report"])
     return entry

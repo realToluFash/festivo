@@ -2,6 +2,7 @@ import pathlib
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 from soirely_queue import checkout
 
@@ -39,6 +40,25 @@ class Decide(unittest.TestCase):
 def git(path, *args):
     return subprocess.run(["git", "-C", str(path), *args], capture_output=True, text=True,
                           check=True).stdout.strip()
+
+
+class Fetch(unittest.TestCase):
+    def runs(self, *codes):
+        return [subprocess.CompletedProcess([], code, "", "cannot lock ref" if code else "")
+                for code in codes]
+
+    def test_a_fetch_that_loses_a_ref_lock_is_tried_again(self):
+        waits = []
+        with mock.patch.object(checkout.subprocess, "run", side_effect=self.runs(1, 0)) as run:
+            checkout.fetch("/role", sleep=waits.append)
+        self.assertEqual(run.call_count, 2)
+        self.assertEqual(waits, [5])
+
+    def test_a_fetch_that_keeps_failing_says_what_git_said(self):
+        with mock.patch.object(checkout.subprocess, "run", side_effect=self.runs(1, 1, 1)):
+            with self.assertRaises(checkout.Unprepared) as failed:
+                checkout.fetch("/role", sleep=lambda _: None)
+        self.assertIn("cannot lock ref", str(failed.exception))
 
 
 class Prepare(unittest.TestCase):

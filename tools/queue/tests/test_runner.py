@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from soirely_queue import runlog, runner, shared, store
+from soirely_queue import checkout, runlog, runner, shared, store
 
 from .fakes import FakeRefs
 
@@ -382,6 +382,25 @@ class Worker(unittest.TestCase):
         self.assertEqual(self.platform.notes[0][0], "Soirely: ops needs you")
         self.assertEqual(store.get_meta(self.db, "owner:ops")["lines"],
                          ["Waiting on the owner to merge #280."])
+
+    def test_a_checkout_that_cannot_fetch_is_reported_and_runs_no_model(self):
+        def unprepared(*_):
+            raise checkout.Unprepared("git fetch failed 3 times: cannot lock ref")
+
+        claude = mock.Mock()
+        entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
+                              load=lambda: config(self.root), prepare=unprepared, now=ON_ZERO)
+        claude.assert_not_called()
+        self.assertIn("cannot lock ref", runlog.last(self.home, "ops")["report"])
+        self.assertEqual(self.platform.notes[0], ("Soirely: ops's worker stopped",
+                                                  entry["report"]))
+        self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
+
+    def test_a_worker_that_exits_with_an_error_says_its_status(self):
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "exit-code", "EXIT_STATUS": "1"}):
+            entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
+        self.assertEqual(entry["report"],
+                         "the worker ended without a report: it exited with status 1")
 
     def test_a_worker_stopped_by_its_limit_leaves_a_record(self):
         with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
