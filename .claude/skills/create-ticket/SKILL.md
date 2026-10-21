@@ -165,8 +165,11 @@ sq pm new-story --name "Show dietary tags on the service floor" --epic 31 \
   --state Backlog --type feature --estimate 2 < draft.md
 ```
 
-`--label` adds labels; leave out `--epic` for a one-off and `--estimate` if none was
-wanted. It prints the story id, its URL and the branch name. Name the story after
+`--epic` is required: every story belongs to an epic. Find the one it fits with
+`sq <role> epics` (and `sq <role> epic N` to check its scope); if none suits it, make one
+with `sq <role> new-epic --name "…"`, the why on stdin, and file the story in it. A new
+epic waits for the owner's approval before any of its stories is built. `--label` adds
+labels; leave out `--estimate` if none was wanted. It prints the story id, its URL and the branch name. Name the story after
 the outcome rather than the mechanism — "Show dietary tags on the service floor", not
 "Add dietary field to seat".
 

@@ -448,7 +448,10 @@ WRITES = [
                                help="say which targets would change, change none"),
                 body(p))),
     ("new-story", actions.new_story, "create a story, in Backlog unless you are the PM",
-     lambda p: (p.add_argument("--name", required=True), p.add_argument("--epic", type=int),
+     lambda p: (p.add_argument("--name", required=True),
+                p.add_argument("--epic", type=int, required=True,
+                               help="the epic it belongs to: sq <role> epics; none suits, "
+                                    "new-epic"),
                 p.add_argument("--state"), p.add_argument("--label", nargs="+"),
                 p.add_argument("--type", choices=["feature", "bug", "chore"]),
                 p.add_argument("--estimate", type=int, choices=[0, 1, 2, 4, 8]), body(p))),

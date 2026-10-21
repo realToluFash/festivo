@@ -13,21 +13,32 @@ FULL_EVERY_SECONDS = 15 * 60
 READY_EVERY_SECONDS = 5 * 60
 INBOX_DAYS = 14
 LOOKUP_EVERY_SECONDS = 60 * 60
+# An epic's state decides whether its Ready For Dev stories are offered, so epics are read
+# on every sync, not with the hourly lookups.
+EPICS_EVERY_SECONDS = 60
 # Bumped when `shortcut.slim` keeps new fields, so stories stored before are fetched again.
 SLIM_VERSION = 2
 
 
 def _lookups(db, shortcut, now):
-    """Workflow state and epic names change rarely, so they are refreshed hourly."""
-    if now - store.get_meta(db, "lookups_at", 0) < LOOKUP_EVERY_SECONDS:
-        return store.get_meta(db, "states"), store.get_meta(db, "epics")
-    states = {str(s["id"]): s["name"] for w in shortcut.workflows() for s in w["states"]}
-    epics = {str(e["id"]): {"name": e["name"], "state": e.get("state"),
-                            "updated_at": e.get("updated_at"), "position": e.get("position")}
-             for e in shortcut.epics() if not e.get("archived")}
-    store.set_meta(db, "states", states)
-    store.set_meta(db, "epics", epics)
-    store.set_meta(db, "lookups_at", now)
+    """Workflow states change rarely, so they are refreshed hourly; epics every minute."""
+    states, epics = store.get_meta(db, "states"), store.get_meta(db, "epics")
+    if now - store.get_meta(db, "lookups_at", 0) >= LOOKUP_EVERY_SECONDS:
+        states = {str(s["id"]): s["name"] for w in shortcut.workflows() for s in w["states"]}
+        store.set_meta(db, "states", states)
+        store.set_meta(db, "epic_states", {str(s["id"]): s["name"]
+                                           for s in shortcut.epic_states()})
+        store.set_meta(db, "lookups_at", now)
+        store.set_meta(db, "epics_at", 0)
+    if now - store.get_meta(db, "epics_at", 0) >= EPICS_EVERY_SECONDS:
+        names = store.get_meta(db, "epic_states") or {}
+        epics = {str(e["id"]): {"name": e["name"], "state": e.get("state"),
+                                "state_name": names.get(str(e.get("epic_state_id"))),
+                                "updated_at": e.get("updated_at"),
+                                "position": e.get("position")}
+                 for e in shortcut.epics() if not e.get("archived")}
+        store.set_meta(db, "epics", epics)
+        store.set_meta(db, "epics_at", now)
     return states, epics
 
 

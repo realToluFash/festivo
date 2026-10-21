@@ -131,11 +131,21 @@ def inbox_items(stories, handled=frozenset()):
     return items
 
 
-def queued(role, stories):
+def held_epic(story, epics):
+    """The epic holding back a Ready For Dev story, or None. Only an epic in progress offers
+    its stories to build; To Do and Waiting for Owner Approval hold them until it is."""
+    epic = (epics or {}).get(str(story.get("epic_id")))
+    if story["state"] != "Ready For Dev" or not epic or epic.get("state") == "in progress":
+        return None
+    return epic
+
+
+def queued(role, stories, epics=None):
     config = R.ROLES[role]
     return [story for story in stories
             if not story["done"] and story["state"] in config["queue"]
-            and config["filter"](set(story["labels"]), story["state"])]
+            and config["filter"](set(story["labels"]), story["state"])
+            and not held_epic(story, epics)]
 
 
 def retester(story, now=None):
@@ -170,7 +180,7 @@ def queue_items(stories, moves=None, now=None, epics=None):
     merged = {}
     build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
-        for story in queued(role, stories):
+        for story in queued(role, stories, epics):
             if moves.get((story["id"], story["state"], story["moved_at"])) == role:
                 continue
             pool = R.pool(role, story["state"], story["labels"])
@@ -332,7 +342,7 @@ def main_items(main_run):
                   PULL_REQUEST)]
 
 
-def heartbeat_items(stories, last_runs, busy_roles, now):
+def heartbeat_items(stories, last_runs, busy_roles, now, epics=None):
     """After a quiet spell, a sweeping role sweeps and any other role with a queue picks."""
     items = []
     for role, config in R.ROLES.items():
@@ -344,8 +354,8 @@ def heartbeat_items(stories, last_runs, busy_roles, now):
             continue
         if config.get("sweeps"):
             kind, reason = "sweep", f"your sweep, {config['heartbeat']} minutes on"
-        elif queued(role, stories):
-            kind, reason = "pick", f"{len(queued(role, stories))} stories in your queue"
+        elif queued(role, stories, epics):
+            kind, reason = "pick", f"{len(queued(role, stories, epics))} stories in your queue"
         else:
             continue
         items.append(_item(f"{role}:{kind}:{int(now // period)}", role, [role], kind, reason,
@@ -380,5 +390,5 @@ def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
         inbox_items(stories, handled) + developer_items(stories, prs)
         + review_items(stories, prs) + queue_items(stories, moves, now, epics)
         + main_items(main_run)
-        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now)
+        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics)
         + machine_items(checks), stories)

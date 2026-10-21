@@ -303,6 +303,11 @@ def claim(c, a):
                 or not R.ROLES[c.role]["filter"](set(story["labels"]), story["state"]):
             raise Refused(f"sc-{story['id']} is {story['state']} "
                           f"({', '.join(story['labels']) or 'no labels'}), not in your queue")
+        held = W.held_epic(story, store.get_meta(c.db, "epics"))
+        if held:
+            raise Refused(f"sc-{story['id']} is in epic {held['name']}, which is "
+                          f"{held.get('state_name') or held.get('state')}: its stories wait "
+                          "until the owner moves it to In Progress")
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
@@ -444,6 +449,13 @@ MAX_IDEAS = 3
 
 def new_story(c, a):
     guard(c, "new-story")
+    if not a.epic:
+        raise Refused(f"a new story belongs to an epic: pick one from `sq {c.role} epics`, or "
+                      f"make one with `sq {c.role} new-epic` if none suits it, and pass --epic N")
+    epic = (store.get_meta(c.db, "epics") or {}).get(str(a.epic))
+    if not epic or epic.get("state") == "done":
+        raise Refused(f"epic {a.epic} is {'done' if epic else 'not an open epic'}: pick one "
+                      f"from `sq {c.role} epics`, or make one with `sq {c.role} new-epic`")
     labels = set(a.label or [])
     state = a.state or "Backlog"
     if c.role == "cd":
@@ -464,9 +476,7 @@ def new_story(c, a):
         raise Refused("a new story starts in Backlog; the product manager moves it on")
     fields = {"name": a.name, "description": a.text, "story_type": a.type or "feature",
               "workflow_state_id": c.state_id(state)[0],
-              "labels": [{"name": name} for name in sorted(labels)]}
-    if a.epic:
-        fields["epic_id"] = a.epic
+              "labels": [{"name": name} for name in sorted(labels)], "epic_id": a.epic}
     if a.estimate is not None:
         fields["estimate"] = a.estimate
     created = c.shortcut.create_story(**fields)
@@ -475,11 +485,21 @@ def new_story(c, a):
             f"branch: {created.get('formatted_vcs_branch_name') or '-'}")
 
 
+APPROVAL = "Waiting for Owner Approval"
+
+
 def new_epic(c, a):
+    """An epic a role creates waits for the owner's approval: none of its stories is built
+    until the owner moves it to In Progress."""
     guard(c, "new-epic")
-    created = c.shortcut.create_epic(name=a.name, description=a.text)
+    waiting = next((s["id"] for s in c.shortcut.epic_states()
+                    if s["name"].lower() == APPROVAL.lower()), None)
+    if waiting is None:
+        raise Refused(f"Shortcut's epic workflow has no {APPROVAL} state; ask the owner")
+    created = c.shortcut.create_epic(name=a.name, description=a.text, epic_state_id=waiting)
     sync.refresh_lookups(c.db, c.shortcut)
-    return f"created epic {created['id']}: {created.get('app_url')}"
+    return (f"created epic {created['id']} in {APPROVAL}: {created.get('app_url')}; its "
+            "stories are built once the owner moves it to In Progress")
 
 
 def task(c, a):

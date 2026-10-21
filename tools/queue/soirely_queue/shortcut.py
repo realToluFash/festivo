@@ -81,6 +81,9 @@ class Shortcut:
     def epics(self):
         return self.call("GET", "/api/v3/epics")
 
+    def epic_states(self):
+        return self.call("GET", "/api/v3/epic-workflow")["epic_states"]
+
     def epic(self, epic_id):
         return self.call("GET", f"/api/v3/epics/{epic_id}")
 

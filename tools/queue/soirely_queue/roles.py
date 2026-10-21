@@ -154,7 +154,8 @@ MAY = {
     "label": DEVS + TESTERS + LINGUISTS + ("pm", "cd", "ops"),
     "edit": LINGUISTS + ("pm", "ux", "cd", "bm"),
     "new-story": DEVS + LINGUISTS + ("pm", "cd", "ops"),
-    "new-epic": ("pm",),
+    # Whoever files a story makes the epic it needs; a new epic waits for the owner.
+    "new-epic": DEVS + LINGUISTS + ("pm", "cd", "ops"),
     "task": LINGUISTS + ("pm",),
     "relate": LINGUISTS + ("pm", "cd"),
     "archive": ("pm",),

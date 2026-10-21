@@ -59,7 +59,8 @@ class FakeShortcut:
 
 
 def slim(raw):
-    return {"id": raw["id"], "name": raw["name"], "url": "", "epic": None, "epic_id": None,
+    return {"id": raw["id"], "name": raw["name"], "url": "", "epic": None,
+            "epic_id": raw.get("epic_id"),
             "state": STATES[str(raw["workflow_state_id"])], "moved_at": raw["moved_at"],
             "labels": sorted(label["name"] for label in raw["labels"]),
             "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
@@ -127,6 +128,15 @@ class Writes(Base):
         actions.claim(self.as_("dev2"), args(story="sc-1"))
         self.assertEqual(self.labels(1), {"backend", "dev2"})
         self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_story_in_an_epic_awaiting_the_owner_is_refused(self):
+        self.fake.add(1, "Ready For Dev")
+        self.fake.raw[1]["epic_id"] = 2
+        store.set_meta(self.db, "epics", {"2": {"name": "Events", "state": "to do",
+                                                "state_name": "Waiting for Owner Approval"}})
+        with self.assertRaisesRegex(actions.Refused, "Events, which is Waiting for Owner"):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For Dev")
 
     def test_the_second_developer_to_claim_is_refused(self):
         self.fake.add(1, "Ready For Dev")
@@ -361,6 +371,52 @@ class LineEdits(Base):
         actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
                                           dry=False, section="AC", dated=None, text="- x"))
         self.assertEqual(self.body(1), "# AC\n\n- x\n")
+
+
+class NewStories(Base):
+    def file(self, epic):
+        return actions.new_story(self.as_("dev"), args(name="x", text="y", type=None,
+                                                        state=None, label=None, epic=epic,
+                                                        estimate=None))
+
+    def test_a_story_with_no_epic_is_refused(self):
+        with self.assertRaisesRegex(actions.Refused, "belongs to an epic.*new-epic"):
+            self.file(None)
+
+    def test_a_story_in_a_done_or_unknown_epic_is_refused(self):
+        store.set_meta(self.db, "epics", {"26": {"name": "Foundation", "state": "done"}})
+        with self.assertRaisesRegex(actions.Refused, "epic 26 is done"):
+            self.file(26)
+        with self.assertRaisesRegex(actions.Refused, "epic 99 is not an open epic"):
+            self.file(99)
+
+    def test_every_role_that_files_a_story_may_make_its_epic(self):
+        for role in roles.ROLES:
+            if roles.may(role, "new-story"):
+                self.assertTrue(roles.may(role, "new-epic"), role)
+
+
+class NewEpics(Base):
+    def setUp(self):
+        super().setUp()
+        self.fake.epic_states = lambda: [{"id": 1, "name": "to do"},
+                                         {"id": 9, "name": "Waiting for Owner Approval"}]
+        self.made = []
+        self.fake.create_epic = lambda **fields: self.made.append(fields) or {"id": 77}
+        refresh = mock.patch("soirely_queue.sync.refresh_lookups")
+        refresh.start()
+        self.addCleanup(refresh.stop)
+
+    def test_an_epic_a_role_creates_waits_for_the_owner(self):
+        said = actions.new_epic(self.as_("pm"), args(name="Gifts", text="Why."))
+        self.assertEqual(self.made[0]["epic_state_id"], 9)
+        self.assertIn("Waiting for Owner Approval", said)
+
+    def test_with_no_approval_state_no_epic_is_created(self):
+        self.fake.epic_states = lambda: [{"id": 1, "name": "to do"}]
+        with self.assertRaisesRegex(actions.Refused, "no Waiting for Owner Approval"):
+            actions.new_epic(self.as_("pm"), args(name="Gifts", text="Why."))
+        self.assertEqual(self.made, [])
 
 
 class Relating(Base):
@@ -731,17 +787,19 @@ class OpsOwnsItsTickets(Base):
         self.fake.create_story = lambda **f: self.fake.raw.setdefault(
             50, {"id": 50, "name": f["name"], "workflow_state_id": f["workflow_state_id"],
                  "moved_at": "t0", "labels": f["labels"], "comments": [], "description": ""})
+        store.set_meta(self.db, "epics", {"26": {"name": "Foundation", "state": "in progress"}})
         actions.new_story(self.as_("ops"), args(name="Pin the base images", text="why",
                                                  type="chore", state="In Progress", label=None,
-                                                 epic=None, estimate=None))
+                                                 epic=26, estimate=None))
         self.assertEqual(self.state(50), "In Progress")
         self.assertEqual(self.labels(50), {"ops"})
 
     def test_ops_cannot_file_straight_into_review_or_qa(self):
         with self.assertRaisesRegex(actions.Refused, "Backlog"):
+            store.set_meta(self.db, "epics", {"26": {"name": "F", "state": "in progress"}})
             actions.new_story(self.as_("ops"), args(name="x", text="y", type=None,
                                                      state="Ready For QA", label=None,
-                                                     epic=None, estimate=None))
+                                                     epic=26, estimate=None))
 
     def test_a_passed_ops_pr_merges_and_its_story_is_done_without_qa(self):
         self.fake.add(1, "In Review", ["ops"])
