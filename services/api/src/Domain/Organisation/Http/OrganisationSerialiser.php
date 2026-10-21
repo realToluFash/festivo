@@ -28,8 +28,12 @@ final readonly class OrganisationSerialiser
         ];
     }
 
-    /** @return array<string, mixed> a seeded role is named by its key, which each client words itself */
-    public static function membership(Membership $membership, Grants $grants): array
+    /**
+     * @param ?array{at: string, written: string, overdue: bool} $twoFactorDue SignInRules::twoFactorDue()
+     *
+     * @return array<string, mixed> a seeded role is named by its key, which each client words itself
+     */
+    public static function membership(Membership $membership, Grants $grants, ?array $twoFactorDue = null): array
     {
         $role = $membership->getRole();
         $organisation = $membership->getOrganisation();
@@ -46,6 +50,8 @@ final readonly class OrganisationSerialiser
             // sc-69: what waits on two-factor, and whether only reading is open until Google or Apple is linked.
             'withheldUntilTwoFactor' => Vec\map($grants->withheld(), $name),
             'readOnlyUntilLinked' => $grants->isReadOnly(),
+            // sc-609: the deadline for two-factor of everyone, while this member has none.
+            'twoFactorDue' => $twoFactorDue,
             'signInRules' => [
                 ...SignInRulesEditor::rulesOf($organisation),
                 'changedAt' => $organisation->getSignInRulesChangedAt()?->format(DateTimeInterface::ATOM),

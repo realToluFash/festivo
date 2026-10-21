@@ -39,14 +39,16 @@ final readonly class SignInRulesEditor
 
     /**
      * Rules left out keep their value. Nothing changed records nothing and tells nobody. Nobody can
-     * require a sign-in method they do not have: two-factor of administrators, or Google or Apple
-     * only, is refused, changing nothing, while the person asking has none (sc-69, sc-3290).
+     * require a sign-in method they do not have: two-factor of administrators or of everyone, or Google
+     * or Apple only, is refused, changing nothing, while the person asking has none (sc-69, sc-3290, sc-609).
      *
-     * @param array{providerOnly?: bool, inactivityTimeoutDays?: ?int, administratorsNeedTwoFactor?: bool} $asked
+     * @param array{providerOnly?: bool, inactivityTimeoutDays?: ?int, administratorsNeedTwoFactor?: bool, everyoneNeedsTwoFactor?: bool} $asked
      */
     public function change(Organisation $organisation, User $by, array $asked, ?Request $request = null): void
     {
-        if (true === ($asked['administratorsNeedTwoFactor'] ?? null) && !$this->signInRules->hasTwoFactor($by)) {
+        $twoFactorAsked = true === ($asked['administratorsNeedTwoFactor'] ?? null) || true === ($asked['everyoneNeedsTwoFactor'] ?? null);
+
+        if ($twoFactorAsked && !$this->signInRules->hasTwoFactor($by)) {
             throw new ApiException(ErrorCode::TwoFactorOff, 'Two-factor is not on.');
         }
 
@@ -68,13 +70,19 @@ final readonly class SignInRulesEditor
             $organisation->setAdministratorsNeedTwoFactor($asked['administratorsNeedTwoFactor']);
         }
 
+        $at = $this->clock->now();
+
+        if (Iter\contains_key($asked, 'everyoneNeedsTwoFactor') && $asked['everyoneNeedsTwoFactor'] !== $before['everyoneNeedsTwoFactor']) {
+            $organisation->setTwoFactorRequiredSince($asked['everyoneNeedsTwoFactor'] ? $at : null);
+            $this->membershipRepository->forgetTwoFactorBlocks($organisation);
+        }
+
         $changes = Auditor::diff($before, self::rulesOf($organisation));
 
         if ([] === $changes) {
             return;
         }
 
-        $at = $this->clock->now();
         $organisation->setSignInRulesChangedAt($at);
         $this->auditor->record(self::CHANGED, self::SUBJECT, $organisation->getId(), Actor::User, $by->getId(), $by->getName(), $changes);
         $this->entityManager->flush();
@@ -84,17 +92,29 @@ final readonly class SignInRulesEditor
             ? Vec\map($this->membershipRepository->findActiveWithoutProviderIn($organisation), static fn (Membership $membership): User => $membership->getUser())
             : [];
         $locale = $request?->getLocale();
+        $due = isset($changes['everyoneNeedsTwoFactor']) && $organisation->isTwoFactorRequired()
+            ? Vec\map($this->membershipRepository->findActiveWithoutTwoFactorIn($organisation), static fn (Membership $membership): User => $membership->getUser())
+            : [];
 
-        $this->afterResponse->defer(fn () => $this->signInRulesMailer->sendChanged($organisation, $by, $changes, $members, $stranded, $at, $locale));
+        // Told once: somebody the deadline email reaches does not also hear of the same change in a second one.
+        if ([] !== $due && ['everyoneNeedsTwoFactor'] === Vec\keys($changes)) {
+            $members = Vec\filter($members, static fn (User $member): bool => !Iter\any($due, static fn (User $user): bool => $user->getId()->equals($member->getId())));
+        }
+
+        $this->afterResponse->defer(function () use ($organisation, $by, $changes, $members, $stranded, $due, $at, $locale): void {
+            $this->signInRulesMailer->sendChanged($organisation, $by, $changes, $members, $stranded, $at, $locale);
+            $this->signInRulesMailer->sendTwoFactorDue($organisation, $due, $at->modify(SignInRules::TWO_FACTOR_GRACE));
+        });
     }
 
-    /** @return array{providerOnly: bool, inactivityTimeoutDays: ?int, administratorsNeedTwoFactor: bool} */
+    /** @return array{providerOnly: bool, inactivityTimeoutDays: ?int, administratorsNeedTwoFactor: bool, everyoneNeedsTwoFactor: bool} */
     public static function rulesOf(Organisation $organisation): array
     {
         return [
             'providerOnly' => $organisation->isProviderSignInOnly(),
             'inactivityTimeoutDays' => $organisation->getInactivityTimeoutDays(),
             'administratorsNeedTwoFactor' => $organisation->isAdministratorsNeedTwoFactor(),
+            'everyoneNeedsTwoFactor' => $organisation->isTwoFactorRequired(),
         ];
     }
 }

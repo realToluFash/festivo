@@ -19,7 +19,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
     ) {
     }
 
-    /** The role's permissions, as the organisation last set them (sc-66), narrowed by its sign-in rules (sc-69). */
+    /** The role's permissions, as the organisation last set them (sc-66), narrowed by its sign-in rules (sc-69, sc-609). */
     public function grantsIn(User $user, Uuid $organisationId): ?Grants
     {
         $membership = $this->membershipRepository->findActive($user, $organisationId);
@@ -32,8 +32,7 @@ final readonly class MembershipDirectory implements MembershipDirectoryInterface
 
         return $this->signInRules->narrow(
             $role->isOwner() ? Grants::everything() : Grants::only($role->getPermissions()),
-            $user,
-            $membership->getOrganisation(),
+            $membership,
         );
     }
 }

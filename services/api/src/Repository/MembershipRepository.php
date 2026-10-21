@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\ProviderIdentity;
+use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -127,5 +128,45 @@ final class MembershipRepository extends ServiceEntityRepository
             ->addOrderBy('m.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /** @return list<Membership> the active members with no two-factor on, by name (sc-609) */
+    public function findActiveWithoutTwoFactorIn(Organisation $organisation): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->join('m.user', 'u')
+            ->where('m.organisation = :organisation')
+            ->andWhere('m.status = :active')
+            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . TwoFactorFactor::class . ' f WHERE f.user = u AND f.activatedAt IS NOT NULL)')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('active', MembershipStatus::Active)
+            ->orderBy('u.name', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> active, in an organisation that requires two-factor, and not yet recorded as held back (sc-609) */
+    public function findUnrecordedInTwoFactorOrganisations(): array
+    {
+        /** @var list<Membership> */
+        return $this->active()
+            ->andWhere('o.twoFactorRequiredSince IS NOT NULL')
+            ->andWhere('m.twoFactorBlockedAt IS NULL')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** Switching the rule on or off starts the record of who it held back afresh (sc-609). */
+    public function forgetTwoFactorBlocks(Organisation $organisation): void
+    {
+        $this->createQueryBuilder('m')
+            ->update()
+            ->set('m.twoFactorBlockedAt', 'NULL')
+            ->where('m.organisation = :organisation')
+            ->setParameter('organisation', $organisation)
+            ->getQuery()
+            ->execute();
     }
 }

@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Domain\Organisation\SignInRules\SignInRulesEditor;
+use App\Domain\User\Mail\UserMailer;
 use App\Entity\AuditEntry;
 use App\Entity\Membership;
 use App\Entity\Organisation;
@@ -24,6 +25,7 @@ use DateTimeInterface;
 use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -42,6 +44,8 @@ final readonly class SignInRulesController
         private MembershipDirectoryInterface $membershipDirectory,
         private SignInRulesEditor $signInRulesEditor,
         private SignInRules $signInRules,
+        private UserMailer $userMailer,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -61,6 +65,7 @@ final readonly class SignInRulesController
             'providerOnly' => Type\optional(Type\bool()),
             'inactivityTimeoutDays' => Type\optional(Type\nullable(Type\int())),
             'administratorsNeedTwoFactor' => Type\optional(Type\bool()),
+            'everyoneNeedsTwoFactor' => Type\optional(Type\bool()),
         ]));
 
         $days = $body['inactivityTimeoutDays'] ?? null;
@@ -78,7 +83,7 @@ final readonly class SignInRulesController
         return new JsonResponse($this->rules($organisation));
     }
 
-    /** @return array<string, mixed> the password-only list only for somebody who can change the rules, and never naming them */
+    /** @return array<string, mixed> the password-only and no-two-factor lists only for somebody who can change the rules, and never naming them */
     private function rules(Organisation $organisation): array
     {
         $grants = $this->membershipDirectory->grantsIn($this->user(), $organisation->getId());
@@ -90,6 +95,7 @@ final readonly class SignInRulesController
             'ownTwoFactor' => $this->signInRules->hasTwoFactor($this->user()),
             'ownProvider' => $this->signInRules->isLinked($this->user()),
             'changedAt' => $organisation->getSignInRulesChangedAt()?->format(DateTimeInterface::ATOM),
+            'twoFactorDeadline' => $this->twoFactorDeadline($organisation),
             'changes' => $this->changes($organisation),
             // The shortest across the caller's organisations, which may be another's (sc-69).
             'inactivityLimit' => null === $limit ? null : [
@@ -104,8 +110,27 @@ final readonly class SignInRulesController
                         fn (Membership $membership): bool => !$membership->getUser()->getId()->equals($this->user()->getId()),
                     ),
                     self::member(...),
-                )]
+                ),
+                    'withoutTwoFactor' => Vec\map(
+                        Vec\filter(
+                            $this->membershipRepository->findActiveWithoutTwoFactorIn($organisation),
+                            fn (Membership $membership): bool => !$membership->getUser()->getId()->equals($this->user()->getId()),
+                        ),
+                        self::member(...),
+                    ),
+                ]
                 : []),
+        ];
+    }
+
+    /** @return array{at: string, written: string} from now while off, for the warning before saving */
+    private function twoFactorDeadline(Organisation $organisation): array
+    {
+        $deadline = ($organisation->getTwoFactorRequiredSince() ?? $this->clock->now())->modify(SignInRules::TWO_FACTOR_GRACE);
+
+        return [
+            'at' => $deadline->format(DateTimeInterface::ATOM),
+            'written' => $this->userMailer->deadline($deadline, $this->user(), $this->userMailer->localeFor($this->user())),
         ];
     }
 

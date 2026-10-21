@@ -5,3 +5,4 @@
 10 3 * * * php /app/bin/console app:prune-unverified-accounts --no-interaction
 20 3 * * * php /app/bin/console app:prune-pending-registrations --no-interaction
 30 3 * * * php /app/bin/console app:prune-deleted-organisations --no-interaction
+*/5 * * * * php /app/bin/console app:sign-in-rules:record-two-factor-holds --no-interaction

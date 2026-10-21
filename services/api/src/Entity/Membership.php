@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\MembershipStatus;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use LogicException;
@@ -43,6 +44,10 @@ class Membership
 
     #[ORM\Column(type: Types::STRING, length: 20, enumType: MembershipStatus::class)]
     private MembershipStatus $status;
+
+    /** When the organisation's two-factor deadline first held this member back, for the audit trail (sc-609). */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $twoFactorBlockedAt = null;
 
     public function __construct(Organisation $organisation, User $user, Role $role, MembershipStatus $status)
     {
@@ -102,5 +107,15 @@ class Membership
     public function isActive(): bool
     {
         return MembershipStatus::Active === $this->status;
+    }
+
+    public function getTwoFactorBlockedAt(): ?DateTimeImmutable
+    {
+        return $this->twoFactorBlockedAt;
+    }
+
+    public function setTwoFactorBlockedAt(?DateTimeImmutable $twoFactorBlockedAt): void
+    {
+        $this->twoFactorBlockedAt = $twoFactorBlockedAt;
     }
 }

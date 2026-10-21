@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Controller;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\OrganisationCreator;
 use App\Domain\Organisation\OrganisationRules;
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -38,6 +39,7 @@ final readonly class OrganisationController
         private OrganisationRules $organisationRules,
         private EntityManagerInterface $entityManager,
         private MembershipDirectoryInterface $membershipDirectory,
+        private SignInRules $signInRules,
         private OrganisationCreator $organisationCreator,
     ) {
     }
@@ -54,6 +56,7 @@ final readonly class OrganisationController
             'organisations' => Vec\map($memberships, fn (Membership $membership): array => OrganisationSerialiser::membership(
                 $membership,
                 $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
+                $this->signInRules->twoFactorDue($membership),
             )),
         ]);
     }
@@ -82,6 +85,7 @@ final readonly class OrganisationController
         return new JsonResponse(['organisation' => OrganisationSerialiser::membership(
             $membership,
             $this->membershipDirectory->grantsIn($user, $organisation->getId()) ?? Grants::only([]),
+            $this->signInRules->twoFactorDue($membership),
         )], Response::HTTP_CREATED);
     }
 

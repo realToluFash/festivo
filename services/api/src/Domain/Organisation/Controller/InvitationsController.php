@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\Controller;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\Invitations\InvitationResponder;
+use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\Invitation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
@@ -35,6 +36,7 @@ final readonly class InvitationsController
         private InvitationRepository $invitationRepository,
         private InvitationResponder $invitationResponder,
         private MembershipDirectoryInterface $membershipDirectory,
+        private SignInRules $signInRules,
         private TranslatorInterface $translator,
     ) {
     }
@@ -78,6 +80,7 @@ final readonly class InvitationsController
         return new JsonResponse(['organisation' => OrganisationSerialiser::membership(
             $membership,
             $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
+            $this->signInRules->twoFactorDue($membership),
         )]);
     }
 
