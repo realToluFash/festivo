@@ -1051,7 +1051,7 @@
       "coordinator": "Organiza eventos. Consulta el presupuesto, nunca el margen.",
       "read_only": "Ve los eventos. No cambia nada."
     },
-    "onlyOwner": "{{name}} es la única persona con el rol Propietario. Una organización siempre necesita una, así que su rol no puede cambiar ni se puede quitar a {{name}} hasta que otra persona tenga también el rol Propietario.",
+    "onlyOwner": "{{name}} es la única persona con el rol Propietario. Una organización siempre necesita una, así que su rol no puede cambiar y nadie puede quitar a esta persona de la organización hasta que otra tenga también el rol Propietario.",
     "askOwner": "Solo alguien con el rol Propietario puede dar ese rol a otra persona. Pídaselo a {{name}}.",
     "ownerOnly": "Solo alguien con el rol Propietario puede cambiar el rol de otro Propietario o quitar a esa persona de la organización.",
     "removeTitle": "Quitar a {{name}}",

@@ -1051,7 +1051,7 @@
       "coordinator": "Organiza eventos. Consulta o orçamento, nunca a margem.",
       "read_only": "Vê os eventos. Não altera nada."
     },
-    "onlyOwner": "{{name}} é a única pessoa com a função Proprietário. Uma organização tem sempre uma, por isso essa função não pode mudar e não é possível remover {{name}} até que outra pessoa tenha também a função Proprietário.",
+    "onlyOwner": "{{name}} é a única pessoa com a função Proprietário. Uma organização tem sempre uma, por isso essa função não pode mudar e esta pessoa não pode ser removida até que outra tenha também a função Proprietário.",
     "askOwner": "Só quem tem a função Proprietário a pode atribuir a outra pessoa. Peça a {{name}}.",
     "ownerOnly": "Só quem tem a função Proprietário pode alterar a função de outra pessoa com essa função ou removê-la da organização.",
     "removeTitle": "Remover {{name}}",
