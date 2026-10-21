@@ -62,6 +62,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Invitations waiting on Complete your profile (sc-4188, `completeProfile.invitations*`,
+  `orStartOwn`, `joined*`, `organisationOrInvitation`, web and app).** Settled as sc-3353 wrote
+  them. "Accept one to join that organisation" reads as the organisation of the one you
+  accept; "its organisation" is no clearer and the web tests match the text. The button is
+  named as printed, "Save and continue takes you there.", without quotes, as the house names
+  a button in running text. "Nothing is waiting" follows every invitation answered without
+  joining, so the other locales may say "no invitation is waiting" outright.
 - **21 Oct 2026. The organisation's language is labelled "Language" for now (sc-3311,
   `orgGeneral.language`, web and app).** "Language for invitations" says better that the field
   only sets the invitation emails sent to people without an account, and the PM allowed it, but
