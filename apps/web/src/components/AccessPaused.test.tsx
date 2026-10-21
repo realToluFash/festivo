@@ -77,6 +77,22 @@ describe('AccessPaused', () => {
     expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
   });
 
+  it('names no removal for the only owner, who is never removed', () => {
+    const owner = paused('address_gone');
+    render(
+      <MemoryRouter>
+        <AccessPaused
+          paused={{ ...owner, suspension: { ...owner.suspension, removesAt: null } }}
+          other={null}
+          onSwitch={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Paused since Friday, Oct 16 at 09:40 WAT.')).toBeDefined();
+    expect(screen.queryByText(/you are removed from/)).toBeNull();
+  });
+
   it('names another organisation managing the domain', () => {
     render(
       <MemoryRouter>

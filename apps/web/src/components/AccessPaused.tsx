@@ -29,12 +29,14 @@ export function AccessPaused({
       <p className="muted">{t('accessPaused.since', { when: suspension.since.written })}</p>
       <p>{t('accessPaused.kept', named)}</p>
       <p>{t('accessPaused.untouched')}</p>
-      <div className="notice notice-attention" role="note">
-        <span className="mark mark-attention" aria-hidden="true">
-          !
-        </span>
-        <p>{t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}</p>
-      </div>
+      {suspension.removesAt != null && (
+        <div className="notice notice-attention" role="note">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <p>{t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}</p>
+        </div>
+      )}
       <h2>{t('accessPaused.nextTitle')}</h2>
       <p>
         {t(addressGone ? 'accessPaused.nextAddressGone' : 'accessPaused.nextNothingNeeded', named)}

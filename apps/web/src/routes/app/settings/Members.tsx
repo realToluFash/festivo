@@ -732,9 +732,11 @@ function Suspension({
         {t('membersScreen.state.domainSuspended')}
       </h2>
       <p>{t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}</p>
-      <p className="muted">
-        {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
-      </p>
+      {suspension.removesAt != null && (
+        <p className="muted">
+          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+        </p>
+      )}
       {failed != null && <FieldError id="restore-failed" message={failed} />}
       <div className="actions">
         <button

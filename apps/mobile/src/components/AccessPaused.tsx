@@ -50,11 +50,13 @@ export function AccessPaused({
         </Text>
         <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.kept', named)}</Text>
         <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.untouched')}</Text>
-        <Notice
-          tone="attention"
-          mark="!"
-          body={t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
-        />
+        {suspension.removesAt != null && (
+          <Notice
+            tone="attention"
+            mark="!"
+            body={t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
+          />
+        )}
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
           {t('accessPaused.nextTitle')}
         </Text>

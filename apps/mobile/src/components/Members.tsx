@@ -574,9 +574,11 @@ function Suspension({
       <Text size={tokens.typeBodyPhone.size}>
         {t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}
       </Text>
-      <Text size={tokens.typeBodyPhone.size} muted>
-        {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
-      </Text>
+      {suspension.removesAt != null && (
+        <Text size={tokens.typeBodyPhone.size} muted>
+          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+        </Text>
+      )}
       {failed != null && (
         <View accessibilityRole="alert">
           <FieldError message={failed} />

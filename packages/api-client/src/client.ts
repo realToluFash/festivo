@@ -296,12 +296,12 @@ export interface TwoFactorDeadline {
 
 export type DomainSuspensionReason = 'address_gone' | 'domain_closed' | 'domain_managed_elsewhere';
 
-/** A member who joined through the company domain, paused when it stopped bringing them in (sc-564); each instant in the reader's zone. */
+/** A member who joined through the company domain, paused when it stopped bringing them in (sc-564); each instant in the reader's zone, and no removal for the only owner. */
 export interface DomainSuspension {
   reason: DomainSuspensionReason;
   domain: string | null;
   since: TwoFactorDeadline;
-  removesAt: TwoFactorDeadline;
+  removesAt: TwoFactorDeadline | null;
 }
 
 /** An organisation the account's access to is paused in: no grant at all, only why. */
@@ -2346,7 +2346,7 @@ function asDomainSuspension(raw: unknown): DomainSuspension | null {
   const since = asTwoFactorDeadline(suspension.since);
   const removesAt = asTwoFactorDeadline(suspension.removesAt);
 
-  return reason == null || since == null || removesAt == null
+  return reason == null || since == null
     ? null
     : { reason, domain: stringOrNull(suspension.domain), since, removesAt };
 }
