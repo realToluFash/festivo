@@ -9,6 +9,7 @@ use App\Entity\AuditEntry;
 use App\Entity\SchemaProbe;
 use App\Enum\Actor;
 use App\Tests\FunctionalTestCase;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
@@ -49,7 +50,7 @@ final class AuditTest extends FunctionalTestCase
         self::assertNotNull($entry);
         // Before AND after. "Role changed" is not an answer to "changed from
         // what?", and the before is the half nothing can reconstruct later.
-        self::assertSame(['role' => ['coordinator', 'administrator']], $entry->changes());
+        self::assertSame(['role' => ['coordinator', 'administrator']], $entry->getChanges());
     }
 
     /**
@@ -74,8 +75,8 @@ final class AuditTest extends FunctionalTestCase
 
         $entry = $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $subject]);
 
-        self::assertSame(Actor::Agent, $entry?->actorType());
-        self::assertNotSame(Actor::User, $entry?->actorType());
+        self::assertSame(Actor::Agent, $entry?->getActorType());
+        self::assertNotSame(Actor::User, $entry?->getActorType());
     }
 
     /**
@@ -92,7 +93,7 @@ final class AuditTest extends FunctionalTestCase
         $this->em->clear();
 
         $entry = $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $subject]);
-        self::assertSame('Chief Adaeze Okonkwo', $entry?->actorLabel());
+        self::assertSame('Chief Adaeze Okonkwo', $entry?->getActorLabel());
     }
 
     /** The history of a deleted thing is exactly what somebody will ask about. */
@@ -103,16 +104,16 @@ final class AuditTest extends FunctionalTestCase
         $this->em->persist($probe);
         $this->em->flush();
 
-        $this->auditor->record('probe.created', 'SchemaProbe', $probe->id(), Actor::System);
+        $this->auditor->record('probe.created', 'SchemaProbe', $probe->getId(), Actor::System);
         $this->em->flush();
 
-        $probe->softDelete();
+        $probe->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
         $this->em->clear();
 
-        self::assertNull($this->em->getRepository(SchemaProbe::class)->find($probe->id()));
+        self::assertNull($this->em->getRepository(SchemaProbe::class)->find($probe->getId()));
         self::assertNotNull(
-            $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $probe->id()]),
+            $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $probe->getId()]),
         );
     }
 
@@ -125,8 +126,8 @@ final class AuditTest extends FunctionalTestCase
         $this->em->clear();
 
         $entry = $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $subject]);
-        self::assertSame(Actor::System, $entry?->actorType());
-        self::assertNull($entry?->actorId());
+        self::assertSame(Actor::System, $entry?->getActorType());
+        self::assertNull($entry?->getActorId());
     }
 
     /**

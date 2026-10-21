@@ -46,6 +46,19 @@ h2 {
   margin: 0 0 var(--spaceSm);
 }
 
+h1,
+h2,
+h3,
+p,
+dt,
+dd,
+li,
+button,
+label,
+span {
+  overflow-wrap: anywhere;
+}
+
 .muted {
   color: var(--colorInkSecondary);
 }
@@ -92,7 +105,7 @@ h2 {
 
 .shell {
   display: grid;
-  grid-template-columns: var(--sizeRail) 1fr;
+  grid-template-columns: var(--sizeRail) minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -320,7 +333,7 @@ h2 {
 
 @media (width <= 60rem) {
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .shell-sidebar {
@@ -431,6 +444,14 @@ h2 {
   border-color: var(--colorBroken);
 }
 
+.input-unchosen {
+  color: var(--colorInkTertiary);
+}
+
+.input-unchosen option {
+  color: var(--colorInk);
+}
+
 .field-reveal {
   position: relative;
 }
@@ -460,6 +481,7 @@ h2 {
   gap: var(--spaceMd);
   padding: var(--spaceLg) var(--spaceXl);
   border-radius: var(--radiusInset);
+  overflow-wrap: anywhere;
 }
 
 .notice-body {
@@ -1136,6 +1158,12 @@ h2 {
   cursor: pointer;
 }
 
+.auth-footnote .link-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .auth-back {
   display: inline-flex;
   align-items: center;
@@ -1320,6 +1348,7 @@ h2 {
   display: flex;
   flex-direction: column;
   width: max(100%, 22rem);
+  max-width: calc(100vw - 2 * var(--spaceLg));
   padding: var(--spaceSm) 0;
   background: var(--colorCard);
   border: var(--borderCard);
@@ -1439,7 +1468,6 @@ h2 {
 
 .invitation-row p {
   margin: 0;
-  overflow-wrap: anywhere;
 }
 
 .invitation-row-name {
@@ -1803,6 +1831,7 @@ h2 {
 }
 
 .settings-read-only dd {
+  min-width: 0;
   margin: 0;
 }
 
@@ -2590,6 +2619,18 @@ button.members-row {
   cursor: pointer;
 }
 
+.members-request,
+.members-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceSm) 0;
+}
+
+.members-answer h3 {
+  margin: 0;
+}
+
 /* ── Settings > Sign-in rules (sc-69): the rules beside what saving does ─── */
 
 .sign-in-rules {
@@ -2740,6 +2781,36 @@ button.members-row {
   background: var(--colorAccent);
 }
 
+.state-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: var(--borderControl);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+  font: var(--typeButton);
+  cursor: pointer;
+}
+
+.state-switch:hover {
+  background: var(--colorInset);
+}
+
+.state-switch-on {
+  border-color: var(--colorAccentTintBorder);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.state-switch-on .state-dot {
+  border: 0;
+  background: var(--colorAccent);
+}
+
 .company-domains {
   display: flex;
   flex-direction: column;
@@ -2818,7 +2889,6 @@ button.members-row {
 
 .org-switcher-offer p {
   margin: 0;
-  overflow-wrap: anywhere;
 }
 
 .org-switcher-offer-text {
@@ -2974,8 +3044,4 @@ button.members-row {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm) var(--spaceMd);
-}
-
-.event-page-head h1 {
-  overflow-wrap: anywhere;
 }

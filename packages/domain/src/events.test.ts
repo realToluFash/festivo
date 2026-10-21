@@ -55,8 +55,9 @@ describe('the new event form', () => {
 });
 
 describe('the end date', () => {
-  it('takes the start date while it is empty, and keeps one already chosen', () => {
-    expect(filledEndDate('2026-11-14', '')).toBe('2026-11-14');
-    expect(filledEndDate('2026-11-14', '2026-11-16')).toBe('2026-11-16');
+  it('follows the start date until the host chooses one, then keeps it', () => {
+    expect(filledEndDate('2026-11-14', '', false)).toBe('2026-11-14');
+    expect(filledEndDate('2026-11-14', '0002-11-14', false)).toBe('2026-11-14');
+    expect(filledEndDate('2026-11-14', '2026-11-16', true)).toBe('2026-11-16');
   });
 });

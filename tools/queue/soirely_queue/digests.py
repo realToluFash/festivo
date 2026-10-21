@@ -1,7 +1,7 @@
 """What a pick or a sweep starts from: one line per candidate, never whole stories. The role
 opens the one it chooses with `sq <role> story sc-<n>`."""
 
-import datetime
+import time
 
 from . import store
 from . import roles as R
@@ -27,10 +27,8 @@ def line(story, extra=""):
 
 
 def recent(at, days=RECENT_DAYS):
-    if not at:
-        return False
-    when = datetime.datetime.fromisoformat(at.replace("Z", "+00:00"))
-    return datetime.datetime.now(datetime.UTC) - when < datetime.timedelta(days=days)
+    when = T.epoch(at)
+    return when is not None and time.time() - when < days * 86400
 
 
 def section_names(story):
@@ -140,8 +138,14 @@ def product_manager(p, db, stories):
     owner = [s for s in ordered(stories) if s["state"] == R.WAITING]
     if owner:
         p.add("", f"{R.WAITING} ({len(owner)}):", *[line(s) for s in owner])
-    backlog = [s for s in stories if s["state"] == "Backlog"]
-    p.add("", f"Backlog: {len(backlog)} stories (`{SQ} pm find state:Backlog`).")
+    backlog = sorted([s for s in stories if s["state"] == "Backlog"
+                      and not {"translation", "idea"} & set(s["labels"])],
+                     key=W.epic_order(store.get_meta(db, "epics")))
+    p.add("", f"Backlog ({len(backlog)}), next 10: take it up into To Do, or archive it "
+          f"(`{SQ} pm find state:Backlog` for all):")
+    for story in backlog[:10]:
+        flags = [] if any(T.is_ac(h) for h in section_names(story)) else ["no AC"]
+        p.add(line(story, ", ".join(flags)))
     epics = store.get_meta(db, "epics") or {}
     started = [f"{e['name']} ({i})" for i, e in epics.items() if e.get("state") == "in progress"]
     if started:
@@ -178,8 +182,7 @@ def linguist(p, db, stories):
     p.add(f"Translation tickets ({len(tickets)}):")
     for story in tickets:
         tasks = ", ".join(f"{'✓' if t['done'] else '·'} {t['text']}" for t in story["tasks"])
-        covers = [link["object"] for link in story["links"] if link["subject"] == story["id"]]
-        waiting = [f"sc-{c}" for c in covers if c not in merged]
+        waiting = [f"sc-{c}" for c in W.covered(story) if c not in merged]
         extra = tasks or "no tasks yet"
         if waiting:
             extra += f" · waits on {', '.join(waiting)}"

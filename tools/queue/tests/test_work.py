@@ -1,6 +1,7 @@
 import unittest
 
 from soirely_queue import roles, work
+from soirely_queue import text as T
 
 HEAD = "a" * 40
 OLD = "b" * 40
@@ -287,12 +288,12 @@ class Queue(unittest.TestCase):
         self.assertNotIn("pm", woken)
         self.assertEqual(woken, [])
 
-    def test_each_state_wakes_exactly_one_role(self):
-        for state, role in (("Backlog", "bm"), ("To Do", "pm"), ("Needs Design", "ux"),
-                            ("Failed Code Review", "dev2"), ("Failed QA", "dev2"),
-                            ("In Progress", "dev2")):
+    def test_each_state_wakes_its_roles(self):
+        for state, woken in (("Backlog", ["bm", "pm"]), ("To Do", ["pm"]),
+                             ("Needs Design", ["ux"]), ("Failed Code Review", ["dev2"]),
+                             ("Failed QA", ["dev2"]), ("In Progress", ["dev2"])):
             items = work.queue_items([story(state=state, labels=["dev2"])])
-            self.assertEqual(sorted(r for i in items for r in i["roles"]), [role], state)
+            self.assertEqual(sorted(r for i in items for r in i["roles"]), woken, state)
         for state in ("Passed Code Review", "Waiting On Owner", "Passsed QA"):
             self.assertEqual(work.queue_items([story(state=state, labels=["dev2"])]), [], state)
 
@@ -494,3 +495,91 @@ class HeldEpics(unittest.TestCase):
         picks = [i for i in work.heartbeat_items([ready], {}, set(), 10_000, self.epics("to do"))
                  if i["roles"] == ["dev"]]
         self.assertEqual(picks, [])
+
+
+class Unblocked(unittest.TestCase):
+    MERGED = "2026-10-20T09:00:00Z"
+
+    def ticket(self, state="To Do", labels=("translation",), covers=(4,), comments=()):
+        return dict(story(9, state, labels=labels, comments=comments),
+                    links=[{"verb": "relates to", "subject": 9, "object": c} for c in covers])
+
+    def merged(self, number=40, story_id=4, at=MERGED, branch="dev/sc-4/build"):
+        return dict(pr(number, story_id, state="merged"), merged_at=at, branch=branch)
+
+    def wakes(self, stories, prs, runs=None, raised=()):
+        return [(i["roles"], i["story_id"], i["pr"], i["reason"])
+                for i in work.unblocked_items(stories, prs, runs, raised)]
+
+    def test_a_merged_pr_of_a_linked_story_wakes_the_linguist_on_the_ticket(self):
+        for state in ("To Do", "In Progress"):
+            self.assertEqual(self.wakes([self.ticket(state)], [self.merged()]),
+                             [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+
+    def test_a_story_linking_to_the_ticket_is_not_one_it_covers(self):
+        ticket = dict(story(9, "To Do", labels=["translation"]),
+                      links=[{"verb": "relates to", "subject": 4, "object": 9}])
+        self.assertEqual(work.covered(ticket), [])
+        self.assertEqual(self.wakes([ticket], [self.merged()]), [])
+
+    def test_the_linguists_own_translation_pr_wakes_nobody(self):
+        self.assertEqual(self.wakes([self.ticket()], [self.merged(branch="l10n/sc-4")]), [])
+
+    def test_a_raised_wake_stays_after_its_pr_leaves_the_synced_merges(self):
+        row = {"fingerprint": "l10n:unblocked:sc-9:#40", "story_id": 9, "pr": 40,
+               "reason": "PR #40 (sc-4) merged: sc-9 can start",
+               "first_seen": T.epoch(self.MERGED) + 30}
+        self.assertEqual(self.wakes([self.ticket()], [], raised=[row]),
+                         [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+        self.assertEqual(self.wakes([self.ticket()], [self.merged()], raised=[row]),
+                         [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+        later = {9: row["first_seen"] + 60}
+        self.assertEqual(self.wakes([self.ticket()], [], later, raised=[row]), [])
+        self.assertEqual(self.wakes([self.ticket("Ready For QA")], [], raised=[row]), [])
+
+    def test_an_open_pr_wakes_nobody(self):
+        self.assertEqual(self.wakes([self.ticket()], [pr(40, 4)]), [])
+
+    def test_each_covered_story_wakes_it_as_its_pr_merges(self):
+        ticket = self.ticket(covers=(4, 5))
+        self.assertEqual([w[2] for w in self.wakes([ticket], [self.merged(), pr(41, 5)])], [40])
+        both = [self.merged(), self.merged(41, 5, "2026-10-20T10:00:00Z")]
+        self.assertEqual([w[2] for w in self.wakes([ticket], both)], [40, 41])
+
+    def test_a_merge_before_the_linguists_last_run_on_the_ticket_raises_nothing(self):
+        after = T.epoch(self.MERGED) + 60
+        self.assertEqual(self.wakes([self.ticket()], [self.merged()], {9: after}), [])
+        self.assertEqual(len(self.wakes([self.ticket()], [self.merged()], {9: after - 120})), 1)
+
+    def test_a_comment_the_linguist_signed_after_the_merge_counts_as_a_run(self):
+        signed = comment(1, "[pm] (from l10n)\nStarted.", at="2026-10-20T09:30:00Z")
+        self.assertEqual(self.wakes([self.ticket(comments=[signed])], [self.merged()]), [])
+        earlier = comment(1, "[pm] (from l10n)\nWaiting.", at="2026-10-19T09:00:00Z")
+        self.assertEqual(len(self.wakes([self.ticket(comments=[earlier])], [self.merged()])), 1)
+
+    def test_a_ticket_in_another_state_or_without_the_label_raises_nothing(self):
+        for ticket in (self.ticket("Ready For QA"), self.ticket("Failed QA"),
+                       self.ticket(labels=()), dict(self.ticket(), done=True)):
+            self.assertEqual(self.wakes([ticket], [self.merged()]), [])
+
+    def test_derive_raises_it_once_per_ticket_and_pr(self):
+        items = work.derive([self.ticket()], [self.merged()], translated={})
+        self.assertEqual([i["fingerprint"] for i in items if i["kind"] == "unblocked"],
+                         ["l10n:unblocked:sc-9:#40"])
+
+
+class PmQueue(unittest.TestCase):
+    def test_pm_takes_the_backlog_after_every_to_do_story(self):
+        stories = [story(1, "Backlog"), story(2, "To Do"), story(3, "Backlog", ["translation"])]
+        items = {i["story_id"]: i["priority"] for i in work.queue_items(stories)
+                 if i["roles"] == ["pm"]}
+        self.assertEqual(set(items), {1, 2})
+        self.assertLess(items[2], items[1])
+
+    def test_the_backlog_comes_epic_by_epic(self):
+        early, late = story(1, "Backlog"), story(2, "Backlog")
+        early["epic_id"], late["epic_id"] = 2, 5
+        epics = {"2": {"position": 1, "state": "to do"}, "5": {"position": 2, "state": "to do"}}
+        ranks = {i["story_id"]: i["rank"] for i in work.queue_items([late, early], epics=epics)
+                 if i["roles"] == ["pm"]}
+        self.assertLess(ranks[1], ranks[2])

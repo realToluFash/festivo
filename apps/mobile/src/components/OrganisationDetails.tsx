@@ -5,7 +5,8 @@ import {
   type OrganisationDetails as Details,
   type OrganisationField,
   countryChoices,
-  currencyLabel,
+  currencyChoices,
+  heldCurrencyLabel,
   languageChoices,
   organisationProblem,
   roleName,
@@ -32,7 +33,7 @@ import { replaceOrganisation } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CountryPicker } from './CountryPicker.tsx';
+import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, TextField } from './Field.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
@@ -58,8 +59,23 @@ export function EditableDetails({
   const [newLanguage, setNewLanguage] = useState<string | null>(null);
   const nameInput = useRef<TextInput>(null);
   const contactInput = useRef<TextInput>(null);
-  const focus = (field: OrganisationField) =>
-    (field === 'name' ? nameInput : contactInput).current?.focus();
+  const countryPicker = useRef<View>(null);
+  const currencyPicker = useRef<View>(null);
+  const timezonePicker = useRef<View>(null);
+  const languagePicker = useRef<View>(null);
+  const focus = (field: OrganisationField) => {
+    if (field === 'name') nameInput.current?.focus();
+    else if (field === 'contactAddress') contactInput.current?.focus();
+    else
+      focusPicker(
+        {
+          countryCode: countryPicker,
+          currency: currencyPicker,
+          timezone: timezonePicker,
+          locale: languagePicker,
+        }[field],
+      );
+  };
   const checks = useFormChecks(
     ORGANISATION_FIELDS,
     (field, value) => {
@@ -76,11 +92,10 @@ export function EditableDetails({
 
   const currencies = useMemo(
     () =>
-      withCurrent(Intl.supportedValuesOf('currency'), organisation.currency).map((code) => ({
-        code,
-        name: currencyLabel(code, locale),
-      })),
-    [organisation.currency, locale],
+      currencyChoices(organisation.currency, locale, (code) =>
+        t('orgGeneral.currencyRetired', { code }),
+      ),
+    [organisation.currency, locale, t],
   );
   const timezones = useMemo(
     () =>
@@ -178,6 +193,7 @@ export function EditableDetails({
             value={values.countryCode}
             onChange={(code) => change('countryCode', code)}
             disabled={busy}
+            pickerRef={countryPicker}
             testID="organisation.country"
           />
         </Field>
@@ -202,11 +218,13 @@ export function EditableDetails({
         <Field label={t('orgGeneral.currency')} error={errors.currency}>
           <ListPicker
             label={t('orgGeneral.currency')}
+            placeholder={t('orgGeneral.currencyPlaceholder')}
             searchLabel={t('orgGeneral.searchCurrency')}
             choices={currencies}
             value={values.currency}
             onChange={(code) => change('currency', code)}
             disabled={busy}
+            pickerRef={currencyPicker}
             testID="organisation.currency"
           />
         </Field>
@@ -218,6 +236,7 @@ export function EditableDetails({
             value={values.timezone}
             onChange={(zone) => change('timezone', zone)}
             disabled={busy}
+            pickerRef={timezonePicker}
             testID="organisation.timezone"
           />
         </Field>
@@ -236,6 +255,7 @@ export function EditableDetails({
             value={values.locale}
             onChange={(code) => change('locale', code)}
             disabled={busy}
+            pickerRef={languagePicker}
             testID="organisation.language"
           />
         </Field>
@@ -270,7 +290,12 @@ export function ReadOnlyDetails({
     [t('orgGeneral.name'), organisation.name],
     [t('orgGeneral.country'), country],
     [t('orgGeneral.contact'), organisation.contactAddress],
-    [t('orgGeneral.currency'), currencyLabel(organisation.currency, locale)],
+    [
+      t('orgGeneral.currency'),
+      heldCurrencyLabel(organisation.currency, locale, (code) =>
+        t('orgGeneral.currencyRetired', { code }),
+      ),
+    ],
     [t('orgGeneral.timezone'), timezoneLabel(organisation.timezone)],
   ];
 

@@ -261,6 +261,12 @@ export function branchForStory(id, remoteBranches) {
   throw new Error(`several remote branches name ${id}: ${matches.join(', ')} — pick one`);
 }
 
+// The api container mounts services/api, so its compiled container outlives a checkout
+// and can name a service the new commit removed.
+export function clearApiCache(root) {
+  rmSync(join(root, 'services/api/var/cache'), { recursive: true, force: true });
+}
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // QA runs the copy in .qa/bin, gitignored, so checking out an old commit keeps the harness.
@@ -449,6 +455,7 @@ function checkout(args) {
   git(['checkout', '--quiet', '--detach', ref], root);
   const head = git(['rev-parse', '--short', 'HEAD'], root);
   console.log(`  ${label} at ${head}`);
+  clearApiCache(root);
 
   step('The environment');
   writeFileSync(

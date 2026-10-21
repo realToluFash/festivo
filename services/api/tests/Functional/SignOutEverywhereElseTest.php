@@ -148,8 +148,8 @@ final class SignOutEverywhereElseTest extends ApiTestCase
 
         $entries = self::em()->getRepository(AuditEntry::class)->findBy(['action' => 'sessions.signed_out_elsewhere']);
         self::assertCount(1, $entries);
-        self::assertTrue($user->getId()->equals($entries[0]->subjectId()));
-        self::assertSame(['signedOut' => [null, 3]], $entries[0]->changes());
+        self::assertTrue($user->getId()->equals($entries[0]->getSubjectId()));
+        self::assertSame(['signedOut' => [null, 3]], $entries[0]->getChanges());
     }
 
     /** The configured pool is reset between requests, so the budget is held in the test's own storage (see AssistantTest). */

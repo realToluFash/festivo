@@ -18,6 +18,7 @@ export interface Choice {
 /** A select, as the artboard draws one: the chosen value in a field, and the whole list one tap away. */
 export function ListPicker({
   label,
+  placeholder = label,
   searchLabel,
   choices,
   value,
@@ -27,6 +28,7 @@ export function ListPicker({
   testID,
 }: {
   label: string;
+  placeholder?: string;
   searchLabel: string;
   choices: readonly Choice[];
   value: string;
@@ -42,7 +44,6 @@ export function ListPicker({
   const [search, setSearch] = useState('');
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
-  // Nothing chosen: the field shows its label, as an empty input shows its placeholder.
   const blank = chosen === '';
   const needle = search.trim().toLocaleLowerCase(locale);
   const shown =
@@ -62,7 +63,7 @@ export function ListPicker({
         testID={testID}
       >
         <Text size={CONTROL_TEXT_SIZE} style={blank ? styles.placeholder : styles.value}>
-          {blank ? label : chosen}
+          {blank ? placeholder : chosen}
         </Text>
         <Chevron />
       </Pressable>

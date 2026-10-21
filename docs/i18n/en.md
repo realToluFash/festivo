@@ -62,6 +62,30 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Request link (sc-562, sc-6460, `requestLink.*`, `requestToJoin.*`,
+  `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`).** Settled as sc-562
+  wrote it, as domain joining: the act is "ask to join", the setting "Requests to join", and
+  "Somebody who can manage members answers each request". The refusals take "cannot":
+  "You cannot ask to join {organisation} again yet." The dead link should read "This link does
+  not work" and "This link does not work any more. Ask the organisation for a new one." in
+  `requestToJoin.deadTitle`, `deadBody`, `messages:request_link.dead` and
+  `errors:request_link_dead`, but the web and API tests match the contraction, so that waits on
+  `[dev2]`; es, fr and pt carry no contraction already. "We'll email you" stays: the sent and
+  waiting lines are confirmations, not errors. A cooling-off date is "from {{date}}", Intl's day.
+
+- **21 Oct 2026. Creating an event on the web (sc-1486, sc-6302, `events.*`, `eventForm.*`,
+  `eventPage.*`, `rolesScreen.createEvents*`, `messages:validation.event_*`).** Settled as
+  sc-1486 wrote it, except three lines that wait on `[dev]`, because the web and API tests match
+  their English: `eventPage.notFound` should be "This event is not available", no contraction,
+  as a refusal; `eventForm.nameTooLong` and `validation.event_name_too_long` the house "Shorten
+  the name to {{most}} characters or fewer." (`{count}` in the API's); and `problems_*`
+  sc-90's "{{count}} field needs fixing, so nothing was sent." es, fr and pt are written to the
+  settled meaning already. An event "starts" and "ends" (the form's legends "Starts", "Ends");
+  the refusal for an end before the start says "The end is before the start", and other
+  locales may say "the event ends before it starts". The permission is "Create events", its
+  states "Allowed" and "Not allowed". `firstRunAskOwner` asks the person to talk to an owner,
+  not to request a permission by name. The app's copy of the Roles block carries the same four
+  `rolesScreen.createEvents*` lines.
 - **21 Oct 2026. Two-factor for everyone (sc-609, sc-5702, `signInRules.everyone*`, `due*`,
   `overdue*`, `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`).** Settled as
   sc-609 wrote it, except three lines that wait on `[dev2]`, because the web tests match their
@@ -96,11 +120,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   named as printed, "Save and continue takes you there.", without quotes, as the house names
   a button in running text. "Nothing is waiting" follows every invitation answered without
   joining, so the other locales may say "no invitation is waiting" outright.
-- **21 Oct 2026. The organisation's language is labelled "Language" for now (sc-3311,
-  `orgGeneral.language`, web and app).** "Language for invitations" says better that the field
-  only sets the invitation emails sent to people without an account, and the PM allowed it, but
-  the web tests match the label's English text, so it waits on `[dev2]` (sc-3311). Until then
-  the hint carries the meaning. The same label heads the read-only row. A refused save is "Nothing was
+- **21 Oct 2026. The organisation's language is labelled "Language for invitations" (sc-3311,
+  sc-6696, `orgGeneral.language`, web and app).** "Language" alone reads as the person's own
+  interface language; the field only sets the invitation emails sent to people without an
+  account, and the PM allowed the longer label. The same label heads the read-only row. A refused save is "Nothing was
   saved." followed by the server's `permission_required` words, unchanged.
 - **19 Oct 2026. Two-factor is "turned on", the first time (sc-3030, sc-609, sc-69 #3210).**
   "Turn on two-factor" is the button wherever a person enables it, and a sentence says "turn

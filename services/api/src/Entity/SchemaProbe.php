@@ -33,17 +33,17 @@ class SchemaProbe
         $this->createdAt = new DateTimeImmutable();
     }
 
-    public function id(): Uuid
+    public function getId(): Uuid
     {
         return $this->id;
     }
 
-    public function label(): string
+    public function getLabel(): string
     {
         return $this->label;
     }
 
-    public function createdAt(): DateTimeImmutable
+    public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }

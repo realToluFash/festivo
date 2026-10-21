@@ -5,7 +5,7 @@
  * own, and making every other test stub a fetch to get past boot is how a suite
  * ends up testing its own harness.
  */
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 import { __setConfig } from './config.ts';
@@ -26,6 +26,9 @@ __setConfig({
 });
 
 await initI18n();
+
+// A loaded CI runner can take more than testing-library's default second to settle a screen.
+configure({ asyncUtilTimeout: 3000 });
 
 // Registered here because auto-cleanup only happens with `globals: true`, and
 // without it one test's DOM leaks into the next — where the symptom is a

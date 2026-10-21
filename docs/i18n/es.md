@@ -49,6 +49,24 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
+  `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The act
+  is «solicitar unirse», as domain joining; the setting «Solicitudes para unirse», so its state
+  agrees in the feminine plural, «Activadas» / «Desactivadas». The link is «el enlace de
+  solicitud» and «el enlace» is masculine: «Conservarlo», «lo sustituya». What waits is «su
+  solicitud … pendiente de respuesta». A cooling-off date is «a partir del {{date}}», as the
+  day starts with its weekday. dev2's drafts of the three `errors:` codes used «tú»; they now
+  say «usted».
+
+- **21 Oct 2026. Creating an event** (`events.*`, `eventForm.*`, `eventPage.*`,
+  `rolesScreen.createEvents*`, `messages:validation.event_*`, sc-6302). A draft is «Borrador»;
+  the form's legends are «Inicio» and «Fin». An end before the start is «El evento termina
+  antes de empezar», so nothing names «el fin» twice. The organisation's defaults are «Valores
+  tomados de la configuración de {{name}}», so nothing agrees with zona and moneda. An owner
+  is «alguien con el rol Propietario», as in Members. The permission's states are «Permitido»
+  / «No permitido». A refused send closes «así que no se ha enviado nada», as en's wanted
+  shape.
+
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
   «exigir», as the server's errors; "for everyone" is «para todos». The date is «a partir del
@@ -80,8 +98,15 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-4188). Waiting is «pendiente». With several, "join that organisation" is «unirse a la
   organización que le invita», since «esa» after «una» reads as nobody's. A button named in a
   sentence goes in «», with the verb: "Pulse «Guardar y continuar» para entrar en ella". "Nothing
-  is waiting" says what is gone, «No queda ninguna invitación pendiente». No `_many` yet: the
+  is waiting" says what is gone, «No queda ninguna invitación pendiente». "Accept an invitation above" is «acepte una invitación
+  pendiente», the word the intro uses, not «acepte arriba», which reads stiffly. No `_many` yet: the
   key-parity guard refuses a form English lacks (sc-4188, [dev2]), so 1 000 000 falls back to English.
+
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is «crear», since «iniciar una organización» is not
+  Spanish: the heading is «Cree su propia organización», the button «Crear organización», as
+  `createOrganisation.create`. The help and the derived-settings line are `createOrganisation`'s
+  words, so both screens say the same.
 
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is «Usted tendrá la función Propietario», the role and not

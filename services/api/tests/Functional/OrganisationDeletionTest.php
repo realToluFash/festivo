@@ -219,8 +219,8 @@ final class OrganisationDeletionTest extends ApiTestCase
         $this->delete($this->owner, 'Ìrè Events');
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'organisation.deleted', 'subjectId' => $this->organisation->getId()]);
-        self::assertSame([Actor::User, $this->owner->getId()->toRfc4122(), 'Folake Adeyemi'], [$entry?->actorType(), $entry?->actorId()?->toRfc4122(), $entry?->actorLabel()]);
-        self::assertSame(['deletedAt' => [null, self::DELETED_AT]], $entry?->changes());
+        self::assertSame([Actor::User, $this->owner->getId()->toRfc4122(), 'Folake Adeyemi'], [$entry?->getActorType(), $entry?->getActorId()?->toRfc4122(), $entry?->getActorLabel()]);
+        self::assertSame(['deletedAt' => [null, self::DELETED_AT]], $entry?->getChanges());
     }
 
     #[Test]
@@ -240,7 +240,7 @@ final class OrganisationDeletionTest extends ApiTestCase
             static fn (array $role): ?string => $role['seededAs'],
         ));
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'organisation.restored', 'subjectId' => $this->organisation->getId()]);
-        self::assertSame([Actor::Agent, 'Adaeze from support'], [$entry?->actorType(), $entry?->actorLabel()]);
+        self::assertSame([Actor::Agent, 'Adaeze from support'], [$entry?->getActorType(), $entry?->getActorLabel()]);
     }
 
     #[Test]

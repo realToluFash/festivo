@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -8,6 +8,7 @@ import {
   androidFlows,
   androidSdk,
   branchForStory,
+  clearApiCache,
   COMPOSE_PROJECT,
   emulatorFor,
   expoGoApk,
@@ -378,5 +379,23 @@ describe('handing a provider redirect to Expo Go', () => {
   it('refuses anything but the app scheme', () => {
     expect(() => linkIntent(undefined)).toThrow(/which link/);
     expect(() => linkIntent('https://soirely.com/oauth')).toThrow(/which link/);
+  });
+});
+
+describe('the API cache a checkout leaves behind', () => {
+  it('is gone, and the rest of var stays', () => {
+    const root = mkdtempSync(join(tmpdir(), 'qa-cache-'));
+    mkdirSync(join(root, 'services/api/var/cache/dev'), { recursive: true });
+    writeFileSync(join(root, 'services/api/var/cache/dev/App_KernelDevDebugContainer.php'), '');
+    mkdirSync(join(root, 'services/api/var/log'), { recursive: true });
+
+    clearApiCache(root);
+
+    expect(existsSync(join(root, 'services/api/var/cache'))).toBe(false);
+    expect(existsSync(join(root, 'services/api/var/log'))).toBe(true);
+  });
+
+  it('is no error when there is none', () => {
+    expect(() => clearApiCache(mkdtempSync(join(tmpdir(), 'qa-cache-')))).not.toThrow();
   });
 });

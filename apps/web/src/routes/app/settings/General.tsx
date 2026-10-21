@@ -4,7 +4,7 @@ import {
   ORGANISATION_NAME_MAXIMUM,
   type OrganisationField,
   countryChoices,
-  currencyLabel,
+  heldCurrencyLabel,
   languageChoices,
   organisationChanges,
   organisationProblem,
@@ -19,6 +19,7 @@ import { api } from '../../../api.ts';
 import { CompanyDomainsCard } from './CompanyDomainsCard.tsx';
 import { OwnershipCard } from './OwnershipCard.tsx';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
+import { RequestLinkCard } from './RequestLinkCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
@@ -79,6 +80,10 @@ export function General() {
         <CompanyDomainsCard key={organisation.id} organisation={organisation} />
       )}
 
+      {can(session, 'members.manage') && (
+        <RequestLinkCard key={organisation.id} organisation={organisation} />
+      )}
+
       <OwnershipCard key={organisation.id} organisation={organisation} />
     </div>
   );
@@ -106,8 +111,8 @@ function Editable({
 
   const countries = useMemo(() => countryChoices(locale), [locale]);
   const currencies = useMemo(
-    () => currencyChoices(organisation.currency, locale),
-    [organisation.currency, locale],
+    () => currencyChoices(organisation.currency, values.currency, locale, t),
+    [organisation.currency, values.currency, locale, t],
   );
   const timezones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
 
@@ -284,7 +289,11 @@ function ReadOnly({ organisation }: { organisation: Membership }) {
         </div>
         <div>
           <dt>{t('orgGeneral.currency')}</dt>
-          <dd>{currencyLabel(organisation.currency, locale)}</dd>
+          <dd>
+            {heldCurrencyLabel(organisation.currency, locale, (code) =>
+              t('orgGeneral.currencyRetired', { code }),
+            )}
+          </dd>
         </div>
         <div>
           <dt>{t('orgGeneral.timezone')}</dt>
@@ -295,7 +304,7 @@ function ReadOnly({ organisation }: { organisation: Membership }) {
       <dl className="settings-read-only">
         <div>
           <dt>{t('orgGeneral.language')}</dt>
-          <dd>{languageName(t, organisation.locale)}</dd>
+          <dd data-testid="organisation-locale">{languageName(t, organisation.locale)}</dd>
         </div>
       </dl>
       <p className="muted">{t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}</p>
@@ -409,7 +418,13 @@ function Choice({
     <div className="field">
       <label htmlFor={id}>{label}</label>
       <select
-        className={error == null ? 'input' : 'input input-wrong'}
+        className={[
+          'input',
+          error == null ? null : 'input-wrong',
+          value === '' ? 'input-unchosen' : null,
+        ]
+          .filter((one) => one != null)
+          .join(' ')}
         id={id}
         value={value}
         disabled={busy}

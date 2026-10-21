@@ -22,6 +22,7 @@ import { CodeForm } from '../src/components/CodeForm.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/kit/code.ts';
 import { useFormChecks } from '../src/kit/formChecks.ts';
+import { takeHeldLink } from '../src/heldLink.ts';
 import { type Landing, landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { rereadAccount } from '../src/signedIn.ts';
@@ -34,7 +35,7 @@ export default function VerifyEmail() {
   // An address added from Settings > Account (sc-113), by its id: verified here, then back there.
   const alternative = useLocalSearchParams<{ address?: string }>().address;
   const [pending, setPending] = useState<PendingRegistration | null>(null);
-  const [next, setNext] = useState<Landing>('/');
+  const [next, setNext] = useState<Landing | `/join/${string}`>('/');
   const [status, setStatus] = useState<Status>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
   const [address, setAddress] = useState('');
@@ -145,7 +146,9 @@ export default function VerifyEmail() {
       } else {
         const { account } = await api.confirmRegistration(pending.registration, cleanCode(typed));
         await dropRegistration();
-        setNext(landingFor(awaiting(account)));
+        // Registered from a request link (sc-562): back to it, now that the address is proved.
+        const link = await takeHeldLink();
+        setNext(link == null ? landingFor(awaiting(account)) : `/join/${link}`);
       }
       setStatus({ kind: 'verified' });
     } catch (error) {

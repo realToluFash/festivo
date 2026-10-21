@@ -9,6 +9,7 @@ import { CompanyDomainsCard } from '../../src/components/CompanyDomainsCard.tsx'
 import { Notice } from '../../src/components/Notice.tsx';
 import { EditableDetails, ReadOnlyDetails } from '../../src/components/OrganisationDetails.tsx';
 import { OwnershipCard } from '../../src/components/OwnershipCard.tsx';
+import { RequestLinkCard } from '../../src/components/RequestLinkCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
@@ -74,6 +75,13 @@ export default function Organisation() {
               {roleHolds(organisation, 'members.manage') && (
                 <CompanyDomainsCard
                   key={`domains-${organisation.id}`}
+                  organisation={organisation}
+                  kind={kind}
+                />
+              )}
+              {roleHolds(organisation, 'members.manage') && (
+                <RequestLinkCard
+                  key={`request-link-${organisation.id}`}
                   organisation={organisation}
                   kind={kind}
                 />

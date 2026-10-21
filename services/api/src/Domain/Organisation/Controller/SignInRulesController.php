@@ -142,9 +142,9 @@ final readonly class SignInRulesController
         $changes = [];
 
         foreach ($entries as $entry) {
-            foreach ($entry->changes() as $rule => [$was, $now]) {
+            foreach ($entry->getChanges() as $rule => [$was, $now]) {
                 $changes[] = [
-                    'at' => $entry->occurredAt()->format(DateTimeInterface::ATOM),
+                    'at' => $entry->getOccurredAt()->format(DateTimeInterface::ATOM),
                     'by' => $this->by($entry, $organisation),
                     'rule' => $rule,
                     'now' => $now,
@@ -159,10 +159,10 @@ final readonly class SignInRulesController
     /** @return array{name: ?string, role: ?array<string, mixed>} the role they hold now, null once they have left */
     private function by(AuditEntry $entry, Organisation $organisation): array
     {
-        $actor = $entry->actorId();
+        $actor = $entry->getActorId();
         $membership = null === $actor ? null : $this->membershipRepository->findActiveByUserId($actor, $organisation->getId());
 
-        return ['name' => $entry->actorLabel(), 'role' => null === $membership ? null : self::role($membership->getRole())];
+        return ['name' => $entry->getActorLabel(), 'role' => null === $membership ? null : self::role($membership->getRole())];
     }
 
     /** @return array<string, mixed> */

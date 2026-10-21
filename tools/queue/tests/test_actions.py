@@ -249,68 +249,18 @@ class LanguageTags(Base):
                                                  untagged=False, text="x"))
 
 
-class Releasing(Base):
-    def setUp(self):
-        super().setUp()
-        synced = mock.patch("soirely_queue.sync.sync_github")
-        self.sync_github = synced.start()
-        self.addCleanup(synced.stop)
-
-    def move(self, state="Backlog"):
-        return actions.move(self.as_("pm"), args(story="sc-1", state=state))
-
-    def test_pm_takes_back_a_story_nobody_holds(self):
-        self.fake.add(1, "In Progress")
-        self.assertEqual(self.move(), "sc-1 is now Backlog")
-        self.fake.add(2, "In Progress")
-        actions.move(self.as_("pm"), args(story="sc-2", state="To Do"))
-        self.assertEqual(self.state(2), "To Do")
-
-    def test_a_story_a_role_moved_in_is_held(self):
-        self.fake.add(1, "Ready For Dev", ["backend"])
-        actions.move(self.as_("dev"), args(story="sc-1", state="In Progress"))
-        with self.assertRaisesRegex(actions.Refused, "held: dev moved it there"):
-            self.move()
-        self.assertEqual(self.state(1), "In Progress")
-
-    def test_a_developer_label_holds_it(self):
+class PmMoves(Base):
+    def test_pm_moves_any_story_from_any_state_to_any_other(self):
         self.fake.add(1, "In Progress", ["dev2"])
-        with self.assertRaisesRegex(actions.Refused, "carries dev2"):
-            self.move()
+        actions.move(self.as_("pm"), args(story="sc-1", state="Ready For QA"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        actions.move(self.as_("pm"), args(story="sc-1", state="Backlog"))
+        self.assertEqual(self.state(1), "Backlog")
 
-    def test_an_open_pr_on_its_branch_holds_it_and_a_mention_does_not(self):
+    def test_other_roles_are_still_held_to_their_moves(self):
         self.fake.add(1, "In Progress")
-        store.put_pr(self.db, {**pr(), "number": 7, "branch": "feature/sc-11/other"})
-        store.put_pr(self.db, {**pr(), "number": 8, "branch": "chore/model", "title": "sc-1"})
-        store.put_pr(self.db, {**pr(), "number": 9, "branch": "feature/sc-1/catalogue"})
-        with self.assertRaisesRegex(actions.Refused, "PR #9 is open on its branch"):
-            self.move()
-        store.put_prs(self.db, [{**pr(), "number": 8, "branch": "chore/model"}])
-        self.assertEqual(self.move(), "sc-1 is now Backlog")
-
-    def test_a_pr_opened_since_the_last_sync_holds_it(self):
-        self.fake.add(1, "In Progress")
-        self.sync_github.side_effect = lambda db: store.put_pr(
-            db, {**pr(), "number": 9, "branch": "feature/sc-1/catalogue"})
-        with self.assertRaisesRegex(actions.Refused, "PR #9 is open on its branch"):
-            self.move()
-
-    def test_unreadable_pull_requests_hold_it(self):
-        self.fake.add(1, "In Progress")
-        self.sync_github.side_effect = github.GitHubError("API rate limit exceeded")
-        with self.assertRaisesRegex(actions.Refused, "could not be read"):
-            self.move()
-        self.assertEqual(self.state(1), "In Progress")
-
-    def test_other_moves_are_refused_as_before(self):
-        self.fake.add(1, "In Review")
-        with self.assertRaisesRegex(actions.Refused, "only from To Do; sc-1 is In Review"):
-            self.move()
-        self.fake.add(2, "In Progress")
-        with self.assertRaisesRegex(actions.Refused, "never moves a story to Ready For QA"):
-            actions.move(self.as_("pm"), args(story="sc-2", state="Ready For QA"))
         with self.assertRaisesRegex(actions.Refused, "dev never moves a story to Backlog"):
-            actions.move(self.as_("dev"), args(story="sc-2", state="Backlog"))
+            actions.move(self.as_("dev"), args(story="sc-1", state="Backlog"))
 
 
 def line_edit(targets, old, new, dry=False):
@@ -506,6 +456,36 @@ class Replies(Base):
         with self.assertRaisesRegex(actions.Refused, "--untagged posts no tag"):
             self.reply(True, "Read.", to="pm")
         self.assertEqual(len(self.fake.raw[1]["comments"]), 1)
+
+
+class Unblocked(Base):
+    MERGED_AT = 1_790_000_000
+
+    def setUp(self):
+        super().setUp()
+        self.fake.add(4, "Done")
+        self.fake.add(9, "To Do", ["translation"])
+        store.put_story(self.db, slim(self.fake.raw[4]))
+        store.put_story(self.db, dict(slim(self.fake.raw[9]),
+                                      links=[{"verb": "relates to", "subject": 9, "object": 4}]))
+        merged = dict(pr(), number=40, story_id=4, state="merged", branch="dev/sc-4/build",
+                      merged_at="2026-09-21T14:13:20Z")
+        store.put_prs(self.db, [merged])
+
+    def wakes(self):
+        return [(w["story_id"], w["pr"], w["status"]) for w in self.db.execute(
+            "select * from work where kind = 'unblocked'")]
+
+    def test_a_raised_wake_stays_open_after_its_pr_leaves_the_synced_merges(self):
+        cli.refresh_work(self.db, self.MERGED_AT + 30)
+        self.assertEqual(self.wakes(), [(9, 40, "open")])
+        store.put_prs(self.db, [])
+        cli.refresh_work(self.db, self.MERGED_AT + 60)
+        self.assertEqual(self.wakes(), [(9, 40, "open")])
+
+    def test_baseline_closes_a_wake_already_waiting(self):
+        cli.baseline(self.db)
+        self.assertEqual(self.wakes(), [(9, 40, "done")])
 
 
 def pr(verdict=None, mergeable="mergeable", threads=(), at=HEAD, carried=None):

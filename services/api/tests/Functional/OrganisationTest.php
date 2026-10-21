@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\Organisation\Regions;
 use App\Domain\User\UserRegistrar;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -26,11 +27,13 @@ use App\Tests\Traits\InvitesPeople;
 use App\Tests\Traits\OnboardsAccounts;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use NumberFormatter;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
+use ResourceBundle;
 use Symfony\Component\Uid\Uuid;
 
 final class OrganisationTest extends ApiTestCase
@@ -71,8 +74,9 @@ final class OrganisationTest extends ApiTestCase
         } catch (ApiException $e) {
             self::assertSame(ErrorCode::ValidationFailed, $e->errorCode);
             self::assertSame(
-                ['name', 'countryCode', 'currency', 'timezone'],
+                ['name', 'countryCode', 'timezone'],
                 \array_column($e->violations, 'propertyPath'),
+                'a country nobody recognises has no currency to follow, so only the fields given are refused',
             );
         }
     }
@@ -128,6 +132,116 @@ final class OrganisationTest extends ApiTestCase
         self::assertSame('USD', $body['currency']);
         self::assertSame('NG', $body['countryCode'], 'a field left out keeps its value');
         self::assertSame('Africa/Lagos', $body['timezone']);
+    }
+
+    #[Test]
+    public function aCountryWhoseCurrencyIsNewlyIssuedFoundsWithIt(): void
+    {
+        $owner = $this->account('freetown@example.com');
+
+        self::assertSame('SLE', $this->found($owner, 'Freetown Events', 'SL', 'Africa/Freetown')->getCurrency());
+        self::assertSame('ZWG', $this->found($owner, 'Harare Events', 'ZW', 'Africa/Harare')->getCurrency());
+    }
+
+    #[Test]
+    public function everyCountryWithMoneyOfItsOwnFoundsWithACurrencyInUseToday(): void
+    {
+        $owner = $this->account('everywhere@example.com');
+        $countries = Vec\filter(
+            Vec\keys(\iterator_to_array(Type\instance_of(ResourceBundle::class)->assert(ResourceBundle::create('en', 'ICUDATA-region')?->get('Countries')))),
+            static fn (int|string $code): bool => Regions::isCountry((string) $code),
+        );
+
+        foreach ($countries as $country) {
+            $icu = new NumberFormatter('en_' . $country, NumberFormatter::CURRENCY)
+                ->getTextAttribute(NumberFormatter::CURRENCY_CODE);
+            if ('XXX' === $icu) {
+                continue;
+            }
+
+            $currency = self::service(OrganisationFounder::class)
+                ->found($owner, 'Events', (string) $country, 'Europe/London')
+                ->getCurrency();
+
+            self::assertTrue(Regions::isCurrency($currency), Str\format('%s founds with "%s"', $country, $currency));
+        }
+    }
+
+    #[Test]
+    public function aCountryWhoseCurrencyChangedAfterIcuFoundsWithTheNewOne(): void
+    {
+        $owner = $this->account('sofia@example.com');
+
+        self::assertSame('EUR', $this->found($owner, 'Sofia Events', 'BG', 'Europe/Sofia')->getCurrency());
+    }
+
+    #[Test]
+    public function aCountryWithNoCurrencyOfItsOwnFoundsWithNone(): void
+    {
+        $owner = $this->account('antarctica@example.com');
+
+        self::assertSame('', $this->found($owner, 'McMurdo Events', 'AQ', 'Antarctica/McMurdo')->getCurrency());
+    }
+
+    #[Test]
+    public function onlyACurrencyInUseTodayIsAccepted(): void
+    {
+        $owner = $this->account('currencies@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        foreach (['SLL', 'ZWL', 'HRK', 'XXX', 'XTS', 'XAU', 'BOV', ''] as $refused) {
+            $body = $this->patch($organisation, ['currency' => $refused, 'name' => 'Ìrè Events Ltd']);
+
+            self::assertResponseStatusCodeSame(422, $refused);
+            self::assertSame([['propertyPath' => 'currency', 'message' => 'Choose a currency.']], self::violations($body), $refused);
+        }
+
+        self::assertSame(['NGN', 'Ìrè Events'], [$this->list()[0]['currency'], $this->list()[0]['name']], 'nothing was saved');
+
+        foreach (Regions::CURRENCIES as $offered) {
+            $this->patch($organisation, ['currency' => $offered]);
+
+            self::assertResponseStatusCodeSame(200, $offered);
+        }
+
+        self::assertSame('SLE', $this->patch($organisation, ['currency' => 'SLE'])['currency']);
+    }
+
+    #[Test]
+    public function aHeldCurrencyNoLongerInUseSurvivesASaveOfTheOtherFieldsUntilItIsChanged(): void
+    {
+        $owner = $this->account('retired@example.com');
+        $organisation = $this->found($owner, 'Freetown Events', 'SL', 'Africa/Freetown');
+        $organisation->setCurrency('SLL');
+        $this->signIn($owner);
+
+        $body = $this->patch($organisation, ['name' => 'Freetown Events Ltd']);
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['SLL', 'Freetown Events Ltd'], [$body['currency'], $body['name']]);
+
+        $this->patch($organisation, ['currency' => 'SLE']);
+        self::assertResponseStatusCodeSame(200);
+
+        $this->patch($organisation, ['currency' => 'SLL']);
+        self::assertResponseStatusCodeSame(422, 'once changed away, it cannot be chosen again');
+    }
+
+    #[Test]
+    public function anOrganisationWithNoCurrencyCannotBeSavedWithoutOne(): void
+    {
+        $owner = $this->account('no-currency@example.com');
+        $organisation = $this->found($owner, 'McMurdo Events', 'AQ', 'Antarctica/McMurdo');
+        $this->signIn($owner);
+
+        $body = $this->patch($organisation, ['name' => 'McMurdo Events Ltd']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([['propertyPath' => 'currency', 'message' => 'Choose a currency.']], self::violations($body));
+        self::assertSame(['', 'McMurdo Events'], [$this->list()[0]['currency'], $this->list()[0]['name']]);
+
+        self::assertSame('USD', $this->patch($organisation, ['currency' => 'USD'])['currency']);
     }
 
     #[Test]
@@ -263,6 +377,19 @@ final class OrganisationTest extends ApiTestCase
 
         $this->client->request('GET', Str\format('/api/_access/events/%s/tables/%s', $theirEvent->toRfc4122(), $theirTable->id->toRfc4122()));
         self::assertResponseStatusCodeSame(404);
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return list<array{propertyPath: string, message: string}>
+     */
+    private static function violations(array $body): array
+    {
+        return Vec\map(
+            Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($body['violations']),
+            static fn (array $violation): array => ['propertyPath' => $violation['propertyPath'], 'message' => $violation['message']],
+        );
     }
 
     /** Through the gate but in no organisation, so each test founds the ones it means. */

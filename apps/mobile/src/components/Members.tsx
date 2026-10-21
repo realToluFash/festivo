@@ -7,6 +7,7 @@ import type {
 import {
   type MemberFilter,
   type MemberStanding,
+  approvalRoles,
   formatDay,
   initials,
   memberIsShown,
@@ -21,7 +22,13 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
-import { membersAfterWrite, withRemoved, withRole } from '../kit/membersAfterWrite.ts';
+import {
+  membersAfterWrite,
+  withApproved,
+  withRemoved,
+  withRole,
+  withTurnedDown,
+} from '../kit/membersAfterWrite.ts';
 import { refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -33,6 +40,12 @@ import { Text } from './Text.tsx';
 
 const AVATAR = 40;
 const AVATAR_LARGE = 48;
+
+/** What answering a request to join leaves on the list (sc-392): the done line and its next step. */
+export interface Answered {
+  text: string;
+  next: { label: string; member: string } | { label: string; filter: MemberFilter };
+}
 
 /** The web's chips less Invited and Awaiting approval: the app lists memberships, and does not invite. */
 export const APP_FILTERS: readonly MemberFilter[] = ['all', 'active', 'suspended', 'former'];
@@ -99,23 +112,32 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
 
 /** The list half of `MembersApp-*`: the chips, the rows, and the line that says where invitations are sent. */
 export function MemberList({
+  kind,
   organisation,
   list,
+  roles,
   manages,
   open,
   flash,
+  answered,
+  onAnswered,
   onOpen,
 }: {
+  kind: LayoutKind;
   organisation: Membership;
   list: MembersList;
+  roles: OrganisationRole[];
   manages: boolean;
   open: string | null;
   flash: string | null;
+  answered: Answered | null;
+  onAnswered: (list: MembersList, answered: Answered) => void;
   onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState<MemberFilter>('all');
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
+  const waiting = list.members.filter((member) => member.status === 'pending_approval');
   const count = (one: MemberFilter) =>
     list.members.filter((member) => memberIsShown(member.status, one)).length;
 
@@ -130,6 +152,64 @@ export function MemberList({
             accentTitle
             body={t('membersScreen.removedNext')}
           />
+        </View>
+      )}
+
+      {answered != null && (
+        <View accessibilityLiveRegion="polite">
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            body={answered.text}
+            action={{
+              label: answered.next.label,
+              onPress: () => {
+                const next = answered.next;
+                if ('member' in next) onOpen(next.member);
+                else setFilter(next.filter);
+              },
+              testID: 'members.answered.next',
+            }}
+          />
+        </View>
+      )}
+
+      {manages && waiting.length > 0 && (
+        <View style={cardFrame(kind)} testID="members.awaiting">
+          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+            {t('membersScreen.awaiting.title')}
+          </Text>
+          <Text size={tokens.typeBody.size} muted>
+            {t('membersScreen.awaiting.note')}
+          </Text>
+          {waiting.map((member, index) => (
+            <View key={member.id} style={[styles.request, index > 0 && styles.rowDivider]}>
+              <Pressable
+                style={styles.requestHead}
+                onPress={() => onOpen(member.id)}
+                accessibilityRole="button"
+                testID={`members.request.${member.id}`}
+              >
+                <Avatar name={member.user.name} />
+                <View style={styles.rowText}>
+                  <Text size={tokens.typeRowTitle.size} weight="semibold">
+                    {member.user.name}
+                  </Text>
+                  {member.user.email != null && (
+                    <Text size={tokens.typeBody.size}>{member.user.email}</Text>
+                  )}
+                  <RequestLines organisation={organisation} member={member} />
+                </View>
+              </Pressable>
+              <JoinRequestAnswer
+                organisation={organisation}
+                member={member}
+                list={list}
+                roles={roles}
+                onAnswered={onAnswered}
+              />
+            </View>
+          ))}
         </View>
       )}
 
@@ -261,6 +341,7 @@ export function MemberPage({
   manages,
   onChanged,
   onRemoved,
+  onAnswered,
   onGoToOrganisation,
 }: {
   kind: LayoutKind;
@@ -271,12 +352,14 @@ export function MemberPage({
   manages: boolean;
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList) => void;
+  onAnswered: (list: MembersList, answered: Answered) => void;
   onGoToOrganisation: () => void;
 }) {
   const { t } = useTranslation();
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
-  const role = roleName(t, member.role);
+  const waiting = member.status === 'pending_approval';
+  const role = waiting ? t('membersScreen.noRoleYet') : roleName(t, member.role);
 
   return (
     <View style={styles.stack}>
@@ -314,7 +397,23 @@ export function MemberPage({
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
           {t('membersScreen.roleTitle')}
         </Text>
-        {standing === 'manageable' ? (
+        {waiting ? (
+          <>
+            <Text size={tokens.typeTitleSection.size} weight="semibold">
+              {role}
+            </Text>
+            <RequestLines organisation={organisation} member={member} />
+            {manages && (
+              <JoinRequestAnswer
+                organisation={organisation}
+                member={member}
+                list={list}
+                roles={roles}
+                onAnswered={onAnswered}
+              />
+            )}
+          </>
+        ) : standing === 'manageable' ? (
           <RolePicker
             organisation={organisation}
             member={member}
@@ -333,7 +432,7 @@ export function MemberPage({
         )}
       </View>
 
-      {standing === 'manageable' && (
+      {standing === 'manageable' && !waiting && (
         <Remove
           kind={kind}
           organisation={organisation}
@@ -342,6 +441,197 @@ export function MemberPage({
           onRemoved={onRemoved}
         />
       )}
+    </View>
+  );
+}
+
+/** How and when somebody asked, and the instant their request is removed, as the server wrote it for the reader. */
+function RequestLines({
+  organisation,
+  member,
+}: {
+  organisation: Membership;
+  member: OrganisationMember;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <Text size={tokens.typeSmall.size} muted>
+        {t('membersScreen.awaiting.asked', {
+          channel: t(`membersScreen.how.${member.channel ?? 'request'}`, {
+            organisation: organisation.name,
+          }),
+          date: member.since == null ? '' : formatDay(member.since, currentLocale()),
+        })}
+      </Text>
+      {member.removesAt != null && (
+        <Text size={tokens.typeSmall.size} muted>
+          {t('membersScreen.awaiting.removes', { deadline: member.removesAt.written })}
+        </Text>
+      )}
+    </>
+  );
+}
+
+type Answering = 'resting' | 'approving' | 'turningDown';
+
+/** Approve, with a role that starts on Read-only and always has a value, or Turn down, asked first (sc-392). */
+function JoinRequestAnswer({
+  organisation,
+  member,
+  list,
+  roles,
+  onAnswered,
+}: {
+  organisation: Membership;
+  member: OrganisationMember;
+  list: MembersList;
+  roles: OrganisationRole[];
+  onAnswered: (list: MembersList, answered: Answered) => void;
+}) {
+  const { t } = useTranslation();
+  const offered = approvalRoles(roles);
+  const [answering, setAnswering] = useState<Answering>('resting');
+  const [picked, setPicked] = useState(offered[0]?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const role = offered.find((one) => one.id === picked);
+  const name = member.user.name;
+  const read = () => api.members(organisation.id);
+
+  async function answer(): Promise<void> {
+    setBusy(true);
+    setFailed(null);
+
+    try {
+      if (answering === 'approving' && role != null) {
+        await api.approveMember(organisation.id, member.id, role.id);
+      } else {
+        await api.turnDownMember(organisation.id, member.id);
+      }
+    } catch (error) {
+      setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      setBusy(false);
+      return;
+    }
+
+    if (answering === 'approving' && role != null) {
+      onAnswered(await membersAfterWrite(read, list, withApproved(member.id, role)), {
+        text: t('membersScreen.awaiting.approved', { name, role: roleName(t, role) }),
+        next: { label: t('membersScreen.awaiting.approvedNext', { name }), member: member.id },
+      });
+    } else {
+      onAnswered(await membersAfterWrite(read, list, withTurnedDown(member.id)), {
+        text: t('membersScreen.awaiting.turnedDown', { name }),
+        next: { label: t('membersScreen.awaiting.turnedDownNext'), filter: 'former' },
+      });
+    }
+  }
+
+  function back(): void {
+    setFailed(null);
+    setAnswering('resting');
+  }
+
+  const refusal = failed != null && (
+    <View accessibilityRole="alert">
+      <FieldError message={failed} />
+    </View>
+  );
+
+  if (answering === 'resting') {
+    return (
+      <View style={styles.actions}>
+        <PrimaryButton
+          label={t('membersScreen.awaiting.approve')}
+          onPress={() => setAnswering('approving')}
+          testID={`members.approve.${member.id}`}
+        />
+        <SecondaryButton
+          label={t('membersScreen.awaiting.turnDown')}
+          onPress={() => setAnswering('turningDown')}
+          testID={`members.turnDown.${member.id}`}
+        />
+      </View>
+    );
+  }
+
+  if (answering === 'turningDown') {
+    return (
+      <View style={styles.actions}>
+        <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+          {t('membersScreen.awaiting.turnDownTitle', { name })}
+        </Text>
+        <Text size={tokens.typeBodyPhone.size}>
+          {t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}
+        </Text>
+        {refusal}
+        <PrimaryButton
+          label={t('membersScreen.awaiting.turnDownConfirm', { name })}
+          busy={busy}
+          onPress={() => void answer()}
+          testID={`members.turnDown.confirm.${member.id}`}
+        />
+        <SecondaryButton
+          label={t('membersScreen.awaiting.keep')}
+          off={busy}
+          onPress={back}
+          testID={`members.turnDown.keep.${member.id}`}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.actions}>
+      <View
+        style={styles.choices}
+        accessibilityRole="radiogroup"
+        accessibilityLabel={t('membersScreen.awaiting.roleFor', { name })}
+      >
+        {offered.map((one) => (
+          <Pressable
+            key={one.id}
+            style={[styles.choice, picked === one.id && styles.choiceOn]}
+            onPress={() => setPicked(one.id)}
+            disabled={busy}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: picked === one.id, disabled: busy }}
+            testID={`members.approve.role.${one.seededAs ?? one.id}`}
+          >
+            <View style={[styles.radio, picked === one.id && styles.radioOn]}>
+              {picked === one.id && <View style={styles.radioDot} />}
+            </View>
+            <View style={styles.rowText}>
+              <Text size={tokens.typeRowTitle.size} weight="semibold">
+                {roleName(t, one)}
+              </Text>
+              {one.seededAs != null && (
+                <Text size={tokens.typeSmall.size} muted>
+                  {t(`membersScreen.roleMeans.${one.seededAs}`)}
+                </Text>
+              )}
+            </View>
+          </Pressable>
+        ))}
+      </View>
+      {refusal}
+      <PrimaryButton
+        label={t('membersScreen.awaiting.approveAs', {
+          role: role == null ? '' : roleName(t, role),
+        })}
+        off={role == null}
+        busy={busy}
+        onPress={() => void answer()}
+        testID={`members.approve.confirm.${member.id}`}
+      />
+      <SecondaryButton
+        label={t('membersScreen.awaiting.cancel')}
+        off={busy}
+        onPress={back}
+        testID={`members.approve.cancel.${member.id}`}
+      />
     </View>
   );
 }
@@ -649,6 +939,8 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusField,
   },
   rowDivider: { borderTopWidth: 1, borderTopColor: tokens.colorInsetBorder },
+  request: { gap: tokens.spaceMd, paddingVertical: tokens.spaceMd },
+  requestHead: { flexDirection: 'row', alignItems: 'flex-start', gap: tokens.spaceLg },
   rowOpen: { backgroundColor: tokens.colorAccentTint },
   rowText: { flex: 1, minWidth: 0, gap: 3 },
   avatar: {

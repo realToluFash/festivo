@@ -67,9 +67,13 @@ describe('organisationProblem', () => {
     expect(organisationProblem('contactAddress', ' hello@ire.events ')).toBeNull();
   });
 
+  it('refuses a currency nobody has chosen yet', () => {
+    expect(organisationProblem('currency', '')).toBe('currencyBlank');
+    expect(organisationProblem('currency', 'SLL')).toBeNull();
+  });
+
   it('has nothing to say about a picked value', () => {
     expect(organisationProblem('countryCode', '')).toBeNull();
-    expect(organisationProblem('currency', '')).toBeNull();
     expect(organisationProblem('timezone', '')).toBeNull();
     expect(organisationProblem('locale', '')).toBeNull();
   });
