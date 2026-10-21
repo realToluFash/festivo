@@ -1018,7 +1018,8 @@
       "pending_approval": "Awaiting approval",
       "suspended": "Suspended",
       "left": "Left",
-      "removed": "Removed"
+      "removed": "Removed",
+      "domainSuspended": "Suspended: company address gone"
     },
     "how": {
       "invitation": "Invitation",
@@ -1093,6 +1094,30 @@
     "goToOrganisation": "Go to Organisation ›",
     "fromTheWeb": "Invitations are sent from Soirely on the web.",
     "pickSomebody": "Pick somebody in the list to see them here.",
-    "backToList": "‹ Members"
+    "backToList": "‹ Members",
+    "suspendedBecause": {
+      "address_gone": "{{name}}'s {{domain}} address is no longer on their account.",
+      "domain_closed": "{{organisation}} no longer lets people join through {{domain}}.",
+      "domain_managed_elsewhere": "{{domain}} is now managed by another organisation."
+    },
+    "suspendedRemovedOn": "Removed on {{when}} if nobody answers.",
+    "restore": "Restore",
+    "restored": "{{name}}'s access to {{organisation}} is restored.",
+    "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first."
+  },
+  "accessPaused": {
+    "badge": "Paused",
+    "becauseAddressGone": "Your access to {{organisation}} is paused because your {{domain}} address is no longer on your account.",
+    "becauseDomainClosed": "Your access to {{organisation}} is paused because {{organisation}} no longer lets people join through {{domain}}.",
+    "becauseManagedElsewhere": "Your access to {{organisation}} is paused because {{domain}} is now managed by another organisation.",
+    "since": "Paused since {{when}}.",
+    "kept": "Your work in {{organisation}} is kept and still attributed to you.",
+    "untouched": "Your other organisations and your access to single events are not affected.",
+    "removedBy": "If nobody restores your access by {{when}}, you are removed from {{organisation}}.",
+    "nextTitle": "What happens next",
+    "nextAddressGone": "Add your {{domain}} address again in Account settings and make it your main address, then ask an admin of {{organisation}} to restore your access.",
+    "nextNothingNeeded": "An admin of {{organisation}} can restore your access. Nothing is needed from you.",
+    "accountSettings": "Account settings",
+    "switch": "Switch organisation"
   }
 }
