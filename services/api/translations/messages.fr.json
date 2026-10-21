@@ -50,7 +50,7 @@
     "validation.event_name_too_long": "Use at most {count} characters for the name.",
     "validation.event_start_required": "Choose when the event starts.",
     "validation.event_time_invalid": "Enter a date and a time with no time zone offset.",
-    "validation.locale_invalid": "Choose English, Español, Français or Português.",
+    "validation.locale_invalid": "Choisissez English, Español, Français ou Português.",
     "validation.name_required": "Veuillez saisir votre nom.",
     "validation.organisation_name_required": "Indiquez le nom de l'organisation.",
     "validation.organisation_name_too_long": "Cela dépasse {count} caractères.",

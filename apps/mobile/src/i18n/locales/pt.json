@@ -794,11 +794,11 @@
     "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
     "searchCurrency": "Pesquisar moedas",
     "searchTimezone": "Pesquisar fusos horários",
-    "language": "Language",
-    "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
-    "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
-    "refused": "Nothing was saved. Your role does not include the permission this needs.",
-    "searchLanguage": "Search languages"
+    "language": "Idioma",
+    "languageHint": "Os e-mails de convite para pessoas sem conta Soirely são escritos neste idioma. Quem já tem uma conta recebe o convite no seu próprio idioma.",
+    "savedLanguage": "Guardado. A partir de agora, os e-mails de convite para pessoas sem conta Soirely são enviados em {{language}}. Os convites já enviados não voltam a ser enviados.",
+    "refused": "Nada foi guardado. A sua função não inclui a permissão necessária para isto.",
+    "searchLanguage": "Pesquisar idiomas"
   },
   "invitations": {
     "heading": "Invitations",
@@ -897,16 +897,16 @@
     "overdueSignOut": "Sign out"
   },
   "languageNames": {
-    "en": "English",
-    "es": "Spanish",
-    "fr": "French",
-    "pt": "Portuguese"
+    "en": "Inglês",
+    "es": "Espanhol",
+    "fr": "Francês",
+    "pt": "Português"
   },
   "languageNamesInSentence": {
-    "en": "English",
-    "es": "Spanish",
-    "fr": "French",
-    "pt": "Portuguese"
+    "en": "inglês",
+    "es": "espanhol",
+    "fr": "francês",
+    "pt": "português"
   },
   "ownership": {
     "title": "Ownership and leaving",

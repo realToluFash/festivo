@@ -53,6 +53,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
+  The label is « Langue », as the English "Language"; if English lengthens it to "Language
+  for invitations", it becomes « Langue des invitations ». "Invitation emails" are « les e-mails d'invitation
+  adressés aux personnes sans compte Soirely ». Language names are « Anglais, Espagnol,
+  Français, Portugais » as options and lower case in a sentence (« partent désormais en
+  anglais »). A refused save is « Rien n'a été enregistré. » and the server's
+  `permission_required` words unchanged. The search field is « Rechercher une langue ».
 - **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
   `codeKeepsSignIn_*`, sc-2908). The status box is « Connexion avec {{provider}} réussie », a
   noun phrase because « Connecté » would have to agree with the person. Under the code field:
