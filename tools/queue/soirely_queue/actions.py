@@ -358,16 +358,33 @@ def report(c, a):
 
 def description_of(c, target):
     if target.startswith("epic-"):
-        epic = c.shortcut.epic(int(target[5:]))
-        return epic.get("description") or "", lambda body: c.shortcut.update_epic(
-            epic["id"], description=body)
+        epic_id = int(target[5:])
+        return lambda: c.shortcut.epic(epic_id), lambda body: c.shortcut.update_epic(
+            epic_id, description=body)
     story_id = story_number(target)
-    raw = c.shortcut.story(story_id)
 
     def save(body):
         c.shortcut.update(story_id, description=body)
         c.refresh(story_id)
-    return raw.get("description") or "", save
+    return lambda: c.shortcut.story(story_id), save
+
+
+def rewrite(c, target, change, attempts=3):
+    """Saves change(description) only if the story still reads as the version it was worked
+    out from. Shortcut's PUT takes no precondition, so a save landing between that last
+    read and this one is still written over: this narrows the window, it does not close it."""
+    read, save = description_of(c, target)
+    raw = read()
+    seen, body = raw.get("updated_at"), raw.get("description") or ""
+    for _ in range(attempts):
+        changed = change(body)
+        latest = read()
+        if latest.get("updated_at") == seen:
+            save(changed)
+            return
+        seen, body = latest.get("updated_at"), latest.get("description") or ""
+    raise Refused(f"{target} kept changing while this edit was saving; nothing saved, "
+                  f"run it again")
 
 
 def edit_line(c, a):
@@ -380,29 +397,35 @@ def edit_line(c, a):
         raise Refused("say what replaces it: --with \"<new>\" (an empty one deletes it)")
     if not a.replace:
         raise Refused("--replace needs the text to find")
-    found, problems = [], []
-    for target in a.targets:
-        body, save = description_of(c, target)
+
+    def problem(target, body):
         count = body.count(a.replace)
-        if count == 1:
-            found.append((target, body.replace(a.replace, a.with_), save))
-        else:
-            problems.append(f"{target} has it {count} times" if count
-                            else f"{target} does not have it")
+        return None if count == 1 else (f"{target} has it {count} times" if count
+                                         else f"{target} does not have it")
+    problems = [p for target in a.targets
+                if (p := problem(target, description_of(c, target)[0]().get("description")
+                                 or ""))]
     if problems:
         raise Refused(f"{'; '.join(problems)}; nothing changed")
     if a.dry:
-        return "would change " + ", ".join(target for target, _, _ in found)
+        return "would change " + ", ".join(a.targets)
+
+    def change(target):
+        def apply(body):
+            if found := problem(target, body):
+                raise Refused(f"{found} any more")
+            return body.replace(a.replace, a.with_)
+        return apply
     saved = []
-    for target, body, save in found:
+    for target in a.targets:
         try:
-            save(body)
-        except ShortcutError as error:
-            rest = [t for t, _, _ in found[len(saved) + 1:]]
+            rewrite(c, target, change(target))
+        except (ShortcutError, Refused) as error:
+            rest = a.targets[len(saved) + 1:]
             raise Refused(f"changed {', '.join(saved) or 'nothing'}; {target} failed: {error}"
                           + (f"; not tried: {', '.join(rest)}" if rest else "")) from error
         saved.append(target)
-    return "changed " + ", ".join(target for target, _, _ in found)
+    return "changed " + ", ".join(saved)
 
 
 def edit(c, a):
@@ -418,22 +441,19 @@ def edit(c, a):
     if not (a.section or a.dated):
         raise Refused("say which part: --section <name> or --dated <title>, "
                       "or --replace <old> --with <new>")
-    if a.target.startswith("epic-"):
-        epic_id = int(a.target[5:])
-        epic = c.shortcut.epic(epic_id)
-        body = T.append_dated(epic.get("description"), a.dated, a.text) if a.dated else \
-            T.replace(epic.get("description"), a.section, a.text)
-        c.shortcut.update_epic(epic_id, description=body)
-        return f"epic {epic_id}: {'added ' + a.dated if a.dated else 'replaced ' + a.section}"
     name = a.section or a.dated
-    if c.role == "ux" and not T.is_design(name):
+    if c.role == "ux" and not a.target.startswith("epic-") and not T.is_design(name):
         raise Refused("the designer writes only the Design section")
-    raw = c.shortcut.story(story_number(a.target))
-    body = T.append_dated(raw.get("description"), a.dated, a.text) if a.dated else \
-        T.replace(raw.get("description"), a.section, a.text)
-    c.shortcut.update(raw["id"], description=body)
-    c.refresh(raw["id"])
-    return f"sc-{raw['id']}: {'added ' + a.dated if a.dated else 'replaced ' + a.section}"
+    if headed := [h for h, _, _ in T.sections(a.text) if h != T.TOP]:
+        raise Refused(f"the text brings its own heading ({headed[0]}), which would add a "
+                      f"section beside the one already there: edit that one with "
+                      f"--section \"{headed[0]}\", one section per edit")
+    target = a.target if a.target.startswith("epic-") else f"sc-{story_number(a.target)}"
+    rewrite(c, target, lambda body: T.append_dated(body, a.dated, a.text) if a.dated
+            else T.replace(body, a.section, a.text))
+    what = "added " + a.dated if a.dated else "replaced " + a.section
+    return f"epic {a.target[5:]}: {what}" if a.target.startswith("epic-") else \
+        f"{target}: {what}"
 
 
 MAX_IDEAS = 3
