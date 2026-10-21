@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { passwordProps } from '../kit/fields.ts';
+import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { fieldStyles } from './Field.tsx';
 import { Text } from './Text.tsx';
@@ -58,7 +59,7 @@ export function PasswordField({
         {...rest}
         {...passwordProps(revealed)}
         ref={ref}
-        style={[fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong]}
+        style={faced([fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong])}
         aria-invalid={wrong}
         testID={testID}
         onSubmitEditing={(event) => {

@@ -1,3 +1,5 @@
+import type { TextStyle } from 'react-native';
+
 /** JetBrains Mono is for step numbers and keyboard shortcuts only, never for money. */
 export const SANS = {
   400: 'InstrumentSans-Regular',
@@ -11,20 +13,30 @@ export const MONO = {
   700: 'JetBrainsMono-Bold',
 } as const;
 
-export interface Face {
-  family: string;
-  /** The file's own weight, so a platform never synthesises one. */
-  weight: number;
+let loaded = false;
+
+/** Called once by the root when every face has loaded. Until then, and forever if one failed, text keeps the platform font. */
+export function facesLoaded(): void {
+  loaded = true;
 }
 
-export function faceFor(asked: string | number | undefined, mono = false): Face {
+/** Drops the weight once it has chosen the file: Android would look a 700 up in a BOLD slot that is empty, and draw Roboto. */
+export function faceStyle(flat: TextStyle, mono = false): TextStyle {
+  if (!loaded) return flat;
+
+  const { fontWeight, ...rest } = flat;
+
+  return { ...rest, fontFamily: faceFor(fontWeight, mono) };
+}
+
+export function faceFor(asked: string | number | undefined, mono = false): string {
   const wanted = numeric(asked);
   const files: Record<number, string> = mono ? MONO : SANS;
   const weight = Object.keys(files)
     .map(Number)
     .reduce((best, next) => (Math.abs(next - wanted) <= Math.abs(best - wanted) ? next : best));
 
-  return { family: files[weight] ?? SANS[400], weight };
+  return files[weight] as string;
 }
 
 function numeric(asked: string | number | undefined): number {

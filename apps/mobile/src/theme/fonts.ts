@@ -1,6 +1,8 @@
 import { StyleSheet, type StyleProp, type TextStyle } from 'react-native';
 
-import { MONO, SANS, faceFor } from './faceFor.ts';
+import { MONO, SANS, faceStyle } from './faceFor.ts';
+
+export { facesLoaded } from './faceFor.ts';
 
 /**
  * Weights, never family names. This is a convention with teeth.
@@ -41,23 +43,10 @@ export const FONT_FACES = {
   [MONO[700]]: require('../../assets/fonts/jetbrains-mono/JetBrainsMono-Bold.ttf'),
 } as Record<string, number>;
 
-let loaded = false;
-
-/** Called once by the root when every face has loaded. Until then, and forever if one failed, text keeps the platform font. */
-export function facesLoaded(): void {
-  loaded = true;
-}
-
 /**
  * The one place a family is chosen, from the weight the whole style asks for.
  * Text and every field put their style through this.
  */
 export function faced(style: StyleProp<TextStyle>, mono = false): TextStyle {
-  const flat = StyleSheet.flatten(style);
-
-  if (!loaded) return flat;
-
-  const { family, weight } = faceFor(flat.fontWeight, mono);
-
-  return { ...flat, fontFamily: family, fontWeight: String(weight) as TextStyle['fontWeight'] };
+  return faceStyle(StyleSheet.flatten(style), mono);
 }
