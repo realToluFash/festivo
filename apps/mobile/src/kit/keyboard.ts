@@ -1,6 +1,6 @@
 // One lift per platform; both at once is the double lift. iOS never moves the window, so
 // the scroll view adjusts its insets. Android is edge to edge here, so the window does not
-// resize either, and a KeyboardAvoidingView pads the content.
+// resize either, and the screen pads its content by as much as the keys cover.
 export interface KeyboardLift {
   avoid: 'padding' | null;
   adjustScrollInsets: boolean;
@@ -42,9 +42,9 @@ export function keyboardInWindow(screenY: number, origin: number): number {
   return screenY + origin;
 }
 
-/** How far below the screen's top a view sits, from its measureInWindow top and the origin. */
-export function belowScreenTop(measured: number, origin: number): number {
-  return measured - origin;
+/** How much of a view, measured in the window, the keyboard covers from its bottom up. */
+export function keysOver(view: Rect, keyboardTop: number | null): number {
+  return keyboardTop == null ? 0 : Math.max(0, view.y + view.height - keyboardTop);
 }
 
 export interface Lift {

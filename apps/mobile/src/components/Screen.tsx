@@ -2,6 +2,7 @@ import {
   type ReactNode,
   type RefObject,
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -9,7 +10,6 @@ import {
 } from 'react';
 import {
   Keyboard,
-  KeyboardAvoidingView,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
@@ -21,11 +21,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  belowScreenTop,
   coveredBy,
   groupInWindow,
   keyboardInWindow,
   keyboardLift,
+  keysOver,
   offsetAboveKeyboard,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -268,7 +268,6 @@ export function Screen({
   const windowOrigin = useContext(Origin);
   const origin = useRef(windowOrigin);
   const scrollView = useRef<ScrollView>(null);
-  const root = useRef<View>(null);
   const offset = useRef(0);
   const [screenScroll] = useState<ScreenScrollView>(() => ({
     ref: scrollView,
@@ -279,8 +278,31 @@ export function Screen({
   useEffect(() => {
     origin.current = windowOrigin;
   }, [windowOrigin]);
-  // The avoiding view measures its frame from its parent and the keys from the screen's top.
-  const [rootY, setRootY] = useState(0);
+  const avoider = useRef<View>(null);
+  const keyboardTop = useRef<number | null>(null);
+  const [keysCover, setKeysCover] = useState(0);
+  // Not KeyboardAvoidingView: it takes the screen's top as a prop and does not re-read it when the
+  // frame's header shrinks under the keys, so the freed height ends up as padding above them.
+  const avoid = useCallback(() => {
+    const top = keyboardTop.current;
+    if (top == null) {
+      setKeysCover(0);
+      return;
+    }
+    avoider.current?.measureInWindow((_x, y, _w, height) =>
+      setKeysCover(keysOver({ y, height }, top)),
+    );
+  }, []);
+  useEffect(() => {
+    if (LIFT.avoid == null) return;
+    keyboardTop.current = keyboardTopNow(origin.current);
+    avoid();
+
+    return watchKeyboardTop(screenScroll, (top) => {
+      keyboardTop.current = top;
+      avoid();
+    });
+  }, [screenScroll, avoid]);
 
   const followOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     offset.current = event.nativeEvent.contentOffset.y;
@@ -316,23 +338,13 @@ export function Screen({
 
   return (
     <ScreenScroll.Provider value={scroll ? screenScroll : null}>
-      <View
-        ref={root}
-        onLayout={() =>
-          root.current?.measureInWindow((_x, y) => setRootY(belowScreenTop(y, origin.current)))
-        }
-        style={[styles.root, padding, style]}
-      >
+      <View style={[styles.root, padding, style]}>
         {LIFT.avoid == null ? (
           body
         ) : (
-          <KeyboardAvoidingView
-            style={styles.fill}
-            behavior={LIFT.avoid}
-            keyboardVerticalOffset={rootY}
-          >
+          <View ref={avoider} onLayout={avoid} style={[styles.fill, { paddingBottom: keysCover }]}>
             {body}
-          </KeyboardAvoidingView>
+          </View>
         )}
       </View>
     </ScreenScroll.Provider>
