@@ -171,7 +171,8 @@ MAY = {
     "rerun": DEVS + ("ops",),
 }
 
-# The states each role may move a story into, and from.
+# The states each role may move a story into, and from. The product manager moves any
+# story anywhere.
 WAITING = "Waiting On Owner"
 # Where a story waits for its merge: In Review only for one passed before these states.
 MERGING = ("Passed Code Review", "In Review")
@@ -183,9 +184,6 @@ MOVES = {
     # In Progress: a story handed over with no pull request or red checks is not ready.
     "lead": {"In Progress": ("In Review",), "Passed Code Review": ("In Review",),
              "Failed Code Review": ("In Review", "Passed Code Review")},
-    "pm": {"To Do": ("Backlog",), "Backlog": ("To Do",), "Needs Design": ("To Do",),
-           "Ready For Dev": ("To Do", "Needs Design"),
-           WAITING: ("Backlog", "To Do", "Needs Design", "Ready For Dev")},
     "ux": {"Ready For Dev": ("Needs Design",), WAITING: ("Needs Design",)},
     "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
            "Failed QA": ("In QA",)},
@@ -197,9 +195,6 @@ MOVES = {
             "In Review": ("In Progress", "Failed Code Review", "Passed Code Review"),
             WAITING: ("In Progress", "Ready For Dev")},
 }
-# The product manager also takes back an In Progress story that nobody holds: no role moved
-# it there, no developer label, no open pull request on its branch (`actions.holder`).
-PM_RELEASES = ("Backlog", "To Do", "Ready For Dev")
 MOVES["dev2"] = MOVES["dev"]
 for _tester in TESTERS:
     MOVES[_tester] = MOVES["qa"]

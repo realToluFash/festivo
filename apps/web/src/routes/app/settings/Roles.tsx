@@ -8,6 +8,7 @@ import {
   LOCALE_CODES,
   MARGIN,
   ROLE_NAME_MAXIMUM,
+  extrasOf,
   levelOf,
   lockedAreas,
   replacementsFor,
@@ -18,12 +19,12 @@ import {
   settableLevels,
   takenRoleNames,
   whatTheySee,
+  withExtra,
   withLevel,
-  withMargin,
   withoutRole,
 } from '@soirely/domain';
 import i18next, { type TFunction } from 'i18next';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, Fragment, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -37,6 +38,22 @@ type Load =
 
 /** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
 const TYPED_MAXIMUM = ROLE_NAME_MAXIMUM * 4;
+
+/** Each switch an area carries beside its level, by its permission. */
+const EXTRAS: Record<string, { name: string; means: string; off: string; on: string }> = {
+  [MARGIN]: {
+    name: 'rolesScreen.margin',
+    means: 'rolesScreen.marginMeans',
+    off: 'rolesScreen.marginHidden',
+    on: 'rolesScreen.marginShown',
+  },
+  'events.create': {
+    name: 'rolesScreen.createEvents',
+    means: 'rolesScreen.createEventsMeans',
+    off: 'rolesScreen.createEventsOff',
+    on: 'rolesScreen.createEventsOn',
+  },
+};
 
 /** What the detail pane shows: a role, a role being made, or a role being removed. */
 type Pane = { kind: 'role'; id: string } | { kind: 'new' } | { kind: 'removing'; id: string };
@@ -266,12 +283,18 @@ function Editing({
   // A caller changes only what they hold (sc-66): a row with nothing left to pick is locked.
   const rows = catalogue.areas.map(({ area, permissions }) => {
     const levels = editable ? settableLevels(grant, held, area, permissions) : [];
+    const extras = extrasOf(area, permissions).flatMap((permission) => {
+      const words = EXTRAS[permission];
 
-    return { area, permissions, levels, locked: editable && levels.length < 2 };
+      return words == null
+        ? []
+        : [{ permission, words, locked: editable && !held.includes(permission) }];
+    });
+
+    return { area, permissions, levels, extras, locked: editable && levels.length < 2 };
   });
-  const marginLocked = editable && !held.includes(MARGIN);
-  const lockedLabels = (editable ? lockedAreas(grant, held, catalogue.areas) : []).map((area) =>
-    area === MARGIN ? t('rolesScreen.margin') : t(`rolesScreen.area.${area}`),
+  const lockedLabels = (editable ? lockedAreas(grant, held, catalogue.areas) : []).map((locked) =>
+    t(EXTRAS[locked]?.name ?? `rolesScreen.area.${locked}`),
   );
 
   function change(next: string[]): void {
@@ -410,7 +433,7 @@ function Editing({
         <span>{t('rolesScreen.gridHeading')}</span>
       </div>
       <ul className="roles-grid">
-        {rows.map(({ area, permissions, levels, locked }) => {
+        {rows.map(({ area, permissions, levels, extras, locked }) => {
           const level = levelOf(grant, area);
 
           return (
@@ -442,39 +465,38 @@ function Editing({
                   {t('rolesScreen.lockedLine', { area: t(`rolesScreen.area.${area}`) })}
                 </p>
               )}
-              {area === 'budget' && level !== 'nothing' && permissions.includes(MARGIN) && (
-                <div className="roles-row roles-row-sub">
-                  <div className="roles-row-text">
-                    <span className="roles-row-name">{t('rolesScreen.margin')}</span>
-                    <span className="muted">
-                      {t('rolesScreen.marginMeans', { name: organisation.name })}
-                    </span>
-                  </div>
-                  {editable && !marginLocked ? (
-                    <Levels
-                      label={t('rolesScreen.margin')}
-                      options={[
-                        { value: 'hidden', label: t('rolesScreen.marginHidden') },
-                        { value: 'shown', label: t('rolesScreen.marginShown') },
-                      ]}
-                      value={grant.includes(MARGIN) ? 'shown' : 'hidden'}
-                      onPick={(value) => change(withMargin(grant, value === 'shown'))}
-                    />
-                  ) : (
-                    <span className="roles-fixed">
-                      {marginLocked && <Padlock />}
-                      {grant.includes(MARGIN)
-                        ? t('rolesScreen.marginShown')
-                        : t('rolesScreen.marginHidden')}
-                    </span>
-                  )}
-                </div>
-              )}
-              {area === 'budget' && level !== 'nothing' && marginLocked && (
-                <p className="muted roles-locked">
-                  {t('rolesScreen.lockedLine', { area: t('rolesScreen.margin') })}
-                </p>
-              )}
+              {level !== 'nothing' &&
+                extras.map(({ permission, words, locked: extraLocked }) => (
+                  <Fragment key={permission}>
+                    <div className="roles-row roles-row-sub">
+                      <div className="roles-row-text">
+                        <span className="roles-row-name">{t(words.name)}</span>
+                        <span className="muted">{t(words.means, { name: organisation.name })}</span>
+                      </div>
+                      {editable && !extraLocked ? (
+                        <Levels
+                          label={t(words.name)}
+                          options={[
+                            { value: 'off', label: t(words.off) },
+                            { value: 'on', label: t(words.on) },
+                          ]}
+                          value={grant.includes(permission) ? 'on' : 'off'}
+                          onPick={(value) => change(withExtra(grant, permission, value === 'on'))}
+                        />
+                      ) : (
+                        <span className="roles-fixed">
+                          {extraLocked && <Padlock />}
+                          {grant.includes(permission) ? t(words.on) : t(words.off)}
+                        </span>
+                      )}
+                    </div>
+                    {extraLocked && (
+                      <p className="muted roles-locked">
+                        {t('rolesScreen.lockedLine', { area: t(words.name) })}
+                      </p>
+                    )}
+                  </Fragment>
+                ))}
             </li>
           );
         })}

@@ -8,6 +8,7 @@ import {
   LOCALE_CODES,
   MARGIN,
   ROLE_NAME_MAXIMUM,
+  extrasOf,
   levelOf,
   lockedAreas,
   replacementsFor,
@@ -18,8 +19,8 @@ import {
   settableLevels,
   takenRoleNames,
   whatTheySee,
+  withExtra,
   withLevel,
-  withMargin,
   withoutRole,
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
@@ -39,6 +40,22 @@ import { Text } from './Text.tsx';
 
 /** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
 const TYPED_MAXIMUM = ROLE_NAME_MAXIMUM * 4;
+
+/** Each switch an area carries beside its level, by its permission. */
+const EXTRAS: Record<string, { name: string; means: string; off: string; on: string }> = {
+  [MARGIN]: {
+    name: 'rolesScreen.margin',
+    means: 'rolesScreen.marginMeans',
+    off: 'rolesScreen.marginHidden',
+    on: 'rolesScreen.marginShown',
+  },
+  'events.create': {
+    name: 'rolesScreen.createEvents',
+    means: 'rolesScreen.createEventsMeans',
+    off: 'rolesScreen.createEventsOff',
+    on: 'rolesScreen.createEventsOn',
+  },
+};
 
 /** Settings > Roles' list, `Roles-*`: each role, Built in on the five seeded ones only. */
 export function RoleList({
@@ -148,12 +165,18 @@ export function RolePage({
   const dirty = creating || renamed || !sameGrant(grant, startingGrant);
   const rows = catalogue.areas.map(({ area, permissions }) => {
     const levels = editable ? settableLevels(grant, held, area, permissions) : [];
+    const extras = extrasOf(area, permissions).flatMap((permission) => {
+      const words = EXTRAS[permission];
 
-    return { area, permissions, levels, locked: editable && levels.length < 2 };
+      return words == null
+        ? []
+        : [{ permission, words, locked: editable && !held.includes(permission) }];
+    });
+
+    return { area, permissions, levels, extras, locked: editable && levels.length < 2 };
   });
-  const marginLocked = editable && !held.includes(MARGIN);
-  const lockedLabels = (editable ? lockedAreas(grant, held, catalogue.areas) : []).map((area) =>
-    area === MARGIN ? t('rolesScreen.margin') : t(`rolesScreen.area.${area}`),
+  const lockedLabels = (editable ? lockedAreas(grant, held, catalogue.areas) : []).map((locked) =>
+    t(EXTRAS[locked]?.name ?? `rolesScreen.area.${locked}`),
   );
   const removable = role?.removable === true;
 
@@ -281,7 +304,7 @@ export function RolePage({
         <Text size={tokens.typeLabel.size} weight="semibold" muted style={styles.gridHeading}>
           {t('rolesScreen.gridHeading')}
         </Text>
-        {rows.map(({ area, permissions, levels, locked }) => {
+        {rows.map(({ area, permissions, levels, extras, locked }) => {
           const level = levelOf(grant, area);
           const named = t(`rolesScreen.area.${area}`);
 
@@ -305,34 +328,35 @@ export function RolePage({
                   {t('rolesScreen.lockedLine', { area: named })}
                 </Text>
               )}
-              {area === 'budget' && level !== 'nothing' && permissions.includes(MARGIN) && (
-                <View style={styles.margin}>
-                  <GridRow
-                    phone={phone}
-                    name={t('rolesScreen.margin')}
-                    means={t('rolesScreen.marginMeans', { name: organisation.name })}
-                    fixed={
-                      editable && !marginLocked
-                        ? null
-                        : grant.includes(MARGIN)
-                          ? t('rolesScreen.marginShown')
-                          : t('rolesScreen.marginHidden')
-                    }
-                    options={[
-                      { value: 'hidden', label: t('rolesScreen.marginHidden') },
-                      { value: 'shown', label: t('rolesScreen.marginShown') },
-                    ]}
-                    value={grant.includes(MARGIN) ? 'shown' : 'hidden'}
-                    onPick={(value) => change(withMargin(grant, value === 'shown'))}
-                    testID="roles.area.margin"
-                  />
-                  {marginLocked && (
-                    <Text size={tokens.typeSmall.size} muted>
-                      {t('rolesScreen.lockedLine', { area: t('rolesScreen.margin') })}
-                    </Text>
-                  )}
-                </View>
-              )}
+              {level !== 'nothing' &&
+                extras.map(({ permission, words, locked: extraLocked }) => (
+                  <View key={permission} style={styles.extra}>
+                    <GridRow
+                      phone={phone}
+                      name={t(words.name)}
+                      means={t(words.means, { name: organisation.name })}
+                      fixed={
+                        editable && !extraLocked
+                          ? null
+                          : grant.includes(permission)
+                            ? t(words.on)
+                            : t(words.off)
+                      }
+                      options={[
+                        { value: 'off', label: t(words.off) },
+                        { value: 'on', label: t(words.on) },
+                      ]}
+                      value={grant.includes(permission) ? 'on' : 'off'}
+                      onPick={(value) => change(withExtra(grant, permission, value === 'on'))}
+                      testID={`roles.extra.${permission}`}
+                    />
+                    {extraLocked && (
+                      <Text size={tokens.typeSmall.size} muted>
+                        {t('rolesScreen.lockedLine', { area: t(words.name) })}
+                      </Text>
+                    )}
+                  </View>
+                ))}
             </View>
           );
         })}
@@ -691,7 +715,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAccent,
     backgroundColor: tokens.colorAccentTint,
   },
-  margin: {
+  extra: {
     gap: tokens.spaceSm,
     marginTop: tokens.spaceXxs,
     paddingTop: tokens.spaceMd,

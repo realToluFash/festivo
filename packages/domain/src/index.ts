@@ -28,3 +28,4 @@ export * from './members.ts';
 export * from './invitations.ts';
 export * from './companyDomains.ts';
 export * from './twoFactorDue.ts';
+export * from './events.ts';

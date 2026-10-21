@@ -53,6 +53,54 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
+  `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
+  « exiger », as the server's errors; "for everyone" is « pour tous ». The date is « à partir
+  du {{deadline}} » and « jusqu'au {{deadline}} », as `limitedBody`; `time.dateAt` ends on the
+  zone, so no « oct.. » can follow. "Set it up" is « l'activer », as "turn on" in en. A person
+  who must act is « chaque personne … elle », never « chacun », so the agreement follows
+  « personne ». The overdue screen's body says why, « … et le délai pour l'activer est
+  passé ». "Single-event access" is « vos accès à des événements précis ». The card and the
+  server's refusal say the same sentence, with U+00A0 before the colon in both.
+
+- **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
+  `messages:domain_joining.*`, sc-4434). The act is « demander à rejoindre », the wait
+  « En attente d'approbation », as the Members state. The approver is « une personne de
+  l'organisation », who « valide votre demande », so nothing agrees with the person. Before an
+  organisation's name, « par {{organisation}} » or « de {{organisation}} » only where no
+  elision is due: « En attente de validation par {{organisation}} », never « de
+  l'approbation de », which would need « d' » before a vowel. The setting is « Adhésion par
+  domaine d'entreprise », « Activée » / « Désactivée »; a working domain « Ouvert aux
+  demandes », a stopped one « Sans effet ». "… instead" is « … plutôt ».
+
+- **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
+  « Membres »; a member is removed with « Retirer », as the glossary's Remove. A person's state
+  never agrees with them: « Avec accès », « En attente d'approbation », « Accès suspendu »,
+  « A quitté l'organisation », « Accès retiré », and in the row line « départ le {{date}} »,
+  « accès retiré le {{date}} ». After a removal, « {{name}} ne fait plus partie de
+  {{organisation}} » rather than « a été retiré ». Groups on the chips take the plural, « Tous »,
+  « Suspendus », « Anciens ». "On their next request" is « dès sa prochaine utilisation de
+  Soirely ». An owner in a sentence is « une personne ayant le rôle Propriétaire ».
+- **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
+  app, sc-4188). The invitation is the subject, « Une invitation vous attend », « {{count}}
+  invitations vous attendent », shorter than « Vous avez … en attente ». With several, "that
+  organisation" is « l'organisation qui vous invite ». A button in a sentence is chosen, as
+  `proofExpired_*`: « Choisissez « Enregistrer et continuer » pour y accéder ». No `_many`
+  yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
+- **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
+  "You will be its owner" is « Vous y aurez le rôle Propriétaire », as « le rôle
+  Propriétaire » elsewhere. A length refusal says what to do, « Raccourcissez-le à 100
+  caractères maximum », as `rolesScreen.nameTooLong`. A path in Settings is « Paramètres >
+  Général »; the button is « Créer l'organisation », with the article French wants.
+
+- **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
+  The label is « Langue », as the English "Language"; if English lengthens it to "Language
+  for invitations", it becomes « Langue des invitations ». "Invitation emails" are « les e-mails d'invitation
+  adressés aux personnes sans compte Soirely ». Language names are « Anglais, Espagnol,
+  Français, Portugais » as options and lower case in a sentence (« partent désormais en
+  anglais »). A refused save is « Rien n'a été enregistré. » and the server's
+  `permission_required` words unchanged. The search field is « Rechercher une langue ».
 - **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
   `codeKeepsSignIn_*`, sc-2908). The status box is « Connexion avec {{provider}} réussie », a
   noun phrase because « Connecté » would have to agree with the person. Under the code field:

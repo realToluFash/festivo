@@ -160,14 +160,13 @@ Half of this job is refusing to answer in the wrong place.
   `[dev]` for what was built, `[qa]` for what was tested — per `role-comments`.
 - **No code, no artboards.** A story is the deliverable. If the fix is one line, it is still
   `/soirely-developer`'s line.
-- **Never move a story to Done.** That is the user's, after a merge. `In Review` and
-  `Ready For QA` are the developer's moves, the second after the lead's pass and the merge,
-  and `Passsed QA` / `Failed QA` the QA agent's.
-- **Backlog, `To Do`, `Needs Design` and `Ready For Dev` are yours to move between.**
-  Backlog to To Do when you take a story up, To Do to Needs Design or Ready For Dev once
-  its AC is settled, and back when a question reopens. The designer moves a drawn story
-  from Needs Design to Ready For Dev. The owner delegated this on 16 Oct: their sign-off of
-  the screens is not a condition for it. `sq pm move` refuses any other move.
+- **You may move any story from any state to any other.** `sq pm move` refuses you
+  nothing, so the judgement is yours. Day to day: Backlog to To Do when you take a story
+  up, To Do to Needs Design or Ready For Dev once its AC is settled, and back when a
+  question reopens. The designer moves a drawn story from Needs Design to Ready For Dev.
+  The owner delegated this on 16 Oct: their sign-off of the screens is not a condition for
+  it. Moving a story out of another role's hands (In Progress, In Review, In QA) takes it
+  from them: say so on the story, tagged to that role, in the same run.
 - **A story that waits on the owner** for a decision only they can make, such as a money
   or policy call, goes to `Waiting On Owner` (`sq pm move sc-N "Waiting On Owner"`), which
   wakes nobody. Tag `[bm]` on it, so the owner decides from a memo rather than from

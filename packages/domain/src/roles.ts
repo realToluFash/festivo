@@ -20,18 +20,26 @@ export function levelOf(held: readonly string[], area: string): Level {
   return 'nothing';
 }
 
-/** Change includes reading where the area has it, and an area set to nothing takes the margin with it. */
+/** An area's own switches beside its level, such as the budget's margin and creating events. */
+export function extrasOf(area: string, permissions: readonly string[]): string[] {
+  return permissions.filter(
+    (permission) => permission !== `${area}.read` && permission !== `${area}.manage`,
+  );
+}
+
+/** Change includes reading where the area has it, and an area set to nothing takes its extras with it. */
 export function withLevel(
   held: readonly string[],
   area: string,
   level: Level,
   permissions: readonly string[],
 ): string[] {
+  const extras = level === 'nothing' ? extrasOf(area, permissions) : [];
   const others = held.filter(
     (permission) =>
       permission !== `${area}.read` &&
       permission !== `${area}.manage` &&
-      (level !== 'nothing' || area !== 'budget' || permission !== MARGIN),
+      !extras.includes(permission),
   );
 
   const reading = permissions.includes(`${area}.read`) ? [`${area}.read`] : [];
@@ -62,10 +70,10 @@ export function settableLevels(
   });
 }
 
-export function withMargin(held: readonly string[], shown: boolean): string[] {
-  const others = held.filter((permission) => permission !== MARGIN);
+export function withExtra(held: readonly string[], extra: string, on: boolean): string[] {
+  const others = held.filter((permission) => permission !== extra);
 
-  return shown ? [...others, MARGIN] : others;
+  return on ? [...others, extra] : others;
 }
 
 export function sameGrant(a: readonly string[], b: readonly string[]): boolean {
@@ -138,18 +146,16 @@ export function takenRoleNames(
     .flatMap((one) => languages.map((word) => roleName(word, one)));
 }
 
-/** The areas a caller cannot change on this role, and the margin wherever it shows but cannot be moved. */
+/** The areas a caller cannot change on this role, and each extra they lack wherever its area shows. */
 export function lockedAreas(
   grant: readonly string[],
   held: readonly string[],
   areas: readonly { area: string; permissions: readonly string[] }[],
 ): string[] {
-  const marginLocked = !held.includes(MARGIN);
-
   return areas.flatMap(({ area, permissions }) => [
     ...(settableLevels(grant, held, area, permissions).length < 2 ? [area] : []),
-    ...(marginLocked && grant.includes(`${area}.read`) && permissions.includes(MARGIN)
-      ? [MARGIN]
-      : []),
+    ...(levelOf(grant, area) === 'nothing'
+      ? []
+      : extrasOf(area, permissions).filter((extra) => !held.includes(extra))),
   ]);
 }

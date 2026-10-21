@@ -776,6 +776,10 @@
     "marginMeans": "What {{name}} adds on top of costs. Hidden means the budget opens with costs only.",
     "marginHidden": "Hidden",
     "marginShown": "Shown",
+    "createEvents": "Create events",
+    "createEventsMeans": "Start a new event in {{name}}. It begins as a draft.",
+    "createEventsOff": "Not allowed",
+    "createEventsOn": "Allowed",
     "unsavedNew": "New role, not saved yet. Nobody holds it until somebody is given it.",
     "unsaved_one": "Unsaved changes to {{role}}. {{count}} person gets them on their next request; nobody is signed out.",
     "unsaved_other": "Unsaved changes to {{role}}. {{count}} people get them on their next request; nobody is signed out.",
@@ -1151,7 +1155,7 @@
       "coordinator": "Runs events. Reads the budget, never the margin.",
       "read_only": "Sees events. Changes nothing."
     },
-    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so this role can't change and they can't be removed until somebody else is an owner too.",
+    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so their role cannot change and they cannot be removed until somebody else is an owner too.",
     "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
     "ownerOnly": "Only an owner can change an owner's role or remove them.",
     "removeTitle": "Remove {{name}}",
@@ -1189,10 +1193,10 @@
     },
     "subtitle_one": "{{organisation}} · {{count}} active",
     "subtitle_other": "{{organisation}} · {{count}} active",
-    "ownRole": "You can't change your own role. Another owner can, or you can hand ownership to somebody in Organisation.",
+    "ownRole": "You cannot change your own role. Another owner can, or you can hand ownership to somebody in Organisation.",
     "goToOrganisation": "Go to Organisation ›",
-    "fromTheWeb": "Invitations are sent from Soirely on the web.",
-    "pickSomebody": "Pick somebody in the list to see them here.",
+    "fromTheWeb": "To invite somebody, use Soirely on the web.",
+    "pickSomebody": "Choose somebody in the list to see them here.",
     "backToList": "‹ Members"
   }
 }

@@ -192,6 +192,7 @@ describe('signing in, for real', () => {
     const sent = answering({
       'POST /api/auth/login': () => json({ ...ISSUED, account: ACCOUNT }),
       'GET /api/orgs': () => json({ organisations: [ORGANISATION] }),
+      'GET /api/orgs/org_1/events': () => json({ events: [] }),
       'GET /api/invitations': () => json({ invitations: [] }),
     });
 
@@ -204,6 +205,7 @@ describe('signing in, for real', () => {
       expect(sent.map((request) => request.path)).toEqual([
         '/api/auth/login',
         '/api/orgs',
+        '/api/orgs/org_1/events',
         '/api/invitations',
         '/api/join-offers',
       ]),

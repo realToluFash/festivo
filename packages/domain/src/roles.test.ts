@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   MARGIN,
+  extrasOf,
   levelOf,
   levelsOf,
   lockedAreas,
@@ -12,7 +13,7 @@ import {
   takenRoleNames,
   whatTheySee,
   withLevel,
-  withMargin,
+  withExtra,
   withoutRole,
 } from './roles.ts';
 
@@ -55,8 +56,35 @@ describe('a role in the permission grid', () => {
       'budget.margin',
       'budget.read',
     ]);
-    expect(withMargin(['budget.read'], true)).toEqual(['budget.read', 'budget.margin']);
-    expect(withMargin(['budget.read', 'budget.margin'], false)).toEqual(['budget.read']);
+    expect(withExtra(['budget.read'], 'budget.margin', true)).toEqual([
+      'budget.read',
+      'budget.margin',
+    ]);
+    expect(withExtra(['budget.read', 'budget.margin'], 'budget.margin', false)).toEqual([
+      'budget.read',
+    ]);
+  });
+
+  const creating = ['events.read', 'events.manage', 'events.create'];
+
+  it('takes creating events away with the events area, and keeps it when events are only read', () => {
+    expect(extrasOf('events', creating)).toEqual(['events.create']);
+    expect(extrasOf('budget', budget)).toEqual(['budget.margin']);
+    expect(withLevel(creating, 'events', 'nothing', creating)).toEqual([]);
+    expect(withLevel(creating, 'events', 'read', creating).sort()).toEqual([
+      'events.create',
+      'events.read',
+    ]);
+    expect(withExtra(['events.read'], 'events.create', true)).toEqual([
+      'events.read',
+      'events.create',
+    ]);
+  });
+
+  it("leaves another area's extras alone", () => {
+    expect(withLevel(['budget.margin', ...creating], 'events', 'nothing', creating)).toEqual([
+      'budget.margin',
+    ]);
   });
 
   it('counts a grant unchanged whatever order it is in', () => {
@@ -118,6 +146,15 @@ describe('the levels a caller can set', () => {
     expect(settableLevels(billing, ['billing.read'], 'billing', billing)).toEqual(['change']);
   });
 
+  it('keeps Nothing off events whose creating the caller does not hold', () => {
+    const events = ['events.read', 'events.manage', 'events.create'];
+
+    expect(settableLevels(events, ['events.read', 'events.manage'], 'events', events)).toEqual([
+      'read',
+      'change',
+    ]);
+  });
+
   it('keeps Nothing off a budget whose margin the caller does not hold', () => {
     const held = ['budget.read', 'budget.manage'];
 
@@ -171,7 +208,7 @@ describe('the names a role may not take', () => {
 
 describe('the areas a caller cannot change', () => {
   const areas = [
-    { area: 'events', permissions: ['events.read', 'events.manage'] },
+    { area: 'events', permissions: ['events.read', 'events.manage', 'events.create'] },
     { area: 'billing', permissions: ['billing.read', 'billing.manage'] },
     { area: 'budget', permissions: ['budget.read', 'budget.manage', 'budget.margin'] },
   ];
@@ -180,6 +217,13 @@ describe('the areas a caller cannot change', () => {
     const held = ['events.read', 'events.manage', 'budget.read', 'budget.manage'];
 
     expect(lockedAreas(['budget.read'], held, areas)).toEqual(['billing', MARGIN]);
+  });
+
+  it('names Create events where Event manager shows and the caller lacks it', () => {
+    const held = ['events.read', 'events.manage', 'billing.read', 'billing.manage'];
+
+    expect(lockedAreas(['events.read'], held, areas)).toEqual(['events.create', 'budget']);
+    expect(lockedAreas([], held, areas)).toEqual(['budget']);
   });
 
   it('names nothing for a caller who holds everything', () => {
