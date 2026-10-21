@@ -27,6 +27,7 @@ export function OrganisationSwitcher({
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
   const role = roleName(t, current.role);
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
 
@@ -55,6 +56,7 @@ export function OrganisationSwitcher({
   return (
     <div className="org-switcher" ref={container}>
       <button
+        ref={button}
         type="button"
         className="org-switcher-button"
         aria-haspopup="listbox"
@@ -146,6 +148,8 @@ export function OrganisationSwitcher({
             className="org-switcher-create"
             onClick={() => {
               setOpen(false);
+              // The dialog hands focus back to whatever opened it, and this row goes with the menu.
+              button.current?.focus();
               onCreate();
             }}
           >
