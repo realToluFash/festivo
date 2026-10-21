@@ -1,13 +1,22 @@
 import { ApiError, type TimeZoneOption } from '@soirely/api-client';
 import { exactZone, formerName, matchingZones, zoneLabel } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, type TextInput, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  type TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { listRoom } from '../kit/keyboard.ts';
+import { listRoom, shortWhileTyping } from '../kit/keyboard.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useHeaderWithoutBack } from './AppFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
@@ -71,6 +80,7 @@ export function TimeZoneCard({
 
       {editing ? (
         <Choosing
+          phone={kind === 'phone'}
           zones={zones}
           now={label}
           onSaved={async (zone) => {
@@ -115,11 +125,13 @@ export function TimeZoneCard({
 
 /** A search over every zone; only a listed zone is ever sent. */
 function Choosing({
+  phone,
   zones,
   now,
   onSaved,
   onCancel,
 }: {
+  phone: boolean;
   zones: readonly TimeZoneOption[];
   now: string | null;
   onSaved: (zone: TimeZoneOption) => Promise<void>;
@@ -138,6 +150,9 @@ function Choosing({
   const [groupHeight, setGroupHeight] = useState(0);
   const [listHeight, setListHeight] = useState(0);
   const [rowHeight, setRowHeight] = useState<number>(tokens.sizeHit);
+  const { height } = useWindowDimensions();
+  const short = shortWhileTyping({ os: Platform.OS, phone, height, keysUp: room != null });
+  useHeaderWithoutBack(short);
 
   const showingPicked = picked != null && typed === zoneLabel(picked);
   const matches = showingPicked ? [] : matchingZones(zones, typed).slice(0, SHOWN);
@@ -151,6 +166,7 @@ function Choosing({
       ? t('timeZone.was', { name: was })
       : t('timeZone.countryWas', { country: zone.country, name: was });
   };
+  const help = t('timeZone.help', { now: now ?? t('timeZone.nowUnset') });
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
   const listMost =
     room == null
@@ -199,11 +215,7 @@ function Choosing({
           onLayout={(event) => setGroupHeight(event.nativeEvent.layout.height)}
           style={styles.choosing}
         >
-          <Field
-            label={t('timeZone.find')}
-            error={error}
-            help={t('timeZone.help', { now: now ?? t('timeZone.nowUnset') })}
-          >
+          <Field label={t('timeZone.find')} error={error} help={short ? undefined : help}>
             <TextField
               ref={input}
               wrong={error != null}
@@ -220,6 +232,7 @@ function Choosing({
               returnKeyType="done"
               onSubmitEditing={() => void save()}
               accessibilityLabel={t('timeZone.find')}
+              accessibilityHint={short ? help : undefined}
               testID="timeZone.search"
             />
           </Field>
