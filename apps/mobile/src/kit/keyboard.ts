@@ -86,3 +86,19 @@ export interface ListRoom {
 export function listRoom({ room, rest, oneRow, most }: ListRoom): number {
   return Math.max(oneRow, Math.min(most, room - rest));
 }
+
+/** On an Android phone this tall or shorter, in dp, the keys leave no room for the help line and back row (sc-3132). */
+export const SHORT_ANDROID_HEIGHT = 700;
+
+export interface Typing {
+  os: string;
+  phone: boolean;
+  /** The window's height, in dp. */
+  height: number;
+  keysUp: boolean;
+}
+
+/** Whether a card gives up its help line and the header its back row while the keys are up. */
+export function shortWhileTyping({ os, phone, height, keysUp }: Typing): boolean {
+  return os === 'android' && phone && keysUp && height <= SHORT_ANDROID_HEIGHT;
+}

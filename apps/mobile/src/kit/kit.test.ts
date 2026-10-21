@@ -10,6 +10,7 @@ import {
   keyboardLift,
   listRoom,
   offsetAboveKeyboard,
+  shortWhileTyping,
 } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -116,6 +117,31 @@ describe('a list between a field and its button shrinks to fit above the keyboar
 
   it('never taller than with the keyboard down', () => {
     expect(listRoom({ ...smallPhone, room: 900 })).toBe(264);
+  });
+});
+
+describe('a short Android phone gives up the help line and back row while typing', () => {
+  const smallAndroid = { os: 'android', phone: true, height: 640, keysUp: true };
+
+  it('at 360×640 dp with the keys up', () => {
+    expect(shortWhileTyping(smallAndroid)).toBe(true);
+  });
+
+  it('up to 700 dp tall', () => {
+    expect(shortWhileTyping({ ...smallAndroid, height: 700 })).toBe(true);
+    expect(shortWhileTyping({ ...smallAndroid, height: 701 })).toBe(false);
+  });
+
+  it('never with the keys down', () => {
+    expect(shortWhileTyping({ ...smallAndroid, keysUp: false })).toBe(false);
+  });
+
+  it('never on a tablet', () => {
+    expect(shortWhileTyping({ ...smallAndroid, phone: false, height: 600 })).toBe(false);
+  });
+
+  it('never on iOS', () => {
+    expect(shortWhileTyping({ ...smallAndroid, os: 'ios', height: 667 })).toBe(false);
   });
 });
 
