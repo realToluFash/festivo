@@ -10,7 +10,13 @@
  * that will eventually disagree.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_LOCALE, LOCALE_CODES, followPluralLocales, narrowLocale } from '@soirely/domain';
+import {
+  DEFAULT_LOCALE,
+  LOCALE_CODES,
+  followPluralLocales,
+  followValueStops,
+  narrowLocale,
+} from '@soirely/domain';
 import { getLocales } from 'expo-localization';
 // i18next's default export IS the instance, and `.use().init()` is the shape
 // its own documentation uses. The import plugin cannot tell that apart from a
@@ -43,6 +49,7 @@ export async function initI18n(): Promise<void> {
     interpolation: { escapeValue: false },
   });
   followPluralLocales(i18next.services.pluralResolver);
+  followValueStops(i18next.services.interpolator);
 }
 
 /**

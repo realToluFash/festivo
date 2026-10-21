@@ -7,10 +7,16 @@
     "subtitle": "A noite, a partir do seu bolso.",
     "openSignIn": "Iniciar sessão",
     "openLayouts": "Demonstração de disposições",
-    "signedIn": "Tem sessão iniciada",
     "signedInTo": "Tem sessão iniciada em {{name}}",
     "openSettings": "Abrir Definições",
     "switchOrganisation": "Mudar de organização"
+  },
+  "noOrganisation": {
+    "title": "Não está em nenhuma organização",
+    "body": "Eventos, equipas e planos pertencem a uma organização, e neste momento não faz parte de nenhuma. A sua conta continua a ser sua e nada desapareceu.",
+    "wayOn": "Peça a quem gere a sua que volte a convidar {{email}}.",
+    "signedInAs": "Sessão iniciada como {{email}}.",
+    "account": "A sua conta"
   },
   "status": {
     "title": "Estado do serviço",

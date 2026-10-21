@@ -158,6 +158,8 @@ MAY = {
     "task": LINGUISTS + ("pm",),
     "relate": LINGUISTS + ("pm", "cd"),
     "archive": ("pm",),
+    "to-draw": ("ux",),
+    "drawn": ("ux",),
     "report": TESTERS,
     "pr-create": BUILDERS,
     "review": ("lead",),

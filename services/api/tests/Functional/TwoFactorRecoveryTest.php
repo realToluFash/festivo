@@ -92,6 +92,20 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame([], $this->mailsTo(self::ADDRESS, 'Folake Adeyemi asked to get back into their account'), 'never to the person');
     }
 
+    /** An organisation named with its own full stop is not given a second one (sc-2573). */
+    #[Test]
+    public function theApproversFooterTakesNoSecondStopAfterTheOrganisationsOwn(): void
+    {
+        Type\instance_of(Organisation::class)->coerce(self::em()->find(Organisation::class, $this->organisation->getId()))->setName('Ọ̀ṣun Galas Ltd.');
+        self::em()->flush();
+        $this->proved();
+
+        $body = $this->mailTo('bisi@example.com', 'Folake Adeyemi asked to get back into their account');
+
+        self::assertStringContainsString("You're getting this because you're an owner or admin of Ọ̀ṣun Galas Ltd.", $body);
+        self::assertStringNotContainsString('Galas Ltd..', $body);
+    }
+
     /** The started email names the device as the devices card names its row, the app included (sc-1242). */
     #[Test]
     #[TestWith(['Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Device: Chrome on macOS'])]

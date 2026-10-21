@@ -65,6 +65,12 @@ class Snapshot(unittest.TestCase):
         self.assertEqual({r["account"] for r in view["roles"]}, {"ops@example.com"})
         self.assertEqual(view["recent"][0]["account"], "ops@example.com")
 
+    def test_the_stories_to_draw_are_listed_with_their_prompts(self):
+        store.add_drawing(self.db, 7, "Calendar", "/soirely-designer Draw sc-7", NOW)
+        self.assertEqual(self.snap()["drawings"],
+                         [{"story_id": 7, "name": "Calendar",
+                           "prompt": "/soirely-designer Draw sc-7", "at": NOW}])
+
     def test_a_role_this_machine_does_not_run_is_listed_with_its_queue(self):
         store.record(self.db, [work("qa")], NOW)
         view = self.snap()
