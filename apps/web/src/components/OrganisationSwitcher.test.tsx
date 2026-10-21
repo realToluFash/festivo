@@ -324,7 +324,11 @@ describe('creating an organisation', () => {
     await waitFor(() => expect(document.activeElement).toBe(name));
   });
 
-  it('puts focus on the field a refusal names', async () => {
+  it.each([
+    [['countryCode'], 'Country'],
+    [['name'], 'Organisation name'],
+    [['name', 'countryCode'], 'Organisation name'],
+  ])('puts focus on the first field a refusal of %j names', async (paths, focused) => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
     creating(() =>
       json(
@@ -332,9 +336,11 @@ describe('creating an organisation', () => {
           type: 'https://soirely.com/errors/validation_failed',
           title: 'No.',
           status: 422,
-          violations: [
-            { propertyPath: 'countryCode', message: 'Bad country.', code: 'validation_failed' },
-          ],
+          violations: paths.map((propertyPath) => ({
+            propertyPath,
+            message: `Bad ${propertyPath}.`,
+            code: 'validation_failed',
+          })),
         },
         422,
       ),
@@ -345,8 +351,10 @@ describe('creating an organisation', () => {
     fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
     pressCreate();
 
-    expect(await screen.findByText('Bad country.')).toBeDefined();
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Country')));
+    for (const propertyPath of paths) {
+      expect(await screen.findByText(`Bad ${propertyPath}.`)).toBeDefined();
+    }
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(focused)));
   });
 
   it('keeps Tab and Shift+Tab inside the dialog, in the drawn order', () => {
