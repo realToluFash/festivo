@@ -794,7 +794,7 @@
     "failed": "L'enregistrement n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant.",
     "searchCurrency": "Rechercher une devise",
     "searchTimezone": "Rechercher un fuseau horaire",
-    "language": "Langue",
+    "language": "Langue des invitations",
     "languageHint": "Les e-mails d'invitation adressés aux personnes sans compte Soirely sont rédigés dans cette langue. Celles qui ont déjà un compte reçoivent le leur dans leur propre langue.",
     "savedLanguage": "Enregistré. Les e-mails d'invitation adressés aux personnes sans compte Soirely partent désormais en {{language}}. Les invitations déjà envoyées ne sont pas renvoyées.",
     "refused": "Rien n'a été enregistré. Votre rôle n'inclut pas l'autorisation nécessaire.",
