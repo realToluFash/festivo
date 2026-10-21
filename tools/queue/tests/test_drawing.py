@@ -69,6 +69,14 @@ class Tick(unittest.TestCase):
         self.assertEqual(kwargs["env"]["SOIRELY_WORKER"], "ux-draw")
         self.assertEqual(store.get_meta(self.db, "drawing")["session"], "ab12cd34")
 
+    def test_the_prompt_follows_the_tool_lists_after_a_double_dash(self):
+        store.add_drawing(self.db, 7, "Calendar", "p", NOW)
+        with mock.patch("soirely_queue.permissions.denied", return_value=["Bash(sq ux down)"]):
+            self.tick()
+        argv = self.claude.calls[0][0]
+        self.assertEqual(argv[-2:-1], ["--"])
+        self.assertLess(argv.index("--disallowedTools"), argv.index("--"))
+
     def test_a_running_session_is_left_alone(self):
         store.add_drawing(self.db, 7, "Calendar", "p", NOW)
         self.tick()
