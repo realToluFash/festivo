@@ -438,6 +438,31 @@ describe('Settings > Roles', () => {
     expect(screen.getByLabelText(/^Administrator/)).toBeDefined();
   });
 
+  it('leaves out of the locked notice an extra the grid has no words for', async () => {
+    const areas = AREAS.map((entry) =>
+      entry.area === 'events'
+        ? { ...entry, permissions: [...entry.permissions, 'events.export'] }
+        : entry,
+    );
+    signedIn(
+      membership({
+        ...IRE,
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: ROLES[1]?.permissions ?? [],
+      }),
+    );
+    answering((method) =>
+      method === 'GET'
+        ? new Response(JSON.stringify({ roles: ROLES, areas }), { status: 200 })
+        : null,
+    );
+    await roles();
+    pick(/^Coordinator/);
+
+    expect(screen.queryByText(/^You can change only what your role/)).toBeNull();
+    expect(screen.queryByText(/rolesScreen\./)).toBeNull();
+  });
+
   it('shows Create events under Events, given to Event manager and not to Coordinator', async () => {
     const sent = answering((method, body) =>
       method === 'PATCH'
