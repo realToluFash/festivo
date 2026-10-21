@@ -53,6 +53,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
+  `messages:domain_joining.*`, sc-4434). The act is « demander à rejoindre », the wait
+  « En attente d'approbation », as the Members state. The approver is « une personne de
+  l'organisation », who « valide votre demande », so nothing agrees with the person. Before an
+  organisation's name, « par {{organisation}} » or « de {{organisation}} » only where no
+  elision is due: « En attente de validation par {{organisation}} », never « de
+  l'approbation de », which would need « d' » before a vowel. The setting is « Adhésion par
+  domaine d'entreprise », « Activée » / « Désactivée »; a working domain « Ouvert aux
+  demandes », a stopped one « Sans effet ». "… instead" is « … plutôt ».
+
 - **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
   « Membres »; a member is removed with « Retirer », as the glossary's Remove. A person's state
   never agrees with them: « Avec accès », « En attente d'approbation », « Accès suspendu »,

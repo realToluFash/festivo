@@ -80,13 +80,13 @@
     "validation.invite_email_invalid": "That does not look like an email address. Check it has an @ and a domain.",
     "members.own_membership": "You cannot change your own role or remove yourself. Another owner or administrator can, or you can leave from General.",
     "members.choose_new_owner": "Choose who becomes the owner.",
-    "domain_joining.domain_blank": "Enter a domain, like {example}.",
-    "domain_joining.domain_full": "That is {count} domains, the most the list can hold. Remove one to add another.",
-    "domain_joining.domain_invalid": "Enter a domain with a dot and no spaces, like {example}.",
-    "domain_joining.domain_listed": "{domain} is already on the list.",
-    "domain_joining.domain_not_yours": "Add a domain your own address is at.",
-    "domain_joining.domain_proved_elsewhere": "Another organisation has proved {domain} on Enterprise, so only its listing works.",
-    "domain_joining.domain_public": "You cannot use a public email domain.",
-    "domain_joining.not_listed": "That domain is not on the list.",
-    "domain_joining.unavailable": "You cannot ask to join that organisation. Start your own, or ask somebody there to invite you."
+    "domain_joining.domain_blank": "Saisissez un domaine, par exemple {example}.",
+    "domain_joining.domain_full": "La liste compte {count} domaines, le maximum possible. Retirez-en un pour en ajouter un autre.",
+    "domain_joining.domain_invalid": "Saisissez un domaine avec un point et sans espace, par exemple {example}.",
+    "domain_joining.domain_listed": "{domain} figure déjà dans la liste.",
+    "domain_joining.domain_not_yours": "Ajoutez le domaine de votre propre adresse.",
+    "domain_joining.domain_proved_elsewhere": "Une autre organisation a prouvé avec l'offre Enterprise que {domain} lui appartient, donc seule sa liste compte.",
+    "domain_joining.domain_public": "Vous ne pouvez pas utiliser un domaine de messagerie public.",
+    "domain_joining.not_listed": "Ce domaine ne figure pas dans la liste.",
+    "domain_joining.unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre, ou demandez à une personne de cette organisation de vous inviter."
 }

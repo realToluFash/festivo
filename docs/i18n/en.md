@@ -62,6 +62,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Company domain joining (sc-561, sc-4434, `domainJoining.*`,
+  `companyDomains.*`, `messages:domain_joining.*`).** Settled as sc-561 wrote it. The act is
+  "ask to join", the button "Ask to join", and "Somebody there approves you before you see
+  anything." says why the wait. "Somebody" stays here, against "someone" in the Roles lines,
+  because the web tests match the text; reword them together if ever. `domain_public` says
+  "cannot" (ux on sc-561 #4417). `asked` and `switcherAsked` start lower case: each follows
+  "Waiting for approval · ". A domain with "Stopped" against it is one another organisation
+  proved on Enterprise; the row's working state is "People at it can ask to join".
+
 - **21 Oct 2026. Members in the app (sc-4259, `mobile:membersScreen.*`).** A refusal on a
   member says "cannot": "You cannot change your own role." and "… so their role cannot change
   and they cannot be removed …" ("their role", not "this role", which reads as the role
