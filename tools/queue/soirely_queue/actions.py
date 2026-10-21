@@ -775,7 +775,9 @@ def pr_close(c, a):
     if pr["state"] != "open":
         raise Refused(f"PR #{a.pr} is {pr['state']}")
     story = c.story(pr["story_id"]) if pr["story_id"] else None
-    builder = R.builder_of(story["labels"]) if story else None
+    labels = story["labels"] if story else []
+    builder = (None if not story else "l10n" if R.translation(labels, None)
+               and R.OPS_LABEL not in labels else R.builder_of(labels))
     if c.role != "ops" and builder != c.role and not (
             c.role in R.DEVS and builder in R.DEVS):
         raise Refused(f"PR #{a.pr} is {builder or 'nobody'}'s to close; ask [ops]")

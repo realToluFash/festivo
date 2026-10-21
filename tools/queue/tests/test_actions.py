@@ -916,6 +916,14 @@ class Closing(Base):
         with self.assertRaisesRegex(actions.Refused, "ops's to close"):
             self.close("dev")
 
+    def test_the_linguist_closes_a_translation_ticket_s_pr_and_a_developer_does_not(self):
+        self.fake.add(1, "In Review", ["translation"])
+        store.put_pr(self.db, pr())
+        with self.assertRaisesRegex(actions.Refused, "l10n's to close"):
+            self.close("dev")
+        said, _ = self.close("l10n")
+        self.assertIn("closed PR #9 unmerged", said)
+
     def test_no_close_without_a_reason_or_of_a_merged_pr(self):
         self.fake.add(1, "In Review", ["ops"])
         store.put_pr(self.db, pr())
