@@ -89,9 +89,9 @@
     "domain_joining.domain_public": "Não pode usar um domínio de e-mail público.",
     "domain_joining.not_listed": "Esse domínio não está na lista.",
     "domain_joining.unavailable": "Não pode pedir para aderir a essa organização. Crie a sua ou peça um convite a alguém dessa organização.",
-    "request_link.cooling_off": "You can't ask to join {organisation} again yet.",
-    "request_link.dead": "This link doesn't work any more. Ask the organisation for a new one.",
-    "request_link.member": "You already belong to {organisation}.",
-    "request_link.message_long": "Keep your message to {count} characters or fewer.",
-    "request_link.waiting": "Your request to join {organisation} is already waiting for an answer."
+    "request_link.cooling_off": "Ainda não pode voltar a pedir para aderir a {organisation}.",
+    "request_link.dead": "Esta ligação já não funciona. Peça uma nova à organização.",
+    "request_link.member": "Já é membro de {organisation}.",
+    "request_link.message_long": "Encurte a mensagem para um máximo de {count} caracteres.",
+    "request_link.waiting": "O seu pedido de adesão a {organisation} já aguarda resposta."
 }
