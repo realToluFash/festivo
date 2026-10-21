@@ -87,6 +87,14 @@ class Prepare(unittest.TestCase):
         self.assertIsNone(note)
         self.assertEqual(git(self.role, "rev-parse", "HEAD"), main)
 
+    def test_a_further_worker_gets_a_worktree_of_the_role_s_checkout_once(self):
+        second = self.role.with_name("role-2")
+        checkout.ensure(self.role, second)
+        checkout.ensure(self.role, second)
+        self.assertEqual(git(second, "rev-parse", "HEAD"), git(self.role, "rev-parse", "HEAD"))
+        main, _ = checkout.prepare(second, "pm")
+        self.assertEqual(git(second, "rev-parse", "HEAD"), main)
+
     def test_uncommitted_work_stays_and_the_worker_is_told(self):
         before = git(self.role, "rev-parse", "HEAD")
         self.commit(self.origin, "b.txt", "two")

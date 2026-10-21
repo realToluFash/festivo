@@ -110,12 +110,18 @@ def void_passes(db, now, say):
     return None
 
 
+def any_active(platform, config, role):
+    count = machine.settings(config, role).get("workers")
+    return any(platform.worker_active(name) for name in machine.worker_names(role, count))
+
+
 def agree(db, config, platform, now, say, remote, ready):
     """Settles with the other machines. Returns `(view, mine, elsewhere)`, or None when
     GitHub cannot be reached: then another machine may be taking this one's roles over, so
     nothing shared starts here, and only this machine's own ops work runs."""
     try:
-        return shared.reconcile(remote, db, config, started(db) & ready, platform.worker_active,
+        return shared.reconcile(remote, db, config, started(db) & ready,
+                                lambda role: any_active(platform, config, role),
                                 holding(db, now), now, bool(paused(db)))
     except Exception as error:  # noqa: BLE001 — offline, rate-limited, or GitHub refusing
         say(f"warning: could not reach the shared leases ({str(error)[:160]}); starting only "
@@ -191,57 +197,70 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
                     else f"{role}: not held here" if view else f"{role}: held back, offline")
                 continue
             kinds = ("machine",)
-        if platform.worker_active(role):
-            say(f"{role}: worker still running")
-            continue
-        claimed = store.held_by(db, role, now)
-        if claimed and not dry_run and \
-                store.get_meta(db, f"launched:{role}") == claimed["id"]:
-            # Its worker is gone without finishing it, a crash or a kill; a role run by hand
-            # claims its own item, so only an item this runner launched is given back.
-            store.release(db, claimed["id"])
-            say(f"{role}: item {claimed['id']} given back, its worker ended without "
-                "finishing it")
-            claimed = None
-        if claimed:
-            say(f"{role}: busy")
-            continue
         if dry_run:
             waiting = store.waiting(db, role)
             say(f"{role}: would wake for {waiting[0]['reason']}" if waiting else f"{role}: idle")
             continue
-        if held:
-            # A full disk is the one hold ops@<machine> exists to clear.
-            if role != "ops" or set(held) - {"disk"}:
-                continue
-            kinds = ("machine",)
-        values = dict(ready[role], maxRuntimeMinutes=machine.minutes(ready[role]["maxRuntime"]))
-        row = store.claim(db, role, now, kinds=kinds, skip=skip)
-        if not row:
-            say(f"{role}: idle")
-            continue
-        key = store.claim_key(row)
-        try:
-            taken = view and row["kind"] != "machine" and \
-                not shared.claim_item(remote, view, row["pool"], key, role)
-        except RuntimeError as error:
-            store.release(db, row["id"])
-            say(f"error: {role}: could not claim {key} ({error}); item {row['id']} released")
-            continue
-        if taken:
-            store.release(db, row["id"])
-            say(f"{role}: {key} was just taken on another machine")
-            continue
-        try:
-            platform.launch(role, row["id"], values, sq, python, machine.checkout(config, role),
-                            machine.env_file())
-        except (OSError, subprocess.CalledProcessError) as error:
-            store.release(db, row["id"])
-            say(f"error: {role}: the worker did not start ({error}); item {row['id']} released")
-            continue
-        store.set_meta(db, f"launched:{role}", row["id"])
-        say(f"{role}: woke for {row['reason']} (item {row['id']})")
+        for name in machine.worker_names(role, ready[role].get("workers")):
+            if not wake(db, config, platform, role, name, ready[role], now, say, sq, python,
+                        kinds, held, skip, view, remote):
+                break
     return None
+
+
+def wake(db, config, platform, role, name, values, now, say, sq, python, kinds, held, skip,
+         view, remote):
+    """Starts worker `name` on the role's next item. False when the role has nothing more
+    to start this minute, so its further workers are not tried."""
+    if platform.worker_active(name):
+        say(f"{name}: worker still running")
+        return True
+    claimed = store.held_by(db, role, now, worker=name)
+    if claimed and store.get_meta(db, f"launched:{name}") == claimed["id"]:
+        # Its worker is gone without finishing it, a crash or a kill; a role run by hand
+        # claims its own item, so only an item this runner launched is given back.
+        store.release(db, claimed["id"])
+        say(f"{name}: item {claimed['id']} given back, its worker ended without "
+            "finishing it")
+        claimed = None
+    if claimed:
+        say(f"{name}: busy")
+        return True
+    if held:
+        # A full disk is the one hold ops@<machine> exists to clear.
+        if role != "ops" or set(held) - {"disk"}:
+            return False
+        kinds = ("machine",)
+    values = dict(values, maxRuntimeMinutes=machine.minutes(values["maxRuntime"]))
+    row = store.claim(db, role, now, kinds=kinds, skip=skip, worker=name,
+                      workers=values.get("workers") or 1)
+    if not row:
+        say(f"{name}: idle")
+        return False
+    key = store.claim_key(row)
+    try:
+        taken = view and row["kind"] != "machine" and \
+            not shared.claim_item(remote, view, row["pool"], key, role)
+    except RuntimeError as error:
+        store.release(db, row["id"])
+        say(f"error: {name}: could not claim {key} ({error}); item {row['id']} released")
+        return False
+    if taken:
+        store.release(db, row["id"])
+        say(f"{name}: {key} was just taken on another machine")
+        return True
+    try:
+        path = machine.checkout(config, role, name)
+        if name != role:
+            checkout.ensure(machine.checkout(config, role), path)
+        platform.launch(name, row["id"], values, sq, python, path, machine.env_file())
+    except (OSError, subprocess.CalledProcessError, checkout.Unprepared) as error:
+        store.release(db, row["id"])
+        say(f"error: {name}: the worker did not start ({error}); item {row['id']} released")
+        return False
+    store.set_meta(db, f"launched:{name}", row["id"])
+    say(f"{name}: woke for {row['reason']} (item {row['id']})")
+    return True
 
 
 def prompt(row, role, main, note):
@@ -271,9 +290,11 @@ def command(values, config_dir, allowed=(), denied=()):
     return argv, env
 
 
-def worker(db, home, platform, role, item_id, run_claude=subprocess.run, load=machine.load,
+def worker(db, home, platform, name, item_id, run_claude=subprocess.run, load=machine.load,
            prepare=checkout.prepare, now=None):
-    """Runs inside the role's unit: prepares the checkout, runs the model, records the run."""
+    """Runs inside the worker's unit: prepares the checkout, runs the model, records the
+    run. `name` is the role, or `pm-2` and on for a further worker of it."""
+    role = machine.worker_role(name)
     config = load()
     values = machine.settings(config, role)
     row = store.item(db, item_id)
@@ -281,13 +302,15 @@ def worker(db, home, platform, role, item_id, run_claude=subprocess.run, load=ma
     entry = {"at": now or time.time(), "item": item_id, "role": role,
              "model": values["model"], "effort": values["effort"],
              "claude": (store.get_meta(db, "claude_version") or {}).get("version")}
-    path = machine.checkout(config, role)
+    if name != role:
+        entry["worker"] = name
+    path = machine.checkout(config, role, name)
     try:
         main, note = prepare(path, role, story)
     except checkout.Unprepared as error:
         entry["report"] = f"the worker could not prepare its checkout: {error}"
         runlog.append(home, role, entry)
-        platform.notify(f"Soirely: {role}'s worker stopped", entry["report"][:300])
+        platform.notify(f"Soirely: {name}'s worker stopped", entry["report"][:300])
         return entry
     entry["main"] = main
     folder = machine.claude_dir(config, role)
@@ -304,17 +327,19 @@ def worker(db, home, platform, role, item_id, run_claude=subprocess.run, load=ma
     runlog.append(home, role, entry)
     waits = runlog.waits_on_owner(entry["report"])
     if waits:
-        store.set_meta(db, f"owner:{role}", {"at": entry["at"], "lines": waits})
+        store.set_meta(db, f"owner:{role}", {"at": entry["at"], "lines": waits, "worker": name})
         platform.notify(f"Soirely: {role} needs you", "\n".join(waits)[:300])
-    else:
+    elif (store.get_meta(db, f"owner:{role}") or {}).get("worker", role) == name:
+        # Another worker's question stays until that worker's next run settles it.
         store.set_meta(db, f"owner:{role}", None)
     return entry
 
 
-def worker_ended(home, platform, role, item_id, now=None):
+def worker_ended(home, platform, name, item_id, now=None):
     """`ExecStopPost`: a run stopped by its memory or time limit, or a crash, writes no
     report of its own, so this leaves the record."""
-    if any(e.get("item") == item_id for e in runlog.entries(home, role)[-5:]):
+    role = machine.worker_role(name)
+    if any(e.get("item") == item_id for e in runlog.entries(home, role)[-20:]):
         return None
     reason = os.environ.get("SERVICE_RESULT", "unknown")
     status = os.environ.get("EXIT_STATUS")
@@ -322,6 +347,8 @@ def worker_ended(home, platform, role, item_id, now=None):
     entry = {"at": now or time.time(), "item": item_id, "role": role,
              "exit": status, "stopped": reason,
              "report": f"the worker ended without a report: {said}"}
+    if name != role:
+        entry["worker"] = name
     runlog.append(home, role, entry)
-    platform.notify(f"Soirely: {role}'s worker stopped", entry["report"])
+    platform.notify(f"Soirely: {name}'s worker stopped", entry["report"])
     return entry
