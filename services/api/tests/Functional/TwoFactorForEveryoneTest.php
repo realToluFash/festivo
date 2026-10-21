@@ -300,7 +300,7 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         self::assertSame(1, $holds->recordDue());
         self::assertSame(0, $holds->recordDue(), 'each member once');
         $held = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => TwoFactorHolds::HELD]);
-        self::assertSame($bisi->getId()->toRfc4122(), $held?->changes()['user'][1] ?? null);
+        self::assertSame($bisi->getId()->toRfc4122(), $held?->getChanges()['user'][1] ?? null);
 
         $body = $this->set(['everyoneNeedsTwoFactor' => false]);
         self::assertSame(

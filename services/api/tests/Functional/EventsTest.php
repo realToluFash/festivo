@@ -267,10 +267,10 @@ final class EventsTest extends ApiTestCase
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => EventCreator::CREATED, 'subjectType' => 'Event']);
 
         self::assertInstanceOf(AuditEntry::class, $entry);
-        self::assertSame($id, $entry->subjectId()->toRfc4122());
-        self::assertSame($this->owner->getId()->toRfc4122(), $entry->actorId()?->toRfc4122());
-        self::assertSame([null, $this->organisation->getId()->toRfc4122()], $entry->changes()['organisation'] ?? null);
-        self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), $entry->occurredAt()->getTimestamp(), 5);
+        self::assertSame($id, $entry->getSubjectId()->toRfc4122());
+        self::assertSame($this->owner->getId()->toRfc4122(), $entry->getActorId()?->toRfc4122());
+        self::assertSame([null, $this->organisation->getId()->toRfc4122()], $entry->getChanges()['organisation'] ?? null);
+        self::assertEqualsWithDelta(new DateTimeImmutable()->getTimestamp(), $entry->getOccurredAt()->getTimestamp(), 5);
     }
 
     /** @return array{name: string, startsAt: string, endsAt: string, timeZone: string, currency: string} */

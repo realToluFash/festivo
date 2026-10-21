@@ -641,7 +641,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
     {
         return Vec\map(
             self::em()->getRepository(AuditEntry::class)->findBy(['subjectType' => 'two_factor_recovery'], ['occurredAt' => 'ASC', 'id' => 'ASC']),
-            static fn (AuditEntry $entry): string => $entry->action(),
+            static fn (AuditEntry $entry): string => $entry->getAction(),
         );
     }
 

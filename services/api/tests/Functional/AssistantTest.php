@@ -288,16 +288,16 @@ final class AssistantTest extends ApiTestCase
 
         $recorded = $this->lastInteraction();
 
-        self::assertSame('answered', $recorded->outcome());
-        self::assertSame('organiser', $recorded->context());
-        self::assertSame('assistant.organiser', $recorded->usageFeature());
-        self::assertSame('scripted', $recorded->provider());
-        self::assertSame('session-abc', $recorded->sessionId());
-        self::assertSame('how many have replied?', $recorded->userPrompt());
-        self::assertSame(['count_replies'], $recorded->toolsOffered());
-        self::assertNull($recorded->toolCalled());
+        self::assertSame('answered', $recorded->getOutcome());
+        self::assertSame('organiser', $recorded->getContext());
+        self::assertSame('assistant.organiser', $recorded->getUsageFeature());
+        self::assertSame('scripted', $recorded->getProvider());
+        self::assertSame('session-abc', $recorded->getSessionId());
+        self::assertSame('how many have replied?', $recorded->getUserPrompt());
+        self::assertSame(['count_replies'], $recorded->getToolsOffered());
+        self::assertNull($recorded->getToolCalled());
         // The prompt as sent, so a later prompt edit does not rewrite history.
-        self::assertStringContainsString('You are the assistant inside Soirely', $recorded->systemPrompt());
+        self::assertStringContainsString('You are the assistant inside Soirely', $recorded->getSystemPrompt());
     }
 
     #[Test]
@@ -311,8 +311,8 @@ final class AssistantTest extends ApiTestCase
 
         $recorded = $this->lastInteraction();
 
-        self::assertSame('tool_call', $recorded->outcome());
-        self::assertSame('move_guest', $recorded->toolCalled());
+        self::assertSame('tool_call', $recorded->getOutcome());
+        self::assertSame('move_guest', $recorded->getToolCalled());
     }
 
     /**
@@ -328,7 +328,7 @@ final class AssistantTest extends ApiTestCase
                 ['role' => 'user', 'content' => $directive],
             ]]);
 
-            self::assertSame($outcome, $this->lastInteraction()->outcome(), "{$directive} should record {$outcome}");
+            self::assertSame($outcome, $this->lastInteraction()->getOutcome(), "{$directive} should record {$outcome}");
         }
     }
 
@@ -347,8 +347,8 @@ final class AssistantTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('fr', $body['data']['text']);
-        self::assertSame('fr', $this->lastInteraction()->locale());
-        self::assertStringContainsString('French', $this->lastInteraction()->systemPrompt());
+        self::assertSame('fr', $this->lastInteraction()->getLocale());
+        self::assertStringContainsString('French', $this->lastInteraction()->getSystemPrompt());
     }
 
     /** An unsupported language narrows to the default rather than being refused. */
@@ -360,7 +360,7 @@ final class AssistantTest extends ApiTestCase
             ['HTTP_ACCEPT_LANGUAGE' => 'no'],
         );
 
-        self::assertSame('en', $this->lastInteraction()->locale());
+        self::assertSame('en', $this->lastInteraction()->getLocale());
     }
 
     /**
