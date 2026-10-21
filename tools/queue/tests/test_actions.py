@@ -508,6 +508,36 @@ class Replies(Base):
         self.assertEqual(len(self.fake.raw[1]["comments"]), 1)
 
 
+class Unblocked(Base):
+    MERGED_AT = 1_790_000_000
+
+    def setUp(self):
+        super().setUp()
+        self.fake.add(4, "Done")
+        self.fake.add(9, "To Do", ["translation"])
+        store.put_story(self.db, slim(self.fake.raw[4]))
+        store.put_story(self.db, dict(slim(self.fake.raw[9]),
+                                      links=[{"verb": "relates to", "subject": 9, "object": 4}]))
+        merged = dict(pr(), number=40, story_id=4, state="merged", branch="dev/sc-4/build",
+                      merged_at="2026-09-21T14:13:20Z")
+        store.put_prs(self.db, [merged])
+
+    def wakes(self):
+        return [(w["story_id"], w["pr"], w["status"]) for w in self.db.execute(
+            "select * from work where kind = 'unblocked'")]
+
+    def test_a_raised_wake_stays_open_after_its_pr_leaves_the_synced_merges(self):
+        cli.refresh_work(self.db, self.MERGED_AT + 30)
+        self.assertEqual(self.wakes(), [(9, 40, "open")])
+        store.put_prs(self.db, [])
+        cli.refresh_work(self.db, self.MERGED_AT + 60)
+        self.assertEqual(self.wakes(), [(9, 40, "open")])
+
+    def test_baseline_closes_a_wake_already_waiting(self):
+        cli.baseline(self.db)
+        self.assertEqual(self.wakes(), [(9, 40, "done")])
+
+
 def pr(verdict=None, mergeable="mergeable", threads=(), at=HEAD, carried=None):
     lead = [{"verdict": verdict, "sha": at, "at": "t"}] if verdict else []
     return {"number": 9, "story_id": 1, "state": "open", "head_sha": HEAD, "checks": "green",
