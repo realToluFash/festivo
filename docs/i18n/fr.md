@@ -53,6 +53,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Creating an event** (`events.*`, `eventForm.*`, `eventPage.*`,
+  `rolesScreen.createEvents*`, `messages:validation.event_*`, sc-6302). A draft is
+  « Brouillon »; the form's legends « Début » and « Fin »; « Date » stays as in English
+  (`same-as-english.json`). An end before the start is « L'événement se termine avant de
+  commencer ». Before the organisation's name, « dans {{name}} » and « de l'organisation
+  {{name}} », so no elision is due. An owner is « une personne ayant le rôle Propriétaire ».
+  The permission's states are « Autorisé » / « Non autorisé », agreeing with the masculine
+  default. A refused send closes « donc rien n'a été envoyé ».
+
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
   « exiger », as the server's errors; "for everyone" is « pour tous ». The date is « à partir
