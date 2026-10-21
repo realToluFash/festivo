@@ -249,6 +249,13 @@ def last_run(db, role):
     return row["last_done"] if row else None
 
 
+def worked_on(db, role):
+    """When the role last finished an item on each story."""
+    return {row["story_id"]: row["at"] for row in db.execute(
+        "select story_id, max(done_at) as at from work where status = 'done' "
+        "and story_id is not null and claimed_by = ? group by story_id", (role,))}
+
+
 def item(db, work_id):
     return db.execute("select * from work where id = ?", (work_id,)).fetchone()
 

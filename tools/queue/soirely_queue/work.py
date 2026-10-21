@@ -334,6 +334,50 @@ def developer_items(stories, prs):
     return items
 
 
+TRANSLATING = ("To Do", "In Progress")
+
+
+def epoch(stamp):
+    try:
+        return datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+    except (AttributeError, ValueError):
+        return None
+
+
+def last_worked(ticket, runs):
+    """When the linguist last ran on the ticket: a finished item on it, or a comment signed
+    by it, whichever is later."""
+    signed = [epoch(c["at"]) for c in ticket["comments"] if R.author(c["text"]) == "l10n"]
+    return max([t for t in signed if t] + [runs.get(ticket["id"]) or 0])
+
+
+def unblocked_items(stories, prs, runs=None):
+    """A translation ticket waits on the pull requests of the stories it links to. Each one
+    that merges after the linguist last worked on the ticket wakes it once."""
+    runs = runs or {}
+    merged = {}
+    for pr in prs:
+        if pr["state"] == "merged" and pr["story_id"] and epoch(pr.get("merged_at")):
+            merged.setdefault(pr["story_id"], []).append(pr)
+    items = []
+    for ticket in stories:
+        if ticket["done"] or ticket["state"] not in TRANSLATING \
+                or "translation" not in ticket["labels"]:
+            continue
+        since = last_worked(ticket, runs)
+        linked = {link["object"] if link["subject"] == ticket["id"] else link["subject"]
+                  for link in ticket.get("links") or []} - {ticket["id"]}
+        for story_id in sorted(linked):
+            for pr in merged.get(story_id, []):
+                if epoch(pr["merged_at"]) <= since:
+                    continue
+                items.append(_item(f"l10n:unblocked:sc-{ticket['id']}:#{pr['number']}", "l10n",
+                                   ["l10n"], "unblocked",
+                                   f"PR #{pr['number']} (sc-{story_id}) merged: "
+                                   f"sc-{ticket['id']} can start", INBOX, ticket, pr))
+    return items
+
+
 def main_items(main_run):
     if not main_run or main_run.get("conclusion") in (None, "", "success", "skipped"):
         return []
@@ -386,9 +430,10 @@ def finishing_first(items, stories):
 
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
-           handled=frozenset(), moves=None, checks=None, epics=None):
+           handled=frozenset(), moves=None, checks=None, epics=None, translated=None):
     return finishing_first(
         inbox_items(stories, handled) + developer_items(stories, prs)
+        + unblocked_items(stories, prs, translated)
         + review_items(stories, prs) + queue_items(stories, moves, now, epics)
         + main_items(main_run)
         + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics)

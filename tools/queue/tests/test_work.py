@@ -494,3 +494,58 @@ class HeldEpics(unittest.TestCase):
         picks = [i for i in work.heartbeat_items([ready], {}, set(), 10_000, self.epics("to do"))
                  if i["roles"] == ["dev"]]
         self.assertEqual(picks, [])
+
+
+class Unblocked(unittest.TestCase):
+    MERGED = "2026-10-20T09:00:00Z"
+
+    def ticket(self, state="To Do", labels=("translation",), covers=(4,), comments=()):
+        return dict(story(9, state, labels=labels, comments=comments),
+                    links=[{"verb": "relates to", "subject": 9, "object": c} for c in covers])
+
+    def merged(self, number=40, story_id=4, at=MERGED):
+        return dict(pr(number, story_id, state="merged"), merged_at=at)
+
+    def wakes(self, stories, prs, runs=None):
+        return [(i["roles"], i["story_id"], i["pr"], i["reason"])
+                for i in work.unblocked_items(stories, prs, runs)]
+
+    def test_a_merged_pr_of_a_linked_story_wakes_the_linguist_on_the_ticket(self):
+        for state in ("To Do", "In Progress"):
+            self.assertEqual(self.wakes([self.ticket(state)], [self.merged()]),
+                             [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+
+    def test_a_link_from_the_other_side_counts_too(self):
+        ticket = dict(story(9, "To Do", labels=["translation"]),
+                      links=[{"verb": "relates to", "subject": 4, "object": 9}])
+        self.assertEqual([w[2] for w in self.wakes([ticket], [self.merged()])], [40])
+
+    def test_an_open_pr_wakes_nobody(self):
+        self.assertEqual(self.wakes([self.ticket()], [pr(40, 4)]), [])
+
+    def test_each_covered_story_wakes_it_as_its_pr_merges(self):
+        ticket = self.ticket(covers=(4, 5))
+        self.assertEqual([w[2] for w in self.wakes([ticket], [self.merged(), pr(41, 5)])], [40])
+        both = [self.merged(), self.merged(41, 5, "2026-10-20T10:00:00Z")]
+        self.assertEqual([w[2] for w in self.wakes([ticket], both)], [40, 41])
+
+    def test_a_merge_before_the_linguists_last_run_on_the_ticket_raises_nothing(self):
+        after = work.epoch(self.MERGED) + 60
+        self.assertEqual(self.wakes([self.ticket()], [self.merged()], {9: after}), [])
+        self.assertEqual(len(self.wakes([self.ticket()], [self.merged()], {9: after - 120})), 1)
+
+    def test_a_comment_the_linguist_signed_after_the_merge_counts_as_a_run(self):
+        signed = comment(1, "[pm] (from l10n)\nStarted.", at="2026-10-20T09:30:00Z")
+        self.assertEqual(self.wakes([self.ticket(comments=[signed])], [self.merged()]), [])
+        earlier = comment(1, "[pm] (from l10n)\nWaiting.", at="2026-10-19T09:00:00Z")
+        self.assertEqual(len(self.wakes([self.ticket(comments=[earlier])], [self.merged()])), 1)
+
+    def test_a_ticket_in_another_state_or_without_the_label_raises_nothing(self):
+        for ticket in (self.ticket("Ready For QA"), self.ticket("Failed QA"),
+                       self.ticket(labels=()), dict(self.ticket(), done=True)):
+            self.assertEqual(self.wakes([ticket], [self.merged()]), [])
+
+    def test_derive_raises_it_once_per_ticket_and_pr(self):
+        items = work.derive([self.ticket()], [self.merged()], translated={})
+        self.assertEqual([i["fingerprint"] for i in items if i["kind"] == "unblocked"],
+                         ["l10n:unblocked:sc-9:#40"])

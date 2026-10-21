@@ -51,7 +51,8 @@ def refresh_work(db, now):
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
                         last_runs, busy_roles, now, store.handled(db), store.moves(db),
-                        store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"))
+                        store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"),
+                        store.worked_on(db, "l10n"))
     store.record(db, items, now)
     return items
 
@@ -65,7 +66,7 @@ def baseline(db):
         store.mark_run(db, role)
     refresh_work(db, time.time())
     db.execute("update work set status = 'done', note = 'already waiting at install' "
-               "where status = 'open' and kind = 'story'")
+               "where status = 'open' and kind in ('story', 'unblocked')")
     store.set_meta(db, "baselined_at", time.time())
 
 
