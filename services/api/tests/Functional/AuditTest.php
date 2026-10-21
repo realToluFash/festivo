@@ -103,16 +103,16 @@ final class AuditTest extends FunctionalTestCase
         $this->em->persist($probe);
         $this->em->flush();
 
-        $this->auditor->record('probe.created', 'SchemaProbe', $probe->id(), Actor::System);
+        $this->auditor->record('probe.created', 'SchemaProbe', $probe->getId(), Actor::System);
         $this->em->flush();
 
         $probe->softDelete();
         $this->em->flush();
         $this->em->clear();
 
-        self::assertNull($this->em->getRepository(SchemaProbe::class)->find($probe->id()));
+        self::assertNull($this->em->getRepository(SchemaProbe::class)->find($probe->getId()));
         self::assertNotNull(
-            $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $probe->id()]),
+            $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $probe->getId()]),
         );
     }
 

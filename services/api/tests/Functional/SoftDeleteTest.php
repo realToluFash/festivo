@@ -31,7 +31,7 @@ final class SoftDeleteTest extends FunctionalTestCase
     public function aDeletedRowIsAbsentFromAnOrdinaryRead(): void
     {
         $probe = $this->persist('visible then not');
-        $id = $probe->id();
+        $id = $probe->getId();
 
         self::assertNotNull($this->em->getRepository(SchemaProbe::class)->find($id));
 
@@ -52,12 +52,12 @@ final class SoftDeleteTest extends FunctionalTestCase
         $this->em->clear();
 
         $labels = \array_map(
-            static fn (SchemaProbe $p): string => $p->label(),
+            static fn (SchemaProbe $p): string => $p->getLabel(),
             $this->em->getRepository(SchemaProbe::class)->findAll(),
         );
 
-        self::assertContains($kept->label(), $labels);
-        self::assertNotContains($gone->label(), $labels);
+        self::assertContains($kept->getLabel(), $labels);
+        self::assertNotContains($gone->getLabel(), $labels);
     }
 
     /**
@@ -68,7 +68,7 @@ final class SoftDeleteTest extends FunctionalTestCase
     public function itCanStillBeFoundWhenTheFilterIsExplicitlyDisabled(): void
     {
         $probe = $this->persist('findable by an agent');
-        $id = $probe->id();
+        $id = $probe->getId();
         $probe->softDelete();
         $this->em->flush();
         $this->em->clear();
@@ -85,7 +85,7 @@ final class SoftDeleteTest extends FunctionalTestCase
     public function restoringBringsItBackIntoOrdinaryReads(): void
     {
         $probe = $this->persist('restored');
-        $id = $probe->id();
+        $id = $probe->getId();
         $probe->softDelete();
         $this->em->flush();
 
