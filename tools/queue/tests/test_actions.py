@@ -894,6 +894,43 @@ class OpsOwnsItsTickets(Base):
         self.assertFalse([w for w in store.waiting(self.db, "dev") if w["kind"] == "merge"])
 
 
+class Closing(Base):
+    def close(self, role, text="#346 landed the same change"):
+        with mock.patch("soirely_queue.github.close") as closed, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            said = actions.pr_close(self.as_(role), args(pr=9, text=text))
+        return said, closed
+
+    def test_ops_closes_a_developer_s_pr_and_says_why_on_it(self):
+        self.fake.add(1, "Ready For QA", ["dev2"])
+        store.put_pr(self.db, pr())
+        said, closed = self.close("ops")
+        closed.assert_called_once_with(9, "#346 landed the same change (from ops)")
+        self.assertIn("closed PR #9 unmerged", said)
+
+    def test_the_developers_close_each_other_s_but_not_another_builder_s(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, pr())
+        self.close("dev")
+        self.fake.add(1, "In Review", ["ops"])
+        with self.assertRaisesRegex(actions.Refused, "ops's to close"):
+            self.close("dev")
+
+    def test_no_close_without_a_reason_or_of_a_merged_pr(self):
+        self.fake.add(1, "In Review", ["ops"])
+        store.put_pr(self.db, pr())
+        with self.assertRaisesRegex(actions.Refused, "say why"):
+            self.close("ops", text=" ")
+        store.put_pr(self.db, dict(pr(), state="merged"))
+        with self.assertRaisesRegex(actions.Refused, "is merged"):
+            self.close("ops")
+
+    def test_a_role_that_builds_nothing_closes_nothing(self):
+        store.put_pr(self.db, pr())
+        with self.assertRaisesRegex(actions.Refused, "lead may not pr-close"):
+            self.close("lead")
+
+
 class PermissionAsks(Base):
     def setUp(self):
         super().setUp()
