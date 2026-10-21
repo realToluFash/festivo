@@ -1214,7 +1214,7 @@
       "cancel": "Cancelar",
       "turnDownTitle": "¿Rechazar la solicitud de {{name}}?",
       "turnDownBody": "Enviaremos un correo a {{name}} para avisarle de que se ha rechazado su solicitud para unirse a {{organisation}}. El correo no dice quién la rechazó.",
-      "turnDownConfirm": "Rechazar la solicitud",
+      "turnDownConfirm": "Rechazar la solicitud de {{name}}",
       "keep": "Mantener la solicitud",
       "approved": "{{name}} ya es miembro, con el rol {{role}}.",
       "approvedNext": "Ver a {{name}}",

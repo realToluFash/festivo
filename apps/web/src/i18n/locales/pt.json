@@ -982,7 +982,7 @@
       "cancel": "Cancelar",
       "turnDownTitle": "Recusar o pedido de {{name}}?",
       "turnDownBody": "{{name}} recebe um e-mail a informar que o pedido de adesão a {{organisation}} foi recusado. O e-mail não diz quem o recusou.",
-      "turnDownConfirm": "Recusar o pedido",
+      "turnDownConfirm": "Recusar o pedido de {{name}}",
       "keep": "Manter o pedido",
       "approved": "{{name}} já é membro, com a função {{role}}.",
       "approvedNext": "Ver {{name}}",

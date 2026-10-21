@@ -1214,7 +1214,7 @@
       "cancel": "Annuler",
       "turnDownTitle": "Refuser la demande de {{name}} ?",
       "turnDownBody": "{{name}} recevra un e-mail lui indiquant que sa demande d'adhésion à {{organisation}} a été refusée. L'e-mail ne précise pas qui l'a refusée.",
-      "turnDownConfirm": "Refuser la demande",
+      "turnDownConfirm": "Refuser la demande de {{name}}",
       "keep": "Garder la demande",
       "approved": "{{name}} est maintenant membre, avec le rôle {{role}}.",
       "approvedNext": "Voir {{name}}",

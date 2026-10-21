@@ -53,7 +53,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
   `messages:members.request_answered`, sc-7217). "Approve" is «Aprobar», "turn down" is
   «Rechazar», and what is turned down is «la solicitud», never the person: «¿Rechazar la
-  solicitud de {{name}}?», «Rechazar la solicitud», «Solicitud rechazada por {{by}}». A
+  solicitud de {{name}}?», «Rechazar la solicitud de {{name}}», «Solicitud rechazada por {{by}}». A
   request nobody answered «se retira», as a member is «quitado». The card's title is the state,
   «Pendiente de aprobación». A role given on approval is «con el rol {{role}}», so nothing
   agrees with the person («Aprobar con el rol {{role}}»). The waiting email's count takes

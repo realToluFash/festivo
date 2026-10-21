@@ -57,7 +57,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
   `messages:members.request_answered`, sc-7217). "Approve" is « Approuver », matching « En
   attente d'approbation »; "turn down" is « Refuser », and what is refused is « la demande »,
-  never the person: « Refuser la demande de {{name}} ? », « Refuser la demande », « Demande
+  never the person: « Refuser la demande de {{name}} ? », « Refuser la demande de {{name}} », « Demande
   refusée par {{by}} ». A request nobody answered is « retirée faute de réponse ». A role
   given on approval is « avec le rôle {{role}} », so nothing agrees with the person; the
   person refused « ne fait donc pas partie de l'organisation », never « n'a pas été ajouté ».
