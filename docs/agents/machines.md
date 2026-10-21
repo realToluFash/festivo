@@ -50,6 +50,7 @@ repository because it describes the machine, not the project. The repository shi
 | `standby`                                 | per role: runs here only while no other machine wants it. See [More than one machine](#more-than-one-machine)                      |
 | `model`, `effort`                         | per role, or in `defaults`. See [Models and effort](#models-and-effort)                                                            |
 | `memoryMax`, `maxRuntime`, `maxBudgetUsd` | per role, or in `defaults`. The budget is unset until the owner picks one                                                          |
+| `wakeEvery`                               | per role, or in `defaults`: how often the role may wake, `3m` by default                                                           |
 | `claudeConfigDir`                         | required: the Claude config folder, and so the account, the workers use; per role as well. See [Claude accounts](#claude-accounts) |
 | `claudeVersion`, `onVersionDrift`         | the pinned CLI version, and `"warn"` (default) or `"stop"` when it drifts. See [Guards](README.md#guards-and-alerts)               |
 | `dailyBudgetUsd`                          | no new worker once today's spend reaches it. Unset until the owner picks one                                                       |

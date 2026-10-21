@@ -18,8 +18,9 @@ MILESTONES = ("At each milestone (a branch pushed, a part built, a result found)
               "run stopped part way loses minutes, not the thread.")
 
 
-def due(role, minute):
-    return minute % 3 == roles.ROLES[role].get("offset", 0)
+def due(role, minute, every=3):
+    """A role wakes once every `every` minutes; the testers' offsets keep them apart."""
+    return minute % every == roles.ROLES[role].get("offset", 0) % every
 
 
 def started(db):
@@ -179,7 +180,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
     minute = int(now // 60)
     # A dry run previews every ready role, started or not, whatever the minute.
     for role in sorted(set(ready) if dry_run else set(ready) & started(db)):
-        if not dry_run and not due(role, minute):
+        if not dry_run and not due(role, minute, machine.minutes(ready[role]["wakeEvery"])):
             continue
         # ops@<machine> runs on every machine; the lease decides only ops' shared duties.
         kinds = None

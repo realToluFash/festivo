@@ -113,6 +113,11 @@ class Checked(unittest.TestCase):
         changed["defaults"].pop("maxRuntime")
         self.assertEqual(machine.check(changed)[2]["ops"]["maxRuntime"], "90m")
 
+    def test_a_role_wakes_every_three_minutes_unless_told_otherwise(self):
+        changed = config(self.root, roles={"ops": {}, "bm": {"wakeEvery": "1h"}})
+        self.assertEqual(machine.settings(changed, "ops")["wakeEvery"], "3m")
+        self.assertEqual(machine.settings(changed, "bm")["wakeEvery"], "1h")
+
     def test_the_testers_start_with_more_memory(self):
         changed = config(self.root, roles={"qa2": {}, "qa3": {"memoryMax": "12G"}})
         self.assertEqual(machine.settings(changed, "qa2")["memoryMax"], "8G")
@@ -144,9 +149,9 @@ class Checked(unittest.TestCase):
 
     def test_bad_limits_are_refused(self):
         changed = config(self.root, roles={"ops": {"memoryMax": "lots", "maxRuntime": "soon",
-                                                   "maxBudgetUsd": -1}})
+                                                   "maxBudgetUsd": -1, "wakeEvery": "0m"}})
         refused = machine.check(changed)[1]["ops"]
-        for field in ("memoryMax", "maxRuntime", "maxBudgetUsd"):
+        for field in ("memoryMax", "maxRuntime", "maxBudgetUsd", "wakeEvery"):
             self.assertIn(field, refused)
 
     def test_machine_wide_limits_are_checked(self):
