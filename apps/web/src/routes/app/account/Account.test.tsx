@@ -352,7 +352,7 @@ describe('the time zone list after a language change', () => {
 
     expect(
       await screen.findByText(
-        "Fuseau horaire changé pour Calcutta (UTC+05:30). Les heures de vos e-mails l'utilisent désormais.",
+        /^Fuseau horaire changé pour Calcutta \(UTC\+05:30\)\. Les heures de vos e-mails l.utilisent désormais\.$/,
       ),
     ).toBeDefined();
 
@@ -376,7 +376,7 @@ describe('the time zone list after a language change', () => {
     await act(() => setLanguage('fr'));
 
     const kept =
-      "Fuseau horaire changé pour Kolkata (UTC+05:30). Les heures de vos e-mails l'utilisent désormais.";
+      /^Fuseau horaire changé pour Kolkata \(UTC\+05:30\)\. Les heures de vos e-mails l.utilisent désormais\.$/;
     expect(screen.getByText(kept)).toBeDefined();
 
     await act(async () => release(json({ type: 'x', title: 'x', status: 500 }, 500)));

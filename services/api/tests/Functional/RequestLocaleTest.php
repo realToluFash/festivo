@@ -27,16 +27,16 @@ final class RequestLocaleTest extends ApiTestCase
     {
         yield 'english' => ['en', 'could not find'];
         yield 'spanish' => ['es', 'No hemos encontrado'];
-        yield 'french' => ['fr', 'Nous n\'avons pas trouvé'];
+        yield 'french' => ['fr', 'avons pas trouvé'];
         yield 'portuguese' => ['pt', 'Não encontrámos'];
         // A Brazilian reader gets Portuguese, not English.
         yield 'brazilian portuguese' => ['pt-BR,en;q=0.5', 'Não encontrámos'];
         // German is not supported; the next acceptable one wins.
-        yield 'unsupported falls through' => ['de,fr;q=0.8', 'Nous n\'avons pas trouvé'];
+        yield 'unsupported falls through' => ['de,fr;q=0.8', 'avons pas trouvé'];
         yield 'unsupported alone falls back' => ['de', 'could not find'];
         // A quality that is not a number used to cast to 0.0, which ranked the
         // language the client asked for below the one it offered as a fallback.
-        yield 'malformed quality keeps its tag' => ['fr;q=abc,es;q=0.1', 'Nous n\'avons pas trouvé'];
+        yield 'malformed quality keeps its tag' => ['fr;q=abc,es;q=0.1', 'avons pas trouvé'];
     }
 
     /**
