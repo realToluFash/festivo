@@ -672,7 +672,7 @@
     "members": "Miembros",
     "membersLine": "{{name}} · quién forma parte y con qué rol",
     "roles": "Roles",
-    "rolesLine": "{{name}} · what each role may do",
+    "rolesLine": "{{name}} · lo que puede hacer cada rol",
     "rolesBack": "‹ Roles"
   },
   "switcher": {
@@ -776,10 +776,10 @@
     "marginMeans": "Lo que {{name}} añade sobre los costes. Oculto significa que el presupuesto se abre solo con los costes.",
     "marginHidden": "Oculto",
     "marginShown": "Visible",
-    "createEvents": "Create events",
-    "createEventsMeans": "Start a new event in {{name}}. It begins as a draft.",
-    "createEventsOff": "Not allowed",
-    "createEventsOn": "Allowed",
+    "createEvents": "Crear eventos",
+    "createEventsMeans": "Crear un evento nuevo en {{name}}. Empieza como borrador.",
+    "createEventsOff": "No permitido",
+    "createEventsOn": "Permitido",
     "unsavedNew": "Rol nuevo, aún sin guardar. Nadie lo tiene hasta que se le asigne a alguien.",
     "unsaved_one": "Cambios sin guardar en {{role}}. {{count}} persona los recibe en su próxima solicitud; no se cierra ninguna sesión.",
     "unsaved_other": "Cambios sin guardar en {{role}}. {{count}} personas los reciben en su próxima solicitud; no se cierra ninguna sesión.",

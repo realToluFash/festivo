@@ -6,7 +6,10 @@
     "mobile:home.title",
     "web:settings.sectionGeneral",
     "web:settings.sectionRoles",
-    "web:rolesScreen.title"
+    "web:rolesScreen.title",
+    "mobile:settings.roles",
+    "mobile:settings.rolesBack",
+    "mobile:rolesScreen.title"
   ],
   "fr": [
     "mobile:app.name",
@@ -27,13 +30,18 @@
     "web:rolesScreen.area.messages",
     "web:rolesScreen.area.organisation",
     "web:twoFactor.code",
-    "web:waysCard.code"
+    "web:waysCard.code",
+    "mobile:rolesScreen.area.budget",
+    "mobile:rolesScreen.area.menu",
+    "mobile:rolesScreen.area.messages",
+    "mobile:rolesScreen.area.organisation"
   ],
   "pt": [
     "web:app.name",
     "mobile:app.name",
     "mobile:home.title",
     "mobile:layouts.itemCount_one",
-    "web:rolesScreen.area.menu"
+    "web:rolesScreen.area.menu",
+    "mobile:rolesScreen.area.menu"
   ]
 }
