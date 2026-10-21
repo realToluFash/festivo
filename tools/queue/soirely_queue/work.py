@@ -6,7 +6,10 @@ import time
 
 from . import roles as R
 
-INBOX, PULL_REQUEST, REVIEW, QUEUE, SWEEP = 10, 20, 30, 40, 90
+FINISHING, INBOX, PULL_REQUEST, REVIEW, QUEUE, SWEEP = 5, 10, 20, 30, 40, 90
+# A story one step from Ready For QA, or sent back, goes ahead of everything else its role
+# has waiting, its comments included.
+FINISHING_STATES = ("Passed Code Review", "Failed QA", "Failed Code Review")
 
 
 def threads(story):
@@ -348,9 +351,18 @@ def machine_items(checks):
     return items
 
 
+def finishing_first(items, stories):
+    finishing = {s["id"] for s in stories if not s["done"] and s["state"] in FINISHING_STATES}
+    for item in items:
+        if item["story_id"] in finishing or item["kind"] == "to-qa":
+            item["priority"] = FINISHING
+    return items
+
+
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
            handled=frozenset(), moves=None, checks=None):
-    return (inbox_items(stories, handled) + developer_items(stories, prs) + review_items(stories, prs)
-            + queue_items(stories, moves, now) + main_items(main_run)
-            + heartbeat_items(stories, last_runs or {}, set(busy_roles), now)
-            + machine_items(checks))
+    return finishing_first(
+        inbox_items(stories, handled) + developer_items(stories, prs)
+        + review_items(stories, prs) + queue_items(stories, moves, now) + main_items(main_run)
+        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now)
+        + machine_items(checks), stories)
