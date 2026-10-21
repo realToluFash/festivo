@@ -106,7 +106,8 @@ story or pull request, read fresh rather than from the last sync, and says why i
   through `sq` is recorded with the `moved_at` it landed at, and a story a role moved into
   its own queue is no work for it; the same move by anyone else still is.
   A role takes its items in this order: anything on a story in Passed Code Review, Failed
-  QA or Failed Code Review, and a merged story's move to Ready For QA (`FINISHING`); then
+  QA or Failed Code Review, a merged story's move to Ready For QA, and the lead's reviews
+  and review threads (`FINISHING`); then
   comments; then pull request work; then reviews; then its queue; then sweeps.
   A developer's queue runs epic by epic (`work.epic_order`): by the epic's place in
   Shortcut's epic list, then the story's place in the story list, with stories in no epic
