@@ -1126,7 +1126,7 @@
       "suspended": "Accès suspendu",
       "left": "A quitté l'organisation",
       "removed": "Accès retiré",
-      "domainSuspended": "Suspended: company address gone"
+      "domainSuspended": "Accès suspendu : adresse d'entreprise retirée"
     },
     "how": {
       "invitation": "Invitation",
@@ -1203,14 +1203,14 @@
     "pickSomebody": "Choisissez une personne dans la liste pour l'afficher ici.",
     "backToList": "‹ Membres",
     "suspendedBecause": {
-      "address_gone": "{{name}}'s {{domain}} address is no longer on their account.",
-      "domain_closed": "{{organisation}} no longer lets people join through {{domain}}.",
-      "domain_managed_elsewhere": "{{domain}} is now managed by another organisation."
+      "address_gone": "L'adresse {{domain}} de {{name}} ne figure plus sur son compte.",
+      "domain_closed": "{{organisation}} n'accepte plus les adhésions via {{domain}}.",
+      "domain_managed_elsewhere": "{{domain}} est désormais géré par une autre organisation."
     },
-    "suspendedRemovedOn": "If nobody answers by {{when}}, they are removed.",
-    "restore": "Restore",
-    "restored": "{{name}}'s access to {{organisation}} is restored.",
-    "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first.",
+    "suspendedRemovedOn": "Sans réponse d'ici le {{when}}, son accès sera retiré.",
+    "restore": "Rétablir",
+    "restored": "L'accès de {{name}} à {{organisation}} est rétabli.",
+    "restoreNeedsAddress": "{{name}} doit d'abord avoir une adresse {{domain}} vérifiée.",
     "noRoleYet": "No role yet",
     "awaiting": {
       "title": "Awaiting approval",
@@ -1233,19 +1233,19 @@
     }
   },
   "accessPaused": {
-    "badge": "Paused",
-    "becauseAddressGone": "Your access to {{organisation}} is paused because your {{domain}} address is no longer on your account.",
-    "becauseDomainClosed": "Your access to {{organisation}} is paused because {{organisation}} no longer lets people join through {{domain}}.",
-    "becauseManagedElsewhere": "Your access to {{organisation}} is paused because {{domain}} is now managed by another organisation.",
-    "since": "Paused since {{when}}.",
-    "kept": "Your work in {{organisation}} is kept and still attributed to you.",
-    "untouched": "Your other organisations and your access to single events are not affected.",
-    "removedBy": "If nobody restores your access by {{when}}, you are removed from {{organisation}}.",
-    "nextTitle": "What happens next",
-    "nextAddressGone": "Add your {{domain}} address again in Account settings and make it your main address, then ask an admin of {{organisation}} to restore your access.",
-    "nextNothingNeeded": "An admin of {{organisation}} can restore your access. Nothing is needed from you.",
-    "accountSettings": "Account settings",
-    "switch": "Switch organisation",
+    "badge": "En pause",
+    "becauseAddressGone": "Votre accès à {{organisation}} est en pause, car votre adresse {{domain}} ne figure plus sur votre compte.",
+    "becauseDomainClosed": "Votre accès à {{organisation}} est en pause, car {{organisation}} n'accepte plus les adhésions via {{domain}}.",
+    "becauseManagedElsewhere": "Votre accès à {{organisation}} est en pause, car {{domain}} est désormais géré par une autre organisation.",
+    "since": "En pause depuis le {{when}}.",
+    "kept": "Votre travail dans {{organisation}} est conservé et vous reste attribué.",
+    "untouched": "Vos autres organisations et votre accès à des événements individuels ne sont pas concernés.",
+    "removedBy": "Si personne ne rétablit votre accès d'ici le {{when}}, vous ne ferez plus partie de {{organisation}}.",
+    "nextTitle": "La suite",
+    "nextAddressGone": "Ajoutez de nouveau votre adresse {{domain}} dans Paramètres du compte et définissez-la comme principale, puis demandez à un administrateur de {{organisation}} de rétablir votre accès.",
+    "nextNothingNeeded": "Un administrateur de {{organisation}} peut rétablir votre accès. Vous n'avez rien à faire.",
+    "accountSettings": "Paramètres du compte",
+    "switch": "Changer d'organisation",
     "backToList": "‹ Membres"
   },
   "requestLink": {
