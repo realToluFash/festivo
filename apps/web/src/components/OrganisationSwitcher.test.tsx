@@ -232,9 +232,9 @@ describe('creating an organisation', () => {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(
+    expect(document.activeElement).toBe(
       screen.getByRole('button', { name: /Organisation: Lagos Supper Club, your role Owner/ }),
-    ).toBeDefined();
+    );
     expect(window.localStorage.getItem('soirely.organisation')).toBe('org_9');
   });
 
@@ -278,6 +278,72 @@ describe('creating an organisation', () => {
         'Creating the organisation did not work. Nothing was created. Try again in a moment.',
       ),
     ).toBeDefined();
+  });
+
+  it('keeps Tab and Shift+Tab inside the dialog, in the drawn order', () => {
+    inOne();
+    openCreate();
+
+    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
+    const name = within(dialog).getByLabelText('Organisation name');
+    const create = within(dialog).getByRole('button', { name: 'Create organisation' });
+
+    expect([...dialog.querySelectorAll('input, select, button')]).toEqual([
+      name,
+      within(dialog).getByLabelText('Country'),
+      within(dialog).getByRole('button', { name: 'Cancel' }),
+      create,
+    ]);
+
+    create.focus();
+    fireEvent.keyDown(create, { key: 'Tab' });
+    expect(document.activeElement).toBe(name);
+
+    fireEvent.keyDown(name, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(create);
+  });
+
+  it('brings focus back into the dialog from the page behind, and the scrim still closes it', () => {
+    inOne();
+    openCreate();
+
+    const scrim = screen.getAllByRole('button', { name: 'Cancel' })[0] as HTMLElement;
+    expect(scrim.tabIndex).toBe(-1);
+
+    (document.activeElement as HTMLElement).blur();
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
+
+    (document.activeElement as HTMLElement).blur();
+    fireEvent.keyDown(document.body, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Create organisation' }),
+    );
+
+    fireEvent.click(scrim);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
+    );
+  });
+
+  it('returns focus to the switcher button on Cancel and on Escape', () => {
+    inOne();
+    openCreate();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement);
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Organisation: Ìrè Events/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create an organisation' }));
+    fireEvent.keyDown(screen.getByLabelText('Organisation name'), { key: 'Escape' });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
+    );
   });
 
   it('cancels with nothing created', () => {
