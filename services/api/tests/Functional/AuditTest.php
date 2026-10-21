@@ -9,6 +9,7 @@ use App\Entity\AuditEntry;
 use App\Entity\SchemaProbe;
 use App\Enum\Actor;
 use App\Tests\FunctionalTestCase;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
@@ -106,7 +107,7 @@ final class AuditTest extends FunctionalTestCase
         $this->auditor->record('probe.created', 'SchemaProbe', $probe->getId(), Actor::System);
         $this->em->flush();
 
-        $probe->softDelete();
+        $probe->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
         $this->em->clear();
 

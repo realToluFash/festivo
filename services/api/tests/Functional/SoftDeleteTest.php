@@ -35,7 +35,7 @@ final class SoftDeleteTest extends FunctionalTestCase
 
         self::assertNotNull($this->em->getRepository(SchemaProbe::class)->find($id));
 
-        $probe->softDelete();
+        $probe->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
         $this->em->clear();
 
@@ -47,7 +47,7 @@ final class SoftDeleteTest extends FunctionalTestCase
     {
         $kept = $this->persist('kept');
         $gone = $this->persist('gone');
-        $gone->softDelete();
+        $gone->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
         $this->em->clear();
 
@@ -69,7 +69,7 @@ final class SoftDeleteTest extends FunctionalTestCase
     {
         $probe = $this->persist('findable by an agent');
         $id = $probe->getId();
-        $probe->softDelete();
+        $probe->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
         $this->em->clear();
 
@@ -86,10 +86,11 @@ final class SoftDeleteTest extends FunctionalTestCase
     {
         $probe = $this->persist('restored');
         $id = $probe->getId();
-        $probe->softDelete();
+        $probe->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
 
-        $probe->restore();
+        $probe->setDeletedAt(null);
+        $probe->setDeletedBy(null);
         $this->em->flush();
         $this->em->clear();
 
@@ -103,11 +104,12 @@ final class SoftDeleteTest extends FunctionalTestCase
     {
         $who = Uuid::v7();
         $probe = $this->persist('deleted by somebody');
-        $probe->softDelete($who);
+        $probe->setDeletedAt(new DateTimeImmutable());
+        $probe->setDeletedBy($who);
         $this->em->flush();
 
-        self::assertTrue($probe->deletedBy()?->equals($who));
-        self::assertNotNull($probe->deletedAt());
+        self::assertTrue($probe->getDeletedBy()?->equals($who));
+        self::assertNotNull($probe->getDeletedAt());
     }
 
     /**
@@ -119,7 +121,7 @@ final class SoftDeleteTest extends FunctionalTestCase
     public function itKnowsWhenItsRecoveryWindowHasPassed(): void
     {
         $probe = $this->persist('ages ago');
-        $probe->softDelete();
+        $probe->setDeletedAt(new DateTimeImmutable());
 
         $window = new DateInterval('P30D');
 
