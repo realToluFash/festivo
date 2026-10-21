@@ -234,7 +234,7 @@ describe('a request link (sc-562)', () => {
 
     expect(
       await screen.findByText(
-        "This link doesn't work any more. Ask the organisation for a new one.",
+        'This link does not work any more. Ask the organisation for a new one.',
       ),
     ).toBeDefined();
     expect(screen.queryByText(/Ìrè Events/)).toBeNull();

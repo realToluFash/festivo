@@ -128,7 +128,7 @@ final class RequestLinkTest extends ApiTestCase
         self::assertSame(404, $switchedOffStatus);
         self::assertResponseStatusCodeSame(404);
         self::assertSame(ErrorCode::RequestLinkDead->type(), $unknown['type'] ?? null);
-        self::assertSame("This link doesn't work any more. Ask the organisation for a new one.", $unknown['detail'] ?? null);
+        self::assertSame('This link does not work any more. Ask the organisation for a new one.', $unknown['detail'] ?? null);
         unset($switchedOff['correlationId'], $unknown['correlationId'], $switchedOff['instance'], $unknown['instance']);
         self::assertSame($unknown, $switchedOff);
     }
