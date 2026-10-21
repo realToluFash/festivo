@@ -72,6 +72,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   l'approbation de », which would need « d' » before a vowel. The setting is « Adhésion par
   domaine d'entreprise », « Activée » / « Désactivée »; a working domain « Ouvert aux
   demandes », a stopped one « Sans effet ». "… instead" is « … plutôt ».
+  The button alone is « Demander l'accès » (`domainJoining.ask`), since « Demander à rejoindre »
+  squeezed the organisation name beside it on the app phone (QA, sc-4434); its screen-reader
+  label keeps « Demander à rejoindre {{organisation}} ».
 
 - **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
   « Membres »; a member is removed with « Retirer », as the glossary's Remove. A person's state
