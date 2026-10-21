@@ -229,6 +229,30 @@ class Run(unittest.TestCase):
         self.run_once()
         self.assertFalse([s for s in self.said if s.startswith("warning")])
 
+    def test_an_item_whose_worker_died_is_given_back_at_the_next_minute(self):
+        store.record(self.db, [work("ops")], ON_ZERO)
+        self.run_once()
+        self.assertTrue(store.held_by(self.db, "ops", ON_ZERO))
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertIn("ops: item 1 given back, its worker ended without finishing it",
+                      self.said)
+        self.assertEqual([item for _, item, _ in self.platform.launched], [1, 1])
+
+    def test_an_item_a_running_worker_holds_is_kept(self):
+        store.record(self.db, [work("ops")], ON_ZERO)
+        self.run_once()
+        self.platform.active.add("ops")
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertEqual(len(self.platform.launched), 1)
+        self.assertTrue(store.held_by(self.db, "ops", ON_ZERO + 3 * MINUTE))
+
+    def test_an_item_claimed_by_hand_is_kept(self):
+        store.record(self.db, [work("ops")], ON_ZERO)
+        store.claim(self.db, "ops", ON_ZERO)
+        self.run_once()
+        self.assertIn("ops: busy", self.said)
+        self.assertEqual(self.platform.launched, [])
+
     def test_a_worker_that_will_not_start_gives_its_item_back(self):
         self.platform.fail = True
         store.record(self.db, [work("ops")], ON_ZERO)
