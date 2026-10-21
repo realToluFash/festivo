@@ -54,8 +54,8 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
-  The label is « Langue des invitations », because the field sets only the invitation
-  e-mails to people without an account. "Invitation emails" are « les e-mails d'invitation
+  The label is « Langue », as the English "Language"; if English lengthens it to "Language
+  for invitations", it becomes « Langue des invitations ». "Invitation emails" are « les e-mails d'invitation
   adressés aux personnes sans compte Soirely ». Language names are « Anglais, Espagnol,
   Français, Portugais » as options and lower case in a sentence (« partent désormais en
   anglais »). A refused save is « Rien n'a été enregistré. » and the server's

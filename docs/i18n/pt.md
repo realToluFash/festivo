@@ -42,8 +42,8 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
-  The label is "Idioma dos convites", because the field sets only the invitation emails to
-  people without an account. "Invitation emails" are "os e-mails de convite", and the people
+  The label is "Idioma", as the English "Language"; if English lengthens it to "Language for
+  invitations", it becomes "Idioma dos convites". "Invitation emails" are "os e-mails de convite", and the people
   are "pessoas sem conta Soirely". Language names are "Inglês, Espanhol, Francês, Português"
   as options and lower case in a sentence ("são enviados em inglês"). A refused save is "Nada
   foi guardado." and the server's `permission_required` words unchanged.

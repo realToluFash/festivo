@@ -50,8 +50,8 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
-  The label is «Idioma de las invitaciones», because the field sets only the invitation
-  emails to people without an account. "Invitation emails" are «los correos de invitación»,
+  The label is «Idioma», as the English "Language"; if English lengthens it to "Language for
+  invitations", it becomes «Idioma de las invitaciones». "Invitation emails" are «los correos de invitación»,
   and the people are «quienes no tienen cuenta de Soirely». Language names are «Inglés,
   Español, Francés, Portugués» as options and lower case in a sentence («se envían en
   francés»). A refused save is «No se ha guardado nada.» and the server's

@@ -351,7 +351,7 @@
     "contactInvalid": "Eso no parece un correo electrónico. Compruebe que tiene una @ y un dominio.",
     "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
     "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento.",
-    "language": "Idioma de las invitaciones",
+    "language": "Idioma",
     "languageHint": "Los correos de invitación para quienes no tienen cuenta de Soirely se escriben en este idioma. Quienes ya tienen una cuenta reciben el suyo en su propio idioma.",
     "savedLanguage": "Guardado. A partir de ahora, los correos de invitación para quienes no tienen cuenta de Soirely se envían en {{language}}. Las invitaciones ya enviadas no se vuelven a enviar.",
     "refused": "No se ha guardado nada. Su función no incluye el permiso que esto necesita."
