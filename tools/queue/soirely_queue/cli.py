@@ -535,7 +535,7 @@ def status(db, platform, now):
     rows = []
     for role in view["roles"]:
         if role["state"] == "refused":
-            rows.append((role["role"], f"refused: {role['detail']}", "", "", "", []))
+            rows.append((role["role"], f"refused: {role['detail']}", "", "", "", "", []))
             continue
         state = {"busy": f"busy, item {(role['held'] or {}).get('id')}",
                  "elsewhere": "on {machine}, seen {ago}".format(
@@ -543,8 +543,6 @@ def status(db, platform, now):
                      ago=ago((role["detail"] or {}).get("seen", 0)))}.get(role["state"],
                                                                           role["state"])
         model = f"{role['model'].removeprefix('claude-')} {role['effort']}"
-        if role["account"]:
-            model += f" · {role['account']}"
         last = role["last"]
         ran = f"{time.strftime('%d %b %H:%M', time.localtime(last['at']))} " \
               f"${last['cost']:.2f}" if last else "never"
@@ -557,23 +555,24 @@ def status(db, platform, now):
             details.append(f"note: {role['note']}")
         if role["owner"]:
             details.append(f"waiting on the owner: {role['owner']}")
-        rows.append((role["role"], state, model, ran, str(role["waiting"]), details))
+        rows.append((role["role"], state, model, role["account"] or "not logged in", ran,
+                     str(role["waiting"]), details))
     if rows:
-        heads = ("role", "state", "model", "last run", "waiting")
+        heads = ("role", "state", "model", "account", "last run", "waiting")
         sizes = [max([len(heads[i])] + [len(row[i]) for row in rows if row[2] or i < 2])
-                 for i in range(5)]
+                 for i in range(6)]
         sizes[1] = min(sizes[1], 28)
         say()
         say("roles here")
-        say("  " + "  ".join(f"{h:{n}}" if i < 4 else f"{h:>{n}}"
+        say("  " + "  ".join(f"{h:{n}}" if i < 5 else f"{h:>{n}}"
                              for i, (h, n) in enumerate(zip(heads, sizes))))
-        for role, state, model, ran, count, details in rows:
+        for role, state, model, account, ran, count, details in rows:
             if not model:
                 say(f"  {role:{sizes[0]}}  {state}")
                 continue
             say("  " + "  ".join([f"{role:{sizes[0]}}", f"{clip(state, sizes[1]):{sizes[1]}}",
-                                  f"{model:{sizes[2]}}", f"{ran:{sizes[3]}}",
-                                  f"{count:>{sizes[4]}}"]))
+                                  f"{model:{sizes[2]}}", f"{account:{sizes[3]}}",
+                                  f"{ran:{sizes[4]}}", f"{count:>{sizes[5]}}"]))
             for detail in details:
                 say(f"  {'':{sizes[0]}}  {detail}")
     if view["elsewhere"]:

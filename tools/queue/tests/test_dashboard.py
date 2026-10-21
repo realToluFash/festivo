@@ -57,6 +57,14 @@ class Snapshot(unittest.TestCase):
         self.assertEqual(view["recent"][0]["role"], "ops")
         self.assertEqual((view["machine"], view["free_gb"], view["manager"]), ("here", 40, True))
 
+    def test_each_role_and_its_runs_name_the_account_it_runs_on(self):
+        runlog.append(self.home, "ops", {"at": NOW, "role": "ops", "exit": 0, "report": "done"})
+        with mock.patch("soirely_queue.machine.account",
+                        side_effect=lambda folder: "ops@example.com"):
+            view = self.snap()
+        self.assertEqual({r["account"] for r in view["roles"]}, {"ops@example.com"})
+        self.assertEqual(view["recent"][0]["account"], "ops@example.com")
+
     def test_a_role_this_machine_does_not_run_is_listed_with_its_queue(self):
         store.record(self.db, [work("qa")], NOW)
         view = self.snap()

@@ -55,7 +55,7 @@ def snapshot(db, platform, now, home, load=machine.load):
     except machine.ConfigError as error:
         config = None
         view["errors"].append(str(error))
-    shown = set()
+    shown, accounts = set(), {}
     if config:
         problems, refused, ready = machine.check(config)
         view["machine"] = config.get("machine") or "this machine"
@@ -78,9 +78,7 @@ def snapshot(db, platform, now, home, load=machine.load):
                                     "machine has not applied: just agents permissions apply")
         view["machines"] = [{"name": name, "seen": seen["seen"], "started": seen["started"]}
                             for name, seen in sorted((agreed.get("machines") or {}).items())]
-        # The account is shown only when this machine's roles use more than one.
-        folders = {role: machine.claude_dir(config, role) for role in ready}
-        several = len(set(folders.values())) > 1
+        accounts = {role: machine.account(machine.claude_dir(config, role)) for role in ready}
         listed = config.get("roles") or {}
         for role in [r for r in refused if r not in listed] + list(listed):
             if role in refused:
@@ -100,7 +98,7 @@ def snapshot(db, platform, now, home, load=machine.load):
             view["roles"].append({
                 "role": role, "state": state, "detail": detail,
                 "model": ready[role]["model"], "effort": ready[role]["effort"],
-                "account": machine.account(folders[role]) if several else None,
+                "account": accounts[role],
                 "wake_every": ready[role].get("wakeEvery"),
                 "last": run_view(last) if last else None,
                 "held": {"id": held["id"], "reason": held["reason"]} if held else None,
@@ -119,7 +117,8 @@ def snapshot(db, platform, now, home, load=machine.load):
                 "held": {"id": held["id"], "reason": held["reason"]} if held else None,
                 "next": [{"id": w["id"], "reason": w["reason"]} for w in waiting[:NEXT]]})
     runs = [e for role in roles.ROLES for e in runlog.entries(home, role) if e.get("at")]
-    view["recent"] = [run_view(e) for e in sorted(runs, key=lambda e: -e["at"])[:RECENT]]
+    view["recent"] = [dict(run_view(e), account=accounts.get(e.get("role")))
+                      for e in sorted(runs, key=lambda e: -e["at"])[:RECENT]]
     today = datetime.date.today()
     view["runs_today"] = sum(1 for e in runs if runlog.day(e["at"]) == today)
     return view

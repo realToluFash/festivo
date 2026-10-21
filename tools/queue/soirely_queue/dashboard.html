@@ -699,7 +699,7 @@
         ];
         if (r.wake_every && r.wake_every !== '3m')
           tags.push(`<span class="tag">wakes every ${esc(r.wake_every)}</span>`);
-        if (r.account) tags.push(`<span class="tag">${esc(r.account)}</span>`);
+        tags.push(`<span class="tag">${esc(r.account || 'not logged in')}</span>`);
         const blocks = [];
         if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
         if (r.held)
@@ -792,11 +792,11 @@
             )
             .join('');
         document.getElementById('recent').innerHTML = d.recent.length
-          ? `<tr><th>When</th><th>Role</th><th class="num">Took</th><th class="num">Cost</th><th>Report</th></tr>` +
+          ? `<tr><th>When</th><th>Role</th><th>Account</th><th class="num">Took</th><th class="num">Cost</th><th>Report</th></tr>` +
             d.recent
               .map(
                 (r) => `<tr><td class="when" title="${esc(clock(r.at))}">${since(r.at)}</td>
-        <td class="role-chip">${esc(r.role)}</td><td class="num">${duration(r.seconds)}</td>
+        <td class="role-chip">${esc(r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
         <td class="num">${money(r.cost)}</td>
         <td class="report ${r.failed ? 'fail' : ''}" title="${esc(r.report)}">${esc(r.report || 'No report')}</td></tr>`,
               )
