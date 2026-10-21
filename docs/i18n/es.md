@@ -49,6 +49,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
+  `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads «En pausa», the admins
+  «Acceso suspendido», as the English keeps them apart. Restoring is «restablecer». In the
+  admins' lines the member is «esta persona», so «se quitará a esta persona», «quítela» and
+  «dejará de formar parte» agree with no one; «su acceso» alone would read as the reader's.
+  "Account settings" is «Configuración de la cuenta», button and sentence alike. The footer
+  says «propietario o administrador», as `twoFactorRecovery.approver.footer`.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The act
   is «solicitar unirse», as domain joining; the setting «Solicitudes para unirse», so its state

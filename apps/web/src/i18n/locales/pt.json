@@ -861,7 +861,7 @@
       "suspended": "Suspended",
       "left": "Left",
       "removed": "Removed",
-      "domainSuspended": "Suspended: company address gone"
+      "domainSuspended": "Acesso suspenso: sem endereço da empresa"
     },
     "how": {
       "invitation": "Invitation",
@@ -971,14 +971,14 @@
     "backToMembers": "Back to Members",
     "actionFailed": "That did not go through. Nothing was changed. Try again in a moment.",
     "suspendedBecause": {
-      "address_gone": "{{name}}'s {{domain}} address is no longer on their account.",
-      "domain_closed": "{{organisation}} no longer lets people join through {{domain}}.",
-      "domain_managed_elsewhere": "{{domain}} is now managed by another organisation."
+      "address_gone": "{{name}} já não tem o endereço de {{domain}} na conta.",
+      "domain_closed": "{{organisation}} deixou de aceitar adesões através de {{domain}}.",
+      "domain_managed_elsewhere": "{{domain}} passou a ser gerido por outra organização."
     },
-    "suspendedRemovedOn": "If nobody answers by {{when}}, they are removed.",
-    "restore": "Restore",
-    "restored": "{{name}}'s access to {{organisation}} is restored.",
-    "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first.",
+    "suspendedRemovedOn": "Se ninguém responder até {{when}}, o acesso é retirado.",
+    "restore": "Repor",
+    "restored": "O acesso de {{name}} a {{organisation}} foi reposto.",
+    "restoreNeedsAddress": "{{name}} precisa primeiro de um endereço de {{domain}} verificado.",
     "noRoleYet": "No role yet",
     "awaiting": {
       "title": "Awaiting approval",
@@ -1504,19 +1504,19 @@
     "unreadable": "Não foi possível carregar a lista. Recarregue a página para tentar novamente."
   },
   "accessPaused": {
-    "badge": "Paused",
-    "becauseAddressGone": "Your access to {{organisation}} is paused because your {{domain}} address is no longer on your account.",
-    "becauseDomainClosed": "Your access to {{organisation}} is paused because {{organisation}} no longer lets people join through {{domain}}.",
-    "becauseManagedElsewhere": "Your access to {{organisation}} is paused because {{domain}} is now managed by another organisation.",
-    "since": "Paused since {{when}}.",
-    "kept": "Your work in {{organisation}} is kept and still attributed to you.",
-    "untouched": "Your other organisations and your access to single events are not affected.",
-    "removedBy": "If nobody restores your access by {{when}}, you are removed from {{organisation}}.",
-    "nextTitle": "What happens next",
-    "nextAddressGone": "Add your {{domain}} address again in Account settings and make it your main address, then ask an admin of {{organisation}} to restore your access.",
-    "nextNothingNeeded": "An admin of {{organisation}} can restore your access. Nothing is needed from you.",
-    "accountSettings": "Account settings",
-    "switch": "Switch organisation"
+    "badge": "Em pausa",
+    "becauseAddressGone": "O seu acesso a {{organisation}} está em pausa porque o seu endereço de {{domain}} já não está na sua conta.",
+    "becauseDomainClosed": "O seu acesso a {{organisation}} está em pausa porque {{organisation}} deixou de aceitar adesões através de {{domain}}.",
+    "becauseManagedElsewhere": "O seu acesso a {{organisation}} está em pausa porque {{domain}} passou a ser gerido por outra organização.",
+    "since": "Em pausa desde {{when}}.",
+    "kept": "O seu trabalho em {{organisation}} é mantido e continua atribuído a si.",
+    "untouched": "As suas outras organizações e o seu acesso a eventos individuais não são afetados.",
+    "removedBy": "Se ninguém repuser o seu acesso até {{when}}, deixará de fazer parte de {{organisation}}.",
+    "nextTitle": "O que acontece a seguir",
+    "nextAddressGone": "Volte a adicionar o seu endereço de {{domain}} em Definições da conta e torne-o principal. Depois, peça a um administrador de {{organisation}} que reponha o seu acesso.",
+    "nextNothingNeeded": "Um administrador de {{organisation}} pode repor o seu acesso. Não precisa de fazer nada.",
+    "accountSettings": "Definições da conta",
+    "switch": "Mudar de organização"
   },
   "requestLink": {
     "title": "Pedidos de adesão",
