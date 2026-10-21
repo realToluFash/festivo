@@ -204,7 +204,7 @@
     "organisation": "Nombre de la organización",
     "organisationHelp": "Sus eventos le pertenecen. Puede cambiarle el nombre más adelante.",
     "organisationBlank": "Añada el nombre de su organización para continuar.",
-    "organisationOrInvitation": "Añada el nombre de su organización o acepte arriba una invitación.",
+    "organisationOrInvitation": "Añada el nombre de su organización o acepte una invitación pendiente.",
     "invitationsWaiting_one": "Tiene una invitación pendiente. Acéptela para unirse a esa organización o cree la suya más abajo.",
     "invitationsWaiting_other": "Tiene {{count}} invitaciones pendientes. Acepte una para unirse a la organización que le invita, o cree la suya más abajo.",
     "invitationsJoined": "Por ahora no necesita crear una organización.",
