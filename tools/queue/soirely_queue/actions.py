@@ -241,15 +241,7 @@ def move(c, a):
     guard(c, "move")
     story = c.story(a.story)
     ops_only(c, story)
-    _, wanted = c.state_id(a.state)
-    if c.role == "pm" and story["state"] == "In Progress" and wanted in R.PM_RELEASES:
-        held = holder(c, story)
-        if held:
-            raise Refused(f"sc-{story['id']} is In Progress and held: {held}. "
-                          "Ask its developer to move it")
-        state = set_state(c, story, a.state, check=False)
-    else:
-        state = set_state(c, story, a.state)
+    state = set_state(c, story, a.state, check=c.role != "pm")
     c.refresh(story["id"])
     return f"sc-{story['id']} is now {state}"
 
