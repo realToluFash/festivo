@@ -1125,7 +1125,8 @@
       "pending_approval": "En attente d'approbation",
       "suspended": "Accès suspendu",
       "left": "A quitté l'organisation",
-      "removed": "Accès retiré"
+      "removed": "Accès retiré",
+      "domainSuspended": "Accès suspendu : adresse d'entreprise retirée"
     },
     "how": {
       "invitation": "Invitation",
@@ -1201,6 +1202,15 @@
     "fromTheWeb": "Pour inviter quelqu'un, utilisez Soirely sur le web.",
     "pickSomebody": "Choisissez une personne dans la liste pour l'afficher ici.",
     "backToList": "‹ Membres",
+    "suspendedBecause": {
+      "address_gone": "L'adresse {{domain}} de {{name}} ne figure plus sur son compte.",
+      "domain_closed": "{{organisation}} n'accepte plus les adhésions via {{domain}}.",
+      "domain_managed_elsewhere": "{{domain}} est désormais géré par une autre organisation."
+    },
+    "suspendedRemovedOn": "Sans réponse d'ici le {{when}}, son accès sera retiré.",
+    "restore": "Rétablir",
+    "restored": "L'accès de {{name}} à {{organisation}} est rétabli.",
+    "restoreNeedsAddress": "{{name}} doit d'abord avoir une adresse {{domain}} vérifiée.",
     "noRoleYet": "Pas encore de rôle",
     "awaiting": {
       "title": "En attente d'approbation",
@@ -1221,6 +1231,22 @@
       "turnedDown": "La demande de {{name}} a été refusée.",
       "turnedDownNext": "Voir Anciens"
     }
+  },
+  "accessPaused": {
+    "badge": "En pause",
+    "becauseAddressGone": "Votre accès à {{organisation}} est en pause, car votre adresse {{domain}} ne figure plus sur votre compte.",
+    "becauseDomainClosed": "Votre accès à {{organisation}} est en pause, car {{organisation}} n'accepte plus les adhésions via {{domain}}.",
+    "becauseManagedElsewhere": "Votre accès à {{organisation}} est en pause, car {{domain}} est désormais géré par une autre organisation.",
+    "since": "En pause depuis le {{when}}.",
+    "kept": "Votre travail dans {{organisation}} est conservé et vous reste attribué.",
+    "untouched": "Vos autres organisations et votre accès à des événements individuels ne sont pas concernés.",
+    "removedBy": "Si personne ne rétablit votre accès d'ici le {{when}}, vous ne ferez plus partie de {{organisation}}.",
+    "nextTitle": "La suite",
+    "nextAddressGone": "Ajoutez de nouveau votre adresse {{domain}} dans Paramètres du compte et définissez-la comme principale, puis demandez à un administrateur de {{organisation}} de rétablir votre accès.",
+    "nextNothingNeeded": "Un administrateur de {{organisation}} peut rétablir votre accès. Vous n'avez rien à faire.",
+    "accountSettings": "Paramètres du compte",
+    "switch": "Changer d'organisation",
+    "backToList": "‹ Membres"
   },
   "requestLink": {
     "title": "Demandes d'adhésion",

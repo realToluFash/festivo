@@ -90,6 +90,8 @@
     "domain_joining.domain_public": "Vous ne pouvez pas utiliser un domaine de messagerie public.",
     "domain_joining.not_listed": "Ce domaine ne figure pas dans la liste.",
     "domain_joining.unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre, ou demandez à une personne de cette organisation de vous inviter.",
+    "members.not_suspended": "L'accès de ce membre n'est pas suspendu.",
+    "members.restore_needs_address": "{name} doit d'abord avoir une adresse {domain} vérifiée.",
     "request_link.cooling_off": "Vous ne pouvez pas encore redemander à rejoindre {organisation}.",
     "request_link.dead": "Ce lien ne fonctionne plus. Demandez-en un nouveau à l'organisation.",
     "request_link.member": "Vous faites déjà partie de {organisation}.",

@@ -621,6 +621,91 @@ describe('inviting somebody', () => {
     ).toBeDefined();
   });
 
+  it('says why a domain member is suspended, when they go, and refuses Restore in the server words', async () => {
+    const suspended = {
+      members: [
+        LIST.members[0],
+        {
+          ...LIST.members[1],
+          channel: 'domain',
+          suspension: {
+            reason: 'address_gone',
+            domain: 'ire.events',
+            since: { at: '2026-10-17T13:20:00+00:00', written: 'Saturday, Oct 17 at 14:20 WAT' },
+            removesAt: { at: '2026-11-16T13:20:00+00:00', written: 'Monday, Nov 16 at 14:20 WAT' },
+          },
+        },
+      ],
+      invitations: [],
+    };
+    signedIn();
+    const sent = answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(suspended),
+      'POST /api/orgs/org_1/members/m_bisi/restore': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/restore_needs_address',
+            title: 'Their access cannot be restored yet.',
+            status: 409,
+          },
+          409,
+        ),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+    expect(screen.getByRole('heading', { name: /Suspended: company address gone/ })).toBeDefined();
+    expect(
+      screen.getByText("Bisi Adeyemi's ire.events address is no longer on their account."),
+    ).toBeDefined();
+    expect(
+      screen.getByText('If nobody answers by Monday, Nov 16 at 14:20 WAT, they are removed.'),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Remove from Ìrè Events' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+
+    expect(
+      await screen.findByText('Bisi Adeyemi needs a verified ire.events address first.'),
+    ).toBeDefined();
+    expect(sent.map((one) => one.line)).toContain('POST /api/orgs/org_1/members/m_bisi/restore');
+  });
+
+  it('shows no removal date for a suspended only owner', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          members: [
+            LIST.members[0],
+            {
+              ...LIST.members[1],
+              channel: 'domain',
+              suspension: {
+                reason: 'address_gone',
+                domain: 'ire.events',
+                since: {
+                  at: '2026-10-17T13:20:00+00:00',
+                  written: 'Saturday, Oct 17 at 14:20 WAT',
+                },
+                removesAt: null,
+              },
+            },
+          ],
+          invitations: [],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+    expect(screen.getByRole('heading', { name: /Suspended: company address gone/ })).toBeDefined();
+    expect(screen.queryByText(/if nobody answers/)).toBeNull();
+  });
+
   it('offers neither a role change nor removal on your own row', async () => {
     signedIn();
     answering(READS);

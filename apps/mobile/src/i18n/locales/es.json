@@ -1125,7 +1125,8 @@
       "pending_approval": "Pendiente de aprobación",
       "suspended": "Acceso suspendido",
       "left": "Ha salido",
-      "removed": "Acceso retirado"
+      "removed": "Acceso retirado",
+      "domainSuspended": "Acceso suspendido: sin dirección de empresa"
     },
     "how": {
       "invitation": "Invitación",
@@ -1201,6 +1202,15 @@
     "fromTheWeb": "Para invitar a alguien, use Soirely en la web.",
     "pickSomebody": "Elija a alguien de la lista para ver aquí sus datos.",
     "backToList": "‹ Miembros",
+    "suspendedBecause": {
+      "address_gone": "{{name}} ya no tiene su dirección de {{domain}} en la cuenta.",
+      "domain_closed": "{{organisation}} ya no permite unirse a través de {{domain}}.",
+      "domain_managed_elsewhere": "Ahora {{domain}} lo gestiona otra organización."
+    },
+    "suspendedRemovedOn": "Si nadie responde antes del {{when}}, se quitará a esta persona de la organización.",
+    "restore": "Restablecer",
+    "restored": "Se ha restablecido el acceso de {{name}} a {{organisation}}.",
+    "restoreNeedsAddress": "Antes, {{name}} necesita una dirección de {{domain}} verificada.",
     "noRoleYet": "Aún sin rol",
     "awaiting": {
       "title": "Pendiente de aprobación",
@@ -1221,6 +1231,22 @@
       "turnedDown": "Se ha rechazado la solicitud de {{name}}.",
       "turnedDownNext": "Ver Antiguos"
     }
+  },
+  "accessPaused": {
+    "badge": "En pausa",
+    "becauseAddressGone": "Su acceso a {{organisation}} está en pausa porque su dirección de {{domain}} ya no figura en su cuenta.",
+    "becauseDomainClosed": "Su acceso a {{organisation}} está en pausa porque {{organisation}} ya no permite unirse a través de {{domain}}.",
+    "becauseManagedElsewhere": "Su acceso a {{organisation}} está en pausa porque ahora {{domain}} lo gestiona otra organización.",
+    "since": "En pausa desde el {{when}}.",
+    "kept": "Su trabajo en {{organisation}} se conserva y sigue figurando a su nombre.",
+    "untouched": "Sus otras organizaciones y su acceso a eventos concretos no se ven afectados.",
+    "removedBy": "Si nadie restablece su acceso antes del {{when}}, dejará de formar parte de {{organisation}}.",
+    "nextTitle": "Qué ocurre ahora",
+    "nextAddressGone": "Vuelva a añadir su dirección de {{domain}} en Configuración de la cuenta y hágala principal. Después, pida a un administrador de {{organisation}} que restablezca su acceso.",
+    "nextNothingNeeded": "Un administrador de {{organisation}} puede restablecer su acceso. Usted no tiene que hacer nada.",
+    "accountSettings": "Configuración de la cuenta",
+    "switch": "Cambiar de organización",
+    "backToList": "‹ Miembros"
   },
   "requestLink": {
     "title": "Solicitudes para unirse",

@@ -63,6 +63,14 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   person refused « ne fait donc pas partie de l'organisation », never « n'a pas été ajouté ».
   The waiting email's count takes `many`, « 1 000 000 de personnes ».
 
+- **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
+  `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads « En pause », the admins
+  « Accès suspendu », as the English keeps them apart. Restoring is « rétablir ». Nothing
+  agrees with the member: the removal is « son accès sera retiré », and the admins are told to
+  « retirer cette personne ». Joining through a domain that closed is « n'accepte plus les
+  adhésions via {{domain}} », as the setting's « Adhésion par domaine d'entreprise ». An
+  address at a domain is « votre adresse {{domain}} ». "What happens next" is « La suite ».
+  "Account settings" is « Paramètres du compte », button and sentence alike.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The
   setting is « Demandes d'adhésion », so its state agrees: « Activées » / « Désactivées »; the

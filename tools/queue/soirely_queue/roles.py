@@ -172,6 +172,7 @@ MAY = {
     "pr-reply": DEVS + LINGUISTS + ("lead", "ops"),
     "resolve": ("lead",),
     "merge": BUILDERS,
+    "pr-close": BUILDERS,
     "to-qa": DEVS + ("ops",),
     "rerun": DEVS + ("ops",),
 }

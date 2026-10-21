@@ -51,6 +51,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "não foi adicionado", so nothing agrees with them. The waiting email's count takes `=0`
   (PHP's ICU counts 0 as one in "pt") and `many`, "1 000 000 de pessoas".
 
+- **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
+  `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads "Em pausa", the admins
+  "Acesso suspenso", as the English keeps them apart. Restoring is "repor", as the drafted
+  error had it. Nothing agrees with the member: "o acesso é retirado", "esta pessoa deixa de
+  fazer parte", and the only Owner "não sai da organização" rather than "não é removido". A
+  closed domain "deixou de aceitar adesões", as the setting's "Adesão por domínio da empresa".
+  "Account settings" is "Definições da conta", button and sentence alike.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). A link
   is "a ligação", never "o link" (dev2's draft of `errors:request_link_dead` said "link"); the
