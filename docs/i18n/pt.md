@@ -41,6 +41,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Creating an event** (`events.*`, `eventForm.*`, `eventPage.*`,
+  `rolesScreen.createEvents*`, `messages:validation.event_*`, sc-6302). A draft is "Rascunho";
+  the form's legends "Início" and "Fim". An end before the start is "O evento termina antes de
+  começar". "Carry on planning" is "prosseguir com o planeamento". An owner is "alguém com a
+  função Proprietário", as "função" for a role. The permission's states are "Permitido" /
+  "Não permitido". A refused send closes "por isso nada foi enviado".
+
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
   "exigir", as the server's errors; "for everyone" is "para todos". The date is "a partir de
