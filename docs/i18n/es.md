@@ -49,6 +49,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
+  `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
+  «exigir», as the server's errors; "for everyone" is «para todos». The date is «a partir del
+  {{deadline}}» and «hasta el {{deadline}}», as `limitedBody` and `endsBy`. "Set it up" is
+  «activarla», never «configurarla», as "turn on" in en. The overdue screen's body says why,
+  «… y el plazo para activarla ha terminado», since the title already says «para continuar».
+  "Single-event access" is «su acceso a eventos concretos». The card and the server's refusal
+  say the same sentence, «… así que no puede desactivarla».
+
 - **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
   `messages:domain_joining.*`, sc-4434). The act is «solicitar unirse», the button «Solicitar
   unirse», and the wait «Pendiente de aprobación», as the Members state. The approver is

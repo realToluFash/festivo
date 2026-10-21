@@ -62,6 +62,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Two-factor for everyone (sc-609, sc-5702, `signInRules.everyone*`, `due*`,
+  `overdue*`, `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`).** Settled as
+  sc-609 wrote it, except three lines that wait on `[dev2]`, because the web tests match their
+  English: `dueSetUp` should be "Turn it on now" and `overdueBody` "{{organisation}} requires
+  two-factor, and the time to turn it on has passed.", as "turn on" is the verb (19 Oct) and the
+  title already says "to carry on"; `keptByRule` is a refusal, so "cannot", as
+  `errors:two_factor_kept_by_rule`. es, fr and pt are written to the settled meaning already.
+  A deadline is "from {{deadline}}" and "until {{deadline}}", the server's `time.dateAt`. The
+  emails keep straight apostrophes, as every other line in `emails.en.json`.
 - **21 Oct 2026. Company domain joining (sc-561, sc-4434, `domainJoining.*`,
   `companyDomains.*`, `messages:domain_joining.*`).** Settled as sc-561 wrote it. The act is
   "ask to join", the button "Ask to join", and "Somebody there approves you before you see

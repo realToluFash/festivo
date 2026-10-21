@@ -347,7 +347,7 @@
     "phoneSetupTitle": "Añada Soirely a su aplicación de autenticación",
     "phoneCantScan": "Escanee el código desde otra pantalla o introduzca esta clave en la aplicación.",
     "phoneKeepElsewhere": "Guárdelos en otro lugar que no sea este teléfono.",
-    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
+    "keptByRule": "{{organisation}} exige la verificación en dos pasos, así que no puede desactivarla."
   },
   "security": {
     "title": "Seguridad"
@@ -884,17 +884,17 @@
     "changedClose": "Cerrar este aviso",
     "limitApplies_one": "En su caso, la sesión se cierra tras {{count}} día sin uso: es la norma de {{organisation}}, la más estricta de sus organizaciones.",
     "limitApplies_other": "En su caso, la sesión se cierra tras {{count}} días sin uso: es la norma de {{organisation}}, la más estricta de sus organizaciones.",
-    "everyoneTitle": "Two-factor for everyone",
-    "everyoneRequiredFrom": "Required from {{deadline}}",
-    "valueEveryone": "Two-factor required for everyone",
-    "valueNoEveryone": "Two-factor not required of everyone",
-    "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
-    "dueSetUp": "Set it up now",
-    "overdueTitle": "Turn on two-factor to carry on",
-    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
-    "overdueElsewhere": "Your other organisations and single-event access are not affected.",
-    "overdueTurnOn": "Turn on two-factor",
-    "overdueSignOut": "Sign out"
+    "everyoneTitle": "Verificación en dos pasos para todos",
+    "everyoneRequiredFrom": "Obligatoria a partir del {{deadline}}",
+    "valueEveryone": "Verificación en dos pasos obligatoria para todos",
+    "valueNoEveryone": "Verificación en dos pasos no obligatoria para todos",
+    "dueBody": "{{organisation}} exige la verificación en dos pasos a partir del {{deadline}}.",
+    "dueSetUp": "Activarla ahora",
+    "overdueTitle": "Active la verificación en dos pasos para continuar",
+    "overdueBody": "{{organisation}} exige la verificación en dos pasos y el plazo para activarla ha terminado.",
+    "overdueElsewhere": "Sus demás organizaciones y su acceso a eventos concretos no se ven afectados.",
+    "overdueTurnOn": "Activar la verificación en dos pasos",
+    "overdueSignOut": "Cerrar sesión"
   },
   "languageNames": {
     "en": "Inglés",

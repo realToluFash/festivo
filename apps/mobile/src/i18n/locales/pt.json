@@ -347,7 +347,7 @@
     "phoneSetupTitle": "Adicione a Soirely à sua aplicação de autenticação",
     "phoneCantScan": "Leia o código a partir de outro ecrã ou introduza esta chave na aplicação.",
     "phoneKeepElsewhere": "Guarde-os noutro sítio que não este telemóvel.",
-    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
+    "keptByRule": "{{organisation}} exige a autenticação de dois fatores, por isso não a pode desativar."
   },
   "security": {
     "title": "Segurança"
@@ -884,17 +884,17 @@
     "changedClose": "Fechar este aviso",
     "limitApplies_one": "No seu caso, a sessão é encerrada após {{count}} dia sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações.",
     "limitApplies_other": "No seu caso, a sessão é encerrada após {{count}} dias sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações.",
-    "everyoneTitle": "Two-factor for everyone",
-    "everyoneRequiredFrom": "Required from {{deadline}}",
-    "valueEveryone": "Two-factor required for everyone",
-    "valueNoEveryone": "Two-factor not required of everyone",
-    "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
-    "dueSetUp": "Set it up now",
-    "overdueTitle": "Turn on two-factor to carry on",
-    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
-    "overdueElsewhere": "Your other organisations and single-event access are not affected.",
-    "overdueTurnOn": "Turn on two-factor",
-    "overdueSignOut": "Sign out"
+    "everyoneTitle": "Autenticação de dois fatores para todos",
+    "everyoneRequiredFrom": "Obrigatória a partir de {{deadline}}",
+    "valueEveryone": "Autenticação de dois fatores obrigatória para todos",
+    "valueNoEveryone": "Autenticação de dois fatores não obrigatória para todos",
+    "dueBody": "{{organisation}} exige a autenticação de dois fatores a partir de {{deadline}}.",
+    "dueSetUp": "Ativar agora",
+    "overdueTitle": "Ative a autenticação de dois fatores para prosseguir",
+    "overdueBody": "{{organisation}} exige a autenticação de dois fatores e o prazo para a ativar já terminou.",
+    "overdueElsewhere": "As suas outras organizações e o seu acesso a eventos individuais não são afetados.",
+    "overdueTurnOn": "Ativar a autenticação de dois fatores",
+    "overdueSignOut": "Encerrar sessão"
   },
   "languageNames": {
     "en": "Inglês",

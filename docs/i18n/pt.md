@@ -41,6 +41,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
+  `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
+  "exigir", as the server's errors; "for everyone" is "para todos". The date is "a partir de
+  {{deadline}}" and "até {{deadline}}", as `limitedBody` and `endsBy`. "Set it up" is
+  "ativar", as "turn on" in en; "carry on" is "prosseguir". A person who must act is "cada
+  pessoa", with the verb in the singular, so nothing agrees with a gender. The overdue
+  screen's body says why, "… e o prazo para a ativar já terminou". "Single-event access" is
+  "o seu acesso a eventos individuais". The card and the server's refusal say the same
+  sentence, "… por isso não a pode desativar".
+
 - **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
   `messages:domain_joining.*`, sc-4434). The act is "pedir para aderir", the wait "A
   aguardar aprovação", as the Members state. What gets approved is "o pedido", so no "o/a"
