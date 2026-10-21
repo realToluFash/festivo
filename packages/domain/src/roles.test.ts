@@ -1,15 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  MARGIN,
   extrasOf,
   levelOf,
   levelsOf,
+  lockedAreas,
+  replacementsFor,
   roleNameProblem,
   sameGrant,
   settableLevels,
+  takenRoleNames,
   whatTheySee,
   withLevel,
   withExtra,
+  withoutRole,
 } from './roles.ts';
 
 describe('a role in the permission grid', () => {
@@ -157,5 +162,73 @@ describe('the levels a caller can set', () => {
       'read',
       'change',
     ]);
+  });
+});
+
+describe('removing a role', () => {
+  const planner = { id: 'planner', holders: 3, permissions: ['events.read', 'events.manage'] };
+  const viewer = { id: 'viewer', holders: 1, permissions: ['events.read'] };
+  const treasurer = { id: 'treasurer', holders: 2, permissions: ['billing.manage'] };
+  const roles = [planner, viewer, treasurer];
+
+  it('moves its members only to another role the caller holds all of', () => {
+    expect(replacementsFor(roles, planner, ['events.read', 'events.manage'])).toEqual([viewer]);
+  });
+
+  it('counts its members on the role they moved to', () => {
+    expect(withoutRole(roles, planner, 'viewer')).toEqual([{ ...viewer, holders: 4 }, treasurer]);
+  });
+
+  it('leaves the other counts alone when nobody moves', () => {
+    expect(withoutRole(roles, { id: 'viewer', holders: 0 }, null)).toEqual([planner, treasurer]);
+  });
+});
+
+describe('the names a role may not take', () => {
+  const english = (key: string) => ({ 'roles.owner': 'Owner' })[key] ?? key;
+  const spanish = (key: string) => ({ 'roles.owner': 'Propietario' })[key] ?? key;
+  const roles = [
+    { id: 'owner', seededAs: 'owner', name: null },
+    { id: 'band', seededAs: null, name: 'Band' },
+  ];
+
+  it('takes a seeded role in every language and a made one by its name', () => {
+    expect(takenRoleNames(roles, undefined, [english, spanish])).toEqual([
+      'Owner',
+      'Propietario',
+      'Band',
+      'Band',
+    ]);
+  });
+
+  it('leaves out the role being renamed', () => {
+    expect(takenRoleNames(roles, 'band', [english])).toEqual(['Owner']);
+  });
+});
+
+describe('the areas a caller cannot change', () => {
+  const areas = [
+    { area: 'events', permissions: ['events.read', 'events.manage', 'events.create'] },
+    { area: 'billing', permissions: ['billing.read', 'billing.manage'] },
+    { area: 'budget', permissions: ['budget.read', 'budget.manage', 'budget.margin'] },
+  ];
+
+  it('names a row with one level left, and the margin where it shows', () => {
+    const held = ['events.read', 'events.manage', 'budget.read', 'budget.manage'];
+
+    expect(lockedAreas(['budget.read'], held, areas)).toEqual(['billing', MARGIN]);
+  });
+
+  it('names Create events where Event manager shows and the caller lacks it', () => {
+    const held = ['events.read', 'events.manage', 'billing.read', 'billing.manage'];
+
+    expect(lockedAreas(['events.read'], held, areas)).toEqual(['events.create', 'budget']);
+    expect(lockedAreas([], held, areas)).toEqual(['budget']);
+  });
+
+  it('names nothing for a caller who holds everything', () => {
+    const held = areas.flatMap(({ permissions }) => permissions);
+
+    expect(lockedAreas(['budget.read'], held, areas)).toEqual([]);
   });
 });
