@@ -62,6 +62,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. The organisation's language is "Language for invitations" (sc-3311,
+  `orgGeneral.language`, web and app).** Won over the drawn "Language", which reads as the
+  language everyone sees Soirely in; the field only sets the invitation emails sent to people
+  without an account. The same label heads the read-only row. A refused save is "Nothing was
+  saved." followed by the server's `permission_required` words, unchanged.
 - **19 Oct 2026. Two-factor is "turned on", the first time (sc-3030, sc-609, sc-69 #3210).**
   "Turn on two-factor" is the button wherever a person enables it, and a sentence says "turn
   it on" (`twoFactorCard.turnOn`, `signInRules.gateTurnOn`, `needsOwnTurnOn`, `twoFactorOn`,

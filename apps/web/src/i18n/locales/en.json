@@ -351,7 +351,7 @@
     "contactInvalid": "That does not look like an email address. Check it has an @ and a domain.",
     "readOnly": "Your role, {{role}}, can see these but not change them. Owners can.",
     "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
-    "language": "Language",
+    "language": "Language for invitations",
     "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
     "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
     "refused": "Nothing was saved. Your role does not include the permission this needs."
