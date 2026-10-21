@@ -63,9 +63,15 @@ def make_checkout(config, role, say, home):
             "mainCheckout")
         return
     say(f"  {role}: creating {path}")
-    subprocess.run(["git", f"--git-dir={home.parent}", "fetch", "--quiet", "origin"], check=True)
-    subprocess.run(["git", f"--git-dir={home.parent}", "worktree", "add", "--detach", str(path),
-                    "origin/main"], check=True, capture_output=True)
+    git = ["git", f"--git-dir={home.parent}"]
+    subprocess.run([*git, "fetch", "--quiet", "origin"], check=True)
+    # A checkout deleted by hand stays registered, and git refuses its path until pruned.
+    subprocess.run([*git, "worktree", "prune"], check=True)
+    made = subprocess.run([*git, "worktree", "add", "--detach", str(path), "origin/main"],
+                          capture_output=True, text=True)
+    if made.returncode:
+        say(f"  {role}: could not create {path}: {made.stderr.strip()}")
+        return
     stacks = role_stacks()
     if role in stacks and path.parent == REPO.parent:
         subprocess.run(["node", "scripts/dev-env.mjs", "setup", "--role", role], cwd=REPO,
