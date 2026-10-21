@@ -1,10 +1,14 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import {
   COUNTRY_CODES,
+  CURRENCY_CODES,
   countryChoices,
+  currencyChoices,
   currencyLabel,
   deviceCountry,
+  heldCurrencyLabel,
   deviceRegion,
   timezoneLabel,
 } from './regions.ts';
@@ -32,7 +36,8 @@ describe('regions', () => {
   });
 
   it('labels a currency by its name, then its code', () => {
-    expect(currencyLabel('NGN', 'en')).toBe('Nigerian Naira · NGN');
+    expect(currencyLabel('NGN', 'en')).toBe('Nigerian Naira (NGN)');
+    expect(currencyLabel('NGN', 'fr')).toBe('naira nigérian (NGN)');
   });
 
   it('starts on the country the device names, else the likeliest for its language', () => {
@@ -58,5 +63,52 @@ describe("the device's country", () => {
   it('assumes no country when nothing names one', () => {
     expect(deviceRegion(null, ['es-419'])).toBeNull();
     expect(deviceRegion(null, [])).toBeNull();
+  });
+});
+
+describe('currencies', () => {
+  const retired = (code: string) => `${code} (no longer in use)`;
+
+  it('offers the currencies in use today, and not the retired ones or the X-codes that are not money', () => {
+    const offered = currencyChoices('NGN', 'en', retired).map(({ code }) => code);
+
+    expect(offered).toContain('SLE');
+    expect(offered).toContain('ZWG');
+    expect(offered).toContain('XOF');
+    for (const code of ['SLL', 'ZWL', 'HRK', 'XXX', 'XTS', 'XAU', 'XDR', 'BOV'])
+      expect(offered).not.toContain(code);
+  });
+
+  it("sorts by the name in the reader's language", () => {
+    const names = currencyChoices('NGN', 'fr', retired).map(({ name }) => name);
+
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'fr')));
+    expect(names).toContain('naira nigérian (NGN)');
+  });
+
+  it('puts a held currency that is no longer offered first, and offers it only while held', () => {
+    expect(currencyChoices('SLL', 'en', retired)[0]).toEqual({
+      code: 'SLL',
+      name: 'SLL (no longer in use)',
+    });
+    expect(currencyChoices('SLE', 'en', retired).map(({ code }) => code)).not.toContain('SLL');
+    expect(currencyChoices('', 'en', retired)).toHaveLength(CURRENCY_CODES.length);
+  });
+
+  it("shows an organisation's own currency, one no longer offered, and none", () => {
+    expect(heldCurrencyLabel('NGN', 'en', retired)).toBe('Nigerian Naira (NGN)');
+    expect(heldCurrencyLabel('XXX', 'en', retired)).toBe('XXX (no longer in use)');
+    expect(heldCurrencyLabel('', 'en', retired)).toBe('');
+  });
+
+  it("lists exactly the codes the API's Regions::CURRENCIES accepts", () => {
+    const source = readFileSync(
+      new URL('../../../services/api/src/Domain/Organisation/Regions.php', import.meta.url),
+      'utf8',
+    );
+    const constant = /CURRENCIES = \[([^\]]*)\]/.exec(source)?.[1] ?? '';
+
+    expect(constant.match(/[A-Z]{3}/g)).toEqual([...CURRENCY_CODES]);
+    expect(new Set(CURRENCY_CODES).size).toBe(CURRENCY_CODES.length);
   });
 });

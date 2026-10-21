@@ -9,13 +9,11 @@ use App\Domain\Organisation\Members\MembershipMachine;
 use App\Entity\JoinOfferDismissal;
 use App\Entity\Membership;
 use App\Entity\Organisation;
-use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
-use App\Enum\SeededRole;
 use App\Http\Exception\ApiException;
 use App\Repository\JoinOfferDismissalRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -38,14 +36,13 @@ final readonly class JoinRequester
     ) {
     }
 
-    /** Waits for somebody who manages members (sc-392), as Read-only until they choose a role. */
     public function ask(User $user, Organisation $organisation): Membership
     {
         if (!$this->joinOfferFinder->isOffered($user, $organisation)) {
             throw new ApiException(ErrorCode::JoinOfferUnavailable, $this->translator->trans('domain_joining.unavailable'));
         }
 
-        $membership = $this->membershipMachine->join($organisation, $user, $this->readOnly($organisation), MembershipStatus::PendingApproval, MembershipChannel::Domain, $user);
+        $membership = $this->membershipMachine->ask($organisation, $user, MembershipChannel::Domain);
         $this->auditor->record('domain_join.asked', self::SUBJECT, $membership->getId(), Actor::User, $user->getId(), $user->getName(), [
             'organisation' => [null, $organisation->getId()->toRfc4122()],
         ]);
@@ -79,11 +76,5 @@ final readonly class JoinRequester
         }
 
         $this->entityManager->persist(new JoinOfferDismissal($user, $organisation, $this->clock->now()));
-    }
-
-    private function readOnly(Organisation $organisation): Role
-    {
-        return $this->entityManager->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly])
-            ?? throw new ApiException(ErrorCode::InternalError, 'The organisation is missing a seeded role.');
     }
 }

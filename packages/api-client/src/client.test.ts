@@ -1152,6 +1152,107 @@ describe('company domain joining (sc-561)', () => {
       { url: 'http://api.test/api/orgs/org_1/domains/ire.events', method: 'DELETE' },
     ]);
   });
+
+  test('lists the organisations the account is paused in, with why and the removal instant', async () => {
+    const suspension = {
+      reason: 'address_gone',
+      domain: 'ire.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday, Nov 15 at 09:40 WAT' },
+    };
+    const { client } = answering({
+      organisations: [],
+      paused: [
+        {
+          id: 'org_1',
+          name: 'Ìrè Events',
+          countryCode: 'NG',
+          currency: 'NGN',
+          timezone: 'Africa/Lagos',
+          contactAddress: 'hello@ire.events',
+          locale: 'en',
+          suspension,
+        },
+      ],
+    });
+
+    const { paused } = await client.organisationsWithPaused();
+
+    expect(paused[0]?.name).toBe('Ìrè Events');
+    expect(paused[0]?.suspension).toEqual(suspension);
+  });
+
+  test('restores a suspended member', async () => {
+    const { client, sent } = answering(null, 204);
+
+    await client.restoreMember('org_1', 'mem_1');
+
+    expect(sent).toEqual([
+      { url: 'http://api.test/api/orgs/org_1/members/mem_1/restore', method: 'POST' },
+    ]);
+  });
+});
+
+describe('requests to join (sc-562)', () => {
+  function answering(body: unknown, status = 200) {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return new Response(body == null ? null : JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    return { client, sent };
+  }
+
+  test('sends the token in the body, never the URL, and reads only the name', async () => {
+    const { client, sent } = answering({
+      organisation: { name: 'Ìrè Events' },
+      standing: 'cooling_off',
+      askAgainFrom: '2026-11-20T09:00:00+00:00',
+    });
+
+    expect(await client.requestLinkPreview('ab12')).toEqual({
+      organisation: { name: 'Ìrè Events' },
+      standing: 'cooling_off',
+      askAgainFrom: '2026-11-20T09:00:00+00:00',
+    });
+    expect(sent).toEqual([
+      { url: 'http://api.test/api/request-links/link', method: 'POST', body: { token: 'ab12' } },
+    ]);
+  });
+
+  test('a blank message is sent as none', async () => {
+    const { client, sent } = answering(
+      { request: { organisation: { id: 'org_1', name: 'Ìrè Events' }, askedAt: 'x' } },
+      201,
+    );
+
+    await client.askThroughRequestLink('ab12', '   ');
+
+    expect(sent[0]?.body).toEqual({ token: 'ab12', message: null });
+  });
+
+  test('turns the link on with a PUT and reads it in full', async () => {
+    const { client, sent } = answering({ on: true, url: 'https://soirely.test/join/ab12' });
+
+    expect(await client.turnOnRequestLink('org_1')).toEqual({
+      on: true,
+      url: 'https://soirely.test/join/ab12',
+    });
+    expect(sent[0]?.method).toBe('PUT');
+    expect(sent[0]?.url).toBe('http://api.test/api/orgs/org_1/request-link');
+  });
 });
 
 describe('the health endpoint', () => {
@@ -1982,6 +2083,53 @@ describe('invitations and members', () => {
     expect(sent).toEqual([
       { line: 'PATCH /api/orgs/org_1/members/m_bisi', body: { roleId: 'role_5' } },
       { line: 'POST /api/orgs/org_1/ownership', body: { membershipId: 'm_bisi', proof: 'p_1' } },
+    ]);
+  });
+
+  test('somebody awaiting approval carries the instant they are removed, as the server wrote it', async () => {
+    const { api } = client(
+      json({
+        members: [
+          {
+            id: 'm_ada',
+            user: { id: 'u3', name: 'Ada Okeke', email: 'ada@okeke.ng' },
+            role: { id: 'role_5', seededAs: 'read_only', name: null },
+            status: 'pending_approval',
+            former: null,
+            channel: 'request',
+            message: null,
+            since: '2026-10-12T08:40:00+00:00',
+            removesAt: {
+              at: '2026-11-11T08:40:00+00:00',
+              written: 'Wednesday, Nov 11 at 09:40 WAT',
+            },
+            invitedBy: null,
+            invitedAt: null,
+            self: false,
+            history: [],
+          },
+        ],
+        invitations: [],
+      }),
+    );
+
+    const [ada] = (await api.members('org_1')).members;
+
+    expect(ada?.removesAt).toEqual({
+      at: '2026-11-11T08:40:00+00:00',
+      written: 'Wednesday, Nov 11 at 09:40 WAT',
+    });
+  });
+
+  test('a request to join is approved with a role, or turned down', async () => {
+    const { api, sent } = client(new Response(null, { status: 204 }));
+
+    await api.approveMember('org_1', 'm_ada', 'role_5');
+    await api.turnDownMember('org_1', 'm_chidi');
+
+    expect(sent).toEqual([
+      { line: 'POST /api/orgs/org_1/members/m_ada/approve', body: { roleId: 'role_5' } },
+      { line: 'POST /api/orgs/org_1/members/m_chidi/turn-down', body: {} },
     ]);
   });
 

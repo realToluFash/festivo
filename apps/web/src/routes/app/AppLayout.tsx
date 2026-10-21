@@ -10,6 +10,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
+import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import {
   joinOrganisation,
@@ -78,6 +79,7 @@ function Shell() {
   const { pathname } = useLocation();
   const [switched, setSwitched] = useState<{ name: string; at: string } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [choosing, setChoosing] = useState(0);
   const organisation = session.organisation;
   const waiting = useWaitingInvitations();
   const closeCreate = useCallback(() => setCreating(false), []);
@@ -100,6 +102,8 @@ function Shell() {
             waiting={waiting}
             offer={offer}
             email={session.email}
+            paused={session.pausedIn != null}
+            opened={choosing}
             onSwitch={(next) => {
               switchOrganisation(next.id);
               setSwitched({ name: next.name, at: pathname });
@@ -127,7 +131,7 @@ function Shell() {
 
       <main id="content" className="shell-content">
         <LinkedNotice />
-        {organisation != null && (
+        {organisation != null && session.pausedIn == null && (
           <SignInRulesNotices key={organisation.id} organisation={organisation} />
         )}
         {/* Said on the page it happened on, and gone once the person moves on. */}
@@ -141,7 +145,17 @@ function Shell() {
         )}
 
         <ErrorBoundary>
-          {organisation == null && !pathname.startsWith('/app/account') ? (
+          {session.pausedIn != null && !pathname.startsWith('/app/account') ? (
+            <AccessPaused
+              paused={session.pausedIn}
+              others={session.organisations}
+              onSwitch={(next) => {
+                switchOrganisation(next.id);
+                setSwitched({ name: next.name, at: pathname });
+              }}
+              onChoose={() => setChoosing((times) => times + 1)}
+            />
+          ) : organisation == null && !pathname.startsWith('/app/account') ? (
             <NoOrganisation
               waiting={waiting}
               onOpen={(id) => {

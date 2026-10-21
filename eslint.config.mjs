@@ -155,9 +155,14 @@ export default [
     },
   },
   {
-    // The file that documents the rule, and the test that enforces it, both
-    // have to name the thing they are about.
-    files: ['apps/mobile/src/theme/fonts.ts', 'apps/mobile/src/components/Text.tsx'],
+    // The mapper, the file that documents the rule, and the tests that hold
+    // them all have to name the thing they are about.
+    files: [
+      'apps/mobile/src/theme/fonts.ts',
+      'apps/mobile/src/theme/faceFor.ts',
+      'apps/mobile/src/theme/faceFor.test.ts',
+      'apps/mobile/src/components/Text.tsx',
+    ],
     rules: { 'no-restricted-syntax': 'off' },
   },
 ];

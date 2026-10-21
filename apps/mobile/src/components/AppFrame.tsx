@@ -19,6 +19,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
 const RAIL_WIDTH = 220;
@@ -129,7 +130,14 @@ export function AppFrame({
           )}
           <OpenSwitcher.Provider value={openSwitcher}>
             <HideBack.Provider value={setBackHidden}>
-              {overdue && !aboutTheAccount && signedIn.organisation != null ? (
+              {signedIn.pausedIn != null && !aboutTheAccount ? (
+                <AccessPaused
+                  paused={signedIn.pausedIn}
+                  others={signedIn.organisations}
+                  onSwitch={(next) => switchOrganisation(next.id)}
+                  onChoose={() => openSwitcher?.()}
+                />
+              ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
                 <TwoFactorOverdue organisation={signedIn.organisation} />
               ) : (
                 children
@@ -142,7 +150,7 @@ export function AppFrame({
       <Switcher
         open={choosing}
         organisations={signedIn.organisations}
-        current={signedIn.organisation}
+        current={signedIn.pausedIn != null ? null : signedIn.organisation}
         waiting={waiting}
         offer={offer}
         email={email}
@@ -440,7 +448,7 @@ function OrgPill({
           {organisation.name}
         </Text>
         {railed && (
-          <Text size={tokens.typeMeta.size} muted>
+          <Text size={tokens.typeMeta.size} muted numberOfLines={1}>
             {t('frame.organisation')}
           </Text>
         )}
@@ -518,10 +526,10 @@ function Switcher({
                 >
                   <Tile name={organisation.name} />
                   <View style={[styles.fill, styles.shrink]}>
-                    <Text size={tokens.typeBodyPhone.size} weight="semibold">
+                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={1}>
                       {organisation.name}
                     </Text>
-                    <Text size={tokens.typeBody.size} muted>
+                    <Text size={tokens.typeBody.size} muted numberOfLines={1}>
                       {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
                     </Text>
                   </View>

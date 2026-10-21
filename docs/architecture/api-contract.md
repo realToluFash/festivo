@@ -265,6 +265,33 @@ permissions are defaults written once at creation, then the organisation's to ch
 - A role id from another organisation is `404`. Demoting the last active owner is
   `409 last_owner` (`RoleAssignment`).
 
+## Answering a request to join
+
+Somebody who asked through the request link or the company domain is a membership in
+`pending_approval` (sc-392). Only a caller holding `members.manage` sees one: for anybody
+else `GET /api/orgs/{id}/members` leaves them out entirely.
+
+- Each pending member in that list carries `removesAt`: `at`, the moment it was asked
+  - 30 × 24 h (`memberships.request_expires_at`), and `written`, that instant for the
+    caller by `UserMailer::deadline` ("Wednesday, Nov 11 at 09:40 WAT", or UTC, labelled).
+    Every other member has `removesAt: null`.
+- `POST /api/orgs/{id}/members/{membershipId}/approve` (`members.manage`) takes `roleId`
+  and answers `204`: the membership is `active` in that role, audited
+  `membership.approved`. The role is held to `RoleManager::mayGrant`, so a role the caller
+  could not grant is `403 grant_not_held`.
+- `POST …/members/{membershipId}/turn-down` (`members.manage`) answers `204`: the
+  membership ends `left_or_removed`, audited `membership.turned_down`, and the person is
+  emailed in their language without being told who.
+- A request already answered, or past its instant, is `409 join_request_answered` for
+  either. A pending membership is not a member: `PATCH` and `DELETE` on
+  `…/members/{membershipId}` are `404` for it.
+- A request is removed at its instant whether or not `app:join-requests:run` (every
+  minute) has run yet: the list and both answers remove any lapsed request in the
+  organisation first, recorded as of the instant, with no actor, audited
+  `membership.request_expired`, and the person is emailed. The same job emails everybody
+  holding `members.manage` when requests arrive, at most once in any 24 hours per
+  organisation (`organisations.join_requests_noticed_at`).
+
 ## Authentication
 
 A bearer access token on every request, renewed from a refresh token the client keeps.

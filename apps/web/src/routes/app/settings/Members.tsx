@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type DomainSuspension,
   type Membership,
   type MembersList,
   type OrganisationMember,
@@ -8,8 +9,10 @@ import {
 } from '@soirely/api-client';
 import {
   type MemberFilter,
+  approvalRoles,
   emailProblem,
   formatDay,
+  grantableRoles,
   historyLine,
   initials,
   memberIsShown,
@@ -35,8 +38,14 @@ type Load =
   | { kind: 'failed' }
   | { kind: 'loaded'; list: MembersList; roles: OrganisationRole[] };
 
+/** What answering a request to join leaves on the list (sc-392): the done line and its next step. */
+interface Answered {
+  text: string;
+  next: { label: string; member: string } | { label: string; filter: MemberFilter };
+}
+
 type View =
-  | { kind: 'list'; flash: string | null }
+  | { kind: 'list'; flash: string | null; answered?: Answered }
   | { kind: 'member'; id: string }
   | { kind: 'invite'; email: string; roleId: string | null };
 
@@ -138,7 +147,7 @@ function MembersLoaded({
     return (
       <Invite
         organisation={organisation}
-        roles={grantable(roles, organisation)}
+        roles={grantableRoles(roles, organisation)}
         email={view.email}
         roleId={view.roleId}
         onCancel={() => setView({ kind: 'list', flash: null })}
@@ -163,10 +172,14 @@ function MembersLoaded({
         organisation={organisation}
         member={member}
         list={list}
-        roles={grantable(roles, organisation)}
+        roles={grantableRoles(roles, organisation)}
         manages={manages}
         caller={list.members.find((one) => one.self)?.user.id ?? null}
         onChanged={onChange}
+        onAnswered={(changed, answered) => {
+          onChange(changed);
+          setView({ kind: 'list', flash: null, answered });
+        }}
         onBack={() => setView({ kind: 'list', flash: null })}
       />
     );
@@ -176,8 +189,14 @@ function MembersLoaded({
     <MembersOverview
       organisation={organisation}
       list={list}
+      roles={grantableRoles(roles, organisation)}
       manages={manages}
       flash={view.kind === 'list' ? view.flash : null}
+      answered={view.kind === 'list' ? (view.answered ?? null) : null}
+      onAnswered={(changed, answered) => {
+        onChange(changed);
+        setView({ kind: 'list', flash: null, answered });
+      }}
       onOpen={(id) => setView({ kind: 'member', id })}
       onInvite={(email, roleId) => setView({ kind: 'invite', email, roleId })}
       onRevoked={(invitation) =>
@@ -190,30 +209,25 @@ function MembersLoaded({
   );
 }
 
-/** The inviter may grant only what they hold, and only an owner makes an owner, as the API refuses otherwise. */
-function grantable(roles: OrganisationRole[], organisation: Membership): OrganisationRole[] {
-  const owner = organisation.role.seededAs === 'owner';
-
-  return roles.filter(
-    (role) =>
-      (owner || role.seededAs !== 'owner') &&
-      role.permissions.every((permission) => organisation.permissions.includes(permission)),
-  );
-}
-
 function MembersOverview({
   organisation,
   list,
+  roles,
   manages,
   flash,
+  answered,
+  onAnswered,
   onOpen,
   onInvite,
   onRevoked,
 }: {
   organisation: Membership;
   list: MembersList;
+  roles: OrganisationRole[];
   manages: boolean;
   flash: string | null;
+  answered: Answered | null;
+  onAnswered: (list: MembersList, answered: Answered) => void;
   onOpen: (id: string) => void;
   onInvite: (email: string, roleId: string | null) => void;
   onRevoked: (invitation: SentInvitation) => void;
@@ -223,6 +237,7 @@ function MembersOverview({
   const invitations = list.invitations.filter((one) => one.status !== 'accepted');
   const pending = invitations.filter((one) => one.status === 'pending').length;
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
+  const waiting = list.members.filter((member) => member.status === 'pending_approval');
   const filters = FILTERS.filter((one) => manages || one !== 'waiting');
   const count = (one: MemberFilter) =>
     one === 'invited'
@@ -258,6 +273,56 @@ function MembersOverview({
           </span>
           <p>{flash}</p>
         </div>
+      )}
+
+      {answered != null && (
+        <div className="notice notice-done" role="status">
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <div className="notice-body">
+            <p>{answered.text}</p>
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                const next = answered.next;
+                if ('member' in next) onOpen(next.member);
+                else setFilter(next.filter);
+              }}
+            >
+              {answered.next.label}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {manages && waiting.length > 0 && (
+        <section className="card members-awaiting" aria-labelledby="awaiting-title">
+          <h2 id="awaiting-title">{t('membersScreen.awaiting.title')}</h2>
+          <p className="muted">{t('membersScreen.awaiting.note')}</p>
+          {waiting.map((member) => (
+            <div key={member.id} className="members-request">
+              <button type="button" className="members-row" onClick={() => onOpen(member.id)}>
+                <span className="org-tile" aria-hidden="true">
+                  {initials(member.user.name)}
+                </span>
+                <span className="members-row-text">
+                  <span className="members-row-name">{member.user.name}</span>
+                  {member.user.email != null && <span className="muted">{member.user.email}</span>}
+                  <RequestLines organisation={organisation} member={member} />
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+              <JoinRequestAnswer
+                organisation={organisation}
+                member={member}
+                roles={roles}
+                onAnswered={onAnswered}
+              />
+            </div>
+          ))}
+        </section>
       )}
 
       <div className="members-chips" role="group" aria-label={t('membersScreen.show')}>
@@ -449,6 +514,7 @@ function MemberDetail({
   manages,
   caller,
   onChanged,
+  onAnswered,
   onBack,
 }: {
   organisation: Membership;
@@ -458,6 +524,7 @@ function MemberDetail({
   manages: boolean;
   caller: string | null;
   onChanged: (list: MembersList) => void;
+  onAnswered: (list: MembersList, answered: Answered) => void;
   onBack: () => void;
 }) {
   const { t } = useTranslation();
@@ -465,7 +532,8 @@ function MemberDetail({
   const [failed, setFailed] = useState<string | null>(null);
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
-  const acts = standing === 'manageable';
+  const waiting = member.status === 'pending_approval';
+  const acts = standing === 'manageable' && !waiting;
 
   async function remove(): Promise<void> {
     setRemoval('removing');
@@ -545,14 +613,27 @@ function MemberDetail({
           <p className="muted">
             {member.self
               ? t('membersScreen.youAs', { role: roleName(t, member.role) })
-              : `${roleName(t, member.role)} · ${memberStatusWord(t, member)}`}
+              : `${waiting ? t('membersScreen.noRoleYet') : roleName(t, member.role)} · ${memberStatusWord(t, member)}`}
           </p>
           {member.user.email != null && <p className="muted">{member.user.email}</p>}
         </div>
       </div>
       <section className="card" aria-labelledby="role-title">
         <h2 id="role-title">{t('membersScreen.roleTitle')}</h2>
-        {member.self ? (
+        {waiting ? (
+          <>
+            <p className="members-row-name">{t('membersScreen.noRoleYet')}</p>
+            <RequestLines organisation={organisation} member={member} />
+            {manages && (
+              <JoinRequestAnswer
+                organisation={organisation}
+                member={member}
+                roles={roles}
+                onAnswered={onAnswered}
+              />
+            )}
+          </>
+        ) : member.self ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
             <p className="muted">{t('membersScreen.ownRole')}</p>
@@ -599,6 +680,15 @@ function MemberDetail({
           ))}
         </ul>
       </section>
+
+      {acts && member.suspension != null && (
+        <Suspension
+          organisation={organisation}
+          member={member}
+          suspension={member.suspension}
+          onChanged={onChanged}
+        />
+      )}
 
       {acts && (
         <section className="card" aria-labelledby="remove-title">
@@ -655,6 +745,254 @@ function MemberDetail({
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+type Restoring = 'resting' | 'restoring' | 'restored';
+
+/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below. */
+function Suspension({
+  organisation,
+  member,
+  suspension,
+  onChanged,
+}: {
+  organisation: Membership;
+  member: OrganisationMember;
+  suspension: DomainSuspension;
+  onChanged: (list: MembersList) => void;
+}) {
+  const { t } = useTranslation();
+  const [restoring, setRestoring] = useState<Restoring>('resting');
+  const [failed, setFailed] = useState<string | null>(null);
+  const named = {
+    name: member.user.name,
+    organisation: organisation.name,
+    domain: suspension.domain ?? '',
+  };
+
+  async function restore(): Promise<void> {
+    setRestoring('restoring');
+    setFailed(null);
+
+    try {
+      await api.restoreMember(organisation.id, member.id);
+      setRestoring('restored');
+      onChanged(await api.members(organisation.id));
+    } catch (error) {
+      setRestoring('resting');
+      setFailed(
+        error instanceof ApiError && error.is('restore_needs_address')
+          ? t('membersScreen.restoreNeedsAddress', named)
+          : error instanceof ApiError
+            ? error.problem.title
+            : t('membersScreen.actionFailed'),
+      );
+    }
+  }
+
+  if (restoring === 'restored') {
+    return (
+      <div className="notice notice-done" role="status">
+        <span className="mark mark-done" aria-hidden="true">
+          ✓
+        </span>
+        <p>{t('membersScreen.restored', named)}</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="card" aria-labelledby="suspension-title">
+      <h2 id="suspension-title">
+        <span className="mark mark-attention" aria-hidden="true">
+          !
+        </span>{' '}
+        {t('membersScreen.state.domainSuspended')}
+      </h2>
+      <p>{t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}</p>
+      {suspension.removesAt != null && (
+        <p className="muted">
+          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+        </p>
+      )}
+      {failed != null && <FieldError id="restore-failed" message={failed} />}
+      <div className="actions">
+        <button
+          type="button"
+          className="button button-primary"
+          aria-busy={restoring === 'restoring'}
+          disabled={restoring === 'restoring'}
+          onClick={() => void restore()}
+        >
+          {t('membersScreen.restore', named)}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** How and when somebody asked, and the instant their request is removed, as the server wrote it for the reader. */
+function RequestLines({
+  organisation,
+  member,
+}: {
+  organisation: Membership;
+  member: OrganisationMember;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <span className="muted">
+        {t('membersScreen.awaiting.asked', {
+          channel: t(`membersScreen.how.${member.channel ?? 'request'}`, {
+            organisation: organisation.name,
+          }),
+          date: member.since == null ? '' : formatDay(member.since, currentLocale()),
+        })}
+      </span>
+      {member.removesAt != null && (
+        <span className="muted">
+          {t('membersScreen.awaiting.removes', { deadline: member.removesAt.written })}
+        </span>
+      )}
+    </>
+  );
+}
+
+type Answering = 'resting' | 'approving' | 'turningDown';
+
+/** Approve, with a role that starts on Read-only and always has a value, or Turn down, asked first (sc-392). */
+function JoinRequestAnswer({
+  organisation,
+  member,
+  roles,
+  onAnswered,
+}: {
+  organisation: Membership;
+  member: OrganisationMember;
+  roles: OrganisationRole[];
+  onAnswered: (list: MembersList, answered: Answered) => void;
+}) {
+  const { t } = useTranslation();
+  const offered = approvalRoles(roles);
+  const [answering, setAnswering] = useState<Answering>('resting');
+  const [picked, setPicked] = useState(offered[0]?.id ?? '');
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const role = offered.find((one) => one.id === picked);
+  const name = member.user.name;
+
+  async function answer(): Promise<void> {
+    setBusy(true);
+    setFailed(null);
+
+    try {
+      if (answering === 'approving' && role != null) {
+        await api.approveMember(organisation.id, member.id, role.id);
+        onAnswered(await api.members(organisation.id), {
+          text: t('membersScreen.awaiting.approved', { name, role: roleName(t, role) }),
+          next: { label: t('membersScreen.awaiting.approvedNext', { name }), member: member.id },
+        });
+      } else {
+        await api.turnDownMember(organisation.id, member.id);
+        onAnswered(await api.members(organisation.id), {
+          text: t('membersScreen.awaiting.turnedDown', { name }),
+          next: { label: t('membersScreen.awaiting.turnedDownNext'), filter: 'former' },
+        });
+      }
+    } catch (error) {
+      setBusy(false);
+      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+    }
+  }
+
+  function back(): void {
+    setFailed(null);
+    setAnswering('resting');
+  }
+
+  if (answering === 'resting') {
+    return (
+      <div className="actions">
+        <button
+          type="button"
+          className="button button-primary"
+          onClick={() => setAnswering('approving')}
+        >
+          {t('membersScreen.awaiting.approve')}
+        </button>
+        <button type="button" className="button" onClick={() => setAnswering('turningDown')}>
+          {t('membersScreen.awaiting.turnDown')}
+        </button>
+      </div>
+    );
+  }
+
+  if (answering === 'turningDown') {
+    return (
+      <div className="members-answer">
+        <h3>{t('membersScreen.awaiting.turnDownTitle', { name })}</h3>
+        <p>{t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}</p>
+        {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
+        <div className="actions">
+          <button
+            type="button"
+            className="button button-danger"
+            aria-busy={busy}
+            disabled={busy}
+            onClick={() => void answer()}
+          >
+            {t('membersScreen.awaiting.turnDownConfirm', { name })}
+          </button>
+          <button type="button" className="button" disabled={busy} onClick={back}>
+            {t('membersScreen.awaiting.keep')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="members-answer">
+      <fieldset className="members-roles">
+        <legend>{t('membersScreen.awaiting.roleFor', { name })}</legend>
+        {offered.map((one) => (
+          <label key={one.id} className="members-role">
+            <input
+              type="radio"
+              name={`approve-role-${member.id}`}
+              value={one.id}
+              checked={picked === one.id}
+              disabled={busy}
+              onChange={() => setPicked(one.id)}
+            />
+            <span className="members-role-text">
+              <span className="members-row-name">{roleName(t, one)}</span>
+              {one.seededAs != null && (
+                <span className="muted">{t(`membersScreen.roleMeans.${one.seededAs}`)}</span>
+              )}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      {failed != null && <FieldError id={`approve-${member.id}`} message={failed} />}
+      <div className="actions">
+        <button
+          type="button"
+          className="button button-primary"
+          aria-busy={busy}
+          disabled={busy || role == null}
+          onClick={() => void answer()}
+        >
+          {t('membersScreen.awaiting.approveAs', { role: role == null ? '' : roleName(t, role) })}
+        </button>
+        <button type="button" className="button" disabled={busy} onClick={back}>
+          {t('membersScreen.awaiting.cancel')}
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 """Story descriptions as sections, so a role reads or edits one part rather than all of it."""
 
+import datetime
 import hashlib
 import re
 
@@ -9,6 +10,14 @@ TOP = "(top)"
 
 def digest(text):
     return hashlib.sha1((text or "").encode()).hexdigest()[:12]
+
+
+def epoch(stamp):
+    """Seconds since the epoch for one of Shortcut's or GitHub's ISO stamps, or None."""
+    try:
+        return datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+    except (AttributeError, ValueError):
+        return None
 
 
 def sections(markdown):
@@ -51,12 +60,13 @@ def is_design(heading):
 
 
 def replace(markdown, name, body):
-    """The description with one section's body replaced, or the section added at the end."""
+    """The description with one section's own text replaced, as `find` reads it: the
+    headings under it are other sections and stay. A missing section is added at the end."""
     lines = (markdown or "").splitlines()
     found = find(markdown, name)
     if not found:
-        return (markdown or "").rstrip() + f"\n\n## {name}\n\n{body.strip()}\n"
-    heading, level, _ = found
+        return append_dated(markdown, name, body)
+    heading = found[0]
     start = next(i for i, line in enumerate(lines)
                  if (m := HEADING.match(line)) and m.group(2) == heading)
     end = len(lines)
@@ -64,8 +74,7 @@ def replace(markdown, name, body):
     for i in range(start + 1, len(lines)):
         if lines[i].lstrip().startswith("```"):
             fence = not fence
-        m = None if fence else HEADING.match(lines[i])
-        if m and len(m.group(1)) <= level:
+        if not fence and HEADING.match(lines[i]):
             end = i
             break
     new = lines[:start + 1] + ["", body.strip(), ""] + lines[end:]
@@ -73,7 +82,11 @@ def replace(markdown, name, body):
 
 
 def append_dated(markdown, title, body):
-    return (markdown or "").rstrip() + f"\n\n## {title}\n\n{body.strip()}\n"
+    """A section added at the end, at the description's top level so it never lands
+    under the last section."""
+    levels = [level for heading, level, _ in sections(markdown) if heading != TOP]
+    hashes = "#" * (min(levels) if levels else 2)
+    return (markdown or "").rstrip() + f"\n\n{hashes} {title}\n\n{body.strip()}\n"
 
 
 def outstanding_items(text):

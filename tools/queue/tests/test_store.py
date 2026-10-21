@@ -28,6 +28,29 @@ class Claims(unittest.TestCase):
         self.assertIsNone(store.claim(self.db, "dev", NOW))
         self.assertIsNotNone(store.held_by(self.db, "dev", NOW))
 
+    def test_a_role_with_several_workers_holds_one_item_each(self):
+        store.record(self.db, [dict(item(f, ["pm"]), story_id=n)
+                               for n, f in enumerate("abc")], NOW)
+        first = store.claim(self.db, "pm", NOW, worker="pm", workers=2)
+        second = store.claim(self.db, "pm", NOW, worker="pm-2", workers=2)
+        self.assertNotEqual(first["id"], second["id"])
+        self.assertIsNone(store.claim(self.db, "pm", NOW, worker="pm-3", workers=2))
+        self.assertIsNone(store.claim(self.db, "pm", NOW, worker="pm", workers=3))
+        self.assertEqual(store.held_by(self.db, "pm", NOW, "pm-2")["id"], second["id"])
+
+    def test_two_workers_never_hold_the_same_story(self):
+        store.record(self.db, [dict(item("a", ["pm"]), story_id=7),
+                               dict(item("b", ["pm"]), story_id=7),
+                               dict(item("c", ["pm"]), story_id=8)], NOW)
+        store.claim(self.db, "pm", NOW, worker="pm", workers=2)
+        self.assertEqual(store.claim(self.db, "pm", NOW, worker="pm-2", workers=2)["story_id"], 8)
+
+    def test_a_claim_made_by_hand_counts_as_the_first_worker_s(self):
+        store.record(self.db, [item("a", ["pm"]), item("b", ["pm"])], NOW)
+        store.claim(self.db, "pm", NOW)
+        self.assertIsNotNone(store.held_by(self.db, "pm", NOW, "pm"))
+        self.assertIsNone(store.held_by(self.db, "pm", NOW, "pm-2"))
+
     def test_a_lapsed_lease_puts_the_item_back(self):
         store.record(self.db, [item("a", ["dev"])], NOW)
         store.claim(self.db, "dev", NOW)
@@ -81,6 +104,15 @@ class Claims(unittest.TestCase):
         store.finish(self.db, row["id"], None, NOW)
         self.assertEqual(store.handled(self.db), {("lead", 11), ("lead", 12)})
         self.assertEqual(store.last_run(self.db, "lead"), NOW)
+
+    def test_worked_on_is_when_the_role_last_finished_an_item_on_each_story(self):
+        story = lambda fp, story_id: dict(item(fp, ["l10n", "pm"]), story_id=story_id)
+        store.record(self.db, [story("a", 1), story("b", 1), story("c", 2), story("d", 3)], NOW)
+        for role, at in (("l10n", NOW + 10), ("l10n", NOW + 20), ("pm", NOW + 30)):
+            store.finish(self.db, store.claim(self.db, role, NOW)["id"], None, at)
+        store.claim(self.db, "l10n", NOW + 40)
+        self.assertEqual(store.worked_on(self.db, "l10n"), {1: NOW + 20})
+        self.assertEqual(store.worked_on(self.db, "pm"), {2: NOW + 30})
 
 
 

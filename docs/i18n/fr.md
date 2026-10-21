@@ -7,7 +7,8 @@ whenever you decide something a second string will need.
 
 France French (fr-FR). _Vouvoiement_ throughout: "Veuillez…". France typography: a
 non-breaking space, U+00A0, before `: ; ? !` and inside « guillemets », except in an SMS
-(sc-2504, under Decided phrasings).
+(sc-2504, under Decided phrasings). The typographic apostrophe ’, U+2019, never the straight
+', except in an SMS (sc-7455, under Decided phrasings).
 
 The rules every locale shares are in `.claude/skills/locale-parity`.
 
@@ -53,6 +54,38 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. The apostrophe is ’, U+2019** (sc-7455), in every value of every catalogue,
+  as France typography sets it and as a straight ' beside a curly one reads like a typo on the
+  same screen. Type the character itself. The SMS (`emails:verification.text`, and any SMS
+  string after it) keeps the straight ': ’ is outside GSM-7 and would send the message as
+  UCS-2, at 70 characters a segment. ’ is also the safe one in an ICU string, where a straight
+  ' is the quote character. Keys and markup quoting never change.
+- **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
+  `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads « En pause », the admins
+  « Accès suspendu », as the English keeps them apart. Restoring is « rétablir ». Nothing
+  agrees with the member: the removal is « son accès sera retiré », and the admins are told to
+  « retirer cette personne ». Joining through a domain that closed is « n'accepte plus les
+  adhésions via {{domain}} », as the setting's « Adhésion par domaine d'entreprise ». An
+  address at a domain is « votre adresse {{domain}} ». "What happens next" is « La suite ».
+  "Account settings" is « Paramètres du compte », button and sentence alike.
+- **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
+  `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The
+  setting is « Demandes d'adhésion », so its state agrees: « Activées » / « Désactivées »; the
+  link is « le lien d'adhésion », masculine (« Le garder »). The act stays « demander à
+  rejoindre {{organisation}} », and the button alone « Demander l'accès », as domain joining.
+  What waits is « votre demande d'adhésion », never « votre demande pour rejoindre » with no
+  object. `formatDay` ends on « nov. », so a date never closes a sentence: « À partir du
+  {{date}}, vous pourrez en faire une nouvelle. » « Message » is the same word as English.
+
+- **21 Oct 2026. Creating an event** (`events.*`, `eventForm.*`, `eventPage.*`,
+  `rolesScreen.createEvents*`, `messages:validation.event_*`, sc-6302). A draft is
+  « Brouillon »; the form's legends « Début » and « Fin »; « Date » stays as in English
+  (`same-as-english.json`). An end before the start is « L'événement se termine avant de
+  commencer ». Before the organisation's name, « dans {{name}} » and « de l'organisation
+  {{name}} », so no elision is due. An owner is « une personne ayant le rôle Propriétaire ».
+  The permission's states are « Autorisé » / « Non autorisé », agreeing with the masculine
+  default. A refused send closes « donc rien n'a été envoyé ».
+
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
   « exiger », as the server's errors; "for everyone" is « pour tous ». The date is « à partir
@@ -90,6 +123,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   organisation" is « l'organisation qui vous invite ». A button in a sentence is chosen, as
   `proofExpired_*`: « Choisissez « Enregistrer et continuer » pour y accéder ». No `_many`
   yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is « créer », since « démarrer une organisation » is
+  not French: the heading is « Créez votre propre organisation », the button « Créer
+  l'organisation », as `createOrganisation.create`. The help and the derived-settings line are
+  `createOrganisation`'s words, so both screens say the same.
 
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is « Vous y aurez le rôle Propriétaire », as « le rôle

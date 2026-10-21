@@ -10,13 +10,15 @@ export const DESTINATION_HREF = { home: '/', settings: '/settings' } as const sa
   string
 >;
 
-export type SettingsSection = 'account' | 'security' | 'organisation' | 'members' | 'signInRules';
+export type SettingsSection =
+  'account' | 'security' | 'organisation' | 'members' | 'roles' | 'signInRules';
 
 export const SECTION_HREF = {
   account: '/settings/account',
   security: '/settings/security',
   organisation: '/settings/organisation',
   members: '/settings/members',
+  roles: '/settings/roles',
   signInRules: '/settings/sign-in-rules',
 } as const satisfies Record<SettingsSection, string>;
 
@@ -35,22 +37,23 @@ export interface SettingsGroup {
   sections: readonly SettingsSection[];
 }
 
-/** Members only for a role that can read them, as on the web. */
+/** Members only for a role that can read them, as on the web; Roles only for one that can change them (sc-1931). */
 export function settingsGroups(
   organisation: { permissions: readonly string[] } | null,
 ): readonly SettingsGroup[] {
   const yours: SettingsGroup = { heading: 'yourAccount', sections: ['account', 'security'] };
   if (organisation == null) return [yours];
 
-  const members = roleHolds(organisation, 'members.read');
-
   return [
     yours,
     {
       heading: 'organisationHeading',
-      sections: members
-        ? ['organisation', 'members', 'signInRules']
-        : ['organisation', 'signInRules'],
+      sections: [
+        'organisation',
+        ...(roleHolds(organisation, 'members.read') ? (['members'] as const) : []),
+        ...(roleHolds(organisation, 'members.manage') ? (['roles'] as const) : []),
+        'signInRules',
+      ],
     },
   ];
 }

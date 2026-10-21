@@ -23,26 +23,24 @@ trait SoftDeletable
         return null !== $this->deletedAt;
     }
 
-    public function deletedAt(): ?DateTimeImmutable
+    public function getDeletedAt(): ?DateTimeImmutable
     {
         return $this->deletedAt;
     }
 
-    public function deletedBy(): ?Uuid
+    public function setDeletedAt(?DateTimeImmutable $deletedAt): void
+    {
+        $this->deletedAt = $deletedAt;
+    }
+
+    public function getDeletedBy(): ?Uuid
     {
         return $this->deletedBy;
     }
 
-    public function softDelete(?Uuid $by = null, ?DateTimeImmutable $at = null): void
+    public function setDeletedBy(?Uuid $deletedBy): void
     {
-        $this->deletedAt = $at ?? new DateTimeImmutable();
-        $this->deletedBy = $by;
-    }
-
-    public function restore(): void
-    {
-        $this->deletedAt = null;
-        $this->deletedBy = null;
+        $this->deletedBy = $deletedBy;
     }
 
     public function isPurgeable(DateInterval $window, ?DateTimeImmutable $now = null): bool

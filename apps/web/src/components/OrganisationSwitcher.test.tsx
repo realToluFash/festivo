@@ -1,9 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, adoptAccount } from '../session.ts';
 import { membership } from '../test-memberships.ts';
+import { BREAKS_ANYWHERE } from '../test-wrapping.ts';
 import { routes } from '../routes/index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -79,6 +83,14 @@ function creating(created: () => Response) {
         ? created()
         : json({ invitations: [] }, 200),
     );
+}
+
+/** Presses Create organisation with focus on it, as a click or Enter on the button leaves it. */
+function pressCreate(): void {
+  const create = screen.getByRole('button', { name: 'Create organisation' });
+
+  create.focus();
+  fireEvent.click(create);
 }
 
 function openCreate(): void {
@@ -169,6 +181,146 @@ describe('switching organisation', () => {
   });
 });
 
+describe('switching away from a paused organisation (sc-564)', () => {
+  it('opens the switcher with nothing marked current, then works in the one chosen', () => {
+    const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+      id: 'org_3',
+      name: 'Lagos Weddings',
+    });
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: IRE,
+        organisations: [IRE, OKAFOR],
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+        pausedIn: {
+          id,
+          name,
+          countryCode,
+          currency,
+          timezone,
+          contactAddress,
+          locale,
+          suspension: {
+            reason: 'address_gone',
+            domain: 'lagosweddings.ng',
+            since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+            removesAt: null,
+          },
+        },
+      },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+
+    const options = within(
+      screen.getByRole('listbox', { name: 'Your organisations' }),
+    ).getAllByRole('option');
+    expect(options.map((option) => option.getAttribute('aria-selected'))).toEqual([
+      'false',
+      'false',
+    ]);
+
+    fireEvent.click(screen.getByRole('option', { name: /Ìrè Events/ }));
+
+    expect(screen.getByRole('status').textContent).toMatch(/Now working in Ìrè Events\./);
+    expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
+  });
+});
+
+describe('a 100-character name (sc-486)', () => {
+  const SPACED = 'Adeyemi Okafor Events '.repeat(5).slice(0, 99).concat('X');
+  const WORD = 'A'.repeat(100);
+  const styles = readFileSync(join(import.meta.dirname, '../styles.css'), 'utf8');
+  const rule = (selector: string): string =>
+    new RegExp(`(?:^|\\n)\\s*${selector.replaceAll('.', '\\.')} \\{([^}]*)\\}`, 'u').exec(
+      styles,
+    )?.[1] ?? '';
+
+  function inLong(name: string): void {
+    const long = membership({ id: 'org_3', name });
+
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: long,
+        organisations: [long, OKAFOR],
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+      },
+    });
+  }
+
+  it.each([
+    ['with spaces', SPACED],
+    ['with none', WORD],
+  ])('keeps the whole name, %s, as the accessible name and the hover title at 320px', (_, name) => {
+    expect(name).toHaveLength(100);
+    window.innerWidth = 320;
+    inLong(name);
+    at('/app');
+
+    const trigger = screen.getByRole('button', { name: /Switch organisation/ });
+
+    expect(trigger.getAttribute('aria-label')).toContain(name);
+    fireEvent.click(trigger);
+
+    const [current] = within(screen.getByRole('listbox')).getAllByRole('option');
+
+    expect(current?.textContent).toContain(name);
+    expect(screen.getAllByTitle(name)).toHaveLength(2);
+  });
+
+  it('cuts it to one line with an ellipsis in the trigger and every row', () => {
+    expect(rule('.org-name,\n.org-role')).toMatch(/white-space: nowrap;/u);
+    expect(rule('.org-name,\n.org-role')).toMatch(/text-overflow: ellipsis;/u);
+    expect(rule('.org-naming')).toMatch(/min-width: 0;/u);
+  });
+
+  it('never lets the frame grow past the viewport, nor the open list', () => {
+    expect(rule('.shell')).toMatch(/grid-template-columns: var\(--sizeRail\) minmax\(0, 1fr\);/u);
+    expect(styles).toMatch(/\.shell \{\s*grid-template-columns: minmax\(0, 1fr\);/u);
+    expect(rule('.org-switcher-menu')).toMatch(/max-width: calc\(100vw - /u);
+  });
+
+  it('breaks a long word in any paragraph, heading, list, definition, button, label or span, and in a notice', () => {
+    expect(BREAKS_ANYWHERE.split(', ')).toEqual([
+      'h1',
+      'h2',
+      'h3',
+      'p',
+      'dt',
+      'dd',
+      'li',
+      'button',
+      'label',
+      'span',
+    ]);
+    expect(rule('.notice')).toMatch(/overflow-wrap: anywhere;/u);
+  });
+});
+
 describe('creating an organisation', () => {
   it('shows the defaults it will use, with the primary email', () => {
     inOne();
@@ -245,11 +397,14 @@ describe('creating an organisation', () => {
     openCreate();
 
     fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Six' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    pressCreate();
 
     const alert = await screen.findByText('Too many new organisations for now.');
     expect(alert.parentElement?.textContent).toMatch(/Try again at \d{2}:\d{2}\./);
-    expect((screen.getByLabelText('Organisation name') as HTMLInputElement).value).toBe('Six');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
+    expect(name.value).toBe('Six');
+    await waitFor(() => expect(document.activeElement).toBe(name));
   });
 
   it('says it did not work when the refusal names no field the dialog has', async () => {
@@ -271,13 +426,79 @@ describe('creating an organisation', () => {
     openCreate();
 
     fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    pressCreate();
 
     expect(
       await screen.findByText(
         'Creating the organisation did not work. Nothing was created. Try again in a moment.',
       ),
     ).toBeDefined();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
+    expect(name.value).toBe('Supper');
+    await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+
+  it.each([
+    ['a server error', () => problem('internal_error', 500)],
+    [
+      'no network',
+      () => {
+        throw new TypeError('Failed to fetch');
+      },
+    ],
+  ])('puts focus back on the name after %s, keeping what was typed', async (_, answer) => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    creating(answer);
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    pressCreate();
+    expect(screen.getByLabelText('Organisation name').matches(':disabled')).toBe(true);
+    expect(screen.getByLabelText('Country').matches(':disabled')).toBe(true);
+
+    expect(
+      await screen.findByText(
+        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
+    expect(name.value).toBe('Supper');
+    await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+
+  it.each([
+    [['countryCode'], 'Country'],
+    [['name'], 'Organisation name'],
+    [['name', 'countryCode'], 'Organisation name'],
+  ])('puts focus on the first field a refusal of %j names', async (paths, focused) => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    creating(() =>
+      json(
+        {
+          type: 'https://soirely.com/errors/validation_failed',
+          title: 'No.',
+          status: 422,
+          violations: paths.map((propertyPath) => ({
+            propertyPath,
+            message: `Bad ${propertyPath}.`,
+            code: 'validation_failed',
+          })),
+        },
+        422,
+      ),
+    );
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    pressCreate();
+
+    for (const propertyPath of paths) {
+      expect(await screen.findByText(`Bad ${propertyPath}.`)).toBeDefined();
+    }
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(focused)));
   });
 
   it('keeps Tab and Shift+Tab inside the dialog, in the drawn order', () => {

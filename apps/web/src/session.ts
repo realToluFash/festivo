@@ -6,11 +6,12 @@ import {
   type JoinRequest,
   type LinkedProvider,
   type Membership,
+  type PausedOrganisation,
   type Problem,
   awaiting,
   primaryEmailAddress,
 } from '@soirely/api-client';
-import { chooseOrganisation, roleHolds } from '@soirely/domain';
+import { chooseOrganisation, choosePaused, roleHolds } from '@soirely/domain';
 import { useSyncExternalStore } from 'react';
 
 import { followAccount } from './accountLanguage.ts';
@@ -34,6 +35,8 @@ export interface Session {
   /** The organisation's country from `/me`, which the gate lets through where `/api/orgs` is not. */
   organisationCountry: string | null;
   organisations: readonly Membership[];
+  /** Shown in place of the product: the organisation this device was in, whose access is now paused (sc-564). */
+  pausedIn?: PausedOrganisation | null;
   /** The account's IANA zone; null while times reach the person in UTC (sc-868). */
   timezone: string | null;
   /** The request to join at its domain that an account in no organisation is waiting on (sc-561). */
@@ -116,10 +119,13 @@ async function askForAccount(): Promise<void> {
 
 /** The account, with its organisations; one behind the onboarding gate is not asked for them. */
 export async function adoptAccount(account: Account): Promise<void> {
-  const organisations = account.verified && account.complete ? await api.organisations() : [];
+  const { organisations, paused } =
+    account.verified && account.complete
+      ? await api.organisationsWithPaused()
+      : { organisations: [], paused: [] };
   await followAccount(account);
 
-  set({ status: 'signedIn', session: sessionFrom(account, organisations) });
+  set({ status: 'signedIn', session: sessionFrom(account, organisations, paused) });
 }
 
 /** After a gate has been passed, or the API says one has closed: the account read afresh. */
@@ -149,7 +155,7 @@ export function switchOrganisation(id: string): void {
   if (organisation == null) return;
 
   remember(id);
-  set({ status: 'signedIn', session: { ...state.session, organisation } });
+  set({ status: 'signedIn', session: { ...state.session, organisation, pausedIn: null } });
 }
 
 /** An invitation accepted in the product: the organisation joins the list, and nobody is moved into it. */
@@ -210,7 +216,11 @@ export function providerOnlyBy(why: Problem | undefined): ProviderOnly | undefin
   return { organisation: why.organisation, providers: why.providers ?? [], email: why.email ?? '' };
 }
 
-function sessionFrom(account: Account, organisations: readonly Membership[]): Session {
+function sessionFrom(
+  account: Account,
+  organisations: readonly Membership[],
+  paused: readonly PausedOrganisation[],
+): Session {
   const remembered = recalled();
 
   return {
@@ -227,6 +237,7 @@ function sessionFrom(account: Account, organisations: readonly Membership[]): Se
     timezone: account.timezone,
     waitingFor: account.waitingFor,
     organisation: chooseOrganisation(organisations, remembered),
+    pausedIn: choosePaused(paused, remembered, organisations.length),
   };
 }
 

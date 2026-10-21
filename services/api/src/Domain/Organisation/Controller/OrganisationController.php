@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\OrganisationCreator;
 use App\Domain\Organisation\OrganisationRules;
@@ -41,15 +42,21 @@ final readonly class OrganisationController
         private MembershipDirectoryInterface $membershipDirectory,
         private SignInRules $signInRules,
         private OrganisationCreator $organisationCreator,
+        private DomainSuspender $domainSuspender,
     ) {
     }
 
-    /** Each organisation the caller is an active member of, with their role in it. */
+    /** Each organisation the caller is an active member of, with their role in it, and those their access to is paused in (sc-564). */
     #[Route('/api/orgs', name: 'orgs_list', methods: ['GET'])]
     #[Authenticated]
     public function list(): JsonResponse
     {
         $user = $this->security->getUser();
+
+        if ($user instanceof User) {
+            $this->domainSuspender->removeExpired(user: $user);
+        }
+
         $memberships = $user instanceof User ? $this->membershipRepository->findActiveFor($user) : [];
 
         return new JsonResponse([
@@ -58,6 +65,13 @@ final readonly class OrganisationController
                 $this->membershipDirectory->grantsIn($membership->getUser(), $membership->getOrganisation()->getId()) ?? Grants::only([]),
                 $this->signInRules->twoFactorDue($membership),
             )),
+            'paused' => Vec\map(
+                $user instanceof User ? $this->membershipRepository->findSuspendedFor($user) : [],
+                fn (Membership $membership): array => [
+                    ...OrganisationSerialiser::organisation($membership->getOrganisation()),
+                    'suspension' => $user instanceof User ? $this->domainSuspender->describe($membership, $user) : null,
+                ],
+            ),
         ]);
     }
 
@@ -113,7 +127,7 @@ final readonly class OrganisationController
             'timezone' => $body['timezone'] ?? $organisation->getTimezone(),
             'contactAddress' => $body['contactAddress'] ?? $organisation->getContactAddress(),
             'locale' => $body['locale'] ?? $organisation->getLocale(),
-        ]);
+        ], $organisation->getCurrency());
 
         $organisation->setName($fields['name']);
         $organisation->setCountryCode($fields['countryCode']);

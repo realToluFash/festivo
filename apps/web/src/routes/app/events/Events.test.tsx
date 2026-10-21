@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -206,6 +207,17 @@ describe('New event', () => {
     return ids.map((one) => document.getElementById(one)?.textContent ?? '').join(' ');
   }
 
+  it('names a 100-character organisation in a hint that can break inside the word (sc-486)', async () => {
+    const name = 'A'.repeat(100);
+    signedIn(membership({ ...IRE, name }));
+    answering({});
+    await form();
+
+    const shown = within(screen.getByRole('main')).getAllByText(new RegExp(name, 'u'));
+
+    expect(shown.filter((element) => !breaksAnywhere(element))).toEqual([]);
+  });
+
   it('asks for the fields in order, the zone and currency from the organisation', async () => {
     signedIn();
     answering({});
@@ -241,11 +253,13 @@ describe('New event', () => {
     expect(screen.getByText('8 of 120 characters')).toBeDefined();
   });
 
-  it('fills an empty end date from the start date, and keeps one already chosen', async () => {
+  it('fills the end date from the start date, and keeps one already chosen until it is cleared', async () => {
     signedIn();
     answering({});
     await form();
 
+    fill('event-start-date', '0002-11-14');
+    fill('event-start-date', '0020-11-14');
     fill('event-start-date', '2026-11-14');
     expect((document.getElementById('event-end-date') as HTMLInputElement).value).toBe(
       '2026-11-14',
@@ -255,6 +269,12 @@ describe('New event', () => {
     fill('event-start-date', '2026-11-13');
     expect((document.getElementById('event-end-date') as HTMLInputElement).value).toBe(
       '2026-11-15',
+    );
+
+    fill('event-end-date', '');
+    fill('event-start-date', '2026-11-12');
+    expect((document.getElementById('event-end-date') as HTMLInputElement).value).toBe(
+      '2026-11-12',
     );
   });
 
@@ -291,6 +311,30 @@ describe('New event', () => {
     expect(errorUnder('event-start-date')).toContain('Choose when the event starts.');
     expect(errorUnder('event-end-date')).toContain('Choose when the event ends.');
     expect(screen.getByRole('status').textContent).toBe('2 fields need fixing. Nothing was sent.');
+    expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
+  });
+
+  it('starts on no currency for an organisation holding one no longer in use, and sends nothing until one is chosen', async () => {
+    signedIn(
+      membership({ ...IRE, countryCode: 'SL', currency: 'SLL', timezone: 'Africa/Freetown' }),
+    );
+    const sent = answering({});
+    await form();
+
+    const currency = screen.getByLabelText<HTMLSelectElement>('Currency');
+    expect(currency.value).toBe('');
+    expect(currency.selectedOptions[0]?.textContent).toBe('Choose a currency');
+    expect([...currency.options].map((option) => option.value)).not.toContain('SLL');
+
+    fill('event-name', 'Gala');
+    fill('event-start-date', '2026-11-14');
+    fill('event-start-time', '16:00');
+    fill('event-end-time', '23:00');
+    create();
+
+    await waitFor(() => expect(document.activeElement).toBe(currency));
+    expect(errorUnder('event-currency')).toContain('Choose a currency.');
+    expect(screen.getByRole('status').textContent).toBe('1 field needs fixing. Nothing was sent.');
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 

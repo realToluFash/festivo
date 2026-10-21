@@ -41,6 +41,28 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
+  `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads "Em pausa", the admins
+  "Acesso suspenso", as the English keeps them apart. Restoring is "repor", as the drafted
+  error had it. Nothing agrees with the member: "o acesso é retirado", "esta pessoa deixa de
+  fazer parte", and the only Owner "não sai da organização" rather than "não é removido". A
+  closed domain "deixou de aceitar adesões", as the setting's "Adesão por domínio da empresa".
+  "Account settings" is "Definições da conta", button and sentence alike.
+- **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
+  `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). A link
+  is "a ligação", never "o link" (dev2's draft of `errors:request_link_dead` said "link"); the
+  setting's is "a ligação de adesão". The setting is "Pedidos de adesão", so its state agrees:
+  "Ativados" / "Desativados". The act stays "pedir para aderir", as domain joining; what waits
+  is "o pedido de adesão … já aguarda resposta". `formatDay` ends on "nov.", so a date never
+  closes a sentence: "A partir de {{date}}, pode voltar a pedir para aderir."
+
+- **21 Oct 2026. Creating an event** (`events.*`, `eventForm.*`, `eventPage.*`,
+  `rolesScreen.createEvents*`, `messages:validation.event_*`, sc-6302). A draft is "Rascunho";
+  the form's legends "Início" and "Fim". An end before the start is "O evento termina antes de
+  começar". "Carry on planning" is "prosseguir com o planeamento". An owner is "alguém com a
+  função Proprietário", as "função" for a role. The permission's states are "Permitido" /
+  "Não permitido". A refused send closes "por isso nada foi enviado".
+
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
   "exigir", as the server's errors; "for everyone" is "para todos". The date is "a partir de
@@ -74,6 +96,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". "Accept an invitation above" is "aceite um convite pendente", the
   word the intro uses, not "aceite acima", which reads stiffly. No
   `_many` yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is "criar", since "iniciar uma organização" is not
+  how PT-PT says it: the heading is "Crie a sua própria organização", the button "Criar
+  organização", as `createOrganisation.create`. One character is "carácter", several
+  "caracteres". The help and the derived-settings line are `createOrganisation`'s words.
 
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is "Terá a função Proprietário", never "será o proprietário".

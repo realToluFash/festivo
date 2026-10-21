@@ -8,6 +8,11 @@ TRANSLATION_QUEUE = ["To Do", "Failed Code Review", "In Progress", "Failed QA"]
 # A developer's queue, rework first: findings, then a failed test, then its own build, then
 # a new story. Passed Code Review is not queued: the pull request's pass wakes the merge.
 BUILD_QUEUE = ["Failed Code Review", "Failed QA", "In Progress", "Ready For Dev"]
+# The roles that may run more than one worker (`workers` in agents.json): none keeps a
+# stack, so a second worker needs only a checkout of its own.
+PARALLEL = ("pm", "ux", "bm", "cd")
+# Taken epic by epic: the build, and the stories the product manager grooms for it.
+EPIC_ORDERED = (*BUILD_QUEUE, "To Do", "Backlog")
 TESTERS_LABELS = {"qa": "qa1", "qa2": "qa2", "qa3": "qa3"}
 # A story failed and sent back is offered first to the tester who failed it, for this long.
 RETEST_MINUTES = 30
@@ -58,7 +63,7 @@ def everything(labels, state):
 
 
 ROLES = {
-    "pm": {"skill": "soirely-product-manager", "queue": ["To Do"],
+    "pm": {"skill": "soirely-product-manager", "queue": ["To Do", "Backlog"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
     "ux": {"skill": "soirely-designer", "queue": ["Needs Design"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
@@ -167,6 +172,7 @@ MAY = {
     "pr-reply": DEVS + LINGUISTS + ("lead", "ops"),
     "resolve": ("lead",),
     "merge": BUILDERS,
+    "pr-close": BUILDERS,
     "to-qa": DEVS + ("ops",),
     "rerun": DEVS + ("ops",),
 }

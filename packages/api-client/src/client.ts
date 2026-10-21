@@ -212,6 +212,23 @@ export interface JoinOffers {
   request: JoinRequest | null;
 }
 
+/** Settings > General's Requests to join (sc-562): the link in full while it is on. */
+export interface RequestLink {
+  on: boolean;
+  url: string | null;
+}
+
+/** Why somebody signed in cannot ask through a request link: they belong, they wait, or they were turned down lately. */
+export type RequestStanding = 'member' | 'waiting' | 'cooling_off';
+
+/** What a request link opens onto (sc-562). Only the organisation's name: a dead link is refused `request_link_dead`. */
+export interface RequestLinkPreview {
+  organisation: { name: string };
+  standing: RequestStanding | null;
+  /** While cooling off, when they may ask again. */
+  askAgainFrom: string | null;
+}
+
 /** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved. */
 export interface CompanyDomains {
   domains: { domain: string; stopped: boolean }[];
@@ -292,6 +309,21 @@ export interface Membership extends Organisation {
 export interface TwoFactorDeadline {
   at: string;
   written: string;
+}
+
+export type DomainSuspensionReason = 'address_gone' | 'domain_closed' | 'domain_managed_elsewhere';
+
+/** A member who joined through the company domain, paused when it stopped bringing them in (sc-564); each instant in the reader's zone, and no removal for the only owner. */
+export interface DomainSuspension {
+  reason: DomainSuspensionReason;
+  domain: string | null;
+  since: TwoFactorDeadline;
+  removesAt: TwoFactorDeadline | null;
+}
+
+/** An organisation the account's access to is paused in: no grant at all, only why. */
+export interface PausedOrganisation extends Organisation {
+  suspension: DomainSuspension;
 }
 
 export interface TwoFactorDue extends TwoFactorDeadline {
@@ -396,11 +428,16 @@ export interface OrganisationMember {
   status: MemberStatus;
   former: 'left' | 'removed' | null;
   channel: MemberChannel | null;
+  /** What somebody waiting wrote when they asked through the request link (sc-562). */
+  message: string | null;
   since: string | null;
+  /** While waiting for approval (sc-392): the instant it is removed if nobody answers, and that instant as the caller reads it. */
+  removesAt: { at: string; written: string } | null;
   invitedBy: MemberPerson | null;
   invitedAt: string | null;
   self: boolean;
   history: MembershipStep[];
+  suspension: DomainSuspension | null;
 }
 
 export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
@@ -1101,20 +1138,35 @@ export class ApiClient {
   }
 
   async organisations(): Promise<Membership[]> {
-    const raw = await this.get<unknown>('/api/orgs');
-    const listed =
-      typeof raw === 'object' && raw != null
-        ? (raw as Record<string, unknown>).organisations
-        : null;
-    const memberships = Array.isArray(listed) ? listed.map(asMembership) : null;
+    return (await this.organisationsWithPaused()).organisations;
+  }
 
-    if (memberships == null || memberships.some((membership) => membership == null)) {
+  /** The same list, with the organisations the account's access to is paused in (sc-564). */
+  async organisationsWithPaused(): Promise<{
+    organisations: Membership[];
+    paused: PausedOrganisation[];
+  }> {
+    const raw = await this.get<unknown>('/api/orgs');
+    const body = typeof raw === 'object' && raw != null ? (raw as Record<string, unknown>) : {};
+    const memberships = Array.isArray(body.organisations)
+      ? body.organisations.map(asMembership)
+      : null;
+    const paused = Array.isArray(body.paused) ? body.paused.map(asPausedOrganisation) : [];
+
+    if (
+      memberships == null ||
+      memberships.some((membership) => membership == null) ||
+      paused.some((one) => one == null)
+    ) {
       throw new Error(
         'The API answered /api/orgs in a shape this client does not know. Check OrganisationController in services/api.',
       );
     }
 
-    return memberships as Membership[];
+    return {
+      organisations: memberships as Membership[],
+      paused: paused as PausedOrganisation[],
+    };
   }
 
   async signInRules(organisationId: string): Promise<SignInRulesPage> {
@@ -1328,6 +1380,30 @@ export class ApiClient {
     );
   }
 
+  /** Refused `restore_needs_address` while an address that went is not back, verified and primary (sc-564). */
+  async restoreMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.request<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,
+      { method: 'POST' },
+    );
+  }
+
+  /** Somebody awaiting approval becomes a member in that role. Refused `join_request_answered`, or `grant_not_held`. */
+  async approveMember(organisationId: string, membershipId: string, roleId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/approve`,
+      { roleId },
+    );
+  }
+
+  /** Refused `join_request_answered` once somebody else answered it, or it was removed unanswered. */
+  async turnDownMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/turn-down`,
+      {},
+    );
+  }
+
   /** Refused `last_owner` while the caller is the only owner. */
   async leaveOrganisation(organisationId: string): Promise<void> {
     await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/leave`, {});
@@ -1400,6 +1476,69 @@ export class ApiClient {
     }
 
     return body.invitations.map((one: unknown) => this.invitationPreview(one));
+  }
+
+  /** The token is a credential, so it travels in the body. Refused `request_link_dead` for one unknown, off or replaced alike. */
+  async requestLinkPreview(token: string): Promise<RequestLinkPreview> {
+    const raw = await this.post<Record<string, unknown>>('/api/request-links/link', { token });
+    const organisation = raw?.organisation as Record<string, unknown> | null | undefined;
+
+    if (typeof organisation?.name !== 'string') {
+      throw new Error(
+        'The API answered POST /api/request-links/link in a shape this client does not know. Check RequestLinksController in services/api.',
+      );
+    }
+
+    return {
+      organisation: { name: organisation.name },
+      standing: oneOf(raw.standing, REQUEST_STANDINGS),
+      askAgainFrom: stringOrNull(raw.askAgainFrom),
+    };
+  }
+
+  /** Refused `already_a_member`, `join_request_waiting`, `join_request_cooling_off`, or `too_many_attempts` with Retry-After. */
+  async askThroughRequestLink(token: string, message: string): Promise<JoinRequest> {
+    const raw = await this.post<Record<string, unknown>>('/api/request-links/ask', {
+      token,
+      message: message.trim() === '' ? null : message,
+    });
+    const request = asJoinRequest(raw?.request);
+
+    if (request == null) {
+      throw new Error(
+        'The API answered an ask through a request link without the request. Check RequestLinksController in services/api.',
+      );
+    }
+
+    return request;
+  }
+
+  async requestLink(organisationId: string): Promise<RequestLink> {
+    return asRequestLink(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/request-link`),
+    );
+  }
+
+  async turnOnRequestLink(organisationId: string): Promise<RequestLink> {
+    return asRequestLink(
+      await this.put<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/request-link`, {}),
+    );
+  }
+
+  async turnOffRequestLink(organisationId: string): Promise<RequestLink> {
+    return asRequestLink(
+      await this.delete<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/request-link`),
+    );
+  }
+
+  /** The old link stops working at once. */
+  async replaceRequestLink(organisationId: string): Promise<RequestLink> {
+    return asRequestLink(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/request-link/replace`,
+        {},
+      ),
+    );
   }
 
   async joinOffers(): Promise<JoinOffers> {
@@ -1840,6 +1979,20 @@ export function awaiting(
   return account.waitingFor == null ? null : 'approval';
 }
 
+const REQUEST_STANDINGS = ['member', 'waiting', 'cooling_off'] as const;
+
+function asRequestLink(raw: unknown): RequestLink {
+  const body = raw as Record<string, unknown> | null;
+
+  if (typeof body?.on !== 'boolean') {
+    throw new Error(
+      'The API answered /api/orgs/{id}/request-link in a shape this client does not know. Check RequestLinkController in services/api.',
+    );
+  }
+
+  return { on: body.on, url: stringOrNull(body.url) };
+}
+
 function asJoinOffer(raw: unknown): JoinOffer | null {
   const candidate = raw as Record<string, unknown> | null;
 
@@ -2179,12 +2332,23 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     status,
     former: member.former === 'left' || member.former === 'removed' ? member.former : null,
     channel: oneOf(member.channel, CHANNELS),
+    message: stringOrNull(member.message),
     since: stringOrNull(member.since),
+    removesAt: asDeadline(member.removesAt),
     invitedBy: asPerson(member.invitedBy),
     invitedAt: stringOrNull(member.invitedAt),
     self: member.self === true,
     history: history as MembershipStep[],
+    suspension: asDomainSuspension(member.suspension),
   };
+}
+
+function asDeadline(raw: unknown): { at: string; written: string } | null {
+  const deadline = raw as Record<string, unknown> | null;
+
+  return typeof deadline?.at === 'string' && typeof deadline.written === 'string'
+    ? { at: deadline.at, written: deadline.written }
+    : null;
 }
 
 function asSentInvitation(raw: unknown): SentInvitation | null {
@@ -2292,6 +2456,30 @@ function asTwoFactorDeadline(raw: unknown): TwoFactorDeadline | null {
   return typeof deadline.at === 'string' && typeof deadline.written === 'string'
     ? { at: deadline.at, written: deadline.written }
     : null;
+}
+
+const SUSPENSION_REASONS: readonly DomainSuspensionReason[] = [
+  'address_gone',
+  'domain_closed',
+  'domain_managed_elsewhere',
+];
+
+function asDomainSuspension(raw: unknown): DomainSuspension | null {
+  const suspension = (raw ?? {}) as Record<string, unknown>;
+  const reason = oneOf(suspension.reason, SUSPENSION_REASONS);
+  const since = asTwoFactorDeadline(suspension.since);
+  const removesAt = asTwoFactorDeadline(suspension.removesAt);
+
+  return reason == null || since == null
+    ? null
+    : { reason, domain: stringOrNull(suspension.domain), since, removesAt };
+}
+
+function asPausedOrganisation(raw: unknown): PausedOrganisation | null {
+  const organisation = asOrganisation(raw);
+  const suspension = asDomainSuspension((raw as Record<string, unknown> | null)?.suspension);
+
+  return organisation == null || suspension == null ? null : { ...organisation, suspension };
 }
 
 function asTwoFactorDue(raw: unknown): TwoFactorDue | null {

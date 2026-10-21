@@ -38,10 +38,10 @@ final class DatabaseIsolationTest extends FunctionalTestCase
         $em->flush();
         $em->clear();
 
-        $found = $em->getRepository(SchemaProbe::class)->find($probe->id());
+        $found = $em->getRepository(SchemaProbe::class)->find($probe->getId());
 
         self::assertNotNull($found);
-        self::assertSame('written by the suite', $found->label());
+        self::assertSame('written by the suite', $found->getLabel());
     }
 
     /**

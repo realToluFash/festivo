@@ -393,6 +393,30 @@
         display: grid;
         gap: 2px;
       }
+      ul.holding {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 4px;
+        color: var(--text-2);
+      }
+      ul.holding li {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .worker {
+        display: inline-block;
+        min-width: 3.5em;
+        margin-right: 8px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .owner code {
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
       ol.next li {
         overflow: hidden;
         text-overflow: ellipsis;
@@ -715,7 +739,8 @@
       function kpis(d) {
         const today = d.spend[d.spend.length - 1] || { total: 0 };
         const here = d.roles.filter((r) => r.state !== 'refused');
-        const running = here.filter((r) => r.state === 'running').length;
+        const running = here.reduce((n, r) => n + (r.running || 0), 0);
+        const slots = here.reduce((n, r) => n + (r.workers || 1), 0);
         const waitingHere = here.reduce((n, r) => n + (r.waiting || 0), 0);
         const waitingElse = d.elsewhere.reduce((n, r) => n + r.waiting, 0);
         const week = d.spend.reduce((n, s) => n + s.total, 0);
@@ -724,8 +749,8 @@
           ['Runs today', d.runs_today, d.recent[0] ? `last ${since(d.recent[0].at)}` : 'none yet'],
           [
             'Workers running',
-            `${running}<span class="sub"> / ${here.length}</span>`,
-            'roles on this machine',
+            `${running}<span class="sub"> / ${slots}</span>`,
+            `${here.length} roles on this machine`,
           ],
           ['Waiting here', waitingHere, "items for this machine's roles"],
           ['Waiting elsewhere', waitingElse, `${d.elsewhere.length} roles on other machines`],
@@ -740,7 +765,12 @@
 
       function roleCard(r) {
         const [cls, label] = STATES[r.state] || ['', r.state];
-        const stateLabel = r.state === 'elsewhere' && r.detail ? `On ${r.detail.machine}` : label;
+        const stateLabel =
+          r.state === 'elsewhere' && r.detail
+            ? `On ${r.detail.machine}`
+            : r.state === 'running' && r.workers > 1
+              ? `Running ${r.running} of ${r.workers}`
+              : label;
         const head = `<div class="card-top"><div><div class="role-name">${esc(r.role)}</div>
     <div class="role-title">${esc(TITLES[r.role] || '')}</div></div>
     ${r.state === 'refused' ? '' : `<div class="waiting"><div class="n">${r.waiting}</div><div class="l">waiting</div></div>`}</div>`;
@@ -756,7 +786,15 @@
         tags.push(`<span class="tag">${esc(r.account || 'not logged in')}</span>`);
         const blocks = [];
         if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
-        if (r.held)
+        if (r.holding.length)
+          blocks.push(`<div class="block"><div class="k"><span>Working on</span><span>${r.holding.length} of ${r.workers} workers</span></div>
+      <ul class="holding">${r.holding
+        .map(
+          (h) =>
+            `<li title="${esc(h.reason)}"><span class="worker">${esc(h.worker)}</span>${esc(h.reason)}</li>`,
+        )
+        .join('')}</ul></div>`);
+        else if (r.held)
           blocks.push(
             `<div class="block"><div class="k"><span>Working on</span><span>item ${r.held.id}</span></div><div class="v">${esc(r.held.reason)}</div></div>`,
           );
@@ -850,7 +888,7 @@
             d.recent
               .map(
                 (r) => `<tr><td class="when" title="${esc(clock(r.at))}">${since(r.at)}</td>
-        <td class="role-chip">${esc(r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
+        <td class="role-chip">${esc(r.worker || r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
         <td class="num">${money(r.cost)}</td>
         <td class="report ${r.failed ? 'fail' : ''}" title="${esc(r.report)}">${esc(r.report || 'No report')}</td></tr>`,
               )
@@ -858,16 +896,38 @@
           : `<tr><td class="empty">No runs recorded yet.</td></tr>`;
       }
 
+      function drawState(w, sq) {
+        const now = sq.current && sq.current.story_id === w.story_id ? sq.current : null;
+        const tries = sq.tries[String(w.story_id)] || 0;
+        if (now && now.state === 'blocked') {
+          const attach =
+            (sq.config_dir ? `CLAUDE_CONFIG_DIR=${sq.config_dir} ` : '') +
+            `claude attach ${now.session}`;
+          return `<div class="owner"><b>Waits for you:</b> the session stopped to ask something. <code>${esc(attach)}</code></div>`;
+        }
+        if (now)
+          return `<div class="tags"><span class="pill good live">Drawing now</span>
+      <span class="tag">session ${esc(now.session)}</span><span class="tag">started ${since(now.at)}</span>
+      ${tries ? `<span class="tag">try ${tries + 1} of ${sq.max_tries}</span>` : ''}</div>`;
+        if (tries >= sq.max_tries)
+          return `<div class="tags"><span class="pill critical">Failed ${tries} times</span>
+      <span class="tag">draw it by hand: paste the prompt</span></div>`;
+        if (tries)
+          return `<div class="tags"><span class="pill warning">Failed once</span><span class="tag">sq tries again</span></div>`;
+        return `<div class="tags"><span class="tag">Waiting its turn</span></div>`;
+      }
+
       let drawn = '';
       function drawings(d) {
         const list = d.drawings || [];
+        const sq = d.drawing || { tries: {} };
         // Redrawn only when the list or the minute changes, so a copy in progress keeps its button.
-        const key = JSON.stringify(list) + Math.floor(Date.now() / 60000);
+        const key = JSON.stringify([list, sq]) + Math.floor(Date.now() / 60000);
         if (key === drawn) return;
         drawn = key;
         document.getElementById('draw-section').hidden = !list.length;
         document.getElementById('draw-count').textContent = list.length
-          ? `${list.length} ${list.length === 1 ? 'story' : 'stories'}: /soirely-designer draws them all, or paste one prompt`
+          ? `${list.length} ${list.length === 1 ? 'story' : 'stories'}: sq draws them one at a time in the background`
           : '';
         document.getElementById('draws').innerHTML = list
           .map(
@@ -875,6 +935,7 @@
       <div><span class="role-chip">sc-${w.story_id}</span> <span class="draw-name">${esc(w.name)}</span>
       <div class="role-title">listed ${since(w.at)}</div></div>
       <button class="copy" data-copy="${i}" type="button">Copy prompt</button></div>
+      ${drawState(w, sq)}
       <pre id="prompt-${i}">${esc(w.prompt)}</pre></div>`,
           )
           .join('');

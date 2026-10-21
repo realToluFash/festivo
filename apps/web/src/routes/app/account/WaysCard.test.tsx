@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -611,6 +611,71 @@ describe('unlinking a provider', () => {
     expect(sent.find((s) => s.call === 'POST /api/auth/providers/google/unlink')?.body).toEqual({
       proof: 'the-proof',
     });
+  });
+
+  it('names the other provider when there is no password (sc-3744)', () => {
+    signedInAs({
+      hasPassword: false,
+      providers: [
+        { provider: 'google', email: GMAIL },
+        { provider: 'apple', email: null },
+      ],
+    });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    answering({});
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+
+    expect(
+      screen.getByText(
+        `You'll no longer be able to sign in with Google as ${GMAIL}. You can still sign in with Apple.`,
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText(/You can still sign in with your password/)).toBeNull();
+  });
+
+  it('names no way in, and never the password, when the other provider went while confirming (sc-3744)', () => {
+    signedInAs({
+      hasPassword: false,
+      providers: [
+        { provider: 'google', email: GMAIL },
+        { provider: 'apple', email: null },
+      ],
+    });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    answering({});
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+    act(() =>
+      signedInAs({ hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] }),
+    );
+
+    expect(
+      screen.getByText(`You'll no longer be able to sign in with Google as ${GMAIL}.`),
+    ).toBeDefined();
+    expect(screen.queryByText(/You can still sign in/)).toBeNull();
+  });
+
+  it('names the password when both it and the other provider remain (sc-3744)', () => {
+    signedInAs({
+      providers: [
+        { provider: 'google', email: GMAIL },
+        { provider: 'apple', email: null },
+      ],
+    });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    answering({});
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+
+    expect(
+      screen.getByText(
+        `You'll no longer be able to sign in with Google as ${GMAIL}. You can still sign in with your password.`,
+      ),
+    ).toBeDefined();
   });
 
   it('keeps it linked when asked to', () => {

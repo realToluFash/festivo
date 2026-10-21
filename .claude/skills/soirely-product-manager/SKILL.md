@@ -46,7 +46,7 @@ replies to the ones you asked. Resolve those, then pick the work below.
 
 `/soirely-product-manager sc-56` works on that story (`sq pm story sc-56`, and
 `sq pm comments sc-56` for its threads). With no argument, `sq pm next` prints the sweep
-digest — To Do, what waits on the owner, QA outstanding items, ideas and epics — with `Next:` commands,
+digest — To Do, Backlog, what waits on the owner, QA outstanding items, ideas and epics — with `Next:` commands,
 ids filled in; `sq pm queue` prints the same list one line per story. Something you have
 already read prints as a one-line reference; use `--again` only if you truly need its full
 text again. Take the work in this order:
@@ -69,9 +69,15 @@ text again. Take the work in this order:
    `To Do`), park, or reject (archive), each with a one-line reason. The creative director
    holds at most three open, so an undecided one blocks the next. Accepting is
    `sq pm move sc-N "To Do"`; rejecting is `sq pm archive sc-N`.
-4. **The epic in progress**, for scope that has drifted: stories that no longer belong, a
+4. **`Backlog`, after every To Do story.** Each Backlog story reaches you once. Read it and
+   decide: take it up (`sq pm move sc-N "To Do"`) when it belongs to an epic in progress or
+   next, or is a defect worth fixing now; archive it (`sq pm archive sc-N`) when it is
+   superseded, duplicated or no longer wanted, saying why in a comment; or leave it in
+   Backlog for later, with a one-line reason in your report. A story with no epic gets one
+   first (`create-ticket`).
+5. **The epic in progress**, for scope that has drifted: stories that no longer belong, a
    boundary that has moved, a "carried forward" note that is now wrong.
-5. Failing those, say the backlog is in order and stop. That is a complete answer.
+6. Failing those, say the backlog is in order and stop. That is a complete answer.
 
 Say which you took, and name what else is waiting.
 

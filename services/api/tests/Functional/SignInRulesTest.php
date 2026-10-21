@@ -397,7 +397,7 @@ final class SignInRulesTest extends ApiTestCase
         self::assertSame(['Folake Adeyemi', 'owner', 30, null], [$change['by']['name'], $change['by']['role']['seededAs'], $change['now'], $change['was']]);
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'sign_in_rules.changed']);
-        self::assertSame($this->owner->getId()->toRfc4122(), $entry?->actorId()?->toRfc4122());
+        self::assertSame($this->owner->getId()->toRfc4122(), $entry?->getActorId()?->toRfc4122());
 
         $mails = $this->mails();
         self::assertSame(['bisi@ire.events', 'chidi@ire.events', 'folake@ire.events'], Vec\sort(Vec\map($mails, static fn (Email $mail): string => $mail->getTo()[0]->getAddress())));

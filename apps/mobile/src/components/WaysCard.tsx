@@ -5,7 +5,7 @@ import {
   ProviderCancelled,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import { proveWith, providerRows, type ProviderRow } from '@soirely/domain';
+import { proveWith, providerRows, remainingWay, type ProviderRow } from '@soirely/domain';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -444,7 +444,13 @@ function Confirming({
   const { t } = useTranslation();
   const name = PROVIDER_NAMES[act.provider];
   const address = providers.find((entry) => entry.provider === act.provider)?.email ?? null;
-  const other = providers.find((entry) => entry.provider !== act.provider)?.provider;
+  const way = remainingWay(hasPassword, providers, act.provider);
+  const still =
+    way == null
+      ? null
+      : way === 'password'
+        ? t('waysCard.stillPassword')
+        : t('waysCard.stillProvider', { provider: PROVIDER_NAMES[way] });
 
   return (
     <>
@@ -452,15 +458,14 @@ function Confirming({
         {t('waysCard.confirmTitle', { provider: name })}
       </Text>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-        {`${
+        {[
           address == null
             ? t('waysCard.confirmBodyPlain', { provider: name })
-            : t('waysCard.confirmBody', { provider: name, address })
-        } ${
-          hasPassword || other == null
-            ? t('waysCard.stillPassword')
-            : t('waysCard.stillProvider', { provider: PROVIDER_NAMES[other] })
-        }`}
+            : t('waysCard.confirmBody', { provider: name, address }),
+          still,
+        ]
+          .filter((line) => line != null)
+          .join(' ')}
       </Text>
       <Notice
         tone="attention"

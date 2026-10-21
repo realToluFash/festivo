@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationSender;
+use App\Domain\Organisation\Members\JoinRequests;
 use App\Domain\Organisation\Members\MemberActions;
 use App\Domain\Organisation\Members\OwnershipTransfer;
 use App\Domain\Organisation\Roles\RoleManager;
+use App\Domain\User\Mail\UserMailer;
 use App\Entity\Invitation;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
@@ -53,6 +56,9 @@ final readonly class MembersController
         private OwnershipTransfer $ownershipTransfer,
         private TranslatorInterface $translator,
         private MembershipDirectoryInterface $membershipDirectory,
+        private DomainSuspender $domainSuspender,
+        private JoinRequests $joinRequests,
+        private UserMailer $userMailer,
     ) {
     }
 
@@ -62,6 +68,8 @@ final readonly class MembersController
     {
         $organisation = $this->organisation($organisationId);
         $caller = $this->user();
+        $this->joinRequests->expireDue($organisation);
+        $this->domainSuspender->removeExpired($organisation);
         $history = Dict\group_by(
             $this->membershipTransitionRepository->findInOrganisation($organisation),
             static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),
@@ -73,6 +81,8 @@ final readonly class MembersController
         );
         $now = new DateTimeImmutable();
         // Somebody waiting for approval is shown only to the people who decide on them (sc-392, #529).
+        $locale = $this->userMailer->localeFor($caller);
+        $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
         $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
 
         return new JsonResponse([
@@ -81,11 +91,13 @@ final readonly class MembersController
                     $this->membershipRepository->findInOrganisation($organisation),
                     static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus(),
                 ),
-                static fn (Membership $membership): array => MemberSerialiser::member(
+                fn (Membership $membership): array => MemberSerialiser::member(
                     $membership,
                     $history[$membership->getId()->toRfc4122()] ?? [],
                     $accepted[$membership->getUser()->getId()->toRfc4122()] ?? [],
                     $caller,
+                    $written,
+                    $this->domainSuspender->describe($membership, $caller),
                 ),
             ),
             'invitations' => Vec\map($invitations, static fn (Invitation $invitation): array => MemberSerialiser::invitation($invitation, $now)),
@@ -148,6 +160,38 @@ final readonly class MembersController
     {
         $organisation = $this->organisation($organisationId);
         $this->memberActions->remove($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** Refused `restore_needs_address` while a member whose address went has no verified primary one at the domain again. */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/restore', name: 'orgs_members_restore', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function restore(string $organisationId, string $membershipId): Response
+    {
+        $organisation = $this->organisation($organisationId);
+        $this->memberActions->restore($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** Somebody awaiting approval becomes an active member in the role chosen (sc-392). */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/approve', name: 'orgs_members_approve', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function approve(Request $request, string $organisationId, string $membershipId): Response
+    {
+        $organisation = $this->organisation($organisationId);
+        $body = Input::body($request, Type\shape(['roleId' => Type\string()]));
+        $this->joinRequests->approve($organisation, $membershipId, $this->role($organisation, $body['roleId']), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/turn-down', name: 'orgs_members_turn_down', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function turnDown(string $organisationId, string $membershipId): Response
+    {
+        $this->joinRequests->turnDown($this->organisation($organisationId), $membershipId, $this->user());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
