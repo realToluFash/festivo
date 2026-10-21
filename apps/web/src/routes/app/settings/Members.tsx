@@ -11,6 +11,7 @@ import {
   approvalRoles,
   emailProblem,
   formatDay,
+  grantableRoles,
   historyLine,
   initials,
   memberIsShown,
@@ -145,7 +146,7 @@ function MembersLoaded({
     return (
       <Invite
         organisation={organisation}
-        roles={grantable(roles, organisation)}
+        roles={grantableRoles(roles, organisation)}
         email={view.email}
         roleId={view.roleId}
         onCancel={() => setView({ kind: 'list', flash: null })}
@@ -170,7 +171,7 @@ function MembersLoaded({
         organisation={organisation}
         member={member}
         list={list}
-        roles={grantable(roles, organisation)}
+        roles={grantableRoles(roles, organisation)}
         manages={manages}
         caller={list.members.find((one) => one.self)?.user.id ?? null}
         onChanged={onChange}
@@ -187,7 +188,7 @@ function MembersLoaded({
     <MembersOverview
       organisation={organisation}
       list={list}
-      roles={grantable(roles, organisation)}
+      roles={grantableRoles(roles, organisation)}
       manages={manages}
       flash={view.kind === 'list' ? view.flash : null}
       answered={view.kind === 'list' ? (view.answered ?? null) : null}
@@ -204,17 +205,6 @@ function MembersLoaded({
         })
       }
     />
-  );
-}
-
-/** The inviter may grant only what they hold, and only an owner makes an owner, as the API refuses otherwise. */
-function grantable(roles: OrganisationRole[], organisation: Membership): OrganisationRole[] {
-  const owner = organisation.role.seededAs === 'owner';
-
-  return roles.filter(
-    (role) =>
-      (owner || role.seededAs !== 'owner') &&
-      role.permissions.every((permission) => organisation.permissions.includes(permission)),
   );
 }
 

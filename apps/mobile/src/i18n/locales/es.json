@@ -1197,7 +1197,27 @@
     "goToOrganisation": "Ir a Organización ›",
     "fromTheWeb": "Para invitar a alguien, use Soirely en la web.",
     "pickSomebody": "Elija a alguien de la lista para ver aquí sus datos.",
-    "backToList": "‹ Miembros"
+    "backToList": "‹ Miembros",
+    "noRoleYet": "No role yet",
+    "awaiting": {
+      "title": "Awaiting approval",
+      "note": "Only people who manage members see these requests. Nobody is added until one of you approves them.",
+      "asked": "{{channel}} · asked {{date}}",
+      "removes": "Removed on {{deadline}} if nobody answers",
+      "approve": "Approve",
+      "turnDown": "Turn down",
+      "roleFor": "Role for {{name}}",
+      "approveAs": "Approve as {{role}}",
+      "cancel": "Cancel",
+      "turnDownTitle": "Turn down {{name}}?",
+      "turnDownBody": "{{name}} is emailed that their request to join {{organisation}} was turned down. The email does not say who turned it down.",
+      "turnDownConfirm": "Turn down {{name}}",
+      "keep": "Keep the request",
+      "approved": "{{name}} is now a member, as {{role}}.",
+      "approvedNext": "See {{name}}",
+      "turnedDown": "{{name}}’s request is turned down.",
+      "turnedDownNext": "See Former"
+    }
   },
   "requestLink": {
     "title": "Requests to join",
