@@ -433,7 +433,7 @@ final class DomainSuspensionTest extends ApiTestCase
             'en',
         ) . ', they are removed.', $text);
         self::assertStringContainsString('Review Tunde Bakare: ', $text);
-        self::assertStringContainsString("You're getting this because you're an admin of Ìrè Events.", $text);
+        self::assertStringContainsString("You're getting this because you're an owner or admin of Ìrè Events.", $text);
     }
 
     #[Test]
