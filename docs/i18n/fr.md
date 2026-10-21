@@ -53,6 +53,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
+  `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
+  « exiger », as the server's errors; "for everyone" is « pour tous ». The date is « à partir
+  du {{deadline}} » and « jusqu'au {{deadline}} », as `limitedBody`; `time.dateAt` ends on the
+  zone, so no « oct.. » can follow. "Set it up" is « l'activer », as "turn on" in en. A person
+  who must act is « chaque personne … elle », never « chacun », so the agreement follows
+  « personne ». The overdue screen's body says why, « … et le délai pour l'activer est
+  passé ». "Single-event access" is « vos accès à des événements précis ». The card and the
+  server's refusal say the same sentence, with U+00A0 before the colon in both.
+
 - **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
   `messages:domain_joining.*`, sc-4434). The act is « demander à rejoindre », the wait
   « En attente d'approbation », as the Members state. The approver is « une personne de

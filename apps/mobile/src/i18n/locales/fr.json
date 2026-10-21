@@ -347,7 +347,7 @@
     "phoneSetupTitle": "Ajoutez Soirely à votre application d'authentification",
     "phoneCantScan": "Scannez le code depuis un autre écran, ou saisissez cette clé dans l'application.",
     "phoneKeepElsewhere": "Conservez-les ailleurs que sur ce téléphone.",
-    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
+    "keptByRule": "{{organisation}} exige la double authentification : vous ne pouvez pas la désactiver."
   },
   "security": {
     "title": "Sécurité"
@@ -884,17 +884,17 @@
     "changedClose": "Fermer cet avis",
     "limitApplies_one": "Pour vous, la session se ferme après {{count}} jour d'inactivité : c'est la règle de {{organisation}}, la plus stricte de vos organisations.",
     "limitApplies_other": "Pour vous, la session se ferme après {{count}} jours d'inactivité : c'est la règle de {{organisation}}, la plus stricte de vos organisations.",
-    "everyoneTitle": "Two-factor for everyone",
-    "everyoneRequiredFrom": "Required from {{deadline}}",
-    "valueEveryone": "Two-factor required for everyone",
-    "valueNoEveryone": "Two-factor not required of everyone",
-    "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
-    "dueSetUp": "Set it up now",
-    "overdueTitle": "Turn on two-factor to carry on",
-    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
-    "overdueElsewhere": "Your other organisations and single-event access are not affected.",
-    "overdueTurnOn": "Turn on two-factor",
-    "overdueSignOut": "Sign out"
+    "everyoneTitle": "Double authentification pour tous",
+    "everyoneRequiredFrom": "Obligatoire à partir du {{deadline}}",
+    "valueEveryone": "Double authentification obligatoire pour tous",
+    "valueNoEveryone": "Double authentification non obligatoire pour tous",
+    "dueBody": "{{organisation}} exige la double authentification à partir du {{deadline}}.",
+    "dueSetUp": "L'activer maintenant",
+    "overdueTitle": "Activez la double authentification pour continuer",
+    "overdueBody": "{{organisation}} exige la double authentification, et le délai pour l'activer est passé.",
+    "overdueElsewhere": "Vos autres organisations et vos accès à des événements précis ne sont pas concernés.",
+    "overdueTurnOn": "Activer la double authentification",
+    "overdueSignOut": "Se déconnecter"
   },
   "languageNames": {
     "en": "Anglais",
