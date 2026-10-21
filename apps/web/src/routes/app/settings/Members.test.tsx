@@ -520,7 +520,7 @@ describe('inviting somebody', () => {
       screen.getByText("Bisi Adeyemi's ire.events address is no longer on their account."),
     ).toBeDefined();
     expect(
-      screen.getByText('Removed on Monday, Nov 16 at 14:20 WAT if nobody answers.'),
+      screen.getByText('If nobody answers by Monday, Nov 16 at 14:20 WAT, they are removed.'),
     ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Remove from Ìrè Events' })).toBeDefined();
 

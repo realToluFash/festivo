@@ -970,7 +970,7 @@
       "domain_closed": "{{organisation}} no longer lets people join through {{domain}}.",
       "domain_managed_elsewhere": "{{domain}} is now managed by another organisation."
     },
-    "suspendedRemovedOn": "Removed on {{when}} if nobody answers.",
+    "suspendedRemovedOn": "If nobody answers by {{when}}, they are removed.",
     "restore": "Restore",
     "restored": "{{name}}'s access to {{organisation}} is restored.",
     "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first."
