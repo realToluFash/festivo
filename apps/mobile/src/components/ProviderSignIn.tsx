@@ -59,7 +59,7 @@ export function ProviderButtons({
     setBusy(true);
 
     try {
-      router.replace(nextAfterSignIn(await signInWithProvider(provider)));
+      router.replace(await nextAfterSignIn(await signInWithProvider(provider)));
     } catch (error) {
       // Closing the provider is not a failure, so it says nothing; anything else says it did not work.
       if (!(error instanceof ProviderCancelled)) onFailed(PROVIDER_NAMES[provider]);

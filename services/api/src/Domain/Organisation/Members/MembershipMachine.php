@@ -12,6 +12,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
+use App\Enum\SeededRole;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
@@ -55,6 +56,15 @@ final readonly class MembershipMachine
         $this->move($existing, $entry, $channel, $actor);
 
         return $existing;
+    }
+
+    /** A request to join, through any channel, waits for somebody who manages members (sc-392), as Read-only until they choose a role. */
+    public function ask(Organisation $organisation, User $user, MembershipChannel $channel): Membership
+    {
+        $readOnly = $this->entityManager->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly])
+            ?? throw new ApiException(ErrorCode::InternalError, 'The organisation is missing a seeded role.');
+
+        return $this->join($organisation, $user, $readOnly, MembershipStatus::PendingApproval, $channel, $user);
     }
 
     public function move(Membership $membership, MembershipStatus $to, MembershipChannel $channel, ?User $actor): void

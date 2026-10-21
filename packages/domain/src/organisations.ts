@@ -42,6 +42,9 @@ export const ORGANISATION_FIELDS: readonly OrganisationField[] = [
 /** The API's OrganisationRules::NAME_MAXIMUM. */
 export const ORGANISATION_NAME_MAXIMUM = 100;
 
+/** What a request to join through the request link may say, in characters, as the API counts them (sc-562). */
+export const REQUEST_MESSAGE_MAXIMUM = 500;
+
 /** What a client checks before saving. Country, currency, time zone and language come from pickers, so they cannot be wrong. */
 export function organisationProblem(
   field: OrganisationField,

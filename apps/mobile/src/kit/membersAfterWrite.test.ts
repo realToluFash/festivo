@@ -10,6 +10,7 @@ const member = (id: string): OrganisationMember => ({
   status: 'active',
   former: null,
   channel: 'join_code',
+  message: null,
   since: null,
   invitedBy: null,
   invitedAt: null,

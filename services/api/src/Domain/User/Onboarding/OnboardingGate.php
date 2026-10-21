@@ -30,6 +30,8 @@ final readonly class OnboardingGate implements OnboardingGateInterface
         'invitations_decline',
         // "A few details" offers the organisations at the address's domain (sc-561).
         'join_offers',
+        // Somebody registered from a request link asks before they have an organisation (sc-562); it checks verified itself.
+        'request_links_ask',
     ];
 
     public function __construct(

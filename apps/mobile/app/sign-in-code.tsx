@@ -20,7 +20,7 @@ export default function SignInCode() {
       submitLabel={t('twoFactor.verify')}
       onVerify={async (factor) => {
         router.replace(
-          nextAfterSignIn(codePassed(await api.verifyTwoFactor(challenge.challenge, factor))),
+          await nextAfterSignIn(codePassed(await api.verifyTwoFactor(challenge.challenge, factor))),
         );
       }}
       onLostBoth={() => router.push('/lost-two-factor')}

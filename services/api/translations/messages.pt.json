@@ -88,5 +88,10 @@
     "domain_joining.domain_proved_elsewhere": "Outra organização provou no plano Enterprise que {domain} lhe pertence, por isso só conta a lista dessa organização.",
     "domain_joining.domain_public": "Não pode usar um domínio de e-mail público.",
     "domain_joining.not_listed": "Esse domínio não está na lista.",
-    "domain_joining.unavailable": "Não pode pedir para aderir a essa organização. Crie a sua ou peça um convite a alguém dessa organização."
+    "domain_joining.unavailable": "Não pode pedir para aderir a essa organização. Crie a sua ou peça um convite a alguém dessa organização.",
+    "request_link.cooling_off": "You can't ask to join {organisation} again yet.",
+    "request_link.dead": "This link doesn't work any more. Ask the organisation for a new one.",
+    "request_link.member": "You already belong to {organisation}.",
+    "request_link.message_long": "Keep your message to {count} characters or fewer.",
+    "request_link.waiting": "Your request to join {organisation} is already waiting for an answer."
 }
