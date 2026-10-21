@@ -49,6 +49,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). A member is
+  «miembro»; the screen is «Miembros», and a role here is «rol», as «Miembros y roles» on the
+  Roles screen. A person's state never agrees with them: «Con acceso», «Pendiente de
+  aprobación», «Acceso suspendido», «Ha salido», «Acceso retirado», and in the row line «en
+  suspenso desde el {{date}}», «salió el {{date}}». Groups on the chips take the plural,
+  «Todos», «Suspendidos», «Antiguos». Removing a member is «quitar a {{name}}», while a role is
+  «eliminado» on the Roles screen. "On their next request" is «en cuanto vuelva a usar Soirely», since «solicitud»
+  reads as a request to join. An owner named in a sentence is «alguien con el rol
+  Propietario», as «la función Propietario» in sc-3490 avoids «el propietario».
 - **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
   app, sc-4188). Waiting is «pendiente». With several, "join that organisation" is «unirse a la
   organización que le invita», since «esa» after «una» reads as nobody's. A button named in a

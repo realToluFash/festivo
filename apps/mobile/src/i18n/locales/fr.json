@@ -669,8 +669,8 @@
     "chooseLineWithOrganisation": "Compte réunit qui vous êtes et comment vous joindre. Sécurité réunit votre mot de passe, vos moyens de connexion, la double authentification et vos appareils connectés. Organisation réunit les réglages de {{name}}.",
     "signInRules": "Règles de connexion",
     "signInRulesLine": "{{name}} · moyens de connexion et durée des sessions",
-    "members": "Members",
-    "membersLine": "{{name}} · who is in it, and their roles"
+    "members": "Membres",
+    "membersLine": "{{name}} · qui en fait partie, et avec quel rôle"
   },
   "switcher": {
     "yourRole": "Votre rôle · {{role}}",
@@ -1007,92 +1007,92 @@
     "unreadable": "The list could not be loaded. Reload the page to try again."
   },
   "membersScreen": {
-    "title": "Members",
-    "loading": "Loading members…",
-    "failedLoad": "We could not load the members. Check your connection and try again.",
-    "show": "Show",
-    "shown": "Members shown",
-    "showEveryone": "Show everyone",
+    "title": "Membres",
+    "loading": "Chargement des membres…",
+    "failedLoad": "Impossible de charger les membres. Vérifiez votre connexion et réessayez.",
+    "show": "Afficher",
+    "shown": "Membres affichés",
+    "showEveryone": "Afficher tout le monde",
     "state": {
-      "active": "Active",
-      "pending_approval": "Awaiting approval",
-      "suspended": "Suspended",
-      "left": "Left",
-      "removed": "Removed"
+      "active": "Avec accès",
+      "pending_approval": "En attente d'approbation",
+      "suspended": "Accès suspendu",
+      "left": "A quitté l'organisation",
+      "removed": "Accès retiré"
     },
     "how": {
       "invitation": "Invitation",
-      "invitationFrom": "Invitation from {{inviter}}",
-      "self_created": "Created {{organisation}}",
-      "join_code": "Join code",
-      "domain": "Company email address",
-      "request": "Asked to join",
-      "directory": "Company directory"
+      "invitationFrom": "Invitation de {{inviter}}",
+      "self_created": "A créé {{organisation}}",
+      "join_code": "Code pour rejoindre",
+      "domain": "Adresse e-mail professionnelle",
+      "request": "A demandé à rejoindre",
+      "directory": "Annuaire de l'entreprise"
     },
     "when": {
-      "since": "since {{date}}",
-      "asked": "asked {{date}}",
-      "suspended": "suspended {{date}}",
-      "left": "left {{date}}",
-      "removed": "removed {{date}}"
+      "since": "depuis le {{date}}",
+      "asked": "demande du {{date}}",
+      "suspended": "accès suspendu le {{date}}",
+      "left": "départ le {{date}}",
+      "removed": "accès retiré le {{date}}"
     },
-    "you": "you",
-    "youAs": "You · {{role}}",
-    "roleTitle": "Role",
-    "roleFor": "Role for {{name}}",
-    "roleTakesEffect": "Takes effect on their next request; nobody is signed out.",
-    "rolePick": "Pick a different role",
-    "roleSave": "Change their role to {{role}}",
-    "roleChanged": "{{name}} is now {{role}}. Takes effect on their next request; nobody is signed out.",
+    "you": "vous",
+    "youAs": "Vous · {{role}}",
+    "roleTitle": "Rôle",
+    "roleFor": "Rôle de {{name}}",
+    "roleTakesEffect": "S'applique dès que cette personne utilise de nouveau Soirely ; aucune session n'est fermée.",
+    "rolePick": "Choisissez un autre rôle",
+    "roleSave": "Lui attribuer le rôle {{role}}",
+    "roleChanged": "{{name}} a maintenant le rôle {{role}}. Cela s'applique dès sa prochaine utilisation de Soirely ; aucune session n'est fermée.",
     "roleMeans": {
-      "owner": "Everything, including billing and deleting the organisation.",
-      "administrator": "Everything in events, plus members and roles. Not billing.",
-      "event_manager": "Everything inside events, and manages the budget. Never the margin.",
-      "coordinator": "Runs events. Reads the budget, never the margin.",
-      "read_only": "Sees events. Changes nothing."
+      "owner": "Tout, y compris la facturation et la suppression de l'organisation.",
+      "administrator": "Tout dans les événements, plus les membres et les rôles. Pas la facturation.",
+      "event_manager": "Tout dans les événements, et gère le budget. Jamais la marge.",
+      "coordinator": "Organise les événements. Consulte le budget, jamais la marge.",
+      "read_only": "Voit les événements. Ne modifie rien."
     },
-    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so this role can't change and they can't be removed until somebody else is an owner too.",
-    "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
-    "ownerOnly": "Only an owner can change an owner's role or remove them.",
-    "removeTitle": "Remove {{name}}",
-    "removeBody": "They lose access on their next request. Their events stay with {{organisation}}.",
-    "removeButton": "Remove from {{organisation}}",
-    "removeConfirmTitle": "Remove {{name}}?",
-    "removeConfirmBody": "{{name}} stops having access to {{organisation}} on their next request. Their events stay with {{organisation}}, and everything they did is kept.",
-    "removeConfirm": "Remove {{name}}",
-    "removeKeep": "Keep {{name}}",
-    "removed": "{{name}} was removed. Their events stay with {{organisation}}.",
-    "removedNext": "They are listed under Former in Members, with everything they did kept.",
-    "actionFailed": "That did not go through. Nothing was changed. Try again in a moment.",
+    "onlyOwner": "{{name}} est la seule personne à avoir le rôle Propriétaire. Une organisation en a toujours une : son rôle ne peut donc pas changer, et cette personne ne peut pas être retirée tant qu'une autre n'a pas aussi le rôle Propriétaire.",
+    "askOwner": "Seule une personne ayant le rôle Propriétaire peut le donner à quelqu'un d'autre. Demandez à {{name}}.",
+    "ownerOnly": "Seule une personne ayant le rôle Propriétaire peut modifier le rôle d'une autre personne qui l'a, ou la retirer de l'organisation.",
+    "removeTitle": "Retirer {{name}}",
+    "removeBody": "Cette personne perd l'accès dès qu'elle utilise de nouveau Soirely. Ses événements restent rattachés à {{organisation}}.",
+    "removeButton": "Retirer de {{organisation}}",
+    "removeConfirmTitle": "Retirer {{name}} ?",
+    "removeConfirmBody": "{{name}} n'aura plus accès à {{organisation}} dès sa prochaine utilisation de Soirely. Ses événements restent rattachés à {{organisation}}, et tout ce que cette personne a fait est conservé.",
+    "removeConfirm": "Retirer {{name}}",
+    "removeKeep": "Garder {{name}}",
+    "removed": "{{name}} ne fait plus partie de {{organisation}}. Ses événements y restent rattachés.",
+    "removedNext": "Cette personne figure dans Anciens, sous Membres, avec tout ce qu'elle a fait.",
+    "actionFailed": "L'opération n'a pas abouti. Rien n'a été modifié. Réessayez dans un instant.",
     "retry": "Réessayer",
     "filter": {
-      "all": "All",
-      "active": "Active",
-      "suspended": "Suspended",
-      "former": "Former"
+      "all": "Tous",
+      "active": "Avec accès",
+      "suspended": "Suspendus",
+      "former": "Anciens"
     },
     "empty": {
       "all": {
-        "title": "Nobody here"
+        "title": "Personne ici"
       },
       "active": {
-        "title": "Nobody is active"
+        "title": "Personne n'a accès"
       },
       "suspended": {
-        "title": "Nobody is suspended",
-        "body": "Everyone in {{organisation}} can use it right now."
+        "title": "Aucun accès suspendu",
+        "body": "Toutes les personnes de {{organisation}} peuvent utiliser Soirely en ce moment."
       },
       "former": {
-        "title": "Nobody has left",
-        "body": "People who leave or are removed are listed here, with what they did kept."
+        "title": "Personne n'est parti",
+        "body": "Les personnes qui quittent l'organisation ou en sont retirées figurent ici, avec tout ce qu'elles ont fait."
       }
     },
-    "subtitle_one": "{{organisation}} · {{count}} active",
-    "subtitle_other": "{{organisation}} · {{count}} active",
-    "ownRole": "You can't change your own role. Another owner can, or you can hand ownership to somebody in Organisation.",
-    "goToOrganisation": "Go to Organisation ›",
-    "fromTheWeb": "Invitations are sent from Soirely on the web.",
-    "pickSomebody": "Pick somebody in the list to see them here.",
-    "backToList": "‹ Members"
+    "subtitle_one": "{{organisation}} · {{count}} avec accès",
+    "subtitle_other": "{{organisation}} · {{count}} avec accès",
+    "ownRole": "Vous ne pouvez pas modifier votre propre rôle. Une autre personne ayant le rôle Propriétaire le peut, ou vous pouvez transmettre ce rôle à quelqu'un dans Organisation.",
+    "goToOrganisation": "Aller à Organisation ›",
+    "fromTheWeb": "Pour inviter quelqu'un, utilisez Soirely sur le web.",
+    "pickSomebody": "Choisissez une personne dans la liste pour l'afficher ici.",
+    "backToList": "‹ Membres"
   }
 }

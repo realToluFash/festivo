@@ -62,6 +62,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Members in the app (sc-4259, `mobile:membersScreen.*`).** A refusal on a
+  member says "cannot": "You cannot change your own role." and "… so their role cannot change
+  and they cannot be removed …" ("their role", not "this role", which reads as the role
+  itself being locked). The foot of the list tells the manager what to do, "To invite
+  somebody, use Soirely on the web.", over the drawn "Invitations are sent from Soirely on
+  the web.", which states a fact without the action. The landscape pane says "Choose
+  somebody in the list …", as `settings.choose`. The row line's pieces (`you`, `when.*`)
+  stay lower case, since they follow a role after " · ". The web's twins (sc-2922) still say
+  "can't"; settle them the same way there.
 - **21 Oct 2026. Invitations waiting on Complete your profile (sc-4188, `completeProfile.invitations*`,
   `orStartOwn`, `joined*`, `organisationOrInvitation`, web and app).** Settled as sc-3353 wrote
   them. "Accept one to join that organisation" reads as the organisation of the one you
