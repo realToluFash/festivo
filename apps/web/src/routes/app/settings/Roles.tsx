@@ -9,14 +9,18 @@ import {
   MARGIN,
   ROLE_NAME_MAXIMUM,
   levelOf,
+  lockedAreas,
+  replacementsFor,
   roleName,
   roleNameOf,
   roleNameProblem,
   sameGrant,
   settableLevels,
+  takenRoleNames,
   whatTheySee,
   withLevel,
   withMargin,
+  withoutRole,
 } from '@soirely/domain';
 import i18next, { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useState } from 'react';
@@ -98,6 +102,7 @@ export function Roles() {
           manages={can(session, 'members.manage')}
           held={organisation.permissions}
           onChange={(catalogue) => setLoad({ kind: 'loaded', catalogue })}
+          onReload={() => setAttempt((n) => n + 1)}
         />
       )}
     </div>
@@ -110,12 +115,14 @@ function RolesLoaded({
   manages,
   held,
   onChange,
+  onReload,
 }: {
   organisation: Membership;
   catalogue: RolesCatalogue;
   manages: boolean;
   held: string[];
   onChange: (catalogue: RolesCatalogue) => void;
+  onReload: () => void;
 }) {
   const { t } = useTranslation();
   const [pane, setPane] = useState<Pane>(() => ({
@@ -185,9 +192,10 @@ function RolesLoaded({
             roles={catalogue.roles}
             held={held}
             onKeep={() => open({ kind: 'role', id: selected.id })}
-            onRemoved={(next) => {
-              onChange(next);
-              open({ kind: 'role', id: next.roles.find((role) => !role.fixed)?.id ?? '' });
+            onRemoved={(roles) => {
+              onChange({ ...catalogue, roles });
+              open({ kind: 'role', id: roles.find((role) => !role.fixed)?.id ?? '' });
+              onReload();
             }}
           />
         ) : (
@@ -262,12 +270,9 @@ function Editing({
     return { area, permissions, levels, locked: editable && levels.length < 2 };
   });
   const marginLocked = editable && !held.includes(MARGIN);
-  const lockedAreas = rows.flatMap(({ area, permissions, locked }) => [
-    ...(locked ? [t(`rolesScreen.area.${area}`)] : []),
-    ...(marginLocked && grant.includes(`${area}.read`) && permissions.includes(MARGIN)
-      ? [t('rolesScreen.margin')]
-      : []),
-  ]);
+  const lockedLabels = (editable ? lockedAreas(grant, held, catalogue.areas) : []).map((area) =>
+    area === MARGIN ? t('rolesScreen.margin') : t(`rolesScreen.area.${area}`),
+  );
 
   function change(next: string[]): void {
     setGrant(next);
@@ -281,9 +286,7 @@ function Editing({
     if (creating || renamed) {
       const problem = roleNameProblem(
         typed,
-        catalogue.roles
-          .filter((one) => one.id !== role?.id)
-          .flatMap((one) => everyLanguage.map((word) => roleName(word, one))),
+        takenRoleNames(catalogue.roles, role?.id, everyLanguage),
       );
 
       if (problem != null) {
@@ -388,15 +391,15 @@ function Editing({
         </div>
       )}
 
-      {lockedAreas.length > 0 && (
+      {lockedLabels.length > 0 && (
         <div className="notice notice-quiet">
           <Padlock />
           <p>
             {t('rolesScreen.lockedIntro', {
-              count: lockedAreas.length,
+              count: lockedLabels.length,
               role: roleName(t, organisation.role),
               areas: new Intl.ListFormat(currentLocale(), { type: 'conjunction' }).format(
-                lockedAreas,
+                lockedLabels,
               ),
             })}
           </p>
@@ -618,16 +621,14 @@ function Removing({
   roles: OrganisationRole[];
   held: string[];
   onKeep: () => void;
-  onRemoved: (catalogue: RolesCatalogue) => void;
+  onRemoved: (roles: OrganisationRole[]) => void;
 }) {
   const { t } = useTranslation();
   const [replacement, setReplacement] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [status, setStatus] = useState<'asking' | 'removing' | 'failed'>('asking');
   const title = roleName(t, role);
-  const choices = roles.filter(
-    (one) => one.id !== role.id && one.permissions.every((permission) => held.includes(permission)),
-  );
+  const choices = replacementsFor(roles, role, held);
   const chosen = choices.find((one) => one.id === replacement);
 
   async function remove(): Promise<void> {
@@ -637,14 +638,17 @@ function Removing({
       return;
     }
 
+    const moving = role.holders > 0 ? replacement : null;
     setStatus('removing');
 
     try {
-      await api.deleteRole(organisation.id, role.id, role.holders > 0 ? replacement : null);
-      onRemoved(await api.roles(organisation.id));
+      await api.deleteRole(organisation.id, role.id, moving);
     } catch {
       setStatus('failed');
+      return;
     }
+
+    onRemoved(withoutRole(roles, role, moving));
   }
 
   return (

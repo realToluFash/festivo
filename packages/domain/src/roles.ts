@@ -1,3 +1,5 @@
+import { roleName } from './organisations.ts';
+
 export type Level = 'nothing' | 'read' | 'change';
 
 export const ROLE_NAME_MAXIMUM = 40;
@@ -98,4 +100,56 @@ export function whatTheySee(
     hidden: areas.filter((area) => levelOf(held, area) === 'nothing'),
     readOnly: areas.filter((area) => levelOf(held, area) === 'read'),
   };
+}
+
+/** The roles a removed role's members may move to: only one whose every permission the caller holds (sc-66). */
+export function replacementsFor<R extends { id: string; permissions: readonly string[] }>(
+  roles: readonly R[],
+  removing: { id: string },
+  held: readonly string[],
+): R[] {
+  return roles.filter(
+    (one) =>
+      one.id !== removing.id && one.permissions.every((permission) => held.includes(permission)),
+  );
+}
+
+/** What remains once a role is removed: its members counted on the role they moved to. */
+export function withoutRole<R extends { id: string; holders: number }>(
+  roles: readonly R[],
+  removed: { id: string; holders: number },
+  replacement: string | null,
+): R[] {
+  return roles
+    .filter((one) => one.id !== removed.id)
+    .map((one) =>
+      one.id === replacement ? { ...one, holders: one.holders + removed.holders } : one,
+    );
+}
+
+/** The names a role may not take: every other role's, a seeded one's in every language, as the API refuses them (sc-2301). */
+export function takenRoleNames(
+  roles: readonly { id: string; seededAs: string | null; name: string | null }[],
+  except: string | undefined,
+  languages: readonly ((key: string) => string)[],
+): string[] {
+  return roles
+    .filter((one) => one.id !== except)
+    .flatMap((one) => languages.map((word) => roleName(word, one)));
+}
+
+/** The areas a caller cannot change on this role, and the margin wherever it shows but cannot be moved. */
+export function lockedAreas(
+  grant: readonly string[],
+  held: readonly string[],
+  areas: readonly { area: string; permissions: readonly string[] }[],
+): string[] {
+  const marginLocked = !held.includes(MARGIN);
+
+  return areas.flatMap(({ area, permissions }) => [
+    ...(settableLevels(grant, held, area, permissions).length < 2 ? [area] : []),
+    ...(marginLocked && grant.includes(`${area}.read`) && permissions.includes(MARGIN)
+      ? [MARGIN]
+      : []),
+  ]);
 }
