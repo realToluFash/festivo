@@ -53,6 +53,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
+  `codeKeepsSignIn_*`, sc-2908). The status box is « Connexion avec {{provider}} réussie », a
+  noun phrase because « Connecté » would have to agree with the person. Under the code field:
+  « Un code incorrect ne vous renvoie pas vers {{provider}}. Votre connexion avec {{provider}}
+  reste valable {{count}} minutes. », pairing with `proofExpired`'s « Votre connexion avec
+  {{provider}} date de plus de … ». A window « reste valable », not « dure ».
 - **19 Oct 2026. A `{{day}}` opens the sentence, never closes it** (`signInRules.changedBody`,
   web and app, sc-3030). `{{day}}` is « lundi 19 oct. », whose abbreviated month brings its own
   full stop, so a sentence ending on it reads « 19 oct.. ». It reads « Le {{day}},
