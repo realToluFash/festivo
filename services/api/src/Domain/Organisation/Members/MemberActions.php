@@ -18,7 +18,9 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -38,6 +40,7 @@ final readonly class MemberActions
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private DomainSuspender $domainSuspender,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -80,16 +83,26 @@ final readonly class MemberActions
     public function remove(Membership $membership, User $by): void
     {
         $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
-        $this->roleAssignment->release($membership);
-        $this->end($membership, self::REMOVED, $by);
+        $this->underLock($membership, function () use ($membership, $by): void {
+            $removesAt = $membership->getRemovesAt();
+
+            if (MembershipStatus::LeftOrRemoved === $membership->getStatus() || (null !== $removesAt && $removesAt <= $this->clock->now())) {
+                throw ApiException::notFound('That person is not a member of this organisation.');
+            }
+
+            $this->roleAssignment->release($membership);
+            $this->end($membership, self::REMOVED, $by);
+        });
     }
 
     /** A member suspended when the company domain stopped bringing them in (sc-564), let back in. */
     public function restore(Membership $membership, User $by): void
     {
         $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
-        $this->domainSuspender->restore($membership, $by);
-        $this->entityManager->flush();
+        $this->underLock($membership, function () use ($membership, $by): void {
+            $this->domainSuspender->restore($membership, $by);
+            $this->entityManager->flush();
+        });
     }
 
     public function leave(Organisation $organisation, User $user): void
@@ -106,6 +119,26 @@ final readonly class MemberActions
         $this->membershipMachine->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Settings, $by);
         $this->record($action, $membership, $by, ['status' => [$status->value, MembershipStatus::LeftOrRemoved->value]]);
         $this->entityManager->flush();
+    }
+
+    /** Checked again on the locked row, as JoinRequests::answer does, so the per-minute removal and an admin never both end one suspension. */
+    private function underLock(Membership $membership, callable $effect): void
+    {
+        $refused = $this->entityManager->wrapInTransaction(function () use ($membership, $effect): ?ApiException {
+            $this->entityManager->refresh($membership, LockMode::PESSIMISTIC_WRITE);
+
+            try {
+                $effect();
+            } catch (ApiException $exception) {
+                return $exception;
+            }
+
+            return null;
+        });
+
+        if (null !== $refused) {
+            throw $refused;
+        }
     }
 
     /** @param array<string, array{0: mixed, 1: mixed}> $changes */
