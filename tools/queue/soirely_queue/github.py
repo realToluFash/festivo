@@ -242,6 +242,7 @@ def rest_checks(owner, name, sha):
 
 def rest_pull_requests(owner, name, known):
     base = f"repos/{owner}/{name}/pulls"
+    main = api(f"repos/{owner}/{name}/git/ref/heads/main")["object"]["sha"]
     opened = api(f"{base}?state=open&sort=updated&direction=desc&per_page=30")
     closed = api(f"{base}?state=closed&sort=updated&direction=desc&per_page=30")
     out = []
@@ -251,6 +252,12 @@ def rest_pull_requests(owner, name, known):
         same = before.get("updated_at") == pull["updated_at"] \
             and before.get("head_sha") == pull["head"]["sha"]
         if same and (merged or before.get("checks") != "pending"):
+            # A pull request that never changes still starts to conflict when main moves, and
+            # GitHub answers null until it has worked the answer out.
+            if not merged and (before.get("mergeable") == "unknown"
+                               or before.get("main_sha") != main):
+                before = dict(before, main_sha=main, mergeable=MERGEABLE[
+                    api(f"{base}/{pull['number']}").get("mergeable")].lower())
             out.append(before)
             continue
         pr = slim({**rest_node(pull, merged), "reviews": {"nodes": []}})
@@ -260,8 +267,10 @@ def rest_pull_requests(owner, name, known):
             pr["threads"] = before["threads"] if same else \
                 rest_threads(owner, name, pull["number"], before.get("threads", []))
             pr["checks"] = rest_checks(owner, name, pull["head"]["sha"])
-            pr["mergeable"] = before["mergeable"] if same else \
+            pr["mergeable"] = before["mergeable"] if same and before.get("main_sha") == main \
+                and before["mergeable"] != "unknown" else \
                 MERGEABLE[api(f"{base}/{pull['number']}").get("mergeable")].lower()
+            pr["main_sha"] = main
         out.append(pr)
     return out
 

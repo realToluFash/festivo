@@ -176,6 +176,17 @@ def merge(p, pr, story, row):
                f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
 
 
+def conflict(p, pr, story, row):
+    V.pr_status(p, pr, compact=True)
+    p.add("", f"It conflicts with main, so it can neither be reviewed as it will land nor merge. "
+              f"In your checkout, on {pr['branch']}: `git fetch origin && git merge origin/main`. "
+              "Resolve each file so both changes survive: what main has is merged, and what "
+              "the branch has is yours. Run the suites the files touch, commit the merge, and "
+              "push. Never rebase or force-push. A push after a pass voids it, and the lead "
+              "reviews the new head.")
+    next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"brought main in\"")
+
+
 def main_red(p, db, row):
     runs = store.get_meta(db, "main_runs") or []
     p.add("main, newest first:")
@@ -212,6 +223,9 @@ def render(p, db, row, cache):
     if kind == "merge":
         p.add(*V.header(story))
         return merge(p, pr, story, row)
+    if kind == "conflict":
+        p.add(*V.header(story))
+        return conflict(p, pr, story, row)
     if kind == "to-qa":
         p.add(*V.header(story), f"  merged as {pr['merge_sha']}")
         return next_lines(p, f"{SQ} {p.role} to-qa sc-{story['id']} --text \"<what to look at>\"",
