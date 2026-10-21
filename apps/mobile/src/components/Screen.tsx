@@ -32,6 +32,10 @@ import { tokens } from '../theme/tokens.ts';
 
 const LIFT = keyboardLift(Platform.OS);
 
+// Once the avoiding view shrinks it, Android's ScrollView smooth-scrolls the focused field to its
+// own bottom edge over 250ms, and that can land after our lift and leave the button under the keys.
+const NATIVE_FOCUS_SCROLL_MS = 400;
+
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
 
 interface ScreenScrollView {
@@ -133,7 +137,14 @@ export function useAboveKeyboard(): AboveKeyboard {
   const keyboardTop = useRef<number | null>(keyboardTopNow(scroll?.origin.current ?? 0));
 
   useEffect(() => {
-    const lift = () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
+    let settled: ReturnType<typeof setTimeout> | undefined;
+    const liftNow = () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
+    const lift = () => {
+      liftNow();
+      if (LIFT.avoid == null) return;
+      clearTimeout(settled);
+      settled = setTimeout(liftNow, NATIVE_FOCUS_SCROLL_MS);
+    };
     const unwatch = watchKeyboardTop(scroll, (top) => {
       keyboardTop.current = top;
       lift();
@@ -143,6 +154,7 @@ export function useAboveKeyboard(): AboveKeyboard {
     scroll?.resized.add(lift);
 
     return () => {
+      clearTimeout(settled);
       unwatch();
       scroll?.resized.delete(lift);
     };
