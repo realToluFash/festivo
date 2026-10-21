@@ -477,6 +477,19 @@ final class InvitationTest extends ApiTestCase
         self::assertStringContainsString('Coordinateur', $this->lastText(), 'the role in French');
     }
 
+    /** #3357: an abbreviated month carries its own stop, so the expiry line writes it in full. */
+    #[Test]
+    public function theExpiryLineWritesTheMonthInFull(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        $this->as($owner)->call('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), ['locale' => 'fr']);
+
+        $this->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+
+        self::assertMatchesRegularExpression('/\\d{1,2} (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\\.$/mu', $this->lastText());
+        self::assertStringNotContainsString('..', $this->lastText());
+    }
+
     /** sc-2914: a new language is for what is sent after it; nothing already sent goes out again. */
     #[Test]
     public function changingTheLanguageSendsNothingAgain(): void

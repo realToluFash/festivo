@@ -65,7 +65,7 @@ final readonly class InvitationMailer
     /** The organisation's zone: a stranger has none of their own. */
     private function date(Invitation $invitation, string $timezone, string $locale): string
     {
-        $pattern = new IntlDatePatternGenerator($locale)->getBestPattern('EEEEMMMd') ?: 'EEEE, MMM d';
+        $pattern = new IntlDatePatternGenerator($locale)->getBestPattern('EEEEMMMMd') ?: 'EEEE, MMMM d';
         $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $timezone, null, $pattern);
 
         return $formatter?->format($invitation->getExpiresAt()) ?: $invitation->getExpiresAt()->format('Y-m-d');
