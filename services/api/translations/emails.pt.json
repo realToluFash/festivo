@@ -141,7 +141,9 @@
     "domainSuspended.domainClosed": "{name}'s access to {organisation} is paused because {organisation} no longer lets people join through {domain}.",
     "domainSuspended.managedElsewhere": "{name}'s access to {organisation} is paused because {domain} is now managed by another organisation.",
     "domainSuspended.kept": "Their work is kept and still attributed to them. Restore their access, or remove them from {organisation}.",
+    "domainSuspended.keptOnlyOwner": "{name} is the only owner of {organisation}, so they stay an owner and are not removed.",
+    "domainSuspended.restoreOnceAddress": "Restore them once they have a verified {domain} address again.",
     "domainSuspended.deadline": "If nobody answers by {deadline}, they are removed.",
     "domainSuspended.review": "Review {name}: {link}",
-    "domainSuspended.footer": "You are receiving this because you are an owner or administrator of {organisation}."
+    "domainSuspended.footer": "You're getting this because you're an admin of {organisation}."
 }

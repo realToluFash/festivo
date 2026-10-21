@@ -47,8 +47,11 @@ final readonly class DomainSuspensionMailer
 
             $this->userMailer->send($address, $locale, 'domainSuspended.subject', [
                 $this->userMailer->line($reason, $locale, $named),
-                $this->userMailer->line('domainSuspended.kept', $locale, $named),
-                ...(null === $removesAt ? [] : [
+                ...(null === $removesAt ? [
+                    $this->userMailer->line('domainSuspended.keptOnlyOwner', $locale, $named),
+                    ...($membership->getSuspension()?->needsTheAddress() ? [$this->userMailer->line('domainSuspended.restoreOnceAddress', $locale, $named)] : []),
+                ] : [
+                    $this->userMailer->line('domainSuspended.kept', $locale, $named),
                     $this->userMailer->line('domainSuspended.deadline', $locale, ['{deadline}' => $this->userMailer->deadline($removesAt, $administrator, $locale)]),
                 ]),
                 $this->userMailer->line('domainSuspended.review', $locale, [...$named, '{link}' => $link]),

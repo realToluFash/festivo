@@ -57,10 +57,7 @@ final readonly class MembershipMachine
             throw new ApiException(ErrorCode::AlreadyAMember, $this->translator->trans('members.already_a_member'));
         }
 
-        if ($returning) {
-            $existing->setDomain(self::domainFor($user, $channel));
-        }
-
+        $existing->setDomain(self::domainFor($user, $channel));
         $existing->changeRole($role);
         $this->move($existing, $entry, $channel, $actor);
 
@@ -85,7 +82,7 @@ final readonly class MembershipMachine
         $this->removalClock->wind($membership);
     }
 
-    /** Only company domain joining ties a membership to the address it came through (sc-564). */
+    /** Only company domain joining ties a membership to the address it came through (sc-564), so whichever channel brings the row in last decides. */
     private static function domainFor(User $user, MembershipChannel $channel): ?string
     {
         return MembershipChannel::Domain === $channel ? JoinOfferFinder::domainFor($user) : null;

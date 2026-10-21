@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
+use App\Domain\Organisation\DomainJoining\JoinRequester;
 use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
@@ -16,13 +17,16 @@ use App\Entity\EmailAddress;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\OrganisationDomain;
+use App\Entity\ProviderIdentity;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\DomainSuspension;
 use App\Enum\ErrorCode;
+use App\Enum\IdentityProvider;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
@@ -185,7 +189,11 @@ final class DomainSuspensionTest extends ApiTestCase
         self::assertSame(MembershipStatus::Suspended, $membership->getStatus());
         self::assertTrue($membership->getRole()->isOwner(), 'still Owner');
         self::assertNull($membership->getRemovesAt());
-        self::assertStringNotContainsString('If nobody answers', (string) $this->mails()[0]->getTextBody());
+        $text = (string) $this->mails()[0]->getTextBody();
+        self::assertStringNotContainsString('If nobody answers', $text);
+        self::assertStringNotContainsString('or remove them', $text);
+        self::assertStringContainsString('is the only owner of Ìrè Events, so they stay an owner and are not removed.', $text);
+        self::assertStringContainsString('Restore them once they have a verified ire.events address again.', $text);
 
         $this->signIn($owner);
         $paused = Type\vec(Type\shape(['suspension' => Type\shape(['removesAt' => Type\mixed()], true)], true))->coerce($this->send('GET', '/api/orgs')['paused']);
@@ -304,6 +312,40 @@ final class DomainSuspensionTest extends ApiTestCase
     }
 
     #[Test]
+    public function aDomainRequestAnsweredByAnInvitationIsNotTiedToTheDomain(): void
+    {
+        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $this->list($organisation, 'ire.events');
+        $tunde = $this->member('tunde@ire.events');
+        self::service(JoinRequester::class)->ask($tunde, $organisation);
+        self::service(EntityManagerInterface::class)->flush();
+        self::assertSame('ire.events', $this->membershipOf($tunde, $organisation)->getDomain());
+
+        $this->join($organisation, $tunde, MembershipChannel::Invitation);
+        $this->verifiedAlternative($tunde, 'tunde@gmail.com');
+        $this->makePrimary($tunde, 'tunde@gmail.com');
+
+        self::assertSame(MembershipStatus::Active, $this->membershipOf($tunde, $organisation)->getStatus());
+        self::assertNull($this->membershipOf($tunde, $organisation)->getDomain());
+    }
+
+    #[Test]
+    public function unlinkingTheCompanyGoogleAccountSuspendsNobody(): void
+    {
+        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $this->list($organisation, 'ire.events');
+        $tunde = $this->domainMember($organisation, 'tunde@ire.events');
+        self::service(EntityManagerInterface::class)->persist(new ProviderIdentity($tunde, IdentityProvider::Google, 'g-tunde', 'tunde@ire.events'));
+        $this->signIn($tunde);
+
+        $this->send('POST', '/api/auth/providers/google/unlink', ['proof' => $this->proof()]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(MembershipStatus::Active, $this->membershipOf($tunde, $organisation)->getStatus());
+        self::assertSame('ire.events', $this->membershipOf($tunde, $organisation)->getDomain());
+    }
+
+    #[Test]
     public function theAdministratorsAreEmailedTheOneRemovalInstantEachInTheirOwnZone(): void
     {
         [$lagos, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
@@ -349,6 +391,28 @@ final class DomainSuspensionTest extends ApiTestCase
             'en',
         ) . ', they are removed.', $text);
         self::assertStringContainsString('Review Tunde Bakare: ', $text);
+        self::assertStringContainsString("You're getting this because you're an admin of Ìrè Events.", $text);
+    }
+
+    #[Test]
+    public function noEmailGoesOutForASuspensionThatNeverCommits(): void
+    {
+        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $tunde = $this->domainMember($organisation, 'tunde@ire.events', 'Tunde Bakare');
+        $this->verifiedAlternative($tunde, 'tunde@okafor.family');
+        $entityManager = self::service(EntityManagerInterface::class);
+        $connection = $entityManager->getConnection();
+
+        $connection->beginTransaction();
+        Iter\search($tunde->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->isPrimary())?->setPrimary(false);
+        $entityManager->flush();
+        Iter\search($tunde->getEmailAddresses(), static fn (EmailAddress $held): bool => 'tunde@okafor.family' === $held->getAddress())?->setPrimary(true);
+        self::service(DomainSuspender::class)->addressChanged($tunde);
+        $entityManager->flush();
+        $connection->rollBack();
+        self::service(AfterResponse::class)->run();
+
+        self::assertSame([], $this->mails());
     }
 
     #[Test]
@@ -476,6 +540,7 @@ final class DomainSuspensionTest extends ApiTestCase
         Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getAddress() === $address)?->setPrimary(true);
         self::service(DomainSuspender::class)->addressChanged($user);
         $entityManager->flush();
+        self::service(AfterResponse::class)->run();
     }
 
     private function suspendAt(Membership $membership, DateTimeImmutable $at): void

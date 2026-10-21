@@ -16,6 +16,7 @@ use App\Enum\DomainSuspension;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
+use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
@@ -40,6 +41,7 @@ final readonly class DomainSuspender
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private UserMailer $userMailer,
+        private AfterResponse $afterResponse,
         private ClockInterface $clock,
     ) {
     }
@@ -148,9 +150,14 @@ final readonly class DomainSuspender
             'status' => [MembershipStatus::Active->value, MembershipStatus::Suspended->value],
             'suspension' => [null, $why->value],
         ]);
-        $this->domainSuspensionMailer->sendSuspended($membership, Vec\map(
+        $administrators = Vec\map(
             $this->membershipRepository->findAdministratorsIn($membership->getOrganisation()),
             static fn (Membership $administrator): User => $administrator->getUser(),
-        ));
+        );
+        $this->afterResponse->defer(function () use ($membership, $administrators): void {
+            if ($this->membershipRepository->isSuspendedInStore($membership->getId())) {
+                $this->domainSuspensionMailer->sendSuspended($membership, $administrators);
+            }
+        });
     }
 }

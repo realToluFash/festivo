@@ -157,6 +157,15 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /** Read past the unit of work, which a rolled-back transaction leaves closed and holding what never committed. */
+    public function isSuspendedInStore(Uuid $id): bool
+    {
+        return MembershipStatus::Suspended->value === $this->getEntityManager()->getConnection()->fetchOne(
+            'SELECT status FROM memberships WHERE id = ?',
+            [$id->toRfc4122()],
+        );
+    }
+
     /** @return list<Membership> the organisation's owners in every state */
     public function findOwnersIn(Organisation $organisation): array
     {
