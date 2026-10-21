@@ -41,6 +41,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
+  "Membros", a role "função", and a member is removed with "Remover", as on Account. A
+  person's state never agrees with them: "Com acesso", "A aguardar aprovação", "Acesso
+  suspenso", "Saiu", "Acesso retirado"; dates in the row line take "a" ("saiu a {{date}}").
+  "You" beside your own row is "a sua conta", and "You · {{role}}" is "A sua função: {{role}}",
+  never "você". "Their events" is "os eventos desta pessoa", since "os seus" reads as the
+  reader's and "dela" assumes a woman. "On their next request" is "assim que voltar a usar a
+  Soirely". Groups on the chips take the plural, "Todos", "Suspensos", "Antigos".
 - **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
   app, sc-4188). An invitation is "convite", waiting is "pendente". With several, "that
   organisation" is "a organização que o enviou", where "o" is the invitation, never the

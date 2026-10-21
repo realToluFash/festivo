@@ -669,8 +669,8 @@
     "chooseLineWithOrganisation": "Em Conta estão os seus dados e as formas de contacto. Em Segurança estão a palavra-passe, as formas de iniciar sessão, a autenticação de dois fatores e os dispositivos com sessão iniciada. Em Organização estão as definições de {{name}}.",
     "signInRules": "Regras de início de sessão",
     "signInRulesLine": "{{name}} · como se inicia sessão e durante quanto tempo",
-    "members": "Members",
-    "membersLine": "{{name}} · who is in it, and their roles"
+    "members": "Membros",
+    "membersLine": "{{name}} · quem faz parte e com que função"
   },
   "switcher": {
     "yourRole": "A sua função · {{role}}",
@@ -1007,92 +1007,92 @@
     "unreadable": "The list could not be loaded. Reload the page to try again."
   },
   "membersScreen": {
-    "title": "Members",
-    "loading": "Loading members…",
-    "failedLoad": "We could not load the members. Check your connection and try again.",
-    "show": "Show",
-    "shown": "Members shown",
-    "showEveryone": "Show everyone",
+    "title": "Membros",
+    "loading": "A carregar membros…",
+    "failedLoad": "Não foi possível carregar os membros. Verifique a ligação e tente novamente.",
+    "show": "Mostrar",
+    "shown": "Membros mostrados",
+    "showEveryone": "Mostrar todos",
     "state": {
-      "active": "Active",
-      "pending_approval": "Awaiting approval",
-      "suspended": "Suspended",
-      "left": "Left",
-      "removed": "Removed"
+      "active": "Com acesso",
+      "pending_approval": "A aguardar aprovação",
+      "suspended": "Acesso suspenso",
+      "left": "Saiu",
+      "removed": "Acesso retirado"
     },
     "how": {
-      "invitation": "Invitation",
-      "invitationFrom": "Invitation from {{inviter}}",
-      "self_created": "Created {{organisation}}",
-      "join_code": "Join code",
-      "domain": "Company email address",
-      "request": "Asked to join",
-      "directory": "Company directory"
+      "invitation": "Convite",
+      "invitationFrom": "Convite de {{inviter}}",
+      "self_created": "Criou {{organisation}}",
+      "join_code": "Código de adesão",
+      "domain": "Endereço de e-mail da empresa",
+      "request": "Pediu para aderir",
+      "directory": "Diretório da empresa"
     },
     "when": {
-      "since": "since {{date}}",
-      "asked": "asked {{date}}",
-      "suspended": "suspended {{date}}",
-      "left": "left {{date}}",
-      "removed": "removed {{date}}"
+      "since": "desde {{date}}",
+      "asked": "pedido feito a {{date}}",
+      "suspended": "acesso suspenso a {{date}}",
+      "left": "saiu a {{date}}",
+      "removed": "acesso retirado a {{date}}"
     },
-    "you": "you",
-    "youAs": "You · {{role}}",
-    "roleTitle": "Role",
-    "roleFor": "Role for {{name}}",
-    "roleTakesEffect": "Takes effect on their next request; nobody is signed out.",
-    "rolePick": "Pick a different role",
-    "roleSave": "Change their role to {{role}}",
-    "roleChanged": "{{name}} is now {{role}}. Takes effect on their next request; nobody is signed out.",
+    "you": "a sua conta",
+    "youAs": "A sua função: {{role}}",
+    "roleTitle": "Função",
+    "roleFor": "Função de {{name}}",
+    "roleTakesEffect": "Aplica-se assim que essa pessoa voltar a usar a Soirely; nenhuma sessão é encerrada.",
+    "rolePick": "Escolha outra função",
+    "roleSave": "Atribuir a função {{role}}",
+    "roleChanged": "{{name}} tem agora a função {{role}}. Aplica-se assim que voltar a usar a Soirely; nenhuma sessão é encerrada.",
     "roleMeans": {
-      "owner": "Everything, including billing and deleting the organisation.",
-      "administrator": "Everything in events, plus members and roles. Not billing.",
-      "event_manager": "Everything inside events, and manages the budget. Never the margin.",
-      "coordinator": "Runs events. Reads the budget, never the margin.",
-      "read_only": "Sees events. Changes nothing."
+      "owner": "Tudo, incluindo a faturação e a eliminação da organização.",
+      "administrator": "Tudo nos eventos, mais membros e funções. Sem faturação.",
+      "event_manager": "Tudo dentro dos eventos, e gere o orçamento. Nunca a margem.",
+      "coordinator": "Organiza eventos. Consulta o orçamento, nunca a margem.",
+      "read_only": "Vê os eventos. Não altera nada."
     },
-    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so this role can't change and they can't be removed until somebody else is an owner too.",
-    "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
-    "ownerOnly": "Only an owner can change an owner's role or remove them.",
-    "removeTitle": "Remove {{name}}",
-    "removeBody": "They lose access on their next request. Their events stay with {{organisation}}.",
-    "removeButton": "Remove from {{organisation}}",
-    "removeConfirmTitle": "Remove {{name}}?",
-    "removeConfirmBody": "{{name}} stops having access to {{organisation}} on their next request. Their events stay with {{organisation}}, and everything they did is kept.",
-    "removeConfirm": "Remove {{name}}",
-    "removeKeep": "Keep {{name}}",
-    "removed": "{{name}} was removed. Their events stay with {{organisation}}.",
-    "removedNext": "They are listed under Former in Members, with everything they did kept.",
-    "actionFailed": "That did not go through. Nothing was changed. Try again in a moment.",
+    "onlyOwner": "{{name}} é a única pessoa com a função Proprietário. Uma organização tem sempre uma, por isso essa função não pode mudar e não é possível remover {{name}} até que outra pessoa tenha também a função Proprietário.",
+    "askOwner": "Só quem tem a função Proprietário a pode atribuir a outra pessoa. Peça a {{name}}.",
+    "ownerOnly": "Só quem tem a função Proprietário pode alterar a função de outra pessoa com essa função ou removê-la da organização.",
+    "removeTitle": "Remover {{name}}",
+    "removeBody": "Esta pessoa perde o acesso assim que voltar a usar a Soirely. Os eventos desta pessoa continuam associados a {{organisation}}.",
+    "removeButton": "Remover de {{organisation}}",
+    "removeConfirmTitle": "Remover {{name}}?",
+    "removeConfirmBody": "{{name}} deixa de ter acesso a {{organisation}} assim que voltar a usar a Soirely. Os eventos desta pessoa continuam associados a {{organisation}}, e tudo o que fez fica guardado.",
+    "removeConfirm": "Remover {{name}}",
+    "removeKeep": "Manter {{name}}",
+    "removed": "{{name}} já não faz parte de {{organisation}}. Os eventos desta pessoa continuam associados à organização.",
+    "removedNext": "Esta pessoa aparece em Antigos, em Membros, com tudo o que fez.",
+    "actionFailed": "Não foi possível concluir. Nada foi alterado. Tente novamente daqui a pouco.",
     "retry": "Tentar novamente",
     "filter": {
-      "all": "All",
-      "active": "Active",
-      "suspended": "Suspended",
-      "former": "Former"
+      "all": "Todos",
+      "active": "Com acesso",
+      "suspended": "Suspensos",
+      "former": "Antigos"
     },
     "empty": {
       "all": {
-        "title": "Nobody here"
+        "title": "Ninguém aqui"
       },
       "active": {
-        "title": "Nobody is active"
+        "title": "Ninguém tem acesso"
       },
       "suspended": {
-        "title": "Nobody is suspended",
-        "body": "Everyone in {{organisation}} can use it right now."
+        "title": "Nenhum acesso suspenso",
+        "body": "Todas as pessoas de {{organisation}} podem usar a Soirely neste momento."
       },
       "former": {
-        "title": "Nobody has left",
-        "body": "People who leave or are removed are listed here, with what they did kept."
+        "title": "Ninguém saiu",
+        "body": "Quem sair da organização ou perder o acesso aparece aqui, com tudo o que fez."
       }
     },
-    "subtitle_one": "{{organisation}} · {{count}} active",
-    "subtitle_other": "{{organisation}} · {{count}} active",
-    "ownRole": "You can't change your own role. Another owner can, or you can hand ownership to somebody in Organisation.",
-    "goToOrganisation": "Go to Organisation ›",
-    "fromTheWeb": "Invitations are sent from Soirely on the web.",
-    "pickSomebody": "Pick somebody in the list to see them here.",
-    "backToList": "‹ Members"
+    "subtitle_one": "{{organisation}} · {{count}} com acesso",
+    "subtitle_other": "{{organisation}} · {{count}} com acesso",
+    "ownRole": "Não pode alterar a sua própria função. Outra pessoa com a função Proprietário pode fazê-lo, ou pode passar a função Proprietário a alguém em Organização.",
+    "goToOrganisation": "Ir para Organização ›",
+    "fromTheWeb": "Para convidar alguém, use a Soirely na web.",
+    "pickSomebody": "Escolha alguém na lista para ver aqui os dados.",
+    "backToList": "‹ Membros"
   }
 }
