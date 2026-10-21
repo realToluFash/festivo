@@ -193,3 +193,46 @@ class Checkouts(unittest.TestCase):
             agents.make_checkout(self.config, "qa2", self.said.append, self.home)
         self.assertIn("could not create", self.said[-1])
         self.assertIn("fatal: no", self.said[-1])
+
+
+class Stacks(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        self.root = pathlib.Path(self.folder.name)
+        for name in ("soirely-dev2", "soirely-qa2"):
+            (self.root / name).mkdir()
+        (self.root / "soirely-dev2" / ".env").write_text("COMPOSE_PROJECT_NAME=soirely-dev2\n")
+        self.config = config(self.root, roles={"dev2": {}, "qa2": {}, "dev": {}})
+        self.said = []
+        for patch in (mock.patch.object(agents, "REPO", self.root / "festivo"),
+                      mock.patch.object(agents, "role_stacks", return_value=["dev2", "lead"])):
+            patch.start()
+            self.addCleanup(patch.stop)
+
+    def make(self, role, running, setup_exit=0):
+        def run(command, **_):
+            if command[:2] == ["docker", "compose"]:
+                return mock.Mock(returncode=0, stdout="abc\n" if running else "")
+            return mock.Mock(returncode=setup_exit)
+        with mock.patch("soirely_queue.agents.subprocess.run", side_effect=run) as calls:
+            agents.make_stack(self.config, role, self.said.append)
+        return [c.args[0] for c in calls.call_args_list if c.args[0][0] == "node"]
+
+    def test_a_running_stack_is_left_alone(self):
+        self.assertEqual(self.make("dev2", running=True), [])
+
+    def test_a_stack_that_never_came_up_is_made_on_the_next_setup(self):
+        self.assertEqual(self.make("dev2", running=False),
+                         [["node", "scripts/dev-env.mjs", "setup", "--role", "dev2"]])
+
+    def test_a_tester_s_stack_is_made_by_qa_env(self):
+        self.assertEqual(self.make("qa2", running=False),
+                         [["node", "scripts/qa-env.mjs", "setup", "--tester", "2"]])
+
+    def test_a_role_with_no_stack_of_its_own_gets_none(self):
+        self.assertEqual(self.make("dev", running=False), [])
+
+    def test_a_stack_that_fails_is_said_and_setup_goes_on(self):
+        self.make("dev2", running=False, setup_exit=1)
+        self.assertIn("did not come up (exit 1)", self.said[-1])

@@ -71,13 +71,42 @@ def make_checkout(config, role, say, home):
                           capture_output=True, text=True)
     if made.returncode:
         say(f"  {role}: could not create {path}: {made.stderr.strip()}")
+
+
+def stack_running(project):
+    found = subprocess.run(["docker", "compose", "-p", project, "ps", "-q"],
+                           capture_output=True, text=True)
+    return found.returncode == 0 and bool(found.stdout.strip())
+
+
+def stack_setup(role):
+    """The command that makes a role's stack: dev-env for a role in its STACKS table, qa-env
+    for a tester. None for a role that has no stack of its own."""
+    if role in role_stacks():
+        return ["node", "scripts/dev-env.mjs", "setup", "--role", role]
+    tester = re.fullmatch(r"qa(\d*)", role)
+    if tester:
+        return ["node", "scripts/qa-env.mjs", "setup", "--tester", tester.group(1) or "1"]
+    return None
+
+
+def make_stack(config, role, say):
+    """Brings up a role's stack whenever it is not running, not only when its checkout is
+    new, so a setup that stopped part way is finished by the next one."""
+    path, command = machine.checkout(config, role), stack_setup(role)
+    if not command or not path.exists():
         return
-    stacks = role_stacks()
-    if role in stacks and path.parent == REPO.parent:
-        subprocess.run(["node", "scripts/dev-env.mjs", "setup", "--role", role], cwd=REPO,
-                       check=True)
-    elif role in stacks or role.startswith("qa"):
+    if path.parent != REPO.parent:
         say(f"  {role}: its stack is not set up; see CONTRIBUTING.md (dev-env, qa-env)")
+        return
+    project = compose_project(path)
+    if project and stack_running(project):
+        return
+    say(f"  {role}: bringing up its stack")
+    made = subprocess.run(command, cwd=REPO)
+    if made.returncode:
+        say(f"  {role}: its stack did not come up (exit {made.returncode}); the lines above "
+            f"say why, and `{' '.join(command)}` tries again")
 
 
 def accounts(config, say):
@@ -135,6 +164,7 @@ def setup(home, platform, say=print, ask=input, workspace=None):
     say("Checkouts:")
     for role in config.get("roles") or {}:
         make_checkout(config, role, say, home)
+        make_stack(config, role, say)
     accounts(config, say)
     tree = subprocess.run(["git", "rev-parse", "HEAD:tools/queue"], cwd=REPO, capture_output=True,
                           text=True).stdout.strip() or "local"
