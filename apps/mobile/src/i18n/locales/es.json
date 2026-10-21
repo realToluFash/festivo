@@ -672,7 +672,7 @@
     "members": "Miembros",
     "membersLine": "{{name}} · quién forma parte y con qué rol",
     "roles": "Roles",
-    "rolesLine": "{{name}} · what each role may do",
+    "rolesLine": "{{name}} · lo que puede hacer cada rol",
     "rolesBack": "‹ Roles"
   },
   "switcher": {

@@ -671,9 +671,9 @@
     "signInRulesLine": "{{name}} · como se inicia sessão e durante quanto tempo",
     "members": "Membros",
     "membersLine": "{{name}} · quem faz parte e com que função",
-    "roles": "Roles",
-    "rolesLine": "{{name}} · what each role may do",
-    "rolesBack": "‹ Roles"
+    "roles": "Funções",
+    "rolesLine": "{{name}} · o que cada função pode fazer",
+    "rolesBack": "‹ Funções"
   },
   "switcher": {
     "yourRole": "A sua função · {{role}}",

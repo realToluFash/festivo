@@ -90,7 +90,8 @@ class GitHubRefs:
             github.api(self.path(f"refs/{ref[5:]}"), "-X", "PATCH", "-f", f"sha={sha}",
                        "-F", "force=false")
         except github.GitHubError as error:
-            if "fast forward" in str(error).lower() or "not found" in str(error).lower():
+            text = str(error).lower()
+            if "fast forward" in text or "not found" in text or "does not exist" in text:
                 raise Taken(ref) from error
             raise
         return sha
@@ -271,6 +272,7 @@ def release_claims(remote, view, holding):
     for (pool, key), data in view.claims().items():
         if data.get("machine") == view.machine and (pool, key) not in holding:
             remote.delete(claim_ref(pool, key))
+            view.refs.pop(claim_ref(pool, key), None)
 
 
 def conflicts(view, config):
