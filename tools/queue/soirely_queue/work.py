@@ -8,8 +8,9 @@ from . import roles as R
 
 FINISHING, INBOX, PULL_REQUEST, REVIEW, QUEUE, SWEEP = 5, 10, 20, 30, 40, 90
 # A story one step from Ready For QA, or sent back, goes ahead of everything else its role
-# has waiting, its comments included.
+# has waiting, its comments included; so does a pull request waiting on the lead's review.
 FINISHING_STATES = ("Passed Code Review", "Failed QA", "Failed Code Review")
+FINISHING_KINDS = ("to-qa", "review", "threads")
 
 
 def threads(story):
@@ -379,7 +380,7 @@ def machine_items(checks):
 def finishing_first(items, stories):
     finishing = {s["id"] for s in stories if not s["done"] and s["state"] in FINISHING_STATES}
     for item in items:
-        if item["story_id"] in finishing or item["kind"] == "to-qa":
+        if item["story_id"] in finishing or item["kind"] in FINISHING_KINDS:
             item["priority"] = FINISHING
     return items
 

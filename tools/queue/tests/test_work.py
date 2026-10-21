@@ -426,6 +426,13 @@ class FinishingFirst(unittest.TestCase):
         self.assertEqual(found[-1], (1, "inbox"))
         self.assertEqual({k for k in found[:-1]}, {(2, "story"), (3, "merge"), (4, "story")})
 
+    def test_the_lead_reviews_before_it_answers_comments(self):
+        asked = [comment(1, "[lead] (from pm)\nA question.")]
+        stories = [story(1, "Backlog", comments=asked), story(2, "In Review", labels=["dev1"])]
+        items = [i for i in work.derive(stories, [pr(9, 2)]) if i["roles"] == ["lead"]]
+        first = min(items, key=lambda i: i["priority"])
+        self.assertEqual((first["kind"], first["priority"]), ("review", work.FINISHING))
+
     def test_a_merged_story_moves_to_qa_first(self):
         merged = pr(9, 1, lead=[verdict("pass", HEAD)], state="merged")
         items = work.derive([story(1, "In Review", labels=["dev1"])], [merged])
