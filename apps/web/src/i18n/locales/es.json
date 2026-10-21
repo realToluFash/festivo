@@ -351,10 +351,10 @@
     "contactInvalid": "Eso no parece un correo electrónico. Compruebe que tiene una @ y un dominio.",
     "readOnly": "Su función, {{role}}, puede ver estos datos pero no cambiarlos. Los propietarios sí pueden.",
     "failed": "No se ha podido guardar. No se ha cambiado nada. Inténtelo de nuevo en un momento.",
-    "language": "Language",
-    "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
-    "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
-    "refused": "Nothing was saved. Your role does not include the permission this needs."
+    "language": "Idioma de las invitaciones",
+    "languageHint": "Los correos de invitación para quienes no tienen cuenta de Soirely se escriben en este idioma. Quienes ya tienen una cuenta reciben el suyo en su propio idioma.",
+    "savedLanguage": "Guardado. A partir de ahora, los correos de invitación para quienes no tienen cuenta de Soirely se envían en {{language}}. Las invitaciones ya enviadas no se vuelven a enviar.",
+    "refused": "No se ha guardado nada. Su función no incluye el permiso que esto necesita."
   },
   "completeProfile": {
     "title": "Unos datos",
@@ -1307,16 +1307,16 @@
     "overdueSignOut": "Sign out"
   },
   "languageNames": {
-    "en": "English",
-    "es": "Spanish",
-    "fr": "French",
-    "pt": "Portuguese"
+    "en": "Inglés",
+    "es": "Español",
+    "fr": "Francés",
+    "pt": "Portugués"
   },
   "languageNamesInSentence": {
-    "en": "English",
-    "es": "Spanish",
-    "fr": "French",
-    "pt": "Portuguese"
+    "en": "inglés",
+    "es": "español",
+    "fr": "francés",
+    "pt": "portugués"
   },
   "ownership": {
     "title": "Ownership and leaving",
