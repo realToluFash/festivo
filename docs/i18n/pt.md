@@ -41,6 +41,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
+  The label is "Idioma dos convites", because the field sets only the invitation emails to
+  people without an account. "Invitation emails" are "os e-mails de convite", and the people
+  are "pessoas sem conta Soirely". Language names are "Inglês, Espanhol, Francês, Português"
+  as options and lower case in a sentence ("são enviados em inglês"). A refused save is "Nada
+  foi guardado." and the server's `permission_required` words unchanged.
 - **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
   `codeKeepsSignIn_*`, sc-2908). The status box is "Sessão iniciada com o {{provider}}", with
   no full stop. Under the code field: "Se errar o código, não tem de voltar ao {{provider}}. O
