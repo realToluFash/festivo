@@ -77,6 +77,13 @@ class Tick(unittest.TestCase):
         self.assertEqual(self.claude.commands(), ["--bg", "agents"])
         self.assertIn("ux-draw: drawing sc-7", self.said)
 
+    def test_the_session_s_state_is_kept_for_sq_web(self):
+        store.add_drawing(self.db, 7, "Calendar", "p", NOW)
+        self.tick()
+        self.claude.states = {"ab12cd34": "blocked"}
+        self.tick(NOW + 60)
+        self.assertEqual(store.get_meta(self.db, "drawing")["state"], "blocked")
+
     def test_a_drawn_story_stops_and_removes_its_session_and_the_next_starts(self):
         store.add_drawing(self.db, 7, "Calendar", "p", NOW)
         store.add_drawing(self.db, 9, "Seats", "p", NOW + 1)

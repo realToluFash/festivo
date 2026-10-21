@@ -79,6 +79,9 @@ def tick(db, home, config, values, platform, now=None, say=print, run=subprocess
         _, env = environment(config, values)
         state = sessions(env, run).get(current["session"])
         limit = machine.minutes(values["maxRuntime"]) * 60
+        if state != current.get("state"):
+            current = dict(current, state=state)
+            store.set_meta(db, "drawing", current)
         if story not in {d["story_id"] for d in listed}:
             outcome, failed = f"drew sc-{story}", False
         elif state is None or state in ENDED:
