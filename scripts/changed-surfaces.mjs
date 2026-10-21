@@ -24,7 +24,8 @@ export const SURFACE_PATTERNS = {
   api: /^services\/api\//,
   web: /^apps\/web\//,
   mobile: /^apps\/mobile\//,
-  packages: /^packages\//,
+  // The gateway replays the API's recorded pairs, so a change to them runs its suite.
+  packages: /^(packages\/|tools\/agent-gateway\/|services\/api\/tests\/Fixtures\/AgentGateway\/)/,
   // Any catalogue anywhere, plus any client surface — a new screen can
   // introduce an untranslated literal without touching a locale file.
   locales: /(locales\/|translations\/|^locales\.json$|^apps\/)/,

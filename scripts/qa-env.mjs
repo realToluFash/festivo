@@ -34,6 +34,7 @@ export const DEVELOPMENT_PORTS = {
   OIDC_PORT: 8089,
   STORAGE_PORT: 4566,
   METRO_PORT: 8081,
+  AGENT_GATEWAY_PORT: 8095,
 };
 
 export const TESTERS = [1, 2, 3];

@@ -50,6 +50,7 @@
   },
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "tools/agent-gateway"
   ]
 }
