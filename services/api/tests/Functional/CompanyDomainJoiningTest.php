@@ -514,7 +514,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
     /** As sc-392 will: by somebody who decides, or by nobody when the request expires, at the moment given. */
     private function turnDown(Membership $membership, ?User $by, DateTimeImmutable $at): void
     {
-        $membership->setStatus(MembershipStatus::LeftOrRemoved);
+        $membership->setStatus(MembershipStatus::LeftOrRemoved, $at);
         self::service(EntityManagerInterface::class)->persist(
             new MembershipTransition($membership, MembershipStatus::PendingApproval, MembershipStatus::LeftOrRemoved, MembershipChannel::Settings, $by, $at),
         );

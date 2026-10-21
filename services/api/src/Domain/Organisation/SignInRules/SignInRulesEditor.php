@@ -13,6 +13,7 @@ use App\Enum\ErrorCode;
 use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
+use DateInterval;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Iter;
 use Psl\Vec;
@@ -103,7 +104,7 @@ final readonly class SignInRulesEditor
 
         $this->afterResponse->defer(function () use ($organisation, $by, $changes, $members, $stranded, $due, $at, $locale): void {
             $this->signInRulesMailer->sendChanged($organisation, $by, $changes, $members, $stranded, $at, $locale);
-            $this->signInRulesMailer->sendTwoFactorDue($organisation, $due, $at->modify(SignInRules::TWO_FACTOR_GRACE));
+            $this->signInRulesMailer->sendTwoFactorDue($organisation, $due, $at->add(new DateInterval(SignInRules::TWO_FACTOR_GRACE)));
         });
     }
 

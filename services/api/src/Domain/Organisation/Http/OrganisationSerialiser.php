@@ -33,7 +33,7 @@ final readonly class OrganisationSerialiser
      *
      * @return array<string, mixed> a seeded role is named by its key, which each client words itself
      */
-    public static function membership(Membership $membership, Grants $grants, ?array $twoFactorDue = null): array
+    public static function membership(Membership $membership, Grants $grants, ?array $twoFactorDue): array
     {
         $role = $membership->getRole();
         $organisation = $membership->getOrganisation();

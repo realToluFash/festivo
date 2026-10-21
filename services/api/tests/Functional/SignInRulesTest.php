@@ -591,7 +591,7 @@ final class SignInRulesTest extends ApiTestCase
     {
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation->getId(), 'seededAs' => $seeded]);
         $managed = self::em()->find(Organisation::class, $organisation->getId()) ?? self::fail('no organisation');
-        self::em()->persist(new Membership($managed, $this->fresh($user), Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active));
+        self::em()->persist(new Membership($managed, $this->fresh($user), Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new Clock()->now()));
         self::em()->flush();
     }
 

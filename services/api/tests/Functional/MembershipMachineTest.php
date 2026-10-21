@@ -16,6 +16,7 @@ use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Tests\FunctionalTestCase;
 use App\Tests\Traits\InvitesPeople;
+use DateTimeImmutable;
 use Doctrine\DBAL\Exception\NotNullConstraintViolationException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use LogicException;
@@ -106,7 +107,7 @@ final class MembershipMachineTest extends FunctionalTestCase
     public function aSecondMembershipForOneAccountIsRefusedByTheDatabase(): void
     {
         [$organisation, $member] = $this->member();
-        self::em()->persist(new Membership($organisation, $member, $this->role($organisation, SeededRole::ReadOnly), MembershipStatus::Active));
+        self::em()->persist(new Membership($organisation, $member, $this->role($organisation, SeededRole::ReadOnly), MembershipStatus::Active, new DateTimeImmutable()));
 
         $this->expectException(UniqueConstraintViolationException::class);
         self::em()->flush();

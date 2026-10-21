@@ -10,6 +10,7 @@ use App\Entity\ProviderIdentity;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
@@ -147,13 +148,17 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /** @return list<Membership> active, in an organisation that requires two-factor, and not yet recorded as held back (sc-609) */
-    public function findUnrecordedInTwoFactorOrganisations(): array
+    /** @return list<Membership> active, past the deadline for two-factor of everyone, still without it, and not yet recorded as held back (sc-609) */
+    public function findHeldForTwoFactorUnrecorded(DateTimeImmutable $graceStartedBefore): array
     {
         /** @var list<Membership> */
         return $this->active()
-            ->andWhere('o.twoFactorRequiredSince IS NOT NULL')
+            ->join('m.user', 'u')
+            ->andWhere('o.twoFactorRequiredSince <= :before')
+            ->andWhere('m.joinedAt <= :before')
             ->andWhere('m.twoFactorBlockedAt IS NULL')
+            ->andWhere('NOT EXISTS (SELECT 1 FROM ' . TwoFactorFactor::class . ' f WHERE f.user = u AND f.activatedAt IS NOT NULL)')
+            ->setParameter('before', $graceStartedBefore)
             ->getQuery()
             ->getResult();
     }

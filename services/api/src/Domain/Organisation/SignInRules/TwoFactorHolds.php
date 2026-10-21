@@ -30,11 +30,7 @@ final readonly class TwoFactorHolds
     {
         $recorded = 0;
 
-        foreach ($this->membershipRepository->findUnrecordedInTwoFactorOrganisations() as $membership) {
-            if (!$this->signInRules->isHeldForTwoFactor($membership)) {
-                continue;
-            }
-
+        foreach ($this->membershipRepository->findHeldForTwoFactorUnrecorded($this->signInRules->twoFactorGraceStartedBefore()) as $membership) {
             $membership->setTwoFactorBlockedAt($this->clock->now());
             $this->auditor->record(self::HELD, self::SUBJECT, $membership->getId(), changes: [
                 'organisation' => [null, $membership->getOrganisation()->getId()->toRfc4122()],

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\SignInRules\TwoFactorHolds;
 use App\Domain\User\Mail\UserMailer;
@@ -18,6 +19,7 @@ use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
+use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
@@ -214,7 +216,6 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
 
         self::mockTime('+5 days');
         $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
-        $this->joinedAt($chidi, new Clock()->now());
 
         self::mockTime('+6 days');
         $this->as($chidi, 'GET', $this->path());
@@ -223,6 +224,48 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         self::mockTime('+2 days');
         $this->as($chidi, 'GET', $this->path());
         self::assertSame(ErrorCode::OrganisationTwoFactorOverdue->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
+    public function aMemberWhoLeftAndIsInvitedBackHasSevenDaysFromReturning(): void
+    {
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $membership = $this->membershipOf($chidi);
+        self::service(MembershipMachine::class)->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Settings, $chidi);
+        self::em()->flush();
+        $this->turnOnTwoFactor($this->owner);
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+
+        self::mockTime('+30 days');
+        $this->rejoin($chidi, MembershipStatus::Active, MembershipChannel::Invitation);
+
+        self::mockTime('+6 days');
+        $this->as($chidi, 'GET', $this->path());
+        self::assertSame(200, $this->statusCode(), 'thirty-six days after the switch, six after returning');
+
+        self::mockTime('+2 days');
+        $this->as($chidi, 'GET', $this->path());
+        self::assertSame(ErrorCode::OrganisationTwoFactorOverdue->type(), $this->last()['type'] ?? null);
+    }
+
+    #[Test]
+    public function aMemberApprovedLateHasSevenDaysFromTheApproval(): void
+    {
+        $this->turnOnTwoFactor($this->owner);
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+        $chidi = $this->account('chidi@ire.events', 'Chidi Okoro');
+        $this->rejoin($chidi, MembershipStatus::PendingApproval, MembershipChannel::Request);
+
+        self::mockTime('+10 days');
+        $this->rejoin($chidi, MembershipStatus::Active, MembershipChannel::Request);
+
+        self::mockTime('+6 days');
+        $this->as($chidi, 'GET', $this->path());
+        self::assertSame(200, $this->statusCode(), 'sixteen days after asking, six after approval');
+        self::assertSame(0, self::service(TwoFactorHolds::class)->recordDue());
+
+        self::mockTime('+2 days');
+        self::assertSame(1, self::service(TwoFactorHolds::class)->recordDue());
     }
 
     #[Test]
@@ -325,17 +368,21 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
     {
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation->getId(), 'seededAs' => $seeded]);
         $managed = self::em()->find(Organisation::class, $organisation->getId()) ?? self::fail('no organisation');
-        self::em()->persist(new Membership($managed, $this->fresh($user), Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active));
+        self::em()->persist(new Membership($managed, $this->fresh($user), Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new Clock()->now()));
         self::em()->flush();
     }
 
-    private function joinedAt(User $user, DateTimeImmutable $at): void
+    private function rejoin(User $user, MembershipStatus $entry, MembershipChannel $channel): void
     {
-        self::em()->getConnection()->executeStatement(
-            'UPDATE memberships SET created_at = :at WHERE user_id = :user',
-            ['at' => $at->format('Y-m-d H:i:s'), 'user' => $user->getId()->toRfc4122()],
-        );
-        self::em()->clear();
+        $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation->getId(), 'seededAs' => SeededRole::Coordinator]);
+        $managed = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        self::service(MembershipMachine::class)->join($managed, $this->fresh($user), Type\instance_of(Role::class)->coerce($role), $entry, $channel, $this->fresh($user));
+        self::em()->flush();
+    }
+
+    private function membershipOf(User $user): Membership
+    {
+        return self::em()->getRepository(Membership::class)->findOneBy(['user' => $user->getId()]) ?? self::fail('no membership');
     }
 
     private function zone(User $user, string $zone): void

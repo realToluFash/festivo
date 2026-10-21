@@ -21,6 +21,7 @@ use App\Http\Input;
 use App\Repository\AuditEntryRepository;
 use App\Repository\MembershipRepository;
 use App\Repository\OrganisationRepository;
+use DateInterval;
 use DateTimeInterface;
 use Psl\Iter;
 use Psl\Type;
@@ -126,7 +127,7 @@ final readonly class SignInRulesController
     /** @return array{at: string, written: string} from now while off, for the warning before saving */
     private function twoFactorDeadline(Organisation $organisation): array
     {
-        $deadline = ($organisation->getTwoFactorRequiredSince() ?? $this->clock->now())->modify(SignInRules::TWO_FACTOR_GRACE);
+        $deadline = ($organisation->getTwoFactorRequiredSince() ?? $this->clock->now())->add(new DateInterval(SignInRules::TWO_FACTOR_GRACE));
 
         return [
             'at' => $deadline->format(DateTimeInterface::ATOM),

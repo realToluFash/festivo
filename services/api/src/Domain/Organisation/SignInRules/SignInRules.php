@@ -16,6 +16,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorFactorRepository;
+use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Psl\Iter;
@@ -29,7 +30,7 @@ final readonly class SignInRules
     public const array INACTIVITY_DAYS = [7, 30];
 
     /** A member's time to turn two-factor on once it is required: 7 × 24 hours, whatever the clocks do meanwhile. */
-    public const string TWO_FACTOR_GRACE = '+168 hours';
+    public const string TWO_FACTOR_GRACE = 'PT168H';
 
     public function __construct(
         private MembershipRepository $membershipRepository,
@@ -98,14 +99,19 @@ final readonly class SignInRules
     public function twoFactorDeadline(Membership $membership): ?DateTimeImmutable
     {
         $since = $membership->getOrganisation()->getTwoFactorRequiredSince();
+        $joined = $membership->getJoinedAt();
 
-        if (null === $since) {
+        if (null === $since || null === $joined) {
             return null;
         }
 
-        $joined = $membership->getCreatedAt();
+        return ($joined > $since ? $joined : $since)->add(new DateInterval(self::TWO_FACTOR_GRACE));
+    }
 
-        return ($joined > $since ? $joined : $since)->modify(self::TWO_FACTOR_GRACE);
+    /** A member whose grace began before this is past the deadline. */
+    public function twoFactorGraceStartedBefore(): DateTimeImmutable
+    {
+        return $this->clock->now()->sub(new DateInterval(self::TWO_FACTOR_GRACE));
     }
 
     public function isHeldForTwoFactor(Membership $membership): bool

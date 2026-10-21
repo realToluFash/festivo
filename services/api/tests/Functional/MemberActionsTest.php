@@ -18,6 +18,7 @@ use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use DateTimeImmutable;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
@@ -302,7 +303,7 @@ final class MemberActionsTest extends ApiTestCase
     {
         $user = $this->account($address, $name, $withOwn);
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
-        self::em()->persist(new Membership($organisation, $user, $this->role($seeded), MembershipStatus::Active));
+        self::em()->persist(new Membership($organisation, $user, $this->role($seeded), MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
 
         return $user;
