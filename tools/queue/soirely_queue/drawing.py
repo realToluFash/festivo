@@ -51,7 +51,8 @@ def start(drawing, values, home, config, cwd, run=subprocess.run):
         argv += ["--allowedTools", *allowed]
     if denied:
         argv += ["--disallowedTools", *denied]
-    argv.append(drawing["prompt"] + UNATTENDED.format(story=drawing["story_id"]))
+    # The tool lists take every word after them, so `--` keeps the prompt out of the last one.
+    argv += ["--", drawing["prompt"] + UNATTENDED.format(story=drawing["story_id"])]
     done = run(argv, capture_output=True, text=True, cwd=cwd, env=env)
     found = STARTED.search(done.stdout or "")
     if not found:
