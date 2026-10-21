@@ -8,6 +8,25 @@ export function chooseOrganisation<T extends { id: string }>(
   return organisations.find(({ id }) => id === remembered) ?? organisations[0] ?? null;
 }
 
+/** The paused organisation this device was in (sc-564), or the first when nothing else can open. */
+export function choosePaused<T extends { id: string }>(
+  paused: readonly T[],
+  remembered: string | null,
+  activeCount: number,
+): T | null {
+  return (
+    paused.find(({ id }) => id === remembered) ?? (activeCount === 0 ? (paused[0] ?? null) : null)
+  );
+}
+
+/** The paused screen's reason, worded for the person; Restore needs them only when their address went. */
+export function pausedReasonKey(reason: string): string {
+  if (reason === 'domain_closed') return 'accessPaused.becauseDomainClosed';
+  if (reason === 'domain_managed_elsewhere') return 'accessPaused.becauseManagedElsewhere';
+
+  return 'accessPaused.becauseAddressGone';
+}
+
 /** A seeded role is worded in the reader's language; a role an organisation made keeps its own name. */
 export function roleName(
   word: (key: string) => string,

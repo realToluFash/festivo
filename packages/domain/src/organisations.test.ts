@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   chooseOrganisation,
+  choosePaused,
+  pausedReasonKey,
   organisationChanges,
   newOrganisationProblem,
   organisationProblem,
@@ -25,6 +27,32 @@ describe('chooseOrganisation', () => {
 
   it('is in no organisation when the account has none', () => {
     expect(chooseOrganisation([], 'org_ire')).toBeNull();
+  });
+});
+
+describe('choosePaused', () => {
+  it('shows the paused organisation this device was working in', () => {
+    expect(choosePaused([ire], 'org_ire', 1)).toBe(ire);
+  });
+
+  it('opens an organisation that still works rather than one somebody was not in', () => {
+    expect(choosePaused([ire], 'org_okafor', 1)).toBeNull();
+    expect(choosePaused([ire], null, 1)).toBeNull();
+  });
+
+  it('shows the first paused one to an account with nothing else to open', () => {
+    expect(choosePaused([ire, okafor], null, 0)).toBe(ire);
+    expect(choosePaused([], null, 0)).toBeNull();
+  });
+});
+
+describe('pausedReasonKey', () => {
+  it('words each of the three reasons', () => {
+    expect(pausedReasonKey('address_gone')).toBe('accessPaused.becauseAddressGone');
+    expect(pausedReasonKey('domain_closed')).toBe('accessPaused.becauseDomainClosed');
+    expect(pausedReasonKey('domain_managed_elsewhere')).toBe(
+      'accessPaused.becauseManagedElsewhere',
+    );
   });
 });
 

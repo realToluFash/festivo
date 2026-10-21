@@ -15,6 +15,7 @@ const member = (id: string): OrganisationMember => ({
   invitedAt: null,
   self: false,
   history: [],
+  suspension: null,
 });
 
 const list: MembersList = { members: [member('m1'), member('m2')], invitations: [] };

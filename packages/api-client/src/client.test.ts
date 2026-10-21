@@ -1152,6 +1152,45 @@ describe('company domain joining (sc-561)', () => {
       { url: 'http://api.test/api/orgs/org_1/domains/ire.events', method: 'DELETE' },
     ]);
   });
+
+  test('lists the organisations the account is paused in, with why and the removal instant', async () => {
+    const suspension = {
+      reason: 'address_gone',
+      domain: 'ire.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday, Nov 15 at 09:40 WAT' },
+    };
+    const { client } = answering({
+      organisations: [],
+      paused: [
+        {
+          id: 'org_1',
+          name: 'Ìrè Events',
+          countryCode: 'NG',
+          currency: 'NGN',
+          timezone: 'Africa/Lagos',
+          contactAddress: 'hello@ire.events',
+          locale: 'en',
+          suspension,
+        },
+      ],
+    });
+
+    const { paused } = await client.organisationsWithPaused();
+
+    expect(paused[0]?.name).toBe('Ìrè Events');
+    expect(paused[0]?.suspension).toEqual(suspension);
+  });
+
+  test('restores a suspended member', async () => {
+    const { client, sent } = answering(null, 204);
+
+    await client.restoreMember('org_1', 'mem_1');
+
+    expect(sent).toEqual([
+      { url: 'http://api.test/api/orgs/org_1/members/mem_1/restore', method: 'POST' },
+    ]);
+  });
 });
 
 describe('the health endpoint', () => {

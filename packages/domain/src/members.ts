@@ -88,11 +88,15 @@ interface RowMember {
   invitedBy: { name: string } | null;
   self: boolean;
   role: { seededAs: string | null; name: string | null };
+  suspension?: { reason: string } | null;
 }
 
 export function memberStatusWord(word: Word, member: RowMember): string {
   if (member.status === 'left_or_removed')
     return word(`membersScreen.state.${member.former ?? 'removed'}`, {});
+
+  if (member.status === 'suspended' && member.suspension != null)
+    return word('membersScreen.state.domainSuspended', {});
 
   return word(`membersScreen.state.${member.status}`, {});
 }
