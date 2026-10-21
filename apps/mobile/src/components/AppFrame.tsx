@@ -440,7 +440,7 @@ function OrgPill({
           {organisation.name}
         </Text>
         {railed && (
-          <Text size={tokens.typeMeta.size} muted>
+          <Text size={tokens.typeMeta.size} muted numberOfLines={1}>
             {t('frame.organisation')}
           </Text>
         )}
@@ -518,10 +518,10 @@ function Switcher({
                 >
                   <Tile name={organisation.name} />
                   <View style={[styles.fill, styles.shrink]}>
-                    <Text size={tokens.typeBodyPhone.size} weight="semibold">
+                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={1}>
                       {organisation.name}
                     </Text>
-                    <Text size={tokens.typeBody.size} muted>
+                    <Text size={tokens.typeBody.size} muted numberOfLines={1}>
                       {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
                     </Text>
                   </View>
