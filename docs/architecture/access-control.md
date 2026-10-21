@@ -170,8 +170,8 @@ The listener asks two interfaces:
 table: only an `active` membership counts, and it grants what the member's role holds as
 the organisation last set it (`roles.permissions`). Owner holds everything.
 
-Until events exist, `NoEvents` answers that no event exists, so every event route refuses,
-which is the direction a gap should fail in.
+`App\Domain\Event\EventDirectory` answers the second from the `events` table, so an
+unknown event and another organisation's are the same 404.
 
 ## The onboarding gate
 

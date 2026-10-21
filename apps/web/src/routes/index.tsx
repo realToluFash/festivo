@@ -4,6 +4,9 @@ import { Account } from './app/account/Account.tsx';
 import { Security } from './app/account/Security.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
+import { EventGuests, EventView } from './app/events/EventView.tsx';
+import { Events } from './app/events/Events.tsx';
+import { NewEvent } from './app/events/NewEvent.tsx';
 import { General } from './app/settings/General.tsx';
 import { Members } from './app/settings/Members.tsx';
 import { Roles } from './app/settings/Roles.tsx';
@@ -40,7 +43,7 @@ import { Status } from './public/Status.tsx';
  * guest route under `/app` would inherit a shell built for an organisation
  * member and would look authenticated.
  *
- * `/app/events` and the rest resolve to the dashboard for now. The screens
+ * `/app/guests` resolves to the dashboard for now. The screens
  * belong to the scopes that own them; what belongs here is that the navigation
  * does not lead anywhere blank.
  */
@@ -67,7 +70,10 @@ export const routes = [
     element: <AppLayout />,
     children: [
       { index: true, element: <Dashboard /> },
-      { path: 'events', element: <Dashboard /> },
+      { path: 'events', element: <Events /> },
+      { path: 'events/new', element: <NewEvent /> },
+      { path: 'events/:eventId', element: <EventView /> },
+      { path: 'events/:eventId/guests', element: <EventGuests /> },
       { path: 'guests', element: <Dashboard /> },
       { path: 'account', element: <Account /> },
       { path: 'account/security', element: <Security /> },

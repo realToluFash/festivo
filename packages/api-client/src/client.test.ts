@@ -2000,3 +2000,104 @@ describe('invitations and members', () => {
     expect(sent[0]).toEqual({ line: 'DELETE /api/orgs/org_1', body: { name: 'Ìrè Events' } });
   });
 });
+
+describe('events (sc-1486)', () => {
+  // Every key the API's event serialisation writes, as the sc-1486 contract states it.
+  const EVENT = {
+    id: '0199f0aa-1111-7000-8000-000000000001',
+    organisationId: 'org_1',
+    name: 'Adaeze and Tunde',
+    status: 'draft',
+    startsAt: '2026-11-14T16:00:00+01:00',
+    endsAt: '2026-11-15T02:00:00+01:00',
+    timeZone: 'Africa/Lagos',
+    currency: 'NGN',
+    createdAt: '2026-10-21T09:00:00+00:00',
+  };
+
+  function client(response: () => Response, sent: { line: string; body: unknown }[] = []) {
+    return {
+      api: new ApiClient({
+        baseUrl: () => 'http://api.test',
+        tokens: store('live', null),
+        refreshTokenIn: 'cookie',
+        fetch: async (url, init) => {
+          sent.push({
+            line: `${init?.method ?? 'GET'} ${new URL(String(url)).pathname}`,
+            body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+          });
+
+          return response();
+        },
+      }),
+      sent,
+    };
+  }
+
+  test("an organisation's events are listed in the order the API gives", async () => {
+    const later = { ...EVENT, id: 'e2', name: 'Later' };
+    const { api, sent } = client(() => json({ events: [EVENT, later] }));
+
+    const events = await api.events('org_1');
+
+    expect(events.map(({ name }) => name)).toEqual(['Adaeze and Tunde', 'Later']);
+    expect(events[0]).toEqual(EVENT);
+    expect(sent[0]?.line).toBe('GET /api/orgs/org_1/events');
+  });
+
+  test('an event is created with local times and its zone, and read by its id', async () => {
+    const { api, sent } = client(() => json({ event: EVENT }, 201));
+    const body = {
+      name: 'Adaeze and Tunde',
+      startsAt: '2026-11-14T16:00',
+      endsAt: '2026-11-15T02:00',
+      timeZone: 'Africa/Lagos',
+      currency: 'NGN',
+    };
+
+    expect(await api.createEvent('org_1', body)).toEqual(EVENT);
+    expect(await api.event(EVENT.id)).toEqual(EVENT);
+    expect(sent).toEqual([
+      { line: 'POST /api/orgs/org_1/events', body },
+      { line: `GET /api/events/${EVENT.id}`, body: null },
+    ]);
+  });
+
+  test('an event in a shape it does not know, or a status it does not know, is an error', async () => {
+    await expect(
+      client(() => json({ events: [{ ...EVENT, status: 'live' }] })).api.events('org_1'),
+    ).rejects.toThrow(/events controller/);
+    await expect(
+      client(() => json({ event: { ...EVENT, timeZone: undefined } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test('a refused create carries its violations by field', async () => {
+    const { api } = client(() =>
+      problem(422, 'validation_failed', {
+        violations: [
+          {
+            propertyPath: 'endsAt',
+            message: 'The end is before the start. Choose a later end.',
+            code: 'end_before_start',
+          },
+        ],
+      }),
+    );
+
+    await api
+      .createEvent('org_1', {
+        name: 'X',
+        startsAt: '2026-11-14T16:00',
+        endsAt: '2026-11-14T15:00',
+        timeZone: 'Africa/Lagos',
+        currency: 'NGN',
+      })
+      .catch((error: ApiError) => {
+        expect(error.fieldErrors()).toEqual({
+          endsAt: 'The end is before the start. Choose a later end.',
+        });
+      });
+    expect.assertions(1);
+  });
+});

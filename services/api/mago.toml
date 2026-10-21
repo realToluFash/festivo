@@ -151,6 +151,7 @@ shared = ["App\\Entity\\**", "App\\Enum\\**", "App\\Http\\**"]
 # layer so one reaching into another has to be declared rather than happen.
 domain_user = ["App\\Domain\\User\\**"]
 domain_organisation = ["App\\Domain\\Organisation\\**"]
+domain_event = ["App\\Domain\\Event\\**"]
 
 # Capabilities. Each is its own layer so an edge between two of them has to be
 # declared below rather than appearing by accident.
@@ -244,6 +245,21 @@ permit = [
     "@layer:repository",
     "@layer:audit",
     "@layer:locale",
+]
+
+# Events check their zone and currency as an organisation's are checked (Regions,
+# AccountTimeZone), and each create goes to the audit trail (sc-1486).
+[[guard.perimeter.rules]]
+namespace = "App\\Domain\\Event\\"
+permit = [
+    "@layer:native",
+    "@layer:external",
+    "@layer:shared",
+    "@layer:domain_event",
+    "@layer:domain_organisation",
+    "@layer:domain_user",
+    "@layer:repository",
+    "@layer:audit",
 ]
 
 # ── Integrations ────────────────────────────────────────────────────────────────
