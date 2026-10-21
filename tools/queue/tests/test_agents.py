@@ -236,3 +236,26 @@ class Stacks(unittest.TestCase):
     def test_a_stack_that_fails_is_said_and_setup_goes_on(self):
         self.make("dev2", running=False, setup_exit=1)
         self.assertIn("did not come up (exit 1)", self.said[-1])
+
+
+class StartStacks(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        root = pathlib.Path(self.folder.name)
+        for name, project in (("soirely-dev2", "soirely-dev2"), ("soirely-ops", "soirely-ops")):
+            (root / name).mkdir()
+            (root / name / ".env").write_text(f"COMPOSE_PROJECT_NAME={project}\n")
+        (root / "soirely-lead").mkdir()
+        self.config = config(root, roles={"dev2": {}, "ops": {}, "lead": {}})
+        self.said = []
+
+    def test_up_starts_each_stack_down_stopped_and_leaves_the_rest(self):
+        def run(command, **_):
+            running = command[3] == "soirely-ops" and command[4] == "ps"
+            return mock.Mock(returncode=0, stdout="abc\n" if running else "", stderr="")
+        with mock.patch("soirely_queue.agents.subprocess.run", side_effect=run) as calls:
+            agents.start_stacks(self.config, ["dev2", "ops", "lead"], self.said.append)
+        ups = [c.args[0] for c in calls.call_args_list if "up" in c.args[0]]
+        self.assertEqual(ups, [["docker", "compose", "-p", "soirely-dev2", "up", "-d"]])
+        self.assertEqual(self.said, ["started stack soirely-dev2"])
