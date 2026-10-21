@@ -175,7 +175,6 @@ export function RolePage({
 
     return { area, permissions, levels, extras, locked: editable && levels.length < 2 };
   });
-  // An extra the grid has no words for draws no row, so the notice leaves it out too.
   const lockedLabels = (editable ? lockedAreas(grant, held, catalogue.areas) : []).flatMap(
     (locked) => {
       const label = catalogue.areas.some(({ area }) => area === locked)
