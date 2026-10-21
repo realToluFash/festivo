@@ -181,6 +181,19 @@ def setup(home, platform, say=print, ask=input, workspace=None):
     return 0
 
 
+def start_stacks(config, names, say):
+    """Starts again each stack `down` stopped. A stack never made is setup's, not up's."""
+    for role in names:
+        path = machine.checkout(config, role)
+        project = compose_project(path) if path.exists() else None
+        if not project or stack_running(project):
+            continue
+        started = subprocess.run(["docker", "compose", "-p", project, "up", "-d"], cwd=path,
+                                 capture_output=True, text=True)
+        say(f"started stack {project}" if started.returncode == 0 else
+            f"  {role}: stack {project} did not start: {started.stderr.strip()[-300:]}")
+
+
 def up(db, home, platform, say=print, only=None):
     config = machine.load()
     errors, refused, ready = machine.check(config)
@@ -199,6 +212,7 @@ def up(db, home, platform, say=print, only=None):
         note = machine.price_note(role, ready[role]["model"], config)
         if note:
             say(f"note: {note}")
+    start_stacks(config, names, say)
     platform.enable()
     say(f"started {', '.join(names) or 'no role'}; the first tick is within a minute")
     return 1 if only and set(only) - set(names) else 0
