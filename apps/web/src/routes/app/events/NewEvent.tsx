@@ -45,6 +45,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
     endDate: '',
     endTime: '',
   });
+  const [endChosen, setEndChosen] = useState(false);
   const [timeZone, setTimeZone] = useState(organisation.timezone);
   const [currency, setCurrency] = useState(organisation.currency);
   const [errors, setErrors] = useState<Errors>({});
@@ -181,7 +182,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
             error={errors.startsAt}
             busy={busy}
             onDate={(startDate) =>
-              edit('startsAt', { startDate, endDate: filledEndDate(startDate, draft.endDate) })
+              edit('startsAt', {
+                startDate,
+                endDate: filledEndDate(startDate, draft.endDate, endChosen),
+              })
             }
             onTime={(startTime) => edit('startsAt', { startTime })}
           />
@@ -193,7 +197,10 @@ function EventForm({ organisation }: { organisation: Membership }) {
             time={draft.endTime}
             error={errors.endsAt}
             busy={busy}
-            onDate={(endDate) => edit('endsAt', { endDate })}
+            onDate={(endDate) => {
+              setEndChosen(endDate !== '');
+              edit('endsAt', { endDate });
+            }}
             onTime={(endTime) => edit('endsAt', { endTime })}
           />
         </section>
