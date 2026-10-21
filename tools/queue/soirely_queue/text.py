@@ -1,5 +1,6 @@
 """Story descriptions as sections, so a role reads or edits one part rather than all of it."""
 
+import datetime
 import hashlib
 import re
 
@@ -9,6 +10,14 @@ TOP = "(top)"
 
 def digest(text):
     return hashlib.sha1((text or "").encode()).hexdigest()[:12]
+
+
+def epoch(stamp):
+    """Seconds since the epoch for one of Shortcut's or GitHub's ISO stamps, or None."""
+    try:
+        return datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+    except (AttributeError, ValueError):
+        return None
 
 
 def sections(markdown):

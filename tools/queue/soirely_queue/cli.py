@@ -52,7 +52,8 @@ def refresh_work(db, now):
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
                         last_runs, busy_roles, now, store.handled(db), store.moves(db),
                         store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"),
-                        store.worked_on(db, "l10n"))
+                        store.worked_on(db, "l10n"),
+                        [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"])
     store.record(db, items, now)
     return items
 

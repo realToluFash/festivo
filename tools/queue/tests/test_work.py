@@ -1,6 +1,7 @@
 import unittest
 
 from soirely_queue import roles, work
+from soirely_queue import text as T
 
 HEAD = "a" * 40
 OLD = "b" * 40
@@ -503,22 +504,38 @@ class Unblocked(unittest.TestCase):
         return dict(story(9, state, labels=labels, comments=comments),
                     links=[{"verb": "relates to", "subject": 9, "object": c} for c in covers])
 
-    def merged(self, number=40, story_id=4, at=MERGED):
-        return dict(pr(number, story_id, state="merged"), merged_at=at)
+    def merged(self, number=40, story_id=4, at=MERGED, branch="dev/sc-4/build"):
+        return dict(pr(number, story_id, state="merged"), merged_at=at, branch=branch)
 
-    def wakes(self, stories, prs, runs=None):
+    def wakes(self, stories, prs, runs=None, raised=()):
         return [(i["roles"], i["story_id"], i["pr"], i["reason"])
-                for i in work.unblocked_items(stories, prs, runs)]
+                for i in work.unblocked_items(stories, prs, runs, raised)]
 
     def test_a_merged_pr_of_a_linked_story_wakes_the_linguist_on_the_ticket(self):
         for state in ("To Do", "In Progress"):
             self.assertEqual(self.wakes([self.ticket(state)], [self.merged()]),
                              [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
 
-    def test_a_link_from_the_other_side_counts_too(self):
+    def test_a_story_linking_to_the_ticket_is_not_one_it_covers(self):
         ticket = dict(story(9, "To Do", labels=["translation"]),
                       links=[{"verb": "relates to", "subject": 4, "object": 9}])
-        self.assertEqual([w[2] for w in self.wakes([ticket], [self.merged()])], [40])
+        self.assertEqual(work.covered(ticket), [])
+        self.assertEqual(self.wakes([ticket], [self.merged()]), [])
+
+    def test_the_linguists_own_translation_pr_wakes_nobody(self):
+        self.assertEqual(self.wakes([self.ticket()], [self.merged(branch="l10n/sc-4")]), [])
+
+    def test_a_raised_wake_stays_after_its_pr_leaves_the_synced_merges(self):
+        row = {"fingerprint": "l10n:unblocked:sc-9:#40", "story_id": 9, "pr": 40,
+               "reason": "PR #40 (sc-4) merged: sc-9 can start",
+               "first_seen": T.epoch(self.MERGED) + 30}
+        self.assertEqual(self.wakes([self.ticket()], [], raised=[row]),
+                         [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+        self.assertEqual(self.wakes([self.ticket()], [self.merged()], raised=[row]),
+                         [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+        later = {9: row["first_seen"] + 60}
+        self.assertEqual(self.wakes([self.ticket()], [], later, raised=[row]), [])
+        self.assertEqual(self.wakes([self.ticket("Ready For QA")], [], raised=[row]), [])
 
     def test_an_open_pr_wakes_nobody(self):
         self.assertEqual(self.wakes([self.ticket()], [pr(40, 4)]), [])
@@ -530,7 +547,7 @@ class Unblocked(unittest.TestCase):
         self.assertEqual([w[2] for w in self.wakes([ticket], both)], [40, 41])
 
     def test_a_merge_before_the_linguists_last_run_on_the_ticket_raises_nothing(self):
-        after = work.epoch(self.MERGED) + 60
+        after = T.epoch(self.MERGED) + 60
         self.assertEqual(self.wakes([self.ticket()], [self.merged()], {9: after}), [])
         self.assertEqual(len(self.wakes([self.ticket()], [self.merged()], {9: after - 120})), 1)
 
