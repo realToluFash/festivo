@@ -53,6 +53,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
+  "You will be its owner" is « Vous y aurez le rôle Propriétaire », as « le rôle
+  Propriétaire » elsewhere. A length refusal says what to do, « Raccourcissez-le à 100
+  caractères maximum », as `rolesScreen.nameTooLong`. A path in Settings is « Paramètres >
+  Général »; the button is « Créer l'organisation », with the article French wants.
+
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
   The label is « Langue », as the English "Language"; if English lengthens it to "Language
   for invitations", it becomes « Langue des invitations ». "Invitation emails" are « les e-mails d'invitation

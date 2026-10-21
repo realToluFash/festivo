@@ -49,6 +49,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
+  "You will be its owner" is «Usted tendrá la función Propietario», the role and not
+  «su propietario», which assumes a man. The rate limit says what happened, «Por ahora no se
+  pueden crear más organizaciones», not «Demasiadas organizaciones nuevas», which reads as a
+  fragment. A path in Settings is «Configuración > General»; «cambiarlas» agrees with moneda,
+  zona horaria and dirección, all feminine.
+
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
   The label is «Idioma», as the English "Language"; if English lengthens it to "Language for
   invitations", it becomes «Idioma de las invitaciones». "Invitation emails" are «los correos de invitación»,

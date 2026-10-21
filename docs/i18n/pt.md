@@ -41,6 +41,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
+  "You will be its owner" is "Terá a função Proprietário", never "será o proprietário".
+  The rate limit says what happened, "Por agora, não é possível criar mais organizações".
+  Where a list mixes genders (moeda, fuso horário, endereço), the sentence after it says
+  "estes dados" rather than agreeing with one noun. A path in Settings is "Definições >
+  Geral"; "Creating…" is "A criar…", the PT-PT progressive.
+
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
   The label is "Idioma", as the English "Language"; if English lengthens it to "Language for
   invitations", it becomes "Idioma dos convites". "Invitation emails" are "os e-mails de convite", and the people
