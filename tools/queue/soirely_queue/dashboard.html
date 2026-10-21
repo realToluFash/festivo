@@ -715,7 +715,8 @@
       function kpis(d) {
         const today = d.spend[d.spend.length - 1] || { total: 0 };
         const here = d.roles.filter((r) => r.state !== 'refused');
-        const running = here.filter((r) => r.state === 'running').length;
+        const running = here.reduce((n, r) => n + (r.running || 0), 0);
+        const slots = here.reduce((n, r) => n + (r.workers || 1), 0);
         const waitingHere = here.reduce((n, r) => n + (r.waiting || 0), 0);
         const waitingElse = d.elsewhere.reduce((n, r) => n + r.waiting, 0);
         const week = d.spend.reduce((n, s) => n + s.total, 0);
@@ -724,8 +725,8 @@
           ['Runs today', d.runs_today, d.recent[0] ? `last ${since(d.recent[0].at)}` : 'none yet'],
           [
             'Workers running',
-            `${running}<span class="sub"> / ${here.length}</span>`,
-            'roles on this machine',
+            `${running}<span class="sub"> / ${slots}</span>`,
+            `${here.length} roles on this machine`,
           ],
           ['Waiting here', waitingHere, "items for this machine's roles"],
           ['Waiting elsewhere', waitingElse, `${d.elsewhere.length} roles on other machines`],
@@ -740,7 +741,12 @@
 
       function roleCard(r) {
         const [cls, label] = STATES[r.state] || ['', r.state];
-        const stateLabel = r.state === 'elsewhere' && r.detail ? `On ${r.detail.machine}` : label;
+        const stateLabel =
+          r.state === 'elsewhere' && r.detail
+            ? `On ${r.detail.machine}`
+            : r.state === 'running' && r.workers > 1
+              ? `Running ${r.running} of ${r.workers}`
+              : label;
         const head = `<div class="card-top"><div><div class="role-name">${esc(r.role)}</div>
     <div class="role-title">${esc(TITLES[r.role] || '')}</div></div>
     ${r.state === 'refused' ? '' : `<div class="waiting"><div class="n">${r.waiting}</div><div class="l">waiting</div></div>`}</div>`;

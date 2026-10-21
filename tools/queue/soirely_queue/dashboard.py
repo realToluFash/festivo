@@ -89,7 +89,9 @@ def snapshot(db, platform, now, home, load=machine.load):
                 continue
             held, waiting = store.held_by(db, role, now), store.waiting(db, role)
             away = (agreed.get("elsewhere") or {}).get(role)
-            state, detail = ("running", None) if platform.worker_active(role) else \
+            names = machine.worker_names(role, ready[role].get("workers"))
+            running = sum(1 for name in names if platform.worker_active(name))
+            state, detail = ("running", None) if running else \
                 ("elsewhere", {"machine": away[0], "seen": away[1]}) if role in on and away \
                 else ("busy", None) if held else \
                 ("started", None) if role in on else ("stopped", None)
@@ -100,6 +102,7 @@ def snapshot(db, platform, now, home, load=machine.load):
                 "model": ready[role]["model"], "effort": ready[role]["effort"],
                 "account": accounts[role],
                 "wake_every": ready[role].get("wakeEvery"),
+                "workers": len(names), "running": running,
                 "last": run_view(last) if last else None,
                 "held": {"id": held["id"], "reason": held["reason"]} if held else None,
                 "waiting": len(waiting),
