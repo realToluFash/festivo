@@ -31,11 +31,11 @@ final class SoftDeleteTest extends FunctionalTestCase
     public function aDeletedRowIsAbsentFromAnOrdinaryRead(): void
     {
         $probe = $this->persist('visible then not');
-        $id = $probe->id();
+        $id = $probe->getId();
 
         self::assertNotNull($this->em->getRepository(SchemaProbe::class)->find($id));
 
-        $probe->softDelete();
+        $probe->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
         $this->em->clear();
 
@@ -47,17 +47,17 @@ final class SoftDeleteTest extends FunctionalTestCase
     {
         $kept = $this->persist('kept');
         $gone = $this->persist('gone');
-        $gone->softDelete();
+        $gone->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
         $this->em->clear();
 
         $labels = \array_map(
-            static fn (SchemaProbe $p): string => $p->label(),
+            static fn (SchemaProbe $p): string => $p->getLabel(),
             $this->em->getRepository(SchemaProbe::class)->findAll(),
         );
 
-        self::assertContains($kept->label(), $labels);
-        self::assertNotContains($gone->label(), $labels);
+        self::assertContains($kept->getLabel(), $labels);
+        self::assertNotContains($gone->getLabel(), $labels);
     }
 
     /**
@@ -68,8 +68,8 @@ final class SoftDeleteTest extends FunctionalTestCase
     public function itCanStillBeFoundWhenTheFilterIsExplicitlyDisabled(): void
     {
         $probe = $this->persist('findable by an agent');
-        $id = $probe->id();
-        $probe->softDelete();
+        $id = $probe->getId();
+        $probe->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
         $this->em->clear();
 
@@ -85,11 +85,12 @@ final class SoftDeleteTest extends FunctionalTestCase
     public function restoringBringsItBackIntoOrdinaryReads(): void
     {
         $probe = $this->persist('restored');
-        $id = $probe->id();
-        $probe->softDelete();
+        $id = $probe->getId();
+        $probe->setDeletedAt(new DateTimeImmutable());
         $this->em->flush();
 
-        $probe->restore();
+        $probe->setDeletedAt(null);
+        $probe->setDeletedBy(null);
         $this->em->flush();
         $this->em->clear();
 
@@ -103,11 +104,12 @@ final class SoftDeleteTest extends FunctionalTestCase
     {
         $who = Uuid::v7();
         $probe = $this->persist('deleted by somebody');
-        $probe->softDelete($who);
+        $probe->setDeletedAt(new DateTimeImmutable());
+        $probe->setDeletedBy($who);
         $this->em->flush();
 
-        self::assertTrue($probe->deletedBy()?->equals($who));
-        self::assertNotNull($probe->deletedAt());
+        self::assertTrue($probe->getDeletedBy()?->equals($who));
+        self::assertNotNull($probe->getDeletedAt());
     }
 
     /**
@@ -119,7 +121,7 @@ final class SoftDeleteTest extends FunctionalTestCase
     public function itKnowsWhenItsRecoveryWindowHasPassed(): void
     {
         $probe = $this->persist('ages ago');
-        $probe->softDelete();
+        $probe->setDeletedAt(new DateTimeImmutable());
 
         $window = new DateInterval('P30D');
 

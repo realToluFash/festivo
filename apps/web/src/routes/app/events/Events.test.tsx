@@ -241,11 +241,13 @@ describe('New event', () => {
     expect(screen.getByText('8 of 120 characters')).toBeDefined();
   });
 
-  it('fills an empty end date from the start date, and keeps one already chosen', async () => {
+  it('fills the end date from the start date, and keeps one already chosen until it is cleared', async () => {
     signedIn();
     answering({});
     await form();
 
+    fill('event-start-date', '0002-11-14');
+    fill('event-start-date', '0020-11-14');
     fill('event-start-date', '2026-11-14');
     expect((document.getElementById('event-end-date') as HTMLInputElement).value).toBe(
       '2026-11-14',
@@ -255,6 +257,12 @@ describe('New event', () => {
     fill('event-start-date', '2026-11-13');
     expect((document.getElementById('event-end-date') as HTMLInputElement).value).toBe(
       '2026-11-15',
+    );
+
+    fill('event-end-date', '');
+    fill('event-start-date', '2026-11-12');
+    expect((document.getElementById('event-end-date') as HTMLInputElement).value).toBe(
+      '2026-11-12',
     );
   });
 

@@ -65,7 +65,7 @@ final class DomainSuspensionTest extends ApiTestCase
         self::assertSame([
             'status' => ['active', 'suspended'],
             'suspension' => [null, 'address_gone'],
-        ], $this->audited(DomainSuspender::SUSPENDED, $membership)->changes());
+        ], $this->audited(DomainSuspender::SUSPENDED, $membership)->getChanges());
     }
 
     #[Test]
@@ -110,7 +110,7 @@ final class DomainSuspensionTest extends ApiTestCase
         self::assertSame([
             'status' => ['suspended', 'active'],
             'suspension' => ['address_gone', null],
-        ], $this->audited(DomainSuspender::RESTORED, $membership)->changes());
+        ], $this->audited(DomainSuspender::RESTORED, $membership)->getChanges());
     }
 
     #[Test]
@@ -166,7 +166,7 @@ final class DomainSuspensionTest extends ApiTestCase
         self::assertSame([
             'status' => ['suspended', 'left_or_removed'],
             'suspension' => ['address_gone', null],
-        ], $this->audited(DomainSuspender::EXPIRED, $removed)->changes());
+        ], $this->audited(DomainSuspender::EXPIRED, $removed)->getChanges());
     }
 
     #[Test]

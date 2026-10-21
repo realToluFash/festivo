@@ -214,6 +214,9 @@ def render(p, db, row, cache):
         V.pr_status(p, pr, compact=True)
         return next_lines(p, f"{SQ} {p.role} comment sc-{story['id']} --to lead --text \"…\"",
                           f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+    if kind == "unblocked":
+        story_for(p, db, story, p.role)
+        return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
     if kind == "main":
         return main_red(p, db, row)
     if kind in ("pick", "sweep"):

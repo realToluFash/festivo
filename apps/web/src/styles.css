@@ -1136,6 +1136,12 @@ h2 {
   cursor: pointer;
 }
 
+.auth-footnote .link-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .auth-back {
   display: inline-flex;
   align-items: center;
@@ -2736,6 +2742,36 @@ button.members-row {
 }
 
 .state-word-on .state-dot {
+  border: 0;
+  background: var(--colorAccent);
+}
+
+.state-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: var(--borderControl);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+  font: var(--typeButton);
+  cursor: pointer;
+}
+
+.state-switch:hover {
+  background: var(--colorInset);
+}
+
+.state-switch-on {
+  border-color: var(--colorAccentTintBorder);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.state-switch-on .state-dot {
   border: 0;
   background: var(--colorAccent);
 }

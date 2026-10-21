@@ -44,6 +44,7 @@ final readonly class MemberSerialiser
             'former' => MembershipStatus::LeftOrRemoved === $membership->getStatus() ? self::former($last, $user) : null,
             'channel' => $entered?->getChannel()->value,
             'suspension' => $suspension,
+            'message' => MembershipStatus::PendingApproval === $membership->getStatus() ? $membership->getRequestMessage() : null,
             'since' => self::at($last?->getOccurredAt()),
             'invitedBy' => null === $invitation ? null : self::person($invitation->getInvitedBy()),
             'invitedAt' => self::at($invitation?->getSentAt() ?? $invitation?->getCreatedAt()),

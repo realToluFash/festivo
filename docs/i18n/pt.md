@@ -71,8 +71,15 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-4188). An invitation is "convite", waiting is "pendente". With several, "that
   organisation" is "a organização que o enviou", where "o" is the invitation, never the
   person. A button in a sentence goes in «» after "Selecione": "Selecione «Guardar e
-  continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". No
+  continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". "Accept an invitation above" is "aceite um convite pendente", the
+  word the intro uses, not "aceite acima", which reads stiffly. No
   `_many` yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is "criar", since "iniciar uma organização" is not
+  how PT-PT says it: the heading is "Crie a sua própria organização", the button "Criar
+  organização", as `createOrganisation.create`. One character is "carácter", several
+  "caracteres". The help and the derived-settings line are `createOrganisation`'s words.
 
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is "Terá a função Proprietário", never "será o proprietário".
@@ -156,7 +163,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-3030). `{{day}}` is "segunda-feira, 19 de out.": before a weekday PT-PT says "na" or
   "no" (sábado, domingo), which the copy cannot agree with, and the abbreviated month brings
   its own full stop. It is a label at the end, with no full stop after the slot:
-  "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}". The
+  "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}". After a
+  status it is lowercase, with the time after a comma: "data do pedido: {{day}}, às {{time}}"
+  (`domainJoining.asked`, sc-4434). The
   "a {when}" rule below stays for a date without a weekday. A period without use is "Quem
   passar {{count}} dias sem utilizar a Soirely terá de…" (`effectIdle_*`,
   `emails+intl-icu:signInRules.rule.inactivity`), not "Quem não utilizar… há", which mixes a

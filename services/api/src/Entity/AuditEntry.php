@@ -77,58 +77,58 @@ class AuditEntry
         $this->correlationId = $correlationId;
     }
 
-    public function id(): Uuid
+    public function getId(): Uuid
     {
         return $this->id;
     }
 
-    public function occurredAt(): DateTimeImmutable
+    public function getOccurredAt(): DateTimeImmutable
     {
         return $this->occurredAt;
     }
 
-    public function actorType(): Actor
+    public function getActorType(): Actor
     {
         return $this->actorType;
     }
 
-    public function actorId(): ?Uuid
+    public function getActorId(): ?Uuid
     {
         return $this->actorId;
     }
 
-    public function actorLabel(): ?string
+    public function getActorLabel(): ?string
     {
         return $this->actorLabel;
     }
 
-    public function subjectType(): string
+    public function getSubjectType(): string
     {
         return $this->subjectType;
     }
 
-    public function subjectId(): Uuid
+    public function getSubjectId(): Uuid
     {
         return $this->subjectId;
     }
 
-    public function action(): string
+    public function getAction(): string
     {
         return $this->action;
     }
 
     /** @return array<string, array{0: mixed, 1: mixed}> */
-    public function changes(): array
+    public function getChanges(): array
     {
         return $this->changes;
     }
 
-    public function correlationId(): ?string
+    public function getCorrelationId(): ?string
     {
         return $this->correlationId;
     }
 
-    public function ip(): ?string
+    public function getIp(): ?string
     {
         return $this->ip;
     }

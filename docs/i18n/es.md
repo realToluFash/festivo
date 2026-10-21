@@ -80,8 +80,15 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-4188). Waiting is «pendiente». With several, "join that organisation" is «unirse a la
   organización que le invita», since «esa» after «una» reads as nobody's. A button named in a
   sentence goes in «», with the verb: "Pulse «Guardar y continuar» para entrar en ella". "Nothing
-  is waiting" says what is gone, «No queda ninguna invitación pendiente». No `_many` yet: the
+  is waiting" says what is gone, «No queda ninguna invitación pendiente». "Accept an invitation above" is «acepte una invitación
+  pendiente», the word the intro uses, not «acepte arriba», which reads stiffly. No `_many` yet: the
   key-parity guard refuses a form English lacks (sc-4188, [dev2]), so 1 000 000 falls back to English.
+
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is «crear», since «iniciar una organización» is not
+  Spanish: the heading is «Cree su propia organización», the button «Crear organización», as
+  `createOrganisation.create`. The help and the derived-settings line are `createOrganisation`'s
+  words, so both screens say the same.
 
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is «Usted tendrá la función Propietario», the role and not

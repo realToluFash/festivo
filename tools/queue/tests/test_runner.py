@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from soirely_queue import checkout, runlog, runner, shared, store
+from soirely_queue import checkout, github, runlog, runner, shared, store
 
 from .fakes import FakeRefs
 
@@ -310,6 +310,16 @@ class Run(unittest.TestCase):
         self.run_once()
         self.assertEqual(store.held_by(self.db, "qa", ON_ZERO)["story_id"], 8)
         self.assertEqual(self.remote.data(shared.claim_ref("qa", "sc-8"))["machine"], "here")
+
+    def test_a_claim_github_refuses_gives_the_item_back_and_the_run_goes_on(self):
+        store.record(self.db, [work("ops"), work("lead")], ON_ZERO)
+        refused = github.GitHubError("Reference does not exist (HTTP 422)")
+        with mock.patch("soirely_queue.shared.claim_item", side_effect=refused):
+            self.run_once()
+        self.assertEqual(self.platform.launched, [])
+        self.assertIsNone(store.held_by(self.db, "ops", ON_ZERO))
+        self.assertIsNone(store.held_by(self.db, "lead", ON_ZERO))
+        self.assertTrue(any(line.startswith("error: lead: could not claim") for line in self.said))
 
     def test_work_with_no_story_is_claimed_by_its_kind(self):
         store.record(self.db, [dict(work("ops"), kind="main")], ON_ZERO)

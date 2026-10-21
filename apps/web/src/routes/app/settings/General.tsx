@@ -19,6 +19,7 @@ import { api } from '../../../api.ts';
 import { CompanyDomainsCard } from './CompanyDomainsCard.tsx';
 import { OwnershipCard } from './OwnershipCard.tsx';
 import { RecoveryRequestsCard } from './RecoveryRequestsCard.tsx';
+import { RequestLinkCard } from './RequestLinkCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
@@ -77,6 +78,10 @@ export function General() {
 
       {can(session, 'members.manage') && (
         <CompanyDomainsCard key={organisation.id} organisation={organisation} />
+      )}
+
+      {can(session, 'members.manage') && (
+        <RequestLinkCard key={organisation.id} organisation={organisation} />
       )}
 
       <OwnershipCard key={organisation.id} organisation={organisation} />

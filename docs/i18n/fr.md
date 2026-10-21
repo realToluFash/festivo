@@ -72,6 +72,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   l'approbation de », which would need « d' » before a vowel. The setting is « Adhésion par
   domaine d'entreprise », « Activée » / « Désactivée »; a working domain « Ouvert aux
   demandes », a stopped one « Sans effet ». "… instead" is « … plutôt ».
+  The button alone is « Demander l'accès » (`domainJoining.ask`), since « Demander à rejoindre »
+  squeezed the organisation name beside it on the app phone (QA, sc-4434); its screen-reader
+  label keeps « Demander à rejoindre {{organisation}} ».
 
 - **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
   « Membres »; a member is removed with « Retirer », as the glossary's Remove. A person's state
@@ -87,6 +90,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   organisation" is « l'organisation qui vous invite ». A button in a sentence is chosen, as
   `proofExpired_*`: « Choisissez « Enregistrer et continuer » pour y accéder ». No `_many`
   yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is « créer », since « démarrer une organisation » is
+  not French: the heading is « Créez votre propre organisation », the button « Créer
+  l'organisation », as `createOrganisation.create`. The help and the derived-settings line are
+  `createOrganisation`'s words, so both screens say the same.
 
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is « Vous y aurez le rôle Propriétaire », as « le rôle

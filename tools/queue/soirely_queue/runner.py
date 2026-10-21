@@ -221,8 +221,14 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
             say(f"{role}: idle")
             continue
         key = store.claim_key(row)
-        if view and row["kind"] != "machine" and \
-                not shared.claim_item(remote, view, row["pool"], key, role):
+        try:
+            taken = view and row["kind"] != "machine" and \
+                not shared.claim_item(remote, view, row["pool"], key, role)
+        except RuntimeError as error:
+            store.release(db, row["id"])
+            say(f"error: {role}: could not claim {key} ({error}); item {row['id']} released")
+            continue
+        if taken:
             store.release(db, row["id"])
             say(f"{role}: {key} was just taken on another machine")
             continue

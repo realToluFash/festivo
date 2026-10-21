@@ -60,7 +60,7 @@ export default function SignIn() {
     setStatus({ kind: 'signingIn' });
 
     try {
-      router.replace(nextAfterSignIn(await api.signIn(email, password)));
+      router.replace(await nextAfterSignIn(await api.signIn(email, password)));
     } catch (error) {
       setStatus(refusalFrom(error));
     }

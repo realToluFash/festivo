@@ -70,5 +70,8 @@
     "two_factor_kept_by_rule": "Votre organisation exige la double authentification : vous ne pouvez pas la désactiver.",
     "session_timed_out": "Session fermée après une période d'inactivité.",
     "join_offer_unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre, ou demandez à une personne de cette organisation de vous inviter.",
-    "restore_needs_address": "Son accès ne peut pas être rétabli tant qu'il n'a pas de nouveau une adresse vérifiée sur le domaine de l'entreprise."
+    "restore_needs_address": "Son accès ne peut pas être rétabli tant qu'il n'a pas de nouveau une adresse vérifiée sur le domaine de l'entreprise.",
+    "request_link_dead": "Ce lien ne fonctionne plus. Demandez-en un nouveau à l'organisation.",
+    "join_request_waiting": "Votre demande pour rejoindre attend déjà une réponse.",
+    "join_request_cooling_off": "Vous ne pouvez pas encore redemander à rejoindre cette organisation."
 }

@@ -17,6 +17,7 @@ import { FieldError } from '../../components/FieldError.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { Pending } from '../../components/Pending.tsx';
+import { RequestToJoin } from './RequestToJoin.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
@@ -52,10 +53,23 @@ const REFUSALS: readonly Refusal[] = [
   'invitation_not_yours',
 ];
 
-/** The page an invitation's email links to (sc-67): register, sign in, or answer it. */
+/** An invitation's token is 64 hex characters; an organisation's request link (sc-562) is 32. */
+const REQUEST_LINK_TOKEN = /^[0-9a-f]{32}$/i;
+
+/** Both kinds of link open /join/<token>: a request link asks to join, anything else is an invitation. */
 export function Join() {
-  const { t } = useTranslation();
   const { token = '' } = useParams();
+
+  return REQUEST_LINK_TOKEN.test(token) ? (
+    <RequestToJoin token={token} />
+  ) : (
+    <Invited token={token} />
+  );
+}
+
+/** The page an invitation's email links to (sc-67): register, sign in, or answer it. */
+function Invited({ token }: { token: string }) {
+  const { t } = useTranslation();
   const session = useSessionState();
   const [view, setView] = useState<View>({ kind: 'loading' });
   const settled = session.status === 'signedIn' || session.status === 'signedOut';
