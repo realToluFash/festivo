@@ -120,6 +120,10 @@ decision QA will fail the build for.
 | A new epic, or a scope boundary | **create-epic**   |
 | Checking AC before it is built  | **review-ac**     |
 
+A new epic (`sq pm new-epic`) starts in **Waiting for Owner Approval**, and none of its
+stories is built until the owner moves it to In Progress. Say in your report that it is
+waiting for the owner; never ask a developer to start on it.
+
 Those carry the house format and the destination. The rules worth repeating here because
 they are where AC fails:
 

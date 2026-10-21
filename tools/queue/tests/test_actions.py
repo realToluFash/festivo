@@ -373,6 +373,29 @@ class LineEdits(Base):
         self.assertEqual(self.body(1), "# AC\n\n- x\n")
 
 
+class NewEpics(Base):
+    def setUp(self):
+        super().setUp()
+        self.fake.epic_states = lambda: [{"id": 1, "name": "to do"},
+                                         {"id": 9, "name": "Waiting for Owner Approval"}]
+        self.made = []
+        self.fake.create_epic = lambda **fields: self.made.append(fields) or {"id": 77}
+        refresh = mock.patch("soirely_queue.sync.refresh_lookups")
+        refresh.start()
+        self.addCleanup(refresh.stop)
+
+    def test_an_epic_a_role_creates_waits_for_the_owner(self):
+        said = actions.new_epic(self.as_("pm"), args(name="Gifts", text="Why."))
+        self.assertEqual(self.made[0]["epic_state_id"], 9)
+        self.assertIn("Waiting for Owner Approval", said)
+
+    def test_with_no_approval_state_no_epic_is_created(self):
+        self.fake.epic_states = lambda: [{"id": 1, "name": "to do"}]
+        with self.assertRaisesRegex(actions.Refused, "no Waiting for Owner Approval"):
+            actions.new_epic(self.as_("pm"), args(name="Gifts", text="Why."))
+        self.assertEqual(self.made, [])
+
+
 class Relating(Base):
     def test_relating_twice_says_already_linked(self):
         self.fake.add(1, "To Do")
