@@ -400,7 +400,7 @@
     "contactInvalid": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio.",
     "readOnly": "A sua função, {{role}}, pode ver estes dados mas não alterá-los. Os proprietários podem.",
     "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
-    "language": "Idioma",
+    "language": "Idioma dos convites",
     "languageHint": "Os e-mails de convite para pessoas sem conta Soirely são escritos neste idioma. Quem já tem uma conta recebe o convite no seu próprio idioma.",
     "savedLanguage": "Guardado. A partir de agora, os e-mails de convite para pessoas sem conta Soirely são enviados em {{language}}. Os convites já enviados não voltam a ser enviados.",
     "refused": "Nada foi guardado. A sua função não inclui a permissão necessária para isto."
