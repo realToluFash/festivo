@@ -20,13 +20,14 @@ use Psl\Vec;
 final readonly class MemberSerialiser
 {
     /**
-     * @param list<MembershipTransition>         $history  this membership's, oldest first
-     * @param list<Invitation>                   $accepted invitations this member accepted here
-     * @param Closure(DateTimeImmutable): string $written  a deadline as the caller reads it (sc-868)
+     * @param list<MembershipTransition>         $history    this membership's, oldest first
+     * @param list<Invitation>                   $accepted   invitations this member accepted here
+     * @param Closure(DateTimeImmutable): string $written    a deadline as the caller reads it (sc-868)
+     * @param array<string, mixed>|null          $suspension DomainSuspender::describe(), for the caller
      *
      * @return array<string, mixed>
      */
-    public static function member(Membership $membership, array $history, array $accepted, User $caller, Closure $written): array
+    public static function member(Membership $membership, array $history, array $accepted, User $caller, Closure $written, ?array $suspension = null): array
     {
         $user = $membership->getUser();
         $last = Iter\last($history);
@@ -45,6 +46,7 @@ final readonly class MemberSerialiser
             'status' => $membership->getStatus()->value,
             'former' => MembershipStatus::LeftOrRemoved === $membership->getStatus() ? self::former($last, $user) : null,
             'channel' => $entered?->getChannel()->value,
+            'suspension' => $suspension,
             'message' => MembershipStatus::PendingApproval === $membership->getStatus() ? $membership->getRequestMessage() : null,
             'since' => self::at($last?->getOccurredAt()),
             'removesAt' => null === $removesAt ? null : ['at' => self::at($removesAt), 'written' => $written($removesAt)],

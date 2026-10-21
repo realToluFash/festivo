@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => ({
   me: vi.fn(),
-  organisations: vi.fn(),
+  organisationsWithPaused: vi.fn(),
   signOut: vi.fn(),
   myInvitations: vi.fn(async (): Promise<InvitationPreview[]> => []),
   acceptInvitation: vi.fn(),
@@ -61,7 +61,7 @@ describe('"Sign out" on the Settings list and the "This device" row', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     api.me.mockResolvedValue(account);
-    api.organisations.mockResolvedValue([organisation]);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
     api.signOut.mockResolvedValue(undefined);
     await reloadSignedIn();
     vi.clearAllMocks();
@@ -106,15 +106,32 @@ describe('opening the signed-in home at launch', () => {
 
   it('is ready once the account and its organisations are read', async () => {
     api.me.mockResolvedValue(account);
-    api.organisations.mockResolvedValue([organisation]);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
 
     await expect(launchSignedIn()).resolves.toBe(true);
     expect(useSignedIn().organisation).toEqual(organisation);
   });
 
+  it('shows the organisation access is paused in when there is nothing else to open', async () => {
+    const paused = {
+      ...organisation,
+      suspension: {
+        reason: 'address_gone' as const,
+        domain: 'ire.events',
+        since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+        removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday, Nov 15 at 09:40 WAT' },
+      },
+    };
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [], paused: [paused] });
+
+    await expect(launchSignedIn()).resolves.toBe(true);
+    expect(useSignedIn().pausedIn).toEqual(paused);
+  });
+
   it('is not, and opens sign-in, when the account cannot be read', async () => {
     api.me.mockRejectedValue(new Error('unauthorised'));
-    api.organisations.mockResolvedValue([organisation]);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
 
     await expect(launchSignedIn()).resolves.toBe(false);
     expect(router.replace).toHaveBeenCalledWith('/sign-in');
@@ -127,7 +144,10 @@ describe('an organisation saved from its page', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     api.me.mockResolvedValue(account);
-    api.organisations.mockResolvedValue([organisation, other]);
+    api.organisationsWithPaused.mockResolvedValue({
+      organisations: [organisation, other],
+      paused: [],
+    });
     await reloadSignedIn();
   });
 
@@ -139,7 +159,7 @@ describe('an organisation saved from its page', () => {
       'Ìrè Events Ltd',
       'Okafor Weddings',
     ]);
-    expect(api.organisations).toHaveBeenCalledTimes(1);
+    expect(api.organisationsWithPaused).toHaveBeenCalledTimes(1);
   });
 
   it('leaves the organisation this device is in alone when another one changes', () => {
@@ -153,7 +173,7 @@ describe('the account read again without leaving the screen', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     api.me.mockResolvedValue(account);
-    api.organisations.mockResolvedValue([organisation]);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
     await reloadSignedIn();
     vi.clearAllMocks();
   });
@@ -165,7 +185,7 @@ describe('the account read again without leaving the screen', () => {
 
     expect(useSignedIn().account).toEqual({ ...account, name: 'Adaeze Okafor' });
     expect(useSignedIn().organisation).toEqual(organisation);
-    expect(api.organisations).not.toHaveBeenCalled();
+    expect(api.organisationsWithPaused).not.toHaveBeenCalled();
   });
 
   it('rejects when the read fails, keeps the account it had, and opens nothing', async () => {
@@ -194,7 +214,7 @@ describe('an invitation answered on one screen', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     api.me.mockResolvedValue(account);
-    api.organisations.mockResolvedValue([organisation]);
+    api.organisationsWithPaused.mockResolvedValue({ organisations: [organisation], paused: [] });
     api.myInvitations.mockResolvedValue([invitation]);
     await reloadSignedIn();
   });

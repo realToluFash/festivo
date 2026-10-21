@@ -10,8 +10,10 @@ use App\Entity\ProviderIdentity;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
+use App\Enum\SeededRole;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Uid\Uuid;
@@ -98,6 +100,106 @@ final class MembershipRepository extends ServiceEntityRepository
             ->innerJoin('m.organisation', 'o')
             ->where('m.user = :user')
             ->setParameter('user', $user)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * The active members tied to a domain (sc-564), in one organisation or in every other.
+     *
+     * @return list<Membership>
+     */
+    public function findActiveAtDomain(string $domain, Organisation $organisation, bool $elsewhere = false): array
+    {
+        /** @var list<Membership> */
+        return $this->active()
+            ->andWhere('m.domain = :domain')
+            ->andWhere($elsewhere ? 'm.organisation <> :organisation' : 'm.organisation = :organisation')
+            ->setParameter('domain', $domain)
+            ->setParameter('organisation', $organisation)
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> the active owners and administrators, who hear about a suspension (sc-564) */
+    public function findAdministratorsIn(Organisation $organisation): array
+    {
+        /** @var list<Membership> */
+        return $this->active()
+            ->innerJoin('m.role', 'r')
+            ->andWhere('m.organisation = :organisation')
+            ->andWhere('r.seededAs IN (:administrators)')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('administrators', [SeededRole::Owner->value, SeededRole::Administrator->value])
+            ->orderBy('m.createdAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> suspended with a removal instant at or before now, the earliest first */
+    public function findDueForRemoval(DateTimeImmutable $now, ?Organisation $organisation = null, ?User $user = null): array
+    {
+        $query = $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.status = :suspended')
+            ->andWhere('m.removesAt <= :now')
+            ->setParameter('suspended', MembershipStatus::Suspended)
+            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->orderBy('m.removesAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC');
+
+        if (null !== $organisation) {
+            $query->andWhere('m.organisation = :organisation')->setParameter('organisation', $organisation);
+        }
+
+        if (null !== $user) {
+            $query->andWhere('m.user = :user')->setParameter('user', $user);
+        }
+
+        /** @var list<Membership> */
+        return $query->getQuery()->getResult();
+    }
+
+    /** Read past the unit of work, which a rolled-back transaction leaves closed and holding what never committed. */
+    public function isSuspendedInStore(Uuid $id): bool
+    {
+        return MembershipStatus::Suspended->value === $this->getEntityManager()->getConnection()->fetchOne(
+            'SELECT status FROM memberships WHERE id = ?',
+            [$id->toRfc4122()],
+        );
+    }
+
+    /** @return list<Membership> the organisation's owners in every state */
+    public function findOwnersIn(Organisation $organisation): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->innerJoin('m.role', 'r')
+            ->where('m.organisation = :organisation')
+            ->andWhere('r.seededAs = :owner')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('owner', SeededRole::Owner->value)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> the caller's own suspended ones, in organisations that still exist */
+    public function findSuspendedFor(User $user): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.user = :user')
+            ->andWhere('m.status = :suspended')
+            ->setParameter('user', $user)
+            ->setParameter('suspended', MembershipStatus::Suspended)
             ->orderBy('m.createdAt', 'ASC')
             ->addOrderBy('m.id', 'ASC')
             ->getQuery()

@@ -90,6 +90,8 @@
     "domain_joining.domain_public": "Não pode usar um domínio de e-mail público.",
     "domain_joining.not_listed": "Esse domínio não está na lista.",
     "domain_joining.unavailable": "Não pode pedir para aderir a essa organização. Crie a sua ou peça um convite a alguém dessa organização.",
+    "members.not_suspended": "That member is not suspended.",
+    "members.restore_needs_address": "{name} needs a verified {domain} address first.",
     "request_link.cooling_off": "Ainda não pode voltar a pedir para aderir a {organisation}.",
     "request_link.dead": "Esta ligação já não funciona. Peça uma nova à organização.",
     "request_link.member": "Já é membro de {organisation}.",

@@ -1,5 +1,6 @@
 import {
   ApiError,
+  type DomainSuspension,
   type Membership,
   type MembersList,
   type OrganisationMember,
@@ -680,6 +681,15 @@ function MemberDetail({
         </ul>
       </section>
 
+      {acts && member.suspension != null && (
+        <Suspension
+          organisation={organisation}
+          member={member}
+          suspension={member.suspension}
+          onChanged={onChanged}
+        />
+      )}
+
       {acts && (
         <section className="card" aria-labelledby="remove-title">
           {removal === 'resting' ? (
@@ -736,6 +746,90 @@ function MemberDetail({
         </section>
       )}
     </div>
+  );
+}
+
+type Restoring = 'resting' | 'restoring' | 'restored';
+
+/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below. */
+function Suspension({
+  organisation,
+  member,
+  suspension,
+  onChanged,
+}: {
+  organisation: Membership;
+  member: OrganisationMember;
+  suspension: DomainSuspension;
+  onChanged: (list: MembersList) => void;
+}) {
+  const { t } = useTranslation();
+  const [restoring, setRestoring] = useState<Restoring>('resting');
+  const [failed, setFailed] = useState<string | null>(null);
+  const named = {
+    name: member.user.name,
+    organisation: organisation.name,
+    domain: suspension.domain ?? '',
+  };
+
+  async function restore(): Promise<void> {
+    setRestoring('restoring');
+    setFailed(null);
+
+    try {
+      await api.restoreMember(organisation.id, member.id);
+      setRestoring('restored');
+      onChanged(await api.members(organisation.id));
+    } catch (error) {
+      setRestoring('resting');
+      setFailed(
+        error instanceof ApiError && error.is('restore_needs_address')
+          ? t('membersScreen.restoreNeedsAddress', named)
+          : error instanceof ApiError
+            ? error.problem.title
+            : t('membersScreen.actionFailed'),
+      );
+    }
+  }
+
+  if (restoring === 'restored') {
+    return (
+      <div className="notice notice-done" role="status">
+        <span className="mark mark-done" aria-hidden="true">
+          ✓
+        </span>
+        <p>{t('membersScreen.restored', named)}</p>
+      </div>
+    );
+  }
+
+  return (
+    <section className="card" aria-labelledby="suspension-title">
+      <h2 id="suspension-title">
+        <span className="mark mark-attention" aria-hidden="true">
+          !
+        </span>{' '}
+        {t('membersScreen.state.domainSuspended')}
+      </h2>
+      <p>{t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}</p>
+      {suspension.removesAt != null && (
+        <p className="muted">
+          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+        </p>
+      )}
+      {failed != null && <FieldError id="restore-failed" message={failed} />}
+      <div className="actions">
+        <button
+          type="button"
+          className="button button-primary"
+          aria-busy={restoring === 'restoring'}
+          disabled={restoring === 'restoring'}
+          onClick={() => void restore()}
+        >
+          {t('membersScreen.restore', named)}
+        </button>
+      </div>
+    </section>
   );
 }
 

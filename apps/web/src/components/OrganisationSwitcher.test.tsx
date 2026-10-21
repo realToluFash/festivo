@@ -181,6 +181,65 @@ describe('switching organisation', () => {
   });
 });
 
+describe('switching away from a paused organisation (sc-564)', () => {
+  it('opens the switcher with nothing marked current, then works in the one chosen', () => {
+    const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
+      id: 'org_3',
+      name: 'Lagos Weddings',
+    });
+    __setSessionState({
+      status: 'signedIn',
+      session: {
+        name: 'Folake Adeyemi',
+        email: 'folake@ire.events',
+        verified: true,
+        complete: true,
+        awaiting: null,
+        providers: [],
+        needsOrganisation: false,
+        hasPassword: true,
+        organisation: IRE,
+        organisations: [IRE, OKAFOR],
+        organisationCountry: null,
+        timezone: null,
+        waitingFor: null,
+        pausedIn: {
+          id,
+          name,
+          countryCode,
+          currency,
+          timezone,
+          contactAddress,
+          locale,
+          suspension: {
+            reason: 'address_gone',
+            domain: 'lagosweddings.ng',
+            since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+            removesAt: null,
+          },
+        },
+      },
+    });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+
+    const options = within(
+      screen.getByRole('listbox', { name: 'Your organisations' }),
+    ).getAllByRole('option');
+    expect(options.map((option) => option.getAttribute('aria-selected'))).toEqual([
+      'false',
+      'false',
+    ]);
+
+    fireEvent.click(screen.getByRole('option', { name: /Ìrè Events/ }));
+
+    expect(screen.getByRole('status').textContent).toMatch(/Now working in Ìrè Events\./);
+    expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
+  });
+});
+
 describe('a 100-character name (sc-486)', () => {
   const SPACED = 'Adeyemi Okafor Events '.repeat(5).slice(0, 99).concat('X');
   const WORD = 'A'.repeat(100);

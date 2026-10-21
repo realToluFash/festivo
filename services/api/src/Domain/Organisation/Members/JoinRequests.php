@@ -119,7 +119,7 @@ final readonly class JoinRequests
     public function noticeDue(): int
     {
         $now = $this->clock->now();
-        $lifetime = new DateInterval(Membership::REQUEST_LIFETIME);
+        $lifetime = new DateInterval(Membership::UNANSWERED_FOR);
         $waiting = Dict\group_by(
             $this->membershipRepository->findRequestsWaitingAt($now),
             static fn (Membership $membership): string => $membership->getOrganisation()->getId()->toRfc4122(),

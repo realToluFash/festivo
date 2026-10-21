@@ -70,6 +70,7 @@
     "two_factor_kept_by_rule": "Su organización exige la verificación en dos pasos, así que no puede desactivarla.",
     "session_timed_out": "Se cerró la sesión tras un tiempo sin uso.",
     "join_offer_unavailable": "No puede solicitar unirse a esa organización. Cree la suya o pida a alguien de esa organización que le invite.",
+    "restore_needs_address": "No se puede restablecer su acceso hasta que vuelva a tener una dirección verificada en el dominio de la empresa.",
     "request_link_dead": "Este enlace ya no funciona. Pida uno nuevo a la organización.",
     "join_request_waiting": "Su solicitud para unirse ya está pendiente de respuesta.",
     "join_request_cooling_off": "Todavía no puede volver a solicitar unirse a esta organización.",

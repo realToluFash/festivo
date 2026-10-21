@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Members;
 
+use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
+use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
@@ -28,6 +30,7 @@ final readonly class MembershipMachine
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private RemovalClock $removalClock,
     ) {
     }
 
@@ -39,8 +42,10 @@ final readonly class MembershipMachine
         if (null === $existing) {
             $now = $this->clock->now();
             $membership = new Membership($organisation, $user, $role, $entry, $now);
+            $membership->setDomain(self::domainFor($user, $channel));
             $this->entityManager->persist($membership);
             $this->record($membership, null, $entry, $channel, $actor, $now);
+            $this->removalClock->wind($membership);
 
             return $membership;
         }
@@ -52,6 +57,7 @@ final readonly class MembershipMachine
             throw new ApiException(ErrorCode::AlreadyAMember, $this->translator->trans('members.already_a_member'));
         }
 
+        $existing->setDomain(self::domainFor($user, $channel));
         $existing->changeRole($role);
         $this->move($existing, $entry, $channel, $actor);
 
@@ -73,7 +79,20 @@ final readonly class MembershipMachine
         $now = $at ?? $this->clock->now();
         $from = $membership->getStatus();
         $membership->setStatus($to, $now);
+
+        if (MembershipStatus::Suspended !== $to) {
+            $membership->setSuspension(null, null);
+            $membership->setRemovesAt(null);
+        }
+
         $this->record($membership, $from, $to, $channel, $actor, $now);
+        $this->removalClock->wind($membership);
+    }
+
+    /** Only company domain joining ties a membership to the address it came through (sc-564), so whichever channel brings the row in last decides. */
+    private static function domainFor(User $user, MembershipChannel $channel): ?string
+    {
+        return MembershipChannel::Domain === $channel ? JoinOfferFinder::domainFor($user) : null;
     }
 
     private function record(Membership $membership, ?MembershipStatus $from, MembershipStatus $to, MembershipChannel $channel, ?User $actor, DateTimeImmutable $at): void

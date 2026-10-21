@@ -311,6 +311,21 @@ export interface TwoFactorDeadline {
   written: string;
 }
 
+export type DomainSuspensionReason = 'address_gone' | 'domain_closed' | 'domain_managed_elsewhere';
+
+/** A member who joined through the company domain, paused when it stopped bringing them in (sc-564); each instant in the reader's zone, and no removal for the only owner. */
+export interface DomainSuspension {
+  reason: DomainSuspensionReason;
+  domain: string | null;
+  since: TwoFactorDeadline;
+  removesAt: TwoFactorDeadline | null;
+}
+
+/** An organisation the account's access to is paused in: no grant at all, only why. */
+export interface PausedOrganisation extends Organisation {
+  suspension: DomainSuspension;
+}
+
 export interface TwoFactorDue extends TwoFactorDeadline {
   /** Past the deadline: nothing in the organisation opens until two-factor is on. */
   overdue: boolean;
@@ -422,6 +437,7 @@ export interface OrganisationMember {
   invitedAt: string | null;
   self: boolean;
   history: MembershipStep[];
+  suspension: DomainSuspension | null;
 }
 
 export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
@@ -1122,20 +1138,35 @@ export class ApiClient {
   }
 
   async organisations(): Promise<Membership[]> {
-    const raw = await this.get<unknown>('/api/orgs');
-    const listed =
-      typeof raw === 'object' && raw != null
-        ? (raw as Record<string, unknown>).organisations
-        : null;
-    const memberships = Array.isArray(listed) ? listed.map(asMembership) : null;
+    return (await this.organisationsWithPaused()).organisations;
+  }
 
-    if (memberships == null || memberships.some((membership) => membership == null)) {
+  /** The same list, with the organisations the account's access to is paused in (sc-564). */
+  async organisationsWithPaused(): Promise<{
+    organisations: Membership[];
+    paused: PausedOrganisation[];
+  }> {
+    const raw = await this.get<unknown>('/api/orgs');
+    const body = typeof raw === 'object' && raw != null ? (raw as Record<string, unknown>) : {};
+    const memberships = Array.isArray(body.organisations)
+      ? body.organisations.map(asMembership)
+      : null;
+    const paused = Array.isArray(body.paused) ? body.paused.map(asPausedOrganisation) : [];
+
+    if (
+      memberships == null ||
+      memberships.some((membership) => membership == null) ||
+      paused.some((one) => one == null)
+    ) {
       throw new Error(
         'The API answered /api/orgs in a shape this client does not know. Check OrganisationController in services/api.',
       );
     }
 
-    return memberships as Membership[];
+    return {
+      organisations: memberships as Membership[],
+      paused: paused as PausedOrganisation[],
+    };
   }
 
   async signInRules(organisationId: string): Promise<SignInRulesPage> {
@@ -1346,6 +1377,14 @@ export class ApiClient {
     await this.request<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
       { method: 'DELETE' },
+    );
+  }
+
+  /** Refused `restore_needs_address` while an address that went is not back, verified and primary (sc-564). */
+  async restoreMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.request<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,
+      { method: 'POST' },
     );
   }
 
@@ -2300,6 +2339,7 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     invitedAt: stringOrNull(member.invitedAt),
     self: member.self === true,
     history: history as MembershipStep[],
+    suspension: asDomainSuspension(member.suspension),
   };
 }
 
@@ -2416,6 +2456,30 @@ function asTwoFactorDeadline(raw: unknown): TwoFactorDeadline | null {
   return typeof deadline.at === 'string' && typeof deadline.written === 'string'
     ? { at: deadline.at, written: deadline.written }
     : null;
+}
+
+const SUSPENSION_REASONS: readonly DomainSuspensionReason[] = [
+  'address_gone',
+  'domain_closed',
+  'domain_managed_elsewhere',
+];
+
+function asDomainSuspension(raw: unknown): DomainSuspension | null {
+  const suspension = (raw ?? {}) as Record<string, unknown>;
+  const reason = oneOf(suspension.reason, SUSPENSION_REASONS);
+  const since = asTwoFactorDeadline(suspension.since);
+  const removesAt = asTwoFactorDeadline(suspension.removesAt);
+
+  return reason == null || since == null
+    ? null
+    : { reason, domain: stringOrNull(suspension.domain), since, removesAt };
+}
+
+function asPausedOrganisation(raw: unknown): PausedOrganisation | null {
+  const organisation = asOrganisation(raw);
+  const suspension = asDomainSuspension((raw as Record<string, unknown> | null)?.suspension);
+
+  return organisation == null || suspension == null ? null : { ...organisation, suspension };
 }
 
 function asTwoFactorDue(raw: unknown): TwoFactorDue | null {
