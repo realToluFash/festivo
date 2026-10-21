@@ -38,8 +38,12 @@ query($owner: String!, $name: String!) {
 """ % (OPEN_FIELDS, PR_FIELDS)
 
 LEAD_HEADER = "## Review (from lead)"
+# The last line of the lead's review, written by `sq lead review` and read back here.
+PASS_LINE = "Review passed at {sha}. Ready to merge."
+BACK_LINE = "Failed code review: {blocking} blocking."
 PASSED = re.compile(r"Review passed at ([0-9a-f]{7,40})")
-BACK = re.compile(r"Back to In Progress: (\d+) blocking")
+# Reviews from before the code review states end "Back to In Progress", and still count.
+BACK = re.compile(r"(?:Failed code review|Back to In Progress): (\d+) blocking")
 STORY = re.compile(r"sc-(\d+)")
 REMOTE = re.compile(r"github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$")
 LIMITED = re.compile(r"rate limit", re.I)

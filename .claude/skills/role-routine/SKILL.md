@@ -36,28 +36,29 @@ names its role first: `sq <role> tick`, `sq l10n next`, `sq dev2 done 41`.
 - **One run at a time, one piece of work per run.** A woken tick claims one work item for
   the role, and ticks answer `busy` until the worker finishes it. A claim not finished
   within 90 minutes lapses, and the item goes back to the queue. Testers share Ready For QA,
-  and the two developers share unlabelled To Do stories, so one of them claims each story.
+  and the two developers share unlabelled Ready For Dev stories, so one of them claims each
+  story.
 - **A heartbeat catches what change misses.** Some work nobody files, such as the
   designer's backlog sweep, the product manager's AC audit, ops' advisories and the business
   manager's stale costs. So after a quiet spell a sweeping role gets a sweep, and any other
   role with stories in its queue gets a pick, which lists the queue for the skill to choose
   from:
 
-| Role                        | Woken by                                                               | Heartbeat                      |
-| --------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
-| `/soirely-product-manager`  | `[pm]`, new in To Do or Failed QA                                      | 2 hours                        |
-| `/soirely-designer`         | `[ux]`, new in To Do or Failed QA                                      | 2 hours                        |
-| `/soirely-developer` (×2)   | its tag, new in Failed QA, In Progress, To Do; its PR's checks finish  | 30 minutes, if work is waiting |
-| `/soirely-qa-tester` (×3)   | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA                | 30 minutes, if work is waiting |
-| `/soirely-tech-lead`        | `[lead]`, new in In Review                                             | 30 minutes, if work is waiting |
-| `/soirely-business-manager` | `[bm]`, new in Backlog or To Do                                        | 12 hours                       |
-| `/soirely-ops`              | `[ops]`, `main` red; its `ops` stories and their PRs, as a developer's | 6 hours                        |
-| `/soirely-linguist`         | `[l10n]`, a translation ticket new in To Do, In Progress or Failed QA  | 2 hours                        |
-| `/soirely-creative`         | `[cd]`                                                                 | 24 hours                       |
+| Role                        | Woken by                                                                                                    | Heartbeat                      |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `/soirely-product-manager`  | `[pm]`, new in To Do                                                                                        | 2 hours                        |
+| `/soirely-designer`         | `[ux]`, new in Needs Design                                                                                 | 2 hours                        |
+| `/soirely-developer` (×2)   | its tag, new in Failed Code Review, Failed QA, In Progress, Ready For Dev; its PR's checks finish, its pass | 30 minutes, if work is waiting |
+| `/soirely-qa-tester` (×3)   | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA                                                     | 30 minutes, if work is waiting |
+| `/soirely-tech-lead`        | `[lead]`, new in In Review, a push after a pass                                                             | 30 minutes, if work is waiting |
+| `/soirely-business-manager` | `[bm]`, new in Backlog                                                                                      | 12 hours                       |
+| `/soirely-ops`              | `[ops]`, `main` red; its `ops` stories and their PRs, as a developer's                                      | 6 hours                        |
+| `/soirely-linguist`         | `[l10n]`, a translation ticket new in To Do, Failed Code Review, In Progress or Failed QA                   | 2 hours                        |
+| `/soirely-creative`         | `[cd]`                                                                                                      | 24 hours                       |
 
 The other roles' queues leave out stories labelled `translation`, which are the linguist's,
 and stories labelled `ops`, which are ops' own infra work.
-The two developers share To Do, but see only their own work beyond it: a story labelled
+The two developers share Ready For Dev, but see only their own work beyond it: a story labelled
 `dev2` is developer 2's, and any other is developer 1's. A bare `[dev]` comment, and a pull
 request's checks, wake only the developer whose label the story carries.
 The linguist is one role for all four locales: `sq l10n tick`.
@@ -133,6 +134,11 @@ watching, so:
 - **Work through `sq <role>`.** `sq <role> help` lists every read and write the role may
   run; each write checks the story or pull request fresh and says why it refused. The
   comment header, the reply threading, label unions and state names are all done for you.
+
+- **A command refused by your permissions is asked for, not worked around.** Post it on
+  sc-4992 with `sq <role> permission-ask --rule '<rule>' --for '<why>' --without '<what
+fails>'`, note it on your story, do what you can without it, and move on. Only the owner
+  grants a rule, at their own keyboard.
 
 - **One piece of work, then stop.** One story built, one pull request reviewed, one story
   tested, one memo. Whatever else is waiting is already queued, and the next tick starts a

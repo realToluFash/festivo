@@ -86,6 +86,15 @@ class Review(unittest.TestCase):
         self.assertEqual(len(items), 1)
         self.assertIn("pushed after the pass", items[0]["reason"])
 
+    def test_a_push_after_the_pass_in_passed_code_review_needs_another_review(self):
+        passed = story(state="Passed Code Review")
+        items = work.review_items([passed], [pr(lead=[verdict("pass", OLD[:7])])])
+        self.assertEqual([i["kind"] for i in items], ["review"])
+        self.assertEqual(work.review_items([passed], [pr(lead=[verdict("pass", HEAD[:7])])]), [])
+
+    def test_passed_code_review_with_no_pull_request_is_not_flagged(self):
+        self.assertEqual(work.review_items([story(state="Passed Code Review")], []), [])
+
     def test_a_pass_at_the_head_needs_nothing(self):
         self.assertEqual(work.review_items([story()], [pr(lead=[verdict("pass", HEAD[:7])])]), [])
 
@@ -258,8 +267,8 @@ class Carried(unittest.TestCase):
 
 
 class Queue(unittest.TestCase):
-    def test_an_unlabelled_to_do_story_is_one_item_both_developers_can_claim(self):
-        items = [i for i in work.queue_items([story(state="To Do")]) if i["pool"] == "dev"]
+    def test_an_unlabelled_ready_story_is_one_item_both_developers_can_claim(self):
+        items = [i for i in work.queue_items([story(state="Ready For Dev")]) if i["pool"] == "dev"]
         self.assertEqual(len(items), 1)
         self.assertEqual(sorted(items[0]["roles"]), ["dev", "dev2"])
 
@@ -276,7 +285,38 @@ class Queue(unittest.TestCase):
         items = work.queue_items([moved], {(1, "To Do", "t1"): "pm"})
         woken = sorted(r for i in items for r in i["roles"])
         self.assertNotIn("pm", woken)
-        self.assertEqual(woken, ["bm", "dev", "dev2", "ux"])
+        self.assertEqual(woken, [])
+
+    def test_each_state_wakes_exactly_one_role(self):
+        for state, role in (("Backlog", "bm"), ("To Do", "pm"), ("Needs Design", "ux"),
+                            ("Failed Code Review", "dev2"), ("Failed QA", "dev2"),
+                            ("In Progress", "dev2")):
+            items = work.queue_items([story(state=state, labels=["dev2"])])
+            self.assertEqual(sorted(r for i in items for r in i["roles"]), [role], state)
+        for state in ("Passed Code Review", "Waiting On Owner", "Passsed QA"):
+            self.assertEqual(work.queue_items([story(state=state, labels=["dev2"])]), [], state)
+
+    def test_rework_comes_before_new_work(self):
+        stories = [story(id_=n, state=s, labels=["dev2"]) for n, s in
+                   enumerate(("Ready For Dev", "In Progress", "Failed QA", "Failed Code Review"))]
+        items = sorted(work.queue_items(stories), key=lambda i: i["priority"])
+        self.assertEqual([i["reason"].split(" moved to ")[1] for i in items],
+                         ["Failed Code Review", "Failed QA", "In Progress", "Ready For Dev"])
+
+    def test_a_failed_story_back_for_qa_waits_for_the_tester_who_failed_it(self):
+        import calendar, time
+        moved = "2026-10-18T10:00:00Z"
+        at = calendar.timegm(time.strptime(moved, "%Y-%m-%dT%H:%M:%SZ"))
+        back = story(state="Ready For QA", labels=["qa failed"], moved_at=moved,
+                     comments=[comment(1, "QA claim: qa2")])
+        soon = work.queue_items([back], now=at + 10 * 60)
+        self.assertEqual([i["roles"] for i in soon], [["qa2"]])
+        later = work.queue_items([back], now=at + (roles.RETEST_MINUTES + 1) * 60)
+        self.assertEqual([sorted(i["roles"]) for i in later], [["qa", "qa2", "qa3"]])
+
+    def test_a_story_never_failed_is_for_any_tester(self):
+        fresh = story(state="Ready For QA", comments=[comment(1, "QA claim: qa2")])
+        self.assertIsNone(work.retester(fresh))
 
     def test_the_same_move_by_another_role_still_wakes_it(self):
         moved = story(state="In Progress", labels=["dev2"], moved_at="t1")
@@ -312,7 +352,8 @@ class EveryWakeStillHappens(unittest.TestCase):
         failed = story(state="Failed QA", labels=["dev2"], moved_at="t1")
         found = self.woken([failed], moves={(1, "Failed QA", "t1"): "qa2"})
         self.assertIn(("story", "dev2"), found)
-        self.assertIn(("story", "pm"), found)
+        self.assertNotIn(("story", "pm"), found)
+        self.assertNotIn(("story", "ux"), found)
 
     def test_a_pull_request_s_checks_and_review_steps(self):
         moves = {(1, "In Progress", "t1"): "dev2", (1, "In Review", "t1"): "dev2"}

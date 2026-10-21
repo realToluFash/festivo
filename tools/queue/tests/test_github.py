@@ -230,3 +230,12 @@ class RestCalls(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Verdicts(unittest.TestCase):
+    def test_a_back_review_reads_in_its_new_wording_and_its_old_one(self):
+        for line in ("Failed code review: 2 blocking.", "Back to In Progress: 2 blocking."):
+            review = {"body": f"## Review (from lead)\n\nNo.\n\n{line}",
+                      "commit": {"oid": HEAD}}
+            self.assertEqual(github.verdict(review),
+                             {"verdict": "back", "sha": HEAD, "blocking": 2}, line)

@@ -1,6 +1,6 @@
 ---
 name: soirely-tech-lead
-description: Review mode. Takes whatever is sitting in Shortcut's In Review state, or a pull request you name, and reviews it before QA spends a pass on it — the AC bullet by bullet against the diff, the house craft skills, access control and security, tests, and the concept that already exists under another name. Posts review comments on the pull request, then either passes it, leaving the story in In Review, or moves it back to In Progress. Its pass line is the developer's signal to merge and to move the story to Ready For QA. Fixes nothing and merges nothing. Use when asked to review a pull request or a branch, to check what is waiting for review, or when invoked as /soirely-tech-lead.
+description: Review mode. Takes whatever is sitting in Shortcut's In Review state, or a pull request you name, and reviews it before QA spends a pass on it — the AC bullet by bullet against the diff, the house craft skills, access control and security, tests, and the concept that already exists under another name. Posts review comments on the pull request, then moves the story to Passed Code Review or Failed Code Review. Its pass line is the developer's signal to merge and to move the story to Ready For QA. Fixes nothing and merges nothing. Use when asked to review a pull request or a branch, to check what is waiting for review, or when invoked as /soirely-tech-lead.
 user-invocable: true
 ---
 
@@ -48,7 +48,9 @@ asked. Resolve those, then pick the work below.
 open one for that story. With no argument:
 
 1. **`In Review`**, longest waiting first: `sq lead next`. The developer moves a story there
-   when its pull request is open and green. That is your queue.
+   when its pull request is open and green. That is your queue. A story in `Passed Code
+Review` whose head moved past your pass comes back too: `sq` moves it to `In Review` by
+   itself.
 2. Failing that, say nothing is waiting for review and stop. That is a complete answer.
 
 **Check the claim first.** In Review means somebody thinks it is ready. If the pull request
@@ -134,11 +136,11 @@ blocking finding and a back with none.
 
 Every inline comment starts with its severity:
 
-| Severity      | Meaning                                                                                  | Effect on the story   |
-| ------------- | ---------------------------------------------------------------------------------------- | --------------------- |
-| **blocking:** | an AC gap, a defect, a security or access hole, a duplicate concept, a broken house rule | back to `In Progress` |
-| **should:**   | worth fixing in this pull request, but not a reason to stop QA                           | none on its own       |
-| **nit:**      | taste; take it or leave it                                                               | none                  |
+| Severity      | Meaning                                                                                  | Effect on the story     |
+| ------------- | ---------------------------------------------------------------------------------------- | ----------------------- |
+| **blocking:** | an AC gap, a defect, a security or access hole, a duplicate concept, a broken house rule | to `Failed Code Review` |
+| **should:**   | worth fixing in this pull request, but not a reason to stop QA                           | none on its own         |
+| **nit:**      | taste; take it or leave it                                                               | none                    |
 
 Each finding says **what is wrong, why it matters (a scenario, not a principle), and where
 the rule lives**:
@@ -160,7 +162,7 @@ header if it is missing, and ends the summary with exactly one of these lines, a
 head of the pull request:
 
 - `Review passed at <full head sha>. Ready to merge.`
-- `Back to In Progress: <n> blocking.`
+- `Failed code review: <n> blocking.`
 
 **The pass line is the developer's signal to merge**, and it holds for the sha it names
 and for a head that only merges `main` into it. `sq` compares the two against `main`, file by
@@ -173,13 +175,12 @@ the pass no longer covers what would be merged, and the pull request comes back 
 
 `review` does the moving and the tagging:
 
-- **No blocking findings** (`--pass`) → it leaves the story in `In Review`. The developer
+- **No blocking findings** (`--pass`) → it moves the story to `Passed Code Review`. The developer
   merges it at the sha you passed and then moves it to `Ready For QA`, QA's queue, so QA
   never tests a pull request that has not landed. `review` comments on the story with the
   PR link and what you pass in `--qa`, anything QA should look at hard: `[qa] (from lead)`.
-  A story in `In Review` whose head is the sha you passed is waiting on the developer, not
-  on you.
-- **Any blocking finding** (`--back`) → it moves the story to `In Progress`, with one
+  A story in `Passed Code Review` is waiting on the developer, not on you.
+- **Any blocking finding** (`--back`) → it moves the story to `Failed Code Review`, with one
   `[dev] (from lead)` comment on the story linking the review, or `[dev2]` when the story is
   labelled `dev2`. The label names the developer who built it, and that developer's inbox
   picks it up and answers each finding in its thread on the pull request.
@@ -226,8 +227,8 @@ fixes one pull request, and a rule in a skill fixes the next twenty.
 - [ ] You grepped for the concept, not just the name.
 - [ ] Every finding you forwarded from a tool, you verified yourself.
 - [ ] Every blocking finding names a scenario and a rule.
-- [ ] A story with blocking findings moved back to `In Progress`, a passed one stayed in
-      `In Review`, and the right role was tagged.
+- [ ] A story with blocking findings went to `Failed Code Review`, a passed one to
+      `Passed Code Review`, and the right role was tagged.
 
 Then tell the user in two or three lines: the pull request, pass or back, the count of
 blocking findings, and the one most worth their attention.

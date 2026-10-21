@@ -40,6 +40,25 @@ def env_file():
     return config_dir() / "env"
 
 
+def load_env(path=None):
+    """Sets each variable the env file holds and the environment lacks. systemd reads the
+    file into the units; launchd has no such thing, so on a Mac sq reads it itself."""
+    path = path or env_file()
+    try:
+        lines = path.read_text().splitlines()
+    except OSError:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.removeprefix("export ").split("=", 1)
+        value = value.strip()
+        if len(value) > 1 and value[0] == value[-1] and value[0] in "'\"":
+            value = value[1:-1]
+        os.environ.setdefault(key.strip(), value)
+
+
 def models():
     return json.loads(MODELS.read_text())
 
@@ -168,6 +187,10 @@ def check(config, known=None, logged_in=account):
     if unknown:
         errors.append(f"unknown role {', '.join(unknown)} in {path()}: "
                       f"one of {', '.join(roles.ROLES)}")
+    if "ops" not in listed:
+        # A refusal, not an error: an older file must not stop the self-update that fixes it.
+        refused["ops"] = (f"not listed in {path()}: every machine runs ops, for its own disk, "
+                          "Docker, stacks and manager (ops@<machine>)")
     defaults = config.get("defaults") or {}
     if not config.get("claudeConfigDir"):
         errors.append(f"no claudeConfigDir in {path()}: the Claude config folder the workers "

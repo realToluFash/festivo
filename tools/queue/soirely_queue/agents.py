@@ -10,7 +10,7 @@ import subprocess
 import sys
 import time
 
-from . import machine, runner, store, update
+from . import machine, permissions, runner, store, update
 
 WAIT_SECONDS = 10 * 60
 REPO = pathlib.Path(__file__).resolve().parents[3]
@@ -63,15 +63,50 @@ def make_checkout(config, role, say, home):
             "mainCheckout")
         return
     say(f"  {role}: creating {path}")
-    subprocess.run(["git", f"--git-dir={home.parent}", "fetch", "--quiet", "origin"], check=True)
-    subprocess.run(["git", f"--git-dir={home.parent}", "worktree", "add", "--detach", str(path),
-                    "origin/main"], check=True, capture_output=True)
-    stacks = role_stacks()
-    if role in stacks and path.parent == REPO.parent:
-        subprocess.run(["node", "scripts/dev-env.mjs", "setup", "--role", role], cwd=REPO,
-                       check=True)
-    elif role in stacks or role.startswith("qa"):
+    git = ["git", f"--git-dir={home.parent}"]
+    subprocess.run([*git, "fetch", "--quiet", "origin"], check=True)
+    # A checkout deleted by hand stays registered, and git refuses its path until pruned.
+    subprocess.run([*git, "worktree", "prune"], check=True)
+    made = subprocess.run([*git, "worktree", "add", "--detach", str(path), "origin/main"],
+                          capture_output=True, text=True)
+    if made.returncode:
+        say(f"  {role}: could not create {path}: {made.stderr.strip()}")
+
+
+def stack_running(project):
+    found = subprocess.run(["docker", "compose", "-p", project, "ps", "-q"],
+                           capture_output=True, text=True)
+    return found.returncode == 0 and bool(found.stdout.strip())
+
+
+def stack_setup(role):
+    """The command that makes a role's stack: dev-env for a role in its STACKS table, qa-env
+    for a tester. None for a role that has no stack of its own."""
+    if role in role_stacks():
+        return ["node", "scripts/dev-env.mjs", "setup", "--role", role]
+    tester = re.fullmatch(r"qa(\d*)", role)
+    if tester:
+        return ["node", "scripts/qa-env.mjs", "setup", "--tester", tester.group(1) or "1"]
+    return None
+
+
+def make_stack(config, role, say):
+    """Brings up a role's stack whenever it is not running, not only when its checkout is
+    new, so a setup that stopped part way is finished by the next one."""
+    path, command = machine.checkout(config, role), stack_setup(role)
+    if not command or not path.exists():
+        return
+    if path.parent != REPO.parent:
         say(f"  {role}: its stack is not set up; see CONTRIBUTING.md (dev-env, qa-env)")
+        return
+    project = compose_project(path)
+    if project and stack_running(project):
+        return
+    say(f"  {role}: bringing up its stack")
+    made = subprocess.run(command, cwd=REPO)
+    if made.returncode:
+        say(f"  {role}: its stack did not come up (exit {made.returncode}); the lines above "
+            f"say why, and `{' '.join(command)}` tries again")
 
 
 def accounts(config, say):
@@ -129,14 +164,34 @@ def setup(home, platform, say=print, ask=input, workspace=None):
     say("Checkouts:")
     for role in config.get("roles") or {}:
         make_checkout(config, role, say, home)
+        make_stack(config, role, say)
     accounts(config, say)
     tree = subprocess.run(["git", "rev-parse", "HEAD:tools/queue"], cwd=REPO, capture_output=True,
                           text=True).stdout.strip() or "local"
     update.copy(REPO / "tools" / "queue", home, tree)
     platform.install(home / "sq" / "sq", machine.env_file(), sys.executable)
-    say(f"Installed sq in {home / 'sq'} and the {platform.name} units. "
-        "`just agents up` starts the roles.")
+    say(f"Installed sq in {home / 'sq'} and the {platform.name} units.")
+    if sys.stdin.isatty():
+        say("Permissions the owner has granted the workers, from main:")
+        permissions.apply(home, say, ask)
+    else:
+        say("Run `just agents permissions apply` in your own terminal to grant the workers "
+            "what main's permissions.json holds.")
+    say("`just agents up` starts the roles.")
     return 0
+
+
+def start_stacks(config, names, say):
+    """Starts again each stack `down` stopped. A stack never made is setup's, not up's."""
+    for role in names:
+        path = machine.checkout(config, role)
+        project = compose_project(path) if path.exists() else None
+        if not project or stack_running(project):
+            continue
+        started = subprocess.run(["docker", "compose", "-p", project, "up", "-d"], cwd=path,
+                                 capture_output=True, text=True)
+        say(f"started stack {project}" if started.returncode == 0 else
+            f"  {role}: stack {project} did not start: {started.stderr.strip()[-300:]}")
 
 
 def up(db, home, platform, say=print, only=None):
@@ -157,6 +212,7 @@ def up(db, home, platform, say=print, only=None):
         note = machine.price_note(role, ready[role]["model"], config)
         if note:
             say(f"note: {note}")
+    start_stacks(config, names, say)
     platform.enable()
     say(f"started {', '.join(names) or 'no role'}; the first tick is within a minute")
     return 1 if only and set(only) - set(names) else 0

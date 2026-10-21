@@ -11,8 +11,8 @@ import subprocess
 import sys
 import time
 
-from . import (actions, agents, digests, github, machine, payloads, roles, runlog, runner, store,
-               sync, systemd, update, work)
+from . import (actions, agents, digests, github, launchd, machine, payloads, permissions, roles,
+               runlog, runner, shared, store, sync, systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
@@ -20,7 +20,8 @@ from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
 OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents")
-ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "start", "stop", "pause",
+ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "worker-supervise",
+         "start", "stop", "pause",
          "resume", "cost", "agents")
 
 
@@ -48,7 +49,8 @@ def refresh_work(db, now):
     busy_roles = {role for roles_ in busy for role in roles_.split(",")}
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
-                        last_runs, busy_roles, now, store.handled(db), store.moves(db))
+                        last_runs, busy_roles, now, store.handled(db), store.moves(db),
+                        store.get_meta(db, "machine_checks"))
     store.record(db, items, now)
     return items
 
@@ -68,7 +70,10 @@ def baseline(db):
 
 def brief(row, role):
     sq = f"sq {role}"
-    return "\n".join([
+    scope = [f"This is {row['pool']}: work only on this machine (disk, Docker, the role "
+             "stacks, the manager). Shared duties belong to whichever machine holds the ops "
+             "lease."] if row["kind"] == "machine" else []
+    return "\n".join(scope + [
         f"Run `{roles.invoke(role)}` as an unattended routine run "
         "(.claude/skills/role-routine, section 3).",
         f"Your work is item {row['id']}: {row['reason']}.",
@@ -368,16 +373,20 @@ READS = [
 
 DETAILS = {
     "move": "Move a story to a state your role moves it to, from the states it moves it "
-            "from. The product manager also moves an In Progress story back to Backlog or "
-            "To Do when nobody holds it: no role moved it there through sq, it carries no "
-            "developer label (dev1, dev2), and no open pull request is on its branch. A "
-            "pull request that only mentions a story moves it through Shortcut's GitHub "
-            "link, and that is the case this is for.",
+            "from. The product manager also moves an In Progress story back to Backlog, To Do "
+            "or Ready For Dev when nobody holds it: no role moved it there through sq, it "
+            "carries no developer label (dev1, dev2), and no open pull request is on its "
+            "branch. A pull request that only mentions a story moves it through Shortcut's "
+            "GitHub link, and that is the case this is for.",
     "edit": "Replace one section (--section), add a dated one (--dated), or change one "
             "exact piece of text with --replace OLD --with NEW. --replace takes several "
             "targets, refuses unless OLD appears exactly once in every one of them, and then "
             "changes all or none; --dry says which would change.",
     "relate": "Link two stories. A link that already exists answers \"already linked\".",
+    "permission-ask": "Ask for a command your permission rules refused. It posts on sc-4992 "
+                      "in the owner's format, and refuses a rule already asked, with the "
+                      "answer if there is one. Never wait for the answer: only the owner "
+                      "grants, by merging tools/queue/permissions.json and applying it.",
     "comment": "Post a tagged comment. --to takes roles, dev, and the language tags en, es, "
                "fr and pt, which reach the linguist.",
 }
@@ -391,6 +400,13 @@ WRITES = [
                                     "that only confirms; wakes nobody"), body(p))),
     ("note", actions.note, "a private note your next run on this story sees",
      lambda p: (p.add_argument("story"), body(p))),
+    ("permission-ask", actions.permission_ask, "ask the owner for a command you were refused, "
+     "on sc-4992",
+     lambda p: (p.add_argument("--rule", required=True, help="e.g. Bash(xcrun simctl boot:*)"),
+                p.add_argument("--for", dest="for_", required=True,
+                               help="what it is for, and the command you were refused"),
+                p.add_argument("--without", required=True,
+                               help="what cannot happen without it"))),
     ("claim", actions.claim, "take a story from your queue, then print it",
      lambda p: p.add_argument("story")),
     ("move", actions.move, "move a story to a state you may move it to",
@@ -498,16 +514,33 @@ def status(db, platform, now):
         if late:
             print(f"warning: {late}")
         on = runner.started(db)
+        agreed = store.get_meta(db, "shared_view") or {}
+        if agreed.get("paused"):
+            print(f"paused everywhere by {agreed['paused'].get('machine')}: "
+                  "sq resume --everywhere")
+        for name, seen in sorted((agreed.get("machines") or {}).items()):
+            print(f"{name}: seen {seen['seen']}s ago, running "
+                  f"{', '.join(seen['started']) or 'no role'}")
+        for role, other in agreed.get("conflicts") or []:
+            print(f"warning: {role} is listed here and on {other}, and neither marks it "
+                  "standby; only one runs it")
+        waiting = permissions.pending(home())
+        if waiting:
+            print(f"permissions: main grants {len(waiting)} change(s) this machine has not "
+                  "applied: just agents permissions apply")
         # The account is shown only when this machine's roles use more than one.
         folders = {role: machine.claude_dir(config, role) for role in ready}
         several = len(set(folders.values())) > 1
-        for role in config.get("roles") or {}:
+        listed = config.get("roles") or {}
+        for role in [r for r in refused if r not in listed] + list(listed):
             if role in refused:
                 print(f"{role:5} refused: {refused[role]}")
                 continue
             if role not in ready:
                 continue
+            away = (agreed.get("elsewhere") or {}).get(role)
             state = "running a worker" if platform.worker_active(role) else \
+                f"on {away[0]}, seen {away[1]}s ago" if role in on and away else \
                 "started" if role in on else "stopped"
             print(f"{role:5} {state} · {ready[role]['model']} {ready[role]['effort']}"
                   + (f" · {machine.account(folders[role])}" if several else ""))
@@ -547,6 +580,10 @@ def cost(days):
         print(f"total: ${total:.2f}")
 
 
+def this_platform():
+    return launchd.Mac(home()) if sys.platform == "darwin" else systemd.platform()
+
+
 def admin(argv):
     p = argparse.ArgumentParser(prog="sq", description=__doc__)
     sub = p.add_subparsers(dest="command", required=True)
@@ -556,21 +593,27 @@ def admin(argv):
     sub.add_parser("install", help="copy sq where no branch switch removes it")
     sub.add_parser("run", help="the timer's minute: sync, then tick each started role") \
         .add_argument("--dry-run", action="store_true", help="say what would wake, start nothing")
-    for name in ("worker", "worker-ended"):
+    for name in ("worker", "worker-ended", "worker-supervise"):
         worker = sub.add_parser(name, help=argparse.SUPPRESS)
         worker.add_argument("role")
         worker.add_argument("item", type=int)
+        if name == "worker-supervise":
+            worker.add_argument("--minutes", type=int, required=True)
+            worker.add_argument("--memory")
     for name, help_ in (("start", "start roles on this machine"),
                         ("stop", "stop roles on this machine")):
         sp = sub.add_parser(name, help=help_)
         sp.add_argument("roles", nargs="*")
         sp.add_argument("--all", action="store_true")
-    sub.add_parser("pause", help="no role ticks until sq resume")
-    sub.add_parser("resume", help="end a pause")
+    for name, help_ in (("pause", "no role ticks until sq resume"), ("resume", "end a pause")):
+        sub.add_parser(name, help=help_).add_argument(
+            "--everywhere", action="store_true", help="every machine, through GitHub")
     sub.add_parser("cost", help="what the workers cost, per day and role") \
         .add_argument("--days", type=int, default=1)
-    ag = sub.add_parser("agents", help="setup, up or down: the whole machine")
-    ag.add_argument("action", choices=["setup", "up", "down"])
+    ag = sub.add_parser("agents", help="setup, up, down or permissions: the whole machine")
+    ag.add_argument("action", choices=["setup", "up", "down", "permissions"])
+    ag.add_argument("step", nargs="?", choices=["apply"],
+                    help="permissions: apply what main grants, at your own keyboard")
     ag.add_argument("--now", action="store_true", help="down: stop running workers at once")
     ag.add_argument("--workspace", help="setup: the workspace, without asking")
     a = p.parse_args(argv)
@@ -579,28 +622,51 @@ def admin(argv):
         print(f"error: sq {a.command} is the owner's, and this is "
               f"{os.environ['SOIRELY_WORKER']}'s worker; say what you need in your report")
         return sys.exit(1)
+    machine.load_env()
     db = open_db()
-    platform = systemd.platform()
+    platform = this_platform()
     sq_path = home() / "sq" / "sq"
     if a.command == "status":
         status(db, platform, time.time())
     elif a.command == "run":
-        runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
+        try:
+            runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
+        finally:
+            platform.after_run()
     elif a.command == "worker":
         runner.worker(db, home(), platform, a.role, a.item)
     elif a.command == "worker-ended":
         runner.worker_ended(home(), platform, a.role, a.item)
+    elif a.command == "worker-supervise":
+        result, exit_status = launchd.supervise(
+            [sys.executable, str(sq_path), "worker", a.role, str(a.item)], a.minutes * 60,
+            launchd.size_bytes(a.memory))
+        os.environ.update(SERVICE_RESULT=result, EXIT_STATUS=str(exit_status))
+        runner.worker_ended(home(), platform, a.role, a.item)
+        pidfile = platform.pidfile(a.role)
+        if pidfile.exists() and pidfile.read_text().strip() == str(os.getpid()):
+            pidfile.unlink()
     elif a.command in ("start", "stop"):
         names = list(machine.load().get("roles") or {}) if a.all else a.roles
         if a.command == "start":
             return sys.exit(agents.start(db, home(), platform, names))
         return sys.exit(agents.stop(db, names))
+    elif a.command == "pause" and a.everywhere:
+        name = machine.load().get("machine") or "machine"
+        done = shared.pause_everywhere(shared.GitHubRefs(), name)
+        print("paused every machine: no role ticks anywhere, running workers finish their "
+              "item" if done else "every machine was already paused")
+    elif a.command == "resume" and a.everywhere:
+        shared.resume_everywhere(shared.GitHubRefs())
+        print("resumed every machine; a machine paused on its own stays paused")
     elif a.command == "pause":
         store.set_meta(db, "paused", time.strftime("%d %b %H:%M"))
         print("paused: no role ticks, running workers finish their item")
     elif a.command == "resume":
         store.set_meta(db, "paused", None)
-        print("resumed")
+        pause = (store.get_meta(db, "shared_view") or {}).get("paused")
+        print("resumed" + (f"; every machine is still paused by {pause.get('machine')}: "
+                           "sq resume --everywhere" if pause else ""))
     elif a.command == "cost":
         cost(a.days)
     elif a.command == "agents":
@@ -608,6 +674,14 @@ def admin(argv):
             sys.exit(agents.setup(home(), platform, workspace=a.workspace))
         if a.action == "up":
             sys.exit(agents.up(db, home(), platform))
+        if a.action == "permissions":
+            if a.step == "apply":
+                sys.exit(permissions.apply(home()))
+            lines = permissions.pending(home())
+            print("\n".join(["main grants what this machine has not applied; run "
+                             "just agents permissions apply:"] + lines) if lines
+                  else "this machine has applied everything main grants")
+            return None
         sys.exit(agents.down(db, home(), platform, now=a.now))
     elif a.command == "sync":
         errors = sync.sync(db, force=True, full=a.full)
