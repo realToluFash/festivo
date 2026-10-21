@@ -195,7 +195,7 @@ def queue_items(stories, moves=None, now=None, epics=None):
             merged[fingerprint] = _item(
                 fingerprint, pool, [role], "story", f"sc-{story['id']} moved to {story['state']}",
                 QUEUE + config["queue"].index(story["state"]), story,
-                rank=build_order[story["id"]] if story["state"] in R.BUILD_QUEUE else 0)
+                rank=build_order[story["id"]] if story["state"] in R.EPIC_ORDERED else 0)
     return list(merged.values())
 
 

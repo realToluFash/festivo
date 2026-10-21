@@ -288,12 +288,12 @@ class Queue(unittest.TestCase):
         self.assertNotIn("pm", woken)
         self.assertEqual(woken, [])
 
-    def test_each_state_wakes_exactly_one_role(self):
-        for state, role in (("Backlog", "bm"), ("To Do", "pm"), ("Needs Design", "ux"),
-                            ("Failed Code Review", "dev2"), ("Failed QA", "dev2"),
-                            ("In Progress", "dev2")):
+    def test_each_state_wakes_its_roles(self):
+        for state, woken in (("Backlog", ["bm", "pm"]), ("To Do", ["pm"]),
+                             ("Needs Design", ["ux"]), ("Failed Code Review", ["dev2"]),
+                             ("Failed QA", ["dev2"]), ("In Progress", ["dev2"])):
             items = work.queue_items([story(state=state, labels=["dev2"])])
-            self.assertEqual(sorted(r for i in items for r in i["roles"]), [role], state)
+            self.assertEqual(sorted(r for i in items for r in i["roles"]), woken, state)
         for state in ("Passed Code Review", "Waiting On Owner", "Passsed QA"):
             self.assertEqual(work.queue_items([story(state=state, labels=["dev2"])]), [], state)
 
@@ -566,3 +566,20 @@ class Unblocked(unittest.TestCase):
         items = work.derive([self.ticket()], [self.merged()], translated={})
         self.assertEqual([i["fingerprint"] for i in items if i["kind"] == "unblocked"],
                          ["l10n:unblocked:sc-9:#40"])
+
+
+class PmQueue(unittest.TestCase):
+    def test_pm_takes_the_backlog_after_every_to_do_story(self):
+        stories = [story(1, "Backlog"), story(2, "To Do"), story(3, "Backlog", ["translation"])]
+        items = {i["story_id"]: i["priority"] for i in work.queue_items(stories)
+                 if i["roles"] == ["pm"]}
+        self.assertEqual(set(items), {1, 2})
+        self.assertLess(items[2], items[1])
+
+    def test_the_backlog_comes_epic_by_epic(self):
+        early, late = story(1, "Backlog"), story(2, "Backlog")
+        early["epic_id"], late["epic_id"] = 2, 5
+        epics = {"2": {"position": 1, "state": "to do"}, "5": {"position": 2, "state": "to do"}}
+        ranks = {i["story_id"]: i["rank"] for i in work.queue_items([late, early], epics=epics)
+                 if i["roles"] == ["pm"]}
+        self.assertLess(ranks[1], ranks[2])
