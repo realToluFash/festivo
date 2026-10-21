@@ -7,6 +7,7 @@ import argparse
 import datetime
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import time
@@ -492,78 +493,139 @@ def role_parser(role):
     return p
 
 
+def ago(seconds):
+    seconds = max(int(seconds), 0)
+    for size, unit in ((365 * 86400, "y"), (86400, "d"), (3600, "h"), (60, "m")):
+        if seconds >= size:
+            return f"{seconds // size}{unit} ago"
+    return f"{seconds}s ago"
+
+
+def clip(line, width):
+    return line if len(line) <= width else line[:width - 1] + "…"
+
+
 def status(db, platform, now):
+    width = max(shutil.get_terminal_size((120, 20)).columns, 60)
+
+    def say(line=""):
+        print(clip(line, width))
+
     synced_at = store.get_meta(db, "synced_ok_at")
     errors = store.get_meta(db, "sync_errors") or []
-    print(f"synced {int(now - synced_at)}s ago" if synced_at else "never synced",
-          f"· last errors: {'; '.join(errors)}" if errors else "")
+    synced = f"synced {ago(now - synced_at)}" if synced_at else "never synced"
     try:
         config = machine.load()
     except machine.ConfigError as error:
         config = None
-        print(f"error: {error}")
+        say(synced)
+        say(f"error: {error}")
+    shown = set()
     if config:
         problems, refused, ready = machine.check(config)
-        print(f"{config.get('machine')}: manager "
-              f"{'running' if platform.timer_active() else 'stopped'}"
-              + (f" · paused since {runner.paused(db)}" if runner.paused(db) else "")
-              + f" · {machine.free_gb(config):.0f} GB free")
+        say(" · ".join([config.get("machine") or "this machine",
+                        f"manager {'running' if platform.timer_active() else 'stopped'}"]
+                       + ([f"paused since {runner.paused(db)}"] if runner.paused(db) else [])
+                       + [f"{machine.free_gb(config):.0f} GB free", synced]))
+        for error in errors:
+            say(f"error: sync: {error}")
         for problem in problems:
-            print(f"error: {problem}")
+            say(f"error: {problem}")
         late = runner.drift(config, (store.get_meta(db, "claude_version") or {}).get("version"))
         if late:
-            print(f"warning: {late}")
+            say(f"warning: {late}")
         on = runner.started(db)
         agreed = store.get_meta(db, "shared_view") or {}
         if agreed.get("paused"):
-            print(f"paused everywhere by {agreed['paused'].get('machine')}: "
-                  "sq resume --everywhere")
-        for name, seen in sorted((agreed.get("machines") or {}).items()):
-            print(f"{name}: seen {seen['seen']}s ago, running "
-                  f"{', '.join(seen['started']) or 'no role'}")
+            say(f"paused everywhere by {agreed['paused'].get('machine')}: "
+                "sq resume --everywhere")
         for role, other in agreed.get("conflicts") or []:
-            print(f"warning: {role} is listed here and on {other}, and neither marks it "
-                  "standby; only one runs it")
-        waiting = permissions.pending(home())
-        if waiting:
-            print(f"permissions: main grants {len(waiting)} change(s) this machine has not "
-                  "applied: just agents permissions apply")
+            say(f"warning: {role} is listed here and on {other}, and neither marks it "
+                "standby; only one runs it")
+        pending = permissions.pending(home())
+        if pending:
+            say(f"permissions: main grants {len(pending)} change(s) this machine has not "
+                "applied: just agents permissions apply")
+        others = sorted((agreed.get("machines") or {}).items())
+        if others:
+            say()
+            say("other machines")
+            name_width = max(len(name) for name, _ in others)
+            for name, seen in others:
+                say(f"  {name:{name_width}}  seen {ago(seen['seen']):8}  "
+                    f"{', '.join(seen['started']) or 'no role'}")
         # The account is shown only when this machine's roles use more than one.
         folders = {role: machine.claude_dir(config, role) for role in ready}
         several = len(set(folders.values())) > 1
         listed = config.get("roles") or {}
+        rows = []
         for role in [r for r in refused if r not in listed] + list(listed):
             if role in refused:
-                print(f"{role:5} refused: {refused[role]}")
+                rows.append((role, f"refused: {refused[role]}", "", "", "", []))
                 continue
             if role not in ready:
                 continue
+            held, waiting = store.held_by(db, role, now), store.waiting(db, role)
             away = (agreed.get("elsewhere") or {}).get(role)
-            state = "running a worker" if platform.worker_active(role) else \
-                f"on {away[0]}, seen {away[1]}s ago" if role in on and away else \
+            state = "running" if platform.worker_active(role) else \
+                f"on {away[0]}, seen {ago(away[1])}" if role in on and away else \
+                f"busy, item {held['id']}" if held else \
                 "started" if role in on else "stopped"
-            print(f"{role:5} {state} · {ready[role]['model']} {ready[role]['effort']}"
-                  + (f" · {machine.account(folders[role])}" if several else ""))
-            note = machine.price_note(role, ready[role]["model"], config)
-            if note:
-                print(f"      note: {note}")
+            model = f"{ready[role]['model'].removeprefix('claude-')} {ready[role]['effort']}"
+            if several:
+                model += f" · {machine.account(folders[role])}"
             last = runlog.last(home(), role)
+            ran = f"{time.strftime('%d %b %H:%M', time.localtime(last['at']))} " \
+                  f"${last.get('cost_usd') or 0:.2f}" if last else "never"
+            details = []
             if last:
                 first = (last.get("report") or "").strip().splitlines()[:1]
-                print(f"      last run {time.strftime('%d %b %H:%M', time.localtime(last['at']))}"
-                      f", ${last.get('cost_usd') or 0:.2f}: {first[0][:100] if first else '-'}")
+                details.append(f"last: {first[0] if first else '-'}")
+            if held:
+                details.append(f"now:  {held['reason']}")
+            if waiting:
+                details.append(f"next: {waiting[0]['reason']}")
+            note = machine.price_note(role, ready[role]["model"], config)
+            if note:
+                details.append(f"note: {note}")
             owner = store.get_meta(db, f"owner:{role}")
             if owner:
-                print(f"      waiting on the owner: {owner['lines'][0][:120]}")
+                details.append(f"waiting on the owner: {owner['lines'][0]}")
+            rows.append((role, state, model, ran, str(len(waiting)), details))
+            shown.add(role)
+        if rows:
+            heads = ("role", "state", "model", "last run", "waiting")
+            sizes = [max([len(heads[i])] + [len(row[i]) for row in rows if row[2] or i < 2])
+                     for i in range(5)]
+            sizes[1] = min(sizes[1], 28)
+            say()
+            say("roles here")
+            say("  " + "  ".join(f"{h:{n}}" if i < 4 else f"{h:>{n}}"
+                                 for i, (h, n) in enumerate(zip(heads, sizes))))
+            for role, state, model, ran, count, details in rows:
+                if not model:
+                    say(f"  {role:{sizes[0]}}  {state}")
+                    continue
+                say("  " + "  ".join([f"{role:{sizes[0]}}", f"{clip(state, sizes[1]):{sizes[1]}}",
+                                      f"{model:{sizes[2]}}", f"{ran:{sizes[3]}}",
+                                      f"{count:>{sizes[4]}}"]))
+                for detail in details:
+                    say(f"  {'':{sizes[0]}}  {detail}")
+    elsewhere = []
     for role in roles.ROLES:
+        if role in shown:
+            continue
         held, waiting = store.held_by(db, role, now), store.waiting(db, role)
         if held or waiting:
-            line = f"{role:5} " + (f"working on {held['id']} ({held['reason']}); "
-                                   if held else "")
-            line += f"{len(waiting)} waiting"
-            if waiting:
-                line += ": " + "; ".join(f"{w['id']} {w['reason']}" for w in waiting[:4])
-            print(line)
+            elsewhere.append((role, held, waiting))
+    if elsewhere:
+        say()
+        say("roles not run here")
+        count_width = max(len(str(len(w))) for _, _, w in elsewhere)
+        for role, held, waiting in elsewhere:
+            what = f"working on {held['reason']}" if held else \
+                f"next: {waiting[0]['reason']}"
+            say(f"  {role:5} {len(waiting):>{count_width}} waiting  {what}")
 
 
 def cost(days):
