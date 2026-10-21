@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
-use App\Domain\Organisation\Deletion\DeletedOrganisationPruner;
-use App\Domain\Organisation\Deletion\OrganisationRestorer;
+use App\Deletion\Pruner;
+use App\Deletion\Restorer;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -14,6 +14,7 @@ use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\Actor;
+use App\Enum\DeletedKind;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
@@ -286,7 +287,7 @@ final class OrganisationDeletionTest extends ApiTestCase
     {
         $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Coordinator);
         $this->delete($this->owner, 'Ìrè Events');
-        $pruner = self::service(DeletedOrganisationPruner::class);
+        $pruner = self::service(Pruner::class);
 
         self::mockTime(new DateTimeImmutable('2026-11-16T13:19:59+00:00'));
         self::assertSame(0, $pruner->prune());
@@ -308,7 +309,7 @@ final class OrganisationDeletionTest extends ApiTestCase
 
     private function restore(string $agent): void
     {
-        self::service(OrganisationRestorer::class)->restore($this->organisation->getId(), $agent);
+        self::service(Restorer::class)->restore(DeletedKind::Organisation, $this->organisation->getId(), $agent);
         self::em()->clear();
     }
 

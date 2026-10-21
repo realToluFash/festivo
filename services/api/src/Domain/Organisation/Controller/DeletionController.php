@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Deletion\RestoreWindow;
 use App\Domain\Organisation\Deletion\OrganisationDeleter;
 use App\Domain\Organisation\Deletion\OrganisationHoldings;
-use App\Domain\Organisation\Deletion\RestoreWindow;
 use App\Domain\Organisation\Members\OwnerCheck;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
