@@ -1,0 +1,20 @@
+{
+  "$comment": "The single declaration of an event's stored states and what each allows (sc-3584). Read by packages/domain for both clients, and mounted into the API, whose policy a test checks against this file in both directions. Live, Happening now and Finished are worked out from the clock (sc-3585), not stored. Paused and Ended gain their actions with sc-3586 and sc-3585.",
+  "actions": [
+    "edit",
+    "delete",
+    "make_live",
+    "pause",
+    "end",
+    "invite",
+    "message",
+    "check_in",
+    "service"
+  ],
+  "states": {
+    "draft": ["edit", "delete", "make_live"],
+    "live": ["edit", "pause", "end", "delete", "invite", "message", "check_in", "service"],
+    "paused": [],
+    "ended": []
+  }
+}

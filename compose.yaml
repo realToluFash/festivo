@@ -78,6 +78,7 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-dev}
       LOCALES_FILE: /locales.json
+      EVENT_STATES_FILE: /event-states.json
       ADDRESS_ENDPOINT: ${ADDRESS_ENDPOINT}
       ADDRESS_USER_AGENT: ${ADDRESS_USER_AGENT}
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT}
@@ -146,6 +147,8 @@ services:
       # mobile clients read it too. Mounted read-only at a fixed path rather
       # than reached by path arithmetic from inside the application.
       - ./locales.json:/locales.json:ro
+      # What each event state allows, which the clients read too (sc-3584).
+      - ./event-states.json:/event-states.json:ro
     ports:
       - '${API_PORT:-8080}:80'
     depends_on:
