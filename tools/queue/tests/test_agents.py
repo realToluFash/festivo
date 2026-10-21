@@ -127,6 +127,16 @@ class StartStop(unittest.TestCase):
             cli.admin(["status"])
         report.assert_called_once()
 
+    def test_status_says_how_long_ago_in_the_largest_unit(self):
+        from soirely_queue import cli
+        self.assertEqual([cli.ago(s) for s in (49, 73, 2 * 3600 + 5, 3 * 86400, -4)],
+                         ["49s ago", "1m ago", "2h ago", "3d ago", "0s ago"])
+
+    def test_status_cuts_a_long_line_to_the_terminal(self):
+        from soirely_queue import cli
+        self.assertEqual(cli.clip("abcdef", 4), "abc…")
+        self.assertEqual(cli.clip("abc", 4), "abc")
+
 
 class Accounts(unittest.TestCase):
     def test_setup_makes_each_folder_copies_settings_and_names_the_login(self):
