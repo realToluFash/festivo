@@ -69,6 +69,7 @@ final readonly class MembersController
         $organisation = $this->organisation($organisationId);
         $caller = $this->user();
         $this->joinRequests->expireDue($organisation);
+        $this->domainSuspender->removeExpired($organisation);
         $history = Dict\group_by(
             $this->membershipTransitionRepository->findInOrganisation($organisation),
             static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),

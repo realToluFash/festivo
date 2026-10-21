@@ -130,11 +130,11 @@ final readonly class DomainSuspender
     }
 
     /** @return int how many were removed, each as of its own instant rather than this run, as JoinRequests::expireDue does a request */
-    public function removeExpired(?Organisation $organisation = null): int
+    public function removeExpired(?Organisation $organisation = null, ?User $user = null): int
     {
         $removed = 0;
 
-        foreach ($this->membershipRepository->findDueForRemoval($this->clock->now(), $organisation) as $membership) {
+        foreach ($this->membershipRepository->findDueForRemoval($this->clock->now(), $organisation, $user) as $membership) {
             $removed += $this->entityManager->wrapInTransaction(function () use ($membership): int {
                 $this->entityManager->refresh($membership, LockMode::PESSIMISTIC_WRITE);
                 $suspension = $membership->getSuspension();

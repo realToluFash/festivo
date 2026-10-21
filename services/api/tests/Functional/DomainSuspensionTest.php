@@ -195,6 +195,27 @@ final class DomainSuspensionTest extends ApiTestCase
     }
 
     #[Test]
+    public function theMemberPageAndThePausedScreenEndASuspensionPastItsInstantBeforeTheJobDoes(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $tunde = $this->domainMember($organisation, 'tunde@ire.events');
+        $kemi = $this->domainMember($organisation, 'kemi@ire.events');
+        $this->suspendAt($this->membershipOf($tunde, $organisation), new DateTimeImmutable('-720 hours -1 minute'));
+        $this->suspendAt($this->membershipOf($kemi, $organisation), new DateTimeImmutable('-720 hours -1 minute'));
+
+        $this->signIn($owner);
+        $members = Type\vec(Type\shape(['id' => Type\string(), 'status' => Type\string()], true))->coerce(
+            $this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()))['members'],
+        );
+        $row = Iter\search($members, fn (array $member): bool => $member['id'] === $this->membershipOf($tunde, $organisation)->getId()->toRfc4122());
+        self::assertNotSame('suspended', $row['status'] ?? null);
+
+        $this->signIn($kemi);
+        self::assertSame([], $this->send('GET', '/api/orgs')['paused']);
+        self::assertSame(MembershipStatus::LeftOrRemoved, $this->membershipOf($kemi, $organisation)->getStatus());
+    }
+
+    #[Test]
     public function theOnlyOwnerIsSuspendedButNeverRemovedAndNoRemovalIsShown(): void
     {
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');

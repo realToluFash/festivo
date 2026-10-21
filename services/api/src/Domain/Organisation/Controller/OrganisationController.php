@@ -52,6 +52,11 @@ final readonly class OrganisationController
     public function list(): JsonResponse
     {
         $user = $this->security->getUser();
+
+        if ($user instanceof User) {
+            $this->domainSuspender->removeExpired(user: $user);
+        }
+
         $memberships = $user instanceof User ? $this->membershipRepository->findActiveFor($user) : [];
 
         return new JsonResponse([

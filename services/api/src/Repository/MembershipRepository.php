@@ -142,7 +142,7 @@ final class MembershipRepository extends ServiceEntityRepository
     }
 
     /** @return list<Membership> suspended with a removal instant at or before now, the earliest first */
-    public function findDueForRemoval(DateTimeImmutable $now, ?Organisation $organisation = null): array
+    public function findDueForRemoval(DateTimeImmutable $now, ?Organisation $organisation = null, ?User $user = null): array
     {
         $query = $this->createQueryBuilder('m')
             ->select('m', 'o')
@@ -156,6 +156,10 @@ final class MembershipRepository extends ServiceEntityRepository
 
         if (null !== $organisation) {
             $query->andWhere('m.organisation = :organisation')->setParameter('organisation', $organisation);
+        }
+
+        if (null !== $user) {
+            $query->andWhere('m.user = :user')->setParameter('user', $user);
         }
 
         /** @var list<Membership> */
