@@ -37,6 +37,7 @@ class FakeShortcut:
             self.raw[story_id]["labels"] = fields["labels"]
         if "description" in fields:
             self.raw[story_id]["description"] = fields["description"]
+        self.raw[story_id]["updated_at"] = self.raw[story_id].get("updated_at", 0) + 1
         return self.raw[story_id]
 
     def relate(self, subject_id, object_id, verb="relates to"):
@@ -322,6 +323,34 @@ class LineEdits(Base):
                                           dry=False, section="AC", dated=None, text="- x"))
         self.assertEqual(self.body(1), "# AC\n\n- x\n")
 
+
+    def test_a_save_made_meanwhile_is_kept_and_the_edit_redone_over_it(self):
+        real = self.fake.story
+        reads = []
+
+        def story(story_id):
+            reads.append(story_id)
+            if len(reads) == 2:
+                self.fake.update(story_id, description=self.body(1) + "\n\n## Copy\n\nhi")
+            return real(story_id)
+        self.fake.story = story
+        actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                          dry=False, section="AC", dated=None, text="- x"))
+        self.assertEqual(self.body(1), "# AC\n\n- x\n\n## Copy\n\nhi\n")
+
+    def test_a_story_that_keeps_changing_is_left_as_it_is(self):
+        real = self.fake.story
+
+        def story(story_id):
+            self.fake.update(story_id, description=self.body(1) + "!")
+            return real(story_id)
+        self.fake.story = story
+        with self.assertRaisesRegex(actions.Refused, "kept changing.*nothing saved"):
+            actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                              dry=False, section="AC", dated=None, text="- x"))
+        self.assertNotIn("- x", self.body(1))
+        with self.assertRaisesRegex(actions.Refused, "changed nothing; sc-1 failed: .*kept"):
+            actions.edit(self.as_("pm"), line_edit(["sc-1"], "- works", "- y"))
 
 class NewStories(Base):
     def file(self, epic):
