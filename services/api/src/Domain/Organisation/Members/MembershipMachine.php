@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Members;
 
+use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
@@ -38,6 +39,7 @@ final readonly class MembershipMachine
         if (null === $existing) {
             $now = $this->clock->now();
             $membership = new Membership($organisation, $user, $role, $entry, $now);
+            $membership->setDomain(self::domainFor($user, $channel));
             $this->entityManager->persist($membership);
             $this->record($membership, null, $entry, $channel, $actor, $now);
 
@@ -49,6 +51,10 @@ final readonly class MembershipMachine
 
         if (!$returning && !$approved) {
             throw new ApiException(ErrorCode::AlreadyAMember, $this->translator->trans('members.already_a_member'));
+        }
+
+        if ($returning) {
+            $existing->setDomain(self::domainFor($user, $channel));
         }
 
         $existing->changeRole($role);
@@ -63,6 +69,12 @@ final readonly class MembershipMachine
         $from = $membership->getStatus();
         $membership->setStatus($to, $now);
         $this->record($membership, $from, $to, $channel, $actor, $now);
+    }
+
+    /** Only company domain joining ties a membership to the address it came through (sc-564). */
+    private static function domainFor(User $user, MembershipChannel $channel): ?string
+    {
+        return MembershipChannel::Domain === $channel ? JoinOfferFinder::domainFor($user) : null;
     }
 
     private function record(Membership $membership, ?MembershipStatus $from, MembershipStatus $to, MembershipChannel $channel, ?User $actor, DateTimeImmutable $at): void

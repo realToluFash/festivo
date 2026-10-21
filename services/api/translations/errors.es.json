@@ -69,5 +69,6 @@
     "organisation_two_factor_overdue": "Esta organización exige la verificación en dos pasos.",
     "two_factor_kept_by_rule": "Su organización exige la verificación en dos pasos, así que no puede desactivarla.",
     "session_timed_out": "Se cerró la sesión tras un tiempo sin uso.",
-    "join_offer_unavailable": "No puedes pedir unirte a esa organización. Crea la tuya o pide a alguien de allí que te invite."
+    "join_offer_unavailable": "No puedes pedir unirte a esa organización. Crea la tuya o pide a alguien de allí que te invite.",
+    "restore_needs_address": "No se puede restablecer su acceso hasta que vuelva a tener una dirección verificada en el dominio de la empresa."
 }

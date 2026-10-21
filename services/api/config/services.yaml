@@ -142,6 +142,9 @@ services:
     App\Domain\User\SignInMethods\SignInMethodMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\DomainJoining\DomainSuspensionMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Organisation\SignInRules\SignInRulesMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'

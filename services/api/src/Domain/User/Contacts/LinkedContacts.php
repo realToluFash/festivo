@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Contacts;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\User\EmailAddressNormaliser;
 use App\Domain\User\Phone\ParsedPhone;
 use App\Domain\User\SignInMethods\RecentProof;
@@ -45,6 +46,7 @@ final readonly class LinkedContacts
         private RateLimiterFactoryInterface $contactAddAccountLimiter,
         private RecentProof $recentProof,
         private PhonePromotion $phonePromotion,
+        private DomainSuspender $domainSuspender,
     ) {
     }
 
@@ -122,6 +124,7 @@ final readonly class LinkedContacts
             $this->entityManager->flush();
             $address->setPrimary(true);
             $this->record($user, 'email.primary', 'primary', $before?->getAddress(), $address->getAddress());
+            $this->domainSuspender->addressChanged($user);
             $this->entityManager->flush();
         });
 
@@ -158,6 +161,7 @@ final readonly class LinkedContacts
         $user->removeEmailAddress($address);
         $this->entityManager->remove($address);
         $this->record($user, 'email.removed', 'email', $address->getAddress(), null);
+        $this->domainSuspender->addressChanged($user);
         $this->entityManager->flush();
     }
 

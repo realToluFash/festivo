@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
+use App\Enum\DomainSuspension;
 use App\Enum\MembershipStatus;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
@@ -21,6 +22,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_membership_organisation', columns: ['organisation_id'])]
 #[ORM\Index(name: 'idx_membership_user', columns: ['user_id'])]
 #[ORM\Index(name: 'idx_membership_role', columns: ['role_id'])]
+#[ORM\Index(name: 'idx_membership_domain', columns: ['domain'])]
 class Membership
 {
     use Timestampable;
@@ -52,6 +54,16 @@ class Membership
     /** When the organisation's two-factor deadline first held this member back, for the audit trail (sc-609). */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $twoFactorBlockedAt = null;
+
+    /** The domain a membership through company domain joining stays tied to (sc-564); null for every other channel. */
+    #[ORM\Column(type: Types::STRING, length: 253, nullable: true)]
+    private ?string $domain = null;
+
+    #[ORM\Column(type: Types::STRING, length: 30, nullable: true, enumType: DomainSuspension::class)]
+    private ?DomainSuspension $suspension = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $suspendedAt = null;
 
     public function __construct(Organisation $organisation, User $user, Role $role, MembershipStatus $status, DateTimeImmutable $at)
     {
@@ -113,6 +125,11 @@ class Membership
             $this->joinedAt = $at;
         }
 
+        if (MembershipStatus::Suspended !== $status) {
+            $this->suspension = null;
+            $this->suspendedAt = null;
+        }
+
         $this->status = $status;
     }
 
@@ -134,5 +151,36 @@ class Membership
     public function setTwoFactorBlockedAt(?DateTimeImmutable $twoFactorBlockedAt): void
     {
         $this->twoFactorBlockedAt = $twoFactorBlockedAt;
+    }
+
+    public function getDomain(): ?string
+    {
+        return $this->domain;
+    }
+
+    public function setDomain(?string $domain): void
+    {
+        $this->domain = $domain;
+    }
+
+    public function getSuspension(): ?DomainSuspension
+    {
+        return $this->suspension;
+    }
+
+    public function getSuspendedAt(): ?DateTimeImmutable
+    {
+        return $this->suspendedAt;
+    }
+
+    /** Only while suspended: leaving that state clears both. */
+    public function setSuspension(DomainSuspension $suspension, DateTimeImmutable $at): void
+    {
+        if (MembershipStatus::Suspended !== $this->status) {
+            throw new LogicException('Only a suspended membership carries why.');
+        }
+
+        $this->suspension = $suspension;
+        $this->suspendedAt = $at;
     }
 }

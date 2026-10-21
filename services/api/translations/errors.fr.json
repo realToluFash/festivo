@@ -69,5 +69,6 @@
     "organisation_two_factor_overdue": "Cette organisation exige la double authentification.",
     "two_factor_kept_by_rule": "Votre organisation exige la double authentification : vous ne pouvez pas la désactiver.",
     "session_timed_out": "Session fermée après une période d'inactivité.",
-    "join_offer_unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre ou demandez à quelqu'un sur place de vous inviter."
+    "join_offer_unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre ou demandez à quelqu'un sur place de vous inviter.",
+    "restore_needs_address": "Son accès ne peut pas être rétabli tant qu'il n'a pas de nouveau une adresse vérifiée sur le domaine de l'entreprise."
 }

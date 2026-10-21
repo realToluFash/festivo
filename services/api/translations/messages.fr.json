@@ -88,5 +88,7 @@
     "domain_joining.domain_proved_elsewhere": "Another organisation has proved {domain} on Enterprise, so only its listing works.",
     "domain_joining.domain_public": "You cannot use a public email domain.",
     "domain_joining.not_listed": "That domain is not on the list.",
-    "domain_joining.unavailable": "You cannot ask to join that organisation. Start your own, or ask somebody there to invite you."
+    "domain_joining.unavailable": "You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.",
+    "members.not_suspended": "That member is not suspended.",
+    "members.restore_needs_address": "{name} needs a verified {domain} address first."
 }

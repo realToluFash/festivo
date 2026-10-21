@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationSender;
 use App\Domain\Organisation\Members\MemberActions;
@@ -53,6 +54,7 @@ final readonly class MembersController
         private OwnershipTransfer $ownershipTransfer,
         private TranslatorInterface $translator,
         private MembershipDirectoryInterface $membershipDirectory,
+        private DomainSuspender $domainSuspender,
     ) {
     }
 
@@ -81,11 +83,12 @@ final readonly class MembersController
                     $this->membershipRepository->findInOrganisation($organisation),
                     static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus(),
                 ),
-                static fn (Membership $membership): array => MemberSerialiser::member(
+                fn (Membership $membership): array => MemberSerialiser::member(
                     $membership,
                     $history[$membership->getId()->toRfc4122()] ?? [],
                     $accepted[$membership->getUser()->getId()->toRfc4122()] ?? [],
                     $caller,
+                    $this->domainSuspender->describe($membership, $caller),
                 ),
             ),
             'invitations' => Vec\map($invitations, static fn (Invitation $invitation): array => MemberSerialiser::invitation($invitation, $now)),
@@ -148,6 +151,17 @@ final readonly class MembersController
     {
         $organisation = $this->organisation($organisationId);
         $this->memberActions->remove($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** Refused `restore_needs_address` while a member whose address went has no verified primary one at the domain again. */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/restore', name: 'orgs_members_restore', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function restore(string $organisationId, string $membershipId): Response
+    {
+        $organisation = $this->organisation($organisationId);
+        $this->memberActions->restore($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }

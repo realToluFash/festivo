@@ -135,5 +135,13 @@
     "ownershipTransferred.subject": "{organisation} has a new owner",
     "ownershipTransferred.youGaveIt": "You made {to} the owner of {organisation}. You are now an Administrator: you can still run it day to day, but you cannot hand it on or delete it.",
     "ownershipTransferred.youHaveIt": "{from} made you the owner of {organisation}. You can now change billing, members, roles and its settings, and you can delete it. {from} is now an Administrator.",
-    "ownershipTransferred.footer": "You're getting this because you are a member of {organisation}."
+    "ownershipTransferred.footer": "You're getting this because you are a member of {organisation}.",
+    "domainSuspended.subject": "{name}'s access to {organisation} is paused",
+    "domainSuspended.addressGone": "{name}'s access to {organisation} is paused because their {domain} address is no longer on their account.",
+    "domainSuspended.domainClosed": "{name}'s access to {organisation} is paused because {organisation} no longer lets people join through {domain}.",
+    "domainSuspended.managedElsewhere": "{name}'s access to {organisation} is paused because {domain} is now managed by another organisation.",
+    "domainSuspended.kept": "Their work is kept and still attributed to them. Restore their access, or remove them from {organisation}.",
+    "domainSuspended.deadline": "If nobody answers by {deadline}, they are removed.",
+    "domainSuspended.review": "Review {name}: {link}",
+    "domainSuspended.footer": "You are receiving this because you are an owner or administrator of {organisation}."
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Members;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Entity\Membership;
@@ -21,7 +22,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/** Settings > Members and General (sc-68): a role changed, a member removed, a member leaving. Each is audited. */
+/** Settings > Members and General (sc-68): a role changed, a member removed or restored, a member leaving. Each is audited. */
 final readonly class MemberActions
 {
     public const string ROLE_CHANGED = 'membership.role_changed';
@@ -36,6 +37,7 @@ final readonly class MemberActions
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private DomainSuspender $domainSuspender,
     ) {
     }
 
@@ -79,6 +81,14 @@ final readonly class MemberActions
         $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
         $this->roleAssignment->release($membership);
         $this->end($membership, self::REMOVED, $by);
+    }
+
+    /** A member suspended when the company domain stopped bringing them in (sc-564), let back in. */
+    public function restore(Membership $membership, User $by): void
+    {
+        $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
+        $this->domainSuspender->restore($membership, $by);
+        $this->entityManager->flush();
     }
 
     public function leave(Organisation $organisation, User $user): void

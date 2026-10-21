@@ -19,12 +19,13 @@ use Psl\Vec;
 final readonly class MemberSerialiser
 {
     /**
-     * @param list<MembershipTransition> $history  this membership's, oldest first
-     * @param list<Invitation>           $accepted invitations this member accepted here
+     * @param list<MembershipTransition> $history    this membership's, oldest first
+     * @param list<Invitation>           $accepted   invitations this member accepted here
+     * @param array<string, mixed>|null  $suspension DomainSuspender::describe(), for the caller
      *
      * @return array<string, mixed>
      */
-    public static function member(Membership $membership, array $history, array $accepted, User $caller): array
+    public static function member(Membership $membership, array $history, array $accepted, User $caller, ?array $suspension = null): array
     {
         $user = $membership->getUser();
         $last = Iter\last($history);
@@ -42,6 +43,7 @@ final readonly class MemberSerialiser
             'status' => $membership->getStatus()->value,
             'former' => MembershipStatus::LeftOrRemoved === $membership->getStatus() ? self::former($last, $user) : null,
             'channel' => $entered?->getChannel()->value,
+            'suspension' => $suspension,
             'since' => self::at($last?->getOccurredAt()),
             'invitedBy' => null === $invitation ? null : self::person($invitation->getInvitedBy()),
             'invitedAt' => self::at($invitation?->getSentAt() ?? $invitation?->getCreatedAt()),
