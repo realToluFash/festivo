@@ -1,14 +1,14 @@
 import { Text as RNText, StyleSheet, type TextProps as RNTextProps } from 'react-native';
 
-import { WEIGHTS, type WeightName } from '../theme/fonts.ts';
+import { WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 
 /**
  * Text with a weight, and without the two shapes that crash on web.
  *
- * It takes `weight` and resolves it to `fontWeight`, so no screen ever writes a
- * `fontFamily` — see src/theme/fonts.ts for why that matters once a custom
- * face is registered.
+ * It takes `weight` and resolves it to `fontWeight`, and `faced()` turns the
+ * weight into a face, so no screen ever writes a `fontFamily` — see
+ * src/theme/fonts.ts. `mono` is for step numbers and keyboard shortcuts only.
  *
  * It deliberately does NOT accept `onPress`. A Text with an onPress crashed the
  * previous build on React Native Web, so the replacement is a Pressable with a
@@ -19,17 +19,28 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
   weight?: WeightName;
   size?: number;
   muted?: boolean;
+  mono?: boolean;
 }
 
-export function Text({ weight = 'regular', size = 16, muted = false, style, ...rest }: TextProps) {
+export function Text({
+  weight = 'regular',
+  size = 16,
+  muted = false,
+  mono = false,
+  style,
+  ...rest
+}: TextProps) {
   return (
     <RNText
-      style={[
-        styles.base,
-        { fontWeight: WEIGHTS[weight], fontSize: size },
-        muted && styles.muted,
-        style,
-      ]}
+      style={faced(
+        [
+          styles.base,
+          { fontWeight: WEIGHTS[weight], fontSize: size },
+          muted && styles.muted,
+          style,
+        ],
+        mono,
+      )}
       {...rest}
     />
   );
