@@ -16,7 +16,6 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'events')]
-#[ORM\Index(name: 'idx_event_organisation', columns: ['organisation_id'])]
 #[ORM\Index(name: 'idx_event_organisation_starts', columns: ['organisation_id', 'starts_at_utc'])]
 #[ORM\Index(name: 'idx_event_organisation_closes', columns: ['organisation_id', 'closes_at'])]
 class Event

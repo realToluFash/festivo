@@ -35,7 +35,6 @@ final class Version20261021180000 extends AbstractMigration
                 PRIMARY KEY (id)
             )
             SQL);
-        $this->addSql('CREATE INDEX idx_event_organisation ON events (organisation_id)');
         $this->addSql('CREATE INDEX idx_event_organisation_starts ON events (organisation_id, starts_at_utc)');
         $this->addSql('CREATE INDEX idx_event_organisation_closes ON events (organisation_id, closes_at)');
         $this->addSql('ALTER TABLE events ADD CONSTRAINT FK_events_organisation FOREIGN KEY (organisation_id) REFERENCES organisations (id) ON DELETE CASCADE NOT DEFERRABLE');
