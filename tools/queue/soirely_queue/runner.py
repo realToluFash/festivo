@@ -194,7 +194,16 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
         if platform.worker_active(role):
             say(f"{role}: worker still running")
             continue
-        if store.held_by(db, role, now):
+        claimed = store.held_by(db, role, now)
+        if claimed and not dry_run and \
+                store.get_meta(db, f"launched:{role}") == claimed["id"]:
+            # Its worker is gone without finishing it, a crash or a kill; a role run by hand
+            # claims its own item, so only an item this runner launched is given back.
+            store.release(db, claimed["id"])
+            say(f"{role}: item {claimed['id']} given back, its worker ended without "
+                "finishing it")
+            claimed = None
+        if claimed:
             say(f"{role}: busy")
             continue
         if dry_run:
@@ -224,6 +233,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
             store.release(db, row["id"])
             say(f"error: {role}: the worker did not start ({error}); item {row['id']} released")
             continue
+        store.set_meta(db, f"launched:{role}", row["id"])
         say(f"{role}: woke for {row['reason']} (item {row['id']})")
     return None
 
