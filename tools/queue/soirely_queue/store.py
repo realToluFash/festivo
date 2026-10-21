@@ -153,8 +153,8 @@ def record(db, items, now=None):
             db.execute(
                 "insert into work (fingerprint, pool, roles, kind, story_id, pr, reason, "
                 "priority, comments, first_seen) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
-                "on conflict (fingerprint) do update set status = 'open' "
-                "where work.status = 'gone'",
+                "on conflict (fingerprint) do update set priority = excluded.priority, "
+                "status = case work.status when 'gone' then 'open' else work.status end",
                 (item["fingerprint"], item["pool"], ",".join(item["roles"]), item["kind"],
                  item.get("story_id"), item.get("pr"), item["reason"], item["priority"],
                  ",".join(map(str, item.get("comments") or [])), now))

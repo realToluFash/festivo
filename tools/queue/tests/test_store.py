@@ -36,6 +36,12 @@ class Claims(unittest.TestCase):
         self.assertIsNone(store.held_by(self.db, "dev", later))
         self.assertIsNotNone(store.claim(self.db, "dev", later))
 
+    def test_an_open_item_takes_its_new_priority(self):
+        store.record(self.db, [item("a", ["dev"]), item("b", ["dev"])], NOW)
+        store.record(self.db, [item("a", ["dev"]), dict(item("b", ["dev"]), priority=5)],
+                     NOW + 60)
+        self.assertEqual(store.claim(self.db, "dev", NOW + 60)["fingerprint"], "b")
+
     def test_finished_work_does_not_come_back(self):
         store.record(self.db, [item("a", ["dev"])], NOW)
         row = store.claim(self.db, "dev", NOW)
