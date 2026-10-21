@@ -127,6 +127,18 @@ final class OrganisationDeletionTest extends ApiTestCase
     }
 
     #[Test]
+    public function aCurlyApostropheMatchesAStraightOneAndTheAccentsMayBeDecomposed(): void
+    {
+        $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
+        $organisation->setName("Ìrè's Events");
+        self::em()->flush();
+
+        $this->delete($this->owner, "I\u{0300}re\u{0300}\u{2019}s Events");
+
+        self::assertSame(200, $this->statusCode(), Json\encode($this->last()));
+    }
+
+    #[Test]
     public function onlyAnOwnerDeletes(): void
     {
         $admin = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);

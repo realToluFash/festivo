@@ -4,7 +4,7 @@ import {
   type OrganisationDeletion,
   type OrganisationMember,
 } from '@soirely/api-client';
-import { roleName } from '@soirely/domain';
+import { roleName, typedNameMatches } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -454,7 +454,7 @@ function Delete({
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
-  const matches = typed.trim() === organisation.name;
+  const matches = typedNameMatches(typed, organisation.name);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();

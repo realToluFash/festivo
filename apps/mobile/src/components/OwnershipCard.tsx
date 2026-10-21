@@ -4,7 +4,7 @@ import {
   type OrganisationDeletion,
   type OrganisationMember,
 } from '@soirely/api-client';
-import { roleName } from '@soirely/domain';
+import { roleName, typedNameMatches } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
@@ -454,7 +454,7 @@ function Delete({
   const input = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
-  const matches = typed.trim() === name;
+  const matches = typedNameMatches(typed, name);
 
   async function submit(): Promise<void> {
     if (busy) return;
