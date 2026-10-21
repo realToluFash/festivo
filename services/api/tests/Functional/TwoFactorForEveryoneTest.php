@@ -283,9 +283,9 @@ final class TwoFactorForEveryoneTest extends ApiTestCase
         self::assertSame(new DateTimeImmutable($inLagos['at'])->getTimestamp(), new DateTimeImmutable($inLondon['at'])->getTimestamp());
 
         $mailer = self::service(UserMailer::class);
-        $deadline = new DateTimeImmutable('2026-10-24 13:20:00 UTC');
-        self::assertSame('Saturday, Oct 24 at 14:20 WAT', $mailer->deadline($deadline, $this->fresh($lagos), 'en'));
-        self::assertSame('Saturday, Oct 24 at 14:20 BST', $mailer->deadline($deadline, $this->fresh($london), 'en'));
+        $deadline = new DateTimeImmutable('2026-10-31 13:20:00 UTC');
+        self::assertSame('Saturday, Oct 31 at 14:20 WAT', $mailer->deadline($deadline, $this->fresh($lagos), 'en'));
+        self::assertSame('Saturday, Oct 31 at 13:20 GMT', $mailer->deadline($deadline, $this->fresh($london), 'en'));
     }
 
     #[Test]
