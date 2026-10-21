@@ -553,7 +553,7 @@
     "keepItOn": "Keep it on",
     "failedTitle": "Two-factor did not load",
     "failedBody": "Something went wrong on our side. Try again in a moment.",
-    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
+    "keptByRule": "{{organisation}} requires two-factor, so you cannot turn it off."
   },
   "passwordCard": {
     "title": "Password",
@@ -1352,9 +1352,9 @@
     "valueEveryone": "Two-factor required for everyone",
     "valueNoEveryone": "Two-factor not required of everyone",
     "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
-    "dueSetUp": "Set it up now",
+    "dueSetUp": "Turn it on now",
     "overdueTitle": "Turn on two-factor to carry on",
-    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
+    "overdueBody": "{{organisation}} requires two-factor, and the time to turn it on has passed.",
     "overdueElsewhere": "Your other organisations and single-event access are not affected.",
     "overdueTurnOn": "Turn on two-factor",
     "overdueSignOut": "Sign out"

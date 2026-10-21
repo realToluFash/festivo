@@ -590,7 +590,7 @@ describe('what the rules ask of a member, on every page', () => {
     expect(
       await screen.findByText('Ìrè Events requires two-factor from Saturday, Oct 24 at 14:20 WAT.'),
     ).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Set it up now' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'Turn it on now' }).getAttribute('href')).toBe(
       '/app/account/security',
     );
     expect(screen.queryByRole('button', { name: 'Close this notice' })).toBeNull();
@@ -611,7 +611,7 @@ describe('what the rules ask of a member, on every page', () => {
 
     expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
     expect(
-      screen.getByText('Ìrè Events requires two-factor. Set it up to carry on.'),
+      screen.getByText('Ìrè Events requires two-factor, and the time to turn it on has passed.'),
     ).toBeDefined();
     expect(
       screen.getByText('Your other organisations and single-event access are not affected.'),
