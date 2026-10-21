@@ -19,6 +19,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
 const RAIL_WIDTH = 220;
@@ -129,7 +130,13 @@ export function AppFrame({
           )}
           <OpenSwitcher.Provider value={openSwitcher}>
             <HideBack.Provider value={setBackHidden}>
-              {overdue && !aboutTheAccount && signedIn.organisation != null ? (
+              {signedIn.pausedIn != null && !aboutTheAccount ? (
+                <AccessPaused
+                  paused={signedIn.pausedIn}
+                  other={signedIn.organisation}
+                  onSwitch={(next) => switchOrganisation(next.id)}
+                />
+              ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
                 <TwoFactorOverdue organisation={signedIn.organisation} />
               ) : (
                 children
