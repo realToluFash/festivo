@@ -53,6 +53,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
+  « Membres »; a member is removed with « Retirer », as the glossary's Remove. A person's state
+  never agrees with them: « Avec accès », « En attente d'approbation », « Accès suspendu »,
+  « A quitté l'organisation », « Accès retiré », and in the row line « départ le {{date}} »,
+  « accès retiré le {{date}} ». After a removal, « {{name}} ne fait plus partie de
+  {{organisation}} » rather than « a été retiré ». Groups on the chips take the plural, « Tous »,
+  « Suspendus », « Anciens ». "On their next request" is « dès sa prochaine utilisation de
+  Soirely ». An owner in a sentence is « une personne ayant le rôle Propriétaire ».
 - **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
   app, sc-4188). The invitation is the subject, « Une invitation vous attend », « {{count}}
   invitations vous attendent », shorter than « Vous avez … en attente ». With several, "that
