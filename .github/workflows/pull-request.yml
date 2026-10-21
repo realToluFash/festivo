@@ -343,8 +343,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run typecheck --workspace @soirely/domain --workspace @soirely/api-client --workspace @soirely/i18n-lint
-      - run: npm run test --workspace @soirely/domain --workspace @soirely/api-client
+      - run: npm run typecheck --workspace @soirely/domain --workspace @soirely/api-client --workspace @soirely/i18n-lint --workspace @soirely/agent-gateway
+      - run: npm run test --workspace @soirely/domain --workspace @soirely/api-client --workspace @soirely/agent-gateway
 
   # ── Localisation, its own status ────────────────────────────────────────────
   #

@@ -44,6 +44,13 @@ describe('a single-surface change runs that surface and no other', () => {
     expect(surfaces.packages).toBe(true);
     expect(surfaces.everything).toBe(false);
   });
+
+  it.each([
+    ['the agent gateway', 'tools/agent-gateway/src/gateway.ts'],
+    ['a pair the gateway replays', 'services/api/tests/Fixtures/AgentGateway/text.json'],
+  ])('%s runs the packages', (_name, path) => {
+    expect(changedSurfaces([path]).packages).toBe(true);
+  });
 });
 
 describe('a catalogue runs localisation wherever it lives', () => {
