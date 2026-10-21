@@ -138,6 +138,13 @@ class Claims(unittest.TestCase):
         self.linux.minute(NOW + 120, holding=())
         self.assertNotIn(shared.claim_ref("qa", "sc-5"), self.remote.refs)
 
+    def test_a_story_given_back_can_be_claimed_again_in_the_same_minute(self):
+        view, _, _ = self.linux.minute()
+        shared.claim_item(self.remote, view, "qa", "sc-5", "qa")
+        view, _, _ = self.linux.minute(NOW + 60, holding=())
+        self.assertTrue(shared.claim_item(self.remote, view, "qa", "sc-5", "qa"))
+        self.assertIn(shared.claim_ref("qa", "sc-5"), self.remote.refs)
+
 
 class Offline(unittest.TestCase):
     """The lead's case on #279: the Linux box loses GitHub for six minutes while its
