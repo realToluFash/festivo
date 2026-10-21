@@ -1513,7 +1513,7 @@
     "untouched": "Your other organisations and your access to single events are not affected.",
     "removedBy": "If nobody restores your access by {{when}}, you are removed from {{organisation}}.",
     "nextTitle": "What happens next",
-    "nextAddressGone": "Add your {{domain}} address again in Account settings and make it your main address, then ask an admin of {{organisation}} to restore your access.",
+    "nextAddressGone": "Add your {{domain}} address again in Account settings and make it primary, then ask an admin of {{organisation}} to restore your access.",
     "nextNothingNeeded": "An admin of {{organisation}} can restore your access. Nothing is needed from you.",
     "accountSettings": "Account settings",
     "switch": "Switch organisation"
