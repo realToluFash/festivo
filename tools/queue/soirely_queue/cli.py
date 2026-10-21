@@ -134,7 +134,9 @@ def this_worker():
 def cmd_tick(s, a):
     now = time.time()
     synced(s.db, now)
-    if store.held_by(s.db, s.role, now, this_worker()):
+    if this_worker():
+        return own_item(s, now, lambda row: print("busy"))
+    if store.held_by(s.db, s.role, now):
         return print("busy")
     row = store.claim(s.db, s.role, now)
     if not row:
@@ -145,9 +147,24 @@ def cmd_tick(s, a):
 def cmd_next(s, a):
     now = time.time()
     synced(s.db, now)
-    row = store.held_by(s.db, s.role, now, this_worker()) or store.claim(s.db, s.role, now)
+    if this_worker():
+        return own_item(s, now, lambda row: render(s, row))
+    row = store.held_by(s.db, s.role, now) or store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
+    render(s, row)
+
+
+def own_item(s, now, show):
+    """Inside a worker, the item the runner launched it on; it never claims another, since
+    the runner would not know the claim was its worker's and would wait out the lease."""
+    row = store.held_by(s.db, s.role, now, this_worker())
+    if not row:
+        return print(f"{this_worker()}'s item is finished: end this run")
+    show(row)
+
+
+def render(s, row):
     s.printer.run = f"work:{row['id']}"
     payloads.render(s.printer, s.db, row, s.cache)
     s.done()
