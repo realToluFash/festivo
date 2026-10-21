@@ -81,6 +81,14 @@ function creating(created: () => Response) {
     );
 }
 
+/** Presses Create organisation with focus on it, as a click or Enter on the button leaves it. */
+function pressCreate(): void {
+  const create = screen.getByRole('button', { name: 'Create organisation' });
+
+  create.focus();
+  fireEvent.click(create);
+}
+
 function openCreate(): void {
   at('/app');
   fireEvent.click(screen.getByRole('button', { name: /Organisation: Ìrè Events/ }));
@@ -245,11 +253,14 @@ describe('creating an organisation', () => {
     openCreate();
 
     fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Six' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    pressCreate();
 
     const alert = await screen.findByText('Too many new organisations for now.');
     expect(alert.parentElement?.textContent).toMatch(/Try again at \d{2}:\d{2}\./);
-    expect((screen.getByLabelText('Organisation name') as HTMLInputElement).value).toBe('Six');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
+    expect(name.value).toBe('Six');
+    await waitFor(() => expect(document.activeElement).toBe(name));
   });
 
   it('says it did not work when the refusal names no field the dialog has', async () => {
@@ -271,13 +282,71 @@ describe('creating an organisation', () => {
     openCreate();
 
     fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create organisation' }));
+    pressCreate();
 
     expect(
       await screen.findByText(
         'Creating the organisation did not work. Nothing was created. Try again in a moment.',
       ),
     ).toBeDefined();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
+    expect(name.value).toBe('Supper');
+    await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+
+  it.each([
+    ['a server error', () => problem('internal_error', 500)],
+    [
+      'no network',
+      () => {
+        throw new TypeError('Failed to fetch');
+      },
+    ],
+  ])('puts focus back on the name after %s, keeping what was typed', async (_, answer) => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    creating(answer);
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    pressCreate();
+    expect(screen.getByLabelText('Organisation name').matches(':disabled')).toBe(true);
+    expect(screen.getByLabelText('Country').matches(':disabled')).toBe(true);
+
+    expect(
+      await screen.findByText(
+        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
+    expect(name.value).toBe('Supper');
+    await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+
+  it('puts focus on the field a refusal names', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    creating(() =>
+      json(
+        {
+          type: 'https://soirely.com/errors/validation_failed',
+          title: 'No.',
+          status: 422,
+          violations: [
+            { propertyPath: 'countryCode', message: 'Bad country.', code: 'validation_failed' },
+          ],
+        },
+        422,
+      ),
+    );
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    pressCreate();
+
+    expect(await screen.findByText('Bad country.')).toBeDefined();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Country')));
   });
 
   it('keeps Tab and Shift+Tab inside the dialog, in the drawn order', () => {
