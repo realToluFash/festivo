@@ -251,6 +251,30 @@ export interface RolesCatalogue {
   areas: { area: string; permissions: string[] }[];
 }
 
+export type EventStatus = 'draft';
+
+/** `startsAt` and `endsAt` carry the offset in force at that moment in `timeZone` (sc-1486). */
+export interface OrganisationEvent {
+  id: string;
+  organisationId: string;
+  name: string;
+  status: EventStatus;
+  startsAt: string;
+  endsAt: string;
+  timeZone: string;
+  currency: string;
+  createdAt: string;
+}
+
+/** `startsAt` and `endsAt` are local to `timeZone`, with no offset: "2026-11-14T16:00". */
+export interface NewEvent {
+  name: string;
+  startsAt: string;
+  endsAt: string;
+  timeZone: string;
+  currency: string;
+}
+
 export interface Membership extends Organisation {
   role: MemberRole;
   /** What this role holds here, every registered one for Owner (sc-66): what a client may show. */
@@ -1204,6 +1228,51 @@ export class ApiClient {
     );
   }
 
+  /** Soonest first, as the API orders them. */
+  async events(organisationId: string): Promise<OrganisationEvent[]> {
+    const body = await this.get<{ events?: unknown }>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/events`,
+    );
+    const events = Array.isArray(body?.events) ? body.events.map(asOrganisationEvent) : null;
+
+    if (events == null || events.some((event) => event == null)) {
+      throw new Error(
+        'The API answered GET /api/orgs/{id}/events in a shape this client does not know. Check the events controller in services/api.',
+      );
+    }
+
+    return events as OrganisationEvent[];
+  }
+
+  /** Refused `validation_failed` with violations on name, startsAt, endsAt, timeZone or currency. */
+  async createEvent(organisationId: string, event: NewEvent): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.post<{ event?: unknown }>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/events`,
+        event,
+      ),
+    );
+  }
+
+  /** Refused `not_found` alike for an event that does not exist and one in another organisation. */
+  async event(eventId: string): Promise<OrganisationEvent> {
+    return this.organisationEvent(
+      await this.get<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`),
+    );
+  }
+
+  private organisationEvent(body: { event?: unknown } | null | undefined): OrganisationEvent {
+    const event = asOrganisationEvent(body?.event);
+
+    if (event == null) {
+      throw new Error(
+        'The API answered an event in a shape this client does not know. Check the events controller in services/api.',
+      );
+    }
+
+    return event;
+  }
+
   async members(organisationId: string): Promise<MembersList> {
     const raw = await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/members`);
     const list = asMembersList(raw);
@@ -1924,6 +1993,39 @@ function asRolesCatalogue(raw: unknown): RolesCatalogue | null {
     areas: parsedAreas as RolesCatalogue['areas'],
   };
 }
+
+function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const candidate = raw as Record<string, unknown>;
+  const status = oneOf(candidate.status, EVENT_STATUSES);
+  const fields = [
+    'id',
+    'organisationId',
+    'name',
+    'startsAt',
+    'endsAt',
+    'timeZone',
+    'currency',
+    'createdAt',
+  ] as const;
+
+  if (status == null || fields.some((field) => typeof candidate[field] !== 'string')) return null;
+
+  return {
+    id: candidate.id as string,
+    organisationId: candidate.organisationId as string,
+    name: candidate.name as string,
+    status,
+    startsAt: candidate.startsAt as string,
+    endsAt: candidate.endsAt as string,
+    timeZone: candidate.timeZone as string,
+    currency: candidate.currency as string,
+    createdAt: candidate.createdAt as string,
+  };
+}
+
+const EVENT_STATUSES: readonly EventStatus[] = ['draft'];
 
 function asOrganisation(raw: unknown): Organisation | null {
   if (typeof raw !== 'object' || raw == null) return null;

@@ -15,6 +15,17 @@ decision.
 | Enums        | stored as `VARCHAR` with a check constraint, mapped to a PHP enum |
 | Money        | integer minor units plus a currency column. Never a float         |
 
+**One exception to UTC: an event's start and end** (sc-1486). `events.starts_at` and
+`events.ends_at` are the wall-clock times the host typed, local to `events.time_zone` (an
+IANA name), and are never rewritten: an event at 19:00 stays at 19:00 when its country
+changes its rules before the day (RFC 5545 stores a future time the same way). They are
+read only together with the zone, through `Event::getStartsAt()` and `getEndsAt()`.
+`starts_at_utc` and `ends_at_utc` are **derived** from them, written by the API's save path
+and nothing else, for ordering and indexing; `closes_at` is generated from `ended_at` and
+`ends_at_utc`. PHP does every conversion and SQL none, so one tzdata decides an event's
+instants; when tzdata changes, the derived columns are recomputed (sc-5574). Every other
+timestamp, `created_at` included, is UTC.
+
 **Plural rather than singular.** A table holds many rows, and the plural reads correctly
 in the place it is most often written: `FROM guests`, `JOIN org_members`. It also sidesteps
 a trap — `user` is a reserved word in Postgres, so a singular `user` table has to be

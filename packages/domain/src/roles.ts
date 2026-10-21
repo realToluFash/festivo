@@ -18,18 +18,26 @@ export function levelOf(held: readonly string[], area: string): Level {
   return 'nothing';
 }
 
-/** Change includes reading where the area has it, and an area set to nothing takes the margin with it. */
+/** An area's own switches beside its level, such as the budget's margin and creating events. */
+export function extrasOf(area: string, permissions: readonly string[]): string[] {
+  return permissions.filter(
+    (permission) => permission !== `${area}.read` && permission !== `${area}.manage`,
+  );
+}
+
+/** Change includes reading where the area has it, and an area set to nothing takes its extras with it. */
 export function withLevel(
   held: readonly string[],
   area: string,
   level: Level,
   permissions: readonly string[],
 ): string[] {
+  const extras = level === 'nothing' ? extrasOf(area, permissions) : [];
   const others = held.filter(
     (permission) =>
       permission !== `${area}.read` &&
       permission !== `${area}.manage` &&
-      (level !== 'nothing' || area !== 'budget' || permission !== MARGIN),
+      !extras.includes(permission),
   );
 
   const reading = permissions.includes(`${area}.read`) ? [`${area}.read`] : [];
@@ -60,10 +68,10 @@ export function settableLevels(
   });
 }
 
-export function withMargin(held: readonly string[], shown: boolean): string[] {
-  const others = held.filter((permission) => permission !== MARGIN);
+export function withExtra(held: readonly string[], extra: string, on: boolean): string[] {
+  const others = held.filter((permission) => permission !== extra);
 
-  return shown ? [...others, MARGIN] : others;
+  return on ? [...others, extra] : others;
 }
 
 export function sameGrant(a: readonly string[], b: readonly string[]): boolean {
