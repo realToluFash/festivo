@@ -282,7 +282,9 @@ describe('New event', () => {
     expect(name.getAttribute('aria-invalid')).toBe('true');
     expect(name.className).toContain('input-wrong');
     expect(errorUnder('event-name')).toContain('Give the event a name.');
-    expect(screen.getByRole('status').textContent).toBe('1 field needs fixing. Nothing was sent.');
+    expect(screen.getByRole('status').textContent).toBe(
+      '1 field needs fixing, so nothing was sent.',
+    );
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 
@@ -298,7 +300,9 @@ describe('New event', () => {
     await waitFor(() => expect(document.activeElement).toBe(start));
     expect(errorUnder('event-start-date')).toContain('Choose when the event starts.');
     expect(errorUnder('event-end-date')).toContain('Choose when the event ends.');
-    expect(screen.getByRole('status').textContent).toBe('2 fields need fixing. Nothing was sent.');
+    expect(screen.getByRole('status').textContent).toBe(
+      '2 fields need fixing, so nothing was sent.',
+    );
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 
@@ -381,7 +385,7 @@ describe('New event', () => {
             },
             {
               propertyPath: 'name',
-              message: 'Use at most 120 characters for the name.',
+              message: 'Shorten the name to 120 characters or fewer.',
               code: 'too_long',
             },
           ],
@@ -397,7 +401,7 @@ describe('New event', () => {
 
     const name = document.getElementById('event-name')!;
     await waitFor(() => expect(document.activeElement).toBe(name));
-    expect(errorUnder('event-name')).toContain('Use at most 120 characters for the name.');
+    expect(errorUnder('event-name')).toContain('Shorten the name to 120 characters or fewer.');
     expect(errorUnder('event-end-date')).toContain(
       'The end is before the start. Choose a later end.',
     );
@@ -487,12 +491,12 @@ describe("An event's page", () => {
     });
 
     at('/app/events/missing');
-    const missing = await screen.findByRole('heading', { name: "This event isn't available" });
+    const missing = await screen.findByRole('heading', { name: 'This event is not available' });
     const missingPage = missing.closest('.event-page')!.innerHTML;
 
     cleanup();
     at('/app/events/elsewhere');
-    const elsewhere = await screen.findByRole('heading', { name: "This event isn't available" });
+    const elsewhere = await screen.findByRole('heading', { name: 'This event is not available' });
 
     expect(elsewhere.closest('.event-page')!.innerHTML).toBe(missingPage);
     expect(screen.queryByText('Not yours')).toBeNull();
