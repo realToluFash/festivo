@@ -8,7 +8,7 @@ from . import github, roles, store, work
 from .shortcut import Shortcut, slim
 
 FRESH_SECONDS = 60
-FULL_EVERY_SECONDS = 15 * 60
+FULL_EVERY_SECONDS = 5 * 60
 INBOX_DAYS = 14
 LOOKUP_EVERY_SECONDS = 60 * 60
 # Bumped when `shortcut.slim` keeps new fields, so stories stored before are fetched again.
