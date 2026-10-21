@@ -10,12 +10,17 @@ NOW = 1_000_000.0
 class FakeShortcut:
     def __init__(self):
         self.searches = []
+        self.epic_reads = 0
 
     def workflows(self):
         return [{"states": [{"id": 1, "name": "Ready For Dev"}]}]
 
     def epics(self):
-        return []
+        self.epic_reads += 1
+        return [{"id": 2, "name": "Two", "state": "to do", "epic_state_id": 9}]
+
+    def epic_states(self):
+        return [{"id": 9, "name": "Waiting for Owner Approval"}]
 
     def search(self, query):
         self.searches.append(query)
@@ -48,3 +53,14 @@ class States(unittest.TestCase):
         self.states(NOW)
         self.states(NOW + 5 * 60)
         self.assertEqual(len(self.states(NOW + 15 * 60)), len(roles.QUEUE_STATES))
+
+
+class Epics(unittest.TestCase):
+    def test_epics_are_read_every_minute_with_their_state_name(self):
+        db, shortcut = store.connect(":memory:"), FakeShortcut()
+        sync.sync_shortcut(db, shortcut, NOW)
+        sync.sync_shortcut(db, shortcut, NOW + 30)
+        sync.sync_shortcut(db, shortcut, NOW + 60)
+        self.assertEqual(shortcut.epic_reads, 2)
+        self.assertEqual(store.get_meta(db, "epics")["2"]["state_name"],
+                         "Waiting for Owner Approval")

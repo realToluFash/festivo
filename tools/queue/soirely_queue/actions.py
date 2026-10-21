@@ -303,6 +303,11 @@ def claim(c, a):
                 or not R.ROLES[c.role]["filter"](set(story["labels"]), story["state"]):
             raise Refused(f"sc-{story['id']} is {story['state']} "
                           f"({', '.join(story['labels']) or 'no labels'}), not in your queue")
+        held = W.held_epic(story, store.get_meta(c.db, "epics"))
+        if held:
+            raise Refused(f"sc-{story['id']} is in epic {held['name']}, which is "
+                          f"{held.get('state_name') or held.get('state')}: its stories wait "
+                          "until the owner moves it to In Progress")
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")

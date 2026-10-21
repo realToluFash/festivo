@@ -111,6 +111,9 @@ story or pull request, read fresh rather than from the last sync, and says why i
   A developer's queue runs epic by epic (`work.epic_order`): by the epic's place in
   Shortcut's epic list, then the story's place in the story list, with stories in no epic
   last.
+  Only an epic in progress offers its Ready For Dev stories (`work.held_epic`): one in To
+  Do or Waiting for Owner Approval holds them, and they come back when it moves to In
+  Progress. Epics are read on every sync, so the change reaches the queue within a minute.
 - **`store.py`** holds the claims. A role holds one item at a time, a pooled item (Ready For
   QA, unlabelled Ready For Dev) goes to one role only, and a claim lapses after 90 minutes.
 

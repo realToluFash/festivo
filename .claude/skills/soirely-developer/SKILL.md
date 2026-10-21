@@ -75,7 +75,10 @@ top:
    any screens are linked. The list runs **epic by epic**, in the order of Shortcut's epic
    list, and by the story list within each epic: a story in a later epic waits until the
    earlier epics have nothing in `Ready For Dev`, and a story in no epic comes last. Take
-   the top; never skip ahead to a later epic. **By your number**, so two developers reaching the queue
+   the top; never skip ahead to a later epic. Only an epic **in progress** offers its stories: one in
+   To Do or Waiting for Owner Approval holds them back, `sq` leaves them out of your queue
+   and refuses a claim on one, until the owner moves the epic to In Progress. Work you have
+   already started in such an epic carries on. **By your number**, so two developers reaching the queue
    together pick different stories: developer 2 takes the second if there are at least
    two, developer 1 the first. Never build from `To Do` or `Needs Design`: the product
    manager and the designer have not finished with it.

@@ -59,7 +59,8 @@ class FakeShortcut:
 
 
 def slim(raw):
-    return {"id": raw["id"], "name": raw["name"], "url": "", "epic": None, "epic_id": None,
+    return {"id": raw["id"], "name": raw["name"], "url": "", "epic": None,
+            "epic_id": raw.get("epic_id"),
             "state": STATES[str(raw["workflow_state_id"])], "moved_at": raw["moved_at"],
             "labels": sorted(label["name"] for label in raw["labels"]),
             "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
@@ -127,6 +128,15 @@ class Writes(Base):
         actions.claim(self.as_("dev2"), args(story="sc-1"))
         self.assertEqual(self.labels(1), {"backend", "dev2"})
         self.assertEqual(self.state(1), "In Progress")
+
+    def test_a_story_in_an_epic_awaiting_the_owner_is_refused(self):
+        self.fake.add(1, "Ready For Dev")
+        self.fake.raw[1]["epic_id"] = 2
+        store.set_meta(self.db, "epics", {"2": {"name": "Events", "state": "to do",
+                                                "state_name": "Waiting for Owner Approval"}})
+        with self.assertRaisesRegex(actions.Refused, "Events, which is Waiting for Owner"):
+            actions.claim(self.as_("dev"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For Dev")
 
     def test_the_second_developer_to_claim_is_refused(self):
         self.fake.add(1, "Ready For Dev")

@@ -57,11 +57,12 @@ def untaken(db, role, stories):
 
 
 def developer(p, db, stories):
-    mine = untaken(db, p.role, W.queued(p.role, stories))
+    epics = store.get_meta(db, "epics")
+    mine = untaken(db, p.role, W.queued(p.role, stories, epics))
     order = {state: i for i, state in enumerate(R.BUILD_QUEUE)}
     # Rework longest-waiting first; the rest epic by epic, as `work.epic_order` ranks them.
     rework = ("Failed Code Review", "Failed QA")
-    by_epic = W.epic_order(store.get_meta(db, "epics"))
+    by_epic = W.epic_order(epics)
     mine.sort(key=lambda s: (order[s["state"]], s["moved_at"] or "" if s["state"] in rework
                              else "", by_epic(s)))
     p.add(f"Your queue ({len(mine)}), in the order the skill picks:")
