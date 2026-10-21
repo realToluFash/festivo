@@ -53,7 +53,7 @@ final class RequestLinkTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
         self::assertTrue($body['on']);
         self::assertMatchesRegularExpression('~^https?://[^/]+/join/[0-9a-f]{32}$~', Type\string()->coerce($body['url']));
-        self::assertSame(['requestLink' => ['off', 'on']], $this->audited('request_link.turned_on', $organisation)->changes());
+        self::assertSame(['requestLink' => ['off', 'on']], $this->audited('request_link.turned_on', $organisation)->getChanges());
     }
 
     #[Test]
@@ -76,7 +76,7 @@ final class RequestLinkTest extends ApiTestCase
         $new = $this->tokenOf($this->send('POST', $this->setting($organisation) . '/replace'));
 
         self::assertNotSame($old, $new);
-        self::assertSame(['requestLink' => ['on', 'on']], $this->audited('request_link.replaced', $organisation)->changes());
+        self::assertSame(['requestLink' => ['on', 'on']], $this->audited('request_link.replaced', $organisation)->getChanges());
         $this->send('POST', '/api/request-links/link', ['token' => $old]);
         self::assertResponseStatusCodeSame(404);
         self::assertSame('Ìrè Events', $this->send('POST', '/api/request-links/link', ['token' => $new])['organisation']['name'] ?? null);
@@ -90,7 +90,7 @@ final class RequestLinkTest extends ApiTestCase
         $old = $this->tokenOf($this->send('PUT', $this->setting($organisation)));
 
         self::assertSame(['on' => false, 'url' => null], $this->send('DELETE', $this->setting($organisation)));
-        self::assertSame(['requestLink' => ['on', 'off']], $this->audited('request_link.turned_off', $organisation)->changes());
+        self::assertSame(['requestLink' => ['on', 'off']], $this->audited('request_link.turned_off', $organisation)->getChanges());
         $new = $this->tokenOf($this->send('PUT', $this->setting($organisation)));
 
         self::assertNotSame($old, $new);
@@ -165,7 +165,7 @@ final class RequestLinkTest extends ApiTestCase
         self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs());
         self::assertSame('I run the Abuja office.', $membership->getRequestMessage());
         self::assertSame(MembershipChannel::Request, $this->lastStep($membership)->getChannel());
-        self::assertSame(['organisation' => [null, $organisation->getId()->toRfc4122()], 'status' => [null, 'pending_approval']], $this->audited(LinkRequester::ASKED, $membership)->changes());
+        self::assertSame(['organisation' => [null, $organisation->getId()->toRfc4122()], 'status' => [null, 'pending_approval']], $this->audited(LinkRequester::ASKED, $membership)->getChanges());
 
         $this->signIn($owner);
         $members = Type\vec(Type\shape(['status' => Type\string(), 'channel' => Type\nullable(Type\string()), 'message' => Type\nullable(Type\string())], true))
