@@ -41,6 +41,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
+  `messages:domain_joining.*`, sc-4434). The act is "pedir para aderir", the wait "A
+  aguardar aprovação", as the Members state. What gets approved is "o pedido", so no "o/a"
+  agrees with the person; an invitation is asked for as "peça um convite a alguém", never
+  "peça que o convide". "… instead" buttons are "Prefiro …". The setting is "Adesão por
+  domínio da empresa", "Ativada" / "Desativada"; a working domain "Aceita pedidos", a
+  stopped one "Sem efeito". People at a domain are "quem usa {{domain}}".
+
 - **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
   "Membros", a role "função", and a member is removed with "Remover", as on Account. A
   person's state never agrees with them: "Com acesso", "A aguardar aprovação", "Acesso
