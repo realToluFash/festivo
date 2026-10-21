@@ -12,18 +12,18 @@ import subprocess
 import sys
 import time
 
-from . import (actions, agents, digests, github, launchd, machine, payloads, permissions, roles,
-               runlog, runner, shared, store, sync, systemd, update, work)
+from . import (actions, agents, dashboard, digests, github, launchd, machine, payloads,
+               permissions, roles, runlog, runner, shared, store, sync, systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
 from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
-OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents")
+OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents", "web")
 ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "worker-supervise",
          "start", "stop", "pause",
-         "resume", "cost", "agents")
+         "resume", "cost", "agents", "web")
 
 
 def home():
@@ -507,125 +507,83 @@ def clip(line, width):
 
 def status(db, platform, now):
     width = max(shutil.get_terminal_size((120, 20)).columns, 60)
+    view = dashboard.snapshot(db, platform, now, home())
 
     def say(line=""):
         print(clip(line, width))
 
-    synced_at = store.get_meta(db, "synced_ok_at")
-    errors = store.get_meta(db, "sync_errors") or []
-    synced = f"synced {ago(now - synced_at)}" if synced_at else "never synced"
-    try:
-        config = machine.load()
-    except machine.ConfigError as error:
-        config = None
+    synced = f"synced {ago(view['synced_ago'])}" if view["synced_ago"] is not None \
+        else "never synced"
+    if view["machine"]:
+        say(" · ".join([view["machine"],
+                        f"manager {'running' if view['manager'] else 'stopped'}"]
+                       + ([f"paused since {view['paused']}"] if view["paused"] else [])
+                       + [f"{view['free_gb']} GB free", synced]))
+    else:
         say(synced)
+    for error in view["errors"]:
         say(f"error: {error}")
-    shown = set()
-    if config:
-        problems, refused, ready = machine.check(config)
-        say(" · ".join([config.get("machine") or "this machine",
-                        f"manager {'running' if platform.timer_active() else 'stopped'}"]
-                       + ([f"paused since {runner.paused(db)}"] if runner.paused(db) else [])
-                       + [f"{machine.free_gb(config):.0f} GB free", synced]))
-        for error in errors:
-            say(f"error: sync: {error}")
-        for problem in problems:
-            say(f"error: {problem}")
-        late = runner.drift(config, (store.get_meta(db, "claude_version") or {}).get("version"))
-        if late:
-            say(f"warning: {late}")
-        on = runner.started(db)
-        agreed = store.get_meta(db, "shared_view") or {}
-        if agreed.get("paused"):
-            say(f"paused everywhere by {agreed['paused'].get('machine')}: "
-                "sq resume --everywhere")
-        for role, other in agreed.get("conflicts") or []:
-            say(f"warning: {role} is listed here and on {other}, and neither marks it "
-                "standby; only one runs it")
-        pending = permissions.pending(home())
-        if pending:
-            say(f"permissions: main grants {len(pending)} change(s) this machine has not "
-                "applied: just agents permissions apply")
-        others = sorted((agreed.get("machines") or {}).items())
-        if others:
-            say()
-            say("other machines")
-            name_width = max(len(name) for name, _ in others)
-            for name, seen in others:
-                say(f"  {name:{name_width}}  seen {ago(seen['seen']):8}  "
-                    f"{', '.join(seen['started']) or 'no role'}")
-        # The account is shown only when this machine's roles use more than one.
-        folders = {role: machine.claude_dir(config, role) for role in ready}
-        several = len(set(folders.values())) > 1
-        listed = config.get("roles") or {}
-        rows = []
-        for role in [r for r in refused if r not in listed] + list(listed):
-            if role in refused:
-                rows.append((role, f"refused: {refused[role]}", "", "", "", []))
-                continue
-            if role not in ready:
-                continue
-            held, waiting = store.held_by(db, role, now), store.waiting(db, role)
-            away = (agreed.get("elsewhere") or {}).get(role)
-            state = "running" if platform.worker_active(role) else \
-                f"on {away[0]}, seen {ago(away[1])}" if role in on and away else \
-                f"busy, item {held['id']}" if held else \
-                "started" if role in on else "stopped"
-            model = f"{ready[role]['model'].removeprefix('claude-')} {ready[role]['effort']}"
-            if several:
-                model += f" · {machine.account(folders[role])}"
-            last = runlog.last(home(), role)
-            ran = f"{time.strftime('%d %b %H:%M', time.localtime(last['at']))} " \
-                  f"${last.get('cost_usd') or 0:.2f}" if last else "never"
-            details = []
-            if last:
-                first = (last.get("report") or "").strip().splitlines()[:1]
-                details.append(f"last: {first[0] if first else '-'}")
-            if held:
-                details.append(f"now:  {held['reason']}")
-            if waiting:
-                details.append(f"next: {waiting[0]['reason']}")
-            note = machine.price_note(role, ready[role]["model"], config)
-            if note:
-                details.append(f"note: {note}")
-            owner = store.get_meta(db, f"owner:{role}")
-            if owner:
-                details.append(f"waiting on the owner: {owner['lines'][0]}")
-            rows.append((role, state, model, ran, str(len(waiting)), details))
-            shown.add(role)
-        if rows:
-            heads = ("role", "state", "model", "last run", "waiting")
-            sizes = [max([len(heads[i])] + [len(row[i]) for row in rows if row[2] or i < 2])
-                     for i in range(5)]
-            sizes[1] = min(sizes[1], 28)
-            say()
-            say("roles here")
-            say("  " + "  ".join(f"{h:{n}}" if i < 4 else f"{h:>{n}}"
-                                 for i, (h, n) in enumerate(zip(heads, sizes))))
-            for role, state, model, ran, count, details in rows:
-                if not model:
-                    say(f"  {role:{sizes[0]}}  {state}")
-                    continue
-                say("  " + "  ".join([f"{role:{sizes[0]}}", f"{clip(state, sizes[1]):{sizes[1]}}",
-                                      f"{model:{sizes[2]}}", f"{ran:{sizes[3]}}",
-                                      f"{count:>{sizes[4]}}"]))
-                for detail in details:
-                    say(f"  {'':{sizes[0]}}  {detail}")
-    elsewhere = []
-    for role in roles.ROLES:
-        if role in shown:
+    for warning in view["warnings"]:
+        say(f"warning: {warning}")
+    if view["machines"]:
+        say()
+        say("other machines")
+        name_width = max(len(m["name"]) for m in view["machines"])
+        for other in view["machines"]:
+            say(f"  {other['name']:{name_width}}  seen {ago(other['seen']):8}  "
+                f"{', '.join(other['started']) or 'no role'}")
+    rows = []
+    for role in view["roles"]:
+        if role["state"] == "refused":
+            rows.append((role["role"], f"refused: {role['detail']}", "", "", "", []))
             continue
-        held, waiting = store.held_by(db, role, now), store.waiting(db, role)
-        if held or waiting:
-            elsewhere.append((role, held, waiting))
-    if elsewhere:
+        state = {"busy": f"busy, item {(role['held'] or {}).get('id')}",
+                 "elsewhere": "on {machine}, seen {ago}".format(
+                     machine=(role["detail"] or {}).get("machine"),
+                     ago=ago((role["detail"] or {}).get("seen", 0)))}.get(role["state"],
+                                                                          role["state"])
+        model = f"{role['model'].removeprefix('claude-')} {role['effort']}"
+        if role["account"]:
+            model += f" · {role['account']}"
+        last = role["last"]
+        ran = f"{time.strftime('%d %b %H:%M', time.localtime(last['at']))} " \
+              f"${last['cost']:.2f}" if last else "never"
+        details = [f"last: {last['report'] or '-'}"] if last else []
+        if role["held"]:
+            details.append(f"now:  {role['held']['reason']}")
+        if role["next"]:
+            details.append(f"next: {role['next'][0]['reason']}")
+        if role["note"]:
+            details.append(f"note: {role['note']}")
+        if role["owner"]:
+            details.append(f"waiting on the owner: {role['owner']}")
+        rows.append((role["role"], state, model, ran, str(role["waiting"]), details))
+    if rows:
+        heads = ("role", "state", "model", "last run", "waiting")
+        sizes = [max([len(heads[i])] + [len(row[i]) for row in rows if row[2] or i < 2])
+                 for i in range(5)]
+        sizes[1] = min(sizes[1], 28)
+        say()
+        say("roles here")
+        say("  " + "  ".join(f"{h:{n}}" if i < 4 else f"{h:>{n}}"
+                             for i, (h, n) in enumerate(zip(heads, sizes))))
+        for role, state, model, ran, count, details in rows:
+            if not model:
+                say(f"  {role:{sizes[0]}}  {state}")
+                continue
+            say("  " + "  ".join([f"{role:{sizes[0]}}", f"{clip(state, sizes[1]):{sizes[1]}}",
+                                  f"{model:{sizes[2]}}", f"{ran:{sizes[3]}}",
+                                  f"{count:>{sizes[4]}}"]))
+            for detail in details:
+                say(f"  {'':{sizes[0]}}  {detail}")
+    if view["elsewhere"]:
         say()
         say("roles not run here")
-        count_width = max(len(str(len(w))) for _, _, w in elsewhere)
-        for role, held, waiting in elsewhere:
-            what = f"working on {held['reason']}" if held else \
-                f"next: {waiting[0]['reason']}"
-            say(f"  {role:5} {len(waiting):>{count_width}} waiting  {what}")
+        count_width = max(len(str(r["waiting"])) for r in view["elsewhere"])
+        for role in view["elsewhere"]:
+            what = f"working on {role['held']['reason']}" if role["held"] else \
+                f"next: {role['next'][0]['reason']}"
+            say(f"  {role['role']:5} {role['waiting']:>{count_width}} waiting  {what}")
 
 
 def cost(days):
@@ -651,6 +609,9 @@ def admin(argv):
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("status", help="what every role holds and has waiting, and this machine's "
                                   "manager")
+    web = sub.add_parser("web", help="the same as status, as a live page on this machine")
+    web.add_argument("--port", type=int, default=8765)
+    web.add_argument("--no-open", action="store_true", help="print the address, open nothing")
     sub.add_parser("sync", help="sync now").add_argument("--full", action="store_true")
     sub.add_parser("install", help="copy sq where no branch switch removes it")
     sub.add_parser("run", help="the timer's minute: sync, then tick each started role") \
@@ -690,6 +651,9 @@ def admin(argv):
     sq_path = home() / "sq" / "sq"
     if a.command == "status":
         status(db, platform, time.time())
+    elif a.command == "web":
+        dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()), a.port,
+                        open_page=not a.no_open)
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
