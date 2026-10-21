@@ -1,0 +1,98 @@
+import { emailProblem } from './forms.ts';
+
+/** The one remembered on this device while the account still belongs to it, else the first. */
+export function chooseOrganisation<T extends { id: string }>(
+  organisations: readonly T[],
+  remembered: string | null,
+): T | null {
+  return organisations.find(({ id }) => id === remembered) ?? organisations[0] ?? null;
+}
+
+/** A seeded role is worded in the reader's language; a role an organisation made keeps its own name. */
+export function roleName(
+  word: (key: string) => string,
+  role: { seededAs: string | null; name: string | null },
+): string {
+  return role.seededAs != null ? word(`roles.${role.seededAs}`) : (role.name ?? '');
+}
+
+/** What the member's role holds in this organisation, as the API lists it (sc-66): a control it cannot use is not shown. */
+export function roleHolds(
+  membership: { permissions: readonly string[] },
+  permission: string,
+): boolean {
+  return permission !== '' && membership.permissions.includes(permission);
+}
+
+export type OrganisationField =
+  'name' | 'countryCode' | 'contactAddress' | 'currency' | 'timezone' | 'locale';
+
+export type OrganisationDetails = Record<OrganisationField, string>;
+
+/** The order both clients show the fields in, and so the order a refusal takes focus in. */
+export const ORGANISATION_FIELDS: readonly OrganisationField[] = [
+  'name',
+  'countryCode',
+  'contactAddress',
+  'currency',
+  'timezone',
+  'locale',
+];
+
+/** The API's OrganisationRules::NAME_MAXIMUM. */
+export const ORGANISATION_NAME_MAXIMUM = 100;
+
+/** What a client checks before saving. Country, currency, time zone and language come from pickers, so they cannot be wrong. */
+export function organisationProblem(
+  field: OrganisationField,
+  value: string,
+): 'nameBlank' | 'contactBlank' | 'contactInvalid' | null {
+  if (field === 'name') return value.trim() === '' ? 'nameBlank' : null;
+
+  if (field !== 'contactAddress') return null;
+
+  const problem = emailProblem(value);
+
+  if (problem == null) return null;
+
+  return problem === 'blank' ? 'contactBlank' : 'contactInvalid';
+}
+
+/** Only what changed is sent, so an edit never rewrites a field somebody else has just saved. */
+export function organisationChanges(
+  saved: OrganisationDetails,
+  values: OrganisationDetails,
+): Partial<OrganisationDetails> {
+  const changes: Partial<OrganisationDetails> = {};
+
+  for (const field of ORGANISATION_FIELDS) {
+    if (values[field].trim() !== saved[field]) changes[field] = values[field].trim();
+  }
+
+  return changes;
+}
+
+/** A stored value the platform does not list is still offered first, rather than silently replaced on save. */
+export function withCurrent(listed: readonly string[], current: string): string[] {
+  return listed.includes(current) ? [...listed] : [current, ...listed];
+}
+
+export type NewOrganisationField = 'name' | 'countryCode';
+
+export type NewOrganisationProblem =
+  { kind: 'nameBlank' } | { kind: 'nameLong'; length: number } | { kind: 'countryBlank' };
+
+/** "Create an organisation" (sc-390): the name is counted after trimming, as the API counts it. */
+export function newOrganisationProblem(
+  field: NewOrganisationField,
+  value: string,
+): NewOrganisationProblem | null {
+  if (field === 'countryCode') return value === '' ? { kind: 'countryBlank' } : null;
+
+  const name = value.trim();
+  const length = Array.from(name).length;
+
+  if (length === 0) return { kind: 'nameBlank' };
+
+  return length > ORGANISATION_NAME_MAXIMUM ? { kind: 'nameLong', length } : null;
+}
