@@ -1,4 +1,5 @@
-/** Read from /event-states.json, the table the API's policy is tested against: never copy it here. */ import declaration from '../../../event-states.json' with { type: 'json' };
+/** Read from /event-states.json, the table the API's policy is tested against: never copy it here. */
+import declaration from '../../../event-states.json' with { type: 'json' };
 
 export type EventState = keyof typeof declaration.states;
 
