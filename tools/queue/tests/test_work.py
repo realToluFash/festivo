@@ -407,3 +407,27 @@ class Heartbeat(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FinishingFirst(unittest.TestCase):
+    def order(self, stories, prs=()):
+        items = work.derive(stories, list(prs))
+        return [(i["story_id"], i["kind"]) for i in sorted(items, key=lambda i: i["priority"])
+                if "dev" in i["roles"] and i["story_id"]]
+
+    def test_a_failed_or_passed_story_goes_ahead_of_other_comments(self):
+        asked = [comment(1, "[dev] (from pm)\nA question.")]
+        stories = [story(1, "Backlog", comments=asked),
+                   story(2, "Failed QA", labels=["dev1"]),
+                   story(3, "Passed Code Review", labels=["dev1"]),
+                   story(4, "Failed Code Review", labels=["dev1"])]
+        lead = [verdict("pass", HEAD)]
+        found = self.order(stories, [pr(9, 3, lead=lead)])
+        self.assertEqual(found[-1], (1, "inbox"))
+        self.assertEqual({k for k in found[:-1]}, {(2, "story"), (3, "merge"), (4, "story")})
+
+    def test_a_merged_story_moves_to_qa_first(self):
+        merged = pr(9, 1, lead=[verdict("pass", HEAD)], state="merged")
+        items = work.derive([story(1, "In Review", labels=["dev1"])], [merged])
+        [to_qa] = [i for i in items if i["kind"] == "to-qa"]
+        self.assertEqual(to_qa["priority"], work.FINISHING)

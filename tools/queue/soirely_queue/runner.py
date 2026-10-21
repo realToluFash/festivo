@@ -18,8 +18,9 @@ MILESTONES = ("At each milestone (a branch pushed, a part built, a result found)
               "run stopped part way loses minutes, not the thread.")
 
 
-def due(role, minute):
-    return minute % 3 == roles.ROLES[role].get("offset", 0)
+def due(role, minute, every=3):
+    """A role wakes once every `every` minutes; the testers' offsets keep them apart."""
+    return minute % every == roles.ROLES[role].get("offset", 0) % every
 
 
 def started(db):
@@ -179,7 +180,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
     minute = int(now // 60)
     # A dry run previews every ready role, started or not, whatever the minute.
     for role in sorted(set(ready) if dry_run else set(ready) & started(db)):
-        if not dry_run and not due(role, minute):
+        if not dry_run and not due(role, minute, machine.minutes(ready[role]["wakeEvery"])):
             continue
         # ops@<machine> runs on every machine; the lease decides only ops' shared duties.
         kinds = None
@@ -193,7 +194,16 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
         if platform.worker_active(role):
             say(f"{role}: worker still running")
             continue
-        if store.held_by(db, role, now):
+        claimed = store.held_by(db, role, now)
+        if claimed and not dry_run and \
+                store.get_meta(db, f"launched:{role}") == claimed["id"]:
+            # Its worker is gone without finishing it, a crash or a kill; a role run by hand
+            # claims its own item, so only an item this runner launched is given back.
+            store.release(db, claimed["id"])
+            say(f"{role}: item {claimed['id']} given back, its worker ended without "
+                "finishing it")
+            claimed = None
+        if claimed:
             say(f"{role}: busy")
             continue
         if dry_run:
@@ -223,6 +233,7 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
             store.release(db, row["id"])
             say(f"error: {role}: the worker did not start ({error}); item {row['id']} released")
             continue
+        store.set_meta(db, f"launched:{role}", row["id"])
         say(f"{role}: woke for {row['reason']} (item {row['id']})")
     return None
 
@@ -265,7 +276,13 @@ def worker(db, home, platform, role, item_id, run_claude=subprocess.run, load=ma
              "model": values["model"], "effort": values["effort"],
              "claude": (store.get_meta(db, "claude_version") or {}).get("version")}
     path = machine.checkout(config, role)
-    main, note = prepare(path, role, story)
+    try:
+        main, note = prepare(path, role, story)
+    except checkout.Unprepared as error:
+        entry["report"] = f"the worker could not prepare its checkout: {error}"
+        runlog.append(home, role, entry)
+        platform.notify(f"Soirely: {role}'s worker stopped", entry["report"][:300])
+        return entry
     entry["main"] = main
     folder = machine.claude_dir(config, role)
     entry["account"] = machine.account(folder)
@@ -294,9 +311,11 @@ def worker_ended(home, platform, role, item_id, now=None):
     if any(e.get("item") == item_id for e in runlog.entries(home, role)[-5:]):
         return None
     reason = os.environ.get("SERVICE_RESULT", "unknown")
+    status = os.environ.get("EXIT_STATUS")
+    said = f"it exited with status {status}" if reason == "exit-code" and status else reason
     entry = {"at": now or time.time(), "item": item_id, "role": role,
-             "exit": os.environ.get("EXIT_STATUS"), "stopped": reason,
-             "report": f"the worker ended without a report: {reason}"}
+             "exit": status, "stopped": reason,
+             "report": f"the worker ended without a report: {said}"}
     runlog.append(home, role, entry)
     platform.notify(f"Soirely: {role}'s worker stopped", entry["report"])
     return entry

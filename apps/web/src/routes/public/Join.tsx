@@ -121,10 +121,10 @@ export function Join() {
 }
 
 function viewOf(preview: InvitationPreview): View {
-  if (preview.refusal != null) return { kind: 'refused', preview, refusal: preview.refusal };
   if (preview.forYou === false) {
     return { kind: 'refused', preview, refusal: 'invitation_not_yours' };
   }
+  if (preview.refusal != null) return { kind: 'refused', preview, refusal: preview.refusal };
 
   return { kind: 'open', preview };
 }

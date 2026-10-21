@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from soirely_queue import runlog, runner, shared, store
+from soirely_queue import checkout, runlog, runner, shared, store
 
 from .fakes import FakeRefs
 
@@ -229,6 +229,38 @@ class Run(unittest.TestCase):
         self.run_once()
         self.assertFalse([s for s in self.said if s.startswith("warning")])
 
+    def test_a_role_wakes_only_as_often_as_its_wake_every(self):
+        self.config["roles"]["ops"] = {"wakeEvery": "15m"}
+        store.record(self.db, [work("ops")], ON_ZERO)
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertEqual(self.platform.launched, [])
+        self.run_once(ON_ZERO + 15 * MINUTE)
+        self.assertEqual(len(self.platform.launched), 1)
+
+    def test_an_item_whose_worker_died_is_given_back_at_the_next_minute(self):
+        store.record(self.db, [work("ops")], ON_ZERO)
+        self.run_once()
+        self.assertTrue(store.held_by(self.db, "ops", ON_ZERO))
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertIn("ops: item 1 given back, its worker ended without finishing it",
+                      self.said)
+        self.assertEqual([item for _, item, _ in self.platform.launched], [1, 1])
+
+    def test_an_item_a_running_worker_holds_is_kept(self):
+        store.record(self.db, [work("ops")], ON_ZERO)
+        self.run_once()
+        self.platform.active.add("ops")
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertEqual(len(self.platform.launched), 1)
+        self.assertTrue(store.held_by(self.db, "ops", ON_ZERO + 3 * MINUTE))
+
+    def test_an_item_claimed_by_hand_is_kept(self):
+        store.record(self.db, [work("ops")], ON_ZERO)
+        store.claim(self.db, "ops", ON_ZERO)
+        self.run_once()
+        self.assertIn("ops: busy", self.said)
+        self.assertEqual(self.platform.launched, [])
+
     def test_a_worker_that_will_not_start_gives_its_item_back(self):
         self.platform.fail = True
         store.record(self.db, [work("ops")], ON_ZERO)
@@ -382,6 +414,25 @@ class Worker(unittest.TestCase):
         self.assertEqual(self.platform.notes[0][0], "Soirely: ops needs you")
         self.assertEqual(store.get_meta(self.db, "owner:ops")["lines"],
                          ["Waiting on the owner to merge #280."])
+
+    def test_a_checkout_that_cannot_fetch_is_reported_and_runs_no_model(self):
+        def unprepared(*_):
+            raise checkout.Unprepared("git fetch failed 3 times: cannot lock ref")
+
+        claude = mock.Mock()
+        entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
+                              load=lambda: config(self.root), prepare=unprepared, now=ON_ZERO)
+        claude.assert_not_called()
+        self.assertIn("cannot lock ref", runlog.last(self.home, "ops")["report"])
+        self.assertEqual(self.platform.notes[0], ("Soirely: ops's worker stopped",
+                                                  entry["report"]))
+        self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
+
+    def test_a_worker_that_exits_with_an_error_says_its_status(self):
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "exit-code", "EXIT_STATUS": "1"}):
+            entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
+        self.assertEqual(entry["report"],
+                         "the worker ended without a report: it exited with status 1")
 
     def test_a_worker_stopped_by_its_limit_leaves_a_record(self):
         with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):

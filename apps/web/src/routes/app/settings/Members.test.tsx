@@ -271,6 +271,58 @@ describe('Settings > Members', () => {
     expect(history.getByText('Suspended by you')).toBeDefined();
   });
 
+  it('puts the invitation where it happened among the steps, not first', async () => {
+    signedIn();
+    const kemi = { id: 'u_kemi', name: 'Kemi Lawal' };
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          members: [
+            ...LIST.members,
+            member({
+              id: 'm_kemi',
+              user: { ...kemi, email: 'kemi@ire.events' },
+              role: COORDINATOR,
+              channel: 'invitation',
+              since: '2026-06-03T09:00:00+00:00',
+              invitedBy: FOLAKE,
+              invitedAt: '2026-06-02T09:00:00+00:00',
+              self: false,
+              history: [
+                {
+                  from: null,
+                  to: 'pending_approval',
+                  channel: 'request',
+                  by: kemi,
+                  at: '2026-06-01T09:00:00+00:00',
+                },
+                {
+                  from: 'pending_approval',
+                  to: 'active',
+                  channel: 'invitation',
+                  by: kemi,
+                  at: '2026-06-03T09:00:00+00:00',
+                },
+              ],
+            }),
+          ],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Kemi Lawal/ }));
+
+    const lines = within(screen.getByRole('list'))
+      .getAllByRole('listitem')
+      .map((item) => item.textContent ?? '');
+    expect(lines).toHaveLength(3);
+    expect(lines[0]).toContain('Asked to join');
+    expect(lines[1]).toContain('Invited by Folake Adeyemi');
+    expect(lines[2]).toContain('Accepted the invitation');
+  });
+
   it('offers no invite to a role that cannot manage members', async () => {
     signedIn(membership({ permissions: ['members.read', 'events.read'] }));
     answering(READS);

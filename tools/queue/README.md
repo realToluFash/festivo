@@ -105,6 +105,9 @@ story or pull request, read fresh rather than from the last sync, and says why i
   finished work stays finished and a change makes a new item. Every move a role makes
   through `sq` is recorded with the `moved_at` it landed at, and a story a role moved into
   its own queue is no work for it; the same move by anyone else still is.
+  A role takes its items in this order: anything on a story in Passed Code Review, Failed
+  QA or Failed Code Review, and a merged story's move to Ready For QA (`FINISHING`); then
+  comments; then pull request work; then reviews; then its queue; then sweeps.
 - **`store.py`** holds the claims. A role holds one item at a time, a pooled item (Ready For
   QA, unlabelled Ready For Dev) goes to one role only, and a claim lapses after 90 minutes.
 

@@ -126,14 +126,14 @@ final readonly class InvitationResponder
         });
     }
 
-    /** Its own state first, then whose it is: a mismatch leaves it pending. */
+    /** Whose it is first: somebody else is told it is not theirs, not what became of it. */
     private function refuseUnless(Invitation $invitation, User $user): void
     {
-        $this->refuseUnanswerable($invitation);
-
         if (!$this->isFor($invitation, $user)) {
             throw new ApiException(ErrorCode::InvitationNotYours, $this->translator->trans('invitations.not_yours'));
         }
+
+        $this->refuseUnanswerable($invitation);
     }
 
     private function refuseUnanswerable(Invitation $invitation): void

@@ -7,10 +7,16 @@
     "subtitle": "The night, from your pocket.",
     "openSignIn": "Sign in",
     "openLayouts": "Layout demonstration",
-    "signedIn": "You’re signed in",
     "signedInTo": "You’re signed in to {{name}}",
     "openSettings": "Open Settings",
     "switchOrganisation": "Switch organisation"
+  },
+  "noOrganisation": {
+    "title": "You are not in an organisation",
+    "body": "Events, teams and plans all belong to an organisation, and you are not part of one right now. Your account is still yours, and nothing in it has gone.",
+    "wayOn": "Ask whoever runs yours to invite {{email}} again.",
+    "signedInAs": "Signed in as {{email}}.",
+    "account": "Your account"
   },
   "status": {
     "title": "Service status",

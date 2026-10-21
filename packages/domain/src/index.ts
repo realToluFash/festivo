@@ -7,6 +7,7 @@
  * is invisible until a catering count is wrong.
  */
 export * from './locales.ts';
+export * from './sentenceStops.ts';
 export * from './guestName.ts';
 export * from './userAgent.ts';
 export * from './contacts.ts';

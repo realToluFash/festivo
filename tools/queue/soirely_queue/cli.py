@@ -7,22 +7,23 @@ import argparse
 import datetime
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import time
 
-from . import (actions, agents, digests, github, launchd, machine, payloads, permissions, roles,
-               runlog, runner, shared, store, sync, systemd, update, work)
+from . import (actions, agents, dashboard, digests, github, launchd, machine, payloads,
+               permissions, roles, runlog, runner, shared, store, sync, systemd, update, work)
 from . import text as T
 from . import views as V
 from .ledger import Printer
 from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
-OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents")
+OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents", "web")
 ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "worker-supervise",
          "start", "stop", "pause",
-         "resume", "cost", "agents")
+         "resume", "cost", "agents", "web")
 
 
 def home():
@@ -73,7 +74,10 @@ def brief(row, role):
     scope = [f"This is {row['pool']}: work only on this machine (disk, Docker, the role "
              "stacks, the manager). Shared duties belong to whichever machine holds the ops "
              "lease."] if row["kind"] == "machine" else []
-    return "\n".join(scope + [
+    draw = [f"This run has no Artifact tool, so it cannot draw: for a story that needs "
+            f"screens, list it with `{sq} to-draw` and do everything else it needs."] \
+        if role == "ux" else []
+    return "\n".join(scope + draw + [
         f"Run `{roles.invoke(role)}` as an unattended routine run "
         "(.claude/skills/role-routine, section 3).",
         f"Your work is item {row['id']}: {row['reason']}.",
@@ -160,6 +164,15 @@ def cmd_release(s, a):
 def cmd_queue(s, a):
     digests.render(s.printer, s.db)
     s.done()
+
+
+def cmd_drawings(s, a):
+    found = store.drawings(s.db)
+    if not found:
+        print("nothing to draw")
+    for drawing in found:
+        print(f"sc-{drawing['story_id']}  {drawing['name']}")
+        print("\n".join("    " + line for line in drawing["prompt"].splitlines()))
 
 
 # Reads
@@ -311,7 +324,7 @@ def cmd_history(s, a):
 # Writes
 
 
-TAKES_BODY = {actions.comment, actions.note, actions.report, actions.edit, actions.new_story,
+TAKES_BODY = {actions.comment, actions.note, actions.to_draw, actions.report, actions.edit, actions.new_story,
               actions.new_epic, actions.review, actions.pr_reply, actions.pr_create}
 
 
@@ -342,6 +355,8 @@ READS = [
      lambda p: (p.add_argument("id", nargs="?"), p.add_argument("--note"))),
     ("release", cmd_release, "give back the work you hold, unfinished", None),
     ("queue", cmd_queue, "your queue or sweep list, one line per story", None),
+    ("drawings", cmd_drawings, "the stories listed to draw, oldest first, each with its "
+     "prompt", None),
     ("story", cmd_story, "a story as you work on it; --section or --headings for a slice",
      lambda p: (p.add_argument("story"), p.add_argument("--section"),
                 p.add_argument("--headings", action="store_true"))),
@@ -387,6 +402,11 @@ DETAILS = {
                       "in the owner's format, and refuses a rule already asked, with the "
                       "answer if there is one. Never wait for the answer: only the owner "
                       "grants, by merging tools/queue/permissions.json and applying it.",
+    "to-draw": "List a story whose screens this run cannot draw. The body is the prompt the "
+               "owner pastes into a /soirely-designer session, so it stands on its own: the "
+               "epic's artifact URL, the screens and layouts to draw, the states each needs, "
+               "and the decisions already made. Listing the story again replaces its prompt.",
+    "drawn": "Take a story off the list to draw, once its artboard is linked on the story.",
     "comment": "Post a tagged comment. --to takes roles, dev, and the language tags en, es, "
                "fr and pt, which reach the linguist.",
 }
@@ -442,6 +462,10 @@ WRITES = [
                 p.add_argument("--verb", default="relates to",
                                choices=["relates to", "blocks", "duplicates"]))),
     ("archive", actions.archive, "archive a story", lambda p: p.add_argument("story")),
+    ("to-draw", actions.to_draw, "list a story you cannot draw here, with the prompt that "
+     "draws it", lambda p: (p.add_argument("story"), body(p))),
+    ("drawn", actions.drawn, "take a story off the list to draw once its screens exist",
+     lambda p: p.add_argument("story")),
     ("pr-create", actions.pr_create, "open a pull request from a pushed branch",
      lambda p: (p.add_argument("--head", required=True), p.add_argument("--title", required=True),
                 p.add_argument("--draft", action="store_true"), body(p))),
@@ -492,78 +516,101 @@ def role_parser(role):
     return p
 
 
+def ago(seconds):
+    seconds = max(int(seconds), 0)
+    for size, unit in ((365 * 86400, "y"), (86400, "d"), (3600, "h"), (60, "m")):
+        if seconds >= size:
+            return f"{seconds // size}{unit} ago"
+    return f"{seconds}s ago"
+
+
+def clip(line, width):
+    return line if len(line) <= width else line[:width - 1] + "…"
+
+
 def status(db, platform, now):
-    synced_at = store.get_meta(db, "synced_ok_at")
-    errors = store.get_meta(db, "sync_errors") or []
-    print(f"synced {int(now - synced_at)}s ago" if synced_at else "never synced",
-          f"· last errors: {'; '.join(errors)}" if errors else "")
-    try:
-        config = machine.load()
-    except machine.ConfigError as error:
-        config = None
-        print(f"error: {error}")
-    if config:
-        problems, refused, ready = machine.check(config)
-        print(f"{config.get('machine')}: manager "
-              f"{'running' if platform.timer_active() else 'stopped'}"
-              + (f" · paused since {runner.paused(db)}" if runner.paused(db) else "")
-              + f" · {machine.free_gb(config):.0f} GB free")
-        for problem in problems:
-            print(f"error: {problem}")
-        late = runner.drift(config, (store.get_meta(db, "claude_version") or {}).get("version"))
-        if late:
-            print(f"warning: {late}")
-        on = runner.started(db)
-        agreed = store.get_meta(db, "shared_view") or {}
-        if agreed.get("paused"):
-            print(f"paused everywhere by {agreed['paused'].get('machine')}: "
-                  "sq resume --everywhere")
-        for name, seen in sorted((agreed.get("machines") or {}).items()):
-            print(f"{name}: seen {seen['seen']}s ago, running "
-                  f"{', '.join(seen['started']) or 'no role'}")
-        for role, other in agreed.get("conflicts") or []:
-            print(f"warning: {role} is listed here and on {other}, and neither marks it "
-                  "standby; only one runs it")
-        waiting = permissions.pending(home())
-        if waiting:
-            print(f"permissions: main grants {len(waiting)} change(s) this machine has not "
-                  "applied: just agents permissions apply")
-        # The account is shown only when this machine's roles use more than one.
-        folders = {role: machine.claude_dir(config, role) for role in ready}
-        several = len(set(folders.values())) > 1
-        listed = config.get("roles") or {}
-        for role in [r for r in refused if r not in listed] + list(listed):
-            if role in refused:
-                print(f"{role:5} refused: {refused[role]}")
+    width = max(shutil.get_terminal_size((120, 20)).columns, 60)
+    view = dashboard.snapshot(db, platform, now, home())
+
+    def say(line=""):
+        print(clip(line, width))
+
+    synced = f"synced {ago(view['synced_ago'])}" if view["synced_ago"] is not None \
+        else "never synced"
+    if view["machine"]:
+        say(" · ".join([view["machine"],
+                        f"manager {'running' if view['manager'] else 'stopped'}"]
+                       + ([f"paused since {view['paused']}"] if view["paused"] else [])
+                       + [f"{view['free_gb']} GB free", synced]))
+    else:
+        say(synced)
+    for error in view["errors"]:
+        say(f"error: {error}")
+    for warning in view["warnings"]:
+        say(f"warning: {warning}")
+    if view["machines"]:
+        say()
+        say("other machines")
+        name_width = max(len(m["name"]) for m in view["machines"])
+        for other in view["machines"]:
+            say(f"  {other['name']:{name_width}}  seen {ago(other['seen']):8}  "
+                f"{', '.join(other['started']) or 'no role'}")
+    rows = []
+    for role in view["roles"]:
+        if role["state"] == "refused":
+            rows.append((role["role"], f"refused: {role['detail']}", "", "", "", "", []))
+            continue
+        state = {"busy": f"busy, item {(role['held'] or {}).get('id')}",
+                 "elsewhere": "on {machine}, seen {ago}".format(
+                     machine=(role["detail"] or {}).get("machine"),
+                     ago=ago((role["detail"] or {}).get("seen", 0)))}.get(role["state"],
+                                                                          role["state"])
+        model = f"{role['model'].removeprefix('claude-')} {role['effort']}"
+        last = role["last"]
+        ran = f"{time.strftime('%d %b %H:%M', time.localtime(last['at']))} " \
+              f"${last['cost']:.2f}" if last else "never"
+        details = [f"last: {last['report'] or '-'}"] if last else []
+        if role["held"]:
+            details.append(f"now:  {role['held']['reason']}")
+        if role["next"]:
+            details.append(f"next: {role['next'][0]['reason']}")
+        if role["note"]:
+            details.append(f"note: {role['note']}")
+        if role["owner"]:
+            details.append(f"waiting on the owner: {role['owner']}")
+        rows.append((role["role"], state, model, role["account"] or "not logged in", ran,
+                     str(role["waiting"]), details))
+    if rows:
+        heads = ("role", "state", "model", "account", "last run", "waiting")
+        sizes = [max([len(heads[i])] + [len(row[i]) for row in rows if row[2] or i < 2])
+                 for i in range(6)]
+        sizes[1] = min(sizes[1], 28)
+        say()
+        say("roles here")
+        say("  " + "  ".join(f"{h:{n}}" if i < 5 else f"{h:>{n}}"
+                             for i, (h, n) in enumerate(zip(heads, sizes))))
+        for role, state, model, account, ran, count, details in rows:
+            if not model:
+                say(f"  {role:{sizes[0]}}  {state}")
                 continue
-            if role not in ready:
-                continue
-            away = (agreed.get("elsewhere") or {}).get(role)
-            state = "running a worker" if platform.worker_active(role) else \
-                f"on {away[0]}, seen {away[1]}s ago" if role in on and away else \
-                "started" if role in on else "stopped"
-            print(f"{role:5} {state} · {ready[role]['model']} {ready[role]['effort']}"
-                  + (f" · {machine.account(folders[role])}" if several else ""))
-            note = machine.price_note(role, ready[role]["model"], config)
-            if note:
-                print(f"      note: {note}")
-            last = runlog.last(home(), role)
-            if last:
-                first = (last.get("report") or "").strip().splitlines()[:1]
-                print(f"      last run {time.strftime('%d %b %H:%M', time.localtime(last['at']))}"
-                      f", ${last.get('cost_usd') or 0:.2f}: {first[0][:100] if first else '-'}")
-            owner = store.get_meta(db, f"owner:{role}")
-            if owner:
-                print(f"      waiting on the owner: {owner['lines'][0][:120]}")
-    for role in roles.ROLES:
-        held, waiting = store.held_by(db, role, now), store.waiting(db, role)
-        if held or waiting:
-            line = f"{role:5} " + (f"working on {held['id']} ({held['reason']}); "
-                                   if held else "")
-            line += f"{len(waiting)} waiting"
-            if waiting:
-                line += ": " + "; ".join(f"{w['id']} {w['reason']}" for w in waiting[:4])
-            print(line)
+            say("  " + "  ".join([f"{role:{sizes[0]}}", f"{clip(state, sizes[1]):{sizes[1]}}",
+                                  f"{model:{sizes[2]}}", f"{account:{sizes[3]}}",
+                                  f"{ran:{sizes[4]}}", f"{count:>{sizes[5]}}"]))
+            for detail in details:
+                say(f"  {'':{sizes[0]}}  {detail}")
+    if view["drawings"]:
+        say()
+        say("to draw, prompts on sq web")
+        for drawing in view["drawings"]:
+            say(f"  sc-{drawing['story_id']}  {drawing['name']}")
+    if view["elsewhere"]:
+        say()
+        say("roles not run here")
+        count_width = max(len(str(r["waiting"])) for r in view["elsewhere"])
+        for role in view["elsewhere"]:
+            what = f"working on {role['held']['reason']}" if role["held"] else \
+                f"next: {role['next'][0]['reason']}"
+            say(f"  {role['role']:5} {role['waiting']:>{count_width}} waiting  {what}")
 
 
 def cost(days):
@@ -589,6 +636,9 @@ def admin(argv):
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("status", help="what every role holds and has waiting, and this machine's "
                                   "manager")
+    web = sub.add_parser("web", help="the same as status, as a live page on this machine")
+    web.add_argument("--port", type=int, default=8765)
+    web.add_argument("--no-open", action="store_true", help="print the address, open nothing")
     sub.add_parser("sync", help="sync now").add_argument("--full", action="store_true")
     sub.add_parser("install", help="copy sq where no branch switch removes it")
     sub.add_parser("run", help="the timer's minute: sync, then tick each started role") \
@@ -628,6 +678,9 @@ def admin(argv):
     sq_path = home() / "sq" / "sq"
     if a.command == "status":
         status(db, platform, time.time())
+    elif a.command == "web":
+        dashboard.serve(lambda now: dashboard.snapshot(db, platform, now, home()), a.port,
+                        open_page=not a.no_open)
     elif a.command == "run":
         try:
             runner.run(db, home(), platform, sq_path, sys.executable, dry_run=a.dry_run)
@@ -638,10 +691,10 @@ def admin(argv):
     elif a.command == "worker-ended":
         runner.worker_ended(home(), platform, a.role, a.item)
     elif a.command == "worker-supervise":
-        result, status = launchd.supervise(
+        result, exit_status = launchd.supervise(
             [sys.executable, str(sq_path), "worker", a.role, str(a.item)], a.minutes * 60,
             launchd.size_bytes(a.memory))
-        os.environ.update(SERVICE_RESULT=result, EXIT_STATUS=str(status))
+        os.environ.update(SERVICE_RESULT=result, EXIT_STATUS=str(exit_status))
         runner.worker_ended(home(), platform, a.role, a.item)
         pidfile = platform.pidfile(a.role)
         if pidfile.exists() and pidfile.read_text().strip() == str(os.getpid()):
