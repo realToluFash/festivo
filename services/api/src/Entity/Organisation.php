@@ -68,6 +68,10 @@ class Organisation
     #[ORM\Column(type: Types::STRING, length: 32, nullable: true)]
     private ?string $requestLinkToken = null;
 
+    /** When the people who manage members were last emailed about requests to join (sc-392): at most once a day. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $joinRequestsNoticedAt = null;
+
     public function __construct(
         string $name,
         string $countryCode,
@@ -213,5 +217,15 @@ class Organisation
     public function setRequestLinkToken(#[SensitiveParameter] ?string $requestLinkToken): void
     {
         $this->requestLinkToken = $requestLinkToken;
+    }
+
+    public function getJoinRequestsNoticedAt(): ?DateTimeImmutable
+    {
+        return $this->joinRequestsNoticedAt;
+    }
+
+    public function setJoinRequestsNoticedAt(?DateTimeImmutable $joinRequestsNoticedAt): void
+    {
+        $this->joinRequestsNoticedAt = $joinRequestsNoticedAt;
     }
 }

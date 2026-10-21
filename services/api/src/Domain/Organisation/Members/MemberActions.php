@@ -39,14 +39,14 @@ final readonly class MemberActions
     ) {
     }
 
-    /** Somebody else's membership here that has not ended: a former one, or another organisation's, is not found. */
+    /** Somebody else's membership here that has begun and not ended: a request to join is answered through JoinRequests (sc-392). */
     public function find(Organisation $organisation, string $membershipId, User $by): Membership
     {
         $membership = Uuid::isValid($membershipId)
             ? $this->membershipRepository->findOneBy(['id' => $membershipId, 'organisation' => $organisation])
             : null;
 
-        if (null === $membership || MembershipStatus::LeftOrRemoved === $membership->getStatus()) {
+        if (null === $membership || MembershipStatus::LeftOrRemoved === $membership->getStatus() || MembershipStatus::PendingApproval === $membership->getStatus()) {
             throw ApiException::notFound('That person is not a member of this organisation.');
         }
 

@@ -72,5 +72,6 @@
     "join_offer_unavailable": "No puede solicitar unirse a esa organización. Cree la suya o pida a alguien de esa organización que le invite.",
     "request_link_dead": "Este enlace ya no funciona. Pide a la organización uno nuevo.",
     "join_request_waiting": "Tu solicitud para unirte ya está esperando respuesta.",
-    "join_request_cooling_off": "Todavía no puedes volver a pedir unirte a esta organización."
+    "join_request_cooling_off": "Todavía no puedes volver a pedir unirte a esta organización.",
+    "join_request_answered": "Esta solicitud ya tiene respuesta o se ha retirado."
 }
