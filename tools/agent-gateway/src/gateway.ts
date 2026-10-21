@@ -13,6 +13,8 @@ type Answer =
   | { type: 'text'; text: string }
   | { type: 'tool_use'; name: string; input: Record<string, unknown> };
 
+type Usage = { inputTokens: number; outputTokens: number; estimated: boolean };
+
 type ContentBlock =
   | { type: 'text'; text: string }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> };
@@ -33,11 +35,13 @@ export const randomId: IdSource = (prefix) => {
 
 export class Gateway {
   private running = false;
+  private readonly worker: Worker;
+  private readonly ids: IdSource;
 
-  constructor(
-    private readonly worker: Worker,
-    private readonly ids: IdSource = randomId,
-  ) {}
+  constructor(worker: Worker, ids: IdSource = randomId) {
+    this.worker = worker;
+    this.ids = ids;
+  }
 
   requestId(): string {
     return this.ids('req');
@@ -79,13 +83,13 @@ export class Gateway {
       const result = await this.run(task);
 
       if (result.stopReason === 'refusal') {
-        return this.reply(request, [], 'refusal', result, task, false);
+        return this.reply(request, [], 'refusal', usageOf(result, task, ''));
       }
 
       const answer = readAnswer(result.output, validators);
 
       if (answer !== null) {
-        return this.respond(request, answer, result, task);
+        return this.respond(request, answer, usageOf(result, task, written(answer)));
       }
     }
 
@@ -112,17 +116,25 @@ export class Gateway {
     }
   }
 
-  private respond(
-    request: MessagesRequest,
-    answer: Answer,
-    result: WorkerResult,
-    task: { system: string; prompt: string },
-  ): Reply {
-    if (answer.type === 'tool_use') {
-      if (estimateTokens(JSON.stringify(answer.input)) > request.maxTokens) {
-        return this.reply(request, [], 'max_tokens', result, task, true);
+  private respond(request: MessagesRequest, answer: Answer, usage: Usage): Reply {
+    if (usage.outputTokens > request.maxTokens) {
+      const capped = { ...usage, outputTokens: request.maxTokens, estimated: true };
+
+      if (answer.type === 'tool_use') {
+        return this.reply(request, [], 'max_tokens', capped);
       }
 
+      const kept = Math.floor((answer.text.length * request.maxTokens) / usage.outputTokens);
+
+      return this.reply(
+        request,
+        [{ type: 'text', text: answer.text.slice(0, kept) }],
+        'max_tokens',
+        capped,
+      );
+    }
+
+    if (answer.type === 'tool_use') {
       const block = {
         type: 'tool_use' as const,
         id: this.ids('toolu'),
@@ -130,49 +142,21 @@ export class Gateway {
         input: answer.input,
       };
 
-      return this.reply(request, [block], 'tool_use', result, task, false);
+      return this.reply(request, [block], 'tool_use', usage);
     }
 
-    if (estimateTokens(answer.text) > request.maxTokens) {
-      const text = answer.text.slice(0, request.maxTokens * CHARACTERS_PER_TOKEN);
-
-      return this.reply(request, [{ type: 'text', text }], 'max_tokens', result, task, true);
-    }
-
-    return this.reply(
-      request,
-      [{ type: 'text', text: answer.text }],
-      'end_turn',
-      result,
-      task,
-      false,
-    );
+    return this.reply(request, [{ type: 'text', text: answer.text }], 'end_turn', usage);
   }
 
   private reply(
     request: MessagesRequest,
     content: ContentBlock[],
     stopReason: 'end_turn' | 'tool_use' | 'max_tokens' | 'refusal',
-    result: WorkerResult,
-    task: { system: string; prompt: string },
-    truncated: boolean,
+    usage: Usage,
   ): Reply {
-    const reported =
-      result.usage !== null && result.usage.inputTokens > 0 && result.usage.outputTokens > 0;
-    const inputTokens = reported
-      ? result.usage!.inputTokens
-      : estimateTokens(task.system + task.prompt);
-    const outputTokens = truncated
-      ? request.maxTokens
-      : reported
-        ? result.usage!.outputTokens
-        : Math.max(1, estimateTokens(JSON.stringify(content)));
-
-    const headers: Record<string, string> = {};
-
-    if (!reported || truncated) {
-      headers['x-soirely-usage'] = 'estimated';
-    }
+    const headers: Record<string, string> = usage.estimated
+      ? { 'x-soirely-usage': 'estimated' }
+      : {};
 
     return {
       status: 200,
@@ -186,12 +170,11 @@ export class Gateway {
         stop_reason: stopReason,
         stop_sequence: null,
         usage: {
-          input_tokens: inputTokens,
-          output_tokens: outputTokens,
+          input_tokens: usage.inputTokens,
+          output_tokens: usage.outputTokens,
           cache_creation_input_tokens: 0,
           cache_read_input_tokens: 0,
           cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 0 },
-          server_tool_use: null,
           service_tier: 'standard',
         },
       },
@@ -248,6 +231,30 @@ function readAnswer(output: unknown, tools: Map<string, ValidateFunction>): Answ
   }
 
   return { type, name, input: input as Record<string, unknown> };
+}
+
+function written(answer: Answer): string {
+  return answer.type === 'text' ? answer.text : JSON.stringify(answer.input);
+}
+
+function usageOf(
+  result: WorkerResult,
+  task: { system: string; prompt: string },
+  output: string,
+): Usage {
+  if (result.usage === null || result.usage.inputTokens < 1 || result.usage.outputTokens < 1) {
+    return {
+      inputTokens: estimateTokens(task.system + task.prompt),
+      outputTokens: Math.max(1, estimateTokens(output)),
+      estimated: true,
+    };
+  }
+
+  return {
+    inputTokens: result.usage.inputTokens,
+    outputTokens: result.usage.outputTokens,
+    estimated: false,
+  };
 }
 
 function estimateTokens(text: string): number {

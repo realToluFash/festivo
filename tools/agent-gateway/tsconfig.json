@@ -13,7 +13,8 @@
     "skipLibCheck": true,
     "types": ["node"],
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
   },
   "include": ["src"]
 }

@@ -6,12 +6,13 @@ export type ErrorType =
   | 'overloaded_error';
 
 export class GatewayError extends Error {
-  constructor(
-    readonly status: number,
-    readonly type: ErrorType,
-    message: string,
-  ) {
+  readonly status: number;
+  readonly type: ErrorType;
+
+  constructor(status: number, type: ErrorType, message: string) {
     super(message);
+    this.status = status;
+    this.type = type;
   }
 
   static invalid(message: string): GatewayError {
