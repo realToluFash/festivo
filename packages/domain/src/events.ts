@@ -46,7 +46,7 @@ export function eventProblems(draft: EventDraft): { field: EventField; problem: 
   return problems;
 }
 
-/** Picking a start date fills an empty end date; one already chosen is the host's and stays. */
-export function filledEndDate(startDate: string, endDate: string): string {
-  return endDate === '' ? startDate : endDate;
+/** The end date follows the start date, typed partial dates included, until the host chooses one. */
+export function filledEndDate(startDate: string, endDate: string, endChosen: boolean): string {
+  return endChosen ? endDate : startDate;
 }
