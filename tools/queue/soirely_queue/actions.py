@@ -187,6 +187,26 @@ def note(c, a):
     return f"noted on sc-{story_id}, for your next run"
 
 
+def to_draw(c, a):
+    """An unattended run has no Artifact tool, so it lists the screens it cannot draw for
+    the owner, who pastes the prompt into a `/soirely-designer` session."""
+    guard(c, "to-draw")
+    story = c.story(a.story, fresh=False)
+    prompt = a.text.strip()
+    if not prompt.startswith("/soirely-designer"):
+        prompt = f"/soirely-designer Draw sc-{story['id']} ({story['name']}). {prompt}"
+    store.add_drawing(c.db, story["id"], story["name"], prompt)
+    return f"sc-{story['id']} is on the owner's list to draw (sq web)"
+
+
+def drawn(c, a):
+    guard(c, "drawn")
+    story_id = story_number(a.story)
+    if not store.drop_drawing(c.db, story_id):
+        return f"sc-{story_id} was not on the list to draw"
+    return f"sc-{story_id} is off the list to draw"
+
+
 # Moving and labelling
 
 

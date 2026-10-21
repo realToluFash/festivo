@@ -74,7 +74,10 @@ def brief(row, role):
     scope = [f"This is {row['pool']}: work only on this machine (disk, Docker, the role "
              "stacks, the manager). Shared duties belong to whichever machine holds the ops "
              "lease."] if row["kind"] == "machine" else []
-    return "\n".join(scope + [
+    draw = [f"This run has no Artifact tool, so it cannot draw: for a story that needs "
+            f"screens, list it with `{sq} to-draw` and do everything else it needs."] \
+        if role == "ux" else []
+    return "\n".join(scope + draw + [
         f"Run `{roles.invoke(role)}` as an unattended routine run "
         "(.claude/skills/role-routine, section 3).",
         f"Your work is item {row['id']}: {row['reason']}.",
@@ -312,7 +315,7 @@ def cmd_history(s, a):
 # Writes
 
 
-TAKES_BODY = {actions.comment, actions.note, actions.report, actions.edit, actions.new_story,
+TAKES_BODY = {actions.comment, actions.note, actions.to_draw, actions.report, actions.edit, actions.new_story,
               actions.new_epic, actions.review, actions.pr_reply, actions.pr_create}
 
 
@@ -388,6 +391,11 @@ DETAILS = {
                       "in the owner's format, and refuses a rule already asked, with the "
                       "answer if there is one. Never wait for the answer: only the owner "
                       "grants, by merging tools/queue/permissions.json and applying it.",
+    "to-draw": "List a story whose screens this run cannot draw. The body is the prompt the "
+               "owner pastes into a /soirely-designer session, so it stands on its own: the "
+               "epic's artifact URL, the screens and layouts to draw, the states each needs, "
+               "and the decisions already made. Listing the story again replaces its prompt.",
+    "drawn": "Take a story off the list to draw, once its artboard is linked on the story.",
     "comment": "Post a tagged comment. --to takes roles, dev, and the language tags en, es, "
                "fr and pt, which reach the linguist.",
 }
@@ -443,6 +451,10 @@ WRITES = [
                 p.add_argument("--verb", default="relates to",
                                choices=["relates to", "blocks", "duplicates"]))),
     ("archive", actions.archive, "archive a story", lambda p: p.add_argument("story")),
+    ("to-draw", actions.to_draw, "list a story you cannot draw here, with the prompt that "
+     "draws it", lambda p: (p.add_argument("story"), body(p))),
+    ("drawn", actions.drawn, "take a story off the list to draw once its screens exist",
+     lambda p: p.add_argument("story")),
     ("pr-create", actions.pr_create, "open a pull request from a pushed branch",
      lambda p: (p.add_argument("--head", required=True), p.add_argument("--title", required=True),
                 p.add_argument("--draft", action="store_true"), body(p))),
@@ -575,6 +587,11 @@ def status(db, platform, now):
                                   f"{ran:{sizes[4]}}", f"{count:>{sizes[5]}}"]))
             for detail in details:
                 say(f"  {'':{sizes[0]}}  {detail}")
+    if view["drawings"]:
+        say()
+        say("to draw, prompts on sq web")
+        for drawing in view["drawings"]:
+            say(f"  sc-{drawing['story_id']}  {drawing['name']}")
     if view["elsewhere"]:
         say()
         say("roles not run here")

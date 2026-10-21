@@ -44,6 +44,9 @@ create table if not exists notes (
   id integer primary key autoincrement, role text not null, story_id integer not null,
   note text not null, at real not null
 );
+create table if not exists drawings (
+  story_id integer primary key, name text not null, prompt text not null, at real not null
+);
 create table if not exists claims (
   key text primary key, role text not null, at real not null
 );
@@ -268,6 +271,20 @@ def moves(db):
 def add_note(db, role, story_id, note, now=None):
     db.execute("insert into notes (role, story_id, note, at) values (?, ?, ?, ?)",
                (role, story_id, note, now or time.time()))
+
+
+def add_drawing(db, story_id, name, prompt, now=None):
+    db.execute("insert or replace into drawings (story_id, name, prompt, at) "
+               "values (?, ?, ?, ?)", (story_id, name, prompt, now or time.time()))
+
+
+def drop_drawing(db, story_id):
+    return db.execute("delete from drawings where story_id = ?", (story_id,)).rowcount
+
+
+def drawings(db):
+    return [dict(r) for r in db.execute("select story_id, name, prompt, at from drawings "
+                                        "order by at")]
 
 
 def notes(db, role, story_id, limit=3):

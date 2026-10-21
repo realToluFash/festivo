@@ -78,6 +78,28 @@ sign-off.
 Report what the sweep found as its own list: the stories drawn, the questions asked, and
 the stories looked at and left alone. A sweep that found nothing says so in one line.
 
+### A run with no Artifact tool lists the drawing instead
+
+A run the routine woke has no `Artifact` tool, so it cannot draw. Do everything else a
+story needs (the audit, the questions to `[pm]`, the data check in section 4) and then put
+it on the owner's list to draw, which `sq web` shows with a copy button:
+
+```sh
+sq ux to-draw sc-N <<'EOF'
+/soirely-designer Draw sc-N (<story name>) in epic E's artifact, <artifact url>.
+Screens: <each screen, by artboard name>, in the four layouts.
+States: <the states the AC asks for, each named>.
+Fields: <each field and the API field that feeds it; what is required and valid>.
+Decided: <the PM answers and owner decisions that settle the open points>.
+Then write the Design section and run `sq ux drawn sc-N`.
+EOF
+```
+
+The prompt is all the session it is pasted into will have, so it stands on its own: name
+the artifact, the screens and every state rather than pointing back at this run. Listing
+the story again replaces its prompt. Leave the story where it is: it moves to
+`Ready For Dev` once it is drawn. Never say a story is drawn when it is only listed.
+
 `/soirely-designer sc-56` draws what that story needs. `/soirely-designer 27` takes an
 epic. With no argument:
 
@@ -188,6 +210,9 @@ Needs review before it is treated as the specification.
 "What the design settles" is the valuable part: it is every decision a developer would
 otherwise have to invent, and writing it down is what stops three people inventing it
 three ways. "Where they disagree" is where the AC wins — say so, and leave the AC alone.
+
+A story drawn from the owner's list comes off it once its Design section links the
+artboard: `sq ux drawn sc-N`.
 
 ## 8. What this mode must not do
 

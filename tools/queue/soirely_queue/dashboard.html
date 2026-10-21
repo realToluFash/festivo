@@ -329,6 +329,56 @@
       .block .v.fail {
         color: var(--critical);
       }
+      .draws {
+        display: grid;
+        gap: 12px;
+      }
+      .draw {
+        display: grid;
+        gap: 10px;
+      }
+      .draw-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+      }
+      .draw-name {
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+      .draw pre {
+        margin: 0;
+        padding: 10px 12px;
+        background: var(--surface-2);
+        border-radius: 8px;
+        font:
+          12.5px/1.5 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 220px;
+        overflow: auto;
+        color: var(--text);
+      }
+      .copy {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 0;
+        border-radius: 8px;
+        padding: 6px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .copy:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
       .owner {
         background: var(--warning-soft);
         border-radius: 8px;
@@ -543,6 +593,10 @@
       </header>
       <div class="alerts" id="alerts"></div>
       <div class="kpis" id="kpis"></div>
+      <section id="draw-section" hidden>
+        <h2>To draw <span class="count" id="draw-count"></span></h2>
+        <div class="draws" id="draws"></div>
+      </section>
       <section>
         <h2>Roles on this machine <span class="count" id="roles-count"></span></h2>
         <div class="roles" id="roles"></div>
@@ -804,8 +858,48 @@
           : `<tr><td class="empty">No runs recorded yet.</td></tr>`;
       }
 
+      let drawn = '';
+      function drawings(d) {
+        const list = d.drawings || [];
+        // Redrawn only when the list or the minute changes, so a copy in progress keeps its button.
+        const key = JSON.stringify(list) + Math.floor(Date.now() / 60000);
+        if (key === drawn) return;
+        drawn = key;
+        document.getElementById('draw-section').hidden = !list.length;
+        document.getElementById('draw-count').textContent = list.length
+          ? `${list.length} ${list.length === 1 ? 'story' : 'stories'}, paste each into /soirely-designer`
+          : '';
+        document.getElementById('draws').innerHTML = list
+          .map(
+            (w, i) => `<div class="panel draw"><div class="draw-top">
+      <div><span class="role-chip">sc-${w.story_id}</span> <span class="draw-name">${esc(w.name)}</span>
+      <div class="role-title">listed ${since(w.at)}</div></div>
+      <button class="copy" data-copy="${i}" type="button">Copy prompt</button></div>
+      <pre id="prompt-${i}">${esc(w.prompt)}</pre></div>`,
+          )
+          .join('');
+      }
+
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-copy]');
+        if (!button) return;
+        const text = document.getElementById('prompt-' + button.dataset.copy).textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = 'Copied';
+        } catch (error) {
+          const range = document.createRange();
+          range.selectNodeContents(document.getElementById('prompt-' + button.dataset.copy));
+          getSelection().removeAllRanges();
+          getSelection().addRange(range);
+          button.textContent = 'Selected, press ⌘C';
+        }
+        setTimeout(() => (button.textContent = 'Copy prompt'), 2000);
+      });
+
       function render() {
         if (!data) return;
+        drawings(data);
         header(data);
         kpis(data);
         const here = data.roles;

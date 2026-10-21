@@ -380,6 +380,35 @@ class Relating(Base):
                          "already linked: sc-1 relates to sc-2")
 
 
+class Drawing(Base):
+    def test_a_story_listed_to_draw_carries_a_prompt_for_the_designer(self):
+        self.fake.add(1, "Needs Design")
+        said = actions.to_draw(self.as_("ux"), args(story="sc-1", text="Draw the empty state."))
+        self.assertIn("list to draw", said)
+        [drawing] = store.drawings(self.db)
+        self.assertEqual(drawing["prompt"],
+                         "/soirely-designer Draw sc-1 (story 1). Draw the empty state.")
+
+    def test_listing_a_story_again_replaces_its_prompt(self):
+        self.fake.add(1, "Needs Design")
+        actions.to_draw(self.as_("ux"), args(story="sc-1", text="first"))
+        actions.to_draw(self.as_("ux"), args(story="sc-1", text="/soirely-designer second"))
+        self.assertEqual([d["prompt"] for d in store.drawings(self.db)],
+                         ["/soirely-designer second"])
+
+    def test_drawn_takes_it_off_the_list(self):
+        self.fake.add(1, "Needs Design")
+        actions.to_draw(self.as_("ux"), args(story="sc-1", text="x"))
+        self.assertIn("off the list", actions.drawn(self.as_("ux"), args(story="sc-1")))
+        self.assertEqual(store.drawings(self.db), [])
+        self.assertIn("was not on", actions.drawn(self.as_("ux"), args(story="sc-1")))
+
+    def test_only_the_designer_lists_drawings(self):
+        self.fake.add(1, "Needs Design")
+        with self.assertRaises(actions.Refused):
+            actions.to_draw(self.as_("pm"), args(story="sc-1", text="x"))
+
+
 class Replies(Base):
     def setUp(self):
         super().setUp()

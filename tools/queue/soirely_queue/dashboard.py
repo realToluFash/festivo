@@ -49,7 +49,7 @@ def snapshot(db, platform, now, home, load=machine.load):
             "errors": [f"sync: {e}" for e in store.get_meta(db, "sync_errors") or []],
             "warnings": [], "machine": None, "manager": platform.timer_active(),
             "paused": runner.paused(db), "machines": [], "roles": [], "elsewhere": [],
-            "recent": [], "spend": spend(home, 7)}
+            "recent": [], "spend": spend(home, 7), "drawings": store.drawings(db)}
     try:
         config = load()
     except machine.ConfigError as error:
