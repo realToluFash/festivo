@@ -6,7 +6,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
-import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
+import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import { MemberList, MemberPage, activeCount } from '../../src/components/Members.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
