@@ -71,7 +71,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-4188). An invitation is "convite", waiting is "pendente". With several, "that
   organisation" is "a organização que o enviou", where "o" is the invitation, never the
   person. A button in a sentence goes in «» after "Selecione": "Selecione «Guardar e
-  continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". No
+  continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". "Accept an invitation above" is "aceite um convite pendente", the
+  word the intro uses, not "aceite acima", which reads stiffly. No
   `_many` yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
 
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
