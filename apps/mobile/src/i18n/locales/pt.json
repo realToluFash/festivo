@@ -901,7 +901,7 @@
     "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
     "searchCurrency": "Pesquisar moedas",
     "searchTimezone": "Pesquisar fusos horários",
-    "language": "Idioma",
+    "language": "Idioma dos convites",
     "languageHint": "Os e-mails de convite para pessoas sem conta Soirely são escritos neste idioma. Quem já tem uma conta recebe o convite no seu próprio idioma.",
     "savedLanguage": "Guardado. A partir de agora, os e-mails de convite para pessoas sem conta Soirely são enviados em {{language}}. Os convites já enviados não voltam a ser enviados.",
     "refused": "Nada foi guardado. A sua função não inclui a permissão necessária para isto.",

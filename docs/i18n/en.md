@@ -120,11 +120,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   named as printed, "Save and continue takes you there.", without quotes, as the house names
   a button in running text. "Nothing is waiting" follows every invitation answered without
   joining, so the other locales may say "no invitation is waiting" outright.
-- **21 Oct 2026. The organisation's language is labelled "Language" for now (sc-3311,
-  `orgGeneral.language`, web and app).** "Language for invitations" says better that the field
-  only sets the invitation emails sent to people without an account, and the PM allowed it, but
-  the web tests match the label's English text, so it waits on `[dev2]` (sc-3311). Until then
-  the hint carries the meaning. The same label heads the read-only row. A refused save is "Nothing was
+- **21 Oct 2026. The organisation's language is labelled "Language for invitations" (sc-3311,
+  sc-6696, `orgGeneral.language`, web and app).** "Language" alone reads as the person's own
+  interface language; the field only sets the invitation emails sent to people without an
+  account, and the PM allowed the longer label. The same label heads the read-only row. A refused save is "Nothing was
   saved." followed by the server's `permission_required` words, unchanged.
 - **19 Oct 2026. Two-factor is "turned on", the first time (sc-3030, sc-609, sc-69 #3210).**
   "Turn on two-factor" is the button wherever a person enables it, and a sentence says "turn
