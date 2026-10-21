@@ -40,4 +40,4 @@ class HelpTopic(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out):
             cli.main(["pm", "help", "move"])
-        self.assertIn("nobody holds it", out.getvalue())
+        self.assertIn("any story from any state", out.getvalue())

@@ -388,11 +388,7 @@ READS = [
 
 DETAILS = {
     "move": "Move a story to a state your role moves it to, from the states it moves it "
-            "from. The product manager also moves an In Progress story back to Backlog, To Do "
-            "or Ready For Dev when nobody holds it: no role moved it there through sq, it "
-            "carries no developer label (dev1, dev2), and no open pull request is on its "
-            "branch. A pull request that only mentions a story moves it through Shortcut's "
-            "GitHub link, and that is the case this is for.",
+            "from. The product manager moves any story from any state to any other.",
     "edit": "Replace one section (--section), add a dated one (--dated), or change one "
             "exact piece of text with --replace OLD --with NEW. --replace takes several "
             "targets, refuses unless OLD appears exactly once in every one of them, and then "
