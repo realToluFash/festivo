@@ -49,6 +49,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
+  app, sc-4188). Waiting is «pendiente». With several, "join that organisation" is «unirse a la
+  organización que le invita», since «esa» after «una» reads as nobody's. A button named in a
+  sentence goes in «», with the verb: "Pulse «Guardar y continuar» para entrar en ella". "Nothing
+  is waiting" says what is gone, «No queda ninguna invitación pendiente». No `_many` yet: the
+  key-parity guard refuses a form English lacks (sc-4188, [dev2]), so 1 000 000 falls back to English.
+
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is «Usted tendrá la función Propietario», the role and not
   «su propietario», which assumes a man. The rate limit says what happened, «Por ahora no se
