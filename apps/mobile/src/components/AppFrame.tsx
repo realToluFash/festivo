@@ -1,7 +1,7 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { initials, roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type ReactNode, createContext, useContext, useState } from 'react';
+import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -13,11 +13,13 @@ import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
+import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
 const RAIL_WIDTH = 220;
 
@@ -26,6 +28,19 @@ const OpenSwitcher = createContext<(() => void) | undefined>(undefined);
 /** Opens the frame's organisation switcher; undefined while there is no organisation and no invitation. */
 export function useOpenSwitcher(): (() => void) | undefined {
   return useContext(OpenSwitcher);
+}
+
+const HideBack = createContext<((hidden: boolean) => void) | undefined>(undefined);
+
+/** While `hidden`, the phone header keeps its title and drops the back row (sc-3132). */
+export function useHeaderWithoutBack(hidden: boolean): void {
+  const hide = useContext(HideBack);
+
+  useEffect(() => {
+    hide?.(hidden);
+
+    return () => hide?.(false);
+  }, [hide, hidden]);
 }
 
 const ICONS: Record<Destination, readonly [string, string]> = {
@@ -48,10 +63,13 @@ export function AppFrame({
   current,
   title,
   back,
+  aboutTheAccount = false,
   children,
 }: {
   current: Destination;
   title: string;
+  /** Security and Account stay open past an organisation's two-factor deadline, to set it up (sc-609). */
+  aboutTheAccount?: boolean;
   /** On a phone, the page this one was opened from, as Security's "Settings". */
   back?: { label: string; onPress: () => void } | undefined;
   children: ReactNode;
@@ -61,6 +79,7 @@ export function AppFrame({
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
+  const [backHidden, setBackHidden] = useState(false);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
   const offer = useDomainOffer();
@@ -74,6 +93,7 @@ export function AppFrame({
         }
       : undefined;
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
+  const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
 
   return (
     <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
@@ -91,6 +111,7 @@ export function AppFrame({
           current={current}
           title={title}
           back={back}
+          backHidden={backHidden}
           email={email}
           organisation={signedIn.organisation}
           waiting={count}
@@ -106,7 +127,15 @@ export function AppFrame({
               />
             </View>
           )}
-          <OpenSwitcher.Provider value={openSwitcher}>{children}</OpenSwitcher.Provider>
+          <OpenSwitcher.Provider value={openSwitcher}>
+            <HideBack.Provider value={setBackHidden}>
+              {overdue && !aboutTheAccount && signedIn.organisation != null ? (
+                <TwoFactorOverdue organisation={signedIn.organisation} />
+              ) : (
+                children
+              )}
+            </HideBack.Provider>
+          </OpenSwitcher.Provider>
         </View>
         {kind === 'phone' && <TabBar current={current} />}
       </View>
@@ -143,6 +172,7 @@ function FrameHeader({
   current,
   title,
   back,
+  backHidden,
   email,
   organisation,
   waiting,
@@ -152,6 +182,7 @@ function FrameHeader({
   current: Destination;
   title: string;
   back: { label: string; onPress: () => void } | undefined;
+  backHidden: boolean;
   email: string;
   organisation: Membership | null;
   waiting: number;
@@ -218,7 +249,7 @@ function FrameHeader({
       {current === 'home' && organisation != null && (
         <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
       )}
-      {back != null && (
+      {back != null && !backHidden && (
         <Pressable
           style={styles.back}
           onPress={back.onPress}

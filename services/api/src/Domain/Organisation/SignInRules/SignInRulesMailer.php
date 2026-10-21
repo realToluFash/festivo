@@ -32,6 +32,35 @@ final readonly class SignInRulesMailer
         }
     }
 
+    /**
+     * The members without two-factor, told the moment it is required of them, with the instant in each one's zone (sc-609).
+     *
+     * @param list<User> $members
+     */
+    public function sendTwoFactorDue(Organisation $organisation, array $members, DateTimeImmutable $deadline): void
+    {
+        $origin = Str\trim_right($this->webOrigin, '/');
+
+        foreach ($members as $member) {
+            $address = $member->getPrimaryEmailAddress()?->getAddress();
+
+            if (null === $address) {
+                continue;
+            }
+
+            $locale = $this->userMailer->localeFor($member);
+            $named = ['{organisation}' => $organisation->getName()];
+
+            $this->userMailer->send($address, $locale, 'signInRules.twoFactorDue.subject', [
+                $this->userMailer->line('signInRules.twoFactorDue.body', $locale, [...$named, '{deadline}' => $this->userMailer->deadline($deadline, $member, $locale)]),
+                $this->userMailer->line('signInRules.twoFactorDue.after', $locale, $named),
+                $this->userMailer->line('signInRules.twoFactorDue.turnOn', $locale, ['{link}' => $origin . '/app/account/security']),
+                '--',
+                $this->userMailer->line('signInRules.changed.footer', $locale, $named),
+            ], $named);
+        }
+    }
+
     /** @param array<string, array{0: mixed, 1: mixed}> $changes */
     private function sendTo(User $member, Organisation $organisation, User $by, array $changes, bool $stranded, DateTimeImmutable $at, ?string $asked): void
     {
@@ -70,6 +99,7 @@ final readonly class SignInRulesMailer
             'providerOnly' === $rule => $this->userMailer->line(true === $now ? 'signInRules.rule.providerOnly' : 'signInRules.rule.anyMethod', $locale),
             'inactivityTimeoutDays' === $rule && \is_int($now) => $this->userMailer->line('signInRules.rule.inactivity', $locale, ['days' => $now]),
             'inactivityTimeoutDays' === $rule => $this->userMailer->line('signInRules.rule.noLimit', $locale),
+            'everyoneNeedsTwoFactor' === $rule => $this->userMailer->line(true === $now ? 'signInRules.rule.everyoneTwoFactor' : 'signInRules.rule.noEveryoneTwoFactor', $locale),
             true === $now => $this->userMailer->line('signInRules.rule.twoFactor', $locale),
             default => $this->userMailer->line('signInRules.rule.noTwoFactor', $locale),
         };

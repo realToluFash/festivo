@@ -4,6 +4,7 @@ import {
   type Problem,
   type SignInRuleChange,
 } from '@soirely/api-client';
+import { type TwoFactorStanding } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
 /** Why an organisation's sign-in rule (sc-69) sent somebody to sign-in, named so the screen can say whose rule it was. */
@@ -90,17 +91,21 @@ export function providerNames(providers: readonly string[]): string[] {
   );
 }
 
-export type RulesNotice = 'readOnly' | 'twoFactor' | 'changed';
+export type RulesNotice = 'due' | 'readOnly' | 'twoFactor' | 'changed';
 
 /** What the member's organisation's rules ask of them, in the order the design stacks them. */
 export function rulesNotices(
   organisation: Membership,
   seenAt: string | null | undefined,
   twoFactorPutOff: boolean,
+  standing: TwoFactorStanding = 'clear',
 ): RulesNotice[] {
   const notices: RulesNotice[] = [];
   const changedAt = organisation.signInRules.changedAt;
 
+  // Past the deadline the whole screen says it instead (TwoFactorOverdue).
+  if (standing === 'overdue') return notices;
+  if (standing === 'due') notices.push('due');
   if (organisation.readOnlyUntilLinked) notices.push('readOnly');
   if (organisation.withheldUntilTwoFactor.length > 0 && !twoFactorPutOff) notices.push('twoFactor');
   if (changedAt != null && seenAt !== undefined && changedAt !== seenAt) notices.push('changed');
@@ -126,6 +131,8 @@ export function ruleValue(t: TFunction, rule: SignInRuleChange['rule'], value: u
     return typeof value === 'number'
       ? t('signInRules.valueIdle', { count: value })
       : t('signInRules.valueNoLimit');
+  if (rule === 'everyoneNeedsTwoFactor')
+    return t(value === true ? 'signInRules.valueEveryone' : 'signInRules.valueNoEveryone');
 
   return t(value === true ? 'signInRules.valueTwoFactor' : 'signInRules.valueNoTwoFactor');
 }

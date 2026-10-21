@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\MembershipStatus;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use LogicException;
@@ -44,7 +45,15 @@ class Membership
     #[ORM\Column(type: Types::STRING, length: 20, enumType: MembershipStatus::class)]
     private MembershipStatus $status;
 
-    public function __construct(Organisation $organisation, User $user, Role $role, MembershipStatus $status)
+    /** When the account last joined: entering active, returning after leaving, or approved, but not reinstated from suspension. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $joinedAt = null;
+
+    /** When the organisation's two-factor deadline first held this member back, for the audit trail (sc-609). */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $twoFactorBlockedAt = null;
+
+    public function __construct(Organisation $organisation, User $user, Role $role, MembershipStatus $status, DateTimeImmutable $at)
     {
         $this->id = Uuid::v7();
         $this->organisation = $organisation;
@@ -56,6 +65,10 @@ class Membership
         }
 
         $this->status = $status;
+
+        if (MembershipStatus::Active === $status) {
+            $this->joinedAt = $at;
+        }
     }
 
     public function getId(): Uuid
@@ -90,10 +103,14 @@ class Membership
     }
 
     /** Refuses any transition the machine does not declare (sc-67), whoever asks. */
-    public function setStatus(MembershipStatus $status): void
+    public function setStatus(MembershipStatus $status, DateTimeImmutable $at): void
     {
         if (!$this->status->canBecome($status)) {
             throw new LogicException(Str\format('A membership cannot go from %s to %s.', $this->status->value, $status->value));
+        }
+
+        if (MembershipStatus::Active === $status && MembershipStatus::Suspended !== $this->status) {
+            $this->joinedAt = $at;
         }
 
         $this->status = $status;
@@ -102,5 +119,20 @@ class Membership
     public function isActive(): bool
     {
         return MembershipStatus::Active === $this->status;
+    }
+
+    public function getJoinedAt(): ?DateTimeImmutable
+    {
+        return $this->joinedAt;
+    }
+
+    public function getTwoFactorBlockedAt(): ?DateTimeImmutable
+    {
+        return $this->twoFactorBlockedAt;
+    }
+
+    public function setTwoFactorBlockedAt(?DateTimeImmutable $twoFactorBlockedAt): void
+    {
+        $this->twoFactorBlockedAt = $twoFactorBlockedAt;
     }
 }

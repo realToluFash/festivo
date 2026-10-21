@@ -3,13 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { tokens } from '../theme/tokens.ts';
 import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
 import {
-  belowScreenTop,
   coveredBy,
   groupInWindow,
   keyboardInWindow,
   keyboardLift,
+  keysOver,
   listRoom,
   offsetAboveKeyboard,
+  shortWhileTyping,
 } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -80,10 +81,8 @@ describe('a field and its button rest above the keyboard', () => {
 });
 
 describe('the keyboard and a screen under the header share one frame', () => {
-  // Android with the status bar counted out: a view at the screen's top measures at -24, and the
-  // Screen under the frame's 80pt header measures at 56.
+  // Android with the status bar counted out: a view at the screen's top measures at -24.
   const origin = -24;
-  const screenRoot = 56;
 
   it('moving the keyboard by the origin, not by where the screen starts', () => {
     expect(keyboardInWindow(500, origin)).toBe(476);
@@ -97,9 +96,18 @@ describe('the keyboard and a screen under the header share one frame', () => {
     expect(coveredBy(keyboardTop, { y: 320, height: 150 }, 16)).toBe(true);
   });
 
-  it('placing the screen as far below the top as the header is tall', () => {
-    expect(belowScreenTop(screenRoot, origin)).toBe(80);
-    expect(belowScreenTop(80, 0)).toBe(80);
+  it('padding a screen by as much of it as the keys cover', () => {
+    const keyboardTop = keyboardInWindow(500, origin);
+
+    expect(keysOver({ y: 56, height: 600 }, keyboardTop)).toBe(180);
+    expect(keysOver({ y: 56, height: 400 }, keyboardTop)).toBe(0);
+    expect(keysOver({ y: 56, height: 600 }, null)).toBe(0);
+  });
+
+  it('and by the same once a shorter header lets the screen start higher and grow', () => {
+    const keyboardTop = keyboardInWindow(500, origin);
+
+    expect(keysOver({ y: 0, height: 656 }, keyboardTop)).toBe(180);
   });
 });
 
@@ -116,6 +124,31 @@ describe('a list between a field and its button shrinks to fit above the keyboar
 
   it('never taller than with the keyboard down', () => {
     expect(listRoom({ ...smallPhone, room: 900 })).toBe(264);
+  });
+});
+
+describe('a short Android phone gives up the help line and back row while typing', () => {
+  const smallAndroid = { os: 'android', phone: true, height: 640, keysUp: true };
+
+  it('at 360×640 dp with the keys up', () => {
+    expect(shortWhileTyping(smallAndroid)).toBe(true);
+  });
+
+  it('up to 700 dp tall', () => {
+    expect(shortWhileTyping({ ...smallAndroid, height: 700 })).toBe(true);
+    expect(shortWhileTyping({ ...smallAndroid, height: 701 })).toBe(false);
+  });
+
+  it('never with the keys down', () => {
+    expect(shortWhileTyping({ ...smallAndroid, keysUp: false })).toBe(false);
+  });
+
+  it('never on a tablet', () => {
+    expect(shortWhileTyping({ ...smallAndroid, phone: false, height: 600 })).toBe(false);
+  });
+
+  it('never on iOS', () => {
+    expect(shortWhileTyping({ ...smallAndroid, os: 'ios', height: 667 })).toBe(false);
   });
 });
 

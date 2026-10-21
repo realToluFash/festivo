@@ -20,6 +20,7 @@ final readonly class Grants
         private array $permissions,
         private array $withheld = [],
         private bool $readOnly = false,
+        private bool $heldForTwoFactor = false,
     ) {
     }
 
@@ -37,18 +38,24 @@ final readonly class Grants
     /** The administrative permissions this holds, kept back until the member turns two-factor on. */
     public function withholdingAdministration(): self
     {
-        return new self($this->everything, $this->permissions, Vec\filter(Permission::cases(), fn (Permission $permission): bool => $permission->isAdministrative() && $this->roleHolds($permission)), $this->readOnly);
+        return new self($this->everything, $this->permissions, Vec\filter(Permission::cases(), fn (Permission $permission): bool => $permission->isAdministrative() && $this->roleHolds($permission)), $this->readOnly, $this->heldForTwoFactor);
     }
 
     /** Reading only, until the member links Google or Apple. */
     public function readingOnly(): self
     {
-        return new self($this->everything, $this->permissions, $this->withheld, true);
+        return new self($this->everything, $this->permissions, $this->withheld, true, $this->heldForTwoFactor);
+    }
+
+    /** Nothing at all, past the organisation's deadline for two-factor, until the member turns it on (sc-609). */
+    public function heldForTwoFactor(): self
+    {
+        return new self($this->everything, $this->permissions, $this->withheld, $this->readOnly, true);
     }
 
     public function holds(Permission $permission): bool
     {
-        return $this->roleHolds($permission) && !$this->withholds($permission);
+        return !$this->heldForTwoFactor && $this->roleHolds($permission) && !$this->withholds($permission);
     }
 
     /** What a client may offer: under the read-only rule a change is refused, so it is not offered either. */
@@ -71,6 +78,11 @@ final readonly class Grants
     public function isReadOnly(): bool
     {
         return $this->readOnly;
+    }
+
+    public function isHeldForTwoFactor(): bool
+    {
+        return $this->heldForTwoFactor;
     }
 
     private function roleHolds(Permission $permission): bool

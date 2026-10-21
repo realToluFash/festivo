@@ -52,3 +52,40 @@ export function formatCountdown(seconds: number): string {
 
   return `${minutes}:${String(whole % 60).padStart(2, '0')}`;
 }
+
+const EVENT_DAY: Intl.DateTimeFormatOptions = {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+};
+
+/** In the event's own zone, never the reader's: 16:00 in Lagos is 16:00 to everyone who reads it. */
+export function formatEventDate(moment: string, timeZone: string, locale: string): string {
+  const date = asDate(moment);
+
+  if (date == null) return '';
+
+  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY, timeZone }).format(date);
+}
+
+/** CLDR's interval format, which writes a date once when both ends fall on it. */
+export function formatEventRange(
+  startsAt: string,
+  endsAt: string,
+  timeZone: string,
+  locale: string,
+): string {
+  const start = asDate(startsAt);
+  const end = asDate(endsAt);
+
+  if (start == null || end == null) return '';
+
+  return new Intl.DateTimeFormat(locale, {
+    ...EVENT_DAY,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone,
+  }).formatRange(start, end);
+}

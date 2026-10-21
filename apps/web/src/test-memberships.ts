@@ -14,10 +14,12 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
     permissions: OWNER_PERMISSIONS,
     withheldUntilTwoFactor: [],
     readOnlyUntilLinked: false,
+    twoFactorDue: null,
     signInRules: {
       providerOnly: false,
       inactivityTimeoutDays: null,
       administratorsNeedTwoFactor: false,
+      everyoneNeedsTwoFactor: false,
       changedAt: null,
     },
     ...overrides,
@@ -28,6 +30,7 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
 export const OWNER_PERMISSIONS = [
   'events.read',
   'events.manage',
+  'events.create',
   'guests.read',
   'guests.manage',
   'seating.read',

@@ -1,6 +1,6 @@
 // One lift per platform; both at once is the double lift. iOS never moves the window, so
 // the scroll view adjusts its insets. Android is edge to edge here, so the window does not
-// resize either, and a KeyboardAvoidingView pads the content.
+// resize either, and the screen pads its content by as much as the keys cover.
 export interface KeyboardLift {
   avoid: 'padding' | null;
   adjustScrollInsets: boolean;
@@ -42,9 +42,9 @@ export function keyboardInWindow(screenY: number, origin: number): number {
   return screenY + origin;
 }
 
-/** How far below the screen's top a view sits, from its measureInWindow top and the origin. */
-export function belowScreenTop(measured: number, origin: number): number {
-  return measured - origin;
+/** How much of a view, measured in the window, the keyboard covers from its bottom up. */
+export function keysOver(view: Rect, keyboardTop: number | null): number {
+  return keyboardTop == null ? 0 : Math.max(0, view.y + view.height - keyboardTop);
 }
 
 export interface Lift {
@@ -85,4 +85,20 @@ export interface ListRoom {
 /** The tallest a list may grow so its group fits above the keyboard, never under one whole row. */
 export function listRoom({ room, rest, oneRow, most }: ListRoom): number {
   return Math.max(oneRow, Math.min(most, room - rest));
+}
+
+/** On an Android phone this tall or shorter, in dp, the keys leave no room for the help line and back row (sc-3132). */
+export const SHORT_ANDROID_HEIGHT = 700;
+
+export interface Typing {
+  os: string;
+  phone: boolean;
+  /** The window's height, in dp. */
+  height: number;
+  keysUp: boolean;
+}
+
+/** Whether a card gives up its help line and the header its back row while the keys are up. */
+export function shortWhileTyping({ os, phone, height, keysUp }: Typing): boolean {
+  return os === 'android' && phone && keysUp && height <= SHORT_ANDROID_HEIGHT;
 }

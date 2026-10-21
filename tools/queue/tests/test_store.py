@@ -42,6 +42,27 @@ class Claims(unittest.TestCase):
                      NOW + 60)
         self.assertEqual(store.claim(self.db, "dev", NOW + 60)["fingerprint"], "b")
 
+    def test_within_a_priority_the_lower_rank_is_claimed_first(self):
+        store.record(self.db, [dict(item("a", ["dev"]), rank=4),
+                               dict(item("b", ["dev"]), rank=1)], NOW)
+        self.assertEqual(store.claim(self.db, "dev", NOW)["fingerprint"], "b")
+
+    def test_a_queue_from_before_ranks_gains_the_column(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "queue.db")
+            old = store.connect(path)
+            old.execute("drop table work")
+            old.execute("create table work (id integer primary key, fingerprint text unique, "
+                        "pool text, roles text, kind text, story_id integer, pr integer, "
+                        "reason text, priority integer, comments text, status text default "
+                        "'open', claimed_by text, lease_until real, first_seen real, "
+                        "done_at real, note text)")
+            old.close()
+            db = store.connect(path)
+            store.record(db, [item("a", ["dev"])], NOW)
+            self.assertEqual(store.claim(db, "dev", NOW)["rank"], 0)
+            db.close()
+
     def test_finished_work_does_not_come_back(self):
         store.record(self.db, [item("a", ["dev"])], NOW)
         row = store.claim(self.db, "dev", NOW)

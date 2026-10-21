@@ -42,10 +42,12 @@ function membership(overrides: Partial<Membership> = {}): Membership {
     permissions: ['events.read'],
     withheldUntilTwoFactor: [],
     readOnlyUntilLinked: false,
+    twoFactorDue: null,
     signInRules: {
       providerOnly: false,
       inactivityTimeoutDays: null,
       administratorsNeedTwoFactor: false,
+      everyoneNeedsTwoFactor: false,
       changedAt: null,
     },
     ...overrides,
@@ -113,11 +115,13 @@ describe('what the rules ask of a member, on the home screen', () => {
     const changedAt = '2026-10-15T17:40:00+00:00';
     const held = membership({
       readOnlyUntilLinked: true,
+      twoFactorDue: null,
       withheldUntilTwoFactor: ['members.read'],
       signInRules: {
         providerOnly: true,
         inactivityTimeoutDays: null,
         administratorsNeedTwoFactor: true,
+        everyoneNeedsTwoFactor: false,
         changedAt,
       },
     });
@@ -125,6 +129,16 @@ describe('what the rules ask of a member, on the home screen', () => {
     expect(rulesNotices(held, null, false)).toEqual(['readOnly', 'twoFactor', 'changed']);
     expect(rulesNotices(held, changedAt, true)).toEqual(['readOnly']);
     expect(rulesNotices(held, undefined, true)).toEqual(['readOnly']);
+  });
+
+  it('puts the deadline for two-factor of everyone first, and nothing past it (sc-609)', () => {
+    const held = membership({
+      withheldUntilTwoFactor: ['members.read'],
+      twoFactorDue: { at: '2026-10-24T13:20:00+00:00', written: 'Saturday', overdue: false },
+    });
+
+    expect(rulesNotices(held, null, false, 'due')).toEqual(['due', 'twoFactor']);
+    expect(rulesNotices(held, null, false, 'overdue')).toEqual([]);
   });
 
   it('words each rule’s value, a count with its plural', () => {
@@ -138,12 +152,14 @@ describe('what the rules ask of a member, on the home screen', () => {
     ruleValue(t, 'inactivityTimeoutDays', 7);
     ruleValue(t, 'inactivityTimeoutDays', null);
     ruleValue(t, 'administratorsNeedTwoFactor', false);
+    ruleValue(t, 'everyoneNeedsTwoFactor', true);
 
     expect(said).toEqual([
       'signInRules.valueProviderOnly',
       ['signInRules.valueIdle', { count: 7 }],
       'signInRules.valueNoLimit',
       'signInRules.valueNoTwoFactor',
+      'signInRules.valueEveryone',
     ]);
   });
 

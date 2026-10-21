@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   formatCountdown,
   formatDay,
+  formatEventDate,
+  formatEventRange,
   formatTimeOfDay,
   lockLiftsAt,
   secondsUntil,
@@ -90,5 +92,59 @@ describe('when a lock lifts', () => {
   it('answers with nothing for a Retry-After that is missing or nonsense', () => {
     expect(lockLiftsAt(Number.NaN, now)).toBeNull();
     expect(lockLiftsAt(0, now)).toBeNull();
+  });
+});
+
+describe("an event's start and end", () => {
+  const spaced = (text: string) => text.replace(/\s/g, ' ');
+
+  it("is written in the event's zone on the 24-hour clock, whatever the reader's zone", () => {
+    expect(
+      spaced(
+        formatEventRange(
+          '2026-11-14T16:00:00+01:00',
+          '2026-11-15T02:00:00+01:00',
+          'Africa/Lagos',
+          'en-GB',
+        ),
+      ),
+    ).toBe('Sat, 14 Nov 2026, 16:00 – Sun, 15 Nov 2026, 02:00');
+    expect(
+      spaced(
+        formatEventRange('2026-11-14T15:00:00Z', '2026-11-15T01:00:00Z', 'Africa/Lagos', 'en'),
+      ),
+    ).toBe('Sat, Nov 14, 2026, 16:00 – Sun, Nov 15, 2026, 02:00');
+  });
+
+  it('writes the date once when both ends fall on the same day', () => {
+    const range = spaced(
+      formatEventRange(
+        '2026-11-14T16:00:00+01:00',
+        '2026-11-14T23:00:00+01:00',
+        'Africa/Lagos',
+        'en',
+      ),
+    );
+
+    expect(range).toBe('Sat, Nov 14, 2026, 16:00 – 23:00');
+  });
+
+  it("follows the reader's language", () => {
+    const range = formatEventRange(
+      '2026-11-14T16:00:00+01:00',
+      '2026-11-15T02:00:00+01:00',
+      'Africa/Lagos',
+      'fr',
+    );
+
+    expect(range).toMatch(/^sam\. 14 nov\. 2026/);
+    expect(range).toMatch(/dim\. 15 nov\. 2026, 02:00$/);
+  });
+
+  it('takes the date from the zone, not from the instant in UTC', () => {
+    expect(formatEventDate('2026-11-14T23:30:00-05:00', 'America/New_York', 'en')).toBe(
+      'Sat, Nov 14, 2026',
+    );
+    expect(formatEventDate('not a date', 'Africa/Lagos', 'en')).toBe('');
   });
 });

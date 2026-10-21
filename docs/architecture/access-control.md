@@ -33,7 +33,7 @@ a permission that is not in the registry cannot be asked for: it does not compil
 
 Each case names its **area** (a row of the roles screen's grid, `PermissionArea`) and the
 **seeded roles it starts on** (`defaultRoles()`). Areas hold a `read` and a `manage`
-permission, and `budget.margin` sits beside Budget's. `PermissionRegistryTest` fails for a
+permission, `budget.margin` sits beside Budget's and `events.create` beside Events'. `PermissionRegistryTest` fails for a
 permission that reaches no seeded role but Owner, unless it is listed there as Owner-only
 on purpose (`billing.manage`). A story that adds one names its defaults, and a migration
 grants it once to those seeded roles in every existing organisation (sc-66).
@@ -42,21 +42,21 @@ What each seeded role starts with. Owner holds everything, including what is add
 These are defaults, written when the organisation is founded, and the organisation changes
 them afterwards on Settings > Roles:
 
-| Area         | Administrator      | Event manager | Coordinator | Read-only |
-| ------------ | ------------------ | ------------- | ----------- | --------- |
-| Events       | manage             | manage        | manage      | read      |
-| Guests       | manage             | manage        | manage      | read      |
-| Seating      | manage             | manage        | manage      | read      |
-| Menu         | manage             | manage        | manage      | read      |
-| Run of show  | manage             | manage        | manage      | read      |
-| Staff        | manage             | manage        | read        | read      |
-| Messages     | manage             | manage        | manage      | read      |
-| Reports      | manage             | manage        | read        | read      |
-| Budget       | manage, and margin | manage        | read        | read      |
-| Vendors      | manage             | none          | none        | none      |
-| Members      | manage             | none          | none        | none      |
-| Billing      | read               | none          | none        | none      |
-| Organisation | manage             | none          | none        | none      |
+| Area         | Administrator      | Event manager      | Coordinator | Read-only |
+| ------------ | ------------------ | ------------------ | ----------- | --------- |
+| Events       | manage, and create | manage, and create | manage      | read      |
+| Guests       | manage             | manage             | manage      | read      |
+| Seating      | manage             | manage             | manage      | read      |
+| Menu         | manage             | manage             | manage      | read      |
+| Run of show  | manage             | manage             | manage      | read      |
+| Staff        | manage             | manage             | read        | read      |
+| Messages     | manage             | manage             | manage      | read      |
+| Reports      | manage             | manage             | read        | read      |
+| Budget       | manage, and margin | manage             | read        | read      |
+| Vendors      | manage             | none               | none        | none      |
+| Members      | manage             | none               | none        | none      |
+| Billing      | read               | none               | none        | none      |
+| Organisation | manage             | none               | none        | none      |
 
 **Nobody grants what they do not hold.** Creating or editing a role, a caller may add or
 remove only permissions their own role holds, and a deleted role's people may move only to
@@ -126,9 +126,21 @@ only in the organisation that set it:
   on while the person saving has no two-factor of their own is **409 `two_factor_off`**,
   and nothing in that save is changed. The sign-in rules page
   (`GET /api/orgs/{id}/sign-in-rules`) carries `ownTwoFactor`, so it refuses before sending.
+- **Two-factor for everyone** (sc-609), for a member without it: nothing changes for 7 × 24
+  hours from the switch-on instant (`organisations.two_factor_required_since`), or from
+  joining, whichever is later. After that every request in the organisation is **403
+  `organisation_two_factor_overdue`**, however the session was opened, until two-factor is
+  on; the organisation stays in `GET /api/orgs` so the client can say why. Turning two-factor
+  off while any organisation requires it is **409 `two_factor_kept_by_rule`**, naming it.
+  Switching it on has the same `two_factor_off` refusal as the administrators' rule, and
+  emails every member without two-factor the deadline. The hold needs no job, but
+  `app:sign-in-rules:record-two-factor-holds` audits each member it holds, once
+  (`memberships.two_factor_blocked_at`).
 
 `GET /api/orgs` and `GET /api/orgs/{id}/permissions` carry `withheldUntilTwoFactor` and
-`readOnlyUntilLinked`, and leave the withheld permissions out of `permissions`.
+`readOnlyUntilLinked`, and leave the withheld permissions out of `permissions`. `GET
+/api/orgs` also carries `twoFactorDue` (`at`, `written` in the member's own zone by sc-868,
+`overdue`) while the member has a deadline to meet.
 
 ## Sub-resources are loaded through their event
 
@@ -158,8 +170,8 @@ The listener asks two interfaces:
 table: only an `active` membership counts, and it grants what the member's role holds as
 the organisation last set it (`roles.permissions`). Owner holds everything.
 
-Until events exist, `NoEvents` answers that no event exists, so every event route refuses,
-which is the direction a gap should fail in.
+`App\Domain\Event\EventDirectory` answers the second from the `events` table, so an
+unknown event and another organisation's are the same 404.
 
 ## The onboarding gate
 

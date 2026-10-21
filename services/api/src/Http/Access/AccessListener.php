@@ -85,6 +85,10 @@ final readonly class AccessListener
     {
         $grants = $this->membershipDirectory->grantsIn($user, $organisationId) ?? throw self::notFound();
 
+        if ($grants->isHeldForTwoFactor()) {
+            throw new ApiException(ErrorCode::OrganisationTwoFactorOverdue, 'This organisation requires two-factor. Turn it on in Security to carry on.');
+        }
+
         if ($grants->isReadOnly() && !$request->isMethodSafe()) {
             throw new ApiException(ErrorCode::OAuthOnlyUnlinked, 'This organisation signs in with Google or Apple only. Link one to make changes.');
         }

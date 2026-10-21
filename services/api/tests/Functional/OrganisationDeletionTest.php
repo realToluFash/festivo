@@ -334,7 +334,7 @@ final class OrganisationDeletionTest extends ApiTestCase
         $user = $this->account($address, $name, $zone);
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
         $role = self::em()->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => $seeded]) ?? self::fail('no role');
-        self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active));
+        self::em()->persist(new Membership($organisation, $user, $role, MembershipStatus::Active, new DateTimeImmutable()));
         self::em()->flush();
 
         return $user;

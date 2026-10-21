@@ -8,6 +8,7 @@ import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { refreshAccount, useSessionState } from '../../../session.ts';
 
 type Stage =
   | { kind: 'loading' }
@@ -32,6 +33,14 @@ export function TwoFactorCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [refusedBy, setRefusedBy] = useState<string | null>(null);
+  const sessionState = useSessionState();
+  // sc-609: the server refuses it too; this says so before a code is asked for.
+  const keptBy =
+    sessionState.status === 'signedIn'
+      ? (sessionState.session.organisations.find((one) => one.signInRules.everyoneNeedsTwoFactor)
+          ?.name ?? null)
+      : null;
 
   useEffect(() => {
     let live = true;
@@ -108,7 +117,10 @@ export function TwoFactorCard({
         <AtRest
           status={stage.status}
           onTurnOn={() => void turnOn()}
-          onTurnOff={() => setStage({ kind: 'turning-off' })}
+          refusedBy={refusedBy}
+          onTurnOff={() =>
+            keptBy == null ? setStage({ kind: 'turning-off' }) : setRefusedBy(keptBy)
+          }
           onNewCodes={() => setStage({ kind: 'new-codes' })}
         />
       )}
@@ -116,14 +128,27 @@ export function TwoFactorCard({
       {stage.kind === 'setting-up' && (
         <SettingUp
           enrolment={stage.enrolment}
-          onActivated={(codes) => setStage({ kind: 'saving-codes', codes })}
+          onActivated={(codes) => {
+            setStage({ kind: 'saving-codes', codes });
+            if (sessionState.status === 'signedIn') void refreshAccount();
+          }}
           onCancel={reload}
         />
       )}
 
       {stage.kind === 'saving-codes' && <SavingCodes codes={stage.codes} onFinish={reload} />}
 
-      {stage.kind === 'turning-off' && <TurningOff email={email} onOff={reload} onKeep={reload} />}
+      {stage.kind === 'turning-off' && (
+        <TurningOff
+          email={email}
+          onOff={reload}
+          onKeep={reload}
+          onKept={(organisation) => {
+            setRefusedBy(organisation);
+            reload();
+          }}
+        />
+      )}
 
       {stage.kind === 'new-codes' && (
         <ConfirmNewCodes
@@ -137,11 +162,13 @@ export function TwoFactorCard({
 
 function AtRest({
   status,
+  refusedBy,
   onTurnOn,
   onTurnOff,
   onNewCodes,
 }: {
   status: TwoFactorStatus;
+  refusedBy: string | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
   onNewCodes: () => void;
@@ -180,6 +207,14 @@ function AtRest({
               {t('twoFactorCard.turnOff')}
             </button>
           </div>
+          {refusedBy != null && (
+            <div className="notice notice-attention" role="alert">
+              <span className="mark mark-attention" aria-hidden="true">
+                !
+              </span>
+              <p>{t('twoFactorCard.keptByRule', { organisation: refusedBy })}</p>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -363,10 +398,12 @@ function TurningOff({
   email,
   onOff,
   onKeep,
+  onKept,
 }: {
   email: string;
   onOff: () => void;
   onKeep: () => void;
+  onKept: (organisation: string) => void;
 }) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState('');
@@ -389,6 +426,11 @@ function TurningOff({
       await api.disableTwoFactor(typed.trim());
       onOff();
     } catch (refusal) {
+      if (refusal instanceof ApiError && refusal.is('two_factor_kept_by_rule')) {
+        onKept(refusal.problem.organisation ?? '');
+        return;
+      }
+
       setChecking(false);
       setError(
         refusal instanceof ApiError && refusal.is('too_many_attempts')

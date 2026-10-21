@@ -27,7 +27,7 @@ export interface Problem {
   pendingProof?: string;
   /** On `two_factor_required` straight after a Google or Apple sign-in: the address that sign-in vouched for. */
   providerEmail?: string;
-  /** On `oauth_only`, `session_timed_out` or `provider_kept_by_rule`: the organisation whose rule it is (sc-69). */
+  /** On `oauth_only`, `session_timed_out`, `provider_kept_by_rule` or `two_factor_kept_by_rule`: the organisation whose rule it is (sc-69, sc-609). */
   organisation?: string;
   /** On `oauth_only`: the providers this account may sign in with instead. */
   providers?: string[];

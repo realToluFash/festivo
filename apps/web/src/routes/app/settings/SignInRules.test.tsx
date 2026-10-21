@@ -14,6 +14,7 @@ const PAGE = {
   providerOnly: false,
   inactivityTimeoutDays: null,
   administratorsNeedTwoFactor: false,
+  everyoneNeedsTwoFactor: false,
   changedAt: null,
   inactivityChoices: [7, 30],
   changes: [],
@@ -170,7 +171,13 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
       within(notice).getByRole('link', { name: 'Turn on two-factor' }).getAttribute('href'),
     ).toBe('/app/account/security');
     expect(require.getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByText('Not required')).toBeDefined();
+    expect(
+      within(
+        screen.getByRole('region', {
+          name: 'Two-factor for people who can manage members, roles, billing or security',
+        }),
+      ).getByText('Not required'),
+    ).toBeDefined();
     expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
       'disabled',
       true,
@@ -437,6 +444,88 @@ describe('whose inactivity limit applies, for a member of several organisations 
   });
 });
 
+describe('Two-factor for everyone (sc-609), for someone who manages the organisation', () => {
+  const DEADLINE = { at: '2026-10-24T13:20:00+00:00', written: 'Saturday, Oct 24 at 14:20 WAT' };
+  const WITH_OWN = {
+    ...PAGE,
+    ownTwoFactor: true,
+    twoFactorDeadline: DEADLINE,
+    withoutTwoFactor: [{ userId: 'user_3', name: 'Chidi Okoro', role: COORDINATOR }],
+  };
+
+  it('is refused before saving to somebody without two-factor, with the same notice as the administrators’ rule', async () => {
+    signedIn(membership());
+    const sent = answering({ ...WITH_OWN, ownTwoFactor: false });
+    open();
+
+    const everyone = await screen.findByRole('button', { name: 'Require two-factor for everyone' });
+    fireEvent.click(everyone);
+
+    expect(screen.getByText('Turn on two-factor for yourself first')).toBeDefined();
+    expect(screen.getByText('Then you can require it here.')).toBeDefined();
+    expect(everyone.getAttribute('aria-pressed')).toBe('false');
+    expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
+  });
+
+  it('names who has no two-factor and their deadline before saving, then says when it is required from', async () => {
+    signedIn(membership());
+    const sent = answering(WITH_OWN, { ...WITH_OWN, everyoneNeedsTwoFactor: true });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
+
+    expect(screen.getByText('1 person doesn’t have two-factor yet')).toBeDefined();
+    expect(screen.getByText(/until Saturday, Oct 24 at 14:20 WAT to turn it on/)).toBeDefined();
+    const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
+    expect(without.getByText('Chidi Okoro · Coordinator')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(await screen.findByText('Required from Saturday, Oct 24 at 14:20 WAT')).toBeDefined();
+    expect(sent.at(-1)?.body).toEqual({ everyoneNeedsTwoFactor: true });
+  });
+
+  it('keeps the administrators’ switch, reading that everyone’s rule covers it', async () => {
+    signedIn(membership());
+    answering({ ...WITH_OWN, administratorsNeedTwoFactor: true, everyoneNeedsTwoFactor: true });
+    open();
+
+    expect(await screen.findByText('Covered by two-factor for everyone, below.')).toBeDefined();
+    expect(
+      screen
+        .getByRole('button', {
+          name: 'Require two-factor for people who can manage members, roles, billing or security',
+        })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('when the server refuses it, the switch goes back off and the notice shows, never the server’s words', async () => {
+    signedIn(membership());
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) =>
+      init?.method === 'PATCH'
+        ? new Response(
+            JSON.stringify({
+              type: 'https://soirely.com/errors/two_factor_off',
+              title: 'Two-factor is not on.',
+              status: 409,
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+          )
+        : new Response(JSON.stringify(WITH_OWN), { status: 200 }),
+    );
+    open();
+
+    const everyone = await screen.findByRole('button', { name: 'Require two-factor for everyone' });
+    fireEvent.click(everyone);
+    fireEvent.click(screen.getByRole('button', { name: 'Save rules' }));
+
+    expect(await screen.findByText('Turn on two-factor for yourself first')).toBeDefined();
+    expect(everyone.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.queryByText('Two-factor is not on.')).toBeNull();
+  });
+});
+
 describe('what the rules ask of a member, on every page', () => {
   it('a member with no provider under a Google-or-Apple-only rule is told they can only read', async () => {
     signedIn(membership({ readOnlyUntilLinked: true }));
@@ -467,6 +556,7 @@ describe('what the rules ask of a member, on every page', () => {
         providerOnly: false,
         inactivityTimeoutDays: 30,
         administratorsNeedTwoFactor: false,
+        everyoneNeedsTwoFactor: false,
         changedAt: '2026-10-15T17:40:00+00:00',
       },
     });
@@ -482,5 +572,55 @@ describe('what the rules ask of a member, on every page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close this notice' }));
 
     await waitFor(() => expect(screen.queryByText('Sign-in rules changed')).toBeNull());
+  });
+
+  it('a member without two-factor sees the deadline, with no way to close it', async () => {
+    signedIn(
+      membership({
+        twoFactorDue: {
+          at: '2999-10-24T13:20:00+00:00',
+          written: 'Saturday, Oct 24 at 14:20 WAT',
+          overdue: false,
+        },
+      }),
+    );
+    answering();
+    open('/app/settings');
+
+    expect(
+      await screen.findByText('Ìrè Events requires two-factor from Saturday, Oct 24 at 14:20 WAT.'),
+    ).toBeDefined();
+    expect(screen.getByRole('link', { name: 'Set it up now' }).getAttribute('href')).toBe(
+      '/app/account/security',
+    );
+    expect(screen.queryByRole('button', { name: 'Close this notice' })).toBeNull();
+  });
+
+  it('past the deadline, nothing in the organisation opens until two-factor is on', async () => {
+    signedIn(
+      membership({
+        twoFactorDue: {
+          at: '2026-10-24T13:20:00+00:00',
+          written: 'Saturday, Oct 24 at 14:20 WAT',
+          overdue: true,
+        },
+      }),
+    );
+    answering();
+    open('/app/settings/sign-in-rules');
+
+    expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
+    expect(
+      screen.getByText('Ìrè Events requires two-factor. Set it up to carry on.'),
+    ).toBeDefined();
+    expect(
+      screen.getByText('Your other organisations and single-event access are not affected.'),
+    ).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Sign-in rules' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Turn on two-factor' }));
+
+    await waitFor(() => expect(screen.queryByText('Turn on two-factor to carry on')).toBeNull());
   });
 });

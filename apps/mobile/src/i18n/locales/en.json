@@ -346,7 +346,8 @@
     "failedBody": "Something went wrong on our side. Try again in a moment.",
     "phoneSetupTitle": "Add Soirely to your authenticator app",
     "phoneCantScan": "Scan the code from another screen, or enter this key in the app.",
-    "phoneKeepElsewhere": "Keep them somewhere other than this phone."
+    "phoneKeepElsewhere": "Keep them somewhere other than this phone.",
+    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
   },
   "security": {
     "title": "Security"
@@ -882,7 +883,18 @@
     "changedSee": "See what changed",
     "changedClose": "Close this notice",
     "limitApplies_one": "For you, sign-ins end after {{count}} day without use: {{organisation}}’s rule, the shortest of your organisations.",
-    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations."
+    "limitApplies_other": "For you, sign-ins end after {{count}} days without use: {{organisation}}’s rule, the shortest of your organisations.",
+    "everyoneTitle": "Two-factor for everyone",
+    "everyoneRequiredFrom": "Required from {{deadline}}",
+    "valueEveryone": "Two-factor required for everyone",
+    "valueNoEveryone": "Two-factor not required of everyone",
+    "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
+    "dueSetUp": "Set it up now",
+    "overdueTitle": "Turn on two-factor to carry on",
+    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
+    "overdueElsewhere": "Your other organisations and single-event access are not affected.",
+    "overdueTurnOn": "Turn on two-factor",
+    "overdueSignOut": "Sign out"
   },
   "languageNames": {
     "en": "English",
@@ -1039,7 +1051,7 @@
       "coordinator": "Runs events. Reads the budget, never the margin.",
       "read_only": "Sees events. Changes nothing."
     },
-    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so this role can't change and they can't be removed until somebody else is an owner too.",
+    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so their role cannot change and they cannot be removed until somebody else is an owner too.",
     "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
     "ownerOnly": "Only an owner can change an owner's role or remove them.",
     "removeTitle": "Remove {{name}}",
@@ -1077,10 +1089,10 @@
     },
     "subtitle_one": "{{organisation}} · {{count}} active",
     "subtitle_other": "{{organisation}} · {{count}} active",
-    "ownRole": "You can't change your own role. Another owner can, or you can hand ownership to somebody in Organisation.",
+    "ownRole": "You cannot change your own role. Another owner can, or you can hand ownership to somebody in Organisation.",
     "goToOrganisation": "Go to Organisation ›",
-    "fromTheWeb": "Invitations are sent from Soirely on the web.",
-    "pickSomebody": "Pick somebody in the list to see them here.",
+    "fromTheWeb": "To invite somebody, use Soirely on the web.",
+    "pickSomebody": "Choose somebody in the list to see them here.",
     "backToList": "‹ Members"
   }
 }

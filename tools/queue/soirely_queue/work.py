@@ -8,8 +8,9 @@ from . import roles as R
 
 FINISHING, INBOX, PULL_REQUEST, REVIEW, QUEUE, SWEEP = 5, 10, 20, 30, 40, 90
 # A story one step from Ready For QA, or sent back, goes ahead of everything else its role
-# has waiting, its comments included.
+# has waiting, its comments included; so does a pull request waiting on the lead's review.
 FINISHING_STATES = ("Passed Code Review", "Failed QA", "Failed Code Review")
+FINISHING_KINDS = ("to-qa", "review", "threads")
 
 
 def threads(story):
@@ -109,9 +110,10 @@ def unanswered_by(role, pr):
     return found
 
 
-def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None, comments=None):
+def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None, comments=None,
+          rank=0):
     return {"fingerprint": fingerprint, "pool": pool, "roles": roles, "kind": kind,
-            "reason": reason, "priority": priority, "comments": comments,
+            "reason": reason, "priority": priority, "rank": rank, "comments": comments,
             "story_id": story["id"] if story else None, "pr": pr["number"] if pr else None}
 
 
@@ -130,11 +132,21 @@ def inbox_items(stories, handled=frozenset()):
     return items
 
 
-def queued(role, stories):
+def held_epic(story, epics):
+    """The epic holding back a Ready For Dev story, or None. Only an epic in progress offers
+    its stories to build; To Do and Waiting for Owner Approval hold them until it is."""
+    epic = (epics or {}).get(str(story.get("epic_id")))
+    if story["state"] != "Ready For Dev" or not epic or epic.get("state") == "in progress":
+        return None
+    return epic
+
+
+def queued(role, stories, epics=None):
     config = R.ROLES[role]
     return [story for story in stories
             if not story["done"] and story["state"] in config["queue"]
-            and config["filter"](set(story["labels"]), story["state"])]
+            and config["filter"](set(story["labels"]), story["state"])
+            and not held_epic(story, epics)]
 
 
 def retester(story, now=None):
@@ -149,14 +161,27 @@ def retester(story, now=None):
     return R.last_tester(story) if age < R.RETEST_MINUTES * 60 else None
 
 
-def queue_items(stories, moves=None, now=None):
+def epic_order(epics):
+    """A story's place in the build order: its epic's place in Shortcut's epic list, then its
+    own place in the story list. A story in no epic comes after every epic's."""
+    epics = epics or {}
+
+    def key(story):
+        epic = epics.get(str(story.get("epic_id"))) or {}
+        place = epic.get("position") or story.get("epic_id")
+        return (place is None, place or 0, story.get("position") or 0)
+    return key
+
+
+def queue_items(stories, moves=None, now=None, epics=None):
     """A story entering a role's queue is work once, unless the role moved it there itself.
     One sitting there waits for a pick. A failed story back in Ready For QA is offered only
     to the tester who failed it, until its retest window closes."""
     moves = moves or {}
     merged = {}
+    build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
-        for story in queued(role, stories):
+        for story in queued(role, stories, epics):
             if moves.get((story["id"], story["state"], story["moved_at"])) == role:
                 continue
             pool = R.pool(role, story["state"], story["labels"])
@@ -172,7 +197,8 @@ def queue_items(stories, moves=None, now=None):
                 continue
             merged[fingerprint] = _item(
                 fingerprint, pool, [role], "story", f"sc-{story['id']} moved to {story['state']}",
-                QUEUE + config["queue"].index(story["state"]), story)
+                QUEUE + config["queue"].index(story["state"]), story,
+                rank=build_order[story["id"]] if story["state"] in R.BUILD_QUEUE else 0)
     return list(merged.values())
 
 
@@ -317,7 +343,7 @@ def main_items(main_run):
                   PULL_REQUEST)]
 
 
-def heartbeat_items(stories, last_runs, busy_roles, now):
+def heartbeat_items(stories, last_runs, busy_roles, now, epics=None):
     """After a quiet spell, a sweeping role sweeps and any other role with a queue picks."""
     items = []
     for role, config in R.ROLES.items():
@@ -329,8 +355,8 @@ def heartbeat_items(stories, last_runs, busy_roles, now):
             continue
         if config.get("sweeps"):
             kind, reason = "sweep", f"your sweep, {config['heartbeat']} minutes on"
-        elif queued(role, stories):
-            kind, reason = "pick", f"{len(queued(role, stories))} stories in your queue"
+        elif queued(role, stories, epics):
+            kind, reason = "pick", f"{len(queued(role, stories, epics))} stories in your queue"
         else:
             continue
         items.append(_item(f"{role}:{kind}:{int(now // period)}", role, [role], kind, reason,
@@ -354,15 +380,16 @@ def machine_items(checks):
 def finishing_first(items, stories):
     finishing = {s["id"] for s in stories if not s["done"] and s["state"] in FINISHING_STATES}
     for item in items:
-        if item["story_id"] in finishing or item["kind"] == "to-qa":
+        if item["story_id"] in finishing or item["kind"] in FINISHING_KINDS:
             item["priority"] = FINISHING
     return items
 
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
-           handled=frozenset(), moves=None, checks=None):
+           handled=frozenset(), moves=None, checks=None, epics=None):
     return finishing_first(
         inbox_items(stories, handled) + developer_items(stories, prs)
-        + review_items(stories, prs) + queue_items(stories, moves, now) + main_items(main_run)
-        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now)
+        + review_items(stories, prs) + queue_items(stories, moves, now, epics)
+        + main_items(main_run)
+        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics)
         + machine_items(checks), stories)

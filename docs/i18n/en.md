@@ -62,6 +62,46 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Two-factor for everyone (sc-609, sc-5702, `signInRules.everyone*`, `due*`,
+  `overdue*`, `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`).** Settled as
+  sc-609 wrote it, except three lines that wait on `[dev2]`, because the web tests match their
+  English: `dueSetUp` should be "Turn it on now" and `overdueBody` "{{organisation}} requires
+  two-factor, and the time to turn it on has passed.", as "turn on" is the verb (19 Oct) and the
+  title already says "to carry on"; `keptByRule` is a refusal, so "cannot", as
+  `errors:two_factor_kept_by_rule`. es, fr and pt are written to the settled meaning already.
+  A deadline is "from {{deadline}}" and "until {{deadline}}", the server's `time.dateAt`. The
+  emails keep straight apostrophes, as every other line in `emails.en.json`.
+- **21 Oct 2026. Company domain joining (sc-561, sc-4434, `domainJoining.*`,
+  `companyDomains.*`, `messages:domain_joining.*`).** Settled as sc-561 wrote it. The act is
+  "ask to join", the button "Ask to join", and "Somebody there approves you before you see
+  anything." says why the wait. "Somebody" stays here, against "someone" in the Roles lines,
+  because the web tests match the text; reword them together if ever. `domain_public` says
+  "cannot" (ux on sc-561 #4417). `asked` and `switcherAsked` start lower case: each follows
+  "Waiting for approval · ". A domain with "Stopped" against it is one another organisation
+  proved on Enterprise; the row's working state is "People at it can ask to join".
+
+- **21 Oct 2026. Members in the app (sc-4259, `mobile:membersScreen.*`).** A refusal on a
+  member says "cannot": "You cannot change your own role." and "… so their role cannot change
+  and they cannot be removed …" ("their role", not "this role", which reads as the role
+  itself being locked). The foot of the list tells the manager what to do, "To invite
+  somebody, use Soirely on the web.", over the drawn "Invitations are sent from Soirely on
+  the web.", which states a fact without the action. The landscape pane says "Choose
+  somebody in the list …", as `settings.choose`. The row line's pieces (`you`, `when.*`)
+  stay lower case, since they follow a role after " · ". The web's twins (sc-2922) still say
+  "can't"; settle them the same way there.
+- **21 Oct 2026. Invitations waiting on Complete your profile (sc-4188, `completeProfile.invitations*`,
+  `orStartOwn`, `joined*`, `organisationOrInvitation`, web and app).** Settled as sc-3353 wrote
+  them. "Accept one to join that organisation" reads as the organisation of the one you
+  accept; "its organisation" is no clearer and the web tests match the text. The button is
+  named as printed, "Save and continue takes you there.", without quotes, as the house names
+  a button in running text. "Nothing is waiting" follows every invitation answered without
+  joining, so the other locales may say "no invitation is waiting" outright.
+- **21 Oct 2026. The organisation's language is labelled "Language" for now (sc-3311,
+  `orgGeneral.language`, web and app).** "Language for invitations" says better that the field
+  only sets the invitation emails sent to people without an account, and the PM allowed it, but
+  the web tests match the label's English text, so it waits on `[dev2]` (sc-3311). Until then
+  the hint carries the meaning. The same label heads the read-only row. A refused save is "Nothing was
+  saved." followed by the server's `permission_required` words, unchanged.
 - **19 Oct 2026. Two-factor is "turned on", the first time (sc-3030, sc-609, sc-69 #3210).**
   "Turn on two-factor" is the button wherever a person enables it, and a sentence says "turn
   it on" (`twoFactorCard.turnOn`, `signInRules.gateTurnOn`, `needsOwnTurnOn`, `twoFactorOn`,

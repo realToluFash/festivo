@@ -51,7 +51,7 @@ def refresh_work(db, now):
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
                         last_runs, busy_roles, now, store.handled(db), store.moves(db),
-                        store.get_meta(db, "machine_checks"))
+                        store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"))
     store.record(db, items, now)
     return items
 
@@ -388,11 +388,7 @@ READS = [
 
 DETAILS = {
     "move": "Move a story to a state your role moves it to, from the states it moves it "
-            "from. The product manager also moves an In Progress story back to Backlog, To Do "
-            "or Ready For Dev when nobody holds it: no role moved it there through sq, it "
-            "carries no developer label (dev1, dev2), and no open pull request is on its "
-            "branch. A pull request that only mentions a story moves it through Shortcut's "
-            "GitHub link, and that is the case this is for.",
+            "from. The product manager moves any story from any state to any other.",
     "edit": "Replace one section (--section), add a dated one (--dated), or change one "
             "exact piece of text with --replace OLD --with NEW. --replace takes several "
             "targets, refuses unless OLD appears exactly once in every one of them, and then "
@@ -448,7 +444,10 @@ WRITES = [
                                help="say which targets would change, change none"),
                 body(p))),
     ("new-story", actions.new_story, "create a story, in Backlog unless you are the PM",
-     lambda p: (p.add_argument("--name", required=True), p.add_argument("--epic", type=int),
+     lambda p: (p.add_argument("--name", required=True),
+                p.add_argument("--epic", type=int, required=True,
+                               help="the epic it belongs to: sq <role> epics; none suits, "
+                                    "new-epic"),
                 p.add_argument("--state"), p.add_argument("--label", nargs="+"),
                 p.add_argument("--type", choices=["feature", "bug", "chore"]),
                 p.add_argument("--estimate", type=int, choices=[0, 1, 2, 4, 8]), body(p))),

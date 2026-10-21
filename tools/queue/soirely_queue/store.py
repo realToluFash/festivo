@@ -24,6 +24,7 @@ create table if not exists work (
   pr integer,
   reason text not null,
   priority integer not null,
+  rank integer not null default 0,
   comments text,
   status text not null default 'open',
   claimed_by text,
@@ -67,6 +68,8 @@ def connect(path):
     db.row_factory = sqlite3.Row
     db.execute("pragma journal_mode = wal")
     db.executescript(SCHEMA)
+    if "rank" not in {row["name"] for row in db.execute("pragma table_info(work)")}:
+        db.execute("alter table work add column rank integer not null default 0")
     if not get_meta(db, "linguists_merged"):
         db.execute("begin immediate")
         merge_linguists(db)
@@ -152,12 +155,13 @@ def record(db, items, now=None):
         for item in items:
             db.execute(
                 "insert into work (fingerprint, pool, roles, kind, story_id, pr, reason, "
-                "priority, comments, first_seen) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "priority, rank, comments, first_seen) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 "on conflict (fingerprint) do update set priority = excluded.priority, "
+                "rank = excluded.rank, "
                 "status = case work.status when 'gone' then 'open' else work.status end",
                 (item["fingerprint"], item["pool"], ",".join(item["roles"]), item["kind"],
                  item.get("story_id"), item.get("pr"), item["reason"], item["priority"],
-                 ",".join(map(str, item.get("comments") or [])), now))
+                 item.get("rank", 0), ",".join(map(str, item.get("comments") or [])), now))
         for row in db.execute("select id, fingerprint from work where status = 'open'"):
             if row["fingerprint"] not in current:
                 db.execute("update work set status = 'gone' where id = ?", (row["id"],))
@@ -177,7 +181,7 @@ def held_by(db, role, now=None):
 
 def waiting(db, role):
     return db.execute("select * from work where status = 'open' "
-                      "and ',' || roles || ',' like ? order by priority, first_seen, id",
+                      "and ',' || roles || ',' like ? order by priority, rank, first_seen, id",
                       (f"%,{role},%",)).fetchall()
 
 

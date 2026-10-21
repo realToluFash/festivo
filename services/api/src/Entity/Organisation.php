@@ -58,6 +58,10 @@ class Organisation
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $signInRulesChangedAt = null;
 
+    /** When two-factor for everyone was switched on; null is not required (sc-609). */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $twoFactorRequiredSince = null;
+
     public function __construct(
         string $name,
         string $countryCode,
@@ -178,5 +182,20 @@ class Organisation
     public function setSignInRulesChangedAt(?DateTimeImmutable $signInRulesChangedAt): void
     {
         $this->signInRulesChangedAt = $signInRulesChangedAt;
+    }
+
+    public function isTwoFactorRequired(): bool
+    {
+        return null !== $this->twoFactorRequiredSince;
+    }
+
+    public function getTwoFactorRequiredSince(): ?DateTimeImmutable
+    {
+        return $this->twoFactorRequiredSince;
+    }
+
+    public function setTwoFactorRequiredSince(?DateTimeImmutable $twoFactorRequiredSince): void
+    {
+        $this->twoFactorRequiredSince = $twoFactorRequiredSince;
     }
 }
