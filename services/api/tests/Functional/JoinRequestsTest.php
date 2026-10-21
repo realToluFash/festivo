@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\RequestLink\LinkRequester;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\Membership;
@@ -198,7 +199,7 @@ final class JoinRequestsTest extends ApiTestCase
         self::assertSame('2026-11-11 08:40:00', $this->lastStep($membership)->getOccurredAt()->format('Y-m-d H:i:s'));
         self::assertNull($this->lastStep($membership)->getActor());
         self::assertSame('membership.request_expired', $this->audited($membership)->getAction());
-        self::assertStringContainsString('mercredi 11 nov. à 09:40 WAT', $this->mailTo('ada@okeke.ng', 'Your request to join Ìrè Events was removed'));
+        self::assertStringContainsString('mercredi 11 nov. à 09:40 WAT', $this->mailTo('ada@okeke.ng', self::service(UserMailer::class)->line('joinRequest.expired.subject', 'fr', ['{organisation}' => 'Ìrè Events'])));
     }
 
     #[Test]
