@@ -1,0 +1,3 @@
+{
+    "signInRules.rule.inactivity": "Toute personne qui n'a pas utilisé Soirely depuis {days, plural, one {# jour} other {# jours}} devra se reconnecter."
+}
