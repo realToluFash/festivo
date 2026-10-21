@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Members;
 
 use App\Audit\Auditor;
+use App\Domain\Organisation\Handover\WorkHandover;
 use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Entity\Membership;
@@ -36,6 +37,7 @@ final readonly class MemberActions
         private Auditor $auditor,
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private WorkHandover $workHandover,
     ) {
     }
 
@@ -73,20 +75,48 @@ final readonly class MemberActions
         $this->entityManager->flush();
     }
 
-    /** Their events stay with the organisation: only the membership ends, and its history is kept. */
-    public function remove(Membership $membership, User $by): void
+    /** What they are responsible for goes to `$handTo`'s member (sc-614), who is required when there is any. */
+    public function remove(Membership $membership, User $by, ?string $handTo = null, ?string $asked = null): void
     {
         $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
         $this->roleAssignment->release($membership);
+        $this->pass($membership, $by, $handTo, $asked);
         $this->end($membership, self::REMOVED, $by);
     }
 
-    public function leave(Organisation $organisation, User $user): void
+    /** With no `$handTo`, what they are responsible for goes to the longest-standing other Owner, and every Owner is emailed. */
+    public function leave(Organisation $organisation, User $user, ?string $handTo = null, ?string $asked = null): void
     {
         $membership = $this->membershipRepository->findActive($user, $organisation->getId())
             ?? throw ApiException::notFound('Not found.');
         $this->roleAssignment->release($membership);
+        $work = $this->workHandover->heldBy($membership);
+
+        if ([] !== $work) {
+            $to = null !== $handTo
+                ? $this->workHandover->recipient($membership, $handTo)
+                : ($this->workHandover->owners($membership)[0] ?? throw new ApiException(ErrorCode::LastOwner, $this->translator->trans('roles.last_owner')));
+            $this->workHandover->hand($membership, $work, $to, $user, null === $handTo, $asked);
+        }
+
         $this->end($membership, self::LEFT, $user);
+    }
+
+    /** Hand over now (sc-614), for a member who is still here, suspended or not: the membership stays as it is. */
+    public function handOver(Membership $membership, User $by, ?string $handTo, ?string $asked = null): void
+    {
+        $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
+        $this->pass($membership, $by, $handTo, $asked);
+        $this->entityManager->flush();
+    }
+
+    private function pass(Membership $membership, User $by, ?string $handTo, ?string $asked): void
+    {
+        $work = $this->workHandover->heldBy($membership);
+
+        if ([] !== $work) {
+            $this->workHandover->hand($membership, $work, $this->workHandover->recipient($membership, $handTo), $by, false, $asked);
+        }
     }
 
     private function end(Membership $membership, string $action, User $by): void

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\Handover\Model\Responsibility;
+use App\Domain\Organisation\Handover\WorkHandover;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationSender;
 use App\Domain\Organisation\Members\MemberActions;
@@ -28,6 +30,7 @@ use App\Repository\MembershipTransitionRepository;
 use App\Repository\OrganisationRepository;
 use DateTimeImmutable;
 use Psl\Dict;
+use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -53,6 +56,7 @@ final readonly class MembersController
         private OwnershipTransfer $ownershipTransfer,
         private TranslatorInterface $translator,
         private MembershipDirectoryInterface $membershipDirectory,
+        private WorkHandover $workHandover,
     ) {
     }
 
@@ -142,21 +146,55 @@ final readonly class MembersController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
+    /** `handTo` names the membership that takes what they are responsible for (sc-614), and is required when there is any. */
     #[Route('/api/orgs/{organisationId}/members/{membershipId}', name: 'orgs_members_remove', methods: ['DELETE'])]
     #[InOrganisation(Permission::MembersManage)]
-    public function remove(string $organisationId, string $membershipId): Response
+    public function remove(Request $request, string $organisationId, string $membershipId): Response
     {
         $organisation = $this->organisation($organisationId);
-        $this->memberActions->remove($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
+        $membership = $this->memberActions->find($organisation, $membershipId, $this->user());
+        $this->memberActions->remove($membership, $this->user(), $this->handTo($request), $request->getLocale());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
+    /** What the member is responsible for: what Remove and Hand over now move. */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/work', name: 'orgs_members_work', methods: ['GET'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function work(string $organisationId, string $membershipId): JsonResponse
+    {
+        $membership = $this->memberActions->find($this->organisation($organisationId), $membershipId, $this->user());
+
+        return new JsonResponse(self::items($this->workHandover->heldBy($membership)));
+    }
+
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/handover', name: 'orgs_members_handover', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function handOver(Request $request, string $organisationId, string $membershipId): Response
+    {
+        $membership = $this->memberActions->find($this->organisation($organisationId), $membershipId, $this->user());
+        $this->memberActions->handOver($membership, $this->user(), $this->handTo($request), $request->getLocale());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** What the caller is responsible for here: what Leave moves. */
+    #[Route('/api/orgs/{organisationId}/work', name: 'orgs_own_work', methods: ['GET'])]
+    #[InOrganisation(null)]
+    public function ownWork(string $organisationId): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $membership = $this->membershipRepository->findActive($this->user(), $organisation->getId()) ?? throw ApiException::notFound('Not found.');
+
+        return new JsonResponse(self::items($this->workHandover->heldBy($membership)));
+    }
+
+    /** With no `handTo`, what the caller is responsible for goes to the Owners. */
     #[Route('/api/orgs/{organisationId}/leave', name: 'orgs_leave', methods: ['POST'])]
     #[InOrganisation(null)]
-    public function leave(string $organisationId): Response
+    public function leave(Request $request, string $organisationId): Response
     {
-        $this->memberActions->leave($this->organisation($organisationId), $this->user());
+        $this->memberActions->leave($this->organisation($organisationId), $this->user(), $this->handTo($request), $request->getLocale());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
@@ -173,6 +211,30 @@ final readonly class MembersController
         $this->ownershipTransfer->transfer($this->organisation($organisationId), $this->user(), $body['membershipId'], $body['proof'] ?? null, $request->getLocale());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** An empty body is no choice: Remove sent none before sc-614. */
+    private function handTo(Request $request): ?string
+    {
+        if ('' === Str\trim($request->getContent())) {
+            return null;
+        }
+
+        return Input::body($request, Type\shape(['handTo' => Type\optional(Type\nullable(Type\string()))]))['handTo'] ?? null;
+    }
+
+    /**
+     * @param list<Responsibility> $work
+     *
+     * @return array{items: list<array{kind: string, id: string, title: string}>}
+     */
+    private static function items(array $work): array
+    {
+        return ['items' => Vec\map($work, static fn (Responsibility $responsibility): array => [
+            'kind' => $responsibility->field->kind,
+            'id' => $responsibility->id->toRfc4122(),
+            'title' => $responsibility->title,
+        ])];
     }
 
     private function role(Organisation $organisation, string $roleId): Role

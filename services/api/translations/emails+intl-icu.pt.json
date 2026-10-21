@@ -1,3 +1,5 @@
 {
-    "signInRules.rule.inactivity": "Quem passar {days, plural, =0 {# dias} one {# dia} other {# dias}} sem utilizar a Soirely terá de iniciar sessão novamente."
+    "signInRules.rule.inactivity": "Quem passar {days, plural, =0 {# dias} one {# dia} other {# dias}} sem utilizar a Soirely terá de iniciar sessão novamente.",
+    "handover.received": "{from} is no longer a member of {organisation}. You are now responsible for {count, plural, one {the thing} other {the # things}} they were responsible for:",
+    "handover.wentToOwner": "{from} left {organisation} without choosing who takes their work, so {to} is now responsible for {count, plural, one {the thing} other {the # things}} they were responsible for:"
 }

@@ -135,5 +135,8 @@
     "ownershipTransferred.subject": "{organisation} has a new owner",
     "ownershipTransferred.youGaveIt": "You made {to} the owner of {organisation}. You are now an Administrator: you can still run it day to day, but you cannot hand it on or delete it.",
     "ownershipTransferred.youHaveIt": "{from} made you the owner of {organisation}. You can now change billing, members, roles and its settings, and you can delete it. {from} is now an Administrator.",
-    "ownershipTransferred.footer": "You're getting this because you are a member of {organisation}."
+    "ownershipTransferred.footer": "You're getting this because you are a member of {organisation}.",
+    "handover.subject": "{from}'s work in {organisation} has been handed over",
+    "handover.item": "- {title} ({kind})",
+    "handover.footer": "You're getting this because you are a member of {organisation}."
 }

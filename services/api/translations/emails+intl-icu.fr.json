@@ -1,3 +1,5 @@
 {
-    "signInRules.rule.inactivity": "Toute personne qui n'a pas utilisé Soirely depuis {days, plural, one {# jour} other {# jours}} devra se reconnecter."
+    "signInRules.rule.inactivity": "Toute personne qui n'a pas utilisé Soirely depuis {days, plural, one {# jour} other {# jours}} devra se reconnecter.",
+    "handover.received": "{from} is no longer a member of {organisation}. You are now responsible for {count, plural, one {the thing} other {the # things}} they were responsible for:",
+    "handover.wentToOwner": "{from} left {organisation} without choosing who takes their work, so {to} is now responsible for {count, plural, one {the thing} other {the # things}} they were responsible for:"
 }

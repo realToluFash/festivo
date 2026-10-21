@@ -88,5 +88,6 @@
     "domain_joining.domain_proved_elsewhere": "Otra organización ha demostrado con Enterprise que {domain} es suyo, así que solo cuenta su lista.",
     "domain_joining.domain_public": "No puede usar un dominio de correo electrónico público.",
     "domain_joining.not_listed": "Ese dominio no está en la lista.",
-    "domain_joining.unavailable": "No puede solicitar unirse a esa organización. Cree la suya o pida a alguien de esa organización que le invite."
+    "domain_joining.unavailable": "No puede solicitar unirse a esa organización. Cree la suya o pida a alguien de esa organización que le invite.",
+    "handover.choose_recipient": "Choose who takes their work."
 }
