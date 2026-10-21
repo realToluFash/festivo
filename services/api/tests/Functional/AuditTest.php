@@ -49,7 +49,7 @@ final class AuditTest extends FunctionalTestCase
         self::assertNotNull($entry);
         // Before AND after. "Role changed" is not an answer to "changed from
         // what?", and the before is the half nothing can reconstruct later.
-        self::assertSame(['role' => ['coordinator', 'administrator']], $entry->changes());
+        self::assertSame(['role' => ['coordinator', 'administrator']], $entry->getChanges());
     }
 
     /**
@@ -74,8 +74,8 @@ final class AuditTest extends FunctionalTestCase
 
         $entry = $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $subject]);
 
-        self::assertSame(Actor::Agent, $entry?->actorType());
-        self::assertNotSame(Actor::User, $entry?->actorType());
+        self::assertSame(Actor::Agent, $entry?->getActorType());
+        self::assertNotSame(Actor::User, $entry?->getActorType());
     }
 
     /**
@@ -92,7 +92,7 @@ final class AuditTest extends FunctionalTestCase
         $this->em->clear();
 
         $entry = $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $subject]);
-        self::assertSame('Chief Adaeze Okonkwo', $entry?->actorLabel());
+        self::assertSame('Chief Adaeze Okonkwo', $entry?->getActorLabel());
     }
 
     /** The history of a deleted thing is exactly what somebody will ask about. */
@@ -125,8 +125,8 @@ final class AuditTest extends FunctionalTestCase
         $this->em->clear();
 
         $entry = $this->em->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $subject]);
-        self::assertSame(Actor::System, $entry?->actorType());
-        self::assertNull($entry?->actorId());
+        self::assertSame(Actor::System, $entry?->getActorType());
+        self::assertNull($entry?->getActorId());
     }
 
     /**

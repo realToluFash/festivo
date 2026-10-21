@@ -188,11 +188,11 @@ final class CreateOrganisationTest extends ApiTestCase
         $id = Type\shape(['id' => Type\string()], true)->coerce($body['organisation'])['id'];
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'organisation.created']) ?? self::fail('no audit entry');
-        self::assertSame('Organisation', $entry->subjectType());
-        self::assertSame($id, $entry->subjectId()->toRfc4122());
-        self::assertSame(Actor::User, $entry->actorType());
-        self::assertTrue($user->getId()->equals($entry->actorId()));
-        self::assertSame([null, 'EUR'], $entry->changes()['currency']);
+        self::assertSame('Organisation', $entry->getSubjectType());
+        self::assertSame($id, $entry->getSubjectId()->toRfc4122());
+        self::assertSame(Actor::User, $entry->getActorType());
+        self::assertTrue($user->getId()->equals($entry->getActorId()));
+        self::assertSame([null, 'EUR'], $entry->getChanges()['currency']);
     }
 
     #[Test]

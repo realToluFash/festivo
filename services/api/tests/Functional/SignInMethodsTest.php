@@ -105,7 +105,7 @@ final class SignInMethodsTest extends ApiTestCase
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'provider.linked']);
         self::assertNotNull($entry, 'the audit trail records it');
-        self::assertTrue($this->user->getId()->equals($entry->subjectId()));
+        self::assertTrue($this->user->getId()->equals($entry->getSubjectId()));
     }
 
     #[Test]
@@ -143,7 +143,7 @@ final class SignInMethodsTest extends ApiTestCase
         self::assertNull(self::em()->find(RefreshToken::class, $byPassword->sessionId)?->getRevokedAt());
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'provider.unlinked']);
-        self::assertSame(['provider' => ['google', null]], $entry?->changes(), 'before and after: it was there, and now is not');
+        self::assertSame(['provider' => ['google', null]], $entry?->getChanges(), 'before and after: it was there, and now is not');
     }
 
     /** sc-510 under no rule: a password session that links Google and unlinks it is not one Google started (lead, PR #244). */

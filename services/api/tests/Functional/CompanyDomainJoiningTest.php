@@ -55,7 +55,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         self::assertSame([['domain' => 'ire.events', 'stopped' => false]], $body['domains']);
         self::assertSame('folake@ire.events', $body['ownAddress']);
         self::assertSame(5, $body['most']);
-        self::assertSame(['domain' => [null, 'ire.events']], $this->audited('organisation_domain.added', $organisation)->changes());
+        self::assertSame(['domain' => [null, 'ire.events']], $this->audited('organisation_domain.added', $organisation)->getChanges());
     }
 
     #[Test]
@@ -129,7 +129,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(200);
         self::assertSame([], $body['domains']);
-        self::assertSame(['domain' => ['ire.events', null]], $this->audited('organisation_domain.removed', $organisation)->changes());
+        self::assertSame(['domain' => ['ire.events', null]], $this->audited('organisation_domain.removed', $organisation)->getChanges());
     }
 
     #[Test]
@@ -267,7 +267,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         self::assertSame(MembershipStatus::PendingApproval, $membership->getStatus());
         self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs(), 'least privilege until somebody chooses');
         self::assertSame(MembershipChannel::Domain, $this->lastStep($membership)->getChannel());
-        self::assertSame(['organisation' => [null, $organisation->getId()->toRfc4122()]], $this->audited('domain_join.asked', $membership)->changes());
+        self::assertSame(['organisation' => [null, $organisation->getId()->toRfc4122()]], $this->audited('domain_join.asked', $membership)->getChanges());
     }
 
     #[Test]
@@ -333,7 +333,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         self::assertResponseStatusCodeSame(204);
         $membership = $this->membershipOf($newcomer, $events);
         self::assertSame(MembershipStatus::LeftOrRemoved, $membership->getStatus());
-        self::assertSame(['status' => ['pending_approval', 'left_or_removed']], $this->audited('domain_join.withdrawn', $membership)->changes());
+        self::assertSame(['status' => ['pending_approval', 'left_or_removed']], $this->audited('domain_join.withdrawn', $membership)->getChanges());
         self::assertNull(Type\dict(Type\string(), Type\mixed())->coerce($this->send('GET', '/api/auth/me'))['waitingFor']);
         self::assertSame(['Ìrè Events', 'Ìrè Events Kitchen'], Vec\map($this->offers(), static fn (array $offer): mixed => $offer['name']), 'withdrawing is not being turned down');
 
