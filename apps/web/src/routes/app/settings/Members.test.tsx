@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -336,6 +337,19 @@ describe('Settings > Members', () => {
 });
 
 describe('inviting somebody', () => {
+  it('names a 100-character organisation in a line that can break inside the word (sc-486)', async () => {
+    const name = 'A'.repeat(100);
+    signedIn(membership({ ...IRE, name }));
+    answering(READS);
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+
+    const shown = within(screen.getByRole('main')).getAllByText(new RegExp(name, 'u'));
+
+    expect(shown.filter((element) => !breaksAnywhere(element))).toEqual([]);
+  });
+
   it('asks for the address before sending anything', async () => {
     signedIn();
     const sent = answering(READS);
