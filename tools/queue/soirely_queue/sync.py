@@ -8,7 +8,9 @@ from . import github, roles, store, work
 from .shortcut import Shortcut, slim
 
 FRESH_SECONDS = 60
-FULL_EVERY_SECONDS = 5 * 60
+FULL_EVERY_SECONDS = 15 * 60
+# Ready For Dev is searched on its own more often, so a developer is not left idle.
+READY_EVERY_SECONDS = 5 * 60
 INBOX_DAYS = 14
 LOOKUP_EVERY_SECONDS = 60 * 60
 # Bumped when `shortcut.slim` keeps new fields, so stories stored before are fetched again.
@@ -41,9 +43,9 @@ def sync_shortcut(db, shortcut, now, full=False):
     since = (datetime.datetime.fromtimestamp(now, datetime.UTC)
              - datetime.timedelta(days=days)).date().isoformat()
     found = {s["id"]: s for s in shortcut.search(f"updated:{since}..*")}
-    if full:
-        for state in roles.QUEUE_STATES:
-            found.update({s["id"]: s for s in shortcut.search(f'state:"{state}"')})
+    ready = full or now - store.get_meta(db, "ready_at", 0) >= READY_EVERY_SECONDS
+    for state in roles.QUEUE_STATES if full else ["Ready For Dev"] if ready else []:
+        found.update({s["id"]: s for s in shortcut.search(f'state:"{state}"')})
     stale = [story_id for story_id, hit in found.items()
              if (store.story(db, story_id) or {}).get("updated_at") != hit.get("updated_at")]
     with ThreadPoolExecutor(max_workers=8) as pool:
@@ -52,6 +54,8 @@ def sync_shortcut(db, shortcut, now, full=False):
     fetched = len(stale)
     if full:
         store.set_meta(db, "full_at", now)
+    if ready:
+        store.set_meta(db, "ready_at", now)
     return fetched
 
 
