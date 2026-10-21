@@ -58,7 +58,7 @@ const ROLES = [
     'role_3',
     'event_manager',
     null,
-    ['events.read', 'events.manage', 'budget.read', 'budget.manage'],
+    ['events.read', 'events.manage', 'events.create', 'budget.read', 'budget.manage'],
     1,
   ),
   role('role_4', 'coordinator', null, ['events.read', 'events.manage', 'budget.read'], 2),
@@ -436,6 +436,42 @@ describe('Settings > Roles', () => {
     expect(screen.queryByLabelText(/^Owner/)).toBeNull();
     expect(screen.queryByLabelText(/^Finance/)).toBeNull();
     expect(screen.getByLabelText(/^Administrator/)).toBeDefined();
+  });
+
+  it('shows Create events under Events, given to Event manager and not to Coordinator', async () => {
+    const sent = answering((method, body) =>
+      method === 'PATCH'
+        ? new Response(JSON.stringify({ ...ROLES[3], ...(body as object) }), { status: 200 })
+        : null,
+    );
+    await roles();
+    pick(/^Event manager/);
+
+    expect(level('Create events', 'Allowed').getAttribute('aria-pressed')).toBe('true');
+
+    pick(/^Coordinator/);
+    expect(level('Create events', 'Not allowed').getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(level('Create events', 'Allowed'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Coordinator' }));
+
+    await screen.findByText("Saved. Applies on each person's next request.");
+    const patch = sent.find((request) => request.method === 'PATCH');
+    expect((patch?.body as { permissions: string[] }).permissions.sort()).toEqual(
+      ['budget.read', 'events.create', 'events.manage', 'events.read'].sort(),
+    );
+  });
+
+  it('takes Create events away with Events set to Nothing, as the budget takes the margin', async () => {
+    answering();
+    await roles();
+    pick(/^Event manager/);
+
+    fireEvent.click(level('Events', 'Nothing'));
+
+    expect(screen.queryByRole('group', { name: 'Create events' })).toBeNull();
+    fireEvent.click(level('Events', 'Change'));
+    expect(level('Create events', 'Not allowed').getAttribute('aria-pressed')).toBe('true');
   });
 
   it('offers no Nothing on a budget whose margin the caller cannot withdraw', async () => {

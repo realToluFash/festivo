@@ -30,6 +30,7 @@ export function membership(overrides: Partial<Membership> = {}): Membership {
 export const OWNER_PERMISSIONS = [
   'events.read',
   'events.manage',
+  'events.create',
   'guests.read',
   'guests.manage',
   'seating.read',

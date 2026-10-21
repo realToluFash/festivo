@@ -2850,3 +2850,132 @@ button.members-row {
 .org-switcher-offer-asked .org-switcher-ring {
   border-color: var(--colorAttention);
 }
+
+/* ── Events: the list, a new event and an event's page (sc-1486) ────────── */
+
+.events,
+.event-form-page,
+.event-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxl);
+  min-width: 0;
+}
+
+.event-form-page,
+.event-page {
+  max-width: 47.5rem;
+}
+
+.events-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spaceMd);
+}
+
+.events-head h1,
+.event-form-page h1,
+.event-page h1,
+.event-form h2,
+.event-page h2,
+.events-first-run h2 {
+  margin: 0;
+}
+
+.events-list {
+  gap: 0;
+  margin: 0;
+  padding-block: var(--spaceSm);
+  list-style: none;
+}
+
+.events-list li + li {
+  border-top: var(--borderDivider);
+}
+
+.events-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceXs) var(--spaceMd);
+  min-height: var(--sizeHit);
+  padding-block: var(--spaceMd);
+  color: var(--colorInk);
+  text-decoration: none;
+}
+
+.events-row-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  font: var(--typeRowTitle);
+  overflow-wrap: anywhere;
+}
+
+.events-row-date {
+  flex: 1 0 auto;
+  text-align: right;
+}
+
+.events-first-run-create,
+.event-back {
+  align-self: flex-start;
+}
+
+.event-back {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.event-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXxl);
+}
+
+.event-form .field {
+  min-width: 0;
+}
+
+.event-moment {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.event-moment legend {
+  margin-bottom: var(--spaceXs);
+  padding: 0;
+  font: var(--typeRowTitle);
+}
+
+.event-moment-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+}
+
+.event-moment-date {
+  flex: 1 1 10rem;
+}
+
+.event-moment-time {
+  flex: 1 1 7rem;
+}
+
+.event-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm) var(--spaceMd);
+}
+
+.event-page-head h1 {
+  overflow-wrap: anywhere;
+}
