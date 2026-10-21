@@ -10,7 +10,8 @@ import subprocess
 import sys
 import time
 
-from . import checkout, local, machine, permissions, roles, runlog, shared, store, sync, update
+from . import (checkout, drawing, local, machine, permissions, roles, runlog, shared, store,
+               sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
 MILESTONES = ("At each milestone (a branch pushed, a part built, a result found) write one "
@@ -205,6 +206,8 @@ def run(db, home, platform, sq, python, now=None, dry_run=False, say=print,
             if not wake(db, config, platform, role, name, ready[role], now, say, sq, python,
                         kinds, held, skip, view, remote):
                 break
+    if not dry_run and not held and "ux" in mine and "ux" in started(db):
+        drawing.tick(db, home, config, ready["ux"], platform, now, say)
     return None
 
 

@@ -140,6 +140,16 @@ class Run(unittest.TestCase):
         self.assertTrue(any(line.startswith("error: dev2: workers is 2, but dev2 keeps one stack")
                             for line in self.said))
 
+    def test_the_drawing_list_is_drawn_while_ux_runs_here(self):
+        (self.root / "soirely-ux").mkdir()
+        self.config["roles"]["ux"] = {}
+        with mock.patch("soirely_queue.drawing.tick") as drew:
+            self.run_once()
+            drew.assert_not_called()
+            runner.set_started(self.db, ["ux"], True)
+            self.run_once(ON_ZERO + 60)
+        drew.assert_called_once()
+
     def test_a_role_only_ticks_on_its_own_minute(self):
         store.record(self.db, [work("ops"), work("dev2")], ON_ZERO)
         self.run_once(ON_ONE)

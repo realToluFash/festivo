@@ -196,8 +196,10 @@ def cmd_drawings(s, a):
     found = store.drawings(s.db)
     if not found:
         print("nothing to draw")
+    busy = (store.get_meta(s.db, "drawing") or {}).get("story_id")
     for drawing in found:
-        print(f"sc-{drawing['story_id']}  {drawing['name']}")
+        now = "  (sq is drawing it now: leave it)" if drawing["story_id"] == busy else ""
+        print(f"sc-{drawing['story_id']}  {drawing['name']}{now}")
         print("\n".join("    " + line for line in drawing["prompt"].splitlines()))
 
 
