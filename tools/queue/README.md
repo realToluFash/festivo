@@ -89,7 +89,7 @@ story or pull request, read fresh rather than from the last sync, and says why i
 ## How work is found
 
 - **`sync.py`** runs at most once a minute, whichever tick asks first. It does a full pass
-  over the queue states every 15 minutes, and otherwise refetches only the stories updated
+  over the queue states every 15 minutes (Ready For Dev alone every 5), and otherwise refetches only the stories updated
   since yesterday whose `updated_at` changed. GitHub is one GraphQL query over the open and
   recently merged pull requests (about 13 points of the 5,000 an hour), and the last five
   runs on main.
