@@ -55,6 +55,7 @@ services:
       MERCURE_EXTRA_DIRECTIVES: |
         cors_origins ${MERCURE_CORS_ORIGINS:-http://localhost:5173 http://localhost:8081 http://localhost:19006}
         subscriptions
+        heartbeat 15s
       # Caddy writes a cert store it cannot reach as a read-only user otherwise.
       SERVER_NAME: ':80'
     ports:
