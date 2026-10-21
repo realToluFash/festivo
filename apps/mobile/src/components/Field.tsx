@@ -2,6 +2,7 @@ import type { ReactNode, Ref } from 'react';
 import { Pressable, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 
 import { codeProps, FIELD_DEFAULTS } from '../kit/fields.ts';
+import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
 
@@ -121,7 +122,7 @@ export function TextField({ wrong = false, style, ref, ...rest }: TextFieldProps
       {...FIELD_DEFAULTS}
       {...rest}
       ref={ref}
-      style={[styles.input, wrong && styles.wrong, style]}
+      style={faced([styles.input, wrong && styles.wrong, style])}
       aria-invalid={wrong}
     />
   );
@@ -144,7 +145,7 @@ export function CodeField({
       autoComplete="sms-otp"
       {...rest}
       ref={ref}
-      style={[styles.code, wrong && styles.wrong, style]}
+      style={faced([styles.code, wrong && styles.wrong, style])}
       aria-invalid={wrong}
     />
   );
