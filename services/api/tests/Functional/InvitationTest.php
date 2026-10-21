@@ -218,6 +218,22 @@ final class InvitationTest extends ApiTestCase
     }
 
     #[Test]
+    #[DataProvider('answers')]
+    public function somebodyElseLearnsNothingOfAnAcceptedOne(string $answer): void
+    {
+        $folake = self::inviter('folake@ire.events', 'Folake');
+        [$invitation, $token] = self::invitationTo('kemi@example.com');
+        $invitation->setStatus(InvitationStatus::Accepted);
+        self::em()->flush();
+
+        $body = $this->as($folake)->call('POST', $this->path($invitation, $answer));
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::InvitationNotYours->type(), $body['type']);
+        self::assertFalse($this->as($folake)->call('POST', '/api/invitations/link', ['token' => $token])['forYou'], 'and the link says it is not theirs');
+    }
+
+    #[Test]
     public function anUnverifiedAddressIsNotYours(): void
     {
         $kemi = self::inviter('kemi@example.com', 'Kemi Lawal');
@@ -459,6 +475,19 @@ final class InvitationTest extends ApiTestCase
         $this->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
 
         self::assertStringContainsString('Coordinateur', $this->lastText(), 'the role in French');
+    }
+
+    /** #3357: an abbreviated month carries its own stop, so the expiry line writes it in full. */
+    #[Test]
+    public function theExpiryLineWritesTheMonthInFull(): void
+    {
+        [$organisation, $owner] = $this->organisation();
+        $this->as($owner)->call('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), ['locale' => 'fr']);
+
+        $this->invite($organisation, 'kemi@example.com', SeededRole::Coordinator);
+
+        self::assertMatchesRegularExpression('/\\d{1,2} (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\\.$/mu', $this->lastText());
+        self::assertStringNotContainsString('..', $this->lastText());
     }
 
     /** sc-2914: a new language is for what is sent after it; nothing already sent goes out again. */

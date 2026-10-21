@@ -514,7 +514,7 @@ function MemberDetail({
 
     return {
       what: t(`membersScreen.history.${line.key}`, { organisation: organisation.name, by }),
-      when: formatDay(step.at, currentLocale()),
+      at: step.at,
     };
   });
   const invited =
@@ -522,10 +522,13 @@ function MemberDetail({
       ? [
           {
             what: t('membersScreen.history.invitedBy', { by: member.invitedBy.name }),
-            when: formatDay(member.invitedAt, currentLocale()),
+            at: member.invitedAt,
           },
         ]
       : [];
+  const history = [...invited, ...steps].sort(
+    (one, other) => Date.parse(one.at) - Date.parse(other.at),
+  );
 
   return (
     <div className="members">
@@ -588,10 +591,10 @@ function MemberDetail({
       <section className="card" aria-labelledby="history-title">
         <h2 id="history-title">{t('membersScreen.howTheyGotHere')}</h2>
         <ul className="members-history">
-          {[...invited, ...steps].map((step, index) => (
+          {history.map((step, index) => (
             <li key={index}>
               <span>{step.what}</span>
-              <span className="muted">{step.when}</span>
+              <span className="muted">{formatDay(step.at, currentLocale())}</span>
             </li>
           ))}
         </ul>

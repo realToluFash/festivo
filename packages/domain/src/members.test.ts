@@ -66,6 +66,13 @@ describe('how a member got here', () => {
         .key,
     ).toBe('joined.invitation');
   });
+
+  it('words a waiting member accepting an invitation as accepting it, not as an approval', () => {
+    expect(
+      historyLine({ from: 'pending_approval', to: 'active', channel: 'invitation', by: 'u1' }, 'u1')
+        .key,
+    ).toBe('joined.invitation');
+  });
 });
 
 describe("what a member's page offers", () => {

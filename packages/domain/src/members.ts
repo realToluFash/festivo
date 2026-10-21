@@ -42,7 +42,9 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
 
   if (step.to === 'suspended') return { key: 'suspended', named: true };
   if (step.from === 'suspended') return { key: 'restored', named: true };
-  if (step.from === 'pending_approval') return { key: 'approved', named: true };
+  if (step.from === 'pending_approval' && step.channel !== 'invitation') {
+    return { key: 'approved', named: true };
+  }
   if (step.to === 'pending_approval') return { key: `asked.${step.channel}`, named: false };
 
   return { key: `joined.${step.channel}`, named: false };

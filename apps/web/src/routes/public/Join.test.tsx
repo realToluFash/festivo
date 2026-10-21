@@ -329,4 +329,25 @@ describe('an invitation, signed in', () => {
 
     await waitFor(() => expect(sent.map((one) => one.line)).toContain('POST /api/auth/logout'));
   });
+
+  it('says whose it is when somebody else already accepted it, and offers no Open', async () => {
+    signedIn('folake@ire.events');
+    answering({
+      [LINK]: () =>
+        json({
+          ...PREVIEW,
+          refusal: 'invitation_accepted',
+          forYou: false,
+          signedInAs: 'folake@ire.events',
+        }),
+    });
+    open();
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'This invitation is for someone else' }),
+    ).toBeDefined();
+    expect(screen.queryByText('You already accepted this invitation.')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Open/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /^Open/ })).toBeNull();
+  });
 });
