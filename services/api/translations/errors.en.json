@@ -72,5 +72,5 @@
     "join_offer_unavailable": "You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.",
     "request_link_dead": "This link doesn't work any more. Ask the organisation for a new one.",
     "join_request_waiting": "Your request to join is already waiting for an answer.",
-    "join_request_cooling_off": "You can't ask to join this organisation again yet."
+    "join_request_cooling_off": "You cannot ask to join this organisation again yet."
 }

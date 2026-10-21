@@ -62,6 +62,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Request link (sc-562, sc-6460, `requestLink.*`, `requestToJoin.*`,
+  `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`).** Settled as sc-562
+  wrote it, as domain joining: the act is "ask to join", the setting "Requests to join", and
+  "Somebody who can manage members answers each request". The refusals take "cannot":
+  "You cannot ask to join {organisation} again yet." The dead link should read "This link does
+  not work" and "This link does not work any more. Ask the organisation for a new one." in
+  `requestToJoin.deadTitle`, `deadBody`, `messages:request_link.dead` and
+  `errors:request_link_dead`, but the web and API tests match the contraction, so that waits on
+  `[dev2]`; es, fr and pt carry no contraction already. "We'll email you" stays: the sent and
+  waiting lines are confirmations, not errors. A cooling-off date is "from {{date}}", Intl's day.
+
 - **21 Oct 2026. Two-factor for everyone (sc-609, sc-5702, `signInRules.everyone*`, `due*`,
   `overdue*`, `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`).** Settled as
   sc-609 wrote it, except three lines that wait on `[dev2]`, because the web tests match their
