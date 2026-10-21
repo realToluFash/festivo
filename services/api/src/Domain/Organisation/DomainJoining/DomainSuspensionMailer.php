@@ -8,7 +8,6 @@ use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\DomainSuspension;
-use DateTimeImmutable;
 use Psl\Str;
 
 /** `domain_suspended`: the organisation's owners and administrators, each told the removal instant in their own zone. */
@@ -21,8 +20,9 @@ final readonly class DomainSuspensionMailer
     }
 
     /** @param list<User> $administrators */
-    public function sendSuspended(Membership $membership, ?DateTimeImmutable $removesAt, array $administrators): void
+    public function sendSuspended(Membership $membership, array $administrators): void
     {
+        $removesAt = $membership->getRemovesAt();
         $organisation = $membership->getOrganisation();
         $named = [
             '{name}' => $membership->getUser()->getName(),

@@ -6,7 +6,6 @@ namespace App\Domain\Organisation\DomainJoining;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\Members\MembershipMachine;
-use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\Organisation;
@@ -19,7 +18,6 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
-use DateInterval;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Psl\Iter;
@@ -30,9 +28,6 @@ use Symfony\Contracts\Translation\TranslatorInterface;
 /** A domain member keeps access only while the domain still brings them in (sc-564). Flushing is the caller's. */
 final readonly class DomainSuspender
 {
-    /** One instant, suspension plus 30 × 24 hours: never the end of a named day in somebody's zone (sc-868). */
-    public const string REMOVAL_AFTER = 'PT720H';
-
     public const string SUBJECT = 'Membership';
     public const string SUSPENDED = 'membership.suspended';
     public const string RESTORED = 'membership.restored';
@@ -46,17 +41,7 @@ final readonly class DomainSuspender
         private TranslatorInterface $translator,
         private UserMailer $userMailer,
         private ClockInterface $clock,
-        private RoleAssignment $roleAssignment,
     ) {
-    }
-
-    public function removesAt(Membership $membership): ?DateTimeImmutable
-    {
-        if ($this->roleAssignment->isLastOwner($membership)) {
-            return null;
-        }
-
-        return $membership->getSuspendedAt()?->add(new DateInterval(self::REMOVAL_AFTER));
     }
 
     /**
@@ -68,7 +53,7 @@ final readonly class DomainSuspender
     {
         $suspension = $membership->getSuspension();
         $since = $membership->getSuspendedAt();
-        $removesAt = $this->removesAt($membership);
+        $removesAt = $membership->getRemovesAt();
 
         if (null === $suspension || null === $since) {
             return null;
@@ -141,9 +126,7 @@ final readonly class DomainSuspender
     /** @return int how many were removed: a suspension nobody answered in 30 days ends as removed */
     public function removeExpired(): int
     {
-        $expired = $this->membershipRepository->findSuspendedSince($this->clock->now()->sub(new DateInterval(self::REMOVAL_AFTER)));
-
-        $expired = Vec\filter($expired, fn (Membership $membership): bool => !$this->roleAssignment->isLastOwner($membership));
+        $expired = $this->membershipRepository->findDueForRemoval($this->clock->now());
 
         foreach ($expired as $membership) {
             $suspension = $membership->getSuspension();
@@ -165,7 +148,7 @@ final readonly class DomainSuspender
             'status' => [MembershipStatus::Active->value, MembershipStatus::Suspended->value],
             'suspension' => [null, $why->value],
         ]);
-        $this->domainSuspensionMailer->sendSuspended($membership, $this->removesAt($membership), Vec\map(
+        $this->domainSuspensionMailer->sendSuspended($membership, Vec\map(
             $this->membershipRepository->findAdministratorsIn($membership->getOrganisation()),
             static fn (Membership $administrator): User => $administrator->getUser(),
         ));

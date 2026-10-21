@@ -65,6 +65,10 @@ class Membership
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $suspendedAt = null;
 
+    /** Unset while the suspended member is the organisation's only Owner: RemovalClock keeps it. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $removesAt = null;
+
     public function __construct(Organisation $organisation, User $user, Role $role, MembershipStatus $status, DateTimeImmutable $at)
     {
         $this->id = Uuid::v7();
@@ -128,6 +132,7 @@ class Membership
         if (MembershipStatus::Suspended !== $status) {
             $this->suspension = null;
             $this->suspendedAt = null;
+            $this->removesAt = null;
         }
 
         $this->status = $status;
@@ -171,6 +176,20 @@ class Membership
     public function getSuspendedAt(): ?DateTimeImmutable
     {
         return $this->suspendedAt;
+    }
+
+    public function getRemovesAt(): ?DateTimeImmutable
+    {
+        return $this->removesAt;
+    }
+
+    public function setRemovesAt(?DateTimeImmutable $removesAt): void
+    {
+        if (null !== $removesAt && MembershipStatus::Suspended !== $this->status) {
+            throw new LogicException('Only a suspended membership is removed at an instant.');
+        }
+
+        $this->removesAt = $removesAt;
     }
 
     /** Only while suspended: leaving that state clears both. */

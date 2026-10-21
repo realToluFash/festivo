@@ -141,18 +141,32 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /** @return list<Membership> suspended at or before the cutoff, oldest first */
-    public function findSuspendedSince(DateTimeImmutable $cutoff): array
+    /** @return list<Membership> suspended with a removal instant at or before now, the earliest first */
+    public function findDueForRemoval(DateTimeImmutable $now): array
     {
         /** @var list<Membership> */
         return $this->createQueryBuilder('m')
             ->select('m', 'o')
             ->innerJoin('m.organisation', 'o')
             ->where('m.status = :suspended')
-            ->andWhere('m.suspendedAt <= :cutoff')
+            ->andWhere('m.removesAt <= :now')
             ->setParameter('suspended', MembershipStatus::Suspended)
-            ->setParameter('cutoff', $cutoff, Types::DATETIME_IMMUTABLE)
-            ->orderBy('m.suspendedAt', 'ASC')
+            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->orderBy('m.removesAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /** @return list<Membership> the organisation's owners in every state */
+    public function findOwnersIn(Organisation $organisation): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->innerJoin('m.role', 'r')
+            ->where('m.organisation = :organisation')
+            ->andWhere('r.seededAs = :owner')
+            ->setParameter('organisation', $organisation)
+            ->setParameter('owner', SeededRole::Owner->value)
             ->getQuery()
             ->getResult();
     }

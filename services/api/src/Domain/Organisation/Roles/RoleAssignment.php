@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Roles;
 
+use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Entity\Membership;
 use App\Entity\Role;
 use App\Enum\ErrorCode;
@@ -19,6 +20,7 @@ final readonly class RoleAssignment
     public function __construct(
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private RemovalClock $removalClock,
     ) {
     }
 
@@ -28,7 +30,9 @@ final readonly class RoleAssignment
             $this->release($membership);
         }
 
+        $wasOwner = $membership->getRole()->isOwner();
         $membership->changeRole($role);
+        $this->removalClock->wind($membership, $wasOwner);
     }
 
     /** Refused for the last owner: demoting, removing and leaving all pass through here. */
@@ -40,7 +44,7 @@ final readonly class RoleAssignment
     }
 
     /** An owner, active or suspended (sc-564), with no other active owner beside them. */
-    public function isLastOwner(Membership $membership): bool
+    private function isLastOwner(Membership $membership): bool
     {
         return $membership->getRole()->isOwner()
             && ($membership->isActive() || MembershipStatus::Suspended === $membership->getStatus())

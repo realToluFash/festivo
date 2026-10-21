@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Members;
 
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
+use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
@@ -28,6 +29,7 @@ final readonly class MembershipMachine
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private RemovalClock $removalClock,
     ) {
     }
 
@@ -42,6 +44,7 @@ final readonly class MembershipMachine
             $membership->setDomain(self::domainFor($user, $channel));
             $this->entityManager->persist($membership);
             $this->record($membership, null, $entry, $channel, $actor, $now);
+            $this->removalClock->wind($membership);
 
             return $membership;
         }
@@ -69,6 +72,7 @@ final readonly class MembershipMachine
         $from = $membership->getStatus();
         $membership->setStatus($to, $now);
         $this->record($membership, $from, $to, $channel, $actor, $now);
+        $this->removalClock->wind($membership);
     }
 
     /** Only company domain joining ties a membership to the address it came through (sc-564). */

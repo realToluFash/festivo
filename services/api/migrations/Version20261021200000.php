@@ -11,7 +11,7 @@ final class Version20261021200000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'A membership through company domain joining remembers its domain, and why and since when it is suspended (sc-564).';
+        return 'A membership through company domain joining remembers its domain, and why and since when it is suspended, and when it is removed (sc-564).';
     }
 
     public function up(Schema $schema): void
@@ -20,7 +20,8 @@ final class Version20261021200000 extends AbstractMigration
             ALTER TABLE memberships
                 ADD COLUMN domain       VARCHAR(253) DEFAULT NULL,
                 ADD COLUMN suspension   VARCHAR(30) DEFAULT NULL,
-                ADD COLUMN suspended_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL
+                ADD COLUMN suspended_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL,
+                ADD COLUMN removes_at   TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL
             SQL);
         $this->addSql('CREATE INDEX idx_membership_domain ON memberships (domain)');
         $this->addSql(<<<'SQL'
@@ -48,7 +49,8 @@ final class Version20261021200000 extends AbstractMigration
             ALTER TABLE memberships
                 DROP COLUMN domain,
                 DROP COLUMN suspension,
-                DROP COLUMN suspended_at
+                DROP COLUMN suspended_at,
+                DROP COLUMN removes_at
             SQL);
     }
 }

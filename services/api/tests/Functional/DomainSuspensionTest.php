@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
+use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Roles\RoleAssignment;
@@ -26,6 +27,7 @@ use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use DateInterval;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
@@ -182,7 +184,7 @@ final class DomainSuspensionTest extends ApiTestCase
         $membership = $this->membershipOf($owner, $organisation);
         self::assertSame(MembershipStatus::Suspended, $membership->getStatus());
         self::assertTrue($membership->getRole()->isOwner(), 'still Owner');
-        self::assertNull(self::service(DomainSuspender::class)->removesAt($membership));
+        self::assertNull($membership->getRemovesAt());
         self::assertStringNotContainsString('If nobody answers', (string) $this->mails()[0]->getTextBody());
 
         $this->signIn($owner);
@@ -221,10 +223,52 @@ final class DomainSuspensionTest extends ApiTestCase
         $membership = $this->membershipOf($owner, $organisation);
         $this->suspendAt($membership, new DateTimeImmutable('-720 hours -1 minute'));
 
-        self::assertNotNull(self::service(DomainSuspender::class)->removesAt($membership));
+        self::assertNotNull($membership->getRemovesAt());
         self::assertSame(1, self::service(DomainSuspender::class)->removeExpired());
         self::service(EntityManagerInterface::class)->flush();
         self::assertSame(MembershipStatus::LeftOrRemoved, $this->membershipOf($owner, $organisation)->getStatus());
+    }
+
+    #[Test]
+    public function aSecondOwnerArrivingAfterThirtyDaysStartsAFreshThirtyDaysFromThatMoment(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $membership = $this->membershipOf($owner, $organisation);
+        $this->suspendAt($membership, new DateTimeImmutable('-40 days'));
+        self::assertNull($this->membershipOf($owner, $organisation)->getRemovesAt());
+
+        $before = new DateTimeImmutable('+720 hours -1 second');
+        $this->join($organisation, $this->member('bisi@ire.events'), MembershipChannel::Invitation, SeededRole::Owner);
+        $after = new DateTimeImmutable('+720 hours +1 second');
+
+        $removesAt = $this->membershipOf($owner, $organisation)->getRemovesAt() ?? self::fail('no fresh 30 days');
+        self::assertGreaterThanOrEqual($before, $removesAt);
+        self::assertLessThanOrEqual($after, $removesAt);
+        self::assertSame(0, self::service(DomainSuspender::class)->removeExpired(), 'not at the next sweep');
+        self::service(EntityManagerInterface::class)->flush();
+        self::assertSame(MembershipStatus::Suspended, $this->membershipOf($owner, $organisation)->getStatus());
+
+        $this->signIn($owner);
+        $paused = Type\vec(Type\shape(['suspension' => Type\shape(['removesAt' => Type\shape(['at' => Type\string()], true)], true)], true))->coerce($this->send('GET', '/api/orgs')['paused']);
+        self::assertSame($removesAt->format(\DATE_ATOM), $paused[0]['suspension']['removesAt']['at']);
+    }
+
+    #[Test]
+    public function theFreshThirtyDaysAreOffWhenTheyAreTheOnlyOwnerAgain(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $this->suspendAt($this->membershipOf($owner, $organisation), new DateTimeImmutable('-40 days'));
+        $second = $this->member('bisi@ire.events');
+        $this->join($organisation, $second, MembershipChannel::Invitation, SeededRole::Owner);
+        self::assertNotNull($this->membershipOf($owner, $organisation)->getRemovesAt());
+
+        $this->membershipOf($second, $organisation)->setDomain('ire.events');
+        $this->verifiedAlternative($second, 'bisi@okafor.family');
+        $this->makePrimary($second, 'bisi@okafor.family');
+
+        self::assertNull($this->membershipOf($owner, $organisation)->getRemovesAt());
+        self::assertNull($this->membershipOf($second, $organisation)->getRemovesAt());
+        self::assertSame(0, self::service(DomainSuspender::class)->removeExpired());
     }
 
     #[Test]
@@ -273,10 +317,10 @@ final class DomainSuspensionTest extends ApiTestCase
         $membership = $this->membershipOf($tunde, $organisation);
         $this->suspendAt($membership, new DateTimeImmutable('2026-10-17 13:20:00 UTC'));
 
-        self::assertSame('2026-11-16T13:20:00+00:00', self::service(DomainSuspender::class)->removesAt($membership)?->format(\DATE_ATOM));
+        self::assertSame('2026-11-16T13:20:00+00:00', $membership->getRemovesAt()?->format(\DATE_ATOM));
 
         $mailer = self::service(UserMailer::class);
-        $at = self::service(DomainSuspender::class)->removesAt($membership) ?? self::fail('no removal');
+        $at = $membership->getRemovesAt() ?? self::fail('no removal');
         self::assertSame('Monday, Nov 16 at 14:20 WAT', $mailer->deadline($at, $lagos, 'en'));
         self::assertSame('Monday, Nov 16 at 13:20 GMT', $mailer->deadline($at, $london, 'en'));
     }
@@ -300,7 +344,7 @@ final class DomainSuspensionTest extends ApiTestCase
         $text = (string) $mails[0]->getTextBody();
         self::assertStringContainsString('because their ire.events address is no longer on their account.', $text);
         self::assertStringContainsString('If nobody answers by ' . self::service(UserMailer::class)->deadline(
-            self::service(DomainSuspender::class)->removesAt($this->membershipOf($tunde, $organisation)) ?? self::fail('no removal'),
+            $this->membershipOf($tunde, $organisation)->getRemovesAt() ?? self::fail('no removal'),
             $owner,
             'en',
         ) . ', they are removed.', $text);
@@ -318,7 +362,7 @@ final class DomainSuspensionTest extends ApiTestCase
         $owner->setTimezone('Africa/Lagos');
         $tunde->setTimezone('Europe/London');
         $since = $membership->getSuspendedAt() ?? self::fail('not suspended');
-        $removesAt = self::service(DomainSuspender::class)->removesAt($membership) ?? self::fail('no removal');
+        $removesAt = $membership->getRemovesAt() ?? self::fail('no removal');
         $mailer = self::service(UserMailer::class);
         $suspension = static fn (User $reader): array => [
             'reason' => 'address_gone',
@@ -441,6 +485,12 @@ final class DomainSuspensionTest extends ApiTestCase
         }
 
         $membership->setSuspension(DomainSuspension::AddressGone, $at);
+        self::service(RemovalClock::class)->wind($membership);
+
+        if (null !== $membership->getRemovesAt()) {
+            $membership->setRemovesAt($at->add(new DateInterval(RemovalClock::REMOVAL_AFTER)));
+        }
+
         self::service(EntityManagerInterface::class)->flush();
     }
 
