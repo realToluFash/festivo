@@ -49,6 +49,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. The re-proof's step two after a provider sign-in** (`waysCard.signedInWith`,
+  `codeKeepsSignIn_*`, sc-2908). The status box is «Sesión iniciada con {{provider}}», a state
+  rather than «Ha iniciado sesión», with no full stop. Under the code field: «Si se equivoca de
+  código, no tendrá que volver a {{provider}}. Su inicio de sesión con {{provider}} es válido
+  durante {{count}} minutos.» A condition about the person, not «un código incorrecto no le
+  hace volver», which is literal and needs «le». A window is «es válido durante», not «dura».
 - **19 Oct 2026. Sign-in rules are «Normas de inicio de sesión»** (`signInRules.*`, web and
   app, and `emails:signInRules.*`, sc-3030). «Normas», not «reglas», because they are set by
   an organisation for its members. A member held back by one «podrá consultar, pero no cambiar
