@@ -140,6 +140,16 @@ class Run(unittest.TestCase):
         self.assertTrue(any(line.startswith("error: dev2: workers is 2, but dev2 keeps one stack")
                             for line in self.said))
 
+    def test_the_drawing_list_is_drawn_while_ux_runs_here(self):
+        (self.root / "soirely-ux").mkdir()
+        self.config["roles"]["ux"] = {}
+        with mock.patch("soirely_queue.drawing.tick") as drew:
+            self.run_once()
+            drew.assert_not_called()
+            runner.set_started(self.db, ["ux"], True)
+            self.run_once(ON_ZERO + 60)
+        drew.assert_called_once()
+
     def test_a_role_only_ticks_on_its_own_minute(self):
         store.record(self.db, [work("ops"), work("dev2")], ON_ZERO)
         self.run_once(ON_ONE)
@@ -272,6 +282,14 @@ class Run(unittest.TestCase):
         self.assertIn("ops: item 1 given back, its worker ended without finishing it",
                       self.said)
         self.assertEqual([item for _, item, _ in self.platform.launched], [1, 1])
+
+    def test_a_workers_item_is_given_back_when_the_runner_did_not_launch_it(self):
+        store.record(self.db, [work("ops", "inbox:a"), work("ops", "inbox:b")], ON_ZERO)
+        store.claim(self.db, "ops", ON_ZERO, worker="ops")
+        self.run_once()
+        self.assertIn("ops: item 1 given back, its worker ended without finishing it",
+                      self.said)
+        self.assertEqual([item for _, item, _ in self.platform.launched], [1])
 
     def test_an_item_a_running_worker_holds_is_kept(self):
         store.record(self.db, [work("ops")], ON_ZERO)

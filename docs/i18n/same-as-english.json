@@ -23,6 +23,7 @@
     "mobile:waysCard.code",
     "web:app.name",
     "web:devices.everywhereCode",
+    "web:eventForm.date",
     "web:nav.organisation",
     "web:orgGeneral.section",
     "web:rolesScreen.area.budget",
@@ -34,7 +35,9 @@
     "mobile:rolesScreen.area.budget",
     "mobile:rolesScreen.area.menu",
     "mobile:rolesScreen.area.messages",
-    "mobile:rolesScreen.area.organisation"
+    "mobile:rolesScreen.area.organisation",
+    "web:requestToJoin.message",
+    "mobile:requestToJoin.message"
   ],
   "pt": [
     "web:app.name",

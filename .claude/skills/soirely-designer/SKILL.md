@@ -41,12 +41,18 @@ copies of it.
 
 ### The owner's run with no argument draws the list
 
+The manager draws the list by itself as well, one story at a time, oldest first: it starts a
+background session (`claude --bg`, which has the `Artifact` tool) under ux's account with the
+story's prompt, and stops it once `sq ux drawn sc-N` takes the story off the list. A story
+that fails twice stays on the list for this run.
+
 The unattended ux run cannot draw, so it lists what it could not draw with `sq ux to-draw`
 (below). When the owner runs `/soirely-designer` with no argument and that list is not
 empty, this run draws the list and does nothing else: no inbox, no comments, no sweep, and
 no routine scheduled, since the unattended run does those.
 
-1. `sq ux drawings` prints the list, oldest first, each story with its prompt.
+1. `sq ux drawings` prints the list, oldest first, each story with its prompt. Leave the
+   one marked as being drawn by sq.
 2. Take them one at a time, oldest first. Hand each prompt, word for word, to its own
    `general-purpose` agent with the `Agent` tool, and tell it to follow this skill from
    section 3 on for that one story, to answer no comment, and to end with
