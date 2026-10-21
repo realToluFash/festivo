@@ -71,6 +71,32 @@ class Snapshot(unittest.TestCase):
                          [{"story_id": 7, "name": "Calendar",
                            "prompt": "/soirely-designer Draw sc-7", "at": NOW}])
 
+    def test_the_story_being_drawn_shows_its_session_and_tries(self):
+        store.set_meta(self.db, "drawing", {"story_id": 7, "session": "ab12cd34", "at": NOW,
+                                            "state": "blocked"})
+        store.set_meta(self.db, "draw_tries", {"9": 1})
+        self.assertEqual(self.snap()["drawing"],
+                         {"current": {"story_id": 7, "session": "ab12cd34", "at": NOW,
+                                      "state": "blocked"},
+                          "tries": {"9": 1}, "max_tries": 2})
+
+    def test_a_role_with_several_workers_shows_what_each_works_on(self):
+        (self.root / "soirely-pm").mkdir()
+        self.settings["roles"]["pm"] = {"workers": 3}
+        store.record(self.db, [dict(work("pm", f), story_id=n) for n, f in enumerate("abc")],
+                     NOW)
+        store.claim(self.db, "pm", NOW, worker="pm", workers=3)
+        store.claim(self.db, "pm", NOW, worker="pm-3", workers=3)
+        pm = next(r for r in self.snap()["roles"] if r["role"] == "pm")
+        self.assertEqual([h["worker"] for h in pm["holding"]], ["pm", "pm-3"])
+        ops = next(r for r in self.snap()["roles"] if r["role"] == "ops")
+        self.assertEqual(ops["holding"], [])
+
+    def test_a_run_names_the_worker_that_made_it(self):
+        runlog.append(self.home, "ux", {"at": NOW, "role": "ux", "worker": "ux-draw",
+                                        "exit": 0, "report": "drew sc-7"})
+        self.assertEqual(self.snap()["recent"][0]["worker"], "ux-draw")
+
     def test_a_role_this_machine_does_not_run_is_listed_with_its_queue(self):
         store.record(self.db, [work("qa")], NOW)
         view = self.snap()

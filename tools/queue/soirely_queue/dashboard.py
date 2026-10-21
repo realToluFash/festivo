@@ -9,7 +9,7 @@ import pathlib
 import time
 import webbrowser
 
-from . import machine, permissions, roles, runlog, runner, store
+from . import drawing, machine, permissions, roles, runlog, runner, store
 
 PAGE = pathlib.Path(__file__).with_name("dashboard.html")
 RECENT = 20
@@ -22,7 +22,7 @@ def first_line(text):
 
 
 def run_view(entry):
-    return {"at": entry.get("at"), "role": entry.get("role"),
+    return {"at": entry.get("at"), "role": entry.get("role"), "worker": entry.get("worker"),
             "cost": entry.get("cost_usd") or 0, "exit": entry.get("exit"),
             "stopped": entry.get("stopped"), "item": entry.get("item"),
             "seconds": (entry.get("duration_ms") or 0) // 1000 or None,
@@ -30,6 +30,12 @@ def run_view(entry):
             "report": first_line(entry.get("report")),
             "failed": bool(entry.get("stopped") or entry.get("is_error")
                            or entry.get("exit") not in (0, None))}
+
+
+def drawing_view(db):
+    current = store.get_meta(db, "drawing")
+    tries = store.get_meta(db, "draw_tries") or {}
+    return {"current": current, "tries": tries, "max_tries": drawing.MAX_TRIES}
 
 
 def spend(home, days, today=None):
@@ -49,7 +55,8 @@ def snapshot(db, platform, now, home, load=machine.load):
             "errors": [f"sync: {e}" for e in store.get_meta(db, "sync_errors") or []],
             "warnings": [], "machine": None, "manager": platform.timer_active(),
             "paused": runner.paused(db), "machines": [], "roles": [], "elsewhere": [],
-            "recent": [], "spend": spend(home, 7), "drawings": store.drawings(db)}
+            "recent": [], "spend": spend(home, 7), "drawings": store.drawings(db),
+            "drawing": drawing_view(db)}
     try:
         config = load()
     except machine.ConfigError as error:
@@ -79,6 +86,10 @@ def snapshot(db, platform, now, home, load=machine.load):
         view["machines"] = [{"name": name, "seen": seen["seen"], "started": seen["started"]}
                             for name, seen in sorted((agreed.get("machines") or {}).items())]
         accounts = {role: machine.account(machine.claude_dir(config, role)) for role in ready}
+        if "ux" in ready:
+            folder = machine.claude_dir(config, "ux")
+            view["drawing"]["config_dir"] = None if machine.is_claude_default(folder) \
+                else str(folder)
         listed = config.get("roles") or {}
         for role in [r for r in refused if r not in listed] + list(listed):
             if role in refused:
@@ -91,6 +102,8 @@ def snapshot(db, platform, now, home, load=machine.load):
             away = (agreed.get("elsewhere") or {}).get(role)
             names = machine.worker_names(role, ready[role].get("workers"))
             running = sum(1 for name in names if platform.worker_active(name))
+            holding = [dict(worker=name, id=h["id"], reason=h["reason"])
+                       for name in names if (h := store.held_by(db, role, now, name))]
             state, detail = ("running", None) if running else \
                 ("elsewhere", {"machine": away[0], "seen": away[1]}) if role in on and away \
                 else ("busy", None) if held else \
@@ -105,6 +118,7 @@ def snapshot(db, platform, now, home, load=machine.load):
                 "workers": len(names), "running": running,
                 "last": run_view(last) if last else None,
                 "held": {"id": held["id"], "reason": held["reason"]} if held else None,
+                "holding": holding if len(names) > 1 else [],
                 "waiting": len(waiting),
                 "next": [{"id": w["id"], "reason": w["reason"]} for w in waiting[:NEXT]],
                 "note": machine.price_note(role, ready[role]["model"], config),
