@@ -166,6 +166,15 @@ def cmd_queue(s, a):
     s.done()
 
 
+def cmd_drawings(s, a):
+    found = store.drawings(s.db)
+    if not found:
+        print("nothing to draw")
+    for drawing in found:
+        print(f"sc-{drawing['story_id']}  {drawing['name']}")
+        print("\n".join("    " + line for line in drawing["prompt"].splitlines()))
+
+
 # Reads
 
 
@@ -346,6 +355,8 @@ READS = [
      lambda p: (p.add_argument("id", nargs="?"), p.add_argument("--note"))),
     ("release", cmd_release, "give back the work you hold, unfinished", None),
     ("queue", cmd_queue, "your queue or sweep list, one line per story", None),
+    ("drawings", cmd_drawings, "the stories listed to draw, oldest first, each with its "
+     "prompt", None),
     ("story", cmd_story, "a story as you work on it; --section or --headings for a slice",
      lambda p: (p.add_argument("story"), p.add_argument("--section"),
                 p.add_argument("--headings", action="store_true"))),

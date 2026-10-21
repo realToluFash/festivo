@@ -867,7 +867,7 @@
         drawn = key;
         document.getElementById('draw-section').hidden = !list.length;
         document.getElementById('draw-count').textContent = list.length
-          ? `${list.length} ${list.length === 1 ? 'story' : 'stories'}, paste each into /soirely-designer`
+          ? `${list.length} ${list.length === 1 ? 'story' : 'stories'}: /soirely-designer draws them all, or paste one prompt`
           : '';
         document.getElementById('draws').innerHTML = list
           .map(

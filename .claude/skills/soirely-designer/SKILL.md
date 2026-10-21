@@ -39,6 +39,27 @@ copies of it.
 
 ## 2. Pick the work
 
+### The owner's run with no argument draws the list
+
+The unattended ux run cannot draw, so it lists what it could not draw with `sq ux to-draw`
+(below). When the owner runs `/soirely-designer` with no argument and that list is not
+empty, this run draws the list and does nothing else: no inbox, no comments, no sweep, and
+no routine scheduled, since the unattended run does those.
+
+1. `sq ux drawings` prints the list, oldest first, each story with its prompt.
+2. Take them one at a time, oldest first. Hand each prompt, word for word, to its own
+   `general-purpose` agent with the `Agent` tool, and tell it to follow this skill from
+   section 3 on for that one story, to answer no comment, and to end with
+   `sq ux drawn sc-N` once the story's Design section links the artboard. Wait for it to
+   finish before starting the next: two drawings may share an epic's artifact.
+3. Keep one line per story from each agent's report: the artboards drawn and anything it
+   could not settle. The agent's context ends with it, so this run stays small however
+   long the list is.
+4. When `sq ux drawings` says nothing to draw, report those lines and stop.
+
+A story the agent could not finish stays on the list; say why in its line. A story named
+in the argument (`/soirely-designer sc-56`) is drawn in this session as before.
+
 **Always on.** A run started by hand ends by scheduling this role's three-minute routine
 (`role-routine`, section 1). A run the routine woke follows section 3 of it instead: one
 piece of work, and no waiting on anyone.

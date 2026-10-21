@@ -403,6 +403,16 @@ class Drawing(Base):
         self.assertEqual(store.drawings(self.db), [])
         self.assertIn("was not on", actions.drawn(self.as_("ux"), args(story="sc-1")))
 
+    def test_the_list_prints_oldest_first_with_each_prompt(self):
+        store.add_drawing(self.db, 2, "Later", "/soirely-designer two", 20)
+        store.add_drawing(self.db, 1, "Sooner", "/soirely-designer one\nStates: empty", 10)
+        session = mock.Mock(db=self.db)
+        with mock.patch("builtins.print") as said:
+            cli.cmd_drawings(session, args())
+        self.assertEqual([c.args[0] for c in said.call_args_list],
+                         ["sc-1  Sooner", "    /soirely-designer one\n    States: empty",
+                          "sc-2  Later", "    /soirely-designer two"])
+
     def test_only_the_designer_lists_drawings(self):
         self.fake.add(1, "Needs Design")
         with self.assertRaises(actions.Refused):
