@@ -75,6 +75,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   word the intro uses, not "aceite acima", which reads stiffly. No
   `_many` yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
 
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is "criar", since "iniciar uma organização" is not
+  how PT-PT says it: the heading is "Crie a sua própria organização", the button "Criar
+  organização", as `createOrganisation.create`. One character is "carácter", several
+  "caracteres". The help and the derived-settings line are `createOrganisation`'s words.
+
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is "Terá a função Proprietário", never "será o proprietário".
   The rate limit says what happened, "Por agora, não é possível criar mais organizações".
