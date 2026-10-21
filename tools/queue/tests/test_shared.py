@@ -5,7 +5,7 @@ import subprocess
 import unittest
 from unittest import mock
 
-from soirely_queue import shared, store
+from soirely_queue import github, shared, store
 
 from .fakes import FakeRefs
 
@@ -144,6 +144,13 @@ class Claims(unittest.TestCase):
         view, _, _ = self.linux.minute(NOW + 60, holding=())
         self.assertTrue(shared.claim_item(self.remote, view, "qa", "sc-5", "qa"))
         self.assertIn(shared.claim_ref("qa", "sc-5"), self.remote.refs)
+
+    def test_a_claim_that_vanished_from_github_counts_as_taken(self):
+        refs = shared.GitHubRefs(tree="5a86d09")
+        vanished = github.GitHubError("Reference does not exist (HTTP 422)")
+        with mock.patch.object(shared.github, "api", side_effect=[{"sha": "c0ffee"}, vanished]):
+            with self.assertRaises(shared.Taken):
+                refs.advance(shared.claim_ref("qa", "sc-5"), "0ld", "claim")
 
 
 class Offline(unittest.TestCase):

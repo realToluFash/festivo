@@ -73,9 +73,10 @@ final readonly class MembershipMachine
         return $this->join($organisation, $user, $readOnly, MembershipStatus::PendingApproval, $channel, $user);
     }
 
-    public function move(Membership $membership, MembershipStatus $to, MembershipChannel $channel, ?User $actor): void
+    /** `$at` is the instant it happened, when that is not now: a request removed at its deadline (sc-392). */
+    public function move(Membership $membership, MembershipStatus $to, MembershipChannel $channel, ?User $actor, ?DateTimeImmutable $at = null): void
     {
-        $now = $this->clock->now();
+        $now = $at ?? $this->clock->now();
         $from = $membership->getStatus();
         $membership->setStatus($to, $now);
 

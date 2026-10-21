@@ -122,7 +122,7 @@ final readonly class OrganisationController
             'timezone' => $body['timezone'] ?? $organisation->getTimezone(),
             'contactAddress' => $body['contactAddress'] ?? $organisation->getContactAddress(),
             'locale' => $body['locale'] ?? $organisation->getLocale(),
-        ]);
+        ], $organisation->getCurrency());
 
         $organisation->setName($fields['name']);
         $organisation->setCountryCode($fields['countryCode']);

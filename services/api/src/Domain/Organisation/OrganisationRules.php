@@ -24,10 +24,11 @@ final readonly class OrganisationRules
 
     /**
      * @param array{name: string, countryCode: string, currency: string, timezone: string, contactAddress: string, locale: string} $fields
+     * @param ?string                                                                                                              $held   the organisation's currency on an edit, which may stay although no longer offered; null when founding, where a country with no money of its own starts with none
      *
      * @return array{name: string, countryCode: string, currency: string, timezone: string, contactAddress: string, locale: string}
      */
-    public function check(array $fields): array
+    public function check(array $fields, ?string $held = null): array
     {
         $checked = [
             'name' => Str\trim($fields['name']),
@@ -52,7 +53,9 @@ final readonly class OrganisationRules
             $violations[] = $this->violation('countryCode', 'validation.country_invalid');
         }
 
-        if (!Regions::isCurrency($checked['currency'])) {
+        $kept = null === $held ? '' === $checked['currency'] : '' !== $held && $checked['currency'] === $held;
+
+        if (!$kept && !Regions::isCurrency($checked['currency'])) {
             $violations[] = $this->violation('currency', 'validation.currency_invalid');
         }
 

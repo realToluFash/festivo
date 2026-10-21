@@ -8,11 +8,11 @@ export type MemberState = 'pending_approval' | 'active' | 'suspended' | 'left_or
 export type JoinChannel =
   'invitation' | 'self_created' | 'join_code' | 'domain' | 'request' | 'directory' | 'settings';
 
-/** Whether a membership in `status` is listed under `filter`; former members are only under Former. */
+/** Whether `status` is listed under `filter`: former members only under Former, and nobody awaiting approval under All (sc-392). */
 export function memberIsShown(status: MemberState, filter: MemberFilter): boolean {
   switch (filter) {
     case 'all':
-      return status !== 'left_or_removed';
+      return status === 'active' || status === 'suspended';
     case 'active':
       return status === 'active';
     case 'waiting':
@@ -37,7 +37,14 @@ export interface HistoryStep {
 /** Leaving and being removed share a state: the member causing it is what makes it Left. */
 export function historyLine(step: HistoryStep, member: string): { key: string; named: boolean } {
   if (step.to === 'left_or_removed') {
-    return step.by === member ? { key: 'left', named: false } : { key: 'removed', named: true };
+    if (step.by === member) return { key: 'left', named: false };
+    if (step.from === 'pending_approval') {
+      return step.by == null
+        ? { key: 'requestExpired', named: false }
+        : { key: 'turnedDown', named: true };
+    }
+
+    return { key: 'removed', named: true };
   }
 
   if (step.to === 'suspended') return { key: 'suspended', named: true };
@@ -131,11 +138,25 @@ export function memberRowLine(
   day: (at: string) => string,
 ): string {
   return [
-    roleName((key) => word(key, {}), member.role),
+    member.status === 'pending_approval'
+      ? word('membersScreen.noRoleYet', {})
+      : roleName((key) => word(key, {}), member.role),
     ...(member.self ? [word('membersScreen.you', {})] : []),
     memberChannelWords(word, member, organisation),
     word(`membersScreen.when.${memberRowVerb(member)}`, {
       date: member.since == null ? '' : day(member.since),
     }),
   ].join(' · ');
+}
+
+/** The roles somebody awaiting approval can be approved into: never Owner (sc-68), and Read-only first, least privilege. */
+export function approvalRoles<Role extends { seededAs: string | null }>(
+  roles: readonly Role[],
+): Role[] {
+  const offered = roles.filter((role) => role.seededAs !== 'owner');
+
+  return [
+    ...offered.filter((role) => role.seededAs === 'read_only'),
+    ...offered.filter((role) => role.seededAs !== 'read_only'),
+  ];
 }

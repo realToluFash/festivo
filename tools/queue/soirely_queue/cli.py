@@ -125,9 +125,17 @@ def synced(db, now):
 # Work
 
 
+def this_worker():
+    """The worker this command runs in, so it touches only that worker's item; a run by hand
+    is any of the role's."""
+    return os.environ.get("SOIRELY_WORKER")
+
+
 def cmd_tick(s, a):
     now = time.time()
     synced(s.db, now)
+    if this_worker():
+        return own_item(s, now, lambda row: print("busy"))
     if store.held_by(s.db, s.role, now):
         return print("busy")
     row = store.claim(s.db, s.role, now)
@@ -139,16 +147,32 @@ def cmd_tick(s, a):
 def cmd_next(s, a):
     now = time.time()
     synced(s.db, now)
+    if this_worker():
+        return own_item(s, now, lambda row: render(s, row))
     row = store.held_by(s.db, s.role, now) or store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
+    render(s, row)
+
+
+def own_item(s, now, show):
+    """Inside a worker, the item the runner launched it on; it never claims another, since
+    the runner would not know the claim was its worker's and would wait out the lease."""
+    row = store.held_by(s.db, s.role, now, this_worker())
+    if not row:
+        return print(f"{this_worker()}'s item is finished: end this run")
+    show(row)
+
+
+def render(s, row):
     s.printer.run = f"work:{row['id']}"
     payloads.render(s.printer, s.db, row, s.cache)
     s.done()
 
 
 def cmd_done(s, a):
-    row = store.item(s.db, int(a.id)) if a.id else store.held_by(s.db, s.role)
+    row = store.item(s.db, int(a.id)) if a.id else \
+        store.held_by(s.db, s.role, worker=this_worker())
     if row:
         store.finish(s.db, row["id"], a.note)
     else:
@@ -157,7 +181,7 @@ def cmd_done(s, a):
 
 
 def cmd_release(s, a):
-    row = store.held_by(s.db, s.role)
+    row = store.held_by(s.db, s.role, worker=this_worker())
     if row:
         store.release(s.db, row["id"])
     print("released")
@@ -172,8 +196,10 @@ def cmd_drawings(s, a):
     found = store.drawings(s.db)
     if not found:
         print("nothing to draw")
+    busy = (store.get_meta(s.db, "drawing") or {}).get("story_id")
     for drawing in found:
-        print(f"sc-{drawing['story_id']}  {drawing['name']}")
+        now = "  (sq is drawing it now: leave it)" if drawing["story_id"] == busy else ""
+        print(f"sc-{drawing['story_id']}  {drawing['name']}{now}")
         print("\n".join("    " + line for line in drawing["prompt"].splitlines()))
 
 
@@ -562,6 +588,8 @@ def status(db, platform, now):
             rows.append((role["role"], f"refused: {role['detail']}", "", "", "", "", []))
             continue
         state = {"busy": f"busy, item {(role['held'] or {}).get('id')}",
+                 "running": f"running {role.get('running')} of {role.get('workers')}"
+                 if (role.get("workers") or 1) > 1 else "running",
                  "elsewhere": "on {machine}, seen {ago}".format(
                      machine=(role["detail"] or {}).get("machine"),
                      ago=ago((role["detail"] or {}).get("seen", 0)))}.get(role["state"],

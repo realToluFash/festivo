@@ -257,7 +257,9 @@ function Naming({ name, role, waiting = 0 }: { name: string; role: string; waiti
 
   return (
     <span className="org-naming">
-      <span className="org-name">{name}</span>
+      <span className="org-name" title={name}>
+        {name}
+      </span>
       <span className="org-role">{t('switcher.yourRole', { role })}</span>
       {waiting > 0 && (
         <span className="org-switcher-waiting">

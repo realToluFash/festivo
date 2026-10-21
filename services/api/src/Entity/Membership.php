@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\DomainSuspension;
 use App\Enum\MembershipStatus;
+use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -23,9 +24,13 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_membership_user', columns: ['user_id'])]
 #[ORM\Index(name: 'idx_membership_role', columns: ['role_id'])]
 #[ORM\Index(name: 'idx_membership_domain', columns: ['domain'])]
+#[ORM\Index(name: 'idx_membership_request_expires', columns: ['request_expires_at'])]
 class Membership
 {
     use Timestampable;
+
+    /** A request to join is removed at the moment it was asked plus 30 × 24 h, one instant for every reader (sc-392). */
+    public const string REQUEST_LIFETIME = 'PT720H';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -73,6 +78,10 @@ class Membership
     #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
     private ?string $requestMessage = null;
 
+    /** The instant a request to join nobody answered is removed (sc-392): set on asking, and cleared once it is answered. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $requestExpiresAt = null;
+
     public function __construct(Organisation $organisation, User $user, Role $role, MembershipStatus $status, DateTimeImmutable $at)
     {
         $this->id = Uuid::v7();
@@ -88,6 +97,10 @@ class Membership
 
         if (MembershipStatus::Active === $status) {
             $this->joinedAt = $at;
+        }
+
+        if (MembershipStatus::PendingApproval === $status) {
+            $this->requestExpiresAt = $at->add(new DateInterval(self::REQUEST_LIFETIME));
         }
     }
 
@@ -134,6 +147,7 @@ class Membership
         }
 
         $this->status = $status;
+        $this->requestExpiresAt = MembershipStatus::PendingApproval === $status ? $at->add(new DateInterval(self::REQUEST_LIFETIME)) : null;
     }
 
     public function isActive(): bool
@@ -208,5 +222,16 @@ class Membership
     public function setRequestMessage(?string $requestMessage): void
     {
         $this->requestMessage = $requestMessage;
+    }
+
+    public function getRequestExpiresAt(): ?DateTimeImmutable
+    {
+        return $this->requestExpiresAt;
+    }
+
+    /** Waiting past its instant reads as removed, whether or not the expiry job has run yet. */
+    public function isAwaitingApprovalAt(DateTimeImmutable $now): bool
+    {
+        return MembershipStatus::PendingApproval === $this->status && (null === $this->requestExpiresAt || $now < $this->requestExpiresAt);
     }
 }

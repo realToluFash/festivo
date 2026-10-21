@@ -110,6 +110,22 @@ export function whatTheySee(
   };
 }
 
+/** The roles a granter may hand out, as the API refuses otherwise: only what they hold, and Owner only from an owner. */
+export function grantableRoles<
+  R extends { seededAs: string | null; permissions: readonly string[] },
+>(
+  roles: readonly R[],
+  granter: { role: { seededAs: string | null }; permissions: readonly string[] },
+): R[] {
+  const owner = granter.role.seededAs === 'owner';
+
+  return roles.filter(
+    (role) =>
+      (owner || role.seededAs !== 'owner') &&
+      role.permissions.every((permission) => granter.permissions.includes(permission)),
+  );
+}
+
 /** The roles a removed role's members may move to: only one whose every permission the caller holds (sc-66). */
 export function replacementsFor<R extends { id: string; permissions: readonly string[] }>(
   roles: readonly R[],

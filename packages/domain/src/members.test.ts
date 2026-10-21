@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  approvalRoles,
   historyLine,
   memberChannelWords,
   memberIsShown,
@@ -11,9 +12,9 @@ import {
 } from './members.ts';
 
 describe('which members a chip lists', () => {
-  it('lists everybody but former members under All', () => {
+  it('lists active and suspended members under All, with nobody awaiting approval twice', () => {
     expect(memberIsShown('active', 'all')).toBe(true);
-    expect(memberIsShown('pending_approval', 'all')).toBe(true);
+    expect(memberIsShown('pending_approval', 'all')).toBe(false);
     expect(memberIsShown('suspended', 'all')).toBe(true);
     expect(memberIsShown('left_or_removed', 'all')).toBe(false);
   });
@@ -45,6 +46,28 @@ describe('how a member got here', () => {
     expect(historyLine({ ...step, by: 'u1' }, 'u1')).toEqual({ key: 'left', named: false });
     expect(historyLine({ ...step, by: 'u2' }, 'u1')).toEqual({ key: 'removed', named: true });
     expect(historyLine({ ...step, by: null }, 'u1')).toEqual({ key: 'removed', named: true });
+  });
+
+  it('tells a request turned down from one nobody answered', () => {
+    const step = { from: 'pending_approval', to: 'left_or_removed', channel: 'settings' } as const;
+
+    expect(historyLine({ ...step, by: 'u2' }, 'u1')).toEqual({ key: 'turnedDown', named: true });
+    expect(historyLine({ ...step, by: null }, 'u1')).toEqual({
+      key: 'requestExpired',
+      named: false,
+    });
+    expect(historyLine({ ...step, by: 'u1' }, 'u1')).toEqual({ key: 'left', named: false });
+  });
+
+  it('offers Read-only first and never Owner when approving', () => {
+    const roles = [
+      { id: 'r1', seededAs: 'owner' },
+      { id: 'r2', seededAs: 'administrator' },
+      { id: 'r5', seededAs: 'read_only' },
+      { id: 'r6', seededAs: null },
+    ];
+
+    expect(approvalRoles(roles).map((role) => role.id)).toEqual(['r5', 'r2', 'r6']);
   });
 
   it('names who suspended, restored and approved', () => {
@@ -170,6 +193,19 @@ describe("what a member's row says", () => {
   it('joins role, you, channel and date', () => {
     expect(memberRowLine(word, { ...member, self: true }, 'Ìrè', () => '1 Oct')).toBe(
       'roles.coordinator · membersScreen.you · membersScreen.how.join_code(Ìrè) · membersScreen.when.since(1 Oct)',
+    );
+  });
+
+  it('gives somebody awaiting approval no role yet', () => {
+    expect(
+      memberRowLine(
+        word,
+        { ...member, status: 'pending_approval', channel: 'request' },
+        'Ìrè',
+        () => '12 Oct',
+      ),
+    ).toBe(
+      'membersScreen.noRoleYet · membersScreen.how.request(Ìrè) · membersScreen.when.asked(12 Oct)',
     );
   });
 });

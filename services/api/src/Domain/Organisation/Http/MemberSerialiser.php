@@ -10,6 +10,7 @@ use App\Entity\MembershipTransition;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
+use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Psl\Iter;
@@ -19,18 +20,20 @@ use Psl\Vec;
 final readonly class MemberSerialiser
 {
     /**
-     * @param list<MembershipTransition> $history    this membership's, oldest first
-     * @param list<Invitation>           $accepted   invitations this member accepted here
-     * @param array<string, mixed>|null  $suspension DomainSuspender::describe(), for the caller
+     * @param list<MembershipTransition>         $history    this membership's, oldest first
+     * @param list<Invitation>                   $accepted   invitations this member accepted here
+     * @param Closure(DateTimeImmutable): string $written    a deadline as the caller reads it (sc-868)
+     * @param array<string, mixed>|null          $suspension DomainSuspender::describe(), for the caller
      *
      * @return array<string, mixed>
      */
-    public static function member(Membership $membership, array $history, array $accepted, User $caller, ?array $suspension = null): array
+    public static function member(Membership $membership, array $history, array $accepted, User $caller, Closure $written, ?array $suspension = null): array
     {
         $user = $membership->getUser();
         $last = Iter\last($history);
         $entered = Iter\last(Vec\filter($history, static fn (MembershipTransition $step): bool => $step->getToStatus()->isEntry()));
         $invitation = Iter\last($accepted);
+        $removesAt = MembershipStatus::PendingApproval === $membership->getStatus() ? $membership->getRequestExpiresAt() : null;
 
         return [
             'id' => $membership->getId()->toRfc4122(),
@@ -46,6 +49,7 @@ final readonly class MemberSerialiser
             'suspension' => $suspension,
             'message' => MembershipStatus::PendingApproval === $membership->getStatus() ? $membership->getRequestMessage() : null,
             'since' => self::at($last?->getOccurredAt()),
+            'removesAt' => null === $removesAt ? null : ['at' => self::at($removesAt), 'written' => $written($removesAt)],
             'invitedBy' => null === $invitation ? null : self::person($invitation->getInvitedBy()),
             'invitedAt' => self::at($invitation?->getSentAt() ?? $invitation?->getCreatedAt()),
             'self' => $user->getId()->equals($caller->getId()),

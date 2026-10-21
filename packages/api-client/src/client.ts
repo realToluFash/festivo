@@ -431,6 +431,8 @@ export interface OrganisationMember {
   /** What somebody waiting wrote when they asked through the request link (sc-562). */
   message: string | null;
   since: string | null;
+  /** While waiting for approval (sc-392): the instant it is removed if nobody answers, and that instant as the caller reads it. */
+  removesAt: { at: string; written: string } | null;
   invitedBy: MemberPerson | null;
   invitedAt: string | null;
   self: boolean;
@@ -1386,6 +1388,22 @@ export class ApiClient {
     );
   }
 
+  /** Somebody awaiting approval becomes a member in that role. Refused `join_request_answered`, or `grant_not_held`. */
+  async approveMember(organisationId: string, membershipId: string, roleId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/approve`,
+      { roleId },
+    );
+  }
+
+  /** Refused `join_request_answered` once somebody else answered it, or it was removed unanswered. */
+  async turnDownMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/turn-down`,
+      {},
+    );
+  }
+
   /** Refused `last_owner` while the caller is the only owner. */
   async leaveOrganisation(organisationId: string): Promise<void> {
     await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/leave`, {});
@@ -2316,12 +2334,21 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     channel: oneOf(member.channel, CHANNELS),
     message: stringOrNull(member.message),
     since: stringOrNull(member.since),
+    removesAt: asDeadline(member.removesAt),
     invitedBy: asPerson(member.invitedBy),
     invitedAt: stringOrNull(member.invitedAt),
     self: member.self === true,
     history: history as MembershipStep[],
     suspension: asDomainSuspension(member.suspension),
   };
+}
+
+function asDeadline(raw: unknown): { at: string; written: string } | null {
+  const deadline = raw as Record<string, unknown> | null;
+
+  return typeof deadline?.at === 'string' && typeof deadline.written === 'string'
+    ? { at: deadline.at, written: deadline.written }
+    : null;
 }
 
 function asSentInvitation(raw: unknown): SentInvitation | null {

@@ -242,6 +242,8 @@ def stop(db, names, say=print):
 def down(db, home, platform, say=print, now=False, sleep=time.sleep, wait=WAIT_SECONDS):
     config = machine.load()
     listed = list(config.get("roles") or {})
+    workers = [name for role in listed for name in
+               machine.worker_names(role, machine.settings(config, role).get("workers"))]
     platform.disable()
     runner.set_started(db, listed, False)
     say("Stopped the manager: nothing new is claimed.")
@@ -249,19 +251,19 @@ def down(db, home, platform, say=print, now=False, sleep=time.sleep, wait=WAIT_S
         platform.stop_workers()
     else:
         waited = 0
-        while waited < wait and any(platform.worker_active(r) for r in listed):
-            active = [r for r in listed if platform.worker_active(r)]
+        while waited < wait and any(platform.worker_active(w) for w in workers):
+            active = [w for w in workers if platform.worker_active(w)]
             if waited % 60 == 0:
                 say(f"waiting for {', '.join(active)} to finish ({waited // 60} of "
                     f"{wait // 60} minutes)")
             sleep(10)
             waited += 10
         platform.stop_workers()
-    for role in listed:
-        held = store.held_by(db, role)
-        if held and not platform.worker_active(role):
+    for name in workers:
+        held = store.held_by(db, machine.worker_role(name), worker=name)
+        if held and not platform.worker_active(name):
             store.release(db, held["id"])
-            say(f"{role}: gave back item {held['id']}")
+            say(f"{name}: gave back item {held['id']}")
     for role in listed:
         path = machine.checkout(config, role)
         project = compose_project(path) if path and path.exists() else None

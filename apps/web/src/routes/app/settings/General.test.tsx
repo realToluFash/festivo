@@ -29,15 +29,15 @@ function signedIn(organisation = IRE): void {
 }
 
 function languageField(): HTMLSelectElement {
-  return screen.getByLabelText('Language', { selector: '#organisation-locale' });
+  const field = document.querySelector<HTMLSelectElement>('select#organisation-locale');
+
+  expect(field?.labels?.length).toBe(1);
+
+  return field as HTMLSelectElement;
 }
 
-function readOnlyLanguage(): Element {
-  const row = [...document.querySelectorAll('dl.settings-read-only div')].find(
-    (one) => one.querySelector('dt')?.textContent === 'Language',
-  );
-
-  return row?.querySelector('dd') ?? document.body;
+function readOnlyLanguage(): HTMLElement {
+  return screen.getByTestId('organisation-locale');
 }
 
 function settings() {
@@ -206,6 +206,62 @@ describe('Settings > General', () => {
     expect(sent).toEqual([]);
   });
 
+  it('offers the currencies in use today, by name then code, and not the retired ones', () => {
+    settings();
+
+    const offered = [...(screen.getByLabelText('Currency') as HTMLSelectElement).options];
+
+    expect(offered.map(({ value }) => value)).toContain('SLE');
+    expect(offered.map(({ value }) => value)).toContain('ZWG');
+    expect(offered.map(({ value }) => value)).not.toContain('SLL');
+    expect(offered.map(({ value }) => value)).not.toContain('ZWL');
+    expect(offered.map(({ value }) => value)).not.toContain('XXX');
+    expect(offered.find(({ value }) => value === 'NGN')?.textContent).toBe('Nigerian Naira (NGN)');
+  });
+
+  it('keeps a held currency that is no longer in use, first and chosen, through a save of the name', async () => {
+    const held = membership({ id: 'org_1', name: 'Ìrè Events', currency: 'SLL' });
+    signedIn(held);
+    const sent = answering(
+      (body) =>
+        new Response(JSON.stringify({ ...held, ...(body as object), role: undefined }), {
+          status: 200,
+        }),
+    );
+    settings();
+
+    const currency = screen.getByLabelText('Currency') as HTMLSelectElement;
+    expect(currency.value).toBe('SLL');
+    expect(currency.options[0]?.textContent).toBe('SLL (no longer in use)');
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ìrè Events Ltd' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(screen.getByRole('status')).toBeDefined());
+    expect(
+      sent.filter((request) => request.path.startsWith('/api/orgs') && request.method !== 'GET'),
+    ).toEqual([{ method: 'PATCH', path: '/api/orgs/org_1', body: { name: 'Ìrè Events Ltd' } }]);
+  });
+
+  it('starts an organisation with no currency of its own empty, and refuses to save it so', () => {
+    signedIn(membership({ id: 'org_1', name: 'Ìrè Events', countryCode: 'AQ', currency: '' }));
+    const sent = answering(() => new Response('{}', { status: 500 }));
+    settings();
+
+    const currency = screen.getByLabelText('Currency') as HTMLSelectElement;
+    expect(currency.value).toBe('');
+    expect(currency.options[0]?.textContent).toBe('Choose a currency');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(screen.getByText('Choose a currency.')).toBeDefined();
+    expect(currency.getAttribute('aria-invalid')).toBe('true');
+    expect(sent).toEqual([]);
+
+    fireEvent.change(currency, { target: { value: 'USD' } });
+    expect([...currency.options].map(({ value }) => value)).not.toContain('');
+  });
+
   it("shows the API's refusal under the field it names", async () => {
     answering(
       () =>
@@ -260,14 +316,16 @@ describe('Settings > General', () => {
     );
     settings();
 
-    expect(screen.getAllByRole('term').map((term) => term.textContent)).toEqual([
+    const terms = screen.getAllByRole('term');
+
+    expect(terms.slice(0, -1).map((term) => term.textContent)).toEqual([
       'Name',
       'Country',
       'Contact address',
       'Currency',
       'Time zone',
-      'Language',
     ]);
+    expect(terms.at(-1)).toBe(readOnlyLanguage().previousElementSibling);
 
     const note = screen.getByText(
       'Currency and time zone: new events start with these. Events you already have keep theirs.',

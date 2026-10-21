@@ -2086,6 +2086,53 @@ describe('invitations and members', () => {
     ]);
   });
 
+  test('somebody awaiting approval carries the instant they are removed, as the server wrote it', async () => {
+    const { api } = client(
+      json({
+        members: [
+          {
+            id: 'm_ada',
+            user: { id: 'u3', name: 'Ada Okeke', email: 'ada@okeke.ng' },
+            role: { id: 'role_5', seededAs: 'read_only', name: null },
+            status: 'pending_approval',
+            former: null,
+            channel: 'request',
+            message: null,
+            since: '2026-10-12T08:40:00+00:00',
+            removesAt: {
+              at: '2026-11-11T08:40:00+00:00',
+              written: 'Wednesday, Nov 11 at 09:40 WAT',
+            },
+            invitedBy: null,
+            invitedAt: null,
+            self: false,
+            history: [],
+          },
+        ],
+        invitations: [],
+      }),
+    );
+
+    const [ada] = (await api.members('org_1')).members;
+
+    expect(ada?.removesAt).toEqual({
+      at: '2026-11-11T08:40:00+00:00',
+      written: 'Wednesday, Nov 11 at 09:40 WAT',
+    });
+  });
+
+  test('a request to join is approved with a role, or turned down', async () => {
+    const { api, sent } = client(new Response(null, { status: 204 }));
+
+    await api.approveMember('org_1', 'm_ada', 'role_5');
+    await api.turnDownMember('org_1', 'm_chidi');
+
+    expect(sent).toEqual([
+      { line: 'POST /api/orgs/org_1/members/m_ada/approve', body: { roleId: 'role_5' } },
+      { line: 'POST /api/orgs/org_1/members/m_chidi/turn-down', body: {} },
+    ]);
+  });
+
   test('a deletion keeps the deadline as the server wrote it for the reader', async () => {
     const { api, sent } = client(
       json({

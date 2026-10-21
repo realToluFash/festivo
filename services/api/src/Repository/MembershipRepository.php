@@ -267,4 +267,46 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getQuery()
             ->execute();
     }
+
+    /**
+     * Requests to join whose instant has come and that nobody answered (sc-392), in one organisation or in all.
+     *
+     * @return list<Membership>
+     */
+    public function findRequestsLapsedBy(DateTimeImmutable $now, ?Organisation $organisation = null): array
+    {
+        $query = $this->createQueryBuilder('m')
+            ->select('m', 'o', 'u')
+            ->innerJoin('m.organisation', 'o')
+            ->innerJoin('m.user', 'u')
+            ->where('m.status = :pending')
+            ->andWhere('m.requestExpiresAt <= :now')
+            ->setParameter('pending', MembershipStatus::PendingApproval)
+            ->setParameter('now', $now)
+            ->orderBy('m.requestExpiresAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC');
+
+        if (null !== $organisation) {
+            $query->andWhere('m.organisation = :organisation')->setParameter('organisation', $organisation);
+        }
+
+        return $query->getQuery()->getResult();
+    }
+
+    /** @return list<Membership> every request to join still waiting at this instant, oldest first, in organisations that still exist */
+    public function findRequestsWaitingAt(DateTimeImmutable $now): array
+    {
+        /** @var list<Membership> */
+        return $this->createQueryBuilder('m')
+            ->select('m', 'o')
+            ->innerJoin('m.organisation', 'o')
+            ->where('m.status = :pending')
+            ->andWhere('m.requestExpiresAt > :now')
+            ->setParameter('pending', MembershipStatus::PendingApproval)
+            ->setParameter('now', $now)
+            ->orderBy('m.requestExpiresAt', 'ASC')
+            ->addOrderBy('m.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }
