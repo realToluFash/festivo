@@ -13,6 +13,8 @@ export function OrganisationSwitcher({
   waiting,
   offer = null,
   email = '',
+  paused = false,
+  opened = 0,
   onSwitch,
   onCreate,
 }: {
@@ -21,6 +23,10 @@ export function OrganisationSwitcher({
   waiting: WaitingInvitations;
   offer?: DomainOffer | null;
   email?: string;
+  /** While the account's access is paused, the organisation the session falls back on is not the one on screen. */
+  paused?: boolean;
+  /** Each change opens the menu from outside it: the paused screen's Switch organisation (sc-564). */
+  opened?: number;
   onSwitch: (organisation: Membership) => void;
   onCreate: () => void;
 }) {
@@ -30,6 +36,13 @@ export function OrganisationSwitcher({
   const button = useRef<HTMLButtonElement>(null);
   const role = roleName(t, current.role);
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
+
+  const [seen, setSeen] = useState(opened);
+
+  if (opened !== seen) {
+    setSeen(opened);
+    setOpen(true);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -86,7 +99,7 @@ export function OrganisationSwitcher({
           <p className="org-switcher-heading">{t('switcher.heading')}</p>
           <ul role="listbox" aria-label={t('switcher.heading')}>
             {organisations.map((organisation) => {
-              const isCurrent = organisation.id === current.id;
+              const isCurrent = !paused && organisation.id === current.id;
 
               return (
                 <li key={organisation.id}>

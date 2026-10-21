@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   chooseOrganisation,
   choosePaused,
+  pausedSwitch,
   pausedReasonKey,
   organisationChanges,
   newOrganisationProblem,
@@ -27,6 +28,20 @@ describe('chooseOrganisation', () => {
 
   it('is in no organisation when the account has none', () => {
     expect(chooseOrganisation([], 'org_ire')).toBeNull();
+  });
+});
+
+describe('pausedSwitch', () => {
+  it('offers nothing with no other active organisation', () => {
+    expect(pausedSwitch([])).toBeNull();
+  });
+
+  it('opens the only other one directly', () => {
+    expect(pausedSwitch([okafor])).toBe(okafor);
+  });
+
+  it('opens the switcher with two or more', () => {
+    expect(pausedSwitch([ire, okafor])).toBe('switcher');
   });
 });
 

@@ -79,6 +79,7 @@ function Shell() {
   const { pathname } = useLocation();
   const [switched, setSwitched] = useState<{ name: string; at: string } | null>(null);
   const [creating, setCreating] = useState(false);
+  const [choosing, setChoosing] = useState(0);
   const organisation = session.organisation;
   const waiting = useWaitingInvitations();
   const closeCreate = useCallback(() => setCreating(false), []);
@@ -101,6 +102,8 @@ function Shell() {
             waiting={waiting}
             offer={offer}
             email={session.email}
+            paused={session.pausedIn != null}
+            opened={choosing}
             onSwitch={(next) => {
               switchOrganisation(next.id);
               setSwitched({ name: next.name, at: pathname });
@@ -145,11 +148,12 @@ function Shell() {
           {session.pausedIn != null && !pathname.startsWith('/app/account') ? (
             <AccessPaused
               paused={session.pausedIn}
-              other={organisation}
+              others={session.organisations}
               onSwitch={(next) => {
                 switchOrganisation(next.id);
                 setSwitched({ name: next.name, at: pathname });
               }}
+              onChoose={() => setChoosing((times) => times + 1)}
             />
           ) : organisation == null && !pathname.startsWith('/app/account') ? (
             <NoOrganisation

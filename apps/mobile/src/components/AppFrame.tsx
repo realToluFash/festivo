@@ -133,8 +133,9 @@ export function AppFrame({
               {signedIn.pausedIn != null && !aboutTheAccount ? (
                 <AccessPaused
                   paused={signedIn.pausedIn}
-                  other={signedIn.organisation}
+                  others={signedIn.organisations}
                   onSwitch={(next) => switchOrganisation(next.id)}
+                  onChoose={() => openSwitcher?.()}
                 />
               ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
                 <TwoFactorOverdue organisation={signedIn.organisation} />
@@ -149,7 +150,7 @@ export function AppFrame({
       <Switcher
         open={choosing}
         organisations={signedIn.organisations}
-        current={signedIn.organisation}
+        current={signedIn.pausedIn != null ? null : signedIn.organisation}
         waiting={waiting}
         offer={offer}
         email={email}

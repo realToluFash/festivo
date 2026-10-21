@@ -1,5 +1,5 @@
 import type { Membership, PausedOrganisation } from '@soirely/api-client';
-import { pausedReasonKey } from '@soirely/domain';
+import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { router } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -17,18 +17,21 @@ import { Text } from './Text.tsx';
 /** `AccessPaused-*`: in place of every screen of an organisation the account's access to is paused in (sc-564). */
 export function AccessPaused({
   paused,
-  other,
+  others,
   onSwitch,
+  onChoose,
 }: {
   paused: PausedOrganisation;
-  other: Membership | null;
+  others: readonly Membership[];
   onSwitch: (to: Membership) => void;
+  onChoose: () => void;
 }) {
   const { t } = useTranslation();
   const { kind } = useLayout();
   const { suspension } = paused;
   const named = { organisation: paused.name, domain: suspension.domain ?? '' };
   const addressGone = suspension.reason === 'address_gone';
+  const switchTo = pausedSwitch(others);
 
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
@@ -74,10 +77,10 @@ export function AccessPaused({
               testID="accessPaused.account"
             />
           )}
-          {other != null && (
+          {switchTo != null && (
             <SecondaryButton
               label={t('accessPaused.switch')}
-              onPress={() => onSwitch(other)}
+              onPress={() => (switchTo === 'switcher' ? onChoose() : onSwitch(switchTo))}
               testID="accessPaused.switch"
             />
           )}

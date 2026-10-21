@@ -1,22 +1,25 @@
 import type { Membership, PausedOrganisation } from '@soirely/api-client';
-import { pausedReasonKey } from '@soirely/domain';
+import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 /** In place of every page of an organisation the account's access to is paused in (sc-564). */
 export function AccessPaused({
   paused,
-  other,
+  others,
   onSwitch,
+  onChoose,
 }: {
   paused: PausedOrganisation;
-  other: Membership | null;
+  others: readonly Membership[];
   onSwitch: (to: Membership) => void;
+  onChoose: () => void;
 }) {
   const { t } = useTranslation();
   const { suspension } = paused;
   const named = { organisation: paused.name, domain: suspension.domain ?? '' };
   const addressGone = suspension.reason === 'address_gone';
+  const switchTo = pausedSwitch(others);
 
   return (
     <section className="card settings-card access-paused" aria-labelledby="paused-title">
@@ -47,8 +50,12 @@ export function AccessPaused({
             {t('accessPaused.accountSettings')}
           </Link>
         )}
-        {other != null && (
-          <button className="button" type="button" onClick={() => onSwitch(other)}>
+        {switchTo != null && (
+          <button
+            className="button"
+            type="button"
+            onClick={() => (switchTo === 'switcher' ? onChoose() : onSwitch(switchTo))}
+          >
             {t('accessPaused.switch')}
           </button>
         )}

@@ -35,7 +35,12 @@ describe('AccessPaused', () => {
     const other = membership({ id: 'org_2', name: 'Okafor Family' });
     render(
       <MemoryRouter>
-        <AccessPaused paused={paused('address_gone')} other={other} onSwitch={onSwitch} />
+        <AccessPaused
+          paused={paused('address_gone')}
+          others={[other]}
+          onSwitch={onSwitch}
+          onChoose={vi.fn()}
+        />
       </MemoryRouter>,
     );
 
@@ -56,10 +61,37 @@ describe('AccessPaused', () => {
     expect(onSwitch).toHaveBeenCalledWith(other);
   });
 
+  it('opens the switcher when there are two or more other organisations', () => {
+    const onSwitch = vi.fn();
+    const onChoose = vi.fn();
+    render(
+      <MemoryRouter>
+        <AccessPaused
+          paused={paused('address_gone')}
+          others={[
+            membership({ id: 'org_2', name: 'Okafor Family' }),
+            membership({ id: 'org_3', name: 'Lagos Weddings' }),
+          ]}
+          onSwitch={onSwitch}
+          onChoose={onChoose}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+    expect(onChoose).toHaveBeenCalledOnce();
+    expect(onSwitch).not.toHaveBeenCalled();
+  });
+
   it('asks nothing of the person when the organisation closed the domain', () => {
     render(
       <MemoryRouter>
-        <AccessPaused paused={paused('domain_closed')} other={null} onSwitch={vi.fn()} />
+        <AccessPaused
+          paused={paused('domain_closed')}
+          others={[]}
+          onSwitch={vi.fn()}
+          onChoose={vi.fn()}
+        />
       </MemoryRouter>,
     );
 
@@ -83,8 +115,9 @@ describe('AccessPaused', () => {
       <MemoryRouter>
         <AccessPaused
           paused={{ ...owner, suspension: { ...owner.suspension, removesAt: null } }}
-          other={null}
+          others={[]}
           onSwitch={vi.fn()}
+          onChoose={vi.fn()}
         />
       </MemoryRouter>,
     );
@@ -96,7 +129,12 @@ describe('AccessPaused', () => {
   it('names another organisation managing the domain', () => {
     render(
       <MemoryRouter>
-        <AccessPaused paused={paused('domain_managed_elsewhere')} other={null} onSwitch={vi.fn()} />
+        <AccessPaused
+          paused={paused('domain_managed_elsewhere')}
+          others={[]}
+          onSwitch={vi.fn()}
+          onChoose={vi.fn()}
+        />
       </MemoryRouter>,
     );
 

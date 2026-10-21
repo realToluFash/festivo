@@ -19,6 +19,13 @@ export function choosePaused<T extends { id: string }>(
   );
 }
 
+/** Switch organisation on the paused screen: straight into the only other active one, the switcher for more, absent for none. */
+export function pausedSwitch<T>(others: readonly T[]): T | 'switcher' | null {
+  if (others.length > 1) return 'switcher';
+
+  return others[0] ?? null;
+}
+
 /** The paused screen's reason, worded for the person; Restore needs them only when their address went. */
 export function pausedReasonKey(reason: string): string {
   if (reason === 'domain_closed') return 'accessPaused.becauseDomainClosed';
