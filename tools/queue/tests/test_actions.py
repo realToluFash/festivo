@@ -373,6 +373,29 @@ class LineEdits(Base):
         self.assertEqual(self.body(1), "# AC\n\n- x\n")
 
 
+class NewStories(Base):
+    def file(self, epic):
+        return actions.new_story(self.as_("dev"), args(name="x", text="y", type=None,
+                                                        state=None, label=None, epic=epic,
+                                                        estimate=None))
+
+    def test_a_story_with_no_epic_is_refused(self):
+        with self.assertRaisesRegex(actions.Refused, "belongs to an epic.*new-epic"):
+            self.file(None)
+
+    def test_a_story_in_a_done_or_unknown_epic_is_refused(self):
+        store.set_meta(self.db, "epics", {"26": {"name": "Foundation", "state": "done"}})
+        with self.assertRaisesRegex(actions.Refused, "epic 26 is done"):
+            self.file(26)
+        with self.assertRaisesRegex(actions.Refused, "epic 99 is not an open epic"):
+            self.file(99)
+
+    def test_every_role_that_files_a_story_may_make_its_epic(self):
+        for role in roles.ROLES:
+            if roles.may(role, "new-story"):
+                self.assertTrue(roles.may(role, "new-epic"), role)
+
+
 class NewEpics(Base):
     def setUp(self):
         super().setUp()
@@ -764,17 +787,19 @@ class OpsOwnsItsTickets(Base):
         self.fake.create_story = lambda **f: self.fake.raw.setdefault(
             50, {"id": 50, "name": f["name"], "workflow_state_id": f["workflow_state_id"],
                  "moved_at": "t0", "labels": f["labels"], "comments": [], "description": ""})
+        store.set_meta(self.db, "epics", {"26": {"name": "Foundation", "state": "in progress"}})
         actions.new_story(self.as_("ops"), args(name="Pin the base images", text="why",
                                                  type="chore", state="In Progress", label=None,
-                                                 epic=None, estimate=None))
+                                                 epic=26, estimate=None))
         self.assertEqual(self.state(50), "In Progress")
         self.assertEqual(self.labels(50), {"ops"})
 
     def test_ops_cannot_file_straight_into_review_or_qa(self):
         with self.assertRaisesRegex(actions.Refused, "Backlog"):
+            store.set_meta(self.db, "epics", {"26": {"name": "F", "state": "in progress"}})
             actions.new_story(self.as_("ops"), args(name="x", text="y", type=None,
                                                      state="Ready For QA", label=None,
-                                                     epic=None, estimate=None))
+                                                     epic=26, estimate=None))
 
     def test_a_passed_ops_pr_merges_and_its_story_is_done_without_qa(self):
         self.fake.add(1, "In Review", ["ops"])

@@ -449,6 +449,13 @@ MAX_IDEAS = 3
 
 def new_story(c, a):
     guard(c, "new-story")
+    if not a.epic:
+        raise Refused(f"a new story belongs to an epic: pick one from `sq {c.role} epics`, or "
+                      f"make one with `sq {c.role} new-epic` if none suits it, and pass --epic N")
+    epic = (store.get_meta(c.db, "epics") or {}).get(str(a.epic))
+    if not epic or epic.get("state") == "done":
+        raise Refused(f"epic {a.epic} is {'done' if epic else 'not an open epic'}: pick one "
+                      f"from `sq {c.role} epics`, or make one with `sq {c.role} new-epic`")
     labels = set(a.label or [])
     state = a.state or "Backlog"
     if c.role == "cd":
@@ -469,9 +476,7 @@ def new_story(c, a):
         raise Refused("a new story starts in Backlog; the product manager moves it on")
     fields = {"name": a.name, "description": a.text, "story_type": a.type or "feature",
               "workflow_state_id": c.state_id(state)[0],
-              "labels": [{"name": name} for name in sorted(labels)]}
-    if a.epic:
-        fields["epic_id"] = a.epic
+              "labels": [{"name": name} for name in sorted(labels)], "epic_id": a.epic}
     if a.estimate is not None:
         fields["estimate"] = a.estimate
     created = c.shortcut.create_story(**fields)

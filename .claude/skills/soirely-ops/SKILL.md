@@ -33,8 +33,9 @@ from the main checkout makes it).
   tree, never a commit CI has not passed.
 - **Every infra change has a ticket and the lead's pass. Never push to `main`, never
   force-push** anything shared. The owner gave ops its own tickets and merges on 20 Oct:
-  1. **File the ticket**: `sq ops new-story --name "…" --state "In Progress"` (or
-     `Backlog` for later), body on stdin. It is labelled `ops`, so only ops is woken for
+  1. **File the ticket**: `sq ops new-story --name "…" --epic N --state "In Progress"` (or
+     `Backlog` for later), body on stdin. Every story belongs to an epic: infra work goes
+     in Foundation (26) unless another fits; `sq ops epics` lists them. It is labelled `ops`, so only ops is woken for
      it. An existing story you are building gets the label with `sq ops label sc-N --add ops`;
      sq takes only a story in Backlog, Ready For Dev or In Progress that nobody holds, and
      tells `[pm]` it has left their queue. `needs qa` you change only on your own stories.
