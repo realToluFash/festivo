@@ -165,6 +165,13 @@ class Developer(unittest.TestCase):
         carried = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
         self.assertEqual(kinds(work.developer_items([story()], [carried])), ["merge"])
 
+    def test_a_pull_request_that_conflicts_with_main_asks_for_main_and_nothing_else(self):
+        conflicting = dict(pr(lead=[verdict("pass", HEAD[:7])]), mergeable="conflicting")
+        for state in ("In Progress", "In Review", "Passed Code Review"):
+            items = work.developer_items([story(state=state, labels=["dev2"])], [conflicting])
+            self.assertEqual([(i["kind"], i["roles"]) for i in items], [("conflict", ["dev2"])])
+            self.assertIn("merge origin/main", items[0]["reason"])
+
     def test_an_open_thread_holds_the_merge(self):
         thread = {"id": "T", "resolved": False, "outdated": False, "path": "x", "line": 1,
                   "comments": []}
@@ -426,6 +433,16 @@ class FinishingFirst(unittest.TestCase):
         found = self.order(stories, [pr(9, 3, lead=lead)])
         self.assertEqual(found[-1], (1, "inbox"))
         self.assertEqual({k for k in found[:-1]}, {(2, "story"), (3, "merge"), (4, "story")})
+
+    def test_a_passed_merge_and_a_conflict_go_ahead_of_comments_in_any_state(self):
+        asked = [comment(1, "[dev] (from pm)\nA question.")]
+        stories = [story(1, "Backlog", comments=asked), story(2, "In Review", labels=["dev1"]),
+                   story(3, "In Progress", labels=["dev1"])]
+        prs = [pr(8, 2, lead=[verdict("pass", HEAD)]),
+               dict(pr(9, 3), mergeable="conflicting")]
+        found = self.order(stories, prs)
+        self.assertLess(found.index((2, "merge")), found.index((1, "inbox")))
+        self.assertLess(found.index((3, "conflict")), found.index((1, "inbox")))
 
     def test_the_lead_reviews_before_it_answers_comments(self):
         asked = [comment(1, "[lead] (from pm)\nA question.")]
