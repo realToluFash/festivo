@@ -671,9 +671,9 @@
     "signInRulesLine": "{{name}} · como se inicia sessão e durante quanto tempo",
     "members": "Membros",
     "membersLine": "{{name}} · quem faz parte e com que função",
-    "roles": "Roles",
-    "rolesLine": "{{name}} · what each role may do",
-    "rolesBack": "‹ Roles"
+    "roles": "Funções",
+    "rolesLine": "{{name}} · o que cada função pode fazer",
+    "rolesBack": "‹ Funções"
   },
   "switcher": {
     "yourRole": "A sua função · {{role}}",
@@ -776,10 +776,10 @@
     "marginMeans": "O que {{name}} acrescenta aos custos. Oculta significa que o orçamento abre só com os custos.",
     "marginHidden": "Oculta",
     "marginShown": "Visível",
-    "createEvents": "Create events",
-    "createEventsMeans": "Start a new event in {{name}}. It begins as a draft.",
-    "createEventsOff": "Not allowed",
-    "createEventsOn": "Allowed",
+    "createEvents": "Criar eventos",
+    "createEventsMeans": "Criar um novo evento em {{name}}. Começa como rascunho.",
+    "createEventsOff": "Não permitido",
+    "createEventsOn": "Permitido",
     "unsavedNew": "Nova função, ainda por guardar. Ninguém a tem até ser atribuída a alguém.",
     "unsaved_one": "Alterações por guardar em {{role}}. {{count}} pessoa recebe-as no próximo pedido; ninguém termina a sessão.",
     "unsaved_other": "Alterações por guardar em {{role}}. {{count}} pessoas recebem-nas no próximo pedido; ninguém termina a sessão.",
