@@ -323,6 +323,17 @@ class LineEdits(Base):
                                           dry=False, section="AC", dated=None, text="- x"))
         self.assertEqual(self.body(1), "# AC\n\n- x\n")
 
+    def test_a_body_with_its_own_heading_is_refused_and_nothing_changes(self):
+        for section, dated in (("AC", None), (None, "Notes")):
+            with self.assertRaisesRegex(actions.Refused, 'heading \\(Mobile\\).*--section "Mobile"'):
+                actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                                  dry=False, section=section, dated=dated,
+                                                  text="- x\n\n## Mobile\n\n- y"))
+        self.assertEqual(self.body(1), "# AC\n- works\n- shows a total")
+        actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                          dry=False, section="AC", dated=None,
+                                          text="- x\n```\n# not a heading\n```"))
+        self.assertIn("# not a heading", self.body(1))
 
     def test_a_save_made_meanwhile_is_kept_and_the_edit_redone_over_it(self):
         real = self.fake.story

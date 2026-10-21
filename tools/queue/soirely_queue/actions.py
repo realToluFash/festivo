@@ -370,8 +370,9 @@ def description_of(c, target):
 
 
 def rewrite(c, target, change, attempts=3):
-    """Saves change(description) only while the story is still the version it was worked
-    out from, so an edit never writes back over one another role saved meanwhile."""
+    """Saves change(description) only if the story still reads as the version it was worked
+    out from. Shortcut's PUT takes no precondition, so a save landing between that last
+    read and this one is still written over: this narrows the window, it does not close it."""
     read, save = description_of(c, target)
     raw = read()
     seen, body = raw.get("updated_at"), raw.get("description") or ""
@@ -443,6 +444,10 @@ def edit(c, a):
     name = a.section or a.dated
     if c.role == "ux" and not a.target.startswith("epic-") and not T.is_design(name):
         raise Refused("the designer writes only the Design section")
+    if headed := [h for h, _, _ in T.sections(a.text) if h != T.TOP]:
+        raise Refused(f"the text brings its own heading ({headed[0]}), which would add a "
+                      f"section beside the one already there: edit that one with "
+                      f"--section \"{headed[0]}\", one section per edit")
     target = a.target if a.target.startswith("epic-") else f"sc-{story_number(a.target)}"
     rewrite(c, target, lambda body: T.append_dated(body, a.dated, a.text) if a.dated
             else T.replace(body, a.section, a.text))
