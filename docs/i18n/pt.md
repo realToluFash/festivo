@@ -41,6 +41,46 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
+  `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
+  "exigir", as the server's errors; "for everyone" is "para todos". The date is "a partir de
+  {{deadline}}" and "até {{deadline}}", as `limitedBody` and `endsBy`. "Set it up" is
+  "ativar", as "turn on" in en; "carry on" is "prosseguir". A person who must act is "cada
+  pessoa", with the verb in the singular, so nothing agrees with a gender. The overdue
+  screen's body says why, "… e o prazo para a ativar já terminou". "Single-event access" is
+  "o seu acesso a eventos individuais". The card and the server's refusal say the same
+  sentence, "… por isso não a pode desativar".
+
+- **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
+  `messages:domain_joining.*`, sc-4434). The act is "pedir para aderir", the wait "A
+  aguardar aprovação", as the Members state. What gets approved is "o pedido", so no "o/a"
+  agrees with the person; an invitation is asked for as "peça um convite a alguém", never
+  "peça que o convide". "… instead" buttons are "Prefiro …". The setting is "Adesão por
+  domínio da empresa", "Ativada" / "Desativada"; a working domain "Aceita pedidos", a
+  stopped one "Sem efeito". People at a domain are "quem usa {{domain}}".
+
+- **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
+  "Membros", a role "função", and a member is removed with "Remover", as on Account. A
+  person's state never agrees with them: "Com acesso", "A aguardar aprovação", "Acesso
+  suspenso", "Saiu", "Acesso retirado"; dates in the row line take "a" ("saiu a {{date}}").
+  "You" beside your own row is "a sua conta", and "You · {{role}}" is "A sua função: {{role}}",
+  never "você". "Their events" is "os eventos desta pessoa", since "os seus" reads as the
+  reader's and "dela" assumes a woman. "On their next request" is "assim que voltar a usar a
+  Soirely". Groups on the chips take the plural, "Todos", "Suspensos", "Antigos".
+- **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
+  app, sc-4188). An invitation is "convite", waiting is "pendente". With several, "that
+  organisation" is "a organização que o enviou", where "o" is the invitation, never the
+  person. A button in a sentence goes in «» after "Selecione": "Selecione «Guardar e
+  continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". No
+  `_many` yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
+- **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
+  "You will be its owner" is "Terá a função Proprietário", never "será o proprietário".
+  The rate limit says what happened, "Por agora, não é possível criar mais organizações".
+  Where a list mixes genders (moeda, fuso horário, endereço), the sentence after it says
+  "estes dados" rather than agreeing with one noun. A path in Settings is "Definições >
+  Geral"; "Creating…" is "A criar…", the PT-PT progressive.
+
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
   The label is "Idioma", as the English "Language"; if English lengthens it to "Language for
   invitations", it becomes "Idioma dos convites". "Invitation emails" are "os e-mails de convite", and the people

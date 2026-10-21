@@ -49,6 +49,47 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
+  `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
+  «exigir», as the server's errors; "for everyone" is «para todos». The date is «a partir del
+  {{deadline}}» and «hasta el {{deadline}}», as `limitedBody` and `endsBy`. "Set it up" is
+  «activarla», never «configurarla», as "turn on" in en. The overdue screen's body says why,
+  «… y el plazo para activarla ha terminado», since the title already says «para continuar».
+  "Single-event access" is «su acceso a eventos concretos». The card and the server's refusal
+  say the same sentence, «… así que no puede desactivarla».
+
+- **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
+  `messages:domain_joining.*`, sc-4434). The act is «solicitar unirse», the button «Solicitar
+  unirse», and the wait «Pendiente de aprobación», as the Members state. The approver is
+  «alguien de la organización», never «de allí»; what waits is «su solicitud», so nothing
+  needs «le» to agree. "… instead" buttons are «Prefiero …». The setting is «Unirse por
+  dominio de empresa»; a working domain «Admite solicitudes», a stopped one «Sin efecto».
+  A domain is masculine: «Conservarlo», «Se ha quitado {{domain}}». Dev's draft of
+  `errors:join_offer_unavailable` used «tú»; it now says «usted», as everything else.
+
+- **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). A member is
+  «miembro»; the screen is «Miembros», and a role here is «rol», as «Miembros y roles» on the
+  Roles screen. A person's state never agrees with them: «Con acceso», «Pendiente de
+  aprobación», «Acceso suspendido», «Ha salido», «Acceso retirado», and in the row line «en
+  suspenso desde el {{date}}», «salió el {{date}}». Groups on the chips take the plural,
+  «Todos», «Suspendidos», «Antiguos». Removing a member is «quitar a {{name}}», while a role is
+  «eliminado» on the Roles screen. "On their next request" is «en cuanto vuelva a usar Soirely», since «solicitud»
+  reads as a request to join. An owner named in a sentence is «alguien con el rol
+  Propietario», as «la función Propietario» in sc-3490 avoids «el propietario».
+- **21 Oct 2026. Invitations waiting on Complete your profile** (`completeProfile.*`, web and
+  app, sc-4188). Waiting is «pendiente». With several, "join that organisation" is «unirse a la
+  organización que le invita», since «esa» after «una» reads as nobody's. A button named in a
+  sentence goes in «», with the verb: "Pulse «Guardar y continuar» para entrar en ella". "Nothing
+  is waiting" says what is gone, «No queda ninguna invitación pendiente». No `_many` yet: the
+  key-parity guard refuses a form English lacks (sc-4188, [dev2]), so 1 000 000 falls back to English.
+
+- **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
+  "You will be its owner" is «Usted tendrá la función Propietario», the role and not
+  «su propietario», which assumes a man. The rate limit says what happened, «Por ahora no se
+  pueden crear más organizaciones», not «Demasiadas organizaciones nuevas», which reads as a
+  fragment. A path in Settings is «Configuración > General»; «cambiarlas» agrees with moneda,
+  zona horaria and dirección, all feminine.
+
 - **21 Oct 2026. The organisation's language (sc-3311, `orgGeneral.language*`, web and app).**
   The label is «Idioma», as the English "Language"; if English lengthens it to "Language for
   invitations", it becomes «Idioma de las invitaciones». "Invitation emails" are «los correos de invitación»,
