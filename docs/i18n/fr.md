@@ -91,6 +91,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `proofExpired_*`: « Choisissez « Enregistrer et continuer » pour y accéder ». No `_many`
   yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
 
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is « créer », since « démarrer une organisation » is
+  not French: the heading is « Créez votre propre organisation », the button « Créer
+  l'organisation », as `createOrganisation.create`. The help and the derived-settings line are
+  `createOrganisation`'s words, so both screens say the same.
+
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is « Vous y aurez le rôle Propriétaire », as « le rôle
   Propriétaire » elsewhere. A length refusal says what to do, « Raccourcissez-le à 100
