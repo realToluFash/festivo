@@ -78,6 +78,12 @@ final readonly class MembershipMachine
         $now = $this->clock->now();
         $from = $membership->getStatus();
         $membership->setStatus($to, $now);
+
+        if (MembershipStatus::Suspended !== $to) {
+            $membership->setSuspension(null, null);
+            $membership->setRemovesAt(null);
+        }
+
         $this->record($membership, $from, $to, $channel, $actor, $now);
         $this->removalClock->wind($membership);
     }

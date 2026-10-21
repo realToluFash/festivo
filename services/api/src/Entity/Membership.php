@@ -133,12 +133,6 @@ class Membership
             $this->joinedAt = $at;
         }
 
-        if (MembershipStatus::Suspended !== $status) {
-            $this->suspension = null;
-            $this->suspendedAt = null;
-            $this->removesAt = null;
-        }
-
         $this->status = $status;
     }
 
@@ -196,10 +190,9 @@ class Membership
         $this->removesAt = $removesAt;
     }
 
-    /** Only while suspended: leaving that state clears both. */
-    public function setSuspension(DomainSuspension $suspension, DateTimeImmutable $at): void
+    public function setSuspension(?DomainSuspension $suspension, ?DateTimeImmutable $at): void
     {
-        if (MembershipStatus::Suspended !== $this->status) {
+        if (null !== $suspension && MembershipStatus::Suspended !== $this->status) {
             throw new LogicException('Only a suspended membership carries why.');
         }
 
