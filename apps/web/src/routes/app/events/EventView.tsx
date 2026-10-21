@@ -14,7 +14,17 @@ type Load =
   | { kind: 'notFound' }
   | { kind: 'loaded'; event: OrganisationEvent };
 
+type Page = 'event' | 'guests';
+
 export function EventView() {
+  return <ForEvent page="event" />;
+}
+
+export function EventGuests() {
+  return <ForEvent page="guests" />;
+}
+
+function ForEvent({ page }: { page: Page }) {
   const session = useSession();
   const { eventId = '' } = useParams();
   const organisationId = session.organisation?.id;
@@ -26,11 +36,20 @@ export function EventView() {
       key={`${organisationId}:${eventId}`}
       organisationId={organisationId}
       eventId={eventId}
+      page={page}
     />
   );
 }
 
-function EventOf({ organisationId, eventId }: { organisationId: string; eventId: string }) {
+function EventOf({
+  organisationId,
+  eventId,
+  page,
+}: {
+  organisationId: string;
+  eventId: string;
+  page: Page;
+}) {
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -62,10 +81,17 @@ function EventOf({ organisationId, eventId }: { organisationId: string; eventId:
 
   return (
     <div className="event-page">
-      <Link className="link-button event-back" to="/app/events">
-        <span aria-hidden="true">‹ </span>
-        {t('events.title')}
-      </Link>
+      {page === 'event' ? (
+        <Link className="link-button event-back" to="/app/events">
+          <span aria-hidden="true">‹ </span>
+          {t('events.title')}
+        </Link>
+      ) : (
+        <Link className="link-button event-back" to={`/app/events/${encodeURIComponent(eventId)}`}>
+          <span aria-hidden="true">‹ </span>
+          {t('eventPage.backToEvent')}
+        </Link>
+      )}
 
       {load.kind === 'loading' && (
         <p className="muted" role="status">
@@ -100,48 +126,43 @@ function EventOf({ organisationId, eventId }: { organisationId: string; eventId:
         </section>
       )}
 
-      {load.kind === 'loaded' && (
-        <section className="card event-page-card" aria-labelledby="event-title">
-          <div className="event-page-head">
-            <h1 id="event-title">{load.event.name}</h1>
-            <span className="pill-quiet">{t('events.draft')}</span>
-          </div>
-          <p>
-            {t('eventPage.when', {
-              range: formatEventRange(
-                load.event.startsAt,
-                load.event.endsAt,
-                load.event.timeZone,
-                currentLocale(),
-              ),
-              timeZone: load.event.timeZone,
-            })}
-          </p>
-          <div>
-            <Link className="button" to={`/app/events/${encodeURIComponent(load.event.id)}/guests`}>
-              {t('eventPage.guests')}
-            </Link>
-          </div>
-        </section>
-      )}
+      {load.kind === 'loaded' &&
+        (page === 'event' ? <EventPage event={load.event} /> : <GuestsComing />)}
     </div>
   );
 }
 
-export function EventGuests() {
+function EventPage({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
-  const { eventId = '' } = useParams();
 
   return (
-    <div className="event-page">
-      <Link className="link-button event-back" to={`/app/events/${encodeURIComponent(eventId)}`}>
-        <span aria-hidden="true">‹ </span>
-        {t('eventPage.backToEvent')}
-      </Link>
-      <section className="card">
-        <h1>{t('eventPage.guests')}</h1>
-        <p>{t('eventPage.guestsComing')}</p>
-      </section>
-    </div>
+    <section className="card event-page-card" aria-labelledby="event-title">
+      <div className="event-page-head">
+        <h1 id="event-title">{event.name}</h1>
+        <span className="pill-quiet">{t('events.draft')}</span>
+      </div>
+      <p>
+        {t('eventPage.when', {
+          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, currentLocale()),
+          timeZone: event.timeZone,
+        })}
+      </p>
+      <div>
+        <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
+          {t('eventPage.guests')}
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+function GuestsComing() {
+  const { t } = useTranslation();
+
+  return (
+    <section className="card">
+      <h1>{t('eventPage.guests')}</h1>
+      <p>{t('eventPage.guestsComing')}</p>
+    </section>
   );
 }
