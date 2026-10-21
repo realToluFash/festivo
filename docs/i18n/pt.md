@@ -157,7 +157,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-3030). `{{day}}` is "segunda-feira, 19 de out.": before a weekday PT-PT says "na" or
   "no" (sábado, domingo), which the copy cannot agree with, and the abbreviated month brings
   its own full stop. It is a label at the end, with no full stop after the slot:
-  "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}". The
+  "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}". After a
+  status it is lowercase, with the time after a comma: "data do pedido: {{day}}, às {{time}}"
+  (`domainJoining.asked`, sc-4434). The
   "a {when}" rule below stays for a date without a weekday. A period without use is "Quem
   passar {{count}} dias sem utilizar a Soirely terá de…" (`effectIdle_*`,
   `emails+intl-icu:signInRules.rule.inactivity`), not "Quem não utilizar… há", which mixes a

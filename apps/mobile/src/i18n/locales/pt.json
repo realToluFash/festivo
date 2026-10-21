@@ -967,7 +967,7 @@
     "waitingTitle": "A aguardar a aprovação de {{organisation}}",
     "waitingIntro": "Enviaremos um e-mail para {{email}} quando alguém da organização responder.",
     "waiting": "A aguardar aprovação",
-    "asked": "pedido a {{day}} às {{time}}",
+    "asked": "data do pedido: {{day}}, às {{time}}",
     "waitingBody": "Os seus dados estão guardados. Até alguém de {{organisation}} aprovar o pedido, não há nada da organização para ver.",
     "startOwnInstead": "Prefiro criar a minha própria organização",
     "switcherBody": "O seu endereço é do domínio {{domain}}, por isso pode pedir para aderir. O pedido tem de ser aprovado por alguém da organização antes de ter acesso a qualquer conteúdo.",

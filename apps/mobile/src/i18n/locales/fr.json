@@ -959,7 +959,7 @@
     "intro": "Votre adresse utilise le domaine {{domain}}. Demandez à rejoindre l'organisation de votre entreprise, ou créez la vôtre.",
     "usesSoirely": "{{organisation}} utilise Soirely",
     "approvesFirst": "Une personne de l'organisation valide votre demande avant que vous n'ayez accès à quoi que ce soit.",
-    "ask": "Demander à rejoindre",
+    "ask": "Demander l'accès",
     "askLabel": "Demander à rejoindre {{organisation}}",
     "startOwn": "Créer ma propre organisation",
     "askInstead": "Demander plutôt à rejoindre une organisation du domaine {{domain}}",
