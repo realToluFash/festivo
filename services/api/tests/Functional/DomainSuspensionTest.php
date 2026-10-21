@@ -55,8 +55,8 @@ final class DomainSuspensionTest extends ApiTestCase
     #[Test]
     public function changingThePrimaryAddressToAnotherDomainSuspendsAtOnce(): void
     {
-        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
-        $tunde = $this->domainMember($organisation, 'tunde@ire.events');
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $tunde = $this->askedAndApproved($organisation, $owner, 'tunde@ire.events');
         $personal = $this->verifiedAlternative($tunde, 'tunde@okafor.family');
         $this->signIn($tunde);
 
@@ -520,7 +520,29 @@ final class DomainSuspensionTest extends ApiTestCase
         return $user;
     }
 
-    /** In as sc-392's approval will let them: through the domain, at active. */
+    /** The way in sc-392 built: asked through the listed domain, approved by the owner. */
+    private function askedAndApproved(Organisation $organisation, User $owner, string $address): User
+    {
+        $this->list($organisation, 'ire.events');
+        $user = $this->member($address);
+        $membership = self::service(JoinRequester::class)->ask($user, $organisation);
+        $readOnly = Type\instance_of(Role::class)->coerce(
+            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly]),
+        );
+        $this->signIn($owner);
+
+        $this->send('POST', Str\format('/api/orgs/%s/members/%s/approve', $organisation->getId()->toRfc4122(), $membership->getId()->toRfc4122()), [
+            'roleId' => $readOnly->getId()->toRfc4122(),
+        ]);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(MembershipStatus::Active, $this->membershipOf($user, $organisation)->getStatus());
+        self::assertSame('ire.events', $this->membershipOf($user, $organisation)->getDomain());
+
+        return $user;
+    }
+
+    /** Straight in through the domain, at active, where the way in is not what the test is about. */
     private function domainMember(Organisation $organisation, string $address, string $name = 'Member'): User
     {
         $user = $this->member($address, $name);
