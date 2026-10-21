@@ -23,6 +23,7 @@ class FakePlatform:
         self.active = set(active)
         self.fail = fail
         self.launched = []
+        self.cwds = []
         self.notes = []
         self.installed = 0
 
@@ -36,6 +37,7 @@ class FakePlatform:
         if self.fail:
             raise subprocess.CalledProcessError(1, "systemd-run")
         self.launched.append((role, item_id, values))
+        self.cwds.append(cwd)
 
     def notify(self, title, body):
         self.notes.append((title, body))
@@ -112,6 +114,31 @@ class Run(unittest.TestCase):
                          [("ops", "claude-opus-5-5", 90)])
         self.assertTrue(store.held_by(self.db, "ops", ON_ZERO))
         self.assertIn("ops: woke for [ops] on sc-1 (item 1)", self.said)
+
+    def test_a_role_with_several_workers_starts_one_per_item_each_in_its_own_checkout(self):
+        (self.root / "soirely-pm").mkdir()
+        self.config["roles"]["pm"] = {"workers": 3, "wakeEvery": "1m"}
+        runner.set_started(self.db, ["pm"], True)
+        store.record(self.db, [work("pm", f"pm:{n}") for n in range(4)], ON_ZERO)
+        with mock.patch("soirely_queue.checkout.ensure") as ensured:
+            self.run_once()
+        self.assertEqual([r for r, _, _ in self.platform.launched if r.startswith("pm")],
+                         ["pm", "pm-2", "pm-3"])
+        self.assertEqual([c.name for c in self.platform.cwds if "pm" in c.name],
+                         ["soirely-pm", "soirely-pm-2", "soirely-pm-3"])
+        self.assertEqual(ensured.call_count, 2)
+        self.assertEqual(len(store.waiting(self.db, "pm")), 1)
+
+        self.platform.active.update({"pm", "pm-3"})
+        self.run_once(ON_ZERO + 60)
+        self.assertIn("pm-2: item 2 given back, its worker ended without finishing it",
+                      self.said)
+
+    def test_only_a_role_without_a_stack_may_run_several_workers(self):
+        self.config["roles"]["dev2"] = {"workers": 2}
+        self.run_once()
+        self.assertTrue(any(line.startswith("error: dev2: workers is 2, but dev2 keeps one stack")
+                            for line in self.said))
 
     def test_a_role_only_ticks_on_its_own_minute(self):
         store.record(self.db, [work("ops"), work("dev2")], ON_ZERO)

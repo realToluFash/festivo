@@ -125,10 +125,16 @@ def synced(db, now):
 # Work
 
 
+def this_worker():
+    """The worker this command runs in, so it touches only that worker's item; a run by hand
+    is any of the role's."""
+    return os.environ.get("SOIRELY_WORKER")
+
+
 def cmd_tick(s, a):
     now = time.time()
     synced(s.db, now)
-    if store.held_by(s.db, s.role, now):
+    if store.held_by(s.db, s.role, now, this_worker()):
         return print("busy")
     row = store.claim(s.db, s.role, now)
     if not row:
@@ -139,7 +145,7 @@ def cmd_tick(s, a):
 def cmd_next(s, a):
     now = time.time()
     synced(s.db, now)
-    row = store.held_by(s.db, s.role, now) or store.claim(s.db, s.role, now)
+    row = store.held_by(s.db, s.role, now, this_worker()) or store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
     s.printer.run = f"work:{row['id']}"
@@ -148,7 +154,8 @@ def cmd_next(s, a):
 
 
 def cmd_done(s, a):
-    row = store.item(s.db, int(a.id)) if a.id else store.held_by(s.db, s.role)
+    row = store.item(s.db, int(a.id)) if a.id else \
+        store.held_by(s.db, s.role, worker=this_worker())
     if row:
         store.finish(s.db, row["id"], a.note)
     else:
@@ -157,7 +164,7 @@ def cmd_done(s, a):
 
 
 def cmd_release(s, a):
-    row = store.held_by(s.db, s.role)
+    row = store.held_by(s.db, s.role, worker=this_worker())
     if row:
         store.release(s.db, row["id"])
     print("released")
@@ -562,6 +569,8 @@ def status(db, platform, now):
             rows.append((role["role"], f"refused: {role['detail']}", "", "", "", "", []))
             continue
         state = {"busy": f"busy, item {(role['held'] or {}).get('id')}",
+                 "running": f"running {role.get('running')} of {role.get('workers')}"
+                 if (role.get("workers") or 1) > 1 else "running",
                  "elsewhere": "on {machine}, seen {ago}".format(
                      machine=(role["detail"] or {}).get("machine"),
                      ago=ago((role["detail"] or {}).get("seen", 0)))}.get(role["state"],
