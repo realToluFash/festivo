@@ -49,6 +49,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. Company domain joining** (`domainJoining.*`, `companyDomains.*`,
+  `messages:domain_joining.*`, sc-4434). The act is «solicitar unirse», the button «Solicitar
+  unirse», and the wait «Pendiente de aprobación», as the Members state. The approver is
+  «alguien de la organización», never «de allí»; what waits is «su solicitud», so nothing
+  needs «le» to agree. "… instead" buttons are «Prefiero …». The setting is «Unirse por
+  dominio de empresa»; a working domain «Admite solicitudes», a stopped one «Sin efecto».
+  A domain is masculine: «Conservarlo», «Se ha quitado {{domain}}». Dev's draft of
+  `errors:join_offer_unavailable` used «tú»; it now says «usted», as everything else.
+
 - **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). A member is
   «miembro»; the screen is «Miembros», and a role here is «rol», as «Miembros y roles» on the
   Roles screen. A person's state never agrees with them: «Con acceso», «Pendiente de
