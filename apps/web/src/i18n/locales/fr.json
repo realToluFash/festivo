@@ -923,7 +923,9 @@
       "suspended": "Suspended by {{by}}",
       "restored": "Restored by {{by}}",
       "left": "Left {{organisation}}",
-      "removed": "Removed by {{by}}"
+      "removed": "Removed by {{by}}",
+      "turnedDown": "Turned down by {{by}}",
+      "requestExpired": "Removed, as nobody answered in 30 days"
     },
     "whoToInvite": "Who to invite",
     "role": "Role",
@@ -963,7 +965,27 @@
     "removed": "{{name}} was removed. Their events stay with {{organisation}}.",
     "removedNext": "They are listed under Former in Members, with everything they did kept.",
     "backToMembers": "Back to Members",
-    "actionFailed": "That did not go through. Nothing was changed. Try again in a moment."
+    "actionFailed": "That did not go through. Nothing was changed. Try again in a moment.",
+    "noRoleYet": "No role yet",
+    "awaiting": {
+      "title": "Awaiting approval",
+      "note": "Only people who manage members see these requests. Nobody is added until one of you approves them.",
+      "asked": "{{channel}} · asked {{date}}",
+      "removes": "Removed on {{deadline}} if nobody answers",
+      "approve": "Approve",
+      "turnDown": "Turn down",
+      "roleFor": "Role for {{name}}",
+      "approveAs": "Approve as {{role}}",
+      "cancel": "Cancel",
+      "turnDownTitle": "Turn down {{name}}?",
+      "turnDownBody": "{{name}} is emailed that their request to join {{organisation}} was turned down. The email does not say who turned it down.",
+      "turnDownConfirm": "Turn down {{name}}",
+      "keep": "Keep the request",
+      "approved": "{{name}} is now a member, as {{role}}.",
+      "approvedNext": "See {{name}}",
+      "turnedDown": "{{name}}’s request is turned down.",
+      "turnedDownNext": "See Former"
+    }
   },
   "rolesScreen": {
     "title": "Rôles",
