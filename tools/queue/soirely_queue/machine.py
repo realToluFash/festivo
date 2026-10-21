@@ -15,13 +15,13 @@ from . import roles
 HERE = pathlib.Path(__file__).resolve().parent
 EXAMPLE = HERE.parent / "agents.example.json"
 MODELS = HERE.parent / "models.json"
-SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd")
+SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd", "wakeEvery")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
 # Claude Code's own default folder, which keeps its account file beside it, not inside.
 CLAUDE_DEFAULT = pathlib.Path("~/.claude").expanduser()
 # Under everything in agents.json: a worker is never left without a time limit.
-BUILT_IN = {"maxRuntime": "90m"}
+BUILT_IN = {"maxRuntime": "90m", "wakeEvery": "3m"}
 
 
 class ConfigError(RuntimeError):
@@ -168,6 +168,9 @@ def setting_problems(values, known, where):
     runtime = values.get("maxRuntime")
     if runtime is not None and not RUNTIME.match(str(runtime)):
         problems.append(f"{where}: maxRuntime {runtime!r} is not a time such as 90m")
+    every = values.get("wakeEvery")
+    if every is not None and (not RUNTIME.match(str(every)) or not minutes(str(every))):
+        problems.append(f"{where}: wakeEvery {every!r} is not a time such as 3m or 1h")
     budget = values.get("maxBudgetUsd")
     if budget is not None and (isinstance(budget, bool) or not isinstance(budget, (int, float))
                                or budget <= 0):

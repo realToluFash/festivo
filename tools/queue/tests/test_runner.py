@@ -229,6 +229,14 @@ class Run(unittest.TestCase):
         self.run_once()
         self.assertFalse([s for s in self.said if s.startswith("warning")])
 
+    def test_a_role_wakes_only_as_often_as_its_wake_every(self):
+        self.config["roles"]["ops"] = {"wakeEvery": "15m"}
+        store.record(self.db, [work("ops")], ON_ZERO)
+        self.run_once(ON_ZERO + 3 * MINUTE)
+        self.assertEqual(self.platform.launched, [])
+        self.run_once(ON_ZERO + 15 * MINUTE)
+        self.assertEqual(len(self.platform.launched), 1)
+
     def test_a_worker_that_will_not_start_gives_its_item_back(self):
         self.platform.fail = True
         store.record(self.db, [work("ops")], ON_ZERO)
