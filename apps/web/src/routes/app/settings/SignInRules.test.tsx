@@ -475,7 +475,11 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
     fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
 
     expect(screen.getByText('1 person doesn’t have two-factor yet')).toBeDefined();
-    expect(screen.getByText(/until Saturday, Oct 24 at 14:20 WAT to turn it on/)).toBeDefined();
+    expect(
+      screen.getByText(
+        /^When you save, they get an email\. They have until Saturday, Oct 24 at 14:20 WAT to turn it on/,
+      ),
+    ).toBeDefined();
     const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
     expect(without.getByText('Chidi Okoro · Coordinator')).toBeDefined();
 
