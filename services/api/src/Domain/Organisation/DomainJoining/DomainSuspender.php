@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\DomainJoining;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\Members\MembershipMachine;
+use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\Organisation;
@@ -45,26 +46,31 @@ final readonly class DomainSuspender
         private TranslatorInterface $translator,
         private UserMailer $userMailer,
         private ClockInterface $clock,
+        private RoleAssignment $roleAssignment,
     ) {
     }
 
-    public static function removesAt(Membership $membership): ?DateTimeImmutable
+    public function removesAt(Membership $membership): ?DateTimeImmutable
     {
+        if ($this->roleAssignment->isLastOwner($membership)) {
+            return null;
+        }
+
         return $membership->getSuspendedAt()?->add(new DateInterval(self::REMOVAL_AFTER));
     }
 
     /**
      * Why, since when, and the one removal instant, each written in the reader's own zone as the screens show it.
      *
-     * @return array{reason: string, domain: ?string, since: array{at: string, written: string}, removesAt: array{at: string, written: string}}|null
+     * @return array{reason: string, domain: ?string, since: array{at: string, written: string}, removesAt: array{at: string, written: string}|null}|null
      */
     public function describe(Membership $membership, User $reader): ?array
     {
         $suspension = $membership->getSuspension();
         $since = $membership->getSuspendedAt();
-        $removesAt = self::removesAt($membership);
+        $removesAt = $this->removesAt($membership);
 
-        if (null === $suspension || null === $since || null === $removesAt) {
+        if (null === $suspension || null === $since) {
             return null;
         }
 
@@ -78,7 +84,7 @@ final readonly class DomainSuspender
             'reason' => $suspension->value,
             'domain' => $membership->getDomain(),
             'since' => $written($since),
-            'removesAt' => $written($removesAt),
+            'removesAt' => null === $removesAt ? null : $written($removesAt),
         ];
     }
 
@@ -137,6 +143,8 @@ final readonly class DomainSuspender
     {
         $expired = $this->membershipRepository->findSuspendedSince($this->clock->now()->sub(new DateInterval(self::REMOVAL_AFTER)));
 
+        $expired = Vec\filter($expired, fn (Membership $membership): bool => !$this->roleAssignment->isLastOwner($membership));
+
         foreach ($expired as $membership) {
             $suspension = $membership->getSuspension();
             $this->membershipMachine->move($membership, MembershipStatus::LeftOrRemoved, MembershipChannel::Domain, null);
@@ -157,7 +165,7 @@ final readonly class DomainSuspender
             'status' => [MembershipStatus::Active->value, MembershipStatus::Suspended->value],
             'suspension' => [null, $why->value],
         ]);
-        $this->domainSuspensionMailer->sendSuspended($membership, Vec\map(
+        $this->domainSuspensionMailer->sendSuspended($membership, $this->removesAt($membership), Vec\map(
             $this->membershipRepository->findAdministratorsIn($membership->getOrganisation()),
             static fn (Membership $administrator): User => $administrator->getUser(),
         ));

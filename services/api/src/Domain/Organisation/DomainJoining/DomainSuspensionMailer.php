@@ -8,7 +8,7 @@ use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\User;
 use App\Enum\DomainSuspension;
-use LogicException;
+use DateTimeImmutable;
 use Psl\Str;
 
 /** `domain_suspended`: the organisation's owners and administrators, each told the removal instant in their own zone. */
@@ -21,9 +21,8 @@ final readonly class DomainSuspensionMailer
     }
 
     /** @param list<User> $administrators */
-    public function sendSuspended(Membership $membership, array $administrators): void
+    public function sendSuspended(Membership $membership, ?DateTimeImmutable $removesAt, array $administrators): void
     {
-        $removesAt = DomainSuspender::removesAt($membership) ?? throw new LogicException('Only a suspended membership is reported.');
         $organisation = $membership->getOrganisation();
         $named = [
             '{name}' => $membership->getUser()->getName(),
@@ -49,7 +48,9 @@ final readonly class DomainSuspensionMailer
             $this->userMailer->send($address, $locale, 'domainSuspended.subject', [
                 $this->userMailer->line($reason, $locale, $named),
                 $this->userMailer->line('domainSuspended.kept', $locale, $named),
-                $this->userMailer->line('domainSuspended.deadline', $locale, ['{deadline}' => $this->userMailer->deadline($removesAt, $administrator, $locale)]),
+                ...(null === $removesAt ? [] : [
+                    $this->userMailer->line('domainSuspended.deadline', $locale, ['{deadline}' => $this->userMailer->deadline($removesAt, $administrator, $locale)]),
+                ]),
                 $this->userMailer->line('domainSuspended.review', $locale, [...$named, '{link}' => $link]),
                 '--',
                 $this->userMailer->line('domainSuspended.footer', $locale, $named),
