@@ -1,5 +1,6 @@
 import { ApiError, type Membership } from '@soirely/api-client';
 import {
+  CURRENCY_CODES,
   EVENT_NAME_MAXIMUM,
   type EventDraft,
   type EventField,
@@ -47,15 +48,14 @@ function EventForm({ organisation }: { organisation: Membership }) {
   });
   const [endChosen, setEndChosen] = useState(false);
   const [timeZone, setTimeZone] = useState(organisation.timezone);
-  const [currency, setCurrency] = useState(organisation.currency);
+  const [currency, setCurrency] = useState(
+    CURRENCY_CODES.includes(organisation.currency) ? organisation.currency : '',
+  );
   const [errors, setErrors] = useState<Errors>({});
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
   const focusNext = useRef<string | null>(null);
-  const currencies = useMemo(
-    () => currencyChoices(organisation.currency, locale),
-    [organisation.currency, locale],
-  );
+  const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
   const busy = status === 'creating';
 
@@ -82,14 +82,15 @@ function EventForm({ organisation }: { organisation: Membership }) {
     event.preventDefault();
     if (busy) return;
 
-    const problems = eventProblems(draft);
+    const found: Errors = {};
+    for (const { field, problem } of eventProblems(draft))
+      found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
+    if (currency === '') found.currency = t('orgGeneral.currencyBlank');
 
-    if (problems.length > 0) {
-      const found: Errors = {};
-      for (const { field, problem } of problems)
-        found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
+    const unsentFields = Object.keys(found).length;
 
-      setUnsent(problems.length);
+    if (unsentFields > 0) {
+      setUnsent(unsentFields);
       setStatus('editing');
       refuse(found);
       return;
@@ -357,7 +358,13 @@ function Choice({
       <label htmlFor={id}>{label}</label>
       <select
         id={id}
-        className={error == null ? 'input' : 'input input-wrong'}
+        className={[
+          'input',
+          error == null ? null : 'input-wrong',
+          value === '' ? 'input-unchosen' : null,
+        ]
+          .filter((one) => one != null)
+          .join(' ')}
         value={value}
         disabled={busy}
         aria-invalid={error != null}

@@ -444,6 +444,14 @@ span {
   border-color: var(--colorBroken);
 }
 
+.input-unchosen {
+  color: var(--colorInkTertiary);
+}
+
+.input-unchosen option {
+  color: var(--colorInk);
+}
+
 .field-reveal {
   position: relative;
 }

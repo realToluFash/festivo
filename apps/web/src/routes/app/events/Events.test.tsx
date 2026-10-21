@@ -314,6 +314,30 @@ describe('New event', () => {
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 
+  it('starts on no currency for an organisation holding one no longer in use, and sends nothing until one is chosen', async () => {
+    signedIn(
+      membership({ ...IRE, countryCode: 'SL', currency: 'SLL', timezone: 'Africa/Freetown' }),
+    );
+    const sent = answering({});
+    await form();
+
+    const currency = screen.getByLabelText<HTMLSelectElement>('Currency');
+    expect(currency.value).toBe('');
+    expect(currency.selectedOptions[0]?.textContent).toBe('Choose a currency');
+    expect([...currency.options].map((option) => option.value)).not.toContain('SLL');
+
+    fill('event-name', 'Gala');
+    fill('event-start-date', '2026-11-14');
+    fill('event-start-time', '16:00');
+    fill('event-end-time', '23:00');
+    create();
+
+    await waitFor(() => expect(document.activeElement).toBe(currency));
+    expect(errorUnder('event-currency')).toContain('Choose a currency.');
+    expect(screen.getByRole('status').textContent).toBe('1 field needs fixing. Nothing was sent.');
+    expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
+  });
+
   it('refuses an end before the start under Ends, and accepts an end equal to it', async () => {
     signedIn();
     const sent = answering({
