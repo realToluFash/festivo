@@ -1,6 +1,6 @@
 ---
 name: soirely-developer
-description: Development mode, for one of two developers — /soirely-developer or /soirely-developer dev2, each with its own checkout and stack, each claiming stories with its Shortcut label (dev1, dev2). Takes whatever is sitting in Shortcut's Failed QA state, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, an open pull request, merged only once the tech lead's review passes it, and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
+description: Development mode, for one of two developers — /soirely-developer or /soirely-developer dev2, each with its own checkout and stack, each claiming stories with its Shortcut label (dev1, dev2). Takes its rework first (Failed Code Review, Failed QA), then a story from Ready For Dev, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, an open pull request, merged only once the tech lead's review passes it, and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
 user-invocable: true
 argument-hint: [dev2] [sc-id]
 ---
@@ -23,7 +23,7 @@ what to pick up, in what order, and what has to be true before you hand it on.
 **The label is the claim.** A story carrying your label is yours from the moment you claim
 it to its merge: you build it, you answer the lead's review, you fix what QA fails, and you
 merge it. A story labelled for the other developer is never yours, in any state, even when
-it is the only thing waiting. A story with neither label, outside `To Do`, predates the
+it is the only thing waiting. A story with neither label, outside `Ready For Dev`, predates the
 labels and is developer 1's. Sign every comment with your signature, and never touch the
 other developer's checkout, stack or branches.
 
@@ -64,15 +64,19 @@ on the story sees.
 With no story named, `sq dev queue` lists the queue in this order, and `next` takes its
 top:
 
-1. **`Failed QA`** **with your label**. A failed story outranks anything unstarted: it is
+1. **`Failed Code Review`** **with your label**: the lead's findings. Read the review
+   threads first (section 9), fix, push, and hand it back to `In Review`.
+2. **`Failed QA`** **with your label**. A failed story outranks anything unstarted: it is
    built, reviewed, merged or nearly, and wrong — and somebody has already spent a pass
-   proving it. The one that has been there longest comes first.
-2. **`In Progress`** **with your label** — work already started, finished first. Developer
+   proving it. The one that has been there longest comes first, in both rework states.
+3. **`In Progress`** **with your label** — work already started, finished first. Developer
    1 also takes unlabelled ones here and in Failed QA, and the claim adds `dev1`.
-3. **`To Do`** **with no developer label**, top of the list. **By your number**, so two
-   developers reaching the queue together pick different stories: developer 2 takes the
-   second if there are at least two, developer 1 the first.
-4. Failing those three, ask. Do not pick from the diff: a diff says what somebody was
+4. **`Ready For Dev`** **with no developer label**, top of the list: the AC is settled and
+   any screens are linked. **By your number**, so two developers reaching the queue
+   together pick different stories: developer 2 takes the second if there are at least
+   two, developer 1 the first. Never build from `To Do` or `Needs Design`: the product
+   manager and the designer have not finished with it.
+5. Failing those four, ask. Do not pick from the diff: a diff says what somebody was
    doing, not what the product needs next.
 
 Say which story you took and why it was next. If several are waiting, name them.
@@ -215,8 +219,9 @@ log's last lines. Nothing pending and nothing failed is green.
    the lead's threads.** The lead resolves each one after checking the fix (section 9).
 4. **Move the story to `In Review`** (`sq dev move sc-N "In Review"`) once the pull
    request is open and its checks are green. That is the handover to `/soirely-tech-lead`, who
-   either passes it, leaving it in `In Review` for you to merge and move on (section 9),
-   or sends it back to you with `[dev]` findings on the pull request. See **create-pr**.
+   either passes it, moving it to `Passed Code Review` for you to merge and move on
+   (section 9), or moves it to `Failed Code Review` with `[dev]` findings on the pull
+   request. See **create-pr**.
 5. **Report**: the story, the PR number, what you did not do, and every assumption you made
    where the AC was silent.
 
@@ -240,7 +245,7 @@ GitHub user, so the lead's summary is the review whose body opens with
 
 | The lead's last line                      | What you do                                                                                                            |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `Back to In Progress: <n> blocking.`      | Answer each finding in its thread (section 7), fix, push, and hand it back to `In Review`. Do not resolve the threads. |
+| `Failed code review: <n> blocking.`       | Answer each finding in its thread (section 7), fix, push, and hand it back to `In Review`. Do not resolve the threads. |
 | `Review passed at <sha>. Ready to merge.` | Merge, if every condition below holds, then move the story to `Ready For QA`.                                          |
 
 **Merge only when all of these hold**:
@@ -249,8 +254,8 @@ GitHub user, so the lead's summary is the review whose body opens with
    request's head**: its sha is the head, or `sq dev pr` shows the pass "at the head,
    carried over a merge of main". A merge of `origin/main` that leaves your change as it
    was carries the pass. Any other push voids it, and so does a merge that needed a
-   conflict resolution or met main's changes beside your lines: the story stays in
-   `In Review` and you wait for the lead.
+   conflict resolution or met main's changes beside your lines: `sq` moves the story back
+   to `In Review` by itself, and you wait for the lead.
 2. **No review thread is open.** The lead resolves each thread after checking the fix; an
    open one is a finding that still stands, whatever your reply in it says.
 3. **CI is green on that head**, and GitHub reports the pull request `MERGEABLE`.
@@ -260,11 +265,12 @@ the reason when one does not hold; it merges only at a head the lead's pass cove
 merely behind `main` merges as it is; a red `main` afterwards is fixed where it shows up. A
 branch that conflicts with `main` is refused: merge `origin/main` into the branch and push,
 never rebase, and merge again once its checks are green. A clean merge carries the pass; a
-conflict resolution does not, so that story stays in `In Review` for the lead.
+conflict resolution does not, so that story goes back to `In Review` for the lead.
 
 **Once it has merged, it is ready for QA, and handing it over is yours.** `sq dev merge`
 does it: it moves the story to `Ready For QA` and tells `[qa]` the merge commit, so QA
 tests what landed (`--text` adds anything QA should know). For a pull request that merged
 some other way at a head the pass covers, `sq dev to-qa sc-N` does the same. Nobody else
-makes this move: a passed story you merge and leave in `In Review` is a story nobody tests.
+makes this move: a passed story you merge and leave in `Passed Code Review` is a story
+nobody tests.
 Never move it before the merge, and never mark it Done.

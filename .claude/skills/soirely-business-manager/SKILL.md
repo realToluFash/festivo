@@ -79,11 +79,13 @@ the same list, one line per story; `sq bm epic N` for an epic and its open stori
 Something you have already read prints as a one-line reference; use `--again` only if you
 truly need its full text again. Take the work in this order:
 
-1. **Money calls waiting on the owner.** The product manager leaves a story in Backlog
-   when it waits on "a money or policy call" only the owner can make. Find those and write
+1. **Money calls waiting on the owner.** The product manager moves a story to
+   `Waiting On Owner`, and tags `[bm]` on it, when it waits on "a money or policy call"
+   only the owner can make; older ones still sit in Backlog saying so. Find those and write
    the memo that lets the owner decide in five minutes.
 2. **A price or a limit about to be built without numbers behind it.** In the epics above,
-   any story in `To Do` that sets a price, a cap, a credit cost or a plan boundary.
+   any story in `To Do`, `Needs Design` or `Ready For Dev` that sets a price, a cap, a
+   credit cost or a plan boundary.
 3. **The cost to serve, if it is missing or stale.** What one SMS, one WhatsApp message,
    one AI request and one gigabyte cost Soirely today, per provider and per country.
    Provider prices change, so a figure older than ninety days gets re-read.

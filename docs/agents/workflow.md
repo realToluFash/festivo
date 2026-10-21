@@ -3,12 +3,11 @@
 Which Shortcut state a story is in decides which role it wakes. The aim is that **every
 step wakes exactly one role**, and that the board says truthfully where each story is.
 
-**Status: agreed with the owner on 20 Oct. The owner has added all five new states in
-Shortcut (Needs Design, Ready For Dev, Passed Code Review, Failed Code Review, Waiting On
-Owner). `sq` and the skills do not use them yet:** no role's queue lists them, so a story
-moved into one wakes nobody. Until that pull request lands (step 3 under
-[Delivery](README.md#delivery)), move no story into them. The one there now, sc-2864 in
-Ready For Dev, is ops' own and worked by hand.
+**Status: agreed with the owner on 20 Oct, and built in sc-5148.** The owner added the five
+new states in Shortcut (Needs Design, Ready For Dev, Passed Code Review, Failed Code Review,
+Waiting On Owner), and `sq` and the skills use them from that pull request on. The product
+manager then sorts the stories still in To Do into Needs Design or Ready For Dev, in one
+sweep: until then, the developers find nothing new to build.
 
 ## The states
 
@@ -64,7 +63,8 @@ to merge it. The state can become untrue, so the commit decides, not the state:
 - `sq` merges only at the commit the tech lead passed, as it does today, and refuses
   otherwise.
 - A push after the pass, such as merging `main` in to fix a conflict, moves the story back
-  to In Review on its own, and the tech lead reviews again.
+  to In Review on its own (`sq run` does it, with an untagged comment saying why), and the
+  tech lead reviews again. Should that move fail, the lead is woken all the same.
 
 ## Wake fixes that need no new state
 
@@ -94,15 +94,15 @@ Tester 1's role stays `qa` and its tag stays `[qa]`; only the label is `qa1`, to
 `dev1`. No other role has more than one agent. More capacity means a new instance, such as
 `dev3` with its own label and checkout, the way `dev2` works.
 
-## What changes in the repository
+## Where it lives
 
-- the queues in `ROLES`, and the developer queue's order: Failed Code Review and Failed QA
-  first;
-- the move back to In Review on a push after a pass;
-- the tech lead's skill: it moves a story to Passed or Failed Code Review, rather than
-  leaving a pass in In Review or sending findings to In Progress;
-- the state names in the developer, product manager and designer skills;
-- the QA labels on claim, and the 30-minute retest preference;
-- a test for each wake, beside the existing ones in `tools/queue/tests`.
-
-The product manager then sorts the stories now in To Do into the new states, in one sweep.
+- the queues in `ROLES` and the developer queue's order, `BUILD_QUEUE`, in
+  `tools/queue/soirely_queue/roles.py`, with each role's moves in `MOVES`;
+- the move back to In Review on a push after a pass: `voided_passes` in `work.py`, made by
+  `actions.void_passes` from `sq run`;
+- the review's moves to Passed or Failed Code Review, and the merge from Passed Code
+  Review, in `actions.py`;
+- the QA label on claim and the 30-minute retest window (`RETEST_MINUTES`, `work.retester`);
+- the state names in the developer, tech lead, product manager, designer, QA, business
+  manager and routine skills;
+- a test for each wake in `tools/queue/tests`.
