@@ -218,6 +218,22 @@ final class InvitationTest extends ApiTestCase
     }
 
     #[Test]
+    #[DataProvider('answers')]
+    public function somebodyElseLearnsNothingOfAnAcceptedOne(string $answer): void
+    {
+        $folake = self::inviter('folake@ire.events', 'Folake');
+        [$invitation, $token] = self::invitationTo('kemi@example.com');
+        $invitation->setStatus(InvitationStatus::Accepted);
+        self::em()->flush();
+
+        $body = $this->as($folake)->call('POST', $this->path($invitation, $answer));
+
+        self::assertSame(403, $this->statusCode());
+        self::assertSame(ErrorCode::InvitationNotYours->type(), $body['type']);
+        self::assertFalse($this->as($folake)->call('POST', '/api/invitations/link', ['token' => $token])['forYou'], 'and the link says it is not theirs');
+    }
+
+    #[Test]
     public function anUnverifiedAddressIsNotYours(): void
     {
         $kemi = self::inviter('kemi@example.com', 'Kemi Lawal');
