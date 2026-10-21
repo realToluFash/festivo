@@ -11,6 +11,7 @@ import { tokens } from '../theme/tokens.ts';
 import { AppFrame, bodyEdges, useOpenSwitcher } from './AppFrame.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LinkedNotice } from './LinkedNotice.tsx';
+import { NoOrganisation } from './NoOrganisation.tsx';
 import { Screen } from './Screen.tsx';
 import { SignInRulesNotices } from './SignInRulesNotices.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -39,19 +40,16 @@ function HomeBody() {
       {organisation != null && (
         <SignInRulesNotices key={organisation.id} organisation={organisation} />
       )}
-      {account != null && (
+      {account != null && organisation == null && <NoOrganisation />}
+      {account != null && organisation != null && (
         <View style={[cardFrame(kind), styles.card]}>
           <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-            {organisation == null
-              ? t('home.signedIn')
-              : t('home.signedInTo', { name: organisation.name })}
+            {t('home.signedInTo', { name: organisation.name })}
           </Text>
           <View style={styles.lines}>
-            {organisation != null && (
-              <Text size={tokens.typeBodyPhone.size}>
-                {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
-              </Text>
-            )}
+            <Text size={tokens.typeBodyPhone.size}>
+              {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
+            </Text>
             <Text size={tokens.typeBodyPhone.size} muted>
               {t('settings.signedInAs', { email: primaryEmailAddress(account) ?? '' })}
             </Text>

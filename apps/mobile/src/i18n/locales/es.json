@@ -7,10 +7,16 @@
     "subtitle": "La noche, desde su bolsillo.",
     "openSignIn": "Iniciar sesión",
     "openLayouts": "Demostración de diseños",
-    "signedIn": "Ha iniciado sesión",
     "signedInTo": "Ha iniciado sesión en {{name}}",
     "openSettings": "Abrir Configuración",
     "switchOrganisation": "Cambiar de organización"
+  },
+  "noOrganisation": {
+    "title": "No pertenece a ninguna organización",
+    "body": "Los eventos, los equipos y los planes pertenecen a una organización, y ahora mismo no forma parte de ninguna. Su cuenta sigue siendo suya y no ha desaparecido nada.",
+    "wayOn": "Pida a quien gestiona la suya que vuelva a invitar a {{email}}.",
+    "signedInAs": "Sesión iniciada como {{email}}.",
+    "account": "Su cuenta"
   },
   "status": {
     "title": "Estado del servicio",
