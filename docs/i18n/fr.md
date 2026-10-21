@@ -7,7 +7,8 @@ whenever you decide something a second string will need.
 
 France French (fr-FR). _Vouvoiement_ throughout: "Veuillez…". France typography: a
 non-breaking space, U+00A0, before `: ; ? !` and inside « guillemets », except in an SMS
-(sc-2504, under Decided phrasings).
+(sc-2504, under Decided phrasings). The typographic apostrophe ’, U+2019, never the straight
+', except in an SMS (sc-7455, under Decided phrasings).
 
 The rules every locale shares are in `.claude/skills/locale-parity`.
 
@@ -53,15 +54,21 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. The apostrophe is ’, U+2019** (sc-7455), in every value of every catalogue,
+  as France typography sets it and as a straight ' beside a curly one reads like a typo on the
+  same screen. Type the character itself. The SMS (`emails:verification.text`, and any SMS
+  string after it) keeps the straight ': ’ is outside GSM-7 and would send the message as
+  UCS-2, at 70 characters a segment. ’ is also the safe one in an ICU string, where a straight
+  ' is the quote character. Keys and markup quoting never change.
 - **21 Oct 2026. Approving or turning down a request to join** (`membersScreen.awaiting.*`,
   `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
   `messages:members.request_answered`, sc-7217). "Approve" is « Approuver », matching « En
-  attente d'approbation »; "turn down" is « Refuser », and what is refused is « la demande »,
+  attente d’approbation »; "turn down" is « Refuser », and what is refused is « la demande »,
   never the person: « Refuser la demande de {{name}} ? », « Refuser la demande de {{name}} », « Demande
   refusée par {{by}} ». A request nobody answered is « retirée faute de réponse ». A role
   given on approval is « avec le rôle {{role}} », so nothing agrees with the person; the
-  person refused « ne fait donc pas partie de l'organisation », never « n'a pas été ajouté ».
-  The waiting email's count takes `many`, « 1 000 000 de personnes ».
+  person refused « ne fait donc pas partie de l’organisation », never « n’a pas été ajouté ».
+  The waiting email’s count takes `many`, « 1 000 000 de personnes ».
 
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads « En pause », the admins
