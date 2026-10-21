@@ -3,6 +3,7 @@ model: it costs nothing, and it never throws away work."""
 
 import re
 import subprocess
+import time
 
 BUILDING = ("To Do", "Ready For Dev", "In Progress", "Failed QA", "Failed Code Review")
 BRANCH_HOLDERS = ("dev", "dev2", "l10n")
@@ -27,9 +28,25 @@ def git(path, *args, check=True):
                           check=check)
 
 
-def prepare(path, role, story=None):
+class Unprepared(RuntimeError):
+    """The checkout could not be brought up to main; the message is git's own."""
+
+
+def fetch(path, tries=3, sleep=time.sleep):
+    # Every role checkout is a worktree of one repository, so a fetch can lose a ref lock to
+    # another worker's fetch or push. A moment later the lock is free.
+    for attempt in range(1, tries + 1):
+        done = git(path, "fetch", "--quiet", "--prune", "origin", check=False)
+        if not done.returncode:
+            return
+        if attempt < tries:
+            sleep(5 * attempt)
+    raise Unprepared(f"git fetch failed {tries} times: {done.stderr.strip()}")
+
+
+def prepare(path, role, story=None, sleep=time.sleep):
     """Returns `(main_sha, note)`; the note is what the worker is told, or None."""
-    git(path, "fetch", "--quiet", "--prune", "origin")
+    fetch(path, sleep=sleep)
     main = git(path, "rev-parse", "origin/main").stdout.strip()
     branch = git(path, "symbolic-ref", "--quiet", "--short", "HEAD", check=False).stdout.strip()
     dirty = bool(git(path, "status", "--porcelain", "--untracked-files=no").stdout.strip())
