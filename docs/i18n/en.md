@@ -62,6 +62,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **21 Oct 2026. A domain member paused (sc-564, sc-6703, `accessPaused.*`,
+  `membersScreen.suspended*`, `restore*`, `emails:domainSuspended.*`).** The person reads
+  "Paused", the admins "Suspended": both are the AC's words, kept apart on purpose. The next
+  step says "make it primary", the glossary's word, over the drafted "make it your main
+  address". The email footer says "an admin" though owners get it too; es, fr and pt say
+  "owner or administrator", as `twoFactorRecovery.approver.footer`, and the English waits on
+  [dev] because `DomainSuspensionTest` matches the text.
 - **21 Oct 2026. Request link (sc-562, sc-6460, `requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`).** Settled as sc-562
   wrote it, as domain joining: the act is "ask to join", the setting "Requests to join", and
