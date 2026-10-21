@@ -1,9 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -208,6 +209,27 @@ describe('Settings > General, ownership and leaving', () => {
     await waitFor(() =>
       expect(sent.some((one) => one.line === 'POST /api/orgs/org_1/leave')).toBe(true),
     );
+  });
+
+  it('names a 100-character organisation in a Leave button that can break inside the word (sc-486)', () => {
+    const name = 'A'.repeat(100);
+    signedIn(
+      membership({
+        id: 'org_1',
+        name,
+        role: { id: 'role_4', seededAs: 'coordinator', name: null },
+        permissions: ['events.read'],
+      }),
+    );
+    answering({});
+    settings();
+
+    fireEvent.click(screen.getByRole('button', { name: `Leave ${name}` }));
+
+    const shown = within(screen.getByRole('main')).getAllByText(new RegExp(name, 'u'));
+
+    expect(shown.length).toBeGreaterThan(1);
+    expect(shown.filter((element) => !breaksAnywhere(element))).toEqual([]);
   });
 
   it('lands an account that left its only organisation on the page that says so', async () => {

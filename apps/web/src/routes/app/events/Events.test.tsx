@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
+import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
@@ -205,6 +206,17 @@ describe('New event', () => {
 
     return ids.map((one) => document.getElementById(one)?.textContent ?? '').join(' ');
   }
+
+  it('names a 100-character organisation in a hint that can break inside the word (sc-486)', async () => {
+    const name = 'A'.repeat(100);
+    signedIn(membership({ ...IRE, name }));
+    answering({});
+    await form();
+
+    const shown = within(screen.getByRole('main')).getAllByText(new RegExp(name, 'u'));
+
+    expect(shown.filter((element) => !breaksAnywhere(element))).toEqual([]);
+  });
 
   it('asks for the fields in order, the zone and currency from the organisation', async () => {
     signedIn();
