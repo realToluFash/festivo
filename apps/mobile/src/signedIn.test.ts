@@ -45,10 +45,12 @@ const organisation = {
   permissions: ['organisation.manage'],
   withheldUntilTwoFactor: [],
   readOnlyUntilLinked: false,
+  twoFactorDue: null,
   signInRules: {
     providerOnly: false,
     inactivityTimeoutDays: null,
     administratorsNeedTwoFactor: false,
+    everyoneNeedsTwoFactor: false,
     changedAt: null,
   },
 };

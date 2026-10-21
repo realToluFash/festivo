@@ -42,10 +42,12 @@ function membership(overrides: Partial<Membership> = {}): Membership {
     permissions: ['events.read'],
     withheldUntilTwoFactor: [],
     readOnlyUntilLinked: false,
+    twoFactorDue: null,
     signInRules: {
       providerOnly: false,
       inactivityTimeoutDays: null,
       administratorsNeedTwoFactor: false,
+      everyoneNeedsTwoFactor: false,
       changedAt: null,
     },
     ...overrides,
@@ -113,11 +115,13 @@ describe('what the rules ask of a member, on the home screen', () => {
     const changedAt = '2026-10-15T17:40:00+00:00';
     const held = membership({
       readOnlyUntilLinked: true,
+      twoFactorDue: null,
       withheldUntilTwoFactor: ['members.read'],
       signInRules: {
         providerOnly: true,
         inactivityTimeoutDays: null,
         administratorsNeedTwoFactor: true,
+        everyoneNeedsTwoFactor: false,
         changedAt,
       },
     });
