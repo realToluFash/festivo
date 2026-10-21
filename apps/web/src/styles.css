@@ -2619,6 +2619,18 @@ button.members-row {
   cursor: pointer;
 }
 
+.members-request,
+.members-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceSm) 0;
+}
+
+.members-answer h3 {
+  margin: 0;
+}
+
 /* ── Settings > Sign-in rules (sc-69): the rules beside what saving does ─── */
 
 .sign-in-rules {

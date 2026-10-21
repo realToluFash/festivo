@@ -43,7 +43,9 @@ function member(overrides: Record<string, unknown>) {
     status: 'active',
     former: null,
     channel: 'self_created',
+    message: null,
     since: '2026-05-28T09:00:00+00:00',
+    removesAt: null,
     invitedBy: null,
     invitedAt: null,
     self: true,
@@ -333,6 +335,131 @@ describe('Settings > Members', () => {
     expect(screen.queryByRole('button', { name: 'Invite somebody' })).toBeNull();
     expect(screen.queryByRole('button', { name: /^Awaiting approval/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Revoke' })).toBeNull();
+  });
+});
+
+const ADA = member({
+  id: 'm_ada',
+  user: { id: 'u_ada', name: 'Ada Okeke', email: 'ada@okeke.ng' },
+  role: { id: 'role_5', seededAs: 'read_only', name: null },
+  status: 'pending_approval',
+  channel: 'request',
+  since: '2026-10-12T08:40:00+00:00',
+  removesAt: { at: '2026-11-11T08:40:00+00:00', written: 'Wednesday, Nov 11 at 09:40 WAT' },
+  self: false,
+  history: [
+    {
+      from: null,
+      to: 'pending_approval',
+      channel: 'request',
+      by: { id: 'u_ada', name: 'Ada Okeke' },
+      at: '2026-10-12T08:40:00+00:00',
+    },
+  ],
+});
+const WAITING = { ...LIST, members: [...LIST.members, ADA] };
+const WAITING_READS = {
+  'GET /api/orgs/org_1/members': () => json(WAITING),
+  'GET /api/orgs/org_1/roles': () => json(ROLES),
+};
+
+describe('somebody awaiting approval (sc-392)', () => {
+  it('shows who asked, how, when, and the instant they are removed, above the list and not in it', async () => {
+    signedIn();
+    answering(WAITING_READS);
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+
+    expect(section.getByText('Ada Okeke')).toBeDefined();
+    expect(section.getByText('ada@okeke.ng')).toBeDefined();
+    expect(section.getByText('Asked to join · asked Monday, Oct 12')).toBeDefined();
+    expect(
+      section.getByText('Removed on Wednesday, Nov 11 at 09:40 WAT if nobody answers'),
+    ).toBeDefined();
+    expect(
+      within(screen.getByRole('region', { name: 'Members shown' })).queryByText('Ada Okeke'),
+    ).toBeNull();
+  });
+
+  it('approves as Read-only unless another role is picked, and says what happened', async () => {
+    signedIn();
+    const sent = answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/approve': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve' }));
+    expect(section.queryByRole('radio', { name: /Owner/ })).toBeNull();
+    expect((section.getByRole('radio', { name: /Read-only/ }) as HTMLInputElement).checked).toBe(
+      true,
+    );
+    fireEvent.click(section.getByRole('radio', { name: /Coordinator/ }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve as Coordinator' }));
+
+    expect(await screen.findByText('Ada Okeke is now a member, as Coordinator.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'See Ada Okeke' })).toBeDefined();
+    expect(sent.find((one) => one.line.endsWith('/approve'))?.body).toEqual({ roleId: 'role_4' });
+  });
+
+  it('turns down only once it is confirmed, and the request can be kept', async () => {
+    signedIn();
+    const sent = answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/turn-down': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
+    fireEvent.click(section.getByRole('button', { name: 'Keep the request' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
+    expect(section.getByText(/The email does not say who turned it down/)).toBeDefined();
+    expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(false);
+    fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
+
+    expect(await screen.findByText('Ada Okeke’s request is turned down.')).toBeDefined();
+    expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
+  });
+
+  it('gives a pending person no role yet, and Approve and Turn down on their page', async () => {
+    signedIn();
+    answering(WAITING_READS);
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Ada Okeke/ }));
+
+    expect(screen.getAllByText(/No role yet/).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Turn down' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+
+  it('puts the server refusal on an answer somebody else gave first', async () => {
+    signedIn();
+    answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/turn-down': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/join_request_answered',
+            title: 'This request has already been answered, or was removed.',
+            status: 409,
+          },
+          409,
+        ),
+    });
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
+    fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
+
+    expect(
+      await section.findByText('This request has already been answered, or was removed.'),
+    ).toBeDefined();
   });
 });
 

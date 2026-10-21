@@ -72,5 +72,6 @@
     "join_offer_unavailable": "Não pode pedir para aderir a essa organização. Crie a sua ou peça um convite a alguém dessa organização.",
     "request_link_dead": "Esta ligação já não funciona. Peça uma nova à organização.",
     "join_request_waiting": "O seu pedido de adesão já aguarda resposta.",
-    "join_request_cooling_off": "Ainda não pode voltar a pedir para aderir a esta organização."
+    "join_request_cooling_off": "Ainda não pode voltar a pedir para aderir a esta organização.",
+    "join_request_answered": "Este pedido já foi respondido ou foi removido."
 }
