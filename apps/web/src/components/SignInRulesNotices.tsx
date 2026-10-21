@@ -6,17 +6,41 @@ import { Link } from 'react-router';
 
 import { currentLocale } from '../i18n/index.ts';
 import { markRulesSeen, useRulesSeen } from '../signInRulesSeen.ts';
+import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 
-/** What the organisation's sign-in rules ask of this member (sc-69), named after the organisation. */
+/** What the organisation's sign-in rules ask of this member (sc-69, sc-609), named after the organisation. */
 export function SignInRulesNotices({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
   const [later, setLater] = useState(false);
   const seen = useRulesSeen(organisation.id);
   const name = organisation.name;
   const changedAt = organisation.signInRules.changedAt;
+  const standing = useTwoFactorStanding(organisation);
+
+  // Past the deadline the whole page says it instead (TwoFactorOverdue).
+  if (standing === 'overdue') return null;
 
   return (
     <>
+      {standing === 'due' && organisation.twoFactorDue != null && (
+        <div className="notice notice-attention" role="status">
+          <span className="mark mark-attention" aria-hidden="true">
+            !
+          </span>
+          <div className="notice-body">
+            <p>
+              {t('signInRules.dueBody', {
+                organisation: name,
+                deadline: organisation.twoFactorDue.written,
+              })}
+            </p>
+            <Link className="link-button" to="/app/account/security">
+              {t('signInRules.dueSetUp')}
+            </Link>
+          </div>
+        </div>
+      )}
+
       {organisation.readOnlyUntilLinked && (
         <div className="notice notice-attention" role="status">
           <span className="mark mark-attention" aria-hidden="true">

@@ -503,7 +503,8 @@
     "turnItOff": "Desativar",
     "keepItOn": "Manter ativa",
     "failedTitle": "Não foi possível carregar a autenticação de dois fatores",
-    "failedBody": "Algo correu mal do nosso lado. Tente novamente daqui a pouco."
+    "failedBody": "Algo correu mal do nosso lado. Tente novamente daqui a pouco.",
+    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
   },
   "passwordCard": {
     "title": "Palavra-passe",
@@ -1281,7 +1282,29 @@
     "changedSee": "Ver o que mudou",
     "changedClose": "Fechar este aviso",
     "limitApplies_one": "No seu caso, a sessão é encerrada após {{count}} dia sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações.",
-    "limitApplies_other": "No seu caso, a sessão é encerrada após {{count}} dias sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações."
+    "limitApplies_other": "No seu caso, a sessão é encerrada após {{count}} dias sem utilização: é a regra de {{organisation}}, a mais exigente das suas organizações.",
+    "twoFactorCovered": "Covered by two-factor for everyone, below.",
+    "everyoneTitle": "Two-factor for everyone",
+    "everyoneLabel": "Require two-factor for everyone",
+    "everyoneOn": "Everyone needs two-factor to open anything in {{organisation}}.",
+    "everyoneOff": "Off. Members sign in without two-factor unless the rule above asks it of them.",
+    "everyoneRequiredFrom": "Required from {{deadline}}",
+    "everyoneWithoutTitle_one": "{{count}} person doesn’t have two-factor yet",
+    "everyoneWithoutTitle_other": "{{count}} people don’t have two-factor yet",
+    "everyoneWithoutBody": "When you save, each gets an email. They have until {{deadline}} to turn it on. After that they can’t open anything in {{organisation}} until they do.",
+    "everyoneWithoutList": "People without two-factor",
+    "everyoneWithoutPerson": "{{name}} · {{role}}",
+    "effectEveryoneOn": "Everyone needs two-factor. Anyone without it is emailed and has 7 days to turn it on.",
+    "effectEveryoneOff": "Two-factor is no longer required of everyone.",
+    "valueEveryone": "Two-factor required for everyone",
+    "valueNoEveryone": "Two-factor not required of everyone",
+    "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
+    "dueSetUp": "Set it up now",
+    "overdueTitle": "Turn on two-factor to carry on",
+    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
+    "overdueElsewhere": "Your other organisations and single-event access are not affected.",
+    "overdueTurnOn": "Turn on two-factor",
+    "overdueSignOut": "Sign out"
   },
   "languageNames": {
     "en": "English",
