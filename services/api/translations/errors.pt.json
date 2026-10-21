@@ -69,5 +69,8 @@
     "organisation_two_factor_overdue": "Esta organização exige a autenticação de dois fatores.",
     "two_factor_kept_by_rule": "A sua organização exige a autenticação de dois fatores, por isso não a pode desativar.",
     "session_timed_out": "A sessão foi encerrada após um período sem utilização.",
-    "join_offer_unavailable": "Não pode pedir para aderir a essa organização. Crie a sua ou peça a alguém de lá que o convide."
+    "join_offer_unavailable": "Não pode pedir para aderir a essa organização. Crie a sua ou peça a alguém de lá que o convide.",
+    "request_link_dead": "Este link já não funciona. Peça um novo à organização.",
+    "join_request_waiting": "O seu pedido para aderir já está à espera de resposta.",
+    "join_request_cooling_off": "Ainda não pode voltar a pedir para aderir a esta organização."
 }

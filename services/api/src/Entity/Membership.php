@@ -53,6 +53,10 @@ class Membership
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $twoFactorBlockedAt = null;
 
+    /** What the person wrote when asking through the request link (sc-562), for whoever answers. */
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $requestMessage = null;
+
     public function __construct(Organisation $organisation, User $user, Role $role, MembershipStatus $status, DateTimeImmutable $at)
     {
         $this->id = Uuid::v7();
@@ -134,5 +138,15 @@ class Membership
     public function setTwoFactorBlockedAt(?DateTimeImmutable $twoFactorBlockedAt): void
     {
         $this->twoFactorBlockedAt = $twoFactorBlockedAt;
+    }
+
+    public function getRequestMessage(): ?string
+    {
+        return $this->requestMessage;
+    }
+
+    public function setRequestMessage(?string $requestMessage): void
+    {
+        $this->requestMessage = $requestMessage;
     }
 }

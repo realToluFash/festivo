@@ -9,12 +9,14 @@ use App\Doctrine\Traits\Timestampable;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use SensitiveParameter;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\HasLifecycleCallbacks]
 #[ORM\Table(name: 'organisations')]
 #[ORM\Index(name: 'idx_organisation_deleted', columns: ['deleted_at'])]
+#[ORM\UniqueConstraint(name: 'uniq_organisation_request_link_token', columns: ['request_link_token'])]
 class Organisation
 {
     use SoftDeletable;
@@ -61,6 +63,10 @@ class Organisation
     /** When two-factor for everyone was switched on; null is not required (sc-609). */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $twoFactorRequiredSince = null;
+
+    /** The request link's token (sc-562); null is off. Turning it on, or replacing it, writes a new one. */
+    #[ORM\Column(type: Types::STRING, length: 32, nullable: true)]
+    private ?string $requestLinkToken = null;
 
     public function __construct(
         string $name,
@@ -197,5 +203,15 @@ class Organisation
     public function setTwoFactorRequiredSince(?DateTimeImmutable $twoFactorRequiredSince): void
     {
         $this->twoFactorRequiredSince = $twoFactorRequiredSince;
+    }
+
+    public function getRequestLinkToken(): ?string
+    {
+        return $this->requestLinkToken;
+    }
+
+    public function setRequestLinkToken(#[SensitiveParameter] ?string $requestLinkToken): void
+    {
+        $this->requestLinkToken = $requestLinkToken;
     }
 }

@@ -69,5 +69,8 @@
     "organisation_two_factor_overdue": "Esta organización exige la verificación en dos pasos.",
     "two_factor_kept_by_rule": "Su organización exige la verificación en dos pasos, así que no puede desactivarla.",
     "session_timed_out": "Se cerró la sesión tras un tiempo sin uso.",
-    "join_offer_unavailable": "No puedes pedir unirte a esa organización. Crea la tuya o pide a alguien de allí que te invite."
+    "join_offer_unavailable": "No puedes pedir unirte a esa organización. Crea la tuya o pide a alguien de allí que te invite.",
+    "request_link_dead": "Este enlace ya no funciona. Pide a la organización uno nuevo.",
+    "join_request_waiting": "Tu solicitud para unirte ya está esperando respuesta.",
+    "join_request_cooling_off": "Todavía no puedes volver a pedir unirte a esta organización."
 }

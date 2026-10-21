@@ -38,6 +38,9 @@ enum ErrorCode: string
     case InvitationDeclined = 'invitation_declined';
     case InvitationNotYours = 'invitation_not_yours';
     case JoinOfferUnavailable = 'join_offer_unavailable';
+    case RequestLinkDead = 'request_link_dead';
+    case JoinRequestWaiting = 'join_request_waiting';
+    case JoinRequestCoolingOff = 'join_request_cooling_off';
     case OrganisationDeleted = 'organisation_deleted';
 
     case Unauthenticated = 'unauthenticated';
@@ -100,7 +103,8 @@ enum ErrorCode: string
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
             self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable => 409,
-            self::InvitationNotFound => 404,
+            self::InvitationNotFound, self::RequestLinkDead => 404,
+            self::JoinRequestWaiting, self::JoinRequestCoolingOff => 409,
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
             self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,
