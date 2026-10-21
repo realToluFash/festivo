@@ -109,9 +109,10 @@ def unanswered_by(role, pr):
     return found
 
 
-def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None, comments=None):
+def _item(fingerprint, pool, roles, kind, reason, priority, story=None, pr=None, comments=None,
+          rank=0):
     return {"fingerprint": fingerprint, "pool": pool, "roles": roles, "kind": kind,
-            "reason": reason, "priority": priority, "comments": comments,
+            "reason": reason, "priority": priority, "rank": rank, "comments": comments,
             "story_id": story["id"] if story else None, "pr": pr["number"] if pr else None}
 
 
@@ -149,12 +150,25 @@ def retester(story, now=None):
     return R.last_tester(story) if age < R.RETEST_MINUTES * 60 else None
 
 
-def queue_items(stories, moves=None, now=None):
+def epic_order(epics):
+    """A story's place in the build order: its epic's place in Shortcut's epic list, then its
+    own place in the story list. A story in no epic comes after every epic's."""
+    epics = epics or {}
+
+    def key(story):
+        epic = epics.get(str(story.get("epic_id"))) or {}
+        place = epic.get("position") or story.get("epic_id")
+        return (place is None, place or 0, story.get("position") or 0)
+    return key
+
+
+def queue_items(stories, moves=None, now=None, epics=None):
     """A story entering a role's queue is work once, unless the role moved it there itself.
     One sitting there waits for a pick. A failed story back in Ready For QA is offered only
     to the tester who failed it, until its retest window closes."""
     moves = moves or {}
     merged = {}
+    build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
         for story in queued(role, stories):
             if moves.get((story["id"], story["state"], story["moved_at"])) == role:
@@ -172,7 +186,8 @@ def queue_items(stories, moves=None, now=None):
                 continue
             merged[fingerprint] = _item(
                 fingerprint, pool, [role], "story", f"sc-{story['id']} moved to {story['state']}",
-                QUEUE + config["queue"].index(story["state"]), story)
+                QUEUE + config["queue"].index(story["state"]), story,
+                rank=build_order[story["id"]] if story["state"] in R.BUILD_QUEUE else 0)
     return list(merged.values())
 
 
@@ -360,9 +375,10 @@ def finishing_first(items, stories):
 
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
-           handled=frozenset(), moves=None, checks=None):
+           handled=frozenset(), moves=None, checks=None, epics=None):
     return finishing_first(
         inbox_items(stories, handled) + developer_items(stories, prs)
-        + review_items(stories, prs) + queue_items(stories, moves, now) + main_items(main_run)
+        + review_items(stories, prs) + queue_items(stories, moves, now, epics)
+        + main_items(main_run)
         + heartbeat_items(stories, last_runs or {}, set(busy_roles), now)
         + machine_items(checks), stories)

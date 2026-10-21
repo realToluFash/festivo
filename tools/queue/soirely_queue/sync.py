@@ -21,7 +21,7 @@ def _lookups(db, shortcut, now):
         return store.get_meta(db, "states"), store.get_meta(db, "epics")
     states = {str(s["id"]): s["name"] for w in shortcut.workflows() for s in w["states"]}
     epics = {str(e["id"]): {"name": e["name"], "state": e.get("state"),
-                            "updated_at": e.get("updated_at")}
+                            "updated_at": e.get("updated_at"), "position": e.get("position")}
              for e in shortcut.epics() if not e.get("archived")}
     store.set_meta(db, "states", states)
     store.set_meta(db, "epics", epics)

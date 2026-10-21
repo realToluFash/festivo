@@ -72,7 +72,10 @@ top:
 3. **`In Progress`** **with your label** — work already started, finished first. Developer
    1 also takes unlabelled ones here and in Failed QA, and the claim adds `dev1`.
 4. **`Ready For Dev`** **with no developer label**, top of the list: the AC is settled and
-   any screens are linked. **By your number**, so two developers reaching the queue
+   any screens are linked. The list runs **epic by epic**, in the order of Shortcut's epic
+   list, and by the story list within each epic: a story in a later epic waits until the
+   earlier epics have nothing in `Ready For Dev`, and a story in no epic comes last. Take
+   the top; never skip ahead to a later epic. **By your number**, so two developers reaching the queue
    together pick different stories: developer 2 takes the second if there are at least
    two, developer 1 the first. Never build from `To Do` or `Needs Design`: the product
    manager and the designer have not finished with it.

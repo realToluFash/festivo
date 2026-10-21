@@ -108,6 +108,9 @@ story or pull request, read fresh rather than from the last sync, and says why i
   A role takes its items in this order: anything on a story in Passed Code Review, Failed
   QA or Failed Code Review, and a merged story's move to Ready For QA (`FINISHING`); then
   comments; then pull request work; then reviews; then its queue; then sweeps.
+  A developer's queue runs epic by epic (`work.epic_order`): by the epic's place in
+  Shortcut's epic list, then the story's place in the story list, with stories in no epic
+  last.
 - **`store.py`** holds the claims. A role holds one item at a time, a pooled item (Ready For
   QA, unlabelled Ready For Dev) goes to one role only, and a claim lapses after 90 minutes.
 

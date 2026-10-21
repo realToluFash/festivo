@@ -51,7 +51,7 @@ def refresh_work(db, now):
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
                         last_runs, busy_roles, now, store.handled(db), store.moves(db),
-                        store.get_meta(db, "machine_checks"))
+                        store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"))
     store.record(db, items, now)
     return items
 
