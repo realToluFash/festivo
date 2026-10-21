@@ -105,21 +105,22 @@ stopped run then loses minutes, not the thread.
 
 ## Commands
 
-| Command                                            | What it does                                                                                                            |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `just agents setup`                                | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer                   |
-| `just agents up`                                   | starts the manager for the roles in this machine's `agents.json`                                                        |
-| `just agents down`                                 | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks                               |
-| `just agents down --now`                           | the same, stopping running workers at once and giving their items back                                                  |
-| `sq start <role>` / `sq stop <role>`               | starts or stops one role on this machine                                                                                |
-| `sq status`                                        | each role here: started or stopped, its model, refused and why, or the machine it runs on; the manager; the last report |
-| `sq web`                                           | the same as `sq status`, as a live page at http://127.0.0.1:8765 that refreshes every 5 s; `--port`, `--no-open`        |
-| `sq run --dry-run`                                 | syncs, then says which ready role would wake for what, started or not; starts nothing, installs nothing                 |
-| `sq pause` / `sq resume`                           | no role ticks on this machine until resumed; running workers finish their item                                          |
-| `sq pause --everywhere` / `sq resume --everywhere` | the same on every machine, through GitHub                                                                               |
-| `just agents permissions [apply]`                  | what `main` grants the workers that this machine has not applied; `apply` applies it, after a typed yes                 |
-| `sq <role> permission-ask`                         | a worker's ask for a command it was refused, posted on sc-4992 ([Permission asks](machines.md#permission-asks))         |
-| `sq cost [--days N]`                               | what the workers cost, per day and role, from the run log                                                               |
+| Command                                            | What it does                                                                                                                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `just agents setup`                                | checks prerequisites, asks for the workspace if unset, makes checkouts and stacks, installs the timer                                                                          |
+| `just agents up`                                   | starts the manager for the roles in this machine's `agents.json`                                                                                                               |
+| `just agents down`                                 | stops the manager, lets running workers finish (up to 10 minutes), stops the agent stacks                                                                                      |
+| `just agents down --now`                           | the same, stopping running workers at once and giving their items back                                                                                                         |
+| `sq start <role>` / `sq stop <role>`               | starts or stops one role on this machine                                                                                                                                       |
+| `sq status`                                        | each role here: started or stopped, its model, refused and why, or the machine it runs on; the manager; the last report                                                        |
+| `sq web`                                           | the same as `sq status`, as a live page at http://127.0.0.1:8765 that refreshes every 5 s; `--port`, `--no-open`                                                               |
+| `sq run --dry-run`                                 | syncs, then says which ready role would wake for what, started or not; starts nothing, installs nothing                                                                        |
+| `sq pause` / `sq resume`                           | no role ticks on this machine until resumed; running workers finish their item                                                                                                 |
+| `sq pause --everywhere` / `sq resume --everywhere` | the same on every machine, through GitHub                                                                                                                                      |
+| `just agents permissions [apply]`                  | what `main` grants the workers that this machine has not applied; `apply` applies it, after a typed yes                                                                        |
+| `sq <role> permission-ask`                         | a worker's ask for a command it was refused, posted on sc-4992 ([Permission asks](machines.md#permission-asks))                                                                |
+| `sq ux to-draw` / `sq ux drawn` / `sq ux drawings` | an unattended ux run has no Artifact tool: it lists a story to draw with a prompt, shown on `sq web`; `/soirely-designer` with no argument draws the list, one agent per story |
+| `sq cost [--days N]`                               | what the workers cost, per day and role, from the run log                                                                                                                      |
 
 `just agents down` uses `docker compose down` without `-v`: databases and volumes are kept,
 and `just agents up` comes back with the same data. Developer 1 works in the main checkout,
