@@ -431,3 +431,28 @@ class FinishingFirst(unittest.TestCase):
         items = work.derive([story(1, "In Review", labels=["dev1"])], [merged])
         [to_qa] = [i for i in items if i["kind"] == "to-qa"]
         self.assertEqual(to_qa["priority"], work.FINISHING)
+
+
+class EpicByEpic(unittest.TestCase):
+    EPICS = {"2": {"name": "Two", "position": 2}, "5": {"name": "Five", "position": 5}}
+
+    def build(self, id_, epic, position, state="Ready For Dev"):
+        return dict(story(id_, state), epic_id=epic, position=position)
+
+    def order(self, stories, epics=EPICS):
+        items = [i for i in work.queue_items(stories, epics=epics) if "dev" in i["roles"]]
+        return [i["story_id"] for i in sorted(items, key=lambda i: (i["priority"], i["rank"]))]
+
+    def test_an_earlier_epic_comes_first_whatever_the_story_order(self):
+        stories = [self.build(1, 5, 1), self.build(2, 2, 9), self.build(3, 2, 4)]
+        self.assertEqual(self.order(stories), [3, 2, 1])
+
+    def test_the_epic_list_order_wins_over_the_epic_number(self):
+        epics = {"2": {"name": "Two", "position": 7}, "5": {"name": "Five", "position": 1}}
+        self.assertEqual(self.order([self.build(1, 2, 1), self.build(2, 5, 2)], epics), [2, 1])
+
+    def test_a_story_in_no_epic_comes_last(self):
+        self.assertEqual(self.order([self.build(1, None, 1), self.build(2, 5, 9)]), [2, 1])
+
+    def test_without_positions_the_epic_number_orders_them(self):
+        self.assertEqual(self.order([self.build(1, 5, 1), self.build(2, 2, 9)], {}), [2, 1])
