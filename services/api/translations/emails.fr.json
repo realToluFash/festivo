@@ -129,5 +129,15 @@
     "ownershipTransferred.subject": "{organisation} has a new owner",
     "ownershipTransferred.youGaveIt": "You made {to} the owner of {organisation}. You are now an Administrator: you can still run it day to day, but you cannot hand it on or delete it.",
     "ownershipTransferred.youHaveIt": "{from} made you the owner of {organisation}. You can now change billing, members, roles and its settings, and you can delete it. {from} is now an Administrator.",
-    "ownershipTransferred.footer": "You're getting this because you are a member of {organisation}."
+    "ownershipTransferred.footer": "You're getting this because you are a member of {organisation}.",
+    "memberSuspended.subject": "Your access to {organisation} is suspended",
+    "memberSuspended.body": "You can't use {organisation} in Soirely for now. Your role, your events and your history there are kept, and your access can be restored.",
+    "memberSuspended.ask": "If you don't know why, ask an administrator of {organisation}.",
+    "memberSuspended.facts": "Organisation: {organisation}\nSuspended: {when}\nYour account: {email}",
+    "memberSuspended.others": "Any other organisations you belong to in Soirely are not affected.",
+    "memberRestored.subject": "Your access to {organisation} is back",
+    "memberRestored.body": "You can use {organisation} in Soirely again, as {role}, the role you had.",
+    "memberRestored.facts": "Organisation: {organisation}\nRestored: {when}\nYour role: {role}",
+    "memberRestored.open": "Open {organisation}: {link}",
+    "memberAccess.footer": "You're getting this because you're a member of {organisation}."
 }

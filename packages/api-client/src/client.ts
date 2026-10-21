@@ -1235,6 +1235,22 @@ export class ApiClient {
     );
   }
 
+  /** Refused 403 for yourself or an Owner, and 409 unless they are active. */
+  async suspendMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/suspend`,
+      {},
+    );
+  }
+
+  /** Refused 409 unless they are suspended, and `team_seats_in_use`, with the `limit`, when every seat is taken. */
+  async restoreMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,
+      {},
+    );
+  }
+
   /** Refused `last_owner` while the caller is the only owner. */
   async leaveOrganisation(organisationId: string): Promise<void> {
     await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/leave`, {});

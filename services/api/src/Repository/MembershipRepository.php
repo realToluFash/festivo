@@ -87,6 +87,16 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    public function countActiveIn(Organisation $organisation): int
+    {
+        return (int) $this->active()
+            ->select('COUNT(m.id)')
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('organisation', $organisation)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     /** @return list<Membership> in every state, in organisations that still exist */
     public function findAllFor(User $user): array
     {

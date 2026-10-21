@@ -152,6 +152,25 @@ final readonly class MembersController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
+    /** Takes effect on the member's next request, as a removal does: only an active membership grants anything. */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/suspend', name: 'orgs_members_suspend', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function suspend(string $organisationId, string $membershipId): Response
+    {
+        $this->memberActions->suspend($this->organisation($organisationId), $membershipId, $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/restore', name: 'orgs_members_restore', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function restore(string $organisationId, string $membershipId): Response
+    {
+        $this->memberActions->restore($this->organisation($organisationId), $membershipId, $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
     #[Route('/api/orgs/{organisationId}/leave', name: 'orgs_leave', methods: ['POST'])]
     #[InOrganisation(null)]
     public function leave(string $organisationId): Response

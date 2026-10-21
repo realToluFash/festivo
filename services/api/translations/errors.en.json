@@ -67,5 +67,6 @@
     "oauth_only_unlinked": "Read-only until you link Google or Apple.",
     "organisation_two_factor_required": "This organisation asks for two-factor first.",
     "session_timed_out": "Signed out after a time without use.",
-    "join_offer_unavailable": "You cannot ask to join that organisation. Start your own, or ask somebody there to invite you."
+    "join_offer_unavailable": "You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.",
+    "team_seats_in_use": "Every team seat on this organisation's plan is in use."
 }
