@@ -1136,6 +1136,12 @@ h2 {
   cursor: pointer;
 }
 
+.auth-footnote .link-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .auth-back {
   display: inline-flex;
   align-items: center;
