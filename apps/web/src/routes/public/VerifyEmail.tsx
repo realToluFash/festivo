@@ -21,6 +21,7 @@ import {
 import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { dropRegistration, heldRegistration } from '../../pendingRegistration.ts';
+import { heldInvitation } from '../../heldInvitation.ts';
 import {
   adoptAccount,
   forgetSession,
@@ -110,7 +111,10 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
         navigate(ended ? '/sign-in?signed-out' : '/sign-in', { replace: true });
       }}
       carryOn={() => {
-        if (account != null) navigate(landingFor(awaiting(account)), { replace: true });
+        if (account == null) return;
+        // Registered from a link (sc-562): back to it, now that the address is proved.
+        const link = heldInvitation();
+        navigate(link == null ? landingFor(awaiting(account)) : `/join/${link}`, { replace: true });
       }}
       wrongAddress={() => {
         dropRegistration();
