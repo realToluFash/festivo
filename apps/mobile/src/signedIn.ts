@@ -1,6 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Account, InvitationPreview, Membership } from '@soirely/api-client';
-import { type InvitationOutcome, chooseOrganisation } from '@soirely/domain';
+import type {
+  Account,
+  InvitationPreview,
+  Membership,
+  PausedOrganisation,
+} from '@soirely/api-client';
+import { type InvitationOutcome, chooseOrganisation, choosePaused } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useEffect, useSyncExternalStore } from 'react';
 
@@ -13,6 +18,8 @@ export interface SignedIn {
   account: Account | null;
   organisations: readonly Membership[];
   organisation: Membership | null;
+  /** Shown in place of every screen: the organisation this device was in, whose access is now paused (sc-564). */
+  pausedIn?: PausedOrganisation | null;
   invitations: readonly InvitationPreview[];
   invitationOutcomes: Readonly<Record<string, InvitationOutcome>>;
 }
@@ -77,16 +84,17 @@ let loading: Promise<boolean> | null = null;
 function load(): Promise<boolean> {
   loading ??= Promise.all([
     api.me(),
-    api.organisations(),
+    api.organisationsWithPaused(),
     remembered(),
     api.myInvitations().catch(() => state.invitations),
   ])
-    .then(([account, organisations, id, invitations]) => {
+    .then(([account, { organisations, paused }, id, invitations]) => {
       set({
         ...state,
         account,
         organisations,
         organisation: chooseOrganisation(organisations, id),
+        pausedIn: choosePaused(paused, id, organisations.length),
         invitations,
       });
 
@@ -111,7 +119,7 @@ export function switchOrganisation(id: string): void {
   const organisation = state.organisations.find((membership) => membership.id === id);
   if (organisation == null) return;
 
-  set({ ...state, organisation });
+  set({ ...state, organisation, pausedIn: null });
   void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
 }
 

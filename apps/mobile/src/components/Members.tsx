@@ -1,8 +1,10 @@
-import type {
-  Membership,
-  MembersList,
-  OrganisationMember,
-  OrganisationRole,
+import {
+  ApiError,
+  type DomainSuspension,
+  type Membership,
+  type MembersList,
+  type OrganisationMember,
+  type OrganisationRole,
 } from '@soirely/api-client';
 import {
   type MemberFilter,
@@ -432,6 +434,16 @@ export function MemberPage({
         )}
       </View>
 
+      {standing === 'manageable' && member.suspension != null && (
+        <Suspension
+          kind={kind}
+          organisation={organisation}
+          member={member}
+          suspension={member.suspension}
+          onChanged={onChanged}
+        />
+      )}
+
       {standing === 'manageable' && !waiting && (
         <Remove
           kind={kind}
@@ -802,6 +814,73 @@ function RolePicker({
         testID="members.role.save"
       />
     </>
+  );
+}
+
+/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below. */
+function Suspension({
+  kind,
+  organisation,
+  member,
+  suspension,
+  onChanged,
+}: {
+  kind: LayoutKind;
+  organisation: Membership;
+  member: OrganisationMember;
+  suspension: DomainSuspension;
+  onChanged: (list: MembersList) => void;
+}) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const named = {
+    name: member.user.name,
+    organisation: organisation.name,
+    domain: suspension.domain ?? '',
+  };
+
+  async function restore(): Promise<void> {
+    setBusy(true);
+    setFailed(null);
+
+    try {
+      await api.restoreMember(organisation.id, member.id);
+      onChanged(await api.members(organisation.id));
+    } catch (error) {
+      setFailed(
+        error instanceof ApiError && error.is('restore_needs_address')
+          ? t('membersScreen.restoreNeedsAddress', named)
+          : refusalTitle(error, t('membersScreen.actionFailed')),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View style={cardFrame(kind)}>
+      <Notice tone="attention" mark="!" title={t('membersScreen.state.domainSuspended')} />
+      <Text size={tokens.typeBodyPhone.size}>
+        {t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}
+      </Text>
+      {suspension.removesAt != null && (
+        <Text size={tokens.typeBodyPhone.size} muted>
+          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+        </Text>
+      )}
+      {failed != null && (
+        <View accessibilityRole="alert">
+          <FieldError message={failed} />
+        </View>
+      )}
+      <PrimaryButton
+        label={t('membersScreen.restore', named)}
+        busy={busy}
+        onPress={() => void restore()}
+        testID="members.restore"
+      />
+    </View>
   );
 }
 

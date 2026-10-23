@@ -407,6 +407,14 @@ def merge(number, head, method="merge", delete_branch=False):
         gh("api", f"{repo_path()}/git/refs/heads/{branch}", "--method", "DELETE")
 
 
+def close(number, text):
+    """The reason first, so a closed pull request never lacks one."""
+    api(f"{repo_path()}/issues/{number}/comments", "--method", "POST", "--input", "-",
+        stdin=json.dumps({"body": text}))
+    api(f"{repo_path()}/pulls/{number}", "--method", "PATCH", "--input", "-",
+        stdin=json.dumps({"state": "closed"}))
+
+
 def ready(number):
     """A draft cannot be merged; a passed one is marked ready first."""
     owner, name = repository()

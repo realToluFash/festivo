@@ -168,6 +168,19 @@ describe("what a member's row says", () => {
     );
   });
 
+  it('says a domain member was suspended because the company address went', () => {
+    expect(
+      memberStatusWord(word, {
+        ...member,
+        status: 'suspended',
+        suspension: { reason: 'domain_closed' },
+      }),
+    ).toBe('membersScreen.state.domainSuspended');
+    expect(memberStatusWord(word, { ...member, status: 'suspended' })).toBe(
+      'membersScreen.state.suspended',
+    );
+  });
+
   it('names the inviter when there is one', () => {
     const invited = { ...member, channel: 'invitation' as const, invitedBy: { name: 'Ada' } };
 

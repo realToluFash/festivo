@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import Svg, { Path } from 'react-native-svg';
 
 import { currentLocale } from '../i18n/index.ts';
+import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -86,7 +87,7 @@ export function ListPicker({
             </Pressable>
           </View>
           <TextInput
-            style={styles.search}
+            style={faced(styles.search)}
             value={search}
             onChangeText={setSearch}
             placeholder={searchLabel}

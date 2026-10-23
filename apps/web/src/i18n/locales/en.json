@@ -47,12 +47,12 @@
     "create": "Create event",
     "creating": "Creating…",
     "nameBlank": "Give the event a name.",
-    "nameTooLong": "Use at most {{most}} characters for the name.",
+    "nameTooLong": "Shorten the name to {{most}} characters or fewer.",
     "startMissing": "Choose when the event starts.",
     "endMissing": "Choose when the event ends.",
     "endBeforeStart": "The end is before the start. Choose a later end.",
-    "problems_one": "{{count}} field needs fixing. Nothing was sent.",
-    "problems_other": "{{count}} fields need fixing. Nothing was sent.",
+    "problems_one": "{{count}} field needs fixing, so nothing was sent.",
+    "problems_other": "{{count}} fields need fixing, so nothing was sent.",
     "notCreated": "Not created. Nothing was saved. Try again."
   },
   "eventPage": {
@@ -60,7 +60,7 @@
     "guests": "Guests",
     "loading": "Loading the event…",
     "failed": "The event did not load. Try again in a moment.",
-    "notFound": "This event isn't available",
+    "notFound": "This event is not available",
     "guestsComing": "The guest list for this event is coming.",
     "backToEvent": "Event"
   },
@@ -860,7 +860,8 @@
       "pending_approval": "Awaiting approval",
       "suspended": "Suspended",
       "left": "Left",
-      "removed": "Removed"
+      "removed": "Removed",
+      "domainSuspended": "Suspended: company address gone"
     },
     "how": {
       "invitation": "Invitation",
@@ -969,6 +970,15 @@
     "removedNext": "They are listed under Former in Members, with everything they did kept.",
     "backToMembers": "Back to Members",
     "actionFailed": "That did not go through. Nothing was changed. Try again in a moment.",
+    "suspendedBecause": {
+      "address_gone": "{{name}}'s {{domain}} address is no longer on their account.",
+      "domain_closed": "{{organisation}} no longer lets people join through {{domain}}.",
+      "domain_managed_elsewhere": "{{domain}} is now managed by another organisation."
+    },
+    "suspendedRemovedOn": "If nobody answers by {{when}}, they are removed.",
+    "restore": "Restore",
+    "restored": "{{name}}'s access to {{organisation}} is restored.",
+    "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first.",
     "noRoleYet": "No role yet",
     "awaiting": {
       "title": "Awaiting approval",
@@ -1493,6 +1503,21 @@
     "removedNext": "People at it can no longer ask to join this way.",
     "failed": "That did not work. Try again in a moment.",
     "unreadable": "The list could not be loaded. Reload the page to try again."
+  },
+  "accessPaused": {
+    "badge": "Paused",
+    "becauseAddressGone": "Your access to {{organisation}} is paused because your {{domain}} address is no longer on your account.",
+    "becauseDomainClosed": "Your access to {{organisation}} is paused because {{organisation}} no longer lets people join through {{domain}}.",
+    "becauseManagedElsewhere": "Your access to {{organisation}} is paused because {{domain}} is now managed by another organisation.",
+    "since": "Paused since {{when}}.",
+    "kept": "Your work in {{organisation}} is kept and still attributed to you.",
+    "untouched": "Your other organisations and your access to single events are not affected.",
+    "removedBy": "If nobody restores your access by {{when}}, you are removed from {{organisation}}.",
+    "nextTitle": "What happens next",
+    "nextAddressGone": "Add your {{domain}} address again in Account settings and make it primary, then ask an admin of {{organisation}} to restore your access.",
+    "nextNothingNeeded": "An admin of {{organisation}} can restore your access. Nothing is needed from you.",
+    "accountSettings": "Account settings",
+    "switch": "Switch organisation"
   },
   "requestLink": {
     "title": "Requests to join",

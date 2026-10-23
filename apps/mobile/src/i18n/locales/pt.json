@@ -1125,7 +1125,8 @@
       "pending_approval": "A aguardar aprovação",
       "suspended": "Acesso suspenso",
       "left": "Saiu",
-      "removed": "Acesso retirado"
+      "removed": "Acesso retirado",
+      "domainSuspended": "Acesso suspenso: sem endereço da empresa"
     },
     "how": {
       "invitation": "Convite",
@@ -1201,6 +1202,15 @@
     "fromTheWeb": "Para convidar alguém, use a Soirely na web.",
     "pickSomebody": "Escolha alguém na lista para ver aqui os dados.",
     "backToList": "‹ Membros",
+    "suspendedBecause": {
+      "address_gone": "{{name}} já não tem o endereço de {{domain}} na conta.",
+      "domain_closed": "{{organisation}} deixou de aceitar adesões através de {{domain}}.",
+      "domain_managed_elsewhere": "{{domain}} passou a ser gerido por outra organização."
+    },
+    "suspendedRemovedOn": "Se ninguém responder até {{when}}, o acesso é retirado.",
+    "restore": "Repor",
+    "restored": "O acesso de {{name}} a {{organisation}} foi reposto.",
+    "restoreNeedsAddress": "{{name}} precisa primeiro de um endereço de {{domain}} verificado.",
     "noRoleYet": "No role yet",
     "awaiting": {
       "title": "Awaiting approval",
@@ -1221,6 +1231,22 @@
       "turnedDown": "{{name}}’s request is turned down.",
       "turnedDownNext": "See Former"
     }
+  },
+  "accessPaused": {
+    "badge": "Em pausa",
+    "becauseAddressGone": "O seu acesso a {{organisation}} está em pausa porque o seu endereço de {{domain}} já não está na sua conta.",
+    "becauseDomainClosed": "O seu acesso a {{organisation}} está em pausa porque {{organisation}} deixou de aceitar adesões através de {{domain}}.",
+    "becauseManagedElsewhere": "O seu acesso a {{organisation}} está em pausa porque {{domain}} passou a ser gerido por outra organização.",
+    "since": "Em pausa desde {{when}}.",
+    "kept": "O seu trabalho em {{organisation}} é mantido e continua atribuído a si.",
+    "untouched": "As suas outras organizações e o seu acesso a eventos individuais não são afetados.",
+    "removedBy": "Se ninguém repuser o seu acesso até {{when}}, deixará de fazer parte de {{organisation}}.",
+    "nextTitle": "O que acontece a seguir",
+    "nextAddressGone": "Volte a adicionar o seu endereço de {{domain}} em Definições da conta e torne-o principal. Depois, peça a um administrador de {{organisation}} que reponha o seu acesso.",
+    "nextNothingNeeded": "Um administrador de {{organisation}} pode repor o seu acesso. Não precisa de fazer nada.",
+    "accountSettings": "Definições da conta",
+    "switch": "Mudar de organização",
+    "backToList": "‹ Membros"
   },
   "requestLink": {
     "title": "Pedidos de adesão",
