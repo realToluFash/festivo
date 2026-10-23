@@ -297,6 +297,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. Section names stand alone as nouns** in running text: « Compte réunit… »,
   « Sécurité réunit… » (`settings.chooseLine`), « Organisation réunit les réglages de
   {{name}} » (`settings.chooseLineWithOrganisation`), « vérifiez Sécurité » (emails).
+- **24 Oct 2026. A running count with no count slot is « Caractères : N sur M »** (sc-6302,
+  `eventForm.nameCount`). « N caractères sur M » misagrees at 0 and 1, which French counts
+  as one, and the key gets no `count` to pick a plural. With the noun as a label first,
+  nothing has to agree with N. Use the same shape for any other counter without a plural.
 - **17 Oct 2026. A picker's search field reads « Rechercher un/une … »** in the singular:
   « Rechercher un pays », « Rechercher une devise », « Rechercher un fuseau horaire ».
 
