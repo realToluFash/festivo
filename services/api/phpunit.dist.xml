@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- https://phpunit.readthedocs.io/en/latest/configuration.html -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         colors="true"
+         failOnDeprecation="true"
+         failOnNotice="true"
+         failOnWarning="true"
+         bootstrap="tests/bootstrap.php"
+         cacheDirectory=".phpunit.cache"
+>
+    <php>
+        <ini name="display_errors" value="1" />
+        <ini name="error_reporting" value="-1" />
+        <server name="APP_ENV" value="test" force="true" />
+        <server name="SHELL_VERBOSITY" value="-1" />
+
+        <!--
+            Forced here rather than set in .env.test, because compose passes
+            these into the container for the development stack and a real
+            environment variable always wins over a .env file. Without this the
+            cross-origin tests assert against whatever the developer's own
+            stack happens to allow — which is exactly how they passed locally
+            and failed in CI, where .env.example supplies a different value.
+
+            The second is empty on purpose: an unused origin slot has to allow
+            nothing.
+        -->
+        <!-- Forced for the same reason as the origins below: the container sets
+             a real transport, and a real environment variable beats .env.test.
+             null:// keeps every assertion about mail in the test transport. -->
+        <env name="MAILER_DSN" value="null://null" force="true" />
+        <env name="CORS_WEB_ORIGIN" value="https://app.soirely.test" force="true" />
+        <env name="CORS_EXPO_WEB_ORIGIN" value="" force="true" />
+        <!-- A second stack on other ports sets these too, and the suite assumes the defaults. -->
+        <env name="STORAGE_PUBLIC_ENDPOINT" value="http://localhost:4566" force="true" />
+        <env name="OAUTH_APPLE_RETURN_URI" value="http://localhost:8080/api/auth/oauth/apple/return" force="true" />
+    </php>
+
+    <testsuites>
+        <testsuite name="Project Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <source ignoreSuppressionOfDeprecations="true"
+            ignoreIndirectDeprecations="true"
+            restrictNotices="true"
+            restrictWarnings="true"
+    >
+        <include>
+            <directory>src</directory>
+        </include>
+
+        <deprecationTrigger>
+            <method>Doctrine\Deprecations\Deprecation::trigger</method>
+            <method>Doctrine\Deprecations\Deprecation::delegateTriggerToBackend</method>
+            <function>trigger_deprecation</function>
+        </deprecationTrigger>
+    </source>
+
+    <extensions>
+        <bootstrap class="DAMA\DoctrineTestBundle\PHPUnit\PHPUnitExtension"/>
+    </extensions>
+</phpunit>
