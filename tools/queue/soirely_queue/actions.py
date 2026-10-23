@@ -603,11 +603,13 @@ def review(c, a):
                                  for i in items])
     url = posted.get("html_url", pr["url"])
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
-    if story and story["state"] in W.REVIEWED:
+    if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
     if story and a.verdict == "pass":
-        post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
-                               f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
+        # A developer's change on a linguist's ticket is not the ticket ready for QA.
+        if not W.side_pr(story, pr):
+            post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
+                                   f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
@@ -734,7 +736,7 @@ def merge(c, a):
     pr = c.pr(a.pr)
     if pr["state"] == "merged" and pr["story_id"] and c.role not in R.LINGUISTS:
         story = c.story(pr["story_id"])
-        if story["state"] in R.MERGING:
+        if story["state"] in R.MERGING and not W.linguists(story):
             return f"PR #{a.pr} was already merged; " + finish_handover(c, story, pr, a.text)
     if pr["state"] != "open":
         raise Refused(f"PR #{a.pr} is {pr['state']}")
@@ -759,7 +761,8 @@ def merge(c, a):
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"
     story = c.story(pr["story_id"]) if pr["story_id"] else None
-    if not story or story["state"] not in R.MERGING:
+    side = bool(story) and W.side_pr(story, pr)
+    if not story or story["state"] not in R.MERGING and not side:
         raise Refused(f"its story is {story['state'] if story else 'unknown'}, not "
                       "Passed Code Review")
     if R.builder_of(story["labels"]) != c.role and not (
@@ -776,6 +779,9 @@ def merge(c, a):
         github.ready(a.pr)
     github.merge(a.pr, head)
     merged = github.live(a.pr)["mergeCommit"]
+    if side:
+        return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, "
+                f"the linguist's to move, and the linguist is woken{resync(c)}")
     try:
         went = hand_to_qa(c, story, pr, merged, a.text)
     except ShortcutError as error:
