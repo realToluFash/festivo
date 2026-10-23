@@ -54,6 +54,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
+  The act is « transférer la propriété », the organisation « cédée ». « Propriétaire » with no
+  article is epicene, so « devenir propriétaire », « rester propriétaire » and « est désormais
+  propriétaire » agree with nobody; with an article it is « le rôle Propriétaire » or « une
+  personne ayant le rôle Propriétaire », never « le nouveau propriétaire ». "The new owner" is
+  « la personne qui deviendra propriétaire », the legend « Transférer à », the email subject
+  « Changement de propriétaire pour {organisation} ». Both people are told by « Un e-mail vous
+  le confirmera, à vous et à {{name}} », never « chacun » or « tous les deux ». Deleted
+  counts are all masculine (événements, invités, membres), so « seront supprimés » holds at
+  any count; French `one` covers 0, « 0 événement », which is right.
+
 - **21 Oct 2026. The apostrophe is ’, U+2019** (sc-7455), in every value of every catalogue,
   as France typography sets it and as a straight ' beside a curly one reads like a typo on the
   same screen. Type the character itself. The SMS (`emails:verification.text`, and any SMS
