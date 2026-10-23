@@ -68,6 +68,7 @@ export interface ProviderOnly {
 const ACTIVE_ORGANISATION = 'soirely.organisation';
 
 let state: SessionState = { status: 'unknown' };
+let generation = 0;
 const listeners = new Set<() => void>();
 
 export function useSessionState(): SessionState {
@@ -106,9 +107,13 @@ export async function retrySession(): Promise<void> {
 }
 
 async function askForAccount(): Promise<void> {
+  const asked = generation;
+
   try {
-    await adoptAccount(await api.me());
+    await adoptAccount(await api.me(), asked);
   } catch (error) {
+    if (generation !== asked) return;
+
     set(
       error instanceof ApiUnreachableError
         ? { status: 'unreachable', retrying: false }
@@ -118,12 +123,13 @@ async function askForAccount(): Promise<void> {
 }
 
 /** The account, with its organisations; one behind the onboarding gate is not asked for them. */
-export async function adoptAccount(account: Account): Promise<void> {
+export async function adoptAccount(account: Account, asked = generation): Promise<void> {
   const { organisations, paused } =
     account.verified && account.complete
       ? await api.organisationsWithPaused()
       : { organisations: [], paused: [] };
   await followAccount(account);
+  if (generation !== asked) return;
 
   set({ status: 'signedIn', session: sessionFrom(account, organisations, paused) });
 }
@@ -131,6 +137,15 @@ export async function adoptAccount(account: Account): Promise<void> {
 /** After a gate has been passed, or the API says one has closed: the account read afresh. */
 export async function refreshAccount(): Promise<void> {
   await askForAccount();
+}
+
+/** The password and linked providers, read again; a failed read rejects and leaves the page where it is. */
+export async function rereadCredentials(): Promise<void> {
+  const asked = generation;
+  const { hasPassword, providers } = await api.me();
+  if (generation !== asked || state.status !== 'signedIn') return;
+
+  set({ status: 'signedIn', session: { ...state.session, hasPassword, providers } });
 }
 
 /** Where a signed-in account belongs: the gate it is behind, or the product. */
@@ -189,6 +204,7 @@ export function forgetSession(ended = false, why?: Problem): void {
   const timedOut = timedOutBy(why);
   const providerOnly = providerOnlyBy(why);
 
+  generation += 1;
   set({
     status: 'signedOut',
     ended,
@@ -197,7 +213,9 @@ export function forgetSession(ended = false, why?: Problem): void {
   });
 }
 
+/** A test starts afresh: an answer still in flight from the test before it is dropped, not adopted. */
 export function __setSessionState(next: SessionState): void {
+  generation += 1;
   set(next);
 }
 
