@@ -9,6 +9,7 @@ use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\User\TwoFactor\Recovery\RecoveryApprovers;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
+use App\Entity\Invitation;
 use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
@@ -191,6 +192,31 @@ final class RolesTest extends ApiTestCase
             Vec\map(SeededRole::ReadOnly->defaults(), static fn (Permission $permission): string => $permission->value),
             $this->as($tope, 'GET', $this->path('permissions'))['permissions'],
         );
+    }
+
+    #[Test]
+    public function aRoleNobodyHoldsIsDeletedWithoutAReplacementAndItsFormerPeopleMoveToReadOnly(): void
+    {
+        $created = $this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door staff', 'permissions' => ['events.read']]);
+        $door = Type\string()->coerce($created['id']);
+        $left = $this->member('tope@ire.events', null, $door, MembershipStatus::LeftOrRemoved);
+        $asked = $this->member('ada@okeke.ng', null, $door, MembershipStatus::PendingApproval);
+        $this->as($this->owner, 'POST', $this->path('members/invite'), ['email' => 'kemi@bello.ng', 'roleId' => $door]);
+        self::assertSame(201, $this->statusCode(), Json\encode($this->last()));
+        $listed = Iter\first(Vec\filter($this->roles(), static fn (array $role): bool => $door === $role['id']));
+        self::assertSame(0, $listed['holders'] ?? null);
+
+        $this->as($this->owner, 'DELETE', $this->path('roles/' . $door));
+
+        self::assertSame(204, $this->statusCode(), Json\encode($this->last()));
+        foreach ([$left, $asked] as $user) {
+            $membership = self::em()->getRepository(Membership::class)->findOneBy(['user' => $user]) ?? self::fail('no membership');
+            self::em()->refresh($membership);
+            self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs());
+        }
+        $invitation = self::em()->getRepository(Invitation::class)->findOneBy(['email' => 'kemi@bello.ng']) ?? self::fail('no invitation');
+        self::em()->refresh($invitation);
+        self::assertSame(SeededRole::ReadOnly, $invitation->getRole()?->getSeededAs());
     }
 
     #[Test]
@@ -480,14 +506,20 @@ final class RolesTest extends ApiTestCase
         return $user;
     }
 
-    private function member(string $address, ?SeededRole $seeded, ?string $roleId = null): User
+    private function member(string $address, ?SeededRole $seeded, ?string $roleId = null, MembershipStatus $status = MembershipStatus::Active): User
     {
         $user = $this->account($address);
         $role = null === $seeded
             ? self::em()->find(Role::class, $roleId)
             : self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => $seeded]);
         $organisation = self::em()->find(Organisation::class, $this->organisation->getId()) ?? self::fail('no organisation');
-        self::em()->persist(new Membership($organisation, $user, Type\instance_of(Role::class)->coerce($role), MembershipStatus::Active, new DateTimeImmutable()));
+        $membership = new Membership($organisation, $user, Type\instance_of(Role::class)->coerce($role), $status->isEntry() ? $status : MembershipStatus::Active, new DateTimeImmutable());
+
+        if (!$status->isEntry()) {
+            $membership->setStatus($status, new DateTimeImmutable());
+        }
+
+        self::em()->persist($membership);
         self::em()->flush();
 
         return $user;
