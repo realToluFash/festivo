@@ -1430,7 +1430,7 @@
     "leaveBody": "You lose access to {{organisation}} as soon as you leave.",
     "stay": "Stay",
     "onlyOwnerTitle": "You are the only owner",
-    "onlyOwnerBody": "You are the only owner. Make somebody else an owner, then you can leave.",
+    "onlyOwnerBody": "Make somebody else an owner, then you can leave.",
     "delete": "Delete organisation",
     "deleteNote": "Deletes every event, guest and member record in it.",
     "deleteTitle": "Delete {{organisation}}?",
