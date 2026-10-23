@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Soirely agents</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='6' fill='%232a78d6'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f3f0;
+        --surface: #fcfcfb;
+        --surface-2: #f0efec;
+        --line: #e2e1dc;
+        --text: #0b0b0b;
+        --text-2: #52514e;
+        --text-3: #7c7b76;
+        --accent: #2a78d6;
+        --accent-soft: #cde2fb;
+        --good: #0ca30c;
+        --warning: #fab219;
+        --serious: #ec835a;
+        --critical: #d03b3b;
+        --good-soft: #e3f4e3;
+        --warning-soft: #fdf1d6;
+        --critical-soft: #f9e1e1;
+        --shadow: 0 1px 2px rgba(20, 20, 18, 0.06), 0 2px 8px rgba(20, 20, 18, 0.04);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:where(:not([data-theme='light'])) {
+          color-scheme: dark;
+          --bg: #121211;
+          --surface: #1a1a19;
+          --surface-2: #232322;
+          --line: #2f2f2d;
+          --text: #f0efec;
+          --text-2: #c3c2b7;
+          --text-3: #8e8d86;
+          --accent: #3987e5;
+          --accent-soft: #184f95;
+          --good-soft: #15301a;
+          --warning-soft: #3a2f12;
+          --critical-soft: #3d1c1c;
+          --shadow: none;
+        }
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #121211;
+        --surface: #1a1a19;
+        --surface-2: #232322;
+        --line: #2f2f2d;
+        --text: #f0efec;
+        --text-2: #c3c2b7;
+        --text-3: #8e8d86;
+        --accent: #3987e5;
+        --accent-soft: #184f95;
+        --good-soft: #15301a;
+        --warning-soft: #3a2f12;
+        --critical-soft: #3d1c1c;
+        --shadow: none;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.45 ui-sans-serif,
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 28px 24px 56px;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        font-weight: 600;
+      }
+      h1 {
+        margin: 2px 0 0;
+        font-size: 28px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        color: var(--text-2);
+        font-size: 13px;
+      }
+      .meta .sep {
+        color: var(--line);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 10px 3px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        background: var(--surface-2);
+        color: var(--text-2);
+        white-space: nowrap;
+      }
+      .pill::before {
+        content: '';
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--text-3);
+      }
+      .pill.good {
+        background: var(--good-soft);
+        color: var(--text);
+      }
+      .pill.good::before {
+        background: var(--good);
+      }
+      .pill.live::before {
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+      .pill.warning {
+        background: var(--warning-soft);
+        color: var(--text);
+      }
+      .pill.warning::before {
+        background: var(--warning);
+      }
+      .pill.critical {
+        background: var(--critical-soft);
+        color: var(--text);
+      }
+      .pill.critical::before {
+        background: var(--critical);
+      }
+      .pill.accent {
+        background: var(--accent-soft);
+        color: var(--text);
+      }
+      .pill.accent::before {
+        background: var(--accent);
+      }
+      @keyframes pulse {
+        50% {
+          opacity: 0.35;
+        }
+      }
+      .alerts {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 20px;
+      }
+      .alert {
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 13px;
+      }
+      .alert b {
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .alert.critical {
+        background: var(--critical-soft);
+      }
+      .alert.warning {
+        background: var(--warning-soft);
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        margin-bottom: 28px;
+      }
+      .tile {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 14px 16px;
+        box-shadow: var(--shadow);
+      }
+      .tile .label {
+        font-size: 12px;
+        color: var(--text-2);
+      }
+      .tile .value {
+        font-size: 26px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+        margin-top: 2px;
+        font-variant-numeric: tabular-nums;
+      }
+      .tile .sub {
+        font-size: 12px;
+        color: var(--text-3);
+      }
+      section {
+        margin-bottom: 32px;
+      }
+      h2 {
+        font-size: 15px;
+        font-weight: 650;
+        margin: 0 0 12px;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+      h2 .count {
+        color: var(--text-3);
+        font-weight: 500;
+        font-size: 13px;
+      }
+      .roles {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: var(--shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+      }
+      .card.running {
+        border-color: color-mix(in srgb, var(--good) 45%, var(--line));
+      }
+      .card-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .role-name {
+        font-size: 17px;
+        font-weight: 650;
+      }
+      .role-title {
+        font-size: 12px;
+        color: var(--text-3);
+      }
+      .waiting {
+        text-align: right;
+      }
+      .waiting .n {
+        font-size: 24px;
+        font-weight: 650;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+      .waiting .l {
+        font-size: 11px;
+        color: var(--text-3);
+      }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+      }
+      .tag {
+        font-size: 12px;
+        color: var(--text-2);
+        background: var(--surface-2);
+        padding: 2px 8px;
+        border-radius: 6px;
+      }
+      .block {
+        border-top: 1px solid var(--line);
+        padding-top: 10px;
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+      .block .k {
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .block .k span + span {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 500;
+      }
+      .block .v {
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+      .block .v.muted {
+        color: var(--text-2);
+      }
+      .block .v.fail {
+        color: var(--critical);
+      }
+      .draws {
+        display: grid;
+        gap: 12px;
+      }
+      .draw {
+        display: grid;
+        gap: 10px;
+      }
+      .draw-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+      }
+      .draw-name {
+        font-weight: 600;
+        overflow-wrap: anywhere;
+      }
+      .draw pre {
+        margin: 0;
+        padding: 10px 12px;
+        background: var(--surface-2);
+        border-radius: 8px;
+        font:
+          12.5px/1.5 ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 220px;
+        overflow: auto;
+        color: var(--text);
+      }
+      .copy {
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--accent);
+        background: var(--accent-soft);
+        border: 0;
+        border-radius: 8px;
+        padding: 6px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .copy:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .owner {
+        background: var(--warning-soft);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 13px;
+      }
+      ol.next {
+        margin: 0;
+        padding: 0;
+        list-style: decimal inside;
+        color: var(--text-2);
+        display: grid;
+        gap: 2px;
+      }
+      ul.holding {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 4px;
+        color: var(--text-2);
+      }
+      ul.holding li {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .worker {
+        display: inline-block;
+        min-width: 3.5em;
+        margin-right: 8px;
+        font-weight: 600;
+        color: var(--text);
+      }
+      .owner code {
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+      ol.next li {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .more {
+        font-size: 12px;
+        color: var(--text-3);
+      }
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        box-shadow: var(--shadow);
+        min-width: 0;
+      }
+      .panel h3 {
+        margin: 0 0 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-2);
+      }
+      .hbar {
+        display: grid;
+        grid-template-columns: 56px 1fr 64px;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+      .hbar .track {
+        height: 12px;
+        background: var(--surface-2);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .hbar .fill {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 0 4px 4px 0;
+        min-width: 2px;
+      }
+      .hbar .num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: var(--text-2);
+      }
+      .cols {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        height: 150px;
+        padding-top: 18px;
+      }
+      .col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        height: 100%;
+        justify-content: flex-end;
+        position: relative;
+        cursor: default;
+      }
+      .col .bar {
+        width: 100%;
+        max-width: 44px;
+        background: var(--accent);
+        border-radius: 4px 4px 0 0;
+        min-height: 2px;
+      }
+      .col .amt {
+        font-size: 11px;
+        color: var(--text-2);
+        font-variant-numeric: tabular-nums;
+      }
+      .col .day {
+        font-size: 11px;
+        color: var(--text-3);
+      }
+      .col.today .day {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .empty {
+        color: var(--text-3);
+        font-size: 13px;
+        padding: 6px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      th {
+        text-align: left;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-3);
+        font-weight: 600;
+        padding: 0 10px 8px;
+        border-bottom: 1px solid var(--line);
+      }
+      td {
+        padding: 9px 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      td.num,
+      th.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      td.when {
+        white-space: nowrap;
+        color: var(--text-2);
+        font-variant-numeric: tabular-nums;
+      }
+      td.report {
+        color: var(--text-2);
+        max-width: 0;
+        width: 60%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      td.report.fail {
+        color: var(--critical);
+      }
+      .role-chip {
+        font-weight: 600;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      #tip {
+        position: fixed;
+        pointer-events: none;
+        background: var(--text);
+        color: var(--bg);
+        font-size: 12px;
+        padding: 6px 9px;
+        border-radius: 6px;
+        opacity: 0;
+        transition: opacity 0.1s;
+        z-index: 10;
+        white-space: nowrap;
+      }
+      footer {
+        color: var(--text-3);
+        font-size: 12px;
+        text-align: center;
+      }
+      footer code {
+        font-size: 12px;
+      }
+      @media (max-width: 960px) {
+        .kpis {
+          grid-template-columns: repeat(2, 1fr);
+        }
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 520px) {
+        .wrap {
+          padding: 20px 16px 40px;
+        }
+        .roles {
+          grid-template-columns: 1fr;
+        }
+        h1 {
+          font-size: 24px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <div class="eyebrow">Soirely agents</div>
+          <h1 id="machine">Loading…</h1>
+        </div>
+        <div class="meta" id="meta"></div>
+      </header>
+      <div class="alerts" id="alerts"></div>
+      <div class="kpis" id="kpis"></div>
+      <section id="draw-section" hidden>
+        <h2>To draw <span class="count" id="draw-count"></span></h2>
+        <div class="draws" id="draws"></div>
+      </section>
+      <section>
+        <h2>Roles on this machine <span class="count" id="roles-count"></span></h2>
+        <div class="roles" id="roles"></div>
+      </section>
+      <section>
+        <h2>Spend</h2>
+        <div class="split">
+          <div class="panel">
+            <h3>Today, by role</h3>
+            <div id="spend-roles"></div>
+          </div>
+          <div class="panel">
+            <h3>Last 7 days</h3>
+            <div class="cols" id="spend-days"></div>
+          </div>
+        </div>
+      </section>
+      <section id="machines-section">
+        <h2>Other machines</h2>
+        <div class="panel table-wrap"><table id="machines"></table></div>
+      </section>
+      <section id="elsewhere-section">
+        <h2>Roles not run here <span class="count" id="elsewhere-count"></span></h2>
+        <div class="panel table-wrap"><table id="elsewhere"></table></div>
+      </section>
+      <section>
+        <h2>Recent runs</h2>
+        <div class="panel table-wrap"><table id="recent"></table></div>
+      </section>
+      <footer>Refreshes every 5 seconds from <code>sq web</code> on this machine.</footer>
+    </div>
+    <div id="tip" role="tooltip"></div>
+    <script>
+      const TITLES = {
+        pm: 'Product manager',
+        ux: 'Designer',
+        dev: 'Developer 1',
+        dev2: 'Developer 2',
+        qa: 'QA tester 1',
+        qa2: 'QA tester 2',
+        qa3: 'QA tester 3',
+        lead: 'Tech lead',
+        bm: 'Business manager',
+        ops: 'Operations',
+        l10n: 'Linguist',
+        cd: 'Creative director',
+      };
+      const STATES = {
+        running: ['good live', 'Running'],
+        busy: ['warning', 'Holding an item'],
+        started: ['accent', 'Started'],
+        stopped: ['', 'Stopped'],
+        elsewhere: ['', 'Elsewhere'],
+        refused: ['critical', 'Refused'],
+      };
+      let data = null,
+        fetchedAt = 0,
+        failing = false;
+
+      const esc = (s) =>
+        String(s ?? '').replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+        );
+      const money = (n) => '$' + (n || 0).toFixed(2);
+      function ago(seconds) {
+        seconds = Math.max(0, Math.floor(seconds));
+        for (const [size, unit] of [
+          [31536000, 'y'],
+          [86400, 'd'],
+          [3600, 'h'],
+          [60, 'm'],
+        ])
+          if (seconds >= size) return Math.floor(seconds / size) + unit + ' ago';
+        return seconds + 's ago';
+      }
+      const since = (at) => ago(Date.now() / 1000 - at);
+      const clock = (at) =>
+        new Date(at * 1000).toLocaleString(undefined, {
+          day: 'numeric',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      const duration = (s) =>
+        s == null ? '' : s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
+      const model = (r) =>
+        (r.model || '').replace(/^claude-/, '') + (r.effort ? ' · ' + r.effort : '');
+
+      function header(d) {
+        document.getElementById('machine').textContent = d.machine || 'No machine configured';
+        document.title = `${d.machine || 'Soirely'} · agents`;
+        const bits = [];
+        if (failing) bits.push(`<span class="pill critical">sq web is not answering</span>`);
+        bits.push(
+          d.manager
+            ? `<span class="pill good live">Manager running</span>`
+            : `<span class="pill critical">Manager stopped</span>`,
+        );
+        if (d.paused) bits.push(`<span class="pill warning">Paused since ${esc(d.paused)}</span>`);
+        if (d.free_gb != null) bits.push(`<span>${d.free_gb} GB free</span>`);
+        bits.push(
+          `<span>${d.synced_ago == null ? 'never synced' : 'synced ' + ago(d.synced_ago + (Date.now() / 1000 - fetchedAt))}</span>`,
+        );
+        bits.push(`<span id="updated">updated ${ago(Date.now() / 1000 - fetchedAt)}</span>`);
+        document.getElementById('meta').innerHTML = bits.join('<span class="sep">|</span>');
+        document.getElementById('alerts').innerHTML =
+          d.errors
+            .map((e) => `<div class="alert critical"><b>Error</b><span>${esc(e)}</span></div>`)
+            .join('') +
+          d.warnings
+            .map((w) => `<div class="alert warning"><b>Warning</b><span>${esc(w)}</span></div>`)
+            .join('');
+      }
+
+      function kpis(d) {
+        const today = d.spend[d.spend.length - 1] || { total: 0 };
+        const here = d.roles.filter((r) => r.state !== 'refused');
+        const running = here.reduce((n, r) => n + (r.running || 0), 0);
+        const slots = here.reduce((n, r) => n + (r.workers || 1), 0);
+        const waitingHere = here.reduce((n, r) => n + (r.waiting || 0), 0);
+        const waitingElse = d.elsewhere.reduce((n, r) => n + r.waiting, 0);
+        const week = d.spend.reduce((n, s) => n + s.total, 0);
+        const tiles = [
+          ['Spent today', money(today.total), `${money(week)} over 7 days`],
+          ['Runs today', d.runs_today, d.recent[0] ? `last ${since(d.recent[0].at)}` : 'none yet'],
+          [
+            'Workers running',
+            `${running}<span class="sub"> / ${slots}</span>`,
+            `${here.length} roles on this machine`,
+          ],
+          ['Waiting here', waitingHere, "items for this machine's roles"],
+          ['Waiting elsewhere', waitingElse, `${d.elsewhere.length} roles on other machines`],
+        ];
+        document.getElementById('kpis').innerHTML = tiles
+          .map(
+            ([l, v, s]) =>
+              `<div class="tile"><div class="label">${l}</div><div class="value">${v}</div><div class="sub">${esc(s)}</div></div>`,
+          )
+          .join('');
+      }
+
+      function roleCard(r) {
+        const [cls, label] = STATES[r.state] || ['', r.state];
+        const stateLabel =
+          r.state === 'elsewhere' && r.detail
+            ? `On ${r.detail.machine}`
+            : r.state === 'running' && r.workers > 1
+              ? `Running ${r.running} of ${r.workers}`
+              : label;
+        const head = `<div class="card-top"><div><div class="role-name">${esc(r.role)}</div>
+    <div class="role-title">${esc(TITLES[r.role] || '')}</div></div>
+    ${r.state === 'refused' ? '' : `<div class="waiting"><div class="n">${r.waiting}</div><div class="l">waiting</div></div>`}</div>`;
+        if (r.state === 'refused')
+          return `<div class="card">${head}<div class="tags"><span class="pill critical">Refused</span></div>
+      <div class="block"><div class="v">${esc(r.detail)}</div></div></div>`;
+        const tags = [
+          `<span class="pill ${cls}">${esc(stateLabel)}</span>`,
+          `<span class="tag">${esc(model(r))}</span>`,
+        ];
+        if (r.wake_every && r.wake_every !== '3m')
+          tags.push(`<span class="tag">wakes every ${esc(r.wake_every)}</span>`);
+        tags.push(`<span class="tag">${esc(r.account || 'not logged in')}</span>`);
+        const blocks = [];
+        if (r.owner) blocks.push(`<div class="owner"><b>Waiting on you:</b> ${esc(r.owner)}</div>`);
+        if (r.holding.length)
+          blocks.push(`<div class="block"><div class="k"><span>Working on</span><span>${r.holding.length} of ${r.workers} workers</span></div>
+      <ul class="holding">${r.holding
+        .map(
+          (h) =>
+            `<li title="${esc(h.reason)}"><span class="worker">${esc(h.worker)}</span>${esc(h.reason)}</li>`,
+        )
+        .join('')}</ul></div>`);
+        else if (r.held)
+          blocks.push(
+            `<div class="block"><div class="k"><span>Working on</span><span>item ${r.held.id}</span></div><div class="v">${esc(r.held.reason)}</div></div>`,
+          );
+        if (r.last) {
+          const l = r.last;
+          const facts = [since(l.at), money(l.cost), duration(l.seconds)]
+            .filter(Boolean)
+            .join(' · ');
+          blocks.push(`<div class="block"><div class="k"><span>Last run</span><span>${esc(facts)}</span></div>
+      <div class="v ${l.failed ? 'fail' : 'muted'}">${esc(l.report || 'No report')}</div></div>`);
+        }
+        if (r.next.length) {
+          const more = r.waiting - r.next.length;
+          blocks.push(`<div class="block"><div class="k"><span>Up next</span></div>
+      <ol class="next">${r.next
+        .slice(0, 3)
+        .map((n) => `<li title="${esc(n.reason)}">${esc(n.reason)}</li>`)
+        .join('')}</ol>
+      ${r.waiting > 3 ? `<div class="more">and ${r.waiting - 3} more</div>` : ''}</div>`);
+        }
+        if (r.note)
+          blocks.push(`<div class="block"><div class="v muted">${esc(r.note)}</div></div>`);
+        return `<div class="card ${r.state === 'running' ? 'running' : ''}">${head}<div class="tags">${tags.join('')}</div>${blocks.join('')}</div>`;
+      }
+
+      function spend(d) {
+        const today = d.spend[d.spend.length - 1] || { roles: {} };
+        const rows = Object.entries(today.roles).sort((a, b) => b[1] - a[1]);
+        const top = Math.max(...rows.map((r) => r[1]), 0.01);
+        document.getElementById('spend-roles').innerHTML = rows.length
+          ? rows
+              .map(
+                ([role, v]) =>
+                  `<div class="hbar" data-tip="${esc(role)}: ${money(v)} today"><span class="role-chip">${esc(role)}</span>
+      <div class="track"><div class="fill" style="width:${((v / top) * 100).toFixed(1)}%"></div></div>
+      <span class="num">${money(v)}</span></div>`,
+              )
+              .join('')
+          : `<div class="empty">Nothing spent yet today.</div>`;
+        const peak = Math.max(...d.spend.map((s) => s.total), 0.01);
+        document.getElementById('spend-days').innerHTML = d.spend
+          .map((s, i) => {
+            const day = new Date(s.day + 'T12:00:00');
+            const name =
+              i === d.spend.length - 1
+                ? 'Today'
+                : day.toLocaleDateString(undefined, { weekday: 'short' });
+            const parts = Object.entries(s.roles)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 3)
+              .map(([r, v]) => `${r} ${money(v)}`)
+              .join(', ');
+            return `<div class="col ${i === d.spend.length - 1 ? 'today' : ''}" data-tip="${esc(day.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' }))}: ${money(s.total)}${parts ? ' · ' + esc(parts) : ''}">
+      <span class="amt">${s.total ? money(s.total) : ''}</span>
+      <div class="bar" style="height:${((s.total / peak) * 100).toFixed(1)}%"></div>
+      <span class="day">${esc(name)}</span></div>`;
+          })
+          .join('');
+      }
+
+      function tables(d) {
+        document.getElementById('machines-section').hidden = !d.machines.length;
+        document.getElementById('machines').innerHTML =
+          `<tr><th>Machine</th><th>Status</th><th>Last seen</th><th>Roles</th></tr>` +
+          d.machines
+            .map((m) => {
+              const live = m.seen < 300;
+              return `<tr><td class="role-chip">${esc(m.name)}</td>
+        <td><span class="pill ${live ? 'good' : ''}">${live ? 'Online' : 'Offline'}</span></td>
+        <td class="when">${ago(m.seen)}</td>
+        <td><div class="tags">${m.started.map((r) => `<span class="tag">${esc(r)}</span>`).join('') || '<span class="tag">no role</span>'}</div></td></tr>`;
+            })
+            .join('');
+        document.getElementById('elsewhere-section').hidden = !d.elsewhere.length;
+        document.getElementById('elsewhere-count').textContent = d.elsewhere.length
+          ? `${d.elsewhere.length} roles`
+          : '';
+        document.getElementById('elsewhere').innerHTML =
+          `<tr><th>Role</th><th class="num">Waiting</th><th>Now or next</th></tr>` +
+          d.elsewhere
+            .map(
+              (
+                r,
+              ) => `<tr><td><span class="role-chip">${esc(r.role)}</span> <span class="role-title">${esc(TITLES[r.role] || '')}</span></td>
+      <td class="num">${r.waiting}</td>
+      <td class="report">${r.held ? '<b>Working on</b> ' + esc(r.held.reason) : esc((r.next[0] || {}).reason)}</td></tr>`,
+            )
+            .join('');
+        document.getElementById('recent').innerHTML = d.recent.length
+          ? `<tr><th>When</th><th>Role</th><th>Account</th><th class="num">Took</th><th class="num">Cost</th><th>Report</th></tr>` +
+            d.recent
+              .map(
+                (r) => `<tr><td class="when" title="${esc(clock(r.at))}">${since(r.at)}</td>
+        <td class="role-chip">${esc(r.worker || r.role)}</td><td class="when">${esc(r.account || '')}</td><td class="num">${duration(r.seconds)}</td>
+        <td class="num">${money(r.cost)}</td>
+        <td class="report ${r.failed ? 'fail' : ''}" title="${esc(r.report)}">${esc(r.report || 'No report')}</td></tr>`,
+              )
+              .join('')
+          : `<tr><td class="empty">No runs recorded yet.</td></tr>`;
+      }
+
+      function drawState(w, sq) {
+        const now = sq.current && sq.current.story_id === w.story_id ? sq.current : null;
+        const tries = sq.tries[String(w.story_id)] || 0;
+        if (now && now.state === 'blocked') {
+          const attach =
+            (sq.config_dir ? `CLAUDE_CONFIG_DIR=${sq.config_dir} ` : '') +
+            `claude attach ${now.session}`;
+          return `<div class="owner"><b>Waits for you:</b> the session stopped to ask something. <code>${esc(attach)}</code></div>`;
+        }
+        if (now)
+          return `<div class="tags"><span class="pill good live">Drawing now</span>
+      <span class="tag">session ${esc(now.session)}</span><span class="tag">started ${since(now.at)}</span>
+      ${tries ? `<span class="tag">try ${tries + 1} of ${sq.max_tries}</span>` : ''}</div>`;
+        if (tries >= sq.max_tries)
+          return `<div class="tags"><span class="pill critical">Failed ${tries} times</span>
+      <span class="tag">draw it by hand: paste the prompt</span></div>`;
+        if (tries)
+          return `<div class="tags"><span class="pill warning">Failed once</span><span class="tag">sq tries again</span></div>`;
+        return `<div class="tags"><span class="tag">Waiting its turn</span></div>`;
+      }
+
+      let drawn = '';
+      function drawings(d) {
+        const list = d.drawings || [];
+        const sq = d.drawing || { tries: {} };
+        // Redrawn only when the list or the minute changes, so a copy in progress keeps its button.
+        const key = JSON.stringify([list, sq]) + Math.floor(Date.now() / 60000);
+        if (key === drawn) return;
+        drawn = key;
+        document.getElementById('draw-section').hidden = !list.length;
+        document.getElementById('draw-count').textContent = list.length
+          ? `${list.length} ${list.length === 1 ? 'story' : 'stories'}: sq draws them one at a time in the background`
+          : '';
+        document.getElementById('draws').innerHTML = list
+          .map(
+            (w, i) => `<div class="panel draw"><div class="draw-top">
+      <div><span class="role-chip">sc-${w.story_id}</span> <span class="draw-name">${esc(w.name)}</span>
+      <div class="role-title">listed ${since(w.at)}</div></div>
+      <button class="copy" data-copy="${i}" type="button">Copy prompt</button></div>
+      ${drawState(w, sq)}
+      <pre id="prompt-${i}">${esc(w.prompt)}</pre></div>`,
+          )
+          .join('');
+      }
+
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-copy]');
+        if (!button) return;
+        const text = document.getElementById('prompt-' + button.dataset.copy).textContent;
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = 'Copied';
+        } catch (error) {
+          const range = document.createRange();
+          range.selectNodeContents(document.getElementById('prompt-' + button.dataset.copy));
+          getSelection().removeAllRanges();
+          getSelection().addRange(range);
+          button.textContent = 'Selected, press ⌘C';
+        }
+        setTimeout(() => (button.textContent = 'Copy prompt'), 2000);
+      });
+
+      function render() {
+        if (!data) return;
+        drawings(data);
+        header(data);
+        kpis(data);
+        const here = data.roles;
+        document.getElementById('roles-count').textContent = here.length
+          ? `${here.length} roles`
+          : '';
+        document.getElementById('roles').innerHTML = here.length
+          ? here.map(roleCard).join('')
+          : `<div class="empty">No roles listed in agents.json.</div>`;
+        spend(data);
+        tables(data);
+      }
+
+      async function refresh() {
+        try {
+          const response = await fetch('status.json', { cache: 'no-store' });
+          if (!response.ok) throw new Error(response.status);
+          data = await response.json();
+          fetchedAt = Date.now() / 1000;
+          failing = false;
+        } catch (error) {
+          failing = true;
+        }
+        render();
+      }
+
+      const tip = document.getElementById('tip');
+      document.addEventListener('mousemove', (event) => {
+        const target = event.target.closest('[data-tip]');
+        if (!target) {
+          tip.style.opacity = 0;
+          return;
+        }
+        tip.textContent = target.dataset.tip;
+        const x = Math.min(event.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+        tip.style.left = x + 'px';
+        tip.style.top = event.clientY + 16 + 'px';
+        tip.style.opacity = 1;
+      });
+
+      refresh();
+      setInterval(refresh, 5000);
+      setInterval(() => {
+        const updated = document.getElementById('updated');
+        if (updated && fetchedAt)
+          updated.textContent = 'updated ' + ago(Date.now() / 1000 - fetchedAt);
+      }, 1000);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+/*
+ * Google's and Apple's published button values. They are requirements from
+ * outside this product, not design tokens: tokenising them invites somebody to
+ * harmonise them with the palette, which both sets of guidelines forbid.
+ * stylelint has one override for this file alone.
+ */
+:root {
+  --brandGoogleSurface: #ffffff;
+  --brandGoogleBorder: #747775;
+  --brandGoogleInk: #1f1f1f;
+  --brandGoogleFont: 'Roboto', sans-serif;
+  --brandAppleSurface: #000000;
+  --brandAppleInk: #ffffff;
+  --brandAppleFont: -apple-system, blinkmacsystemfont, 'Helvetica Neue', sans-serif;
+}
