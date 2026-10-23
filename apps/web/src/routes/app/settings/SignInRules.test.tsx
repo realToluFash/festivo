@@ -489,6 +489,25 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
     expect(sent.at(-1)?.body).toEqual({ everyoneNeedsTwoFactor: true });
   });
 
+  it('counts two or more people without two-factor and says each gets an email', async () => {
+    signedIn(membership());
+    answering({
+      ...WITH_OWN,
+      withoutTwoFactor: [
+        ...WITH_OWN.withoutTwoFactor,
+        { userId: 'user_5', name: 'Amaka Eze', role: COORDINATOR },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
+
+    expect(screen.getByText('2 people don’t have two-factor yet')).toBeDefined();
+    expect(
+      screen.getByText(/^When you save, each gets an email\. They have until Saturday/),
+    ).toBeDefined();
+  });
+
   it('keeps the administrators’ switch, reading that everyone’s rule covers it', async () => {
     signedIn(membership());
     answering({ ...WITH_OWN, administratorsNeedTwoFactor: true, everyoneNeedsTwoFactor: true });
