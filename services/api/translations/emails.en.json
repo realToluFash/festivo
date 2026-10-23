@@ -145,7 +145,7 @@
     "domainSuspended.restoreOnceAddress": "Restore them once they have a verified {domain} address again.",
     "domainSuspended.deadline": "If nobody answers by {deadline}, they are removed.",
     "domainSuspended.review": "Review {name}: {link}",
-    "domainSuspended.footer": "You're getting this because you're an admin of {organisation}.",
+    "domainSuspended.footer": "You're getting this because you're an owner or admin of {organisation}.",
     "joinRequest.turnedDown.subject": "Your request to join {organisation}",
     "joinRequest.turnedDown.body": "Your request to join {organisation} on Soirely was turned down, so you have not been added.",
     "joinRequest.expired.subject": "Your request to join {organisation} was removed",
