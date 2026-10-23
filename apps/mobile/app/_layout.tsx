@@ -1,5 +1,6 @@
 import '../src/intl.ts';
-import { Stack } from 'expo-router';
+import { loadAsync } from 'expo-font';
+import { SplashScreen, Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,14 +10,17 @@ import { WindowOrigin } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { initI18n } from '../src/i18n/index.ts';
 import { loadInstallId } from '../src/installId.ts';
+import { FONT_FACES, facesLoaded } from '../src/theme/fonts.ts';
+
+void SplashScreen.preventAutoHideAsync();
 
 /**
- * The root. Localisation, and the install identifier every sign-in carries, are awaited before anything renders.
+ * The root. Localisation, the bundled faces, and the install identifier every sign-in carries, are awaited before anything renders, behind the splash.
  *
  * Rendering first and translating afterwards shows a French reader a flash of
  * English, which is brief and reads as a broken product rather than as loading.
  * So this gate is deliberate, and the thing behind it is a spinner rather than
- * a half-translated screen.
+ * a half-translated screen. A face that fails to load leaves the platform font.
  */
 export default function RootLayout() {
   const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
@@ -25,7 +29,7 @@ export default function RootLayout() {
   useEffect(() => {
     let live = true;
 
-    Promise.all([initI18n(), loadInstallId()])
+    Promise.all([initI18n(), loadInstallId(), loadAsync(FONT_FACES).then(facesLoaded, () => {})])
       .then(() => {
         if (live) setState('ready');
       })
@@ -42,6 +46,10 @@ export default function RootLayout() {
       live = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (state !== 'loading') void SplashScreen.hideAsync();
+  }, [state]);
 
   if (state === 'loading') {
     return (

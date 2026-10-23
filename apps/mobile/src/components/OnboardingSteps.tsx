@@ -21,7 +21,7 @@ export function OnboardingSteps({
     <View style={styles.steps} accessibilityLabel={t('verifyEmail.stepsLabel')}>
       <View style={styles.step}>
         <View style={[styles.mark, emailDone ? styles.done : styles.now]}>
-          <Text size={tokens.typePill.size} weight="bold" style={styles.onMark}>
+          <Text size={tokens.typePill.size} weight="bold" mono style={styles.onMark}>
             {emailDone ? '✓' : '1'}
           </Text>
         </View>
@@ -42,6 +42,7 @@ export function OnboardingSteps({
           <Text
             size={tokens.typePill.size}
             weight="bold"
+            mono
             style={detailsNow ? styles.onMark : styles.secondary}
           >
             2
