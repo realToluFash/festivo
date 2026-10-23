@@ -80,7 +80,7 @@ final readonly class UserMailer
         return ($formatter->format($local) ?: $local->format('Y-m-d H:i')) . ' ' . $label;
     }
 
-    /** A deadline as the screens write it (sc-509): "Saturday 24 Oct at 14:20 WAT". */
+    /** A deadline in the house order for English (sc-6758), not always as the screens write it: "Saturday 24 Oct at 14:20 WAT". */
     public function deadline(DateTimeImmutable $at, User $user, string $locale): string
     {
         [$local, $label] = self::local($at, $user);
