@@ -120,7 +120,7 @@ final readonly class RoleManager
         return $role;
     }
 
-    /** Deleting one that members hold needs the role they move to: nobody is left with none. */
+    /** Deleting one that members hold needs the role they move to; anyone else on it, former, pending or invited, moves to Read-only when none is chosen. */
     public function delete(Role $role, User $by, ?string $replacementId): void
     {
         if ($role->isOwner()) {
@@ -131,19 +131,15 @@ final readonly class RoleManager
             throw new ApiException(ErrorCode::SeededRoleKept, $this->translator->trans('roles.seeded_kept'));
         }
 
-        $holders = $this->entityManager->getRepository(Membership::class)->findBy(['role' => $role]);
+        // Every membership on it, not only its holders: the column is not nullable.
+        $memberships = $this->entityManager->getRepository(Membership::class)->findBy(['role' => $role]);
         // An invitation still pending would otherwise lose its role and could never be accepted.
         $invited = $this->invitationRepository->findPendingWithRole($role);
 
-        if ([] !== $holders || [] !== $invited) {
-            if (null === $replacementId || '' === $replacementId) {
-                throw $this->invalid('replacement', 'roles.replacement_required');
-            }
+        if ([] !== $memberships || [] !== $invited) {
+            $replacement = $this->movedTo($role, $by, $replacementId);
 
-            $replacement = $this->replacement($role, $replacementId);
-            $this->mayGrant($role->getOrganisation(), $by, $replacement);
-
-            foreach ($holders as $membership) {
+            foreach ($memberships as $membership) {
                 $this->roleAssignment->assign($membership, $replacement);
             }
 
@@ -155,6 +151,23 @@ final readonly class RoleManager
         $this->record($by, $role, 'role.deleted', ['name' => [$role->getName(), null]]);
         $this->entityManager->remove($role);
         $this->entityManager->flush();
+    }
+
+    private function movedTo(Role $role, User $by, ?string $replacementId): Role
+    {
+        if (null !== $replacementId && '' !== $replacementId) {
+            $replacement = $this->replacement($role, $replacementId);
+            $this->mayGrant($role->getOrganisation(), $by, $replacement);
+
+            return $replacement;
+        }
+
+        if (0 < $this->holders($role)) {
+            throw $this->invalid('replacement', 'roles.replacement_required');
+        }
+
+        return $this->entityManager->getRepository(Role::class)->findOneBy(['organisation' => $role->getOrganisation(), 'seededAs' => SeededRole::ReadOnly])
+            ?? throw new ApiException(ErrorCode::InternalError, 'The organisation is missing a seeded role.');
     }
 
     private function replacement(Role $role, string $id): Role
