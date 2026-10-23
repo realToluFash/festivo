@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { bodyEdges } from './AppFrame.tsx';
+import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
 import { Screen } from './Screen.tsx';
