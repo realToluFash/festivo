@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\DomainJoining;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\Members\MembershipMachine;
+use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\Organisation;
@@ -45,13 +46,14 @@ final readonly class DomainSuspender
         private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
+        private RoleAssignment $roleAssignment,
     ) {
     }
 
     /**
      * Why, since when, and the one removal instant, each written in the reader's own zone as the screens show it.
      *
-     * @return array{reason: string, domain: ?string, since: array{at: string, written: string}, removesAt: array{at: string, written: string}|null}|null
+     * @return array{reason: string, domain: ?string, since: array{at: string, written: string}, removesAt: array{at: string, written: string}|null, onlyOwner: bool}|null
      */
     public function describe(Membership $membership, User $reader): ?array
     {
@@ -74,6 +76,7 @@ final readonly class DomainSuspender
             'domain' => $membership->getDomain(),
             'since' => $written($since),
             'removesAt' => null === $removesAt ? null : $written($removesAt),
+            'onlyOwner' => $this->roleAssignment->isLastOwner($membership),
         ];
     }
 

@@ -53,12 +53,20 @@ export function AccessPaused({
         </Text>
         <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.kept', named)}</Text>
         <Text size={tokens.typeBodyPhone.size}>{t('accessPaused.untouched')}</Text>
-        {suspension.removesAt != null && (
+        {suspension.onlyOwner ? (
           <Notice
-            tone="attention"
-            mark="!"
-            body={t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
+            tone="quiet"
+            mark={tokens.marks.info.glyph}
+            body={t('accessPaused.stillOnlyOwner', named)}
           />
+        ) : (
+          suspension.removesAt != null && (
+            <Notice
+              tone="attention"
+              mark="!"
+              body={t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
+            />
+          )
         )}
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
           {t('accessPaused.nextTitle')}

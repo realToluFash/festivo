@@ -31,7 +31,7 @@ final readonly class MemberSerialiser
     {
         $user = $membership->getUser();
         $last = Iter\last($history);
-        $entered = Iter\last(Vec\filter($history, static fn (MembershipTransition $step): bool => $step->getToStatus()->isEntry() && (null === $step->getFromStatus() || MembershipStatus::LeftOrRemoved === $step->getFromStatus())));
+        $entered = Iter\last(Vec\filter($history, static fn (MembershipTransition $step): bool => $step->getToStatus()->isEntry() && self::fromOutside($step)));
         $invitation = Iter\last($accepted);
         $removesAt = MembershipStatus::PendingApproval === $membership->getStatus() ? $membership->getRequestExpiresAt() : null;
 
@@ -90,6 +90,14 @@ final readonly class MemberSerialiser
             'seededAs' => $role->getSeededAs()?->value,
             'name' => $role->getName(),
         ];
+    }
+
+    /** Approval and Restore move a member already inside, in Settings, and are not how they came. */
+    private static function fromOutside(MembershipTransition $step): bool
+    {
+        $from = $step->getFromStatus();
+
+        return null === $from || MembershipStatus::LeftOrRemoved === $from;
     }
 
     // The machine has one state for both; who caused it tells them apart.
