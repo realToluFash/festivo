@@ -151,6 +151,12 @@ class SidePullRequests(unittest.TestCase):
             for state in ("In Progress", "In Review", "Passed Code Review"):
                 self.assertEqual(work.developer_items([self.ticket(state)], [merged]), [])
 
+    def test_a_push_after_the_pass_leaves_the_ticket_in_its_state(self):
+        pushed = self.side(head="b" * 40, lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(work.voided_passes([self.ticket("Passed Code Review")], [pushed]), [])
+        built = self.ticket("Passed Code Review", labels=())
+        self.assertEqual(work.voided_passes([built], [pushed]), [(built, pushed)])
+
     def test_a_story_that_is_not_a_linguists_ticket_reviews_and_merges_as_before(self):
         for labels in ((), ("translation", "ops")):
             built = self.ticket(labels=labels)
@@ -572,6 +578,12 @@ class Unblocked(unittest.TestCase):
         merged = self.merged(41, 9, branch="fix/sc-9/test-wording")
         self.assertEqual(self.wakes([self.ticket("In Progress")], [merged]),
                          [(["l10n"], 9, 41, "PR #41 (sc-9) merged: sc-9 can go on")])
+
+    def test_its_own_merged_pr_wakes_the_linguist_on_a_ticket_left_in_review(self):
+        merged = self.merged(41, 9, branch="fix/sc-9/test-wording")
+        for state in ("In Review", "Passed Code Review", "Ready For QA"):
+            self.assertEqual(self.wakes([self.ticket(state)], [merged, self.merged()]),
+                             [(["l10n"], 9, 41, "PR #41 (sc-9) merged: sc-9 can go on")], state)
 
     def test_a_raised_wake_stays_after_its_pr_leaves_the_synced_merges(self):
         row = {"fingerprint": "l10n:unblocked:sc-9:#40", "story_id": 9, "pr": 40,

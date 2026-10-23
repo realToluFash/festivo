@@ -199,6 +199,8 @@ def queue_items(stories, moves=None, now=None, epics=None):
     return list(merged.values())
 
 
+# A push after the pass leaves the story in Passed Code Review, but the pass no longer
+# covers its head, so the lead looks again.
 REVIEWED = ("In Review", "Passed Code Review")
 
 
@@ -212,8 +214,6 @@ def review_items(stories, prs):
         if story["done"]:
             continue
         open_prs = by_story.get(story["id"], [])
-        # A push after the pass leaves the story in Passed Code Review, but the pass no
-        # longer covers its head, so the lead looks again.
         if story["state"] not in REVIEWED:
             open_prs = [pr for pr in open_prs if side_pr(story, pr)]
             if not open_prs:
@@ -278,13 +278,14 @@ BUILDING_PR = ("In Progress", "Failed Code Review", "In Review", "Passed Code Re
 
 
 def voided_passes(stories, prs):
-    """Stories in Passed Code Review whose open pull request moved past the pass."""
+    """Stories in Passed Code Review whose open pull request moved past the pass. A side
+    pull request leaves the linguist's ticket where it is: `review_items` wakes the lead."""
     by_id = {story["id"]: story for story in stories}
     found = []
     for pr in prs:
         story = by_id.get(pr["story_id"])
         if not story or story["done"] or story["state"] != "Passed Code Review" \
-                or pr["state"] != "open":
+                or pr["state"] != "open" or side_pr(story, pr):
             continue
         verdict = latest_verdict(pr)
         if not (verdict and verdict["verdict"] == "pass"
@@ -377,13 +378,14 @@ def unblocked_items(stories, prs, runs=None, raised=()):
             merged.setdefault(pr["story_id"], []).append(pr)
     items = []
     for ticket in stories:
-        if ticket["done"] or ticket["state"] not in TRANSLATING \
-                or "translation" not in ticket["labels"]:
+        if ticket["done"] or "translation" not in ticket["labels"]:
             continue
+        # A developer's pull request on the ticket itself wakes it in any state, since the
+        # old flow left such tickets in review; one it covers, only while it is translated.
+        own = ticket["state"] not in TRANSLATING
         since = last_worked(ticket, runs)
         wakes = []
-        # A developer's pull request on the ticket itself unblocks it too.
-        for story_id in sorted(set(covered(ticket)) | {ticket["id"]}):
+        for story_id in sorted({ticket["id"]} if own else set(covered(ticket)) | {ticket["id"]}):
             for pr in merged.get(story_id, []):
                 if T.epoch(pr["merged_at"]) <= since:
                     continue
@@ -396,7 +398,8 @@ def unblocked_items(stories, prs, runs=None, raised=()):
         wakes += [_item(row["fingerprint"], "l10n", ["l10n"], "unblocked", row["reason"], INBOX,
                         ticket, {"number": row["pr"]})
                   for row in raised if row["story_id"] == ticket["id"]
-                  and row["fingerprint"] not in seen and row["first_seen"] > since]
+                  and row["fingerprint"] not in seen and row["first_seen"] > since
+                  and not (own and not row["reason"].endswith("can go on"))]
         items += wakes
     return items
 
