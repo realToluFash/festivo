@@ -1129,7 +1129,7 @@
       "suspended": "Accès suspendu",
       "left": "A quitté l’organisation",
       "removed": "Accès retiré",
-      "domainSuspended": "Accès suspendu : adresse d’entreprise retirée"
+      "domainSuspended": "Accès suspendu : domaine d’entreprise"
     },
     "how": {
       "invitation": "Invitation",
@@ -1206,7 +1206,7 @@
     "pickSomebody": "Choisissez une personne dans la liste pour l’afficher ici.",
     "backToList": "‹ Membres",
     "suspendedBecause": {
-      "address_gone": "L’adresse {{domain}} de {{name}} ne figure plus sur son compte.",
+      "address_gone": "{{name}} n’a plus d’adresse {{domain}} sur son compte.",
       "domain_closed": "{{organisation}} n’accepte plus les adhésions via {{domain}}.",
       "domain_managed_elsewhere": "{{domain}} est désormais géré par une autre organisation."
     },
@@ -1215,7 +1215,7 @@
     "onlyOwnerNotRemovable": "{{name}} est la seule personne ayant le rôle Propriétaire : son accès ne peut donc pas être retiré.",
     "onlyOwnerRestoreNeedsAddress": "Son accès pourra être rétabli dès que son adresse e-mail principale sera de nouveau une adresse {{domain}} vérifiée.",
     "restore": "Rétablir",
-    "restored": "L’accès de {{name}} à {{organisation}} est rétabli.",
+    "restored": "{{name}} a de nouveau accès à {{organisation}}.",
     "restoreNeedsAddress": "{{name}} doit d’abord avoir une adresse {{domain}} vérifiée.",
     "noRoleYet": "Pas encore de rôle",
     "awaiting": {
@@ -1246,11 +1246,11 @@
     "since": "En pause depuis le {{when}}.",
     "kept": "Votre travail dans {{organisation}} est conservé et vous reste attribué.",
     "untouched": "Vos autres organisations et votre accès à des événements individuels ne sont pas concernés.",
-    "removedBy": "Si personne ne rétablit votre accès d’ici le {{when}}, vous ne ferez plus partie de {{organisation}}.",
+    "removedBy": "Si personne ne rétablit votre accès d’ici le {{when}}, vous ne ferez plus partie de l’organisation {{organisation}}.",
     "stillOnlyOwner": "Vous êtes toujours la seule personne ayant le rôle Propriétaire dans {{organisation}}, donc votre accès n’est pas retiré.",
     "nextTitle": "La suite",
-    "nextAddressGone": "Ajoutez de nouveau votre adresse {{domain}} dans Paramètres du compte et définissez-la comme principale, puis demandez à un administrateur de {{organisation}} de rétablir votre accès.",
-    "nextNothingNeeded": "Un administrateur de {{organisation}} peut rétablir votre accès. Vous n’avez rien à faire.",
+    "nextAddressGone": "Ajoutez de nouveau votre adresse {{domain}} dans Paramètres du compte et définissez-la comme principale, puis demandez à un administrateur de l’organisation {{organisation}} de rétablir votre accès.",
+    "nextNothingNeeded": "Un administrateur de l’organisation {{organisation}} peut rétablir votre accès. Vous n’avez rien à faire.",
     "accountSettings": "Paramètres du compte",
     "switch": "Changer d’organisation",
     "backToList": "‹ Membres"

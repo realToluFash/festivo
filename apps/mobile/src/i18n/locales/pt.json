@@ -1129,7 +1129,7 @@
       "suspended": "Acesso suspenso",
       "left": "Saiu",
       "removed": "Acesso retirado",
-      "domainSuspended": "Acesso suspenso: sem endereço da empresa"
+      "domainSuspended": "Acesso suspenso: domínio da empresa"
     },
     "how": {
       "invitation": "Convite",

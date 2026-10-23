@@ -136,7 +136,7 @@
     "ownershipTransferred.youGaveIt": "Ha transferido a {to} la propiedad de {organisation}. Ahora tiene el rol Administrador: puede seguir gestionándola en el día a día, pero no cederla ni eliminarla.",
     "ownershipTransferred.youHaveIt": "{from} le ha transferido la propiedad de {organisation}. Ahora puede cambiar la facturación, los miembros, los roles y la configuración de la organización, y eliminarla. {from} tiene ahora el rol Administrador.",
     "ownershipTransferred.footer": "Recibe este correo porque es miembro de {organisation}.",
-    "domainSuspended.subject": "El acceso de {name} a {organisation} está en pausa",
+    "domainSuspended.subject": "Acceso en pausa: {name} en {organisation}",
     "domainSuspended.addressGone": "El acceso de {name} a {organisation} está en pausa porque la dirección de {domain} ya no figura en la cuenta de esta persona.",
     "domainSuspended.domainClosed": "El acceso de {name} a {organisation} está en pausa porque {organisation} ya no permite unirse a través de {domain}.",
     "domainSuspended.managedElsewhere": "El acceso de {name} a {organisation} está en pausa porque ahora {domain} lo gestiona otra organización.",

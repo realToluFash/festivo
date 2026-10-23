@@ -861,7 +861,7 @@
       "suspended": "Suspended",
       "left": "Left",
       "removed": "Removed",
-      "domainSuspended": "Acesso suspenso: sem endereço da empresa"
+      "domainSuspended": "Acesso suspenso: domínio da empresa"
     },
     "how": {
       "invitation": "Invitation",
