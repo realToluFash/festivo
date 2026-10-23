@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   COUNTRY_CODES,
@@ -77,6 +77,66 @@ describe('currencies', () => {
     expect(offered).toContain('XOF');
     for (const code of ['SLL', 'ZWL', 'HRK', 'XXX', 'XTS', 'XAU', 'XDR', 'BOV'])
       expect(offered).not.toContain(code);
+  });
+
+  describe('on an engine that names SLE, ZWG, XCG and VED by their codes, as Chrome does', () => {
+    const engineOf = Intl.DisplayNames.prototype.of;
+    const unnamed = new Set(['SLE', 'ZWG', 'XCG', 'VED']);
+
+    function engineNaming(name: (code: string) => string | undefined) {
+      vi.spyOn(Intl.DisplayNames.prototype, 'of').mockImplementation(function (
+        this: Intl.DisplayNames,
+        code: string,
+      ) {
+        return name(code) ?? engineOf.call(this, code);
+      });
+    }
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('names every currency it offers, in each language', () => {
+      engineNaming((code) => (unnamed.has(code) ? code : undefined));
+
+      for (const locale of ['en', 'es', 'fr', 'pt'])
+        for (const code of CURRENCY_CODES)
+          expect(currencyLabel(code, locale), `${code} in ${locale}`).not.toBe(code);
+    });
+
+    it("names the four from CLDR in the reader's language", () => {
+      engineNaming((code) => (unnamed.has(code) ? code : undefined));
+
+      expect(['en', 'es', 'fr', 'pt'].map((locale) => currencyLabel('SLE', locale))).toEqual([
+        'Sierra Leonean Leone (SLE)',
+        'leona sierraleonesa (SLE)',
+        'leone sierra-léonais (SLE)',
+        'Leone de Serra Leoa (SLE)',
+      ]);
+      expect(['en', 'es', 'fr', 'pt'].map((locale) => currencyLabel('ZWG', locale))).toEqual([
+        'Zimbabwean Gold (ZWG)',
+        'oro zimbabuense (ZWG)',
+        'or du Zimbabwe (ZWG)',
+        'Ouro zimbabueano (ZWG)',
+      ]);
+      expect(['en', 'es', 'fr', 'pt-BR'].map((locale) => currencyLabel('XCG', locale))).toEqual([
+        'Caribbean guilder (XCG)',
+        'florín caribeño (XCG)',
+        'florin caribéen (XCG)',
+        'Florim do Caribe (XCG)',
+      ]);
+      for (const locale of ['en', 'es', 'fr', 'pt'])
+        expect(currencyLabel('VED', locale), locale).toBe('Bolívar Soberano (VED)');
+    });
+
+    it('keeps the name the engine gives, for these four too once it knows them', () => {
+      engineNaming((code) =>
+        code === 'XCG' ? 'florim caribenho' : unnamed.has(code) ? code : undefined,
+      );
+
+      expect(currencyLabel('NGN', 'fr')).toBe('naira nigérian (NGN)');
+      expect(currencyLabel('XCG', 'pt-PT')).toBe('florim caribenho (XCG)');
+    });
   });
 
   it("sorts by the name in the reader's language", () => {
