@@ -706,6 +706,108 @@ describe('inviting somebody', () => {
     expect(screen.queryByText(/if nobody answers/)).toBeNull();
   });
 
+  it('lets an administrator restore the suspended only owner, and shows Remove refused in the server words', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: OWNER_PERMISSIONS.filter((one) => !one.startsWith('billing')),
+      }),
+    );
+    const sent = answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          members: [
+            member({
+              self: false,
+              status: 'suspended',
+              channel: 'domain',
+              suspension: {
+                reason: 'address_gone',
+                domain: 'ire.events',
+                since: {
+                  at: '2026-10-17T13:20:00+00:00',
+                  written: 'Saturday, Oct 17 at 14:20 WAT',
+                },
+                removesAt: null,
+                onlyOwner: true,
+              },
+              history: [
+                {
+                  from: null,
+                  to: 'active',
+                  channel: 'domain',
+                  by: FOLAKE,
+                  at: '2026-05-28T09:00:00+00:00',
+                },
+                {
+                  from: 'active',
+                  to: 'suspended',
+                  channel: 'domain',
+                  by: FOLAKE,
+                  at: '2026-10-17T13:20:00+00:00',
+                },
+              ],
+            }),
+            member({
+              id: 'm_bisi',
+              user: { ...BISI, email: 'bisi@ire.events' },
+              role: { id: 'role_2', seededAs: 'administrator', name: null },
+              self: true,
+            }),
+          ],
+        }),
+      'DELETE /api/orgs/org_1/members/m_folake': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/last_owner',
+            title: 'An organisation always has at least one owner.',
+            status: 409,
+          },
+          409,
+        ),
+      'POST /api/orgs/org_1/members/m_folake/restore': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
+
+    expect(screen.getByRole('heading', { name: /Suspended: company address gone/ })).toBeDefined();
+    expect(
+      screen.getByText(
+        'Folake Adeyemi is the only owner of Ìrè Events, so they stay suspended, still an owner, and are not removed.',
+      ),
+    ).toBeDefined();
+    expect(screen.getByText('Suspended when their company address went')).toBeDefined();
+    expect(screen.queryByText(/Only an owner can change/)).toBeNull();
+    expect(screen.queryByRole('radio')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+
+    const refused = await screen.findByText('An organisation always has at least one owner.');
+    expect(sent.map((one) => one.line)).toContain('DELETE /api/orgs/org_1/members/m_folake');
+    expect(
+      screen.getByText("Folake Adeyemi is the only owner, so they can't be removed."),
+    ).toBeDefined();
+    expect(
+      screen.getByText(
+        'Restore works once their main email address is a verified ire.events address again.',
+      ),
+    ).toBeDefined();
+    await waitFor(() => expect(refused.closest('[tabindex="-1"]')).toBe(document.activeElement));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+
+    await waitFor(() =>
+      expect(sent.map((one) => one.line)).toContain(
+        'POST /api/orgs/org_1/members/m_folake/restore',
+      ),
+    );
+  });
+
   it('offers neither a role change nor removal on your own row', async () => {
     signedIn();
     answering(READS);

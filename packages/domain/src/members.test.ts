@@ -83,6 +83,14 @@ describe('how a member got here', () => {
     ).toBe('approved');
   });
 
+  it('names nobody for a domain suspension, whoever or whatever triggered it', () => {
+    for (const by of ['u1', 'u2', null]) {
+      expect(historyLine({ from: 'active', to: 'suspended', channel: 'domain', by }, 'u1')).toEqual(
+        { key: 'suspendedAddressGone', named: false },
+      );
+    }
+  });
+
   it('words re-joining as joining, through the channel used the second time', () => {
     expect(
       historyLine({ from: 'left_or_removed', to: 'active', channel: 'invitation', by: 'u1' }, 'u1')
@@ -118,6 +126,19 @@ describe("what a member's page offers", () => {
   it('keeps the only active owner as they are, whoever looks', () => {
     expect(memberStanding(owner, [owner, you, coordinator], anOwner)).toBe('onlyOwner');
     expect(memberStanding(owner, [owner, member('owner', 'suspended')], anOwner)).toBe('onlyOwner');
+  });
+
+  it('lets anyone who manages members restore or remove the suspended only owner', () => {
+    const suspended = { ...member('owner', 'suspended'), suspension: { onlyOwner: true } };
+
+    expect(memberStanding(suspended, [suspended, you], admin)).toBe('suspendedOnlyOwner');
+    expect(memberStanding(suspended, [suspended, you], anOwner)).toBe('suspendedOnlyOwner');
+    expect(memberStanding(suspended, [suspended, you], { owns: false, manages: false })).toBe(
+      'readOnly',
+    );
+    expect(
+      memberStanding({ ...suspended, suspension: { onlyOwner: false } }, [suspended, owner], admin),
+    ).toBe('ownerOnly');
   });
 
   it('lets an owner change or remove a second owner, and nobody else', () => {

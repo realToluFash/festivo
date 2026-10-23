@@ -47,7 +47,12 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
     return { key: 'removed', named: true };
   }
 
-  if (step.to === 'suspended') return { key: 'suspended', named: true };
+  // Decided 23 Oct (sc-564): nobody performs a domain suspension, whatever triggered it.
+  if (step.to === 'suspended') {
+    return step.channel === 'domain'
+      ? { key: 'suspendedAddressGone', named: false }
+      : { key: 'suspended', named: true };
+  }
   if (step.from === 'suspended') return { key: 'restored', named: true };
   if (step.from === 'pending_approval' && step.channel !== 'invitation') {
     return { key: 'approved', named: true };
@@ -58,12 +63,14 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
 }
 
 /** What a member's page offers: sc-68's rules, read from the list the screen loaded, and checked again by the API. */
-export type MemberStanding = 'self' | 'onlyOwner' | 'ownerOnly' | 'readOnly' | 'manageable';
+export type MemberStanding =
+  'self' | 'onlyOwner' | 'suspendedOnlyOwner' | 'ownerOnly' | 'readOnly' | 'manageable';
 
 interface StandingMember {
   self: boolean;
   status: MemberState;
   role: { seededAs: string | null };
+  suspension?: { onlyOwner: boolean } | null;
 }
 
 export function memberStanding(
@@ -79,6 +86,8 @@ export function memberStanding(
   if (member.self) return 'self';
   if (owner && member.status === 'active' && activeOwners === 1) return 'onlyOwner';
   if (!caller.manages) return 'readOnly';
+  // Decided 23 Oct (sc-564): nobody else could restore them, so members.manage may.
+  if (owner && member.suspension?.onlyOwner === true) return 'suspendedOnlyOwner';
   if (owner && !caller.owns) return 'ownerOnly';
 
   return 'manageable';

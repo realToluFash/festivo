@@ -319,6 +319,8 @@ export interface DomainSuspension {
   domain: string | null;
   since: TwoFactorDeadline;
   removesAt: TwoFactorDeadline | null;
+  /** The organisation's only Owner: never removed, and restored by anyone holding members.manage. */
+  onlyOwner: boolean;
 }
 
 /** An organisation the account's access to is paused in: no grant at all, only why. */
@@ -2472,7 +2474,13 @@ function asDomainSuspension(raw: unknown): DomainSuspension | null {
 
   return reason == null || since == null
     ? null
-    : { reason, domain: stringOrNull(suspension.domain), since, removesAt };
+    : {
+        reason,
+        domain: stringOrNull(suspension.domain),
+        since,
+        removesAt,
+        onlyOwner: suspension.onlyOwner === true,
+      };
 }
 
 function asPausedOrganisation(raw: unknown): PausedOrganisation | null {

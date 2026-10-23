@@ -25,6 +25,7 @@ function paused(reason: PausedOrganisation['suspension']['reason']): PausedOrgan
       domain: 'ire.events',
       since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
       removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday, Nov 15 at 09:40 WAT' },
+      onlyOwner: false,
     },
   };
 }
@@ -109,12 +110,15 @@ describe('AccessPaused', () => {
     expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
   });
 
-  it('names no removal for the only owner, who is never removed', () => {
+  it('tells the only owner they are still the owner and are not removed', () => {
     const owner = paused('address_gone');
     render(
       <MemoryRouter>
         <AccessPaused
-          paused={{ ...owner, suspension: { ...owner.suspension, removesAt: null } }}
+          paused={{
+            ...owner,
+            suspension: { ...owner.suspension, removesAt: null, onlyOwner: true },
+          }}
           others={[]}
           onSwitch={vi.fn()}
           onChoose={vi.fn()}
@@ -124,6 +128,9 @@ describe('AccessPaused', () => {
 
     expect(screen.getByText('Paused since Friday, Oct 16 at 09:40 WAT.')).toBeDefined();
     expect(screen.queryByText(/you are removed from/)).toBeNull();
+    expect(
+      screen.getByText('You are still the only owner of Ìrè Events, so you are not removed.'),
+    ).toBeDefined();
   });
 
   it('names another organisation managing the domain', () => {
