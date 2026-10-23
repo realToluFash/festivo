@@ -1,9 +1,13 @@
-import type { TextStyle } from 'react-native';
+import { StyleSheet, type StyleProp, type TextStyle } from 'react-native';
+
+import { MONO, SANS, faceStyle } from './faceFor.ts';
+
+export { facesLoaded } from './faceFor.ts';
 
 /**
  * Weights, never family names. This is a convention with teeth.
  *
- * A custom face ships as one file per weight, so a mapper resolves
+ * A custom face ships as one file per weight, so `face()` below resolves
  * `fontWeight` to the right file. Setting `fontFamily` directly bypasses that
  * mapper — and on React Native Web the previous build CRASHED whenever it
  * happened, because the mapper was mid-resolution on a style it did not expect.
@@ -13,11 +17,6 @@ import type { TextStyle } from 'react-native';
  *   1. Never write `fontFamily` in a style. Write `fontWeight`.
  *   2. Never nest a `Text` inside a `Text`, and never give a `Text` an
  *      `onPress`. Use sibling `Text` elements and wrap in a `Pressable`.
- *
- * No face is registered yet, so these resolve to the platform font. That is
- * deliberate: a font file is a design decision, and inventing one here would
- * be a choice made by whoever happened to write the skeleton. The mechanism and
- * the rule are what Foundation owes the design.
  */
 export const WEIGHTS = {
   regular: '400',
@@ -34,14 +33,20 @@ export function weight(name: WeightName): Pick<TextStyle, 'fontWeight'> {
   return { fontWeight: WEIGHTS[name] };
 }
 
+/** Bundled in assets/fonts beside their licences, so nothing is fetched at runtime. Keyed by the family `faceFor()` names. */
+export const FONT_FACES = {
+  [SANS[400]]: require('../../assets/fonts/instrument-sans/InstrumentSans-Regular.ttf'),
+  [SANS[500]]: require('../../assets/fonts/instrument-sans/InstrumentSans-Medium.ttf'),
+  [SANS[600]]: require('../../assets/fonts/instrument-sans/InstrumentSans-SemiBold.ttf'),
+  [SANS[700]]: require('../../assets/fonts/instrument-sans/InstrumentSans-Bold.ttf'),
+  [MONO[500]]: require('../../assets/fonts/jetbrains-mono/JetBrainsMono-Medium.ttf'),
+  [MONO[700]]: require('../../assets/fonts/jetbrains-mono/JetBrainsMono-Bold.ttf'),
+} as Record<string, number>;
+
 /**
- * Custom faces, when there are any: one entry per weight, keyed so a mapper
- * can resolve fontWeight to a file.
- *
- * The design names Instrument Sans (400/500/600/700) for everything a person
- * reads, and JetBrains Mono (500/700) for step numbers and keyboard shortcuts
- * only. No file is bundled yet — these resolve to the platform font until the
- * faces are added — but the weights above are the set to ship, so a style
- * asking for 600 is asking for something that will exist.
+ * The one place a family is chosen, from the weight the whole style asks for.
+ * Text and every field put their style through this.
  */
-export const FONT_FACES: Record<string, never> = {};
+export function faced(style: StyleProp<TextStyle>, mono = false): TextStyle {
+  return faceStyle(StyleSheet.flatten(style), mono);
+}

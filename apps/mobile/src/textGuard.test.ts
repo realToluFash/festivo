@@ -95,6 +95,50 @@ describe('no onPress on a Text', () => {
   });
 });
 
+describe('every TextInput takes its face from faced()', () => {
+  it('holds across every screen and component', () => {
+    const offenders = sources().flatMap(({ path, text }) =>
+      unfacedInputAt(strip(text)).map((line) => `${path}:${line}`),
+    );
+
+    expect(
+      offenders,
+      'A TextInput draws in the platform font unless its style goes through faced().',
+    ).toEqual([]);
+  });
+
+  it('finds an input whose style skips faced(), written across lines', () => {
+    const raw = `
+      <TextInput
+        value={value}
+        style={[styles.input, wrong && styles.wrong]}
+      />`;
+
+    expect(unfacedInputAt(strip(raw))).not.toEqual([]);
+    expect(unfacedInputAt(strip('<TextInput value={value} />'))).not.toEqual([]);
+  });
+
+  it('does not fire on an input styled through faced()', () => {
+    expect(unfacedInputAt(strip('<TextInput style={faced([styles.input])} />'))).toEqual([]);
+  });
+});
+
+/** Lines where a `<TextInput` opens without `style={faced(`. */
+function unfacedInputAt(text: string): number[] {
+  const found: number[] = [];
+  const pattern = /(?<![A-Za-z0-9_])<TextInput(?![A-Za-z0-9_])/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) != null) {
+    const end = text.indexOf('/>', match.index);
+    const tag = end === -1 ? text.slice(match.index) : text.slice(match.index, end);
+
+    if (!/\bstyle=\{faced\(/.test(tag)) found.push(text.slice(0, match.index).split('\n').length);
+  }
+
+  return found;
+}
+
 /**
  * Comments and string literals removed, so a rule written about the pattern in
  * prose does not report itself. Newlines are preserved so line numbers survive.
