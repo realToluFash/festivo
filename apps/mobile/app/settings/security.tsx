@@ -12,7 +12,13 @@ import { Text } from '../../src/components/Text.tsx';
 import { TwoFactorCard } from '../../src/components/TwoFactorCard.tsx';
 import { WaysCard } from '../../src/components/WaysCard.tsx';
 import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
-import { endedHere, reloadSignedIn, signOutHere, useSignedIn } from '../../src/signedIn.ts';
+import {
+  endedHere,
+  reloadSignedIn,
+  rereadAccount,
+  signOutHere,
+  useSignedIn,
+} from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
 /** Settings > Security, `AppSettings-*` state `security`: every card the interim screen held. */
@@ -69,6 +75,7 @@ export default function Security() {
                   await reloadSignedIn();
                   setSessionsEnded((n) => n + 1);
                 }}
+                onRefused={rereadAccount}
                 onSetPassword={() => setSettingPassword(true)}
                 onSignedOutHere={signOutHere}
                 onCodeSpent={codeSpent}
