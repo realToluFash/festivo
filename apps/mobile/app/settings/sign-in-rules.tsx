@@ -5,7 +5,8 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
-import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
+import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { Screen } from '../../src/components/Screen.tsx';

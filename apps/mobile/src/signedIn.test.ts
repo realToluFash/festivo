@@ -120,6 +120,7 @@ describe('opening the signed-in home at launch', () => {
         domain: 'ire.events',
         since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
         removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday, Nov 15 at 09:40 WAT' },
+        onlyOwner: false,
       },
     };
     api.me.mockResolvedValue(account);

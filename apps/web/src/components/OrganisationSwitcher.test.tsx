@@ -216,6 +216,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
             domain: 'lagosweddings.ng',
             since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
             removesAt: null,
+            onlyOwner: false,
           },
         },
       },

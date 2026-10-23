@@ -21,7 +21,7 @@ import {
   memberStatusWord,
   roleName,
 } from '@soirely/domain';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -533,7 +533,13 @@ function MemberDetail({
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
   const waiting = member.status === 'pending_approval';
-  const acts = standing === 'manageable' && !waiting;
+  const onlyOwner = standing === 'suspendedOnlyOwner';
+  const acts = (standing === 'manageable' || onlyOwner) && !waiting;
+  const refusal = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (onlyOwner && failed != null) refusal.current?.focus();
+  }, [onlyOwner, failed]);
 
   async function remove(): Promise<void> {
     setRemoval('removing');
@@ -544,7 +550,7 @@ function MemberDetail({
       setRemoval('removed');
       onChanged(await api.members(organisation.id));
     } catch (error) {
-      setRemoval('confirming');
+      setRemoval(onlyOwner ? 'resting' : 'confirming');
       setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
     }
   }
@@ -692,7 +698,7 @@ function MemberDetail({
 
       {acts && (
         <section className="card" aria-labelledby="remove-title">
-          {removal === 'resting' ? (
+          {removal === 'resting' || (onlyOwner && removal === 'removing') ? (
             <>
               <h2 id="remove-title">
                 {t('membersScreen.removeTitle', { name: member.user.name })}
@@ -700,10 +706,28 @@ function MemberDetail({
               <p className="muted">
                 {t('membersScreen.removeBody', { organisation: organisation.name })}
               </p>
+              {onlyOwner && failed != null && (
+                <div ref={refusal} tabIndex={-1}>
+                  <FieldError id="remove-failed" message={failed}>
+                    <p className="muted">
+                      {t('membersScreen.onlyOwnerNotRemovable', { name: member.user.name })}
+                    </p>
+                    {member.suspension?.reason === 'address_gone' && (
+                      <p className="muted">
+                        {t('membersScreen.onlyOwnerRestoreNeedsAddress', {
+                          domain: member.suspension.domain ?? '',
+                        })}
+                      </p>
+                    )}
+                  </FieldError>
+                </div>
+              )}
               <button
                 type="button"
                 className="button button-danger"
-                onClick={() => setRemoval('confirming')}
+                aria-busy={removal === 'removing'}
+                disabled={removal === 'removing'}
+                onClick={() => (onlyOwner ? void remove() : setRemoval('confirming'))}
               >
                 {t('membersScreen.removeButton', { organisation: organisation.name })}
               </button>
@@ -812,10 +836,14 @@ function Suspension({
         {t('membersScreen.state.domainSuspended')}
       </h2>
       <p>{t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}</p>
-      {suspension.removesAt != null && (
-        <p className="muted">
-          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
-        </p>
+      {suspension.onlyOwner ? (
+        <p className="muted">{t('membersScreen.suspendedOnlyOwner', named)}</p>
+      ) : (
+        suspension.removesAt != null && (
+          <p className="muted">
+            {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+          </p>
+        )
       )}
       {failed != null && <FieldError id="restore-failed" message={failed} />}
       <div className="actions">

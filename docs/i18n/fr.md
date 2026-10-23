@@ -74,6 +74,16 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   string after it) keeps the straight ': ’ is outside GSM-7 and would send the message as
   UCS-2, at 70 characters a segment. ’ is also the safe one in an ICU string, where a straight
   ' is the quote character. Keys and markup quoting never change.
+- **21 Oct 2026. Approving or turning down a request to join** (`membersScreen.awaiting.*`,
+  `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
+  `messages:members.request_answered`, sc-7217). "Approve" is « Approuver », matching « En
+  attente d’approbation »; "turn down" is « Refuser », and what is refused is « la demande »,
+  never the person: « Refuser la demande de {{name}} ? », « Refuser la demande de {{name}} », « Demande
+  refusée par {{by}} ». A request nobody answered is « retirée faute de réponse ». A role
+  given on approval is « avec le rôle {{role}} », so nothing agrees with the person; the
+  person refused « ne fait donc pas partie de l’organisation », never « n’a pas été ajouté ».
+  The waiting email’s count takes `many`, « 1 000 000 de personnes ».
+
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads « En pause », the admins
   « Accès suspendu », as the English keeps them apart. Restoring is « rétablir ». Nothing

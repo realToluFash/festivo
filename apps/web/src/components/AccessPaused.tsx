@@ -32,13 +32,22 @@ export function AccessPaused({
       <p className="muted">{t('accessPaused.since', { when: suspension.since.written })}</p>
       <p>{t('accessPaused.kept', named)}</p>
       <p>{t('accessPaused.untouched')}</p>
-      {suspension.removesAt != null && (
-        <div className="notice notice-attention" role="note">
-          <span className="mark mark-attention" aria-hidden="true">
-            !
+      {suspension.onlyOwner ? (
+        <div className="notice notice-quiet" role="note">
+          <span className="mark mark-info" aria-hidden="true">
+            i
           </span>
-          <p>{t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}</p>
+          <p>{t('accessPaused.stillOnlyOwner', named)}</p>
         </div>
+      ) : (
+        suspension.removesAt != null && (
+          <div className="notice notice-attention" role="note">
+            <span className="mark mark-attention" aria-hidden="true">
+              !
+            </span>
+            <p>{t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}</p>
+          </div>
+        )
       )}
       <h2>{t('accessPaused.nextTitle')}</h2>
       <p>

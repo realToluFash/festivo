@@ -54,6 +54,16 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   gives the clients PT-PT's rule (sc-3030); raised again on sc-68. A slot appears once per key (the parity
   guard counts them), so `transferred` closes "… para as duas contas", not a second {{name}}.
 
+- **21 Oct 2026. Approving or turning down a request to join** (`membersScreen.awaiting.*`,
+  `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
+  `messages:members.request_answered`, sc-7217). "Approve" is "Aprovar", "turn down"
+  "Recusar", and what is refused is "o pedido", never the person: "Recusar o pedido de
+  {{name}}?", "Recusar o pedido de {{name}}", "Pedido recusado por {{by}}". A request nobody answered "é
+  removido a {{deadline}}", the date with "a", as the row line. A role given on approval is
+  "com a função {{role}}"; the person refused "não passou a fazer parte da organização", never
+  "não foi adicionado", so nothing agrees with them. The waiting email's count takes `=0`
+  (PHP's ICU counts 0 as one in "pt") and `many`, "1 000 000 de pessoas".
+
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads "Em pausa", the admins
   "Acesso suspenso", as the English keeps them apart. Restoring is "repor", as the drafted

@@ -688,6 +688,41 @@ class Merging(Base):
                 actions.merge(self.as_("l10n"), args(pr=9, text=None))
             merge.assert_not_called()
 
+    def test_a_developers_pr_on_a_translation_ticket_merges_and_leaves_the_ticket(self):
+        for state in ("In Progress", "Passed Code Review"):
+            self.fake.add(1, state, ["translation"])
+            store.put_pr(self.db, dict(pr("pass"), branch="fix/sc-1/test-wording"))
+            told = len(self.fake.comments)
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.merge") as merge, \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                said = actions.merge(self.as_("dev"), args(pr=9, text=None))
+            merge.assert_called_once_with(9, HEAD)
+            self.assertEqual(self.state(1), state)
+            self.assertIn(f"stays {state}", said)
+            self.assertEqual(len(self.fake.comments), told)
+
+    def test_the_linguists_own_pr_is_not_a_developers_to_merge(self):
+        self.fake.add(1, "In Progress", ["translation"])
+        store.put_pr(self.db, dict(pr("pass"), branch="l10n/sc-1"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "In Progress, not Passed Code Review"):
+                actions.merge(self.as_("dev"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_pass_on_a_developers_pr_on_a_translation_ticket_tags_no_qa(self):
+        for state in ("In Progress", "In Review"):
+            self.fake.add(1, state, ["translation"])
+            store.put_pr(self.db, dict(pr(), branch="fix/sc-1/test-wording"))
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.post_review", return_value={}), \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
+                                                      qa=None, text="summary"))
+            self.assertEqual(self.state(1), state)
+            self.assertFalse(any("[qa]" in text for _, text, *_ in self.fake.comments))
+
     def test_a_pass_with_a_blocking_finding_is_refused_before_posting(self):
         self.fake.add(1, "In Review")
         store.put_pr(self.db, pr())

@@ -362,6 +362,7 @@ export function MemberPage({
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
   const waiting = member.status === 'pending_approval';
   const role = waiting ? t('membersScreen.noRoleYet') : roleName(t, member.role);
+  const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
 
   return (
     <View style={styles.stack}>
@@ -434,7 +435,7 @@ export function MemberPage({
         )}
       </View>
 
-      {standing === 'manageable' && member.suspension != null && (
+      {acts && member.suspension != null && (
         <Suspension
           kind={kind}
           organisation={organisation}
@@ -444,12 +445,13 @@ export function MemberPage({
         />
       )}
 
-      {standing === 'manageable' && !waiting && (
+      {acts && !waiting && (
         <Remove
           kind={kind}
           organisation={organisation}
           member={member}
           list={list}
+          onlyOwner={member.suspension?.onlyOwner === true}
           onRemoved={onRemoved}
         />
       )}
@@ -864,10 +866,16 @@ function Suspension({
       <Text size={tokens.typeBodyPhone.size}>
         {t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}
       </Text>
-      {suspension.removesAt != null && (
+      {suspension.onlyOwner ? (
         <Text size={tokens.typeBodyPhone.size} muted>
-          {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+          {t('membersScreen.suspendedOnlyOwner', named)}
         </Text>
+      ) : (
+        suspension.removesAt != null && (
+          <Text size={tokens.typeBodyPhone.size} muted>
+            {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+          </Text>
+        )
       )}
       {failed != null && (
         <View accessibilityRole="alert">
@@ -889,12 +897,15 @@ function Remove({
   organisation,
   member,
   list,
+  onlyOwner,
   onRemoved,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
+  /** The suspended only Owner: Remove asks nothing first and shows the server's last_owner refusal. */
+  onlyOwner: boolean;
   onRemoved: (list: MembersList) => void;
 }) {
   const { t } = useTranslation();
@@ -910,7 +921,7 @@ function Remove({
     try {
       await api.removeMember(organisation.id, member.id);
     } catch (error) {
-      setRemoval('confirming');
+      setRemoval(onlyOwner ? 'resting' : 'confirming');
       setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
       return;
     }
@@ -920,7 +931,7 @@ function Remove({
     );
   }
 
-  if (removal === 'resting') {
+  if (removal === 'resting' || (onlyOwner && removal === 'removing')) {
     return (
       <View style={cardFrame(kind)}>
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
@@ -929,9 +940,25 @@ function Remove({
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('membersScreen.removeBody', { organisation: organisationName })}
         </Text>
+        {onlyOwner && failed != null && (
+          <View accessibilityRole="alert">
+            <FieldError message={failed} />
+            <Text size={tokens.typeBodyPhone.size} muted>
+              {t('membersScreen.onlyOwnerNotRemovable', { name })}
+            </Text>
+            {member.suspension?.reason === 'address_gone' && (
+              <Text size={tokens.typeBodyPhone.size} muted>
+                {t('membersScreen.onlyOwnerRestoreNeedsAddress', {
+                  domain: member.suspension.domain ?? '',
+                })}
+              </Text>
+            )}
+          </View>
+        )}
         <SecondaryButton
           label={t('membersScreen.removeButton', { organisation: organisationName })}
-          onPress={() => setRemoval('confirming')}
+          off={removal === 'removing'}
+          onPress={() => (onlyOwner ? void remove() : setRemoval('confirming'))}
           testID="members.remove"
         />
       </View>

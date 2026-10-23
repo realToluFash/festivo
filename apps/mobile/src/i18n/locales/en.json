@@ -347,7 +347,7 @@
     "phoneSetupTitle": "Add Soirely to your authenticator app",
     "phoneCantScan": "Scan the code from another screen, or enter this key in the app.",
     "phoneKeepElsewhere": "Keep them somewhere other than this phone.",
-    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
+    "keptByRule": "{{organisation}} requires two-factor, so you cannot turn it off."
   },
   "security": {
     "title": "Security"
@@ -996,9 +996,9 @@
     "valueEveryone": "Two-factor required for everyone",
     "valueNoEveryone": "Two-factor not required of everyone",
     "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
-    "dueSetUp": "Set it up now",
+    "dueSetUp": "Turn it on now",
     "overdueTitle": "Turn on two-factor to carry on",
-    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
+    "overdueBody": "{{organisation}} requires two-factor, and the time to turn it on has passed.",
     "overdueElsewhere": "Your other organisations and single-event access are not affected.",
     "overdueTurnOn": "Turn on two-factor",
     "overdueSignOut": "Sign out"
@@ -1208,6 +1208,9 @@
       "domain_managed_elsewhere": "{{domain}} is now managed by another organisation."
     },
     "suspendedRemovedOn": "If nobody answers by {{when}}, they are removed.",
+    "suspendedOnlyOwner": "{{name}} is the only owner of {{organisation}}, so they stay suspended, still an owner, and are not removed.",
+    "onlyOwnerNotRemovable": "{{name}} is the only owner, so they can't be removed.",
+    "onlyOwnerRestoreNeedsAddress": "Restore works once their main email address is a verified {{domain}} address again.",
     "restore": "Restore",
     "restored": "{{name}}'s access to {{organisation}} is restored.",
     "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first.",
@@ -1241,6 +1244,7 @@
     "kept": "Your work in {{organisation}} is kept and still attributed to you.",
     "untouched": "Your other organisations and your access to single events are not affected.",
     "removedBy": "If nobody restores your access by {{when}}, you are removed from {{organisation}}.",
+    "stillOnlyOwner": "You are still the only owner of {{organisation}}, so you are not removed.",
     "nextTitle": "What happens next",
     "nextAddressGone": "Add your {{domain}} address again in Account settings and make it primary, then ask an admin of {{organisation}} to restore your access.",
     "nextNothingNeeded": "An admin of {{organisation}} can restore your access. Nothing is needed from you.",
