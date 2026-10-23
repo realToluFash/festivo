@@ -80,7 +80,7 @@
     "validation.invite_email_invalid": "That does not look like an email address. Check it has an @ and a domain.",
     "members.own_membership": "You cannot change your own role or remove yourself. Another owner or administrator can, or you can leave from General.",
     "members.request_answered": "Cette demande a déjà reçu une réponse, ou a été retirée faute de réponse à temps.",
-    "members.approve_not_owner": "Approve them first, then make them an owner from Members.",
+    "members.approve_not_owner": "Approuvez d'abord la demande, puis attribuez le rôle Propriétaire depuis Membres.",
     "members.choose_new_owner": "Choose who becomes the owner.",
     "domain_joining.domain_blank": "Saisissez un domaine, par exemple {example}.",
     "domain_joining.domain_full": "La liste compte {count} domaines, le maximum possible. Retirez-en un pour en ajouter un autre.",
