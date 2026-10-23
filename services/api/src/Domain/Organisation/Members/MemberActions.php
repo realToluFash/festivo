@@ -82,7 +82,6 @@ final readonly class MemberActions
     /** Their events stay with the organisation: only the membership ends, and its history is kept. */
     public function remove(Membership $membership, User $by): void
     {
-        $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
         $this->underLock($membership, function () use ($membership, $by): void {
             $removesAt = $membership->getRemovesAt();
 
@@ -91,15 +90,19 @@ final readonly class MemberActions
             }
 
             $this->roleAssignment->release($membership);
+            $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
             $this->end($membership, self::REMOVED, $by);
         });
     }
 
-    /** A member suspended when the company domain stopped bringing them in (sc-564), let back in. */
+    /** A member suspended when the company domain stopped bringing them in (sc-564), let back in: the only Owner by anyone holding members.manage, since nobody else could. */
     public function restore(Membership $membership, User $by): void
     {
-        $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
         $this->underLock($membership, function () use ($membership, $by): void {
+            if (!$this->roleAssignment->isLastOwner($membership)) {
+                $this->roleManager->mayGrant($membership->getOrganisation(), $by, $membership->getRole());
+            }
+
             $this->domainSuspender->restore($membership, $by);
             $this->entityManager->flush();
         });
