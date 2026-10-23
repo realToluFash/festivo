@@ -68,8 +68,10 @@ def developer(p, db, stories):
     if mine:
         top = mine[0]
         todo = [s for s in mine if s["state"] == "Ready For Dev"]
-        if top["state"] == "Ready For Dev" and p.role == "dev2" and len(todo) >= 2:
-            top = todo[1]
+        # Developer N takes the Nth, so developers reaching Ready For Dev together part.
+        nth = R.number(p.role)
+        if top["state"] == "Ready For Dev" and len(todo) >= nth:
+            top = todo[nth - 1]
         verb = "story" if R.OWN_LABELS[p.role] & set(top["labels"]) else "claim"
         p.add("", "Next:", f"  {SQ} {p.role} {verb} sc-{top['id']}")
 

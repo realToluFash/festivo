@@ -5,8 +5,10 @@ import re
 import subprocess
 import time
 
+from . import roles
+
 BUILDING = ("To Do", "Ready For Dev", "In Progress", "Failed QA", "Failed Code Review")
-BRANCH_HOLDERS = ("dev", "dev2", "l10n")
+BRANCH_HOLDERS = (*roles.DEVS, "l10n")
 
 
 def decide(role, branch, dirty, story=None):
