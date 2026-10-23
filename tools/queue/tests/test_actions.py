@@ -249,6 +249,36 @@ class LanguageTags(Base):
                                                  untagged=False, text="x"))
 
 
+class Unblocking(Base):
+    MERGED = "2026-10-20T09:00:00Z"
+
+    def setUp(self):
+        super().setUp()
+        self.fake.add(9, "To Do", ["translation"])
+        self.fake.add(4, "Ready For QA")
+        for raw in self.fake.raw.values():
+            store.put_story(self.db, dict(slim(raw), links=[
+                {"verb": "relates to", "subject": 9, "object": 4}] if raw["id"] == 9 else []))
+        store.put_prs(self.db, [{"number": 40, "story_id": 4, "state": "merged",
+                                 "merged_at": self.MERGED, "branch": "dev/sc-4/build",
+                                 "head_sha": HEAD, "lead": [], "threads": []}])
+
+    def wakes(self):
+        return [(w["story_id"], w["pr"], w["status"]) for w in self.db.execute(
+            "select * from work where kind = 'unblocked'")]
+
+    def test_a_raised_wake_stays_open_after_its_pr_leaves_the_synced_merges(self):
+        cli.refresh_work(self.db, 1_800_000_000)
+        self.assertEqual(self.wakes(), [(9, 40, "open")])
+        store.put_prs(self.db, [])
+        cli.refresh_work(self.db, 1_800_000_060)
+        self.assertEqual(self.wakes(), [(9, 40, "open")])
+
+    def test_baseline_closes_a_wake_already_waiting_at_install(self):
+        cli.baseline(self.db)
+        self.assertEqual(self.wakes(), [(9, 40, "done")])
+
+
 class Releasing(Base):
     def setUp(self):
         super().setUp()
