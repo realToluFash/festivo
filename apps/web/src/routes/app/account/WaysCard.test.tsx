@@ -707,6 +707,67 @@ describe('unlinking a provider', () => {
     ).toBeDefined();
   });
 
+  it('reads the ways in again when refused, so a provider gone elsewhere stops showing as linked (sc-7415)', async () => {
+    signedInAs({
+      hasPassword: false,
+      providers: [
+        { provider: 'google', email: GMAIL },
+        { provider: 'apple', email: null },
+      ],
+    });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    answering({
+      'POST /api/auth/providers/google/unlink': () => problem('last_sign_in_method', 409),
+      'GET /api/auth/me': () =>
+        json({ ...ACCOUNT, hasPassword: false, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+
+    expect(
+      await screen.findByText('Set a password or link another account before removing this one.'),
+    ).toBeDefined();
+    const list = within(screen.getByRole('list', { name: 'Ways to sign in' }));
+    expect(
+      list.getByText(/Google is your only way to sign in, so it can't be removed/),
+    ).toBeDefined();
+    expect(list.queryByRole('button', { name: 'Unlink Google' })).toBeNull();
+    expect(list.queryByRole('button', { name: 'Unlink Apple' })).toBeNull();
+    expect(list.getByText('Not linked')).toBeDefined();
+  });
+
+  it('keeps the refusal and the rows as they were when the read again fails (sc-7415)', async () => {
+    signedInAs({
+      hasPassword: false,
+      providers: [
+        { provider: 'google', email: GMAIL },
+        { provider: 'apple', email: null },
+      ],
+    });
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    const sent = answering({
+      'POST /api/auth/providers/google/unlink': () => problem('last_sign_in_method', 409),
+      'GET /api/auth/me': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+    open();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink Google' }));
+
+    expect(
+      await screen.findByText('Set a password or link another account before removing this one.'),
+    ).toBeDefined();
+    expect(sent.some((s) => s.call === 'GET /api/auth/me')).toBe(true);
+    expect(ways().getAllByRole('alert')).toHaveLength(1);
+    const list = within(screen.getByRole('list', { name: 'Ways to sign in' }));
+    expect(list.getByRole('button', { name: 'Unlink Google' })).toBeDefined();
+    expect(list.getByRole('button', { name: 'Unlink Apple' })).toBeDefined();
+  });
+
   it('names the organisation whose rule keeps the last provider linked (sc-69)', async () => {
     signedInAs({ providers: [{ provider: 'google', email: GMAIL }] });
     holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
