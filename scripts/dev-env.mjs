@@ -11,12 +11,14 @@ import { renderQaEnv, stackConfig } from './qa-env.mjs';
 // ports are 5000 apart.
 export const STACKS = {
   dev2: 40000,
+  dev3: 25000,
+  dev4: 35000,
   lead: 45000,
   ops: 50000,
   l10n: 15000,
 };
 
-export const DEVELOPERS = [2];
+export const DEVELOPERS = [2, 3, 4];
 
 export function roleConfig(role) {
   if (!Object.hasOwn(STACKS, role)) {

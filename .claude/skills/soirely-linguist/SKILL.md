@@ -160,7 +160,7 @@ feature merges.
 1. **Move the ticket to `In Progress`**: `sq l10n move sc-N "In Progress"` (from `To Do` or
    `Failed QA`).
 2. **Work in your own worktree**, `~/Projects/soirely-l10n`, never in `~/Projects/soirely` or
-   `~/Projects/soirely-dev2`, which are the developers'. It has a stack of its own; if it is
+   `~/Projects/soirely-devN`, which are the developers'. It has a stack of its own; if it is
    not there, `just dev-env setup --role l10n` from the main checkout makes it. Branch there:
 
    ```sh
@@ -240,14 +240,15 @@ moving it back to `Ready For QA`.
   and whether the artboards' English is the copy or a placeholder.
 - **QA `[qa]`**: what to test, and the findings. QA's screenshots in each locale are the best
   evidence of a string that does not fit.
-- **Developer `[dev]` or `[dev2]`**: a missing key, a stitched-together sentence, a missing
+- **Developer `[dev]`, or `[devN]` for developer N**: a missing key, a stitched-together sentence, a missing
   plural or slot, a date in a string, a literal in code. You never fix those yourself.
-  Wherever this skill says `[dev]`, tag the developer who built the string: `[dev2]` when the
-  feature story carries the `dev2` label, `[dev]` when it carries `dev1` or no label. A
-  translation ticket carries neither, so a bare `[dev]` on one reaches developer 1 whoever
+  Wherever this skill says `[dev]`, tag the developer who built the string: `[devN]` when the
+  feature story carries the `devN` label, `[dev]` when it carries `dev1` or no label. On a
+  feature story, tag `[dev]` and sq routes it to the developer whose label the story carries. A
+  translation ticket carries no developer label, so a bare `[dev]` on one reaches developer 1 whoever
   built the feature. Under **Covers**, find the feature story the key came from and use its
-  label. A ticket can cover stories from both developers, so a comment about keys from both
-  is addressed to both, `[dev] [dev2]`.
+  label. A ticket can cover stories from several developers, so a comment about keys from
+  several is addressed to each, as `[dev] [dev3]`.
 - **Business manager `[bm]`**: the cost of an SMS that grew a segment, and a plan or price name.
 - **Creative director `[cd]`**: wording that an idea depends on.
 

@@ -49,6 +49,25 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: «la única
+  persona con el rol Propietario en {{organisation}}» and «no sale de la organización», never
+  «no se le quita». The refusal is «no se puede quitar a esta persona de la organización».
+  Restoring needs «la dirección principal de esta persona», since «su dirección» could read as
+  the admin's. The history line is «Acceso suspendido: …», a state that agrees with no one.
+- **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
+  The act is «transferir la propiedad», and the organisation is «cedida»; the people are
+  «alguien con el rol Propietario» and «el rol Administrador», never «el nuevo propietario»,
+  which assumes a man: "the new owner" is «la persona elegida», the legend «Transferir a», the
+  email subject «Cambio de propietario en {organisation}». Both people are named, «Usted y
+  {{name}} recibirán…», never «los dos». "Stay" is «No salir», the refusal of the act, since a
+  bare «Quedarse» reads oddly on a button. Deleting is «eliminar», as for a role; the counts
+  come before nothing that agrees, «Con ella se eliminan {{events}}, …». No `_many`, as
+  sc-4188 says. A slot appears once per key (the parity guard counts them), so `transferred`
+  closes «… a las dos cuentas», not a second {{name}}.
+
 - **21 Oct 2026. Approving or turning down a request to join** (`membersScreen.awaiting.*`,
   `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
   `messages:members.request_answered`, sc-7217). "Approve" is «Aprobar», "turn down" is

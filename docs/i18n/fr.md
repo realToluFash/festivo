@@ -54,6 +54,27 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: « la
+  seule personne ayant le rôle Propriétaire dans {{organisation}} », and what is not removed is
+  « son accès », so nothing agrees with the member: « son accès ne peut donc pas être retiré ».
+  The history line is « Accès suspendu : son adresse e-mail professionnelle ne lui ouvre plus
+  l’accès », « ne donne plus accès » would say « accès » twice.
+- **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
+  The act is « transférer la propriété », the organisation « cédée ». « Propriétaire » with no
+  article is epicene, so « devenir propriétaire », « rester propriétaire » and « est désormais
+  propriétaire » agree with nobody; with an article it is « le rôle Propriétaire » or « une
+  personne ayant le rôle Propriétaire », never « le nouveau propriétaire ». "The new owner" is
+  « la personne qui deviendra propriétaire », the legend « Transférer à », the email subject
+  « Changement de propriétaire pour {organisation} ». Both people are told by « Un e-mail vous
+  le confirmera, à vous et à {{name}} », never « chacun » or « tous les deux ». Deleted
+  counts are all masculine (événements, invités, membres), so « seront supprimés » holds at
+  any count; French `one` covers 0, « 0 événement », which is right. A slot
+  appears once per key (the parity guard counts them), so `transferred` closes « … envoyé aux
+  deux comptes », not a second {{name}}.
+
 - **21 Oct 2026. The apostrophe is ’, U+2019** (sc-7455), in every value of every catalogue,
   as France typography sets it and as a straight ' beside a curly one reads like a typo on the
   same screen. Type the character itself. The SMS (`emails:verification.text`, and any SMS
@@ -283,6 +304,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. Section names stand alone as nouns** in running text: « Compte réunit… »,
   « Sécurité réunit… » (`settings.chooseLine`), « Organisation réunit les réglages de
   {{name}} » (`settings.chooseLineWithOrganisation`), « vérifiez Sécurité » (emails).
+- **24 Oct 2026. A running count with no count slot is « Caractères : N sur M »** (sc-6302,
+  `eventForm.nameCount`). « N caractères sur M » misagrees at 0 and 1, which French counts
+  as one, and the key gets no `count` to pick a plural. With the noun as a label first,
+  nothing has to agree with N. Use the same shape for any other counter without a plural.
 - **17 Oct 2026. A picker's search field reads « Rechercher un/une … »** in the singular:
   « Rechercher un pays », « Rechercher une devise », « Rechercher un fuseau horaire ».
 

@@ -15,6 +15,9 @@
     "title": "You are not in an organisation",
     "body": "Events, teams and plans all belong to an organisation, and you are not part of one right now. Your account is still yours, and nothing in it has gone.",
     "wayOn": "Ask whoever runs yours to invite {{email}} again.",
+    "startTitle": "Start your own",
+    "startBody": "Set up a new organisation and you become its owner.",
+    "start": "Start organisation",
     "signedInAs": "Signed in as {{email}}.",
     "account": "Your account"
   },
@@ -1039,7 +1042,7 @@
     "leaveBody": "You lose access to {{organisation}} as soon as you leave.",
     "stay": "Stay",
     "onlyOwnerTitle": "You are the only owner",
-    "onlyOwnerBody": "You are the only owner. Make somebody else an owner, then you can leave.",
+    "onlyOwnerBody": "Make somebody else an owner, then you can leave.",
     "delete": "Delete organisation",
     "deleteNote": "Deletes every event, guest and member record in it.",
     "deleteTitle": "Delete {{organisation}}?",

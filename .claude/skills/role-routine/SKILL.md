@@ -36,7 +36,7 @@ names its role first: `sq <role> tick`, `sq l10n next`, `sq dev2 done 41`.
 - **One run at a time, one piece of work per run.** A woken tick claims one work item for
   the role, and ticks answer `busy` until the worker finishes it. A claim not finished
   within 90 minutes lapses, and the item goes back to the queue. Testers share Ready For QA,
-  and the two developers share unlabelled Ready For Dev stories, so one of them claims each
+  and the developers share unlabelled Ready For Dev stories, so one of them claims each
   story.
 - **A heartbeat catches what change misses.** Some work nobody files, such as the
   designer's backlog sweep, the product manager's AC audit, ops' advisories and the business
@@ -48,7 +48,7 @@ names its role first: `sq <role> tick`, `sq l10n next`, `sq dev2 done 41`.
 | --------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | `/soirely-product-manager`  | `[pm]`, new in To Do                                                                                        | 2 hours                        |
 | `/soirely-designer`         | `[ux]`, new in Needs Design                                                                                 | 2 hours                        |
-| `/soirely-developer` (×2)   | its tag, new in Failed Code Review, Failed QA, In Progress, Ready For Dev; its PR's checks finish, its pass | 30 minutes, if work is waiting |
+| `/soirely-developer` (×N)   | its tag, new in Failed Code Review, Failed QA, In Progress, Ready For Dev; its PR's checks finish, its pass | 30 minutes, if work is waiting |
 | `/soirely-qa-tester` (×3)   | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA                                                     | 30 minutes, if work is waiting |
 | `/soirely-tech-lead`        | `[lead]`, new in In Review, a push after a pass                                                             | 30 minutes, if work is waiting |
 | `/soirely-business-manager` | `[bm]`, new in Backlog                                                                                      | 12 hours                       |
@@ -58,8 +58,8 @@ names its role first: `sq <role> tick`, `sq l10n next`, `sq dev2 done 41`.
 
 The other roles' queues leave out stories labelled `translation`, which are the linguist's,
 and stories labelled `ops`, which are ops' own infra work.
-The two developers share Ready For Dev, but see only their own work beyond it: a story labelled
-`dev2` is developer 2's, and any other is developer 1's. A bare `[dev]` comment, and a pull
+The developers share unlabelled Ready For Dev stories, but see only their own work beyond it: a
+story labelled `devN` is developer N's, and one with no developer label is developer 1's. A bare `[dev]` comment, and a pull
 request's checks, wake only the developer whose label the story carries.
 The linguist is one role for all four locales: `sq l10n tick`.
 
@@ -89,8 +89,9 @@ also schedule a `CronCreate` job for a role the manager runs, or the role works 
    with, so the first ticks start from what arrives next.
 3. **`CronCreate`** with `cron: "*/3 * * * *"`, `recurring: true`. QA testers 2 and 3 use
    `"1-59/3 * * * *"` and `"2-59/3 * * * *"`, so the three reach the queue a minute apart,
-   and developer 2 uses `"1-59/3 * * * *"` for the same reason. The prompt is below; fill
-   in your role (a tester's is `qa`, `qa2` or `qa3`, a developer's `dev` or `dev2`, a
+   and developers 2 and 3 use `"1-59/3 * * * *"` and `"2-59/3 * * * *"` for the same reason
+   (developer 4 shares developer 1's minute; the Nth-story rule keeps them apart). The prompt
+   is below; fill in your role (a tester's is `qa`, `qa2` or `qa3`, a developer's `dev` or `devN`, a
    linguist's `l10n`) and the installed path the previous step printed:
 
    ```text
@@ -152,8 +153,8 @@ fails>'`, note it on your story, do what you can without it, and move on. Only t
 - **An empty run is one line.** If the reason it woke turns out to need nothing, say so and
   finish. Do not go looking for work to justify the wake.
 - **Stay out of each other's checkouts.** The routines run side by side:
-  - Only developer 1 switches branches in `~/Projects/soirely`, and only developer 2 in
-    `~/Projects/soirely-dev2`.
+  - Only developer 1 switches branches in `~/Projects/soirely`, and only developer N in its
+    own checkout, `~/Projects/soirely-devN`.
   - QA tester N works in `~/Projects/soirely-qa<n>` (its skill, section 4).
   - Ops works in its own worktree, `../soirely-ops`.
   - The linguist works in its own worktree, `../soirely-l10n`.

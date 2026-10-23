@@ -7,6 +7,7 @@
   "onVersionDrift": "warn",
   "dailyBudgetUsd": null,
   "minFreeGb": 15,
+  "sliceMemoryMax": "16G",
   "roles": {
     "ops": {}
   },

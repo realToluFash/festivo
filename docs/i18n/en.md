@@ -62,6 +62,24 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The only owner left suspended (sc-7831, `accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `membersScreen.history.suspendedAddressGone`).** `onlyOwnerNotRemovable` is a refusal, so
+  "cannot": "{{name}} is the only owner, so they cannot be removed." The history line shows for
+  every domain reason (address gone, domain closed, managed elsewhere), so it reads "Suspended:
+  their company email address no longer gives access", true for each and naming nobody. Both
+  wait on [dev2], because `Members.test.tsx` matches the current English; es, fr and pt are
+  written from the settled wording.
+- **23 Oct 2026. Ownership and leaving (sc-68, sc-7715, `ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`).** Settled
+  as sc-68 wrote it. The act is "transfer ownership"; in prose ownership is "handed" to a
+  member, and the old owner "becomes an Administrator", the role's own name. Deleting closes
+  on "gone for good" after Soirely support's restore window, "until {{deadline}}" in the
+  server's `deadline` words. `onlyOwnerBody` no longer repeats its title ("You are the only
+  owner"), which sits above it in the same notice: it is now "Make somebody else an owner,
+  then you can leave." es, fr and pt name the role, never "the owner", so nothing agrees with
+  the person: "the new owner" (`theNewOwner`, the email subject) becomes "the chosen person"
+  or "a change of owner".
 - **21 Oct 2026. A domain member paused (sc-564, sc-6703, `accessPaused.*`,
   `membersScreen.suspended*`, `restore*`, `emails:domainSuspended.*`).** The person reads
   "Paused", the admins "Suspended": both are the AC's words, kept apart on purpose. The next
