@@ -133,6 +133,14 @@ export async function refreshAccount(): Promise<void> {
   await askForAccount();
 }
 
+/** The password and linked providers, read again; a failed read rejects and leaves the page where it is. */
+export async function rereadCredentials(): Promise<void> {
+  const { hasPassword, providers } = await api.me();
+  if (state.status !== 'signedIn') return;
+
+  set({ status: 'signedIn', session: { ...state.session, hasPassword, providers } });
+}
+
 /** Where a signed-in account belongs: the gate it is behind, or the product. */
 export function landingFor(gate: Awaiting | null): string {
   if (gate === 'email') return '/verify-email';
