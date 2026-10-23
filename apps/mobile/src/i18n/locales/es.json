@@ -1129,7 +1129,7 @@
       "suspended": "Acceso suspendido",
       "left": "Ha salido",
       "removed": "Acceso retirado",
-      "domainSuspended": "Acceso suspendido: sin dirección de empresa"
+      "domainSuspended": "Acceso suspendido: dominio de empresa"
     },
     "how": {
       "invitation": "Invitación",
@@ -1216,7 +1216,7 @@
     "onlyOwnerRestoreNeedsAddress": "El acceso se podrá restablecer cuando la dirección principal de esta persona vuelva a ser una dirección de {{domain}} verificada.",
     "restore": "Restablecer",
     "restored": "Se ha restablecido el acceso de {{name}} a {{organisation}}.",
-    "restoreNeedsAddress": "Antes, {{name}} necesita una dirección de {{domain}} verificada.",
+    "restoreNeedsAddress": "{{name}} necesita primero una dirección de {{domain}} verificada.",
     "noRoleYet": "Aún sin rol",
     "awaiting": {
       "title": "Pendiente de aprobación",
