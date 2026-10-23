@@ -83,14 +83,38 @@ final class JoinRequestsTest extends ApiTestCase
     public function nobodyApprovesIntoARoleTheyCouldNotGrant(): void
     {
         [, $organisation] = $this->organisation();
-        $admin = $this->member($organisation, 'tunde@ire.events', SeededRole::Administrator);
+        $manager = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $this->role($organisation, SeededRole::Coordinator)->setPermissions([Permission::MembersRead, Permission::MembersManage]);
         $asker = $this->asks($organisation, 'ada@okeke.ng');
-        $this->signIn($admin);
+        $this->signIn($manager);
 
-        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Owner)->getId()->toRfc4122()]);
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::EventManager)->getId()->toRfc4122()]);
 
         self::assertResponseStatusCodeSame(403);
         self::assertSame(MembershipStatus::PendingApproval, $this->membershipOf($asker, $organisation)->getStatus());
+    }
+
+    #[Test]
+    public function nobodyIsApprovedStraightIntoOwner(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $asker = $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+        $mailed = Iter\count(self::getMailerMessages());
+
+        $body = $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::Owner)->getId()->toRfc4122()]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(ErrorCode::ValidationFailed->type(), $body['type'] ?? null);
+        self::assertSame(
+            [['propertyPath' => 'roleId', 'message' => 'Approve them first, then make them an owner from Members.']],
+            Vec\map(Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($body['violations'] ?? null), static fn (array $violation): array => ['propertyPath' => $violation['propertyPath'], 'message' => $violation['message']]),
+        );
+        $membership = $this->membershipOf($asker, $organisation);
+        self::assertSame(MembershipStatus::PendingApproval, $membership->getStatus());
+        self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs());
+        self::assertNull(self::service(EntityManagerInterface::class)->getRepository(AuditEntry::class)->findOneBy(['subjectId' => $membership->getId(), 'action' => 'membership.approved']));
+        self::assertCount($mailed, self::getMailerMessages());
     }
 
     #[Test]
