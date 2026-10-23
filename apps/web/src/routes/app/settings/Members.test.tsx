@@ -404,6 +404,39 @@ describe('somebody awaiting approval (sc-392)', () => {
     expect(sent.find((one) => one.line.endsWith('/approve'))?.body).toEqual({ roleId: 'role_4' });
   });
 
+  it('shows why an approve was refused, not the generic title', async () => {
+    signedIn();
+    answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/approve': () =>
+        new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/validation_failed',
+            title: 'Some of the information provided is not valid.',
+            status: 422,
+            violations: [
+              {
+                propertyPath: 'roleId',
+                message: 'Approve them first, then make them an owner from Members.',
+                code: 'validation_failed',
+              },
+            ],
+          }),
+          { status: 422 },
+        ),
+    });
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve as Read-only' }));
+
+    expect(
+      await screen.findByText('Approve them first, then make them an owner from Members.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Some of the information provided is not valid.')).toBeNull();
+  });
+
   it('turns down only once it is confirmed, and the request can be kept', async () => {
     signedIn();
     const sent = answering({

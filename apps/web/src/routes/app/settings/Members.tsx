@@ -933,7 +933,12 @@ function JoinRequestAnswer({
       }
     } catch (error) {
       setBusy(false);
-      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+      setFailed(
+        error instanceof ApiError
+          ? (error.problem.violations?.find((one) => one.propertyPath === 'roleId')?.message ??
+              error.problem.title)
+          : t('membersScreen.actionFailed'),
+      );
     }
   }
 

@@ -31,7 +31,7 @@ import {
   withRole,
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
-import { refusalTitle } from '../kit/refusal.ts';
+import { refusalFor, refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -525,7 +525,7 @@ function JoinRequestAnswer({
         await api.turnDownMember(organisation.id, member.id);
       }
     } catch (error) {
-      setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      setFailed(refusalFor(error, 'roleId', t('membersScreen.actionFailed')));
       setBusy(false);
       return;
     }
