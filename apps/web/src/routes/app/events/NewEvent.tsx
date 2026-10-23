@@ -168,7 +168,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
             />
             <FieldError id="event-name-error" message={errors.name} />
             <p className="field-help" id="event-name-count">
-              {t('eventForm.nameCount', { length: nameLength, most: EVENT_NAME_MAXIMUM })}
+              {t('eventForm.nameCount', { count: nameLength, most: EVENT_NAME_MAXIMUM })}
             </p>
           </div>
         </section>

@@ -35,7 +35,7 @@
     "whenHeading": "Cuándo",
     "zoneHeading": "Zona horaria y moneda",
     "name": "Nombre del evento",
-    "nameCount": "{{length}} de {{most}} caracteres",
+    "nameCount": "{{count}} de {{most}} caracteres",
     "starts": "Inicio",
     "ends": "Fin",
     "date": "Fecha",
