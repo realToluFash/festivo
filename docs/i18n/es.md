@@ -49,6 +49,17 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
+  The act is «transferir la propiedad», and the organisation is «cedida»; the people are
+  «alguien con el rol Propietario» and «el rol Administrador», never «el nuevo propietario»,
+  which assumes a man: "the new owner" is «la persona elegida», the legend «Transferir a», the
+  email subject «Cambio de propietario en {organisation}». Both people are named, «Usted y
+  {{name}} recibirán…», never «los dos». "Stay" is «No salir», the refusal of the act, since a
+  bare «Quedarse» reads oddly on a button. Deleting is «eliminar», as for a role; the counts
+  come before nothing that agrees, «Con ella se eliminan {{events}}, …». No `_many`, as
+  sc-4188 says.
+
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads «En pausa», the admins
   «Acceso suspendido», as the English keeps them apart. Restoring is «restablecer». In the
