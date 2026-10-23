@@ -130,6 +130,9 @@ export default [
   {
     files: ['apps/mobile/{src,app}/**/*.{ts,tsx}'],
     rules: {
+      // Metro warns about every require cycle at launch, and on Android a
+      // cycle can hand a module an undefined import.
+      'import/no-cycle': 'error',
       // src/theme/fonts.ts states two rules. textGuard.test.ts enforces the
       // second — no Text inside a Text, no onPress on a Text — and nothing
       // enforced the first until now.
