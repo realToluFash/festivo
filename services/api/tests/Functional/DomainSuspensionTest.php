@@ -473,8 +473,8 @@ final class DomainSuspensionTest extends ApiTestCase
 
         $mailer = self::service(UserMailer::class);
         $at = $membership->getRemovesAt() ?? self::fail('no removal');
-        self::assertSame('Monday, Nov 16 at 14:20 WAT', $mailer->deadline($at, $lagos, 'en'));
-        self::assertSame('Monday, Nov 16 at 13:20 GMT', $mailer->deadline($at, $london, 'en'));
+        self::assertSame('Monday 16 Nov at 14:20 WAT', $mailer->deadline($at, $lagos, 'en'));
+        self::assertSame('Monday 16 Nov at 13:20 GMT', $mailer->deadline($at, $london, 'en'));
     }
 
     #[Test]
