@@ -64,7 +64,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   « Changement de propriétaire pour {organisation} ». Both people are told by « Un e-mail vous
   le confirmera, à vous et à {{name}} », never « chacun » or « tous les deux ». Deleted
   counts are all masculine (événements, invités, membres), so « seront supprimés » holds at
-  any count; French `one` covers 0, « 0 événement », which is right.
+  any count; French `one` covers 0, « 0 événement », which is right. A slot
+  appears once per key (the parity guard counts them), so `transferred` closes « … envoyé aux
+  deux comptes », not a second {{name}}.
 
 - **21 Oct 2026. The apostrophe is ’, U+2019** (sc-7455), in every value of every catalogue,
   as France typography sets it and as a straight ' beside a curly one reads like a typo on the

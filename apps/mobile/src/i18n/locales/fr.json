@@ -1032,7 +1032,7 @@
     "theNewOwner": "la personne qui deviendra propriétaire",
     "makeOwner": "Transférer à {{name}}",
     "keep": "Rester propriétaire",
-    "transferred": "{{name}} est désormais propriétaire de {{organisation}}, et vous avez le rôle Administrateur. Un e-mail vous l’a confirmé, à vous et à {{name}}.",
+    "transferred": "{{name}} est désormais propriétaire de {{organisation}}, et vous avez le rôle Administrateur. Un e-mail de confirmation a été envoyé aux deux comptes.",
     "leave": "Quitter {{organisation}}",
     "leaveNote": "Vous n’aurez plus accès à ses événements. Tout ce que vous avez créé reste dans {{organisation}}.",
     "leaveTitle": "Quitter {{organisation}} ?",

@@ -1423,7 +1423,7 @@
     "theNewOwner": "quem receber a propriedade",
     "makeOwner": "Transferir para {{name}}",
     "keep": "Manter a propriedade",
-    "transferred": "{{name}} tem agora a função Proprietário em {{organisation}}, e a sua função passou a ser Administrador. Foi enviado um e-mail de confirmação a si e a {{name}}.",
+    "transferred": "{{name}} tem agora a função Proprietário em {{organisation}}, e a sua função passou a ser Administrador. Foi enviado um e-mail de confirmação para as duas contas.",
     "leave": "Sair de {{organisation}}",
     "leaveNote": "Deixa de ter acesso aos eventos da organização. Tudo o que criou fica em {{organisation}}.",
     "leaveTitle": "Sair de {{organisation}}?",

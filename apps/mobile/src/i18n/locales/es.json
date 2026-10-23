@@ -1032,7 +1032,7 @@
     "theNewOwner": "la persona elegida",
     "makeOwner": "Transferir a {{name}}",
     "keep": "Conservar la propiedad",
-    "transferred": "Ahora {{name}} tiene el rol Propietario en {{organisation}} y usted, el rol Administrador. Usted y {{name}} han recibido un correo electrónico que lo confirma.",
+    "transferred": "Ahora {{name}} tiene el rol Propietario en {{organisation}} y usted, el rol Administrador. Se ha enviado un correo electrónico de confirmación a las dos cuentas.",
     "leave": "Salir de {{organisation}}",
     "leaveNote": "Perderá el acceso a los eventos de la organización. Todo lo que haya creado se queda en {{organisation}}.",
     "leaveTitle": "¿Salir de {{organisation}}?",

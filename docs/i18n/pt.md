@@ -51,7 +51,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   mudou de proprietário" keeps the fixed phrase, which names no person. "Support" is "o apoio
   ao cliente da Soirely". The delete counts put the verb first, "São eliminados com ela
   {{events}}, …". i18next's 'pt' counts 0 as one, so a 0 shows "0 convidado" until [dev]
-  gives the clients PT-PT's rule (sc-3030); raised again on sc-68.
+  gives the clients PT-PT's rule (sc-3030); raised again on sc-68. A slot appears once per key (the parity
+  guard counts them), so `transferred` closes "… para as duas contas", not a second {{name}}.
 
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads "Em pausa", the admins

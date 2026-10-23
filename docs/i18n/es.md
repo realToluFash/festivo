@@ -58,7 +58,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   {{name}} recibirán…», never «los dos». "Stay" is «No salir», the refusal of the act, since a
   bare «Quedarse» reads oddly on a button. Deleting is «eliminar», as for a role; the counts
   come before nothing that agrees, «Con ella se eliminan {{events}}, …». No `_many`, as
-  sc-4188 says.
+  sc-4188 says. A slot appears once per key (the parity guard counts them), so `transferred`
+  closes «… a las dos cuentas», not a second {{name}}.
 
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads «En pausa», the admins
