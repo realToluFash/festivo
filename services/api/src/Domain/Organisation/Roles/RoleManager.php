@@ -12,6 +12,7 @@ use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\Actor;
 use App\Enum\ErrorCode;
+use App\Enum\MembershipStatus;
 use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
@@ -68,7 +69,10 @@ final readonly class RoleManager
 
     public function holders(Role $role): int
     {
-        return $this->entityManager->getRepository(Membership::class)->count(['role' => $role]);
+        return $this->entityManager->getRepository(Membership::class)->count([
+            'role' => $role,
+            'status' => [MembershipStatus::Active, MembershipStatus::Suspended],
+        ]);
     }
 
     /** @param list<string> $permissions */
