@@ -99,6 +99,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   adhésions via {{domain}} », as the setting's « Adhésion par domaine d'entreprise ». An
   address at a domain is « votre adresse {{domain}} ». "What happens next" is « La suite ».
   "Account settings" is « Paramètres du compte », button and sentence alike.
+  24 Oct (qa2, #8038): no « de » stands before {{organisation}} or {{name}}, which may open on a
+  vowel. The organisation is « de l’organisation {{organisation}} », or « à » and « dans »; a
+  person is the subject (« {{name}} a de nouveau accès à », « {{name}} n’a plus d’adresse »)
+  or « pour {name} ». The email opens « L’accès à {organisation} est en pause pour {name} »,
+  its subject on the pause, « Accès en pause : {name} dans {organisation} », so a phone inbox
+  shows it before the names. The admins' label is « Accès suspendu : domaine d’entreprise »
+  for all three reasons, as the setting.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The
   setting is « Demandes d'adhésion », so its state agrees: « Activées » / « Désactivées »; the
