@@ -597,6 +597,15 @@ class Unblocked(unittest.TestCase):
         self.assertEqual(self.wakes([self.ticket()], [], later, raised=[row]), [])
         self.assertEqual(self.wakes([self.ticket("Ready For QA")], [], raised=[row]), [])
 
+    def test_a_raised_wake_to_go_on_stays_on_a_ticket_left_in_review(self):
+        start = {"fingerprint": "l10n:unblocked:sc-9:#40", "story_id": 9, "pr": 40,
+                 "reason": "PR #40 (sc-4) merged: sc-9 can start",
+                 "first_seen": T.epoch(self.MERGED) + 30}
+        go_on = dict(start, fingerprint="l10n:unblocked:sc-9:#41", pr=41,
+                     reason="PR #41 (sc-9) merged: sc-9 can go on")
+        self.assertEqual(self.wakes([self.ticket("In Review")], [], raised=[start, go_on]),
+                         [(["l10n"], 9, 41, "PR #41 (sc-9) merged: sc-9 can go on")])
+
     def test_an_open_pr_wakes_nobody(self):
         self.assertEqual(self.wakes([self.ticket()], [pr(40, 4)]), [])
 
