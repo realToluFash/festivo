@@ -140,7 +140,7 @@
     "domainSuspended.addressGone": "L’accès à {organisation} est en pause pour {name}, car son adresse {domain} ne figure plus sur son compte.",
     "domainSuspended.domainClosed": "L’accès à {organisation} est en pause pour {name}, car l’organisation n’accepte plus les adhésions via {domain}.",
     "domainSuspended.managedElsewhere": "L’accès à {organisation} est en pause pour {name}, car {domain} est désormais géré par une autre organisation.",
-    "domainSuspended.kept": "Son travail est conservé et lui reste attribué. Rétablissez son accès ou retirez cette personne de l’organisation.",
+    "domainSuspended.kept": "Son travail est conservé et lui reste attribué. Rétablissez son accès ou retirez cette personne de l’organisation {organisation}.",
     "domainSuspended.keptOnlyOwner": "{name} est la seule personne ayant le rôle Propriétaire dans {organisation}, donc ce rôle lui reste et son accès n’est pas retiré.",
     "domainSuspended.restoreOnceAddress": "Rétablissez son accès dès que son compte aura de nouveau une adresse {domain} vérifiée.",
     "domainSuspended.deadline": "Sans réponse d’ici le {deadline}, son accès sera retiré.",
