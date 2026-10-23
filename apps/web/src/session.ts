@@ -204,6 +204,7 @@ export function forgetSession(ended = false, why?: Problem): void {
   const timedOut = timedOutBy(why);
   const providerOnly = providerOnlyBy(why);
 
+  generation += 1;
   set({
     status: 'signedOut',
     ended,
