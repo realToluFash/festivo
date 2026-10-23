@@ -1,8 +1,8 @@
 ---
 name: soirely-developer
-description: Development mode, for one of two developers — /soirely-developer or /soirely-developer dev2, each with its own checkout and stack, each claiming stories with its Shortcut label (dev1, dev2). Takes its rework first (Failed Code Review, Failed QA), then a story from Ready For Dev, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, an open pull request, merged only once the tech lead's review passes it, and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
+description: Development mode, for one of several developers — /soirely-developer, or /soirely-developer devN for developer N, each with its own checkout and stack, each claiming stories with its Shortcut label (dev1, devN). Takes its rework first (Failed Code Review, Failed QA), then a story from Ready For Dev, or a story you name, builds it across the API, the web client and the app, and hands it to review in In Review — commits per outcome, an open pull request, merged only once the tech lead's review passes it, and nothing marked Done. Use when asked to build or fix a story, to pick up what QA failed, or when invoked as /soirely-developer.
 user-invocable: true
-argument-hint: [dev2] [sc-id]
+argument-hint: [devN] [sc-id]
 ---
 
 # Development mode
@@ -13,22 +13,26 @@ The craft rules are not here — they live in the skills this file points at, on
 surface, and duplicating them would make two copies that drift. This file is the routine:
 what to pick up, in what order, and what has to be true before you hand it on.
 
-**There are two developers, and you are one of them.** `$ARGUMENTS` says which:
+**There are several developers, and you are one of them.** `$ARGUMENTS` says which:
 
 | Run                       | You are     | Label  | Tag and signature       | Checkout and stack                        | Ports                             |
 | ------------------------- | ----------- | ------ | ----------------------- | ----------------------------------------- | --------------------------------- |
 | `/soirely-developer`      | developer 1 | `dev1` | `[dev]`, `(from dev)`   | `~/Projects/soirely`, compose `soirely`   | API 8080, web 5173                |
 | `/soirely-developer dev2` | developer 2 | `dev2` | `[dev2]`, `(from dev2)` | `~/Projects/soirely-dev2`, `soirely-dev2` | dev + 40000: API 48080, web 45173 |
+| `/soirely-developer dev3` | developer 3 | `dev3` | `[dev3]`, `(from dev3)` | `~/Projects/soirely-dev3`, `soirely-dev3` | dev + 25000: API 33080, web 30173 |
+| `/soirely-developer dev4` | developer 4 | `dev4` | `[dev4]`, `(from dev4)` | `~/Projects/soirely-dev4`, `soirely-dev4` | dev + 35000: API 43080, web 40173 |
+
+Developer N's ports are `STACKS` in `scripts/dev-env.mjs`.
 
 **The label is the claim.** A story carrying your label is yours from the moment you claim
 it to its merge: you build it, you answer the lead's review, you fix what QA fails, and you
-merge it. A story labelled for the other developer is never yours, in any state, even when
-it is the only thing waiting. A story with neither label, outside `Ready For Dev`, predates the
-labels and is developer 1's. Sign every comment with your signature, and never touch the
-other developer's checkout, stack or branches.
+merge it. A story labelled for another developer is never yours, in any state, even when
+it is the only thing waiting. A story with no developer label, outside `Ready For Dev`, predates the
+labels and is developer 1's. Sign every comment with your signature, and never touch another
+developer's checkout, stack or branches.
 
 **Tools.** Read and write Shortcut and GitHub only through `sq <your role>` — `sq dev` for
-developer 1, `sq dev2` for developer 2; the examples below say `sq dev`. `sq dev help` lists
+developer 1, `sq devN` for developer N; the examples below say `sq dev`. `sq dev help` lists
 what you may run. Never call the Shortcut tools or `gh` yourself. Git, npm, `just` and
 docker in your own checkout stay as they are.
 
@@ -60,7 +64,7 @@ as a one-line reference; `--again` prints it in full, only when you truly need i
 When the work is finished, `sq dev done <id> --note "…"`; the note is what your next run
 on the story sees.
 
-`/soirely-developer sc-56` (or `… dev2 sc-56`) builds that story: `sq dev claim sc-56`.
+`/soirely-developer sc-56` (or `… dev3 sc-56`) builds that story: `sq dev claim sc-56`.
 With no story named, `sq dev queue` lists the queue in this order, and `next` takes its
 top:
 
@@ -78,21 +82,21 @@ top:
    the top; never skip ahead to a later epic. Only an epic **in progress** offers its stories: one in
    To Do or Waiting for Owner Approval holds them back, `sq` leaves them out of your queue
    and refuses a claim on one, until the owner moves the epic to In Progress. Work you have
-   already started in such an epic carries on. **By your number**, so two developers reaching the queue
-   together pick different stories: developer 2 takes the second if there are at least
-   two, developer 1 the first. Never build from `To Do` or `Needs Design`: the product
+   already started in such an epic carries on. **By your number**, so developers reaching the queue
+   together pick different stories: developer N takes the Nth if there are at least N,
+   and the first otherwise. Never build from `To Do` or `Needs Design`: the product
    manager and the designer have not finished with it.
 5. Failing those four, ask. Do not pick from the diff: a diff says what somebody was
    doing, not what the product needs next.
 
 Say which story you took and why it was next. If several are waiting, name them.
 
-**Claiming a story** is how the other developer knows to leave it alone. `sq dev claim
+**Claiming a story** is how the other developers know to leave it alone. `sq dev claim
 sc-N` adds your label, keeping the others, and moves the story to In Progress. The first
 claim recorded wins, and a second is refused with who holds it: pick again, and post
 nothing. Two claims a few seconds apart are normal.
 
-Never remove the other developer's label, and never take yours off a story you have
+Never remove another developer's label, and never take yours off a story you have
 started. A story that should change hands is a question for the owner, in your report.
 
 **A story labelled `translation` is never yours**, in any state. It belongs to the linguist
@@ -195,19 +199,19 @@ on this repository was read as an eslint failure, declared fixed, and reached CI
 The API checks need the container (`just up`). If a check cannot run, say that it did not
 run rather than that it passed.
 
-**The stack in your checkout is yours, and nobody else's is.** Developer 2's checkout is
-`~/Projects/soirely-dev2`: if it is not there, `just dev-env setup --developer 2` from the
-main checkout makes it, with its own containers and databases on ports moved up by 40000.
+**The stack in your checkout is yours, and nobody else's is.** Developer N's checkout is
+`~/Projects/soirely-devN`: if it is not there, `just dev-env setup --developer N` from the
+main checkout makes it, with its own containers and databases on its own ports (the table above).
 Its `.env` names its compose project, so every check above runs there as it does in the
 main checkout. If your session started elsewhere, every shell command starts with
-`cd ~/Projects/soirely-dev2 &&`. After `.env.example` changes on `main`, `just dev-env env`
+`cd ~/Projects/soirely-devN &&`. After `.env.example` changes on `main`, `just dev-env env`
 rewrites the `.env`, and `docker compose up -d` picks it up.
 
 The testers work in `~/Projects/soirely-qa`, `-qa2` and `-qa3` (compose projects of the same
 names, ports moved up by 10000, 20000 and 30000), on the pushed head of your PR. So nothing you do here — a reset, a rebuild, a branch switch — reaches a pass in
 progress, and nothing QA does reaches you. Two consequences: **push before handing over**,
 because QA tests what is on the remote and never your working tree; and never `cd` into
-a QA worktree or the other developer's checkout, or run `docker compose -p` against any
+a QA worktree or another developer's checkout, or run `docker compose -p` against any
 project but your own.
 
 Then **CI, on the real head**, and green before the handover: `sq dev checks <n>` reads the

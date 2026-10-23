@@ -70,7 +70,7 @@ Read this, then check it is still true. It is a snapshot, and the repository is 
 - **Local stack**: `compose.yaml`, project `soirely`, managed with `just up`, `just down` and
   the rest. **QA stack**: `../soirely-qa`, project `soirely-qa`, ports moved up by 10000, run
   through `.qa/bin/qa-env.mjs` (`CONTRIBUTING.md`). **Role stacks**: `../soirely-<role>` for
-  `dev2`, `lead`, `ops`, `en`, `es`, `fr` and `pt`, made by `just dev-env setup --role <role>`,
+  `dev2`, `dev3`, `dev4`, `lead`, `ops` and `l10n`, made by `just dev-env setup --role <role>`,
   on the offsets in `STACKS` in `scripts/dev-env.mjs`. All of these belong to other roles day
   to day. You keep them working.
 - **CI**: `.github/workflows/pull-request.yml`, which runs on pull requests, decides which
