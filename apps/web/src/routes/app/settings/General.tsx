@@ -304,7 +304,7 @@ function ReadOnly({ organisation }: { organisation: Membership }) {
       <dl className="settings-read-only">
         <div>
           <dt>{t('orgGeneral.language')}</dt>
-          <dd>{languageName(t, organisation.locale)}</dd>
+          <dd data-testid="organisation-locale">{languageName(t, organisation.locale)}</dd>
         </div>
       </dl>
       <p className="muted">{t('orgGeneral.readOnly', { role: roleName(t, organisation.role) })}</p>

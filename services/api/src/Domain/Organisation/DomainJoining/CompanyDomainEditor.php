@@ -27,6 +27,7 @@ final readonly class CompanyDomainEditor
         private EntityManagerInterface $entityManager,
         private Auditor $auditor,
         private TranslatorInterface $translator,
+        private DomainSuspender $domainSuspender,
     ) {
     }
 
@@ -61,6 +62,7 @@ final readonly class CompanyDomainEditor
         $this->auditor->record('organisation_domain.removed', self::SUBJECT, $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
             'domain' => [$listing->getDomain(), null],
         ]);
+        $this->domainSuspender->domainClosed($organisation, $listing->getDomain(), $by);
     }
 
     /** Another organisation has proved the domain (sc-560), so this listing no longer lets anybody ask. */

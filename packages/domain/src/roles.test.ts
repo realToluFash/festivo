@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MARGIN,
   extrasOf,
+  grantableRoles,
   levelOf,
   levelsOf,
   lockedAreas,
@@ -230,5 +231,19 @@ describe('the areas a caller cannot change', () => {
     const held = areas.flatMap(({ permissions }) => permissions);
 
     expect(lockedAreas(['budget.read'], held, areas)).toEqual([]);
+  });
+});
+
+describe('the roles a caller may grant', () => {
+  const owner = { id: 'r1', seededAs: 'owner', permissions: ['members.manage', 'billing.manage'] };
+  const administrator = { id: 'r2', seededAs: 'administrator', permissions: ['members.manage'] };
+  const billing = { id: 'r6', seededAs: null, permissions: ['billing.manage'] };
+  const roles = [owner, administrator, billing];
+
+  it('offers only what they hold, and Owner only to an owner', () => {
+    expect(grantableRoles(roles, { role: administrator, permissions: ['members.manage'] })).toEqual(
+      [administrator],
+    );
+    expect(grantableRoles(roles, { role: owner, permissions: owner.permissions })).toEqual(roles);
   });
 });

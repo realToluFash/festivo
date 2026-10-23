@@ -29,15 +29,15 @@ function signedIn(organisation = IRE): void {
 }
 
 function languageField(): HTMLSelectElement {
-  return screen.getByLabelText('Language', { selector: '#organisation-locale' });
+  const field = document.querySelector<HTMLSelectElement>('select#organisation-locale');
+
+  expect(field?.labels?.length).toBe(1);
+
+  return field as HTMLSelectElement;
 }
 
-function readOnlyLanguage(): Element {
-  const row = [...document.querySelectorAll('dl.settings-read-only div')].find(
-    (one) => one.querySelector('dt')?.textContent === 'Language',
-  );
-
-  return row?.querySelector('dd') ?? document.body;
+function readOnlyLanguage(): HTMLElement {
+  return screen.getByTestId('organisation-locale');
 }
 
 function settings() {
@@ -316,14 +316,16 @@ describe('Settings > General', () => {
     );
     settings();
 
-    expect(screen.getAllByRole('term').map((term) => term.textContent)).toEqual([
+    const terms = screen.getAllByRole('term');
+
+    expect(terms.slice(0, -1).map((term) => term.textContent)).toEqual([
       'Name',
       'Country',
       'Contact address',
       'Currency',
       'Time zone',
-      'Language',
     ]);
+    expect(terms.at(-1)).toBe(readOnlyLanguage().previousElementSibling);
 
     const note = screen.getByText(
       'Currency and time zone: new events start with these. Events you already have keep theirs.',

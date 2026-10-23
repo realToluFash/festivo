@@ -88,7 +88,7 @@ final class EventsTest extends ApiTestCase
     public static function refusals(): iterable
     {
         yield 'a blank name' => [['name' => '   '], 'name', 'Give the event a name.'];
-        yield 'a name past 120' => [['name' => Str\repeat('a', 121)], 'name', 'Use at most 120 characters for the name.'];
+        yield 'a name past 120' => [['name' => Str\repeat('a', 121)], 'name', 'Shorten the name to 120 characters or fewer.'];
         yield 'no start' => [['startsAt' => ''], 'startsAt', 'Choose when the event starts.'];
         yield 'no end' => [['endsAt' => ''], 'endsAt', 'Choose when the event ends.'];
         yield 'an end before the start' => [['endsAt' => '2026-11-14T15:59'], 'endsAt', 'The end is before the start. Choose a later end.'];

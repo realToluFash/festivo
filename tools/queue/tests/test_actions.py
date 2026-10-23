@@ -37,6 +37,7 @@ class FakeShortcut:
             self.raw[story_id]["labels"] = fields["labels"]
         if "description" in fields:
             self.raw[story_id]["description"] = fields["description"]
+        self.raw[story_id]["updated_at"] = self.raw[story_id].get("updated_at", 0) + 1
         return self.raw[story_id]
 
     def relate(self, subject_id, object_id, verb="relates to"):
@@ -322,6 +323,45 @@ class LineEdits(Base):
                                           dry=False, section="AC", dated=None, text="- x"))
         self.assertEqual(self.body(1), "# AC\n\n- x\n")
 
+    def test_a_body_with_its_own_heading_is_refused_and_nothing_changes(self):
+        for section, dated in (("AC", None), (None, "Notes")):
+            with self.assertRaisesRegex(actions.Refused, 'heading \\(Mobile\\).*--section "Mobile"'):
+                actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                                  dry=False, section=section, dated=dated,
+                                                  text="- x\n\n## Mobile\n\n- y"))
+        self.assertEqual(self.body(1), "# AC\n- works\n- shows a total")
+        actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                          dry=False, section="AC", dated=None,
+                                          text="- x\n```\n# not a heading\n```"))
+        self.assertIn("# not a heading", self.body(1))
+
+    def test_a_save_made_meanwhile_is_kept_and_the_edit_redone_over_it(self):
+        real = self.fake.story
+        reads = []
+
+        def story(story_id):
+            reads.append(story_id)
+            if len(reads) == 2:
+                self.fake.update(story_id, description=self.body(1) + "\n\n## Copy\n\nhi")
+            return real(story_id)
+        self.fake.story = story
+        actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                          dry=False, section="AC", dated=None, text="- x"))
+        self.assertEqual(self.body(1), "# AC\n\n- x\n\n## Copy\n\nhi\n")
+
+    def test_a_story_that_keeps_changing_is_left_as_it_is(self):
+        real = self.fake.story
+
+        def story(story_id):
+            self.fake.update(story_id, description=self.body(1) + "!")
+            return real(story_id)
+        self.fake.story = story
+        with self.assertRaisesRegex(actions.Refused, "kept changing.*nothing saved"):
+            actions.edit(self.as_("pm"), args(targets=["sc-1"], replace=None, with_=None,
+                                              dry=False, section="AC", dated=None, text="- x"))
+        self.assertNotIn("- x", self.body(1))
+        with self.assertRaisesRegex(actions.Refused, "changed nothing; sc-1 failed: .*kept"):
+            actions.edit(self.as_("pm"), line_edit(["sc-1"], "- works", "- y"))
 
 class NewStories(Base):
     def file(self, epic):
@@ -648,6 +688,41 @@ class Merging(Base):
                 actions.merge(self.as_("l10n"), args(pr=9, text=None))
             merge.assert_not_called()
 
+    def test_a_developers_pr_on_a_translation_ticket_merges_and_leaves_the_ticket(self):
+        for state in ("In Progress", "Passed Code Review"):
+            self.fake.add(1, state, ["translation"])
+            store.put_pr(self.db, dict(pr("pass"), branch="fix/sc-1/test-wording"))
+            told = len(self.fake.comments)
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.merge") as merge, \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                said = actions.merge(self.as_("dev"), args(pr=9, text=None))
+            merge.assert_called_once_with(9, HEAD)
+            self.assertEqual(self.state(1), state)
+            self.assertIn(f"stays {state}", said)
+            self.assertEqual(len(self.fake.comments), told)
+
+    def test_the_linguists_own_pr_is_not_a_developers_to_merge(self):
+        self.fake.add(1, "In Progress", ["translation"])
+        store.put_pr(self.db, dict(pr("pass"), branch="l10n/sc-1"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "In Progress, not Passed Code Review"):
+                actions.merge(self.as_("dev"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_pass_on_a_developers_pr_on_a_translation_ticket_tags_no_qa(self):
+        for state in ("In Progress", "In Review"):
+            self.fake.add(1, state, ["translation"])
+            store.put_pr(self.db, dict(pr(), branch="fix/sc-1/test-wording"))
+            with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                    mock.patch("soirely_queue.github.post_review", return_value={}), \
+                    mock.patch("soirely_queue.sync.sync_github"):
+                actions.review(self.as_("lead"), args(pr=9, verdict="pass", findings=None,
+                                                      qa=None, text="summary"))
+            self.assertEqual(self.state(1), state)
+            self.assertFalse(any("[qa]" in text for _, text, *_ in self.fake.comments))
+
     def test_a_pass_with_a_blocking_finding_is_refused_before_posting(self):
         self.fake.add(1, "In Review")
         store.put_pr(self.db, pr())
@@ -892,6 +967,51 @@ class OpsOwnsItsTickets(Base):
         kinds = {(w["roles"], w["kind"]) for w in store.waiting(self.db, "ops")}
         self.assertIn(("ops", "merge"), kinds)
         self.assertFalse([w for w in store.waiting(self.db, "dev") if w["kind"] == "merge"])
+
+
+class Closing(Base):
+    def close(self, role, text="#346 landed the same change"):
+        with mock.patch("soirely_queue.github.close") as closed, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            said = actions.pr_close(self.as_(role), args(pr=9, text=text))
+        return said, closed
+
+    def test_ops_closes_a_developer_s_pr_and_says_why_on_it(self):
+        self.fake.add(1, "Ready For QA", ["dev2"])
+        store.put_pr(self.db, pr())
+        said, closed = self.close("ops")
+        closed.assert_called_once_with(9, "#346 landed the same change (from ops)")
+        self.assertIn("closed PR #9 unmerged", said)
+
+    def test_the_developers_close_each_other_s_but_not_another_builder_s(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, pr())
+        self.close("dev")
+        self.fake.add(1, "In Review", ["ops"])
+        with self.assertRaisesRegex(actions.Refused, "ops's to close"):
+            self.close("dev")
+
+    def test_the_linguist_closes_a_translation_ticket_s_pr_and_a_developer_does_not(self):
+        self.fake.add(1, "In Review", ["translation"])
+        store.put_pr(self.db, pr())
+        with self.assertRaisesRegex(actions.Refused, "l10n's to close"):
+            self.close("dev")
+        said, _ = self.close("l10n")
+        self.assertIn("closed PR #9 unmerged", said)
+
+    def test_no_close_without_a_reason_or_of_a_merged_pr(self):
+        self.fake.add(1, "In Review", ["ops"])
+        store.put_pr(self.db, pr())
+        with self.assertRaisesRegex(actions.Refused, "say why"):
+            self.close("ops", text=" ")
+        store.put_pr(self.db, dict(pr(), state="merged"))
+        with self.assertRaisesRegex(actions.Refused, "is merged"):
+            self.close("ops")
+
+    def test_a_role_that_builds_nothing_closes_nothing(self):
+        store.put_pr(self.db, pr())
+        with self.assertRaisesRegex(actions.Refused, "lead may not pr-close"):
+            self.close("lead")
 
 
 class PermissionAsks(Base):

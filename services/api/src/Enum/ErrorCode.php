@@ -41,7 +41,9 @@ enum ErrorCode: string
     case RequestLinkDead = 'request_link_dead';
     case JoinRequestWaiting = 'join_request_waiting';
     case JoinRequestCoolingOff = 'join_request_cooling_off';
+    case JoinRequestAnswered = 'join_request_answered';
     case OrganisationDeleted = 'organisation_deleted';
+    case RestoreNeedsAddress = 'restore_needs_address';
 
     case Unauthenticated = 'unauthenticated';
     case InvalidCredentials = 'invalid_credentials';
@@ -102,9 +104,9 @@ enum ErrorCode: string
             self::OwnerRoleFixed, self::SeededRoleKept, self::LastOwner => 409,
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
-            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable => 409,
+            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress => 409,
             self::InvitationNotFound, self::RequestLinkDead => 404,
-            self::JoinRequestWaiting, self::JoinRequestCoolingOff => 409,
+            self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
             self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,

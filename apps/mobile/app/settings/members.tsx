@@ -1,5 +1,5 @@
 import type { MembersList as Members, OrganisationRole } from '@soirely/api-client';
-import { roleHolds } from '@soirely/domain';
+import { grantableRoles, roleHolds } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -9,7 +9,12 @@ import { api } from '../../src/api.ts';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
-import { MemberList, MemberPage, activeCount } from '../../src/components/Members.tsx';
+import {
+  type Answered,
+  MemberList,
+  MemberPage,
+  activeCount,
+} from '../../src/components/Members.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
@@ -25,7 +30,8 @@ type Load =
   | { kind: 'failed' }
   | { kind: 'loaded'; list: Members; roles: OrganisationRole[] };
 
-type Showing = { kind: 'list'; flash: string | null } | { kind: 'member'; id: string };
+type Showing =
+  { kind: 'list'; flash: string | null; answered?: Answered } | { kind: 'member'; id: string };
 
 const LIST_COLUMN = 300;
 
@@ -79,6 +85,10 @@ export default function MembersScreen() {
       ? (load.list.members.find((one) => one.id === showing.id) ?? null)
       : null;
   const toList = () => setShowing(LIST);
+  const answered = (list: Members, done: Answered) => {
+    if (load.kind === 'loaded') setLoad({ ...load, list });
+    setShowing({ kind: 'list', flash: null, answered: done });
+  };
   const subtitle =
     organisation != null && load.kind === 'loaded'
       ? t('membersScreen.subtitle', {
@@ -128,11 +138,15 @@ export default function MembersScreen() {
   const list =
     organisation != null && load.kind === 'loaded' ? (
       <MemberList
+        kind={kind}
         organisation={organisation}
         list={load.list}
+        roles={grantableRoles(load.roles, organisation)}
         manages={roleHolds(organisation, 'members.manage')}
         open={member?.id ?? null}
         flash={showing.kind === 'list' ? showing.flash : null}
+        answered={showing.kind === 'list' ? (showing.answered ?? null) : null}
+        onAnswered={answered}
         onOpen={(id) => setShowing({ kind: 'member', id })}
       />
     ) : null;
@@ -145,7 +159,7 @@ export default function MembersScreen() {
         organisation={organisation}
         member={member}
         list={load.list}
-        roles={load.roles}
+        roles={grantableRoles(load.roles, organisation)}
         manages={roleHolds(organisation, 'members.manage')}
         onChanged={(list) => setLoad({ ...load, list })}
         onRemoved={(list) => {
@@ -158,6 +172,7 @@ export default function MembersScreen() {
             }),
           });
         }}
+        onAnswered={answered}
         onGoToOrganisation={() => router.replace(SECTION_HREF.organisation)}
       />
     ) : null;

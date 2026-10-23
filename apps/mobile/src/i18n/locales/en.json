@@ -901,7 +901,7 @@
     "failed": "Saving did not work. Nothing was changed. Try again in a moment.",
     "searchCurrency": "Search currencies",
     "searchTimezone": "Search time zones",
-    "language": "Language",
+    "language": "Language for invitations",
     "languageHint": "Invitation emails to people without a Soirely account are written in this language. People who already have an account get theirs in their own language.",
     "savedLanguage": "Saved. Invitation emails to people without a Soirely account go out in {{language}} from now on. Invitations already sent are not sent again.",
     "refused": "Nothing was saved. Your role does not include the permission this needs.",
@@ -1125,7 +1125,8 @@
       "pending_approval": "Awaiting approval",
       "suspended": "Suspended",
       "left": "Left",
-      "removed": "Removed"
+      "removed": "Removed",
+      "domainSuspended": "Suspended: company address gone"
     },
     "how": {
       "invitation": "Invitation",
@@ -1200,6 +1201,51 @@
     "goToOrganisation": "Go to Organisation ›",
     "fromTheWeb": "To invite somebody, use Soirely on the web.",
     "pickSomebody": "Choose somebody in the list to see them here.",
+    "backToList": "‹ Members",
+    "suspendedBecause": {
+      "address_gone": "{{name}}'s {{domain}} address is no longer on their account.",
+      "domain_closed": "{{organisation}} no longer lets people join through {{domain}}.",
+      "domain_managed_elsewhere": "{{domain}} is now managed by another organisation."
+    },
+    "suspendedRemovedOn": "If nobody answers by {{when}}, they are removed.",
+    "restore": "Restore",
+    "restored": "{{name}}'s access to {{organisation}} is restored.",
+    "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first.",
+    "noRoleYet": "No role yet",
+    "awaiting": {
+      "title": "Awaiting approval",
+      "note": "Only people who manage members see these requests. Nobody is added until one of you approves them.",
+      "asked": "{{channel}} · asked {{date}}",
+      "removes": "Removed on {{deadline}} if nobody answers",
+      "approve": "Approve",
+      "turnDown": "Turn down",
+      "roleFor": "Role for {{name}}",
+      "approveAs": "Approve as {{role}}",
+      "cancel": "Cancel",
+      "turnDownTitle": "Turn down {{name}}?",
+      "turnDownBody": "{{name}} is emailed that their request to join {{organisation}} was turned down. The email does not say who turned it down.",
+      "turnDownConfirm": "Turn down {{name}}",
+      "keep": "Keep the request",
+      "approved": "{{name}} is now a member, as {{role}}.",
+      "approvedNext": "See {{name}}",
+      "turnedDown": "{{name}}’s request is turned down.",
+      "turnedDownNext": "See Former"
+    }
+  },
+  "accessPaused": {
+    "badge": "Paused",
+    "becauseAddressGone": "Your access to {{organisation}} is paused because your {{domain}} address is no longer on your account.",
+    "becauseDomainClosed": "Your access to {{organisation}} is paused because {{organisation}} no longer lets people join through {{domain}}.",
+    "becauseManagedElsewhere": "Your access to {{organisation}} is paused because {{domain}} is now managed by another organisation.",
+    "since": "Paused since {{when}}.",
+    "kept": "Your work in {{organisation}} is kept and still attributed to you.",
+    "untouched": "Your other organisations and your access to single events are not affected.",
+    "removedBy": "If nobody restores your access by {{when}}, you are removed from {{organisation}}.",
+    "nextTitle": "What happens next",
+    "nextAddressGone": "Add your {{domain}} address again in Account settings and make it primary, then ask an admin of {{organisation}} to restore your access.",
+    "nextNothingNeeded": "An admin of {{organisation}} can restore your access. Nothing is needed from you.",
+    "accountSettings": "Account settings",
+    "switch": "Switch organisation",
     "backToList": "‹ Members"
   },
   "requestLink": {

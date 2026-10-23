@@ -429,11 +429,36 @@ export const CURRENCY_CODES: readonly string[] = [
   'ZWG',
 ];
 
+/** CLDR's names for codes newer than the ICU browsers ship, which names them by their code. */
+const RECENT_CURRENCY_NAMES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  SLE: {
+    en: 'Sierra Leonean Leone',
+    es: 'leona sierraleonesa',
+    fr: 'leone sierra-léonais',
+    pt: 'Leone de Serra Leoa',
+  },
+  VED: { en: 'Bolívar Soberano' },
+  XCG: {
+    en: 'Caribbean guilder',
+    es: 'florín caribeño',
+    fr: 'florin caribéen',
+    pt: 'Florim do Caribe',
+  },
+  ZWG: {
+    en: 'Zimbabwean Gold',
+    es: 'oro zimbabuense',
+    fr: 'or du Zimbabwe',
+    pt: 'Ouro zimbabueano',
+  },
+};
+
 /** "Nigerian Naira (NGN)", in the reader's language. */
 export function currencyLabel(code: string, locale: string): string {
-  const name = new Intl.DisplayNames([locale], { type: 'currency' }).of(code);
+  const recent = RECENT_CURRENCY_NAMES[code];
+  const engine = new Intl.DisplayNames([locale], { type: 'currency' }).of(code);
+  const name = engine !== code ? engine : (recent?.[locale.split('-')[0] ?? locale] ?? recent?.en);
 
-  return name == null || name === code ? code : `${name} (${code})`;
+  return name == null ? code : `${name} (${code})`;
 }
 
 /** An organisation's own currency as a row shows it, including one no longer offered and none at all. */

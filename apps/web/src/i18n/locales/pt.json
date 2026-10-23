@@ -390,20 +390,20 @@
     "country": "País",
     "contact": "Endereço de contacto",
     "currency": "Moeda",
-    "currencyPlaceholder": "Choose a currency",
-    "currencyRetired": "{{code}} (no longer in use)",
+    "currencyPlaceholder": "Escolha uma moeda",
+    "currencyRetired": "{{code}} (já não é usada)",
     "timezone": "Fuso horário",
     "defaultsNote": "Moeda e fuso horário: os novos eventos começam com estes. Os eventos que já tem mantêm os seus.",
     "save": "Guardar alterações",
     "saving": "A guardar…",
     "saved": "Guardado. Todos em {{name}} veem os novos dados no próximo ecrã.",
     "nameBlank": "Indique o nome da organização.",
-    "currencyBlank": "Choose a currency.",
+    "currencyBlank": "Escolha uma moeda.",
     "contactBlank": "Indique um e-mail de contacto.",
     "contactInvalid": "Isso não parece um endereço de e-mail. Confirme que tem um @ e um domínio.",
     "readOnly": "A sua função, {{role}}, pode ver estes dados mas não alterá-los. Os proprietários podem.",
     "failed": "Não foi possível guardar. Nada foi alterado. Tente novamente dentro de um momento.",
-    "language": "Idioma",
+    "language": "Idioma dos convites",
     "languageHint": "Os e-mails de convite para pessoas sem conta Soirely são escritos neste idioma. Quem já tem uma conta recebe o convite no seu próprio idioma.",
     "savedLanguage": "Guardado. A partir de agora, os e-mails de convite para pessoas sem conta Soirely são enviados em {{language}}. Os convites já enviados não voltam a ser enviados.",
     "refused": "Nada foi guardado. A sua função não inclui a permissão necessária para isto."
@@ -860,7 +860,8 @@
       "pending_approval": "Awaiting approval",
       "suspended": "Suspended",
       "left": "Left",
-      "removed": "Removed"
+      "removed": "Removed",
+      "domainSuspended": "Acesso suspenso: sem endereço da empresa"
     },
     "how": {
       "invitation": "Invitation",
@@ -926,7 +927,9 @@
       "suspended": "Suspended by {{by}}",
       "restored": "Restored by {{by}}",
       "left": "Left {{organisation}}",
-      "removed": "Removed by {{by}}"
+      "removed": "Removed by {{by}}",
+      "turnedDown": "Turned down by {{by}}",
+      "requestExpired": "Removed, as nobody answered in 30 days"
     },
     "whoToInvite": "Who to invite",
     "role": "Role",
@@ -966,7 +969,36 @@
     "removed": "{{name}} was removed. Their events stay with {{organisation}}.",
     "removedNext": "They are listed under Former in Members, with everything they did kept.",
     "backToMembers": "Back to Members",
-    "actionFailed": "That did not go through. Nothing was changed. Try again in a moment."
+    "actionFailed": "That did not go through. Nothing was changed. Try again in a moment.",
+    "suspendedBecause": {
+      "address_gone": "{{name}} já não tem o endereço de {{domain}} na conta.",
+      "domain_closed": "{{organisation}} deixou de aceitar adesões através de {{domain}}.",
+      "domain_managed_elsewhere": "{{domain}} passou a ser gerido por outra organização."
+    },
+    "suspendedRemovedOn": "Se ninguém responder até {{when}}, o acesso é retirado.",
+    "restore": "Repor",
+    "restored": "O acesso de {{name}} a {{organisation}} foi reposto.",
+    "restoreNeedsAddress": "{{name}} precisa primeiro de um endereço de {{domain}} verificado.",
+    "noRoleYet": "No role yet",
+    "awaiting": {
+      "title": "Awaiting approval",
+      "note": "Only people who manage members see these requests. Nobody is added until one of you approves them.",
+      "asked": "{{channel}} · asked {{date}}",
+      "removes": "Removed on {{deadline}} if nobody answers",
+      "approve": "Approve",
+      "turnDown": "Turn down",
+      "roleFor": "Role for {{name}}",
+      "approveAs": "Approve as {{role}}",
+      "cancel": "Cancel",
+      "turnDownTitle": "Turn down {{name}}?",
+      "turnDownBody": "{{name}} is emailed that their request to join {{organisation}} was turned down. The email does not say who turned it down.",
+      "turnDownConfirm": "Turn down {{name}}",
+      "keep": "Keep the request",
+      "approved": "{{name}} is now a member, as {{role}}.",
+      "approvedNext": "See {{name}}",
+      "turnedDown": "{{name}}’s request is turned down.",
+      "turnedDownNext": "See Former"
+    }
   },
   "rolesScreen": {
     "title": "Funções",
@@ -1470,6 +1502,21 @@
     "removedNext": "Quem usa este domínio deixa de poder pedir para aderir desta forma.",
     "failed": "Não foi possível. Tente novamente daqui a pouco.",
     "unreadable": "Não foi possível carregar a lista. Recarregue a página para tentar novamente."
+  },
+  "accessPaused": {
+    "badge": "Em pausa",
+    "becauseAddressGone": "O seu acesso a {{organisation}} está em pausa porque o seu endereço de {{domain}} já não está na sua conta.",
+    "becauseDomainClosed": "O seu acesso a {{organisation}} está em pausa porque {{organisation}} deixou de aceitar adesões através de {{domain}}.",
+    "becauseManagedElsewhere": "O seu acesso a {{organisation}} está em pausa porque {{domain}} passou a ser gerido por outra organização.",
+    "since": "Em pausa desde {{when}}.",
+    "kept": "O seu trabalho em {{organisation}} é mantido e continua atribuído a si.",
+    "untouched": "As suas outras organizações e o seu acesso a eventos individuais não são afetados.",
+    "removedBy": "Se ninguém repuser o seu acesso até {{when}}, deixará de fazer parte de {{organisation}}.",
+    "nextTitle": "O que acontece a seguir",
+    "nextAddressGone": "Volte a adicionar o seu endereço de {{domain}} em Definições da conta e torne-o principal. Depois, peça a um administrador de {{organisation}} que reponha o seu acesso.",
+    "nextNothingNeeded": "Um administrador de {{organisation}} pode repor o seu acesso. Não precisa de fazer nada.",
+    "accountSettings": "Definições da conta",
+    "switch": "Mudar de organização"
   },
   "requestLink": {
     "title": "Pedidos de adesão",
