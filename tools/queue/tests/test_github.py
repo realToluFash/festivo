@@ -9,6 +9,7 @@ from soirely_queue import github
 
 HEAD = "a" * 40
 MERGED = "c" * 40
+MAIN = "f" * 40
 PASS = f"## Review (from lead)\n\nFine.\n\nReview passed at {HEAD}. Ready to merge."
 
 
@@ -68,6 +69,7 @@ def routes(extra=None):
                             "state": "open", "merged": False, "mergeable_state": "dirty",
                             "merge_commit_sha": "d" * 40},
     }
+    found[f"{base}/git/ref/heads/main"] = {"object": {"sha": MAIN}}
     found.update(extra or {})
     return found
 
@@ -126,7 +128,25 @@ class RestSync(unittest.TestCase):
         fake.calls.clear()
         again = self.sync(fake, first)
         self.assertEqual(again, first)
-        self.assertEqual(len(fake.paths()), 3, "the two lists, and GraphQL refusing")
+        self.assertEqual(len(fake.paths()), 4, "the two lists, main's head, and GraphQL refusing")
+
+    def test_an_unchanged_pull_request_is_asked_again_once_main_moves(self):
+        fake = FakeGh(routes())
+        first = self.sync(fake)
+        fake.calls.clear()
+        fake.routes["repos/o/n/git/ref/heads/main"] = {"object": {"sha": "e" * 40}}
+        fake.routes["repos/o/n/pulls/7"] = dict(fake.routes["repos/o/n/pulls/7"], mergeable=True)
+        again = self.sync(fake, first)[7]
+        self.assertEqual((again["mergeable"], again["main_sha"]), ("mergeable", "e" * 40))
+        self.assertIn("repos/o/n/pulls/7", fake.paths())
+        self.assertNotIn("repos/o/n/pulls/7/reviews?per_page=100", fake.paths())
+
+    def test_an_unknown_answer_is_asked_again_on_the_next_sync(self):
+        fake = FakeGh(routes({"repos/o/n/pulls/7": {"mergeable": None}}))
+        first = self.sync(fake)
+        self.assertEqual(first[7]["mergeable"], "unknown")
+        fake.routes["repos/o/n/pulls/7"] = {"mergeable": False}
+        self.assertEqual(self.sync(fake, first)[7]["mergeable"], "conflicting")
 
     def test_pending_checks_are_read_again(self):
         fake = FakeGh(routes())
