@@ -338,7 +338,9 @@ describe('New event', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(currency));
     expect(errorUnder('event-currency')).toContain('Choose a currency.');
-    expect(screen.getByRole('status').textContent).toBe('1 field needs fixing. Nothing was sent.');
+    expect(screen.getByRole('status').textContent).toBe(
+      '1 field needs fixing, so nothing was sent.',
+    );
     expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
   });
 
