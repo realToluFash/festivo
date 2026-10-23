@@ -556,7 +556,7 @@
     "keepItOn": "Keep it on",
     "failedTitle": "Two-factor did not load",
     "failedBody": "Something went wrong on our side. Try again in a moment.",
-    "keptByRule": "{{organisation}} requires two-factor, so you can’t turn it off."
+    "keptByRule": "{{organisation}} requires two-factor, so you cannot turn it off."
   },
   "passwordCard": {
     "title": "Password",
@@ -1379,7 +1379,8 @@
     "everyoneRequiredFrom": "Required from {{deadline}}",
     "everyoneWithoutTitle_one": "{{count}} person doesn’t have two-factor yet",
     "everyoneWithoutTitle_other": "{{count}} people don’t have two-factor yet",
-    "everyoneWithoutBody": "When you save, each gets an email. They have until {{deadline}} to turn it on. After that they can’t open anything in {{organisation}} until they do.",
+    "everyoneWithoutBody_one": "When you save, they get an email. They have until {{deadline}} to turn it on. After that they can’t open anything in {{organisation}} until they do.",
+    "everyoneWithoutBody_other": "When you save, each gets an email. They have until {{deadline}} to turn it on. After that they can’t open anything in {{organisation}} until they do.",
     "everyoneWithoutList": "People without two-factor",
     "everyoneWithoutPerson": "{{name}} · {{role}}",
     "effectEveryoneOn": "Everyone needs two-factor. Anyone without it is emailed and has 7 days to turn it on.",
@@ -1387,9 +1388,9 @@
     "valueEveryone": "Two-factor required for everyone",
     "valueNoEveryone": "Two-factor not required of everyone",
     "dueBody": "{{organisation}} requires two-factor from {{deadline}}.",
-    "dueSetUp": "Set it up now",
+    "dueSetUp": "Turn it on now",
     "overdueTitle": "Turn on two-factor to carry on",
-    "overdueBody": "{{organisation}} requires two-factor. Set it up to carry on.",
+    "overdueBody": "{{organisation}} requires two-factor, and the time to turn it on has passed.",
     "overdueElsewhere": "Your other organisations and single-event access are not affected.",
     "overdueTurnOn": "Turn on two-factor",
     "overdueSignOut": "Sign out"

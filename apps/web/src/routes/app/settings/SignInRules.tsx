@@ -462,7 +462,13 @@ function Editable({
                     <p className="notice-title">
                       {t('signInRules.everyoneWithoutTitle', { count: withoutTwoFactor.length })}
                     </p>
-                    <p>{t('signInRules.everyoneWithoutBody', { deadline, organisation: name })}</p>
+                    <p>
+                      {t('signInRules.everyoneWithoutBody', {
+                        count: withoutTwoFactor.length,
+                        deadline,
+                        organisation: name,
+                      })}
+                    </p>
                     <ul aria-label={t('signInRules.everyoneWithoutList')}>
                       {withoutTwoFactor.map((member) => (
                         <li key={member.userId}>
