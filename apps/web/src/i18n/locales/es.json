@@ -1383,7 +1383,7 @@
     "everyoneRequiredFrom": "Obligatoria a partir del {{deadline}}",
     "everyoneWithoutTitle_one": "{{count}} persona aún no tiene activada la verificación en dos pasos",
     "everyoneWithoutTitle_other": "{{count}} personas aún no tienen activada la verificación en dos pasos",
-    "everyoneWithoutBody_one": "When you save, they get an email. They have until {{deadline}} to turn it on. After that they can’t open anything in {{organisation}} until they do.",
+    "everyoneWithoutBody_one": "Al guardar, esa persona recibirá un correo electrónico. Tiene hasta el {{deadline}} para activarla; después, no podrá abrir nada en {{organisation}} hasta que lo haga.",
     "everyoneWithoutBody_other": "Al guardar, cada una recibirá un correo electrónico. Tienen hasta el {{deadline}} para activarla; después, no podrán abrir nada en {{organisation}} hasta que lo hagan.",
     "everyoneWithoutList": "Personas sin verificación en dos pasos",
     "everyoneWithoutPerson": "{{name}} · {{role}}",
