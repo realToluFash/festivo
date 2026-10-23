@@ -141,6 +141,7 @@ final class OnboardingGateTest extends ApiTestCase
         yield 'the resend cooldown' => ['GET', '/api/auth/verify/resend', null];
         yield 'a resend' => ['POST', '/api/auth/verify/resend', null];
         yield 'a code' => ['POST', '/api/auth/verify/email', ['code' => '000000']];
+        yield 'the language' => ['PUT', '/api/auth/locale', ['locale' => 'fr']];
         yield 'the details screen' => ['PATCH', '/api/auth/complete-profile', ['name' => '']];
         yield 'setting a phone' => ['PUT', '/api/auth/phone', ['countryCode' => 'NG', 'number' => '']];
         yield 'a phone code' => ['POST', '/api/auth/verify/phone', ['code' => '000000']];
@@ -169,6 +170,27 @@ final class OnboardingGateTest extends ApiTestCase
                 [ErrorCode::AccountUnverified->type(), ErrorCode::ProfileIncomplete->type()],
                 "{$method} {$path} was refused by the gate",
             );
+        }
+    }
+
+    #[Test]
+    public function anAccountStillOnboardingSavesItsLanguage(): void
+    {
+        $unverified = $this->registered('language-unverified@example.com');
+        $incomplete = $this->registered('language-incomplete@example.com');
+        $this->verify($incomplete);
+
+        foreach ([$unverified, $incomplete] as $user) {
+            $this->signIn($user);
+
+            self::assertSame(['locale' => 'es'], $this->call('PUT', '/api/auth/locale', ['locale' => 'es']));
+            self::assertSame(200, $this->client->getResponse()->getStatusCode());
+            self::assertSame('es', $this->call('GET', '/api/auth/me')['locale']);
+
+            $refused = $this->call('PUT', '/api/auth/locale', ['locale' => 'de']);
+            self::assertSame(422, $this->client->getResponse()->getStatusCode());
+            self::assertSame(ErrorCode::ValidationFailed->type(), $refused['type'], 'refused as for a complete account');
+            self::assertSame('es', $this->call('GET', '/api/auth/me')['locale']);
         }
     }
 

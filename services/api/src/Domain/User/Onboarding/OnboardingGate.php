@@ -15,6 +15,8 @@ final readonly class OnboardingGate implements OnboardingGateInterface
     /** The whole list, by route name. Logout and refresh are public, so they never reach the gate. */
     public const array EXEMPT = [
         'auth_me',
+        // The language switcher in the auth frame, so the screens that must be finished can be read (sc-6887).
+        'auth_locale',
         'auth_verify_email',
         'auth_verify_resend',
         'auth_verify_resend_cooldown',
