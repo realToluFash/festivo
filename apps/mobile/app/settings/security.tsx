@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
+import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { DevicesCard } from '../../src/components/DevicesCard.tsx';
 import { PasswordCard } from '../../src/components/PasswordCard.tsx';
 import { Screen } from '../../src/components/Screen.tsx';

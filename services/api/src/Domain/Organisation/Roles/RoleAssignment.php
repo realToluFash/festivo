@@ -44,7 +44,7 @@ final readonly class RoleAssignment
     }
 
     /** An owner, active or suspended (sc-564), with no other active owner beside them. */
-    private function isLastOwner(Membership $membership): bool
+    public function isLastOwner(Membership $membership): bool
     {
         return $membership->getRole()->isOwner()
             && ($membership->isActive() || MembershipStatus::Suspended === $membership->getStatus())

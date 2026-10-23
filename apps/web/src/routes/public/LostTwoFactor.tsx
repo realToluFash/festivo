@@ -13,7 +13,7 @@ import {
   recoveryFirstStep,
   recoveryIntroKey,
 } from '@soirely/domain';
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 
@@ -181,7 +181,7 @@ export function LostTwoFactor() {
 function Heading({ title, intro, mark }: { title: string; intro: string; mark?: Mark }) {
   const heading = useRef<HTMLHeadingElement>(null);
 
-  useEffect(() => heading.current?.focus(), [title]);
+  useLayoutEffect(() => heading.current?.focus(), [title]);
 
   return (
     <div className="auth-heading">

@@ -9,7 +9,6 @@ use App\Domain\Organisation\DomainJoining\JoinRequester;
 use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
-use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -28,7 +27,6 @@ use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
 use App\Http\AfterResponse;
-use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
@@ -248,20 +246,90 @@ final class DomainSuspensionTest extends ApiTestCase
         $row = Iter\search($members, static fn (array $member): bool => $member['id'] === $membership->getId()->toRfc4122()) ?? self::fail('not listed');
         self::assertNull(Type\shape(['removesAt' => Type\mixed()], true)->coerce($row['suspension'])['removesAt']);
 
-        $this->send('DELETE', Str\format('/api/orgs/%s/members/%s', $organisation->getId()->toRfc4122(), $membership->getId()->toRfc4122()));
-        self::assertResponseStatusCodeSame(403);
-
-        try {
-            self::service(RoleAssignment::class)->release($membership);
-            self::fail('the last owner was released');
-        } catch (ApiException $refused) {
-            self::assertSame(ErrorCode::LastOwner, $refused->errorCode);
-        }
-
         $this->suspendAt($membership, new DateTimeImmutable('-720 hours -1 minute'));
         self::assertSame(0, self::service(DomainSuspender::class)->removeExpired());
         self::service(EntityManagerInterface::class)->flush();
         self::assertSame(MembershipStatus::Suspended, $this->membershipOf($owner, $organisation)->getStatus());
+    }
+
+    #[Test]
+    public function removingTheSuspendedOnlyOwnerIsRefusedByTheLastOwnerRuleBeforeAnyGrantCheck(): void
+    {
+        [$owner, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $this->signIn($administrator);
+
+        $body = $this->send('DELETE', $this->memberPath($organisation, $owner));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(ErrorCode::LastOwner->type(), $body['type'] ?? null);
+        self::assertSame('An organisation always has at least one owner.', $body['title'] ?? null);
+        self::assertSame(MembershipStatus::Suspended, $this->membershipOf($owner, $organisation)->getStatus());
+    }
+
+    #[Test]
+    public function anAdministratorRestoresTheSuspendedOnlyOwnerOnceTheirAddressIsBack(): void
+    {
+        [$owner, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $this->signIn($administrator);
+
+        $body = $this->send('POST', $this->restorePath($organisation, $owner));
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(ErrorCode::RestoreNeedsAddress->type(), $body['type'] ?? null);
+        self::assertSame('Member needs a verified ire.events address first.', $body['detail'] ?? null);
+
+        $this->makePrimary($owner, 'folake@ire.events');
+        $this->signIn($administrator);
+        $this->send('POST', $this->restorePath($organisation, $owner));
+
+        self::assertResponseStatusCodeSame(204);
+        $membership = $this->membershipOf($owner, $organisation);
+        self::assertSame(MembershipStatus::Active, $membership->getStatus());
+        self::assertTrue($membership->getRole()->isOwner());
+        self::assertSame($administrator->getId()->toRfc4122(), $this->audited(DomainSuspender::RESTORED, $membership)->getActorId()?->toRfc4122());
+    }
+
+    #[Test]
+    public function anAdministratorStillCannotRestoreAnOwnerBesideAnotherActiveOwner(): void
+    {
+        [$owner, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $this->join($organisation, $this->member('kemi@ire.events'), MembershipChannel::Invitation, SeededRole::Owner);
+        $this->makePrimary($owner, 'folake@ire.events');
+        $this->signIn($administrator);
+
+        $body = $this->send('POST', $this->restorePath($organisation, $owner));
+
+        self::assertResponseStatusCodeSame(403);
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $body['type'] ?? null);
+        self::assertSame(MembershipStatus::Suspended, $this->membershipOf($owner, $organisation)->getStatus());
+    }
+
+    #[Test]
+    public function theMembersListTellsAnAdministratorTheSuspendedOwnerIsTheOnlyOne(): void
+    {
+        [$owner, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $this->signIn($administrator);
+
+        self::assertTrue($this->listedAsOnlyOwner($organisation, $owner));
+
+        $this->join($organisation, $this->member('kemi@ire.events'), MembershipChannel::Invitation, SeededRole::Owner);
+        $this->signIn($administrator);
+
+        self::assertFalse($this->listedAsOnlyOwner($organisation, $owner));
+    }
+
+    #[Test]
+    public function anApprovedDomainMemberIsListedAsHavingComeThroughTheCompanyAddress(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $tunde = $this->askedAndApproved($organisation, $owner, 'tunde@ire.events');
+
+        $members = Type\vec(Type\shape(['id' => Type\string(), 'channel' => Type\nullable(Type\string())], true))->coerce(
+            $this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()))['members'],
+        );
+        $row = Iter\search($members, fn (array $member): bool => $member['id'] === $this->membershipOf($tunde, $organisation)->getId()->toRfc4122()) ?? self::fail('not listed');
+
+        self::assertSame('domain', $row['channel']);
     }
 
     #[Test]
@@ -433,7 +501,7 @@ final class DomainSuspensionTest extends ApiTestCase
             'en',
         ) . ', they are removed.', $text);
         self::assertStringContainsString('Review Tunde Bakare: ', $text);
-        self::assertStringContainsString("You're getting this because you're an admin of Ìrè Events.", $text);
+        self::assertStringContainsString("You're getting this because you're an owner or admin of Ìrè Events.", $text);
     }
 
     #[Test]
@@ -475,6 +543,7 @@ final class DomainSuspensionTest extends ApiTestCase
             'domain' => 'ire.events',
             'since' => ['at' => $since->format(\DATE_ATOM), 'written' => $mailer->deadline($since, $reader, 'en')],
             'removesAt' => ['at' => $removesAt->format(\DATE_ATOM), 'written' => $mailer->deadline($removesAt, $reader, 'en')],
+            'onlyOwner' => false,
         ];
 
         $this->signIn($tunde);
@@ -639,6 +708,39 @@ final class DomainSuspensionTest extends ApiTestCase
         self::service(EntityManagerInterface::class)->refresh($membership);
 
         return $membership;
+    }
+
+    /**
+     * The founder, the only Owner, suspended when their address went, and the Administrator left behind.
+     *
+     * @return array{User, Organisation, User}
+     */
+    private function onlyOwnerSuspended(): array
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $administrator = $this->member('bisi@ire.events');
+        $this->join($organisation, $administrator, MembershipChannel::Invitation, SeededRole::Administrator);
+        $this->membershipOf($owner, $organisation)->setDomain('ire.events');
+        $this->verifiedAlternative($owner, 'folake@okafor.family');
+        $this->makePrimary($owner, 'folake@okafor.family');
+        self::assertSame(MembershipStatus::Suspended, $this->membershipOf($owner, $organisation)->getStatus());
+
+        return [$owner, $organisation, $administrator];
+    }
+
+    private function listedAsOnlyOwner(Organisation $organisation, User $user): bool
+    {
+        $members = Type\vec(Type\shape(['id' => Type\string(), 'suspension' => Type\mixed()], true))->coerce(
+            $this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()))['members'],
+        );
+        $row = Iter\search($members, fn (array $member): bool => $member['id'] === $this->membershipOf($user, $organisation)->getId()->toRfc4122()) ?? self::fail('not listed');
+
+        return Type\shape(['onlyOwner' => Type\bool()], true)->coerce($row['suspension'])['onlyOwner'];
+    }
+
+    private function memberPath(Organisation $organisation, User $user): string
+    {
+        return Str\format('/api/orgs/%s/members/%s', $organisation->getId()->toRfc4122(), $this->membershipOf($user, $organisation)->getId()->toRfc4122());
     }
 
     private function restorePath(Organisation $organisation, User $user): string

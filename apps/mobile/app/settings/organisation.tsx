@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
+import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { api } from '../../src/api.ts';
 import { CompanyDomainsCard } from '../../src/components/CompanyDomainsCard.tsx';
 import { Notice } from '../../src/components/Notice.tsx';

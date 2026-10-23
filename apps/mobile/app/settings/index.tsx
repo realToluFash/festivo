@@ -1,7 +1,8 @@
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppFrame, bodyEdges } from '../../src/components/AppFrame.tsx';
+import { AppFrame } from '../../src/components/AppFrame.tsx';
+import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { Screen } from '../../src/components/Screen.tsx';
 import { ChooseSection, SettingsList, SettingsSplit } from '../../src/components/SettingsList.tsx';
 import { useLayout } from '../../src/layout/useLayout.ts';

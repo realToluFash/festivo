@@ -235,7 +235,7 @@ describe('while an organisation requires two-factor of everyone (sc-609)', () =>
     fireEvent.click(await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD));
 
     expect(
-      screen.getByText('Ìrè Events requires two-factor, so you can’t turn it off.'),
+      screen.getByText('Ìrè Events requires two-factor, so you cannot turn it off.'),
     ).toBeDefined();
     expect(screen.getByText('On')).toBeDefined();
     expect(screen.queryByLabelText('Code')).toBeNull();
@@ -264,7 +264,7 @@ describe('while an organisation requires two-factor of everyone (sc-609)', () =>
 
     expect(
       await screen.findByText(
-        'Ìrè Events requires two-factor, so you can’t turn it off.',
+        'Ìrè Events requires two-factor, so you cannot turn it off.',
         {},
         UNDER_LOAD,
       ),

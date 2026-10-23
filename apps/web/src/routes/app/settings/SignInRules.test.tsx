@@ -475,7 +475,11 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
     fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
 
     expect(screen.getByText('1 person doesn’t have two-factor yet')).toBeDefined();
-    expect(screen.getByText(/until Saturday, Oct 24 at 14:20 WAT to turn it on/)).toBeDefined();
+    expect(
+      screen.getByText(
+        /^When you save, they get an email\. They have until Saturday, Oct 24 at 14:20 WAT to turn it on/,
+      ),
+    ).toBeDefined();
     const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
     expect(without.getByText('Chidi Okoro · Coordinator')).toBeDefined();
 
@@ -483,6 +487,25 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
 
     expect(await screen.findByText('Required from Saturday, Oct 24 at 14:20 WAT')).toBeDefined();
     expect(sent.at(-1)?.body).toEqual({ everyoneNeedsTwoFactor: true });
+  });
+
+  it('counts two or more people without two-factor and says each gets an email', async () => {
+    signedIn(membership());
+    answering({
+      ...WITH_OWN,
+      withoutTwoFactor: [
+        ...WITH_OWN.withoutTwoFactor,
+        { userId: 'user_5', name: 'Amaka Eze', role: COORDINATOR },
+      ],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
+
+    expect(screen.getByText('2 people don’t have two-factor yet')).toBeDefined();
+    expect(
+      screen.getByText(/^When you save, each gets an email\. They have until Saturday/),
+    ).toBeDefined();
   });
 
   it('keeps the administrators’ switch, reading that everyone’s rule covers it', async () => {
@@ -590,7 +613,7 @@ describe('what the rules ask of a member, on every page', () => {
     expect(
       await screen.findByText('Ìrè Events requires two-factor from Saturday, Oct 24 at 14:20 WAT.'),
     ).toBeDefined();
-    expect(screen.getByRole('link', { name: 'Set it up now' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'Turn it on now' }).getAttribute('href')).toBe(
       '/app/account/security',
     );
     expect(screen.queryByRole('button', { name: 'Close this notice' })).toBeNull();
@@ -611,7 +634,7 @@ describe('what the rules ask of a member, on every page', () => {
 
     expect(await screen.findByText('Turn on two-factor to carry on')).toBeDefined();
     expect(
-      screen.getByText('Ìrè Events requires two-factor. Set it up to carry on.'),
+      screen.getByText('Ìrè Events requires two-factor, and the time to turn it on has passed.'),
     ).toBeDefined();
     expect(
       screen.getByText('Your other organisations and single-event access are not affected.'),

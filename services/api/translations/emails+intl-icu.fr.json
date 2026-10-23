@@ -1,4 +1,4 @@
 {
     "signInRules.rule.inactivity": "Toute personne qui n’a pas utilisé Soirely depuis {days, plural, one {# jour} other {# jours}} devra se reconnecter.",
-    "joinRequest.waiting.body": "{count, plural, one {# person is waiting for an answer to their request to join {organisation}:} other {# people are waiting for an answer to their request to join {organisation}:}}"
+    "joinRequest.waiting.body": "{count, plural, one {# personne attend une réponse à sa demande d’adhésion à {organisation} :} many {# de personnes attendent une réponse à leur demande d’adhésion à {organisation} :} other {# personnes attendent une réponse à leur demande d’adhésion à {organisation} :}}"
 }
