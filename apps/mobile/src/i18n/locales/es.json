@@ -15,6 +15,9 @@
     "title": "No pertenece a ninguna organización",
     "body": "Los eventos, los equipos y los planes pertenecen a una organización, y ahora mismo no forma parte de ninguna. Su cuenta sigue siendo suya y no ha desaparecido nada.",
     "wayOn": "Pida a quien gestiona la suya que vuelva a invitar a {{email}}.",
+    "startTitle": "Cree su propia organización",
+    "startBody": "Al configurar una organización nueva, usted tendrá la función Propietario.",
+    "start": "Crear organización",
     "signedInAs": "Sesión iniciada como {{email}}.",
     "account": "Su cuenta"
   },

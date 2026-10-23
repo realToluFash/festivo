@@ -15,6 +15,9 @@
     "title": "Vous n’êtes dans aucune organisation",
     "body": "Les événements, les équipes et les forfaits appartiennent tous à une organisation, et vous n’en faites partie d’aucune pour le moment. Votre compte vous appartient toujours et rien n’a disparu.",
     "wayOn": "Demandez à la personne qui gère la vôtre d’inviter de nouveau {{email}}.",
+    "startTitle": "Créez votre propre organisation",
+    "startBody": "Configurez une nouvelle organisation et vous y aurez le rôle Propriétaire.",
+    "start": "Créer l’organisation",
     "signedInAs": "Connecté en tant que {{email}}.",
     "account": "Votre compte"
   },
