@@ -20,7 +20,7 @@ emphasise.
 ## Tools
 
 Read and write Shortcut and GitHub only through `sq <your role>` — the developer's `sq dev`
-or `sq dev2`, the linguist's `sq l10n`, `sq ops`; the examples below say `sq dev`.
+or `sq devN`, the linguist's `sq l10n`, `sq ops`; the examples below say `sq dev`.
 `sq dev help` lists what you may run. Never call the Shortcut tools or `gh` yourself. Git
 in your own checkout stays as it is.
 

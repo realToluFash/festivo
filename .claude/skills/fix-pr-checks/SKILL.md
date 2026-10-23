@@ -11,7 +11,7 @@ arguments: [pr]
 
 You are getting PR `$pr` to green.
 
-**Tools.** Read and write GitHub only through `sq <your role>` — `sq dev`, `sq dev2` or
+**Tools.** Read and write GitHub only through `sq <your role>` — `sq dev`, `sq devN` or
 `sq ops`; the examples below say `sq dev`. `sq dev help` lists what you may run. Never call
 `gh` yourself. Git in your own checkout stays as it is.
 

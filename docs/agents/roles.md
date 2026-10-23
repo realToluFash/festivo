@@ -10,7 +10,7 @@ heartbeats.
 | `pm`   | `/soirely-product-manager`  | Answers the other roles' questions, writes and sharpens stories and epics so QA can test them, and records each decision with what was rejected.    | `[pm]`, a story new in To Do; every 2 hours                                                        | reads only                             |
 | `ux`   | `/soirely-designer`         | Sweeps the backlog for stories that need design, draws the missing screens as one artifact per epic, and links each story to its artboard.          | `[ux]`, a story new in Needs Design; every 2 hours                                                 | reads only                             |
 | `dev`  | `/soirely-developer`        | Developer 1. Builds a story across the API, the web client and the app, opens the pull request, merges it after the lead's pass.                    | `[dev]` on its stories, Failed Code Review, Failed QA, In Progress, Ready For Dev, its PR's checks | `~/Projects/soirely`                   |
-| `dev2` | `/soirely-developer dev2`   | Developer 2, the same work on stories labelled `dev2`. The two share unlabelled Ready For Dev stories, one claiming each.                           | `[dev2]`, as `dev`                                                                                 | `~/Projects/soirely-dev2`              |
+| `devN` | `/soirely-developer devN`   | Developer N (2 to 4), the same work on stories labelled `devN`. The developers share unlabelled Ready For Dev stories, one claiming each.           | `[devN]`, as `dev`                                                                                 | `~/Projects/soirely-devN`              |
 | `qa`   | `/soirely-qa-tester`        | Tester 1. Tests a story against its AC on the API, the web and the app on simulators, hunts edge cases, and passes or fails it.                     | `[qa]`, a story new in Ready For QA                                                                | `~/Projects/soirely-qa`, its own stack |
 | `qa2`  | `/soirely-qa-tester qa2`    | Tester 2. The three testers share Ready For QA, one claiming each story.                                                                            | `[qa2]`, as `qa`                                                                                   | `~/Projects/soirely-qa2`               |
 | `qa3`  | `/soirely-qa-tester qa3`    | Tester 3.                                                                                                                                           | `[qa3]`, as `qa`                                                                                   | `~/Projects/soirely-qa3`               |
@@ -21,8 +21,8 @@ heartbeats.
 | `cd`   | `/soirely-creative`         | Proposes UX ideas grounded in a real problem, each a Backlog story labelled `idea` with a safe, a bold and a moonshot version.                      | `[cd]`; every 24 hours                                                                             | reads only                             |
 
 The other roles' queues leave out stories labelled `translation` (the linguist's) and `ops`
-(ops' own infrastructure work). Who builds and merges a story is decided by its label: `dev2`
-is developer 2's, `ops` is ops', `translation` is the linguist's, and anything else is
+(ops' own infrastructure work). Who builds and merges a story is decided by its label: `devN`
+is developer N's, `ops` is ops', `translation` is the linguist's, and anything else is
 developer 1's.
 
 ## Ops on each machine

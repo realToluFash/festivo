@@ -55,7 +55,7 @@ Review` whose head moved past your pass comes back too: `sq` moves it to `In Rev
 
 **Check the claim first.** In Review means somebody thinks it is ready. If the pull request
 is missing or its checks are red on the head commit, that is the whole review: one `[dev]`
-comment (`sq lead comment sc-56 --to dev`, or `dev2` when the story is labelled `dev2`), and
+comment (`sq lead comment sc-56 --to dev`; sq routes it to the developer whose label the story carries), and
 `sq lead move sc-56 "In Progress"`. `sq lead checks <n>` names the failing checks.
 
 ## 3. Read before you judge
@@ -181,8 +181,8 @@ the pass no longer covers what would be merged, and the pull request comes back 
   PR link and what you pass in `--qa`, anything QA should look at hard: `[qa] (from lead)`.
   A story in `Passed Code Review` is waiting on the developer, not on you.
 - **Any blocking finding** (`--back`) → it moves the story to `Failed Code Review`, with one
-  `[dev] (from lead)` comment on the story linking the review, or `[dev2]` when the story is
-  labelled `dev2`. The label names the developer who built it, and that developer's inbox
+  `[dev] (from lead)` comment on the story linking the review, which sq routes to the
+  developer whose label the story carries (`devN` for developer N). The label names the developer who built it, and that developer's inbox
   picks it up and answers each finding in its thread on the pull request.
 
 Then `sq lead done <id> --note "<one line>"`; the note is what your next run on the story

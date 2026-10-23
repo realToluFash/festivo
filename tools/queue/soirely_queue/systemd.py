@@ -8,9 +8,10 @@ import pathlib
 import shutil
 import subprocess
 
+from . import machine
+
 TIMER = "soirely-routine"
 SLICE = "soirely.slice"
-SLICE_MEMORY = "16G"
 # What a notification needs to reach the desktop from a unit.
 DESKTOP = ("DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "WAYLAND_DISPLAY")
 
@@ -32,7 +33,7 @@ def search_path():
     return ":".join(dict.fromkeys(found + ["/usr/local/bin", "/usr/bin", "/bin"]))
 
 
-def units(sq, env_file, python="/usr/bin/python3"):
+def units(sq, env_file, python="/usr/bin/python3", slice_memory=machine.SLICE_MEMORY):
     return {
         f"{TIMER}.service": "\n".join([
             "[Unit]",
@@ -63,7 +64,7 @@ def units(sq, env_file, python="/usr/bin/python3"):
             "Description=Soirely agent workers, capped together",
             "",
             "[Slice]",
-            f"MemoryMax={SLICE_MEMORY}",
+            f"MemoryMax={slice_memory}",
             "",
         ]),
     }
@@ -82,7 +83,11 @@ class Linux:
         folder = unit_dir()
         folder.mkdir(parents=True, exist_ok=True)
         changed = False
-        for name, text in units(sq, env_file, python).items():
+        try:
+            limit = machine.slice_memory(machine.load())
+        except machine.ConfigError:
+            limit = machine.SLICE_MEMORY
+        for name, text in units(sq, env_file, python, limit).items():
             target = folder / name
             if not target.exists() or target.read_text() != text:
                 target.write_text(text)

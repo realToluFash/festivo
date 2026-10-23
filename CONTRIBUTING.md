@@ -63,12 +63,12 @@ offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`,
 `node .qa/bin/qa-env.mjs`. Expo Go does not own the app's `soirely://` scheme, so on Android
 a provider's redirect is handed back with `node .qa/bin/qa-env.mjs link 'soirely://oauth/…'`.
 
-There are two developers. Developer 1 works in this checkout on the development ports.
-`just dev-env setup --developer 2` makes developer 2's: a worktree at `../soirely-dev2` with
-its own containers and database, every port moved up by 40000. Start `/soirely-developer dev2`
-from that worktree. Every `just` recipe and `npm run` check works there as it does here,
+There are several developers. Developer 1 works in this checkout on the development ports.
+`just dev-env setup --developer N` (2 to 4) makes developer N's: a worktree at
+`../soirely-devN` with its own containers and database, on ports of its own (`STACKS` in
+`scripts/dev-env.mjs`). Start `/soirely-developer devN` from that worktree. Every `just` recipe and `npm run` check works there as it does here,
 because its `.env` names its own compose project. A developer claims a story by adding its
-label, `dev1` or `dev2`, so the other leaves it alone; `.claude/skills/soirely-developer`
+label, `dev1` to `devN`, so the others leave it alone; `.claude/skills/soirely-developer`
 has the details.
 
 Every other role that raises pull requests has a stack of its own the same way:

@@ -1,6 +1,9 @@
 """The unit text and the worker command, with systemd itself never called."""
 
+import json
+import pathlib
 import subprocess
+import tempfile
 import unittest
 from unittest import mock
 
@@ -19,10 +22,34 @@ class Units(unittest.TestCase):
         self.assertIn("ExecStart=/usr/bin/python3 /q/sq/sq run", service)
         self.assertIn("MemoryMax=16G", made["soirely.slice"])
 
+    def test_the_slice_takes_the_machines_cap(self):
+        made = systemd.units("/q/sq/sq", "/c/env", slice_memory="28G")
+        self.assertIn("MemoryMax=28G", made["soirely.slice"])
+
     def test_the_token_is_read_from_the_file_never_written_into_a_unit(self):
         with mock.patch.dict("os.environ", {"SHORTCUT_API_TOKEN": "secret-value"}):
             made = systemd.units("/q/sq/sq", "/c/env")
         self.assertFalse(any("secret-value" in text for text in made.values()))
+
+
+class Install(unittest.TestCase):
+    def installed_slice(self, config=None):
+        with tempfile.TemporaryDirectory() as folder:
+            root = pathlib.Path(folder)
+            if config is not None:
+                (root / "agents.json").write_text(json.dumps(config))
+            with mock.patch.dict("os.environ", {"SOIRELY_CONFIG": folder,
+                                                "XDG_CONFIG_HOME": folder}), \
+                    mock.patch.object(systemd, "systemctl"):
+                systemd.Linux().install("/q/sq/sq", "/c/env", "python3")
+            return (root / "systemd" / "user" / "soirely.slice").read_text()
+
+    def test_the_slice_is_capped_by_sliceMemoryMax(self):
+        self.assertIn("MemoryMax=28G", self.installed_slice({"sliceMemoryMax": "28G"}))
+
+    def test_without_the_setting_or_the_file_the_cap_is_16G(self):
+        self.assertIn("MemoryMax=16G", self.installed_slice({}))
+        self.assertIn("MemoryMax=16G", self.installed_slice())
 
 
 class Launch(unittest.TestCase):

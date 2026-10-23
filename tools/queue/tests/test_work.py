@@ -42,6 +42,8 @@ class Header(unittest.TestCase):
     def test_a_bare_dev_tag_goes_to_the_labelled_developer(self):
         self.assertEqual(roles.addressees("[dev] (from lead)\n", ["dev2"]), ["dev2"])
         self.assertEqual(roles.addressees("[dev] (from lead)\n", []), ["dev"])
+        for label in ("dev3", "dev4"):
+            self.assertEqual(roles.addressees("[dev] (from lead)\n", [label]), [label])
 
     def test_a_former_locale_tag_or_signature_means_the_linguist(self):
         self.assertEqual(roles.addressees("[fr] [pm] (from qa2)\n", []), ["l10n", "pm"])
@@ -210,6 +212,13 @@ class Developer(unittest.TestCase):
                                      [pr(lead=[verdict("pass", HEAD[:7])])])
         self.assertEqual([(i["kind"], i["roles"]) for i in items], [("merge", ["dev2"])])
 
+    def test_a_pass_and_red_checks_wake_only_the_labelled_developer(self):
+        for label in ("dev3", "dev4"):
+            passed = work.developer_items([story(labels=[label])],
+                                          [pr(lead=[verdict("pass", HEAD[:7])])])
+            red = work.developer_items([story(labels=[label])], [pr(checks="red")])
+            self.assertEqual([i["roles"] for i in passed + red], [[label], [label]])
+
     def test_a_pass_carried_over_a_merge_of_main_is_a_merge(self):
         carried = pr(lead=[verdict("pass", OLD[:7])], carried=OLD[:7])
         self.assertEqual(kinds(work.developer_items([story()], [carried])), ["merge"])
@@ -317,10 +326,22 @@ class Carried(unittest.TestCase):
 
 
 class Queue(unittest.TestCase):
-    def test_an_unlabelled_ready_story_is_one_item_both_developers_can_claim(self):
+    def test_an_unlabelled_ready_story_is_one_item_every_developer_can_claim(self):
         items = [i for i in work.queue_items([story(state="Ready For Dev")]) if i["pool"] == "dev"]
         self.assertEqual(len(items), 1)
-        self.assertEqual(sorted(items[0]["roles"]), ["dev", "dev2"])
+        self.assertEqual(sorted(items[0]["roles"]), ["dev", "dev2", "dev3", "dev4"])
+
+    def test_beyond_ready_for_dev_a_developer_sees_only_its_own_label(self):
+        for state in ("Failed Code Review", "Failed QA", "In Progress", "Ready For Dev"):
+            for label in ("dev1", "dev2", "dev3", "dev4"):
+                items = work.queue_items([story(state=state, labels=[label])])
+                self.assertEqual(sorted(r for i in items for r in i["roles"]),
+                                 [roles.developer_of([label])], (state, label))
+
+    def test_developer_one_also_keeps_unlabelled_work_beyond_ready_for_dev(self):
+        for state in ("Failed Code Review", "Failed QA", "In Progress"):
+            items = work.queue_items([story(state=state)])
+            self.assertEqual(sorted(r for i in items for r in i["roles"]), ["dev"], state)
 
     def test_ready_for_qa_is_one_item_for_the_three_testers(self):
         items = work.queue_items([story(state="Ready For QA")])

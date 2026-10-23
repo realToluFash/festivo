@@ -23,6 +23,8 @@ RUNTIME = re.compile(r"^(\d+)(m|h)$")
 CLAUDE_DEFAULT = pathlib.Path("~/.claude").expanduser()
 # Under everything in agents.json: a worker is never left without a time limit.
 BUILT_IN = {"maxRuntime": "90m", "wakeEvery": "3m", "workers": 1}
+# What every worker on the machine may use between them, the systemd slice's MemoryMax.
+SLICE_MEMORY = "16G"
 
 
 class ConfigError(RuntimeError):
@@ -163,6 +165,12 @@ def settings(config, role):
     return merged
 
 
+def slice_memory(config):
+    """`sliceMemoryMax`, or 16G when it is unset or not a size, which `check` reports."""
+    value = config.get("sliceMemoryMax")
+    return str(value) if value is not None and SIZE.match(str(value)) else SLICE_MEMORY
+
+
 def minutes(runtime):
     number, unit = RUNTIME.match(runtime).groups()
     return int(number) * (60 if unit == "h" else 1)
@@ -234,6 +242,9 @@ def check(config, known=None, logged_in=account):
         if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
                                   or value < 0):
             errors.append(f"{name} is {value!r} in {path()}: a number, or null")
+    limit = config.get("sliceMemoryMax")
+    if limit is not None and not SIZE.match(str(limit)):
+        errors.append(f"sliceMemoryMax is {limit!r} in {path()}: a size such as 28G, or null")
     for role in listed:
         if role in unknown:
             continue
