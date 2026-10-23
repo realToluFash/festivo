@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
+import { followAccount } from '../src/accountLanguage.ts';
 import { api } from '../src/api.ts';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton } from '../src/components/Buttons.tsx';
@@ -77,6 +78,7 @@ export default function ResetPassword() {
 
     try {
       const { account } = await api.resetPassword(token, typed.current);
+      await followAccount(account);
       setStatus({ kind: 'done', email, account });
     } catch (error) {
       const dead = deadFrom(error);

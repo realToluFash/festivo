@@ -16,4 +16,8 @@ describe('the language at sign-in', () => {
     expect(languageOnSignIn('fr', 'fr', false)).toBeNull();
     expect(languageOnSignIn(null, 'fr', false)).toBeNull();
   });
+
+  it('keeps the language on screen when the account names one the app does not offer', () => {
+    expect(languageOnSignIn('de', 'fr', false)).toBeNull();
+  });
 });
