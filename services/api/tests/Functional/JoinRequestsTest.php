@@ -44,7 +44,7 @@ final class JoinRequestsTest extends ApiTestCase
     /** @mago-expect lint:no-literal-password */
     private const string PASSWORD = 'a decent passphrase';
 
-    /** Monday, Oct 12 at 09:40 WAT: the AC's own ask. */
+    /** Monday 12 Oct at 09:40 WAT: the AC's own ask. */
     private const string ASKED = '2026-10-12 08:40:00';
 
     #[Test]
@@ -203,7 +203,7 @@ final class JoinRequestsTest extends ApiTestCase
         self::assertSame(MembershipStatus::PendingApproval, $this->membershipOf($asker, $organisation)->getStatus());
     }
 
-    /** The AC's instant: asked Monday, Oct 12 at 09:40 WAT, removed 30 × 24 h later, read in each reader's zone. */
+    /** The AC's instant: asked Monday 12 Oct at 09:40 WAT, removed 30 × 24 h later, read in each reader's zone. */
     #[Test]
     public function theRemovalIsOneInstantInEveryReadersZone(): void
     {
@@ -214,11 +214,11 @@ final class JoinRequestsTest extends ApiTestCase
         $removes = fn (): mixed => Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'pending_approval' === $member['status']))['removesAt'] ?? null;
 
         $this->fresh($owner)->setTimezone('Africa/Lagos');
-        self::assertSame(['at' => '2026-11-11T08:40:00+00:00', 'written' => 'Wednesday, Nov 11 at 09:40 WAT'], $removes());
+        self::assertSame(['at' => '2026-11-11T08:40:00+00:00', 'written' => 'Wednesday 11 Nov at 09:40 WAT'], $removes());
         $this->fresh($owner)->setTimezone('Europe/London');
-        self::assertSame('Wednesday, Nov 11 at 08:40 GMT', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
+        self::assertSame('Wednesday 11 Nov at 08:40 GMT', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
         $this->fresh($owner)->setTimezone(null);
-        self::assertSame('Wednesday, Nov 11 at 08:40 UTC', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
+        self::assertSame('Wednesday 11 Nov at 08:40 UTC', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
     }
 
     #[Test]
