@@ -62,6 +62,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The only owner left suspended (sc-7831, `accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `membersScreen.history.suspendedAddressGone`).** `onlyOwnerNotRemovable` is a refusal, so
+  "cannot": "{{name}} is the only owner, so they cannot be removed." The history line shows for
+  every domain reason (address gone, domain closed, managed elsewhere), so it reads "Suspended:
+  their company email address no longer gives access", true for each and naming nobody. Both
+  wait on [dev2], because `Members.test.tsx` matches the current English; es, fr and pt are
+  written from the settled wording.
 - **23 Oct 2026. Ownership and leaving (sc-68, sc-7715, `ownership.*`, web and app,
   `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`).** Settled
   as sc-68 wrote it. The act is "transfer ownership"; in prose ownership is "handed" to a

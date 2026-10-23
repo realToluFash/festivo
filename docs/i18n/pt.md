@@ -41,6 +41,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: "a única
+  pessoa com a função Proprietário em {{organisation}}" and "não sai da organização". The
+  refusal names "esta pessoa", so "removida" agrees with the noun, not the member, as the app's
+  `onlyOwner`. Restoring needs "o endereço de e-mail principal desta pessoa". The history line
+  is "Acesso suspenso: o endereço de e-mail da empresa deixou de dar acesso".
 - **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
   `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
   The act is "transferir a propriedade", the organisation "cedida"; the people are "alguém com
