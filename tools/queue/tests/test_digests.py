@@ -33,3 +33,9 @@ class Developers(unittest.TestCase):
 
     def test_with_fewer_stories_than_its_number_a_developer_takes_the_first(self):
         self.assertEqual(self.pick("dev4", [ready(1), ready(2)]), "sc-1")
+
+    def test_a_story_labelled_for_a_developer_comes_before_the_shared_ones(self):
+        own = dict(ready(9), labels=["dev4"])
+        self.assertEqual(self.pick("dev4", [ready(n) for n in range(1, 6)] + [own]),
+                         "sc-9")
+
