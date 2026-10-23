@@ -31,6 +31,13 @@ export function useOpenSwitcher(): (() => void) | undefined {
   return useContext(OpenSwitcher);
 }
 
+const StartOrganisation = createContext<(() => void) | undefined>(undefined);
+
+/** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932). */
+export function useStartOrganisation(): (() => void) | undefined {
+  return useContext(StartOrganisation);
+}
+
 const HideBack = createContext<((hidden: boolean) => void) | undefined>(undefined);
 
 /** While `hidden`, the phone header keeps its title and drops the back row (sc-3132). */
@@ -86,6 +93,10 @@ export function AppFrame({
           setChoosing(true);
         }
       : undefined;
+  const startOrganisation = () => {
+    setCreated(null);
+    setCreating(true);
+  };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
   const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
 
@@ -122,20 +133,22 @@ export function AppFrame({
             </View>
           )}
           <OpenSwitcher.Provider value={openSwitcher}>
-            <HideBack.Provider value={setBackHidden}>
-              {signedIn.pausedIn != null && !aboutTheAccount ? (
-                <AccessPaused
-                  paused={signedIn.pausedIn}
-                  others={signedIn.organisations}
-                  onSwitch={(next) => switchOrganisation(next.id)}
-                  onChoose={() => openSwitcher?.()}
-                />
-              ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
-                <TwoFactorOverdue organisation={signedIn.organisation} />
-              ) : (
-                children
-              )}
-            </HideBack.Provider>
+            <StartOrganisation.Provider value={startOrganisation}>
+              <HideBack.Provider value={setBackHidden}>
+                {signedIn.pausedIn != null && !aboutTheAccount ? (
+                  <AccessPaused
+                    paused={signedIn.pausedIn}
+                    others={signedIn.organisations}
+                    onSwitch={(next) => switchOrganisation(next.id)}
+                    onChoose={() => openSwitcher?.()}
+                  />
+                ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
+                  <TwoFactorOverdue organisation={signedIn.organisation} />
+                ) : (
+                  children
+                )}
+              </HideBack.Provider>
+            </StartOrganisation.Provider>
           </OpenSwitcher.Provider>
         </View>
         {kind === 'phone' && <TabBar current={current} />}
@@ -150,7 +163,7 @@ export function AppFrame({
         onClose={() => setChoosing(false)}
         onCreate={() => {
           setChoosing(false);
-          setCreating(true);
+          startOrganisation();
         }}
       />
       <CreateOrganisation
