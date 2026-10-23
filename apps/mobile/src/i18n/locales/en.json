@@ -1212,7 +1212,7 @@
     },
     "suspendedRemovedOn": "If nobody answers by {{when}}, they are removed.",
     "suspendedOnlyOwner": "{{name}} is the only owner of {{organisation}}, so they stay suspended, still an owner, and are not removed.",
-    "onlyOwnerNotRemovable": "{{name}} is the only owner, so they can't be removed.",
+    "onlyOwnerNotRemovable": "{{name}} is the only owner, so they cannot be removed.",
     "onlyOwnerRestoreNeedsAddress": "Restore works once their main email address is a verified {{domain}} address again.",
     "restore": "Restore",
     "restored": "{{name}}'s access to {{organisation}} is restored.",
