@@ -67,6 +67,19 @@ final class JoinRequestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function anApprovedMemberIsStillListedAsHavingAskedToJoin(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $asker = $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+
+        $this->send('POST', $this->path($organisation, $asker, '/approve'), ['roleId' => $this->role($organisation, SeededRole::ReadOnly)->getId()->toRfc4122()]);
+
+        $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'ada@okeke.ng' === ($member['user']['email'] ?? null)));
+        self::assertSame(['active', 'request'], [$listed['status'] ?? null, $listed['channel'] ?? null]);
+    }
+
+    #[Test]
     public function nobodyApprovesIntoARoleTheyCouldNotGrant(): void
     {
         [, $organisation] = $this->organisation();
@@ -129,6 +142,27 @@ final class JoinRequestsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(403);
         $this->send('POST', $this->path($organisation, $asker, '/turn-down'));
         self::assertResponseStatusCodeSame(403);
+    }
+
+    #[Test]
+    public function aRoleCountsOnlyThePeopleWhoHoldIt(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $reads = $this->role($organisation, SeededRole::Coordinator);
+        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
+        $this->asks($organisation, 'ada@okeke.ng');
+        $turnedDown = $this->asks($organisation, 'kemi@lawal.ng');
+        $this->signIn($owner);
+        $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
+        self::service(EntityManagerInterface::class)->flush();
+        $this->signIn($coordinator);
+
+        $roles = Type\vec(Type\shape(['seededAs' => Type\nullable(Type\string()), 'holders' => Type\int()], true))
+            ->coerce($this->send('GET', Str\format('/api/orgs/%s/roles', $organisation->getId()->toRfc4122()))['roles'] ?? null);
+
+        $readOnly = Iter\first(Vec\filter($roles, static fn (array $role): bool => SeededRole::ReadOnly->value === $role['seededAs']));
+        self::assertSame(0, $readOnly['holders'] ?? null);
     }
 
     #[Test]

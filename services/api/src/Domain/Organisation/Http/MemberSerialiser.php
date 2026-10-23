@@ -31,7 +31,7 @@ final readonly class MemberSerialiser
     {
         $user = $membership->getUser();
         $last = Iter\last($history);
-        $entered = Iter\last(Vec\filter($history, static fn (MembershipTransition $step): bool => $step->getToStatus()->isEntry()));
+        $entered = Iter\last(Vec\filter($history, static fn (MembershipTransition $step): bool => $step->getToStatus()->isEntry() && (null === $step->getFromStatus() || MembershipStatus::LeftOrRemoved === $step->getFromStatus())));
         $invitation = Iter\last($accepted);
         $removesAt = MembershipStatus::PendingApproval === $membership->getStatus() ? $membership->getRequestExpiresAt() : null;
 
