@@ -144,7 +144,7 @@
     "domainSuspended.keptOnlyOwner": "{name} est la seule personne ayant le rôle Propriétaire dans {organisation}, donc ce rôle lui reste et son accès n’est pas retiré.",
     "domainSuspended.restoreOnceAddress": "Rétablissez son accès dès que son compte aura de nouveau une adresse {domain} vérifiée.",
     "domainSuspended.deadline": "Sans réponse d’ici le {deadline}, son accès sera retiré.",
-    "domainSuspended.review": "Voir son accès : {link}",
+    "domainSuspended.review": "Examiner l’accès pour {name} : {link}",
     "domainSuspended.footer": "Vous recevez ce message parce que vous êtes propriétaire ou administrateur de l’organisation {organisation}.",
     "joinRequest.turnedDown.subject": "Votre demande d’adhésion à {organisation}",
     "joinRequest.turnedDown.body": "Votre demande d’adhésion à {organisation} sur Soirely a été refusée : vous ne faites donc pas partie de l’organisation.",
