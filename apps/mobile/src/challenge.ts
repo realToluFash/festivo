@@ -1,5 +1,6 @@
 import { type SignInOutcome, type TwoFactorChallenge, awaiting } from '@soirely/api-client';
 
+import { followAccount } from './accountLanguage.ts';
 import { takeHeldLink } from './heldLink.ts';
 import { type Landing, landingFor } from './landing.ts';
 
@@ -28,6 +29,8 @@ export async function nextAfterSignIn(
   }
 
   dropChallenge();
+  // Before the next screen draws, so it opens in this account's language, not the last person's (sc-8006).
+  await followAccount(outcome.account);
 
   // Two-factor was turned off to let them back in (sc-509): asked to set it up again first.
   if (outcome.account.twoFactorSetupPrompt) return '/two-factor-again';

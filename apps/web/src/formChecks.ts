@@ -1,6 +1,6 @@
 import { emailProblem } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /** sc-63's "Forms check before they send": every field on the first press, then each as it is left, and a message gone as soon as its field is right. */
 export function useFormChecks<F extends string>(
@@ -46,6 +46,25 @@ export function useFormChecks<F extends string>(
     edited(field: F, value: string): void {
       if (errors[field] != null && check(field, value) == null) set(field, null);
     },
+  };
+}
+
+/** Where focus goes once a refused save ends: a field disabled while saving cannot take focus until the render that enables it. */
+export function useFocusAfterSave<F extends string>(
+  saving: boolean,
+  focus: (field: F) => void,
+): (field: F) => void {
+  const pending = useRef<F | null>(null);
+
+  useEffect(() => {
+    if (saving || pending.current == null) return;
+
+    focus(pending.current);
+    pending.current = null;
+  }, [saving, focus]);
+
+  return (field) => {
+    pending.current = field;
   };
 }
 

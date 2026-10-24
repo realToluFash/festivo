@@ -1,5 +1,11 @@
 import { ApiError, ApiUnreachableError, type RequestLinkPreview } from '@soirely/api-client';
-import { REQUEST_MESSAGE_MAXIMUM, formatDay, formatTimeOfDay, lockLiftsAt } from '@soirely/domain';
+import {
+  REQUEST_MESSAGE_MAXIMUM,
+  fallsOnLaterDay,
+  formatDay,
+  formatTimeOfDay,
+  lockLiftsAt,
+} from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, type TextInput, View } from 'react-native';
@@ -137,9 +143,14 @@ function Asking({
             body={
               view.until == null
                 ? t('requestToJoin.limitedLater')
-                : t('requestToJoin.limited', {
-                    time: formatTimeOfDay(view.until, currentLocale()),
-                  })
+                : fallsOnLaterDay(view.until)
+                  ? t('requestToJoin.limitedOnDay', {
+                      day: formatDay(view.until, currentLocale()),
+                      time: formatTimeOfDay(view.until, currentLocale()),
+                    })
+                  : t('requestToJoin.limited', {
+                      time: formatTimeOfDay(view.until, currentLocale()),
+                    })
             }
             announce
           />

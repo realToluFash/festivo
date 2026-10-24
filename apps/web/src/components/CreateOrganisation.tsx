@@ -12,7 +12,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { useFormChecks } from '../formChecks.ts';
+import { useFocusAfterSave, useFormChecks } from '../formChecks.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { FieldError } from './FieldError.tsx';
 
@@ -45,12 +45,14 @@ export function CreateOrganisation({
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
-  const focusAfterSave = useRef<NewOrganisationField | null>(null);
+  const focusField = (field: NewOrganisationField): void =>
+    (field === 'name' ? nameInput : countryInput).current?.focus();
   const checks = useFormChecks<NewOrganisationField>(
     FIELDS,
     (field, value) => problemMessage(field, value, t),
-    (field) => (field === 'name' ? nameInput : countryInput).current?.focus(),
+    focusField,
   );
+  const focusAfterSave = useFocusAfterSave(saving, focusField);
   const errors = { ...refused, ...checks.errors };
 
   useEffect(() => {
@@ -73,14 +75,6 @@ export function CreateOrganisation({
 
     return () => document.removeEventListener('keydown', keep);
   }, [onCancel]);
-
-  // A field disabled while saving cannot take focus until the render that enables it.
-  useEffect(() => {
-    if (saving || focusAfterSave.current == null) return;
-
-    (focusAfterSave.current === 'name' ? nameInput : countryInput).current?.focus();
-    focusAfterSave.current = null;
-  }, [saving]);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -107,7 +101,7 @@ export function CreateOrganisation({
         }),
       );
     } catch (error) {
-      focusAfterSave.current = 'name';
+      focusAfterSave('name');
       setSaving(false);
 
       if (error instanceof ApiError && error.is('too_many_attempts')) {
@@ -126,7 +120,7 @@ export function CreateOrganisation({
         }
 
         setRefused({ name: fields.name, countryCode: fields.countryCode });
-        if (fields.name == null) focusAfterSave.current = 'countryCode';
+        if (fields.name == null) focusAfterSave('countryCode');
         return;
       }
 

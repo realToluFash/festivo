@@ -864,13 +864,13 @@
       "domainSuspended": "Acesso suspenso: domínio da empresa"
     },
     "how": {
-      "invitation": "Invitation",
-      "invitationFrom": "Invitation from {{inviter}}",
-      "self_created": "Created {{organisation}}",
-      "join_code": "Join code",
-      "domain": "Company email address",
-      "request": "Asked to join",
-      "directory": "Company directory"
+      "invitation": "Convite",
+      "invitationFrom": "Convite de {{inviter}}",
+      "self_created": "Criou {{organisation}}",
+      "join_code": "Código de adesão",
+      "domain": "Endereço de e-mail da empresa",
+      "request": "Pediu para aderir",
+      "directory": "Diretório da empresa"
     },
     "when": {
       "since": "since {{date}}",
@@ -988,7 +988,7 @@
       "title": "A aguardar aprovação",
       "note": "Só quem gere os membros vê estes pedidos. Ninguém entra na organização sem que uma destas pessoas aprove o pedido.",
       "asked": "{{channel}} · data do pedido: {{date}}",
-      "removes": "O pedido é removido a {{deadline}} se ninguém responder",
+      "removes": "O pedido é removido se ninguém responder até {{deadline}}",
       "approve": "Aprovar",
       "turnDown": "Recusar",
       "roleFor": "Função de {{name}}",
@@ -1568,6 +1568,7 @@
     "coolingOff": "{{organisation}} respondeu ao seu último pedido. A partir de {{date}}, pode voltar a pedir para aderir.",
     "coolingOffLater": "{{organisation}} respondeu ao seu último pedido. Pode voltar a pedir para aderir daqui a algumas semanas.",
     "limited": "Demasiados pedidos por agora. Tente novamente às {{time}}.",
+    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
     "limitedLater": "Demasiados pedidos por agora. Tente novamente mais tarde.",
     "deadTitle": "Esta ligação não funciona",
     "deadBody": "Esta ligação já não funciona. Peça uma nova à organização.",

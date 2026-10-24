@@ -66,7 +66,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `messages:members.request_answered`, sc-7217). "Approve" is "Aprovar", "turn down"
   "Recusar", and what is refused is "o pedido", never the person: "Recusar o pedido de
   {{name}}?", "Recusar o pedido de {{name}}", "Pedido recusado por {{by}}". A request nobody answered "é
-  removido a {{deadline}}", the date with "a", as the row line. A role given on approval is
+  removido se ninguém responder até {{deadline}}": the slot opens on a weekday, so "até",
+  never "a" (24 Oct, from QA; see the weekday rule below). A role given on approval is
   "com a função {{role}}"; the person refused "não passou a fazer parte da organização", never
   "não foi adicionado", so nothing agrees with them. The waiting email's count takes `=0`
   (PHP's ICU counts 0 as one in "pt") and `many`, "1 000 000 de pessoas".
