@@ -195,6 +195,36 @@ describe('No organisation', () => {
     expect((screen.getByLabelText('Country') as HTMLSelectElement).disabled).toBe(true);
   });
 
+  it('sends one request for a double press, then one more after a failure (sc-8327)', async () => {
+    inNone();
+    let answer: (response: Response) => void = () => {};
+    const sent = answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => new Promise<Response>((resolve) => (answer = resolve)),
+    });
+    const posts = () => sent.filter(({ line }) => line === 'POST /api/orgs');
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Okoro Weddings' },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    const form = screen.getByLabelText('Organisation name').closest('form') as HTMLFormElement;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    const starting = await screen.findByRole('button', { name: 'Starting…' });
+    expect(starting.matches(':disabled')).toBe(true);
+    fireEvent.click(starting);
+    await waitFor(() => expect(posts()).toHaveLength(1));
+
+    answer(json({ type: 'about:blank', title: 'Internal Server Error', status: 500 }, 500));
+    const start = await screen.findByRole('button', { name: 'Start organisation' });
+    expect(start.matches(':disabled')).toBe(false);
+    expect(posts()).toHaveLength(1);
+    fireEvent.click(start);
+    await waitFor(() => expect(posts()).toHaveLength(2));
+  });
+
   it.each([
     [
       'too many new organisations',

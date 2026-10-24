@@ -70,6 +70,7 @@ function StartOrganisation({
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const sending = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
   const focusAfterSave = useFocusAfterSave<NewOrganisationField>(saving, (field) =>
@@ -87,6 +88,7 @@ function StartOrganisation({
 
   async function start(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (sending.current) return;
 
     const checked: Errors = {};
     const name = values.name.trim();
@@ -102,6 +104,7 @@ function StartOrganisation({
       return;
     }
 
+    sending.current = true;
     setSaving(true);
     setFailed(false);
 
@@ -116,6 +119,7 @@ function StartOrganisation({
       onStarted(membership);
     } catch (error) {
       focusAfterSave('name');
+      sending.current = false;
       setSaving(false);
 
       if (error instanceof ApiError && error.is('validation_failed')) {
@@ -214,7 +218,7 @@ function StartOrganisation({
         <p>{t('noOrganisation.derived', { email })}</p>
       </div>
 
-      <button className="button button-primary" type="submit" aria-busy={saving}>
+      <button className="button button-primary" type="submit" disabled={saving} aria-busy={saving}>
         {saving ? t('noOrganisation.starting') : t('noOrganisation.start')}
       </button>
     </form>
