@@ -6,6 +6,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { renderInterrupted } from '../../../test-interrupted.tsx';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
@@ -243,6 +244,48 @@ describe('email addresses and phone numbers', () => {
     expect(sent.find((s) => s.call === 'POST /api/auth/proof')?.body).toEqual(
       expect.objectContaining({ provider: 'google' }),
     );
+  });
+
+  it('makes it primary once, back from Google, when React abandons the render it arrives in', async () => {
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({
+      provider: 'google',
+      purpose: { kind: 'makePrimary', address: 'e2' },
+      signIn,
+    });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    const sent = answering({
+      'GET /api/auth/me': () =>
+        json({
+          ...ME,
+          hasPassword: false,
+          providers: [{ provider: 'google', email: 'folake@gmail.com' }],
+        }),
+      'GET /api/orgs': () => json({ organisations: [] }),
+      'POST /api/auth/proof': () =>
+        json({ proof: 'p-g', expiresAt: new Date(Date.now() + 300_000).toISOString() }),
+      'PATCH /api/auth/emails/e2/primary': () =>
+        json({ id: 'e2', address: 'folake.adeyemi@gmail.com', verified: true, primary: true }),
+    });
+    __setSessionState({ status: 'signedIn', session: { ...FOLAKE, hasPassword: false } });
+
+    const { release } = await renderInterrupted(
+      <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/account'] })} />,
+    );
+    expect(
+      sessionStorage.getItem('soirely.provider.returned'),
+      'an abandoned render leaves it in place',
+    ).toBe(returned);
+
+    await release();
+
+    expect(
+      await screen.findByText(
+        'folake.adeyemi@gmail.com is now your primary address. Sign in with it from now on.',
+      ),
+    ).toBeDefined();
+    expect(sent.filter((s) => s.call === 'PATCH /api/auth/emails/e2/primary')).toHaveLength(1);
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 
   it('asks before removing a verified address, and removes an unverified one at once', async () => {

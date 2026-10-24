@@ -168,19 +168,21 @@ export function keepProviderReturn(provider: Provider, callbackUrl: string): voi
   sessionStorage.setItem(RETURNED, JSON.stringify(kept));
 }
 
-/** Once: what the provider trip brought back, for the Security card whose trip it was to finish. */
-export function takeProviderReturn(
+/** What the provider trip brought back, for the Security card whose trip it was to finish. */
+export function heldProviderReturn(
   kinds: readonly ReturnPurpose['kind'][] = ['prove', 'link'],
 ): ProviderReturn | null {
   const kept = sessionStorage.getItem(RETURNED);
   if (kept == null) return null;
 
   const returned = JSON.parse(kept) as ProviderReturn;
-  if (!kinds.includes(returned.purpose.kind)) return null;
 
+  return kinds.includes(returned.purpose.kind) ? returned : null;
+}
+
+/** The card the trip was for has it: no reload or later visit finishes it again. */
+export function dropProviderReturn(): void {
   sessionStorage.removeItem(RETURNED);
-
-  return returned;
 }
 
 /** The code passed: a provider sign-in it finished may have linked its provider only now. */

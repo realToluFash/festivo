@@ -6,6 +6,7 @@ import { browser } from '../../../providerSignIn.ts';
 import { holdProof } from '../../../recentProof.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
+import { renderInterrupted } from '../../../test-interrupted.tsx';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 
@@ -242,6 +243,34 @@ describe('linking a provider', () => {
         nonce: 'n',
       },
     });
+  });
+
+  it('links once, back from Google, when React abandons the render it arrives in', async () => {
+    holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({ provider: 'google', purpose: { kind: 'link' }, signIn });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    const sent = answering({
+      'POST /api/auth/providers/google': () => json({ provider: 'google', email: GMAIL }, 201),
+      'GET /api/auth/me': () =>
+        json({ ...ACCOUNT, providers: [{ provider: 'google', email: GMAIL }] }),
+    });
+
+    const { release } = await renderInterrupted(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/account/security'] })}
+      />,
+    );
+    expect(
+      sessionStorage.getItem('soirely.provider.returned'),
+      'an abandoned render leaves it in place',
+    ).toBe(returned);
+
+    await release();
+
+    expect(await screen.findByText('Google is linked.')).toBeDefined();
+    expect(sent.filter((s) => s.call === 'POST /api/auth/providers/google')).toHaveLength(1);
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 
   it("refuses a Google account that is another Soirely account's, and changes nothing", async () => {

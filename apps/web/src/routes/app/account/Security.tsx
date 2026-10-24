@@ -21,7 +21,11 @@ import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { WaysCard } from './WaysCard.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
-import { type ProviderReturn, takeProviderReturn } from '../../../providerSignIn.ts';
+import {
+  type ProviderReturn,
+  dropProviderReturn,
+  heldProviderReturn,
+} from '../../../providerSignIn.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
@@ -40,13 +44,18 @@ export function Security() {
   const [endFailed, setEndFailed] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
   const [settingPassword, setSettingPassword] = useState(false);
-  const [returned] = useState<ProviderReturn | null>(() => takeProviderReturn(['signOutOthers']));
+  const [returned] = useState<ProviderReturn | null>(() => heldProviderReturn(['signOutOthers']));
   const [everywhere, setEverywhere] = useState(
     returned != null && !('failed' in returned && returned.failed === 'cancelled'),
   );
   const [everywhereDone, setEverywhereDone] = useState<number | null>(null);
   const [codesSpent, setCodesSpent] = useState(0);
   const codeSpent = () => setCodesSpent((n) => n + 1);
+
+  // Removed only once committed: React may abandon a render and run the initializer again.
+  useEffect(() => {
+    if (returned != null) dropProviderReturn();
+  }, [returned]);
 
   // The loading state belongs to the event that asks for a reload, not to the effect.
   useEffect(() => {

@@ -22,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { takeProviderReturn } from '../../../providerSignIn.ts';
+import { dropProviderReturn, heldProviderReturn } from '../../../providerSignIn.ts';
 import { heldProof } from '../../../recentProof.ts';
 import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
@@ -55,7 +55,7 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   const [account, setAccount] = useState<Account | null>(null);
   const [twoFactorOn, setTwoFactorOn] = useState<boolean | null>(null);
   // Back from Google or Apple, started by "Make primary": once, on arrival.
-  const [returned] = useState(() => takeProviderReturn(['makePrimary']));
+  const [returned] = useState(() => heldProviderReturn(['makePrimary']));
   // Back from a verify screen, with the row it verified: once, on arrival.
   const [params, setParams] = useSearchParams();
   const [verified] = useState(() => params.get('verified'));
@@ -63,6 +63,11 @@ export function ContactsCards({ onPrimaryChanged }: { onPrimaryChanged: () => Pr
   useEffect(() => {
     if (params.has('verified')) setParams({}, { replace: true });
   }, [params, setParams]);
+
+  // Removed only once committed: React may abandon a render and run the initializer again.
+  useEffect(() => {
+    if (returned != null) dropProviderReturn();
+  }, [returned]);
 
   async function reload(): Promise<void> {
     setAccount(await api.me());
