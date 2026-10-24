@@ -62,6 +62,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Editing an event's details (sc-9704, sc-3587, `eventEdit.*`,
+  `errors:precondition_failed`, `precondition_required`, `event_currency_in_use`).** Settled as
+  sc-3587 wrote it; `Events.test.tsx` pins most of it. "Edit details" opens and heads the form,
+  "Save changes" saves it. A refused save starts "Not saved." and says what is kept. A
+  colleague is "somebody else", in the notice and the dialog alike. The currency refusal is
+  checked on screen and by the server, so `errors:event_currency_in_use` now says "against this
+  event", as `eventEdit.currencyInUse` does.
 - **24 Oct 2026. Suspending a member by hand and restoring them (sc-3575, sc-8735,
   `membersScreen.suspend*`, `restore*`, `seats*`, `ownerNoSuspend`, `accessConflict`,
   `emails:memberSuspended.*`, `memberRestored.*`, `memberAccess.footer`, `messages:members.*`).**
