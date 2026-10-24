@@ -29,6 +29,7 @@ import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { currentLocale } from '../../../i18n/index.ts';
@@ -241,6 +242,12 @@ function MembersOverview({
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
   const filters = FILTERS.filter((one) => manages || one !== 'waiting');
+  const done = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (answered != null) done.current?.focus();
+  }, [answered]);
+
   const count = (one: MemberFilter) =>
     one === 'invited'
       ? pending
@@ -268,6 +275,10 @@ function MembersOverview({
         )}
       </div>
 
+      {organisation.role.seededAs === 'administrator' && (
+        <OwnerClaimBanner organisationId={organisation.id} organisation={organisation.name} />
+      )}
+
       {flash != null && (
         <div className="notice notice-done" role="status">
           <span className="mark mark-done" aria-hidden="true">
@@ -278,7 +289,7 @@ function MembersOverview({
       )}
 
       {answered != null && (
-        <div className="notice notice-done" role="status">
+        <div ref={done} className="notice notice-done" role="status" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -529,6 +540,7 @@ function MemberDetail({
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
   const waiting = member.status === 'pending_approval';
@@ -691,15 +703,30 @@ function MemberDetail({
         </ul>
       </section>
 
-      {member.suspension != null && (
-        <Suspension
-          organisation={organisation}
-          member={member}
-          suspension={member.suspension}
-          standing={standing}
-          acts={acts}
-          onChanged={onChanged}
-        />
+      {restored ? (
+        <div className="notice notice-done" role="status">
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <p>
+            {t('membersScreen.restored', {
+              name: member.user.name,
+              organisation: organisation.name,
+            })}
+          </p>
+        </div>
+      ) : (
+        member.suspension != null && (
+          <Suspension
+            organisation={organisation}
+            member={member}
+            suspension={member.suspension}
+            standing={standing}
+            acts={acts}
+            onRestored={() => setRestored(true)}
+            onChanged={onChanged}
+          />
+        )
       )}
 
       {acts && (
@@ -779,8 +806,6 @@ function MemberDetail({
   );
 }
 
-type Restoring = 'resting' | 'restoring' | 'restored';
-
 /** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below; read-only to a viewer who can't act. */
 function Suspension({
   organisation,
@@ -788,6 +813,7 @@ function Suspension({
   suspension,
   standing,
   acts,
+  onRestored,
   onChanged,
 }: {
   organisation: Membership;
@@ -795,10 +821,11 @@ function Suspension({
   suspension: DomainSuspension;
   standing: MemberStanding;
   acts: boolean;
+  onRestored: () => void;
   onChanged: (list: MembersList) => void;
 }) {
   const { t } = useTranslation();
-  const [restoring, setRestoring] = useState<Restoring>('resting');
+  const [restoring, setRestoring] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const named = {
     name: member.user.name,
@@ -807,15 +834,16 @@ function Suspension({
   };
 
   async function restore(): Promise<void> {
-    setRestoring('restoring');
+    setRestoring(true);
     setFailed(null);
 
     try {
       await api.restoreMember(organisation.id, member.id);
-      setRestoring('restored');
+      // Told by the member page: once the list reloads unsuspended, this card is gone (sc-564).
+      onRestored();
       onChanged(await api.members(organisation.id));
     } catch (error) {
-      setRestoring('resting');
+      setRestoring(false);
       setFailed(
         error instanceof ApiError && error.is('restore_needs_address')
           ? t('membersScreen.restoreNeedsAddress', named)
@@ -824,17 +852,6 @@ function Suspension({
             : t('membersScreen.actionFailed'),
       );
     }
-  }
-
-  if (restoring === 'restored') {
-    return (
-      <div className="notice notice-done" role="status">
-        <span className="mark mark-done" aria-hidden="true">
-          ✓
-        </span>
-        <p>{t('membersScreen.restored', named)}</p>
-      </div>
-    );
   }
 
   return (
@@ -861,8 +878,8 @@ function Suspension({
           <button
             type="button"
             className="button button-primary"
-            aria-busy={restoring === 'restoring'}
-            disabled={restoring === 'restoring'}
+            aria-busy={restoring}
+            disabled={restoring}
             onClick={() => void restore()}
           >
             {t('membersScreen.restore', named)}
@@ -924,8 +941,10 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [left, setLeft] = useState<Answering | null>(null);
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
+  const step = useCallback((element: HTMLElement | null) => element?.focus(), []);
 
   async function answer(): Promise<void> {
     setBusy(true);
@@ -947,12 +966,23 @@ function JoinRequestAnswer({
       }
     } catch (error) {
       setBusy(false);
-      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+      setFailed(
+        error instanceof ApiError
+          ? (error.problem.violations?.find((one) => one.propertyPath === 'roleId')?.message ??
+              error.problem.title)
+          : t('membersScreen.actionFailed'),
+      );
     }
+  }
+
+  function open(next: Answering): void {
+    setLeft(null);
+    setAnswering(next);
   }
 
   function back(): void {
     setFailed(null);
+    setLeft(answering);
     setAnswering('resting');
   }
 
@@ -960,13 +990,19 @@ function JoinRequestAnswer({
     return (
       <div className="actions">
         <button
+          ref={left === 'approving' ? step : undefined}
           type="button"
           className="button button-primary"
-          onClick={() => setAnswering('approving')}
+          onClick={() => open('approving')}
         >
           {t('membersScreen.awaiting.approve')}
         </button>
-        <button type="button" className="button" onClick={() => setAnswering('turningDown')}>
+        <button
+          ref={left === 'turningDown' ? step : undefined}
+          type="button"
+          className="button"
+          onClick={() => open('turningDown')}
+        >
           {t('membersScreen.awaiting.turnDown')}
         </button>
       </div>
@@ -976,7 +1012,9 @@ function JoinRequestAnswer({
   if (answering === 'turningDown') {
     return (
       <div className="members-answer">
-        <h3>{t('membersScreen.awaiting.turnDownTitle', { name })}</h3>
+        <h3 ref={step} tabIndex={-1}>
+          {t('membersScreen.awaiting.turnDownTitle', { name })}
+        </h3>
         <p>{t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}</p>
         {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
         <div className="actions">
@@ -1004,6 +1042,7 @@ function JoinRequestAnswer({
         {offered.map((one) => (
           <label key={one.id} className="members-role">
             <input
+              ref={picked === one.id ? step : undefined}
               type="radio"
               name={`approve-role-${member.id}`}
               value={one.id}

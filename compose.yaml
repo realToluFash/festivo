@@ -91,6 +91,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       MAILER_DSN: ${MAILER_DSN:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-Soirely <no-reply@soirely.com>}
+      DNS_TXT_ENDPOINT: ${DNS_TXT_ENDPOINT:-http://smocker:8080/dns-query}
       SMS_API_BASE: ${SMS_API_BASE:-http://smocker:8080}
       SMS_ACCOUNT_SID: ${SMS_ACCOUNT_SID:-ACdevelopment00000000000000000000}
       SMS_AUTH_TOKEN: ${SMS_AUTH_TOKEN:-development-token}

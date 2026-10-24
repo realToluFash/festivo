@@ -97,5 +97,15 @@
     "request_link.dead": "Este enlace ya no funciona. Pida uno nuevo a la organización.",
     "request_link.member": "Ya forma parte de {organisation}.",
     "request_link.message_long": "Acorte su mensaje a {count} caracteres como máximo.",
-    "request_link.waiting": "Su solicitud para unirse a {organisation} ya está pendiente de respuesta."
+    "request_link.waiting": "Su solicitud para unirse a {organisation} ya está pendiente de respuesta.",
+    "owner_claims.address": "Para obtener la propiedad, su dirección principal debe ser de {domain}.",
+    "owner_claims.managed": "{domain} lo gestiona otra organización. Póngase en contacto con el servicio de asistencia de Soirely.",
+    "owner_claims.open": "{claimant} ya ha solicitado la propiedad.",
+    "owner_claims.closed": "Solo el servicio de asistencia de Soirely puede restablecer la propiedad.",
+    "owner_claims.ended": "Esta solicitud ya ha terminado.",
+    "owner_claims.nothing_to_stop": "Esta solicitud ya había terminado, así que no había nada que detener.",
+    "owner_claims.has_owner": "{organisation} ya tiene a alguien con el rol Propietario en activo.",
+    "owner_claims.administrators_only": "Solo alguien con el rol Administrador puede obtener la propiedad.",
+    "owner_claims.own": "No puede detener su propia solicitud.",
+    "owner_claims.who_may_stop": "Solo puede detener esta solicitud alguien con el rol Administrador o la persona con el rol Propietario suspendida."
 }

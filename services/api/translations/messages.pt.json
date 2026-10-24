@@ -97,5 +97,15 @@
     "request_link.dead": "Esta ligação já não funciona. Peça uma nova à organização.",
     "request_link.member": "Já é membro de {organisation}.",
     "request_link.message_long": "Encurte a mensagem para um máximo de {count} caracteres.",
-    "request_link.waiting": "O seu pedido de adesão a {organisation} já aguarda resposta."
+    "request_link.waiting": "O seu pedido de adesão a {organisation} já aguarda resposta.",
+    "owner_claims.address": "Para assumir a propriedade, o seu endereço principal tem de ser um endereço de {domain}.",
+    "owner_claims.managed": "{domain} é gerido por outra organização. Contacte o apoio ao cliente da Soirely.",
+    "owner_claims.open": "{claimant} já pediu para assumir a propriedade.",
+    "owner_claims.closed": "Só o apoio ao cliente da Soirely pode repor a propriedade.",
+    "owner_claims.ended": "Este pedido já terminou.",
+    "owner_claims.nothing_to_stop": "Este pedido já tinha terminado, por isso não havia nada para interromper.",
+    "owner_claims.has_owner": "Já há alguém ativo com a função Proprietário em {organisation}.",
+    "owner_claims.administrators_only": "Só alguém com a função Administrador pode assumir a propriedade.",
+    "owner_claims.own": "Não pode interromper o seu próprio pedido.",
+    "owner_claims.who_may_stop": "Só alguém com a função Administrador, ou a pessoa suspensa com a função Proprietário, pode interromper este pedido."
 }

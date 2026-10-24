@@ -154,5 +154,20 @@
     "joinRequest.waiting.subject": "Une personne attend de rejoindre {organisation}",
     "joinRequest.waiting.person": "{name} ({email}) : demande retirée le {deadline} faute de réponse",
     "joinRequest.waiting.answer": "Approuvez ou refusez les demandes dans Membres : {link}",
-    "joinRequest.waiting.footer": "Vous recevez ce message parce que vous gérez les membres de l’organisation {organisation}. Nous l’envoyons au maximum une fois par jour."
+    "joinRequest.waiting.footer": "Vous recevez ce message parce que vous gérez les membres de l’organisation {organisation}. Nous l’envoyons au maximum une fois par jour.",
+    "ownerClaim.started.subject": "{claimant} deviendra propriétaire de l’organisation {organisation} le {deadline}",
+    "ownerClaim.started.heading": "{claimant} deviendra propriétaire de l’organisation {organisation} le {deadline}.",
+    "ownerClaim.started.when": "Cette personne a prouvé qu’elle contrôle {domain} grâce à un nouvel enregistrement DNS. La propriété ne sera transférée à cette date que si l’enregistrement est toujours publié.",
+    "ownerClaim.stopLink": "Si cela ne doit pas se produire, arrêtez la demande dans Membres : {link}",
+    "ownerClaim.stopped.subject": "{name} a arrêté la demande de propriété faite par {claimant} pour {organisation}",
+    "ownerClaim.stopped.heading": "{name} a arrêté la demande de propriété faite par {claimant} pour {organisation}.",
+    "ownerClaim.stopped.when": "Arrêtée le {deadline}. Seule l’assistance Soirely peut désormais rétablir la propriété de l’organisation {organisation}.",
+    "ownerClaim.granted.subject": "{claimant} est désormais propriétaire de l’organisation {organisation}",
+    "ownerClaim.granted.heading": "{claimant} est désormais propriétaire de l’organisation {organisation}.",
+    "ownerClaim.granted.when": "La propriété a été transférée le {deadline}.",
+    "ownerClaim.claimant": "Personne à l’origine de la demande : {claimant} · {email}",
+    "ownerClaim.domain": "Domaine : {domain}",
+    "ownerClaim.openLink": "Ouvrir Membres : {link}",
+    "ownerClaim.footer.administrator": "Vous recevez ce message parce que vous avez le rôle Administrateur dans {organisation}.",
+    "ownerClaim.footer.owner": "Vous recevez ce message parce que vous avez le rôle Propriétaire dans {organisation}. Nous l’avons envoyé à l’adresse e-mail principale de votre compte."
 }

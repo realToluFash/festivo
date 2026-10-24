@@ -2250,3 +2250,74 @@ describe('events (sc-1486)', () => {
     expect.assertions(1);
   });
 });
+
+describe('claiming an organisation with no active owner (sc-6640)', () => {
+  function answering(body: unknown, status = 200) {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return new Response(JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    return { client, sent };
+  }
+
+  const when = { at: '2026-10-27T09:00:00+00:00', written: 'Tuesday 27 Oct at 10:00 WAT' };
+  // Every key OwnerClaimDescriber writes; OwnerClaimTest asserts the same list on the server.
+  const claim = {
+    id: 'claim_1',
+    claimant: { id: 'u_bisi', name: 'Bisi', email: 'bisi@ire.events' },
+    mine: true,
+    domain: 'ire.events',
+    record: { type: 'TXT', name: '_soirely-verify.ire.events', value: 'soirely-claim=abc' },
+    startedAt: when,
+    lapsesAt: when,
+    foundAt: null,
+    passesAt: null,
+  };
+
+  test('reads the banner with the claimant’s record', async () => {
+    const banner = { state: 'open', domain: 'ire.events', claim, stopped: null, lapsed: null };
+    const { client, sent } = answering({ ownerClaim: banner });
+
+    expect(await client.startOwnerClaim('org_1')).toEqual(banner);
+    expect(sent).toEqual([
+      {
+        url: 'http://api.test/api/orgs/org_1/owner-claim',
+        method: 'POST',
+        body: {},
+      },
+    ]);
+  });
+
+  test('reads no banner as null, and a shape it does not know as an error', async () => {
+    expect(await answering({ ownerClaim: null }).client.ownerClaim('org_1')).toBeNull();
+    await expect(
+      answering({ ownerClaim: { state: 'odd' } }).client.ownerClaim('org_1'),
+    ).rejects.toThrow(/OwnerClaimDescriber/);
+  });
+
+  test('says whether Check record found it', async () => {
+    const banner = {
+      state: 'found',
+      domain: 'ire.events',
+      claim: { ...claim, foundAt: when, passesAt: when },
+      stopped: null,
+      lapsed: null,
+    };
+    const { client } = answering({ ownerClaim: banner, found: true });
+
+    expect(await client.checkOwnerClaim('org_1')).toEqual({ ownerClaim: banner, found: true });
+  });
+});

@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\Members;
 
 use App\Audit\Auditor;
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
+use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Entity\Membership;
@@ -41,6 +42,7 @@ final readonly class MemberActions
         private TranslatorInterface $translator,
         private DomainSuspender $domainSuspender,
         private ClockInterface $clock,
+        private OwnerClaimHandler $ownerClaimHandler,
     ) {
     }
 
@@ -95,7 +97,7 @@ final readonly class MemberActions
         });
     }
 
-    /** A member suspended when the company domain stopped bringing them in (sc-564), let back in: the only Owner by anyone holding members.manage, since nobody else could. */
+    /** A member suspended when the company domain stopped bringing them in (sc-564), let back in: the only Owner by anyone holding members.manage, since nobody else could, which ends any claim to own it (sc-6640). */
     public function restore(Membership $membership, User $by): void
     {
         $this->underLock($membership, function () use ($membership, $by): void {
@@ -104,6 +106,11 @@ final readonly class MemberActions
             }
 
             $this->domainSuspender->restore($membership, $by);
+
+            if ($membership->getRole()->isOwner()) {
+                $this->ownerClaimHandler->ownerBack($membership->getOrganisation(), $by);
+            }
+
             $this->entityManager->flush();
         });
     }

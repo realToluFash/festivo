@@ -97,5 +97,15 @@
     "request_link.dead": "Ce lien ne fonctionne plus. Demandez-en un nouveau à l’organisation.",
     "request_link.member": "Vous faites déjà partie de {organisation}.",
     "request_link.message_long": "Raccourcissez votre message à {count} caractères maximum.",
-    "request_link.waiting": "Votre demande d’adhésion à {organisation} attend déjà une réponse."
+    "request_link.waiting": "Votre demande d’adhésion à {organisation} attend déjà une réponse.",
+    "owner_claims.address": "Pour devenir propriétaire, votre adresse principale doit être une adresse {domain}.",
+    "owner_claims.managed": "{domain} est géré par une autre organisation. Veuillez contacter l’assistance Soirely.",
+    "owner_claims.open": "{claimant} est déjà en train de devenir propriétaire.",
+    "owner_claims.closed": "Seule l’assistance Soirely peut rétablir la propriété.",
+    "owner_claims.ended": "Cette demande a déjà pris fin.",
+    "owner_claims.nothing_to_stop": "Cette demande avait déjà pris fin, il n’y avait donc rien à arrêter.",
+    "owner_claims.has_owner": "Une personne ayant le rôle Propriétaire est déjà en fonction dans {organisation}.",
+    "owner_claims.administrators_only": "Seule une personne ayant le rôle Administrateur peut devenir propriétaire.",
+    "owner_claims.own": "Vous ne pouvez pas arrêter votre propre demande.",
+    "owner_claims.who_may_stop": "Seule une personne ayant le rôle Administrateur, ou la personne propriétaire suspendue, peut arrêter cette demande."
 }

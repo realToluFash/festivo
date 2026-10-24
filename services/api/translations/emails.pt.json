@@ -154,5 +154,20 @@
     "joinRequest.waiting.subject": "Há alguém à espera para aderir a {organisation}",
     "joinRequest.waiting.person": "{name} ({email}): o pedido é removido se ninguém responder até {deadline}",
     "joinRequest.waiting.answer": "Aprove ou recuse os pedidos em Membros: {link}",
-    "joinRequest.waiting.footer": "Está a receber esta mensagem porque gere os membros de {organisation}. Enviamo-la, no máximo, uma vez por dia."
+    "joinRequest.waiting.footer": "Está a receber esta mensagem porque gere os membros de {organisation}. Enviamo-la, no máximo, uma vez por dia.",
+    "ownerClaim.started.subject": "{claimant} vai assumir a propriedade de {organisation} ({deadline})",
+    "ownerClaim.started.heading": "{claimant} vai assumir a propriedade de {organisation}. Data da transferência: {deadline}.",
+    "ownerClaim.started.when": "Esta pessoa provou que controla {domain} com um novo registo DNS. A propriedade só é transferida nessa data se o registo ainda estiver publicado.",
+    "ownerClaim.stopLink": "Se isto não deve acontecer, interrompa o pedido em Membros: {link}",
+    "ownerClaim.stopped.subject": "{name} interrompeu o pedido de {claimant} para assumir a propriedade de {organisation}",
+    "ownerClaim.stopped.heading": "{name} interrompeu o pedido de {claimant} para assumir a propriedade de {organisation}.",
+    "ownerClaim.stopped.when": "Data da interrupção: {deadline}. Agora, só o apoio ao cliente da Soirely pode repor a propriedade de {organisation}.",
+    "ownerClaim.granted.subject": "{claimant} tem agora a função Proprietário em {organisation}",
+    "ownerClaim.granted.heading": "{claimant} tem agora a função Proprietário em {organisation}.",
+    "ownerClaim.granted.when": "Data da transferência da propriedade: {deadline}.",
+    "ownerClaim.claimant": "Requerente: {claimant} · {email}",
+    "ownerClaim.domain": "Domínio: {domain}",
+    "ownerClaim.openLink": "Abrir Membros: {link}",
+    "ownerClaim.footer.administrator": "Está a receber esta mensagem porque tem a função Administrador em {organisation}.",
+    "ownerClaim.footer.owner": "Está a receber esta mensagem porque tem a função Proprietário em {organisation}. Enviámo-la para o endereço de e-mail principal da sua conta."
 }

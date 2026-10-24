@@ -154,5 +154,20 @@
     "joinRequest.waiting.subject": "Hay alguien esperando para unirse a {organisation}",
     "joinRequest.waiting.person": "{name} ({email}): se retirará el {deadline} si nadie responde",
     "joinRequest.waiting.answer": "Apruebe o rechace las solicitudes en Miembros: {link}",
-    "joinRequest.waiting.footer": "Recibe este correo porque gestiona los miembros de {organisation}. Se lo enviamos como máximo una vez al día."
+    "joinRequest.waiting.footer": "Recibe este correo porque gestiona los miembros de {organisation}. Se lo enviamos como máximo una vez al día.",
+    "ownerClaim.started.subject": "{claimant} obtendrá la propiedad de {organisation} el {deadline}",
+    "ownerClaim.started.heading": "{claimant} obtendrá la propiedad de {organisation} el {deadline}.",
+    "ownerClaim.started.when": "Esta persona ha demostrado que controla {domain} con un nuevo registro DNS. La propiedad solo se transferirá en esa fecha si el registro sigue publicado.",
+    "ownerClaim.stopLink": "Si no debe ocurrir, detenga la solicitud en Miembros: {link}",
+    "ownerClaim.stopped.subject": "{name} ha detenido la solicitud de {claimant} para obtener la propiedad de {organisation}",
+    "ownerClaim.stopped.heading": "{name} ha detenido la solicitud de {claimant} para obtener la propiedad de {organisation}.",
+    "ownerClaim.stopped.when": "Detenida el {deadline}. Ahora solo el servicio de asistencia de Soirely puede restablecer la propiedad de {organisation}.",
+    "ownerClaim.granted.subject": "{claimant} tiene ahora el rol Propietario en {organisation}",
+    "ownerClaim.granted.heading": "{claimant} tiene ahora el rol Propietario en {organisation}.",
+    "ownerClaim.granted.when": "La propiedad se transfirió el {deadline}.",
+    "ownerClaim.claimant": "Solicitante: {claimant} · {email}",
+    "ownerClaim.domain": "Dominio: {domain}",
+    "ownerClaim.openLink": "Abrir Miembros: {link}",
+    "ownerClaim.footer.administrator": "Recibe este correo porque tiene el rol Administrador en {organisation}.",
+    "ownerClaim.footer.owner": "Recibe este correo porque tiene el rol Propietario en {organisation}. Se lo hemos enviado a la dirección de correo principal de su cuenta."
 }

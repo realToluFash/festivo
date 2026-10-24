@@ -406,6 +406,10 @@ describe('somebody awaiting approval (sc-392)', () => {
 
     const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
     fireEvent.click(section.getByRole('button', { name: 'Approve' }));
+    expect(document.activeElement).toBe(section.getByRole('radio', { name: /Read-only/ }));
+    fireEvent.click(section.getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(section.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve' }));
     expect(section.queryByRole('radio', { name: /Owner/ })).toBeNull();
     expect((section.getByRole('radio', { name: /Read-only/ }) as HTMLInputElement).checked).toBe(
       true,
@@ -413,9 +417,44 @@ describe('somebody awaiting approval (sc-392)', () => {
     fireEvent.click(section.getByRole('radio', { name: /Coordinator/ }));
     fireEvent.click(section.getByRole('button', { name: 'Approve as Coordinator' }));
 
-    expect(await screen.findByText('Ada Okeke is now a member, as Coordinator.')).toBeDefined();
+    const done = await screen.findByRole('status');
+    expect(done.textContent).toContain('Ada Okeke is now a member, as Coordinator.');
+    expect(document.activeElement).toBe(done);
     expect(screen.getByRole('button', { name: 'See Ada Okeke' })).toBeDefined();
     expect(sent.find((one) => one.line.endsWith('/approve'))?.body).toEqual({ roleId: 'role_4' });
+  });
+
+  it('shows why an approve was refused, not the generic title', async () => {
+    signedIn();
+    answering({
+      ...WAITING_READS,
+      'POST /api/orgs/org_1/members/m_ada/approve': () =>
+        new Response(
+          JSON.stringify({
+            type: 'https://soirely.com/errors/validation_failed',
+            title: 'Some of the information provided is not valid.',
+            status: 422,
+            violations: [
+              {
+                propertyPath: 'roleId',
+                message: 'Approve them first, then make them an owner from Members.',
+                code: 'validation_failed',
+              },
+            ],
+          }),
+          { status: 422 },
+        ),
+    });
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve as Read-only' }));
+
+    expect(
+      await screen.findByText('Approve them first, then make them an owner from Members.'),
+    ).toBeDefined();
+    expect(screen.queryByText('Some of the information provided is not valid.')).toBeNull();
   });
 
   it('turns down only once it is confirmed, and the request can be kept', async () => {
@@ -428,13 +467,17 @@ describe('somebody awaiting approval (sc-392)', () => {
 
     const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
     fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
+    expect(document.activeElement).toBe(section.getByRole('heading', { name: /Turn down/ }));
     fireEvent.click(section.getByRole('button', { name: 'Keep the request' }));
+    expect(document.activeElement).toBe(section.getByRole('button', { name: 'Turn down' }));
     fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
     expect(section.getByText(/The email does not say who turned it down/)).toBeDefined();
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(false);
     fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
 
-    expect(await screen.findByText('Ada Okeke’s request is turned down.')).toBeDefined();
+    const done = await screen.findByRole('status');
+    expect(done.textContent).toContain('Ada Okeke’s request is turned down.');
+    expect(document.activeElement).toBe(done);
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
   });
 
@@ -687,6 +730,45 @@ describe('inviting somebody', () => {
     expect(sent.map((one) => one.line)).toContain('POST /api/orgs/org_1/members/m_bisi/restore');
   });
 
+  it('keeps saying a member is restored once the list reloads without their suspension', async () => {
+    const suspended = {
+      ...LIST.members[1],
+      channel: 'domain',
+      suspension: {
+        reason: 'address_gone',
+        domain: 'ire.events',
+        since: { at: '2026-10-17T13:20:00+00:00', written: 'Saturday, Oct 17 at 14:20 WAT' },
+        removesAt: { at: '2026-11-16T13:20:00+00:00', written: 'Monday, Nov 16 at 14:20 WAT' },
+      },
+    };
+    let restored = false;
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          members: [LIST.members[0], restored ? LIST.members[1] : suspended],
+          invitations: [],
+        }),
+      'POST /api/orgs/org_1/members/m_bisi/restore': () => {
+        restored = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+
+    expect(
+      await screen.findByText("Bisi Adeyemi's access to Ìrè Events is restored."),
+    ).toBeDefined();
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /Suspended: company address gone/ })).toBeNull(),
+    );
+    expect(screen.getByText("Bisi Adeyemi's access to Ìrè Events is restored.")).toBeDefined();
+  });
+
   it('shows no removal date for a suspended only owner', async () => {
     signedIn();
     answering({
@@ -795,7 +877,9 @@ describe('inviting somebody', () => {
         'Folake Adeyemi is the only owner of Ìrè Events, so they stay suspended, still an owner, and are not removed.',
       ),
     ).toBeDefined();
-    expect(screen.getByText('Suspended when their company address went')).toBeDefined();
+    expect(
+      screen.getByText('Suspended: their company email address no longer gives access'),
+    ).toBeDefined();
     expect(screen.queryByText(/Only an owner can change/)).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
 
@@ -804,7 +888,7 @@ describe('inviting somebody', () => {
     const refused = await screen.findByText('An organisation always has at least one owner.');
     expect(sent.map((one) => one.line)).toContain('DELETE /api/orgs/org_1/members/m_folake');
     expect(
-      screen.getByText("Folake Adeyemi is the only owner, so they can't be removed."),
+      screen.getByText('Folake Adeyemi is the only owner, so they cannot be removed.'),
     ).toBeDefined();
     expect(
       screen.getByText(

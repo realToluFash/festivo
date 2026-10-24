@@ -49,6 +49,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
+  `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is «obtener la
+  propiedad», never «convertirse en propietario», which assumes a man; the claim is «la
+  solicitud» and the claimant «ha solicitado la propiedad», which holds before and after the
+  record is found. Ownership «se transfiere»; a person with it «tiene el rol Propietario».
+  The claimant's record is «el registro DNS de esta persona», as «su» reads as the reader's.
+  "Soirely support" is «el servicio de asistencia de Soirely», as `ownership.deleteWindow`;
+  restoring is «restablecer». Dates take «el {{when}}» and «hasta el {{when}}».
 - **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
   `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
   `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: «la única
@@ -77,6 +85,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   «Pendiente de aprobación». A role given on approval is «con el rol {{role}}», so nothing
   agrees with the person («Aprobar con el rol {{role}}»). The waiting email's count takes
   `many`, «1 000 000 de personas».
+
+- **24 Oct 2026. Who did it, in a history line** (`membersScreen.byYou`, `membersScreen.someone`,
+  sc-7217, from QA). Both fill `{{by}}` after «por»: the reader is «usted» («Solicitud rechazada por
+  usted»), and a person who has since left is «alguien que ya no es miembro».
 
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads «En pausa», the admins
