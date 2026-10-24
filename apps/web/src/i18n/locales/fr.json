@@ -925,7 +925,7 @@
       },
       "approved": "Approved by {{by}}",
       "suspended": "Suspended by {{by}}",
-      "suspendedAddressGone": "Accès suspendu : son adresse e-mail professionnelle ne lui ouvre plus l’accès",
+      "suspendedAddressGone": "Accès suspendu : domaine d’entreprise",
       "restored": "Restored by {{by}}",
       "left": "Left {{organisation}}",
       "removed": "Removed by {{by}}",

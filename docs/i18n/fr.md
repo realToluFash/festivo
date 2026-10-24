@@ -133,7 +133,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   or « pour {name} ». The email opens « L’accès à {organisation} est en pause pour {name} »,
   its subject on the pause, « Accès en pause : {name} dans {organisation} », so a phone inbox
   shows it before the names. The admins' label is « Accès suspendu : domaine d’entreprise »
-  for all three reasons, as the setting.
+  for all three reasons, as the setting. The member's history line
+  (`history.suspendedAddressGone`, sc-8868) is the label's words, whatever the reason.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The
   setting is « Demandes d'adhésion », so its state agrees: « Activées » / « Désactivées »; the
