@@ -398,7 +398,6 @@ function MemberRow({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
-  const former = member.status === 'left_or_removed';
   const line = memberRowLine(t, member, organisation.name, (at) => formatDay(at, currentLocale()));
   const content = (
     <>
@@ -415,9 +414,7 @@ function MemberRow({
     </>
   );
 
-  return former ? (
-    <div className="members-row">{content}</div>
-  ) : (
+  return (
     <button type="button" className="members-row" onClick={onOpen}>
       {content}
       <span aria-hidden="true">›</span>

@@ -107,7 +107,11 @@ describe('how a member got here', () => {
 });
 
 describe("what a member's page offers", () => {
-  const member = (seededAs: string, status: 'active' | 'suspended' = 'active', self = false) => ({
+  const member = (
+    seededAs: string,
+    status: 'active' | 'suspended' | 'left_or_removed' = 'active',
+    self = false,
+  ) => ({
     self,
     status,
     role: { seededAs },
@@ -151,6 +155,13 @@ describe("what a member's page offers", () => {
 
     expect(memberStanding(coordinator, [owner, coordinator], reader)).toBe('readOnly');
     expect(memberStanding(secondOwner, [owner, secondOwner], reader)).toBe('readOnly');
+  });
+
+  it('shows a former member read-only, even to an owner', () => {
+    const former = member('coordinator', 'left_or_removed');
+
+    expect(memberStanding(former, [owner, former], anOwner)).toBe('readOnly');
+    expect(memberStanding(former, [owner, former], admin)).toBe('readOnly');
   });
 
   it('offers a role change and removal for everybody else', () => {

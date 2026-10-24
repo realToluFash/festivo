@@ -84,6 +84,7 @@ export function memberStanding(
   ).length;
 
   if (member.self) return 'self';
+  if (member.status === 'left_or_removed') return 'readOnly';
   if (owner && member.status === 'active' && activeOwners === 1) return 'onlyOwner';
   if (!caller.manages) return 'readOnly';
   // Decided 23 Oct (sc-564): nobody else could restore them, so members.manage may.
