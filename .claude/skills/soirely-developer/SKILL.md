@@ -61,8 +61,9 @@ with your tag, `[dev]` comments on stories carrying your label, replies to the o
 asked (`role-comments`). Then the pull requests waiting on you (a merge, a handover to QA
 or to review, red checks), then the queue below. Something you have already read prints
 as a one-line reference; `--again` prints it in full, only when you truly need it again.
-When the work is finished, `sq dev done <id> --note "…"`; the note is what your next run
-on the story sees.
+When the work is finished, stop what you started in the background (a bundler, a watcher,
+a simulator), then `sq dev done <id> --note "…"`; the note is what your next run on the
+story sees.
 
 `/soirely-developer sc-56` (or `… dev3 sc-56`) builds that story: `sq dev claim sc-56`.
 With no story named, `sq dev queue` lists the queue in this order, and `next` takes its

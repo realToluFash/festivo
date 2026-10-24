@@ -334,8 +334,9 @@ final class OrganisationTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
         self::assertSame(Str\repeat('é', 100), $body['name']);
 
-        $this->patch($organisation, ['name' => Str\repeat('é', 101)]);
+        $body = $this->patch($organisation, ['name' => Str\repeat('é', 101)]);
         self::assertResponseStatusCodeSame(422);
+        self::assertSame([['propertyPath' => 'name', 'message' => 'That name is 101 characters. Use 100 or fewer.']], self::violations($body));
     }
 
     /** The access layer's 404, not 403: somebody outside is not told the organisation exists. */

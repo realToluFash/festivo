@@ -4,6 +4,7 @@ import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../session.ts';
 import { membership } from '../../test-memberships.ts';
+import { breaksAnywhere } from '../../test-wrapping.ts';
 import { routes } from '../index.tsx';
 
 const FOLAKE: Session = {
@@ -325,6 +326,18 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     expect(screen.getByRole('button', { name: 'Ask to join Ìrè Events' })).toBeDefined();
     expect(screen.queryByLabelText('Organisation name')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Save and continue' })).toBeNull();
+  });
+
+  it('names a 60-character organisation in a title that can break inside the word (sc-486)', async () => {
+    const name = 'Événements'.padEnd(60, 'E');
+    answering({
+      'GET /api/join-offers': () => json({ ...OFFERS, offers: [{ id: 'org_ire', name }] }),
+    });
+    at('/complete-profile', ADA);
+
+    const title = await screen.findByText(`${name} uses Soirely`);
+
+    expect(breaksAnywhere(title)).toBe(true);
   });
 
   it('shows the organisation fields after Start my own, with a way back', async () => {

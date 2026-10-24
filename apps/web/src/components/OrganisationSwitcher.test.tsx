@@ -75,7 +75,7 @@ function problem(code: string, status: number, headers: Record<string, string> =
 }
 
 /** POST /api/orgs answers `created`; anything else the shell asks for on the way is empty. */
-function creating(created: () => Response) {
+function creating(created: () => Response | Promise<Response>) {
   return vi
     .spyOn(globalThis, 'fetch')
     .mockImplementation(async (input, init) =>
@@ -468,6 +468,31 @@ describe('creating an organisation', () => {
     const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
     expect(name.value).toBe('Supper');
     await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+
+  it('sends one request for a double press, then one more after a failure (sc-7497)', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    let answer: (response: Response) => void = () => {};
+    const fetch = creating(() => new Promise<Response>((resolve) => (answer = resolve)));
+    const posts = () => fetch.mock.calls.filter(([, init]) => init?.method === 'POST');
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    const form = screen.getByLabelText('Organisation name').closest('form') as HTMLFormElement;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+    const creatingButton = screen.getByRole('button', { name: 'Creating…' });
+    expect(creatingButton.matches(':disabled')).toBe(true);
+    fireEvent.click(creatingButton);
+    await waitFor(() => expect(posts()).toHaveLength(1));
+
+    answer(problem('internal_error', 500));
+    const create = await screen.findByRole('button', { name: 'Create organisation' });
+    expect(create.matches(':disabled')).toBe(false);
+    expect(posts()).toHaveLength(1);
+    fireEvent.click(create);
+    await waitFor(() => expect(posts()).toHaveLength(2));
   });
 
   it.each([

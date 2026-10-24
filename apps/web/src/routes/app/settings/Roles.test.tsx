@@ -557,6 +557,24 @@ describe('Settings > Roles', () => {
     expect(maximum).toBeGreaterThanOrEqual('e\u0301'.repeat(40).length);
   });
 
+  it('names a long role in full on its row, for screen readers and as its title', async () => {
+    const long = 'VenueAndSupplierLiaisonsForLagosWeddings';
+    answering(
+      () =>
+        new Response(
+          JSON.stringify({
+            roles: [...ROLES, role('role_7', null, long, ['events.read'], 2)],
+            areas: AREAS,
+          }),
+          { status: 200 },
+        ),
+    );
+    await roles();
+
+    const row = screen.getByRole('button', { name: new RegExp(`^${long}`) });
+    expect(row.getAttribute('title')).toBe(long);
+  });
+
   it('opens a role on its own page at narrow widths, with Roles to go back', async () => {
     answering();
     await roles();

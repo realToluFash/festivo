@@ -35,7 +35,7 @@
     "whenHeading": "Quand",
     "zoneHeading": "Fuseau horaire et devise",
     "name": "Nom de l’événement",
-    "nameCount": "Caractères : {{length}} sur {{most}}",
+    "nameCount": "Caractères : {{count}} sur {{most}}",
     "starts": "Début",
     "ends": "Fin",
     "date": "Date",

@@ -4,6 +4,7 @@ import {
   approvalRoles,
   historyLine,
   memberChannelWords,
+  memberHeldNoRole,
   memberIsShown,
   memberRowLine,
   memberRowVerb,
@@ -107,7 +108,11 @@ describe('how a member got here', () => {
 });
 
 describe("what a member's page offers", () => {
-  const member = (seededAs: string, status: 'active' | 'suspended' = 'active', self = false) => ({
+  const member = (
+    seededAs: string,
+    status: 'active' | 'suspended' | 'left_or_removed' = 'active',
+    self = false,
+  ) => ({
     self,
     status,
     role: { seededAs },
@@ -153,6 +158,13 @@ describe("what a member's page offers", () => {
     expect(memberStanding(secondOwner, [owner, secondOwner], reader)).toBe('readOnly');
   });
 
+  it('shows a former member read-only, even to an owner', () => {
+    const former = member('coordinator', 'left_or_removed');
+
+    expect(memberStanding(former, [owner, former], anOwner)).toBe('readOnly');
+    expect(memberStanding(former, [owner, former], admin)).toBe('readOnly');
+  });
+
   it('offers a role change and removal for everybody else', () => {
     expect(memberStanding(coordinator, [owner, coordinator], admin)).toBe('manageable');
   });
@@ -169,6 +181,7 @@ describe("what a member's row says", () => {
     invitedBy: null,
     self: false,
     role: { seededAs: 'coordinator', name: null },
+    history: [],
   };
 
   it('dates a row by what happened last', () => {
@@ -228,5 +241,21 @@ describe("what a member's row says", () => {
     ).toBe(
       'membersScreen.noRoleYet · membersScreen.how.request(Ìrè) · membersScreen.when.asked(12 Oct)',
     );
+  });
+
+  it('gives somebody turned down, withdrawn or expired while awaiting approval no role', () => {
+    const asked = { from: null, to: 'pending_approval' as const };
+    const turnedDown = { from: 'pending_approval' as const, to: 'left_or_removed' as const };
+    const approved = { from: 'pending_approval' as const, to: 'active' as const };
+    const removed = { from: 'active' as const, to: 'left_or_removed' as const };
+    const former = { ...member, status: 'left_or_removed' as const };
+
+    expect(memberHeldNoRole({ ...former, history: [asked, turnedDown] })).toBe(true);
+    expect(memberHeldNoRole({ ...former, history: [asked, approved, removed] })).toBe(false);
+    expect(memberHeldNoRole({ ...former, history: [] })).toBe(false);
+    expect(memberHeldNoRole({ ...member, history: [asked, approved] })).toBe(false);
+    expect(
+      memberRowLine(word, { ...former, history: [asked, turnedDown] }, 'Ìrè', () => '12 Oct'),
+    ).toMatch(/^membersScreen\.noRoleYet · /);
   });
 });

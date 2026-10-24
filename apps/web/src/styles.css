@@ -1852,6 +1852,7 @@ span {
   flex: 1 1 15rem;
   flex-direction: column;
   gap: var(--spaceXxs);
+  min-width: 0;
 }
 
 .roles-list-head {
@@ -1860,6 +1861,13 @@ span {
   align-items: flex-start;
   gap: var(--spaceXs);
   padding-bottom: var(--spaceSm);
+}
+
+.roles h1,
+.roles h2,
+.roles p,
+.roles-grid-head {
+  overflow-wrap: anywhere;
 }
 
 .roles-list-head h1,
@@ -1901,9 +1909,18 @@ span {
 
 .roles-pick-name {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm);
+}
+
+.roles-pick-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roles-pick-name > span {
+  flex: none;
 }
 
 .roles-detail {
@@ -2031,6 +2048,17 @@ span {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spaceSm);
+  min-width: 0;
+}
+
+.roles-actions .button {
+  max-width: 100%;
+}
+
+.roles-button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roles-panels {
@@ -2087,6 +2115,7 @@ span {
 
 .roles-replacement .roles-row-name {
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 /* Under the name, past the radio: a 20px control and the row's gap. */
@@ -2109,6 +2138,13 @@ span {
   .roles[data-open='false'] .roles-detail,
   .roles[data-open='true'] .roles-list {
     display: none;
+  }
+}
+
+@media (width <= 40rem) {
+  .roles-pick-text,
+  .roles-row-text {
+    flex-basis: 13rem;
   }
 }
 
@@ -2807,7 +2843,12 @@ button.members-row {
 
 .join-offer-title {
   font: var(--typeRowTitle);
-  overflow-wrap: anywhere;
+}
+
+@media (width <= 40rem) {
+  .join-offer-text {
+    flex-basis: 100%;
+  }
 }
 
 .join-offers-back {

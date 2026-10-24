@@ -150,7 +150,8 @@ def prs_for_story(db, story_id):
 def record(db, items, now=None):
     """Adds new work and retires open work that no longer applies.
 
-    Claimed work is left alone: the run holding it finishes or its lease runs out.
+    Open work follows the roles it is now derived for. Claimed work is left alone: the run
+    holding it finishes or its lease runs out.
     """
     now = now or time.time()
     db.execute("begin immediate")
@@ -162,6 +163,7 @@ def record(db, items, now=None):
                 "priority, rank, comments, first_seen) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 "on conflict (fingerprint) do update set priority = excluded.priority, "
                 "rank = excluded.rank, "
+                "roles = case work.status when 'claimed' then work.roles else excluded.roles end, "
                 "status = case work.status when 'gone' then 'open' else work.status end",
                 (item["fingerprint"], item["pool"], ",".join(item["roles"]), item["kind"],
                  item.get("story_id"), item.get("pr"), item["reason"], item["priority"],

@@ -24,7 +24,7 @@ import {
   withoutRole,
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -36,6 +36,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { AboveKeys, type DockInset, useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
@@ -154,6 +155,8 @@ export function RolePage({
   const naming = creating || (editable && role.seededAs == null);
   const startingGrant = role?.permissions ?? [];
   const nameInput = useRef<TextInput>(null);
+  const aboveKeyboard = useAboveKeyboard();
+  const [nameHeight, setNameHeight] = useState(0);
   const [grant, setGrant] = useState<string[]>(startingGrant);
   const [typed, setTyped] = useState(role?.name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
@@ -250,24 +253,32 @@ export function RolePage({
       <View style={[styles.card, styles.padded, !phone && styles.head]}>
         <View style={[styles.fill, styles.headText]}>
           {naming ? (
-            <Field label={t('rolesScreen.nameLabel')} error={nameError}>
-              <TextField
-                ref={nameInput}
-                value={typed}
-                maxLength={TYPED_MAXIMUM}
-                wrong={nameError != null}
-                autoCorrect={false}
-                autoComplete="off"
-                accessibilityLabel={t('rolesScreen.nameLabel')}
-                style={styles.nameInput}
-                onChangeText={(next) => {
-                  setTyped(next);
-                  setNameError(null);
-                  onEdited();
-                }}
-                testID="roles.name"
-              />
-            </Field>
+            <View
+              ref={phone ? aboveKeyboard.ref : undefined}
+              onLayout={(event) => {
+                setNameHeight(event.nativeEvent.layout.height);
+                if (phone) aboveKeyboard.onLayout();
+              }}
+            >
+              <Field label={t('rolesScreen.nameLabel')} error={nameError}>
+                <TextField
+                  ref={nameInput}
+                  value={typed}
+                  maxLength={TYPED_MAXIMUM}
+                  wrong={nameError != null}
+                  autoCorrect={false}
+                  autoComplete="off"
+                  accessibilityLabel={t('rolesScreen.nameLabel')}
+                  style={styles.nameInput}
+                  onChangeText={(next) => {
+                    setTyped(next);
+                    setNameError(null);
+                    onEdited();
+                  }}
+                  testID="roles.name"
+                />
+              </Field>
+            </View>
           ) : (
             <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
               {title}
@@ -374,35 +385,37 @@ export function RolePage({
         </View>
       )}
       {editable && dirty && (
-        <View style={styles.unsaved}>
-          <Text size={tokens.typeBodyPhone.size}>
-            {unsavedLine(t, creating, title, role?.holders ?? 0)}
-          </Text>
-          <PrimaryButton
-            label={
-              status === 'saving'
-                ? t('rolesScreen.saving')
-                : creating
-                  ? t('rolesScreen.create')
-                  : t('rolesScreen.save', { role: title })
-            }
-            busy={status === 'saving'}
-            onPress={() => void save()}
-            testID="roles.save"
-          />
-          {!creating && (
-            <SecondaryButton
-              label={t('rolesScreen.discard')}
-              onPress={() => {
-                setGrant(startingGrant);
-                setTyped(role.name ?? '');
-                setNameError(null);
-                setStatus('editing');
-              }}
-              testID="roles.discard"
+        <Unsaved phone={phone} field={naming ? nameHeight : 0}>
+          <View style={styles.unsaved}>
+            <Text size={tokens.typeBodyPhone.size}>
+              {unsavedLine(t, creating, title, role?.holders ?? 0)}
+            </Text>
+            <PrimaryButton
+              label={
+                status === 'saving'
+                  ? t('rolesScreen.saving')
+                  : creating
+                    ? t('rolesScreen.create')
+                    : t('rolesScreen.save', { role: title })
+              }
+              busy={status === 'saving'}
+              onPress={() => void save()}
+              testID="roles.save"
             />
-          )}
-        </View>
+            {!creating && (
+              <SecondaryButton
+                label={t('rolesScreen.discard')}
+                onPress={() => {
+                  setGrant(startingGrant);
+                  setTyped(role.name ?? '');
+                  setNameError(null);
+                  setStatus('editing');
+                }}
+                testID="roles.discard"
+              />
+            )}
+          </View>
+        </Unsaved>
       )}
 
       <View style={[styles.card, styles.padded]}>
@@ -659,6 +672,27 @@ function unsavedLine(t: TFunction, creating: boolean, title: string, holders: nu
   if (holders === 0) return t('rolesScreen.unsavedNobody', { role: title });
 
   return t('rolesScreen.unsaved', { role: title, count: holders });
+}
+
+const DOCKED: DockInset = { horizontal: tokens.spaceLg, vertical: tokens.spaceSm };
+
+/** On the phone the bar rests on the keys while it and the name it saves both fit above them (sc-7099). */
+function Unsaved({
+  phone,
+  field,
+  children,
+}: {
+  phone: boolean;
+  field: number;
+  children: ReactNode;
+}) {
+  return phone ? (
+    <AboveKeys inset={DOCKED} field={field}>
+      {children}
+    </AboveKeys>
+  ) : (
+    children
+  );
 }
 
 const styles = StyleSheet.create({

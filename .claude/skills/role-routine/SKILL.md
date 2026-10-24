@@ -167,6 +167,10 @@ fails>'`, note it on your story, do what you can without it, and move on. Only t
 - **The report is ten lines at most.** What you did, which stories moved, the questions
   you left and where, and anything waiting on the owner. The evidence lives on the story
   and the pull request, not in the report.
+- **Close what you opened before `done`.** A bundler, an emulator, a simulator or a watcher
+  you started in the background is stopped first. A worker ends what is still running under
+  it once its item is done and its answer written, but an emulator outlives that, and a run
+  by hand keeps everything it left until someone notices.
 - **Last step, always: `sq <role> done <id> --note "<one line>"`.** It retires the item and
   the comments it covered, and the note is what your next run on the story sees. A run that
   could not finish still runs it, with a note that says why. A story

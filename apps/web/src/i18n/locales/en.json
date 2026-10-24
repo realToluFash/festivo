@@ -35,7 +35,7 @@
     "whenHeading": "When",
     "zoneHeading": "Time zone and currency",
     "name": "Event name",
-    "nameCount": "{{length}} of {{most}} characters",
+    "nameCount": "{{count}} of {{most}} characters",
     "starts": "Starts",
     "ends": "Ends",
     "date": "Date",
@@ -861,7 +861,7 @@
       "suspended": "Suspended",
       "left": "Left",
       "removed": "Removed",
-      "domainSuspended": "Suspended: company address gone"
+      "domainSuspended": "Suspended: company domain"
     },
     "how": {
       "invitation": "Invitation",

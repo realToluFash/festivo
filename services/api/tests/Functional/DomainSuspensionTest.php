@@ -492,7 +492,7 @@ final class DomainSuspensionTest extends ApiTestCase
         $mails = $this->mails();
         self::assertCount(1, $mails);
         self::assertSame(['folake@ire.events'], Vec\map($mails[0]->getTo(), static fn (Address $to): string => $to->getAddress()));
-        self::assertSame("Tunde Bakare's access to Ìrè Events is paused", $mails[0]->getSubject());
+        self::assertSame('Access paused for Tunde Bakare in Ìrè Events', $mails[0]->getSubject());
         $text = (string) $mails[0]->getTextBody();
         self::assertStringContainsString('because their ire.events address is no longer on their account.', $text);
         self::assertStringContainsString('If nobody answers by ' . self::service(UserMailer::class)->deadline(
@@ -760,7 +760,7 @@ final class DomainSuspensionTest extends ApiTestCase
     {
         return Vec\map(Vec\filter(
             self::getMailerMessages(),
-            static fn (object $message): bool => $message instanceof Email && Str\ends_with((string) $message->getSubject(), 'is paused'),
+            static fn (object $message): bool => $message instanceof Email && Str\starts_with((string) $message->getSubject(), 'Access paused for '),
         ), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message));
     }
 

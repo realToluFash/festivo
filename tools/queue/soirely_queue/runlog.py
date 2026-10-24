@@ -54,7 +54,7 @@ def waits_on_owner(report):
 
 
 def from_result(result, exit_code):
-    """The parts of `claude -p --output-format json` worth keeping."""
+    """The parts of a `claude -p` result worth keeping."""
     return {"exit": exit_code, "cost_usd": result.get("total_cost_usd"),
             "usage": result.get("usage"), "turns": result.get("num_turns"),
             "duration_ms": result.get("duration_ms"), "is_error": result.get("is_error"),

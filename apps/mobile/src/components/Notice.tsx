@@ -49,7 +49,14 @@ export function Notice({
     broken: styles.inkBroken,
     done: styles.inkDone,
   };
-  const titleInk = accentTitle ? styles.accent : tone === 'quiet' ? undefined : ink[tone];
+  const toneInk = {
+    quiet: undefined,
+    attention: styles.inkAttention,
+    broken: styles.inkBroken,
+    done: styles.accent,
+  }[tone];
+  const titleInk = accentTitle ? styles.accent : toneInk;
+  const bodyInk = tone === 'done' ? styles.accent : undefined;
 
   return (
     <View
@@ -73,7 +80,11 @@ export function Notice({
             {title}
           </Text>
         )}
-        {body != null && <Text size={tokens.typeBodyPhone.size}>{body}</Text>}
+        {body != null && (
+          <Text size={tokens.typeBodyPhone.size} style={bodyInk}>
+            {body}
+          </Text>
+        )}
         {detail != null && (
           <Text size={tokens.typeSmall.size} muted>
             {detail}
