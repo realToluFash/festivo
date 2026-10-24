@@ -49,6 +49,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
+  `validation.request_shape`, sc-8716). The field «no admite ese valor», which also reads right
+  for a required field left out; «Revíselo y vuelva a intentarlo». The 422 `detail` speaks of «los
+  datos enviados», never «la solicitud», which here is a request to join.
 - **24 Oct 2026. Withdrawing your own claim** (`ownerClaim.withdraw*`, `youWithdrew*`,
   `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`, sc-8556). The claimant
   «retira» su solicitud; anybody else «detiene» una. Button «Retirar mi solicitud», confirm

@@ -54,6 +54,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
+  `validation.request_shape`, sc-8716). « Ce champ n’accepte pas cette valeur », which also
+  holds for a required field left out, then « Vérifiez-le et réessayez », the pronoun for the
+  field. The 422 `detail` speaks of « les données envoyées », not « la requête », which is jargon.
 - **24 Oct 2026. Withdrawing your own claim** (`ownerClaim.withdraw*`, `youWithdrew*`,
   `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`, sc-8556). The claimant
   « retire » sa demande ; anybody else « arrête » une demande. Button « Retirer ma demande »,
