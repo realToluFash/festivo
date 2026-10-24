@@ -13,7 +13,6 @@ import {
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -25,20 +24,13 @@ import {
   barFits,
   coveredBy,
   groupInWindow,
-  keyboardInWindow,
-  keyboardLift,
   keysOver,
   offsetAboveKeyboard,
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
-
-const LIFT = keyboardLift(Platform.OS);
-
-// Once the avoiding view shrinks it, Android's ScrollView smooth-scrolls the focused field to its
-// own bottom edge over 250ms, and that can land after our lift and leave the button under the keys.
-const NATIVE_FOCUS_SCROLL_MS = 400;
+import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
 
@@ -133,29 +125,6 @@ function liftAboveKeyboard(
   });
 }
 
-/** Where the keyboard's top edge sits in the window, or null while the keys are down. */
-function keyboardTopNow(origin: number): number | null {
-  const screenY = Keyboard.isVisible() ? Keyboard.metrics()?.screenY : undefined;
-
-  return screenY == null ? null : keyboardInWindow(screenY, origin);
-}
-
-/** Calls `changed` with the keyboard's new top edge each time the keys go up or down. Returns the unsubscribe. */
-function watchKeyboardTop(
-  scroll: ScreenScrollView | null,
-  changed: (top: number | null) => void,
-): () => void {
-  const shown = Keyboard.addListener('keyboardDidShow', (event) =>
-    changed(keyboardInWindow(event.endCoordinates.screenY, scroll?.origin.current ?? 0)),
-  );
-  const hidden = Keyboard.addListener('keyboardDidHide', () => changed(null));
-
-  return () => {
-    shown.remove();
-    hidden.remove();
-  };
-}
-
 /** For a field and the button under it, spread on their View. It lifts again when an error grows the group. */
 export function useAboveKeyboard(): AboveKeyboard {
   const scroll = useContext(ScreenScroll);
@@ -163,24 +132,22 @@ export function useAboveKeyboard(): AboveKeyboard {
   const keyboardTop = useRef<number | null>(keyboardTopNow(scroll?.origin.current ?? 0));
 
   useEffect(() => {
-    let settled: ReturnType<typeof setTimeout> | undefined;
-    const liftNow = () => liftAboveKeyboard(scroll, ref.current, keyboardTop.current);
-    const lift = () => {
-      liftNow();
-      if (LIFT.avoid == null) return;
-      clearTimeout(settled);
-      settled = setTimeout(liftNow, NATIVE_FOCUS_SCROLL_MS);
-    };
-    const unwatch = watchKeyboardTop(scroll, (top) => {
-      keyboardTop.current = top;
-      lift();
-    });
+    const { lift, cancel } = settledLift(() =>
+      liftAboveKeyboard(scroll, ref.current, keyboardTop.current),
+    );
+    const unwatch = watchKeyboardTop(
+      () => scroll?.origin.current ?? 0,
+      (top) => {
+        keyboardTop.current = top;
+        lift();
+      },
+    );
     // On Android the avoiding view shrinks the scroll view after keyboardDidShow, and a scroll
     // asked for before that is clamped short.
     scroll?.resized.add(lift);
 
     return () => {
-      clearTimeout(settled);
+      cancel();
       unwatch();
       scroll?.resized.delete(lift);
     };
@@ -333,10 +300,13 @@ export function Screen({
     keyboardTop.current = keyboardTopNow(origin.current);
     avoid();
 
-    return watchKeyboardTop(screenScroll, (top) => {
-      keyboardTop.current = top;
-      avoid();
-    });
+    return watchKeyboardTop(
+      () => origin.current,
+      (top) => {
+        keyboardTop.current = top;
+        avoid();
+      },
+    );
   }, [screenScroll, avoid]);
 
   const followOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {

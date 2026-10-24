@@ -1,9 +1,10 @@
 import { type Membership } from '@soirely/api-client';
 import { type NewOrganisationField, deviceRegion } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
+  type LayoutRectangle,
   Modal,
   Platform,
   Pressable,
@@ -18,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
+import { offsetToFocus } from '../kit/keyboard.ts';
 import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
@@ -29,6 +31,12 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, TextField } from './Field.tsx';
+import {
+  type SettledLift,
+  keyboardTopNow,
+  settledLift,
+  watchKeyboardTop,
+} from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
@@ -48,8 +56,10 @@ export function CreateOrganisation({
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
-  // iOS needs the inset to clear the status bar; Android keeps main's 0 until sc-4527 checks it.
-  const top = Platform.OS === 'ios' ? insets.top : 0;
+  const android = Platform.OS === 'android';
+  // The `create_keyboard` drawing is for Android phones; iOS keeps main's sheet (Decided, 24 Oct).
+  const drawn = android && phone;
+  const keysUp = useKeysUp();
 
   return (
     <Modal
@@ -64,7 +74,7 @@ export function CreateOrganisation({
           style={[
             styles.scrim,
             phone ? styles.scrimPhone : styles.scrimTablet,
-            { paddingTop: phone ? top : Math.max(tokens.spaceXxl, top) },
+            { paddingTop: phone ? insets.top : Math.max(tokens.spaceXxl, insets.top) },
           ]}
         >
           <Pressable
@@ -77,11 +87,21 @@ export function CreateOrganisation({
             style={[
               styles.frame,
               phone ? styles.framePhone : styles.frameTablet,
-              phone && { paddingBottom: insets.bottom },
+              phone && { paddingBottom: drawn && keysUp ? 0 : insets.bottom },
             ]}
             accessibilityViewIsModal
           >
-            {open && <Form email={email} onCreated={onCreated} onCancel={onCancel} />}
+            {drawn && <View style={styles.grabber} />}
+            {open && (
+              <Form
+                email={email}
+                pinned={android}
+                drawn={drawn}
+                keysUp={keysUp}
+                onCreated={onCreated}
+                onCancel={onCancel}
+              />
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -89,12 +109,88 @@ export function CreateOrganisation({
   );
 }
 
+/** Whether the keyboard is up. */
+function useKeysUp(): boolean {
+  const [up, setUp] = useState(() => keyboardTopNow(0) != null);
+
+  useEffect(
+    () =>
+      watchKeyboardTop(
+        () => 0,
+        (top) => setUp(top != null),
+      ),
+    [],
+  );
+
+  return up;
+}
+
+/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow. */
+function useFocusInSight(keysUp: boolean) {
+  const body = useRef<ScrollView>(null);
+  const bodyHeight = useRef<number | null>(null);
+  const group = useRef<LayoutRectangle | null>(null);
+  const field = useRef<LayoutRectangle | null>(null);
+  const lift = useRef<SettledLift | null>(null);
+
+  useEffect(() => {
+    const settled = settledLift(() => {
+      if (!keysUp || bodyHeight.current == null) return;
+      if (group.current == null || field.current == null) return;
+      body.current?.scrollTo({
+        y: offsetToFocus(
+          {
+            contentY: group.current.y,
+            height: group.current.height,
+            scrollTop: 0,
+            keyboardTop: bodyHeight.current,
+            margin: tokens.spaceLg,
+          },
+          { contentY: group.current.y + field.current.y, height: field.current.height },
+        ),
+        animated: true,
+      });
+    });
+    lift.current = settled;
+    settled.lift();
+
+    return () => {
+      settled.cancel();
+      lift.current = null;
+    };
+  }, [keysUp]);
+
+  return {
+    body,
+    onBodyLayout: (height: number) => {
+      bodyHeight.current = height;
+      lift.current?.lift();
+    },
+    onGroupLayout: (layout: LayoutRectangle) => {
+      group.current = layout;
+      lift.current?.lift();
+    },
+    onFieldLayout: (layout: LayoutRectangle) => {
+      field.current = layout;
+      lift.current?.lift();
+    },
+  };
+}
+
 function Form({
   email,
+  pinned,
+  drawn,
+  keysUp,
   onCreated,
   onCancel,
 }: {
   email: string;
+  /** On Android only the body scrolls, so the title and the buttons stay above the keys (sc-4527). */
+  pinned: boolean;
+  /** The buttons stack, Create organisation on top, and the keys-up chrome shows (`create_keyboard`). */
+  drawn: boolean;
+  keysUp: boolean;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -124,6 +220,7 @@ function Form({
     focus,
   );
   const errors = { ...refused, ...checks.errors };
+  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(pinned && keysUp);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -161,59 +258,77 @@ function Form({
     }
   }
 
-  return (
-    <ScrollView
-      contentContainerStyle={styles.form}
-      keyboardShouldPersistTaps="handled"
-      testID="createOrganisation"
-    >
-      <View style={styles.heading}>
-        <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-          {t('createOrganisation.title')}
-        </Text>
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('createOrganisation.intro')}
-        </Text>
+  const createButton = (
+    <PrimaryButton
+      label={saving ? t('createOrganisation.creating') : t('createOrganisation.create')}
+      onPress={() => void create()}
+      busy={saving}
+      testID="createOrganisation.create"
+    />
+  );
+  const cancelButton = (
+    <SecondaryButton
+      label={t('createOrganisation.cancel')}
+      onPress={onCancel}
+      stacked={drawn}
+      testID="createOrganisation.cancel"
+    />
+  );
+
+  const title = (
+    <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+      {t('createOrganisation.title')}
+    </Text>
+  );
+  const intro = (
+    <Text size={tokens.typeBodyPhone.size} muted>
+      {t('createOrganisation.intro')}
+    </Text>
+  );
+  const fields = (
+    <>
+      <View style={styles.group} onLayout={(event) => onGroupLayout(event.nativeEvent.layout)}>
+        {limited != null && (
+          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+            <Notice tone="attention" mark="!" body={limited} />
+          </View>
+        )}
+        {failed && (
+          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+            <Notice
+              tone="broken"
+              mark={tokens.marks.broken.glyph}
+              body={t('createOrganisation.failed')}
+            />
+          </View>
+        )}
+
+        <View onLayout={(event) => onFieldLayout(event.nativeEvent.layout)}>
+          <Field
+            label={t('createOrganisation.name')}
+            error={errors.name}
+            help={t('createOrganisation.nameHelp')}
+          >
+            <TextField
+              ref={nameInput}
+              value={values.name}
+              onChangeText={(value) => change('name', value)}
+              onBlur={() => checks.left('name', values.name)}
+              onSubmitEditing={() => void create()}
+              wrong={errors.name != null}
+              editable={!saving}
+              autoFocus
+              autoComplete="organization"
+              textContentType="organizationName"
+              autoCorrect={false}
+              spellCheck={false}
+              returnKeyType="done"
+              accessibilityLabel={t('createOrganisation.name')}
+              testID="createOrganisation.name"
+            />
+          </Field>
+        </View>
       </View>
-
-      {limited != null && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-          <Notice tone="attention" mark="!" body={limited} />
-        </View>
-      )}
-      {failed && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-          <Notice
-            tone="broken"
-            mark={tokens.marks.broken.glyph}
-            body={t('createOrganisation.failed')}
-          />
-        </View>
-      )}
-
-      <Field
-        label={t('createOrganisation.name')}
-        error={errors.name}
-        help={t('createOrganisation.nameHelp')}
-      >
-        <TextField
-          ref={nameInput}
-          value={values.name}
-          onChangeText={(value) => change('name', value)}
-          onBlur={() => checks.left('name', values.name)}
-          onSubmitEditing={() => void create()}
-          wrong={errors.name != null}
-          editable={!saving}
-          autoFocus
-          autoComplete="organization"
-          textContentType="organizationName"
-          autoCorrect={false}
-          spellCheck={false}
-          returnKeyType="done"
-          accessibilityLabel={t('createOrganisation.name')}
-          testID="createOrganisation.name"
-        />
-      </Field>
       <View ref={countryPicker}>
         <Field label={t('createOrganisation.country')} error={errors.countryCode}>
           <CountryPicker
@@ -231,21 +346,53 @@ function Form({
         mark={tokens.marks.info.glyph}
         body={t('createOrganisation.defaults', { email })}
       />
+    </>
+  );
+  const buttons = drawn ? (
+    <View style={styles.stacked}>
+      {createButton}
+      {cancelButton}
+    </View>
+  ) : (
+    <View style={styles.actions}>
+      {cancelButton}
+      {createButton}
+    </View>
+  );
 
-      <View style={styles.actions}>
-        <SecondaryButton
-          label={t('createOrganisation.cancel')}
-          onPress={onCancel}
-          testID="createOrganisation.cancel"
-        />
-        <PrimaryButton
-          label={saving ? t('createOrganisation.creating') : t('createOrganisation.create')}
-          onPress={() => void create()}
-          busy={saving}
-          testID="createOrganisation.create"
-        />
-      </View>
-    </ScrollView>
+  if (!pinned) {
+    return (
+      <ScrollView
+        contentContainerStyle={styles.form}
+        keyboardShouldPersistTaps="handled"
+        testID="createOrganisation"
+      >
+        <View style={styles.heading}>
+          {title}
+          {intro}
+        </View>
+        {fields}
+        {buttons}
+      </ScrollView>
+    );
+  }
+
+  return (
+    <>
+      <View style={[styles.pinnedHeading, drawn && keysUp && styles.headingTyping]}>{title}</View>
+      <ScrollView
+        ref={body}
+        style={styles.body}
+        contentContainerStyle={styles.pinnedForm}
+        keyboardShouldPersistTaps="handled"
+        onLayout={(event) => onBodyLayout(event.nativeEvent.layout.height)}
+        testID="createOrganisation"
+      >
+        {intro}
+        {fields}
+      </ScrollView>
+      <View style={[styles.footer, drawn && keysUp && styles.footerTyping]}>{buttons}</View>
+    </>
   );
 }
 
@@ -271,8 +418,34 @@ const styles = StyleSheet.create({
     maxWidth: 480,
     borderRadius: tokens.radiusCardPhone,
   },
+  grabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 5,
+    marginTop: tokens.spaceSm,
+    borderRadius: 3,
+    backgroundColor: tokens.colorBorder,
+  },
   form: { gap: tokens.spaceXl, padding: tokens.space3xl },
   heading: { gap: tokens.spaceXs },
+  pinnedHeading: { paddingHorizontal: tokens.space3xl, paddingTop: tokens.space3xl },
+  headingTyping: { paddingTop: tokens.spaceLg },
+  body: { flexShrink: 1 },
+  pinnedForm: {
+    gap: tokens.spaceXl,
+    paddingHorizontal: tokens.space3xl,
+    paddingTop: tokens.spaceXs,
+    paddingBottom: tokens.spaceXl,
+  },
+  group: { gap: tokens.spaceXl },
+  footer: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.space3xl },
+  footerTyping: {
+    paddingTop: tokens.spaceLg,
+    paddingBottom: tokens.spaceLg,
+    borderTopWidth: 1,
+    borderTopColor: tokens.colorBorder,
+  },
+  stacked: { gap: tokens.spaceSm },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
