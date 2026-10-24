@@ -7,6 +7,7 @@ import type {
 } from '@soirely/api-client';
 import { type InvitationOutcome, chooseOrganisation, choosePaused } from '@soirely/domain';
 import { router } from 'expo-router';
+import i18next from 'i18next';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
@@ -70,6 +71,38 @@ export async function rereadAccount(): Promise<void> {
 
   set({ ...state, account });
 }
+
+let rereads = 0;
+
+/** Read again in a newly picked language, so the dates the server wrote follow it; a failed read leaves them as they were (sc-9267). */
+export async function rereadOrganisations(): Promise<void> {
+  if (state.account == null) return;
+
+  const account = state.account;
+  const known = state.organisations;
+  rereads += 1;
+  const reread = rereads;
+  const read = await api.organisationsWithPaused().catch(() => null);
+  if (
+    read == null ||
+    reread !== rereads ||
+    state.account?.id !== account.id ||
+    state.organisations !== known
+  )
+    return;
+
+  const organisation =
+    read.organisations.find((membership) => membership.id === state.organisation?.id) ??
+    state.organisation;
+  const pausedIn =
+    state.pausedIn == null
+      ? null
+      : (read.paused.find((paused) => paused.id === state.pausedIn?.id) ?? state.pausedIn);
+
+  set({ ...state, organisations: read.organisations, organisation, pausedIn });
+}
+
+i18next.on('languageChanged', () => void rereadOrganisations());
 
 /** False when the account could not be read and sign-in has opened instead. */
 export function launchSignedIn(): Promise<boolean> {

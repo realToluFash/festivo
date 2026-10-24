@@ -7,13 +7,13 @@ import {
 } from '@soirely/api-client';
 import { formatDay, formatTimeOfDay, roleName } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
-import { currentLocale, dateLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
 import { markRulesSeen } from '../../../signInRulesSeen.ts';
 
@@ -29,20 +29,29 @@ export function SignInRules() {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const organisationId = organisation?.id;
+  const language = useShownLanguage();
+  const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
+    const askedAgain = loadedFor.current === organisationId;
 
     api.signInRules(organisationId).then(
-      (page) => current && setLoad({ kind: 'loaded', page }),
-      () => current && setLoad({ kind: 'failed' }),
+      (page) => {
+        if (!current) return;
+        loadedFor.current = organisationId;
+        setLoad({ kind: 'loaded', page });
+      },
+      () =>
+        current &&
+        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' })),
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, language]);
 
   useEffect(() => {
     if (organisation != null) markRulesSeen(organisation);

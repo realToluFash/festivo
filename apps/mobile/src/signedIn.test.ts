@@ -23,6 +23,7 @@ vi.mock('react', () => ({
 }));
 
 const {
+  joinOrganisation,
   launchSignedIn,
   reloadSignedIn,
   replaceOrganisation,
@@ -31,6 +32,7 @@ const {
   useSignedIn,
 } = await import('./signedIn.ts');
 const { useWaitingInvitations } = await import('./invitations.ts');
+const { default: i18next } = await import('i18next');
 
 const account = { id: 'usr_1', name: 'Adaeze' };
 const organisation = {
@@ -248,5 +250,88 @@ describe('an invitation answered on one screen', () => {
       inv_1: { kind: 'accepted', organisationId: 'org_2' },
     });
     expect(useSignedIn().organisations.map(({ id }) => id)).toEqual(['org_1', 'org_2']);
+  });
+});
+
+describe('the organisations after a language change (sc-9267)', () => {
+  const due = (written: string) => ({ at: '2026-10-31T10:44:00+00:00', written, overdue: false });
+  const pausedWith = (written: string) => ({
+    ...organisation,
+    id: 'org_2',
+    suspension: {
+      reason: 'address_gone' as const,
+      domain: 'ire.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written },
+      onlyOwner: false,
+    },
+    ownerClaim: null,
+  });
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    api.me.mockResolvedValue(account);
+    api.organisationsWithPaused.mockResolvedValue({
+      organisations: [{ ...organisation, twoFactorDue: due('Saturday 31 Oct at 10:44 GMT') }],
+      paused: [],
+    });
+    await reloadSignedIn();
+  });
+
+  it('reads them again, and the organisation shown carries the date in the new language', async () => {
+    api.organisationsWithPaused.mockResolvedValue({
+      organisations: [{ ...organisation, twoFactorDue: due('sábado 31 oct a las 10:44 GMT') }],
+      paused: [],
+    });
+
+    i18next.emit('languageChanged', 'es');
+    await settle();
+
+    expect(useSignedIn().organisation?.twoFactorDue?.written).toBe('sábado 31 oct a las 10:44 GMT');
+  });
+
+  it('leaves them as they were when the read fails', async () => {
+    api.organisationsWithPaused.mockRejectedValue(new Error('offline'));
+
+    i18next.emit('languageChanged', 'es');
+    await settle();
+
+    expect(useSignedIn().organisation?.twoFactorDue?.written).toBe('Saturday 31 Oct at 10:44 GMT');
+  });
+
+  it('keeps an organisation joined while the read was on its way', async () => {
+    let answer: (read: unknown) => void = () => {};
+    api.organisationsWithPaused.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+
+    i18next.emit('languageChanged', 'es');
+    joinOrganisation({ ...organisation, id: 'org_2', name: 'Ọ̀ṣun Parties' });
+    answer({
+      organisations: [{ ...organisation, twoFactorDue: due('sábado 31 oct a las 10:44 GMT') }],
+      paused: [],
+    });
+    await settle();
+
+    expect(useSignedIn().organisations.map(({ id }) => id)).toEqual(['org_1', 'org_2']);
+  });
+
+  it('carries the paused organisation’s dates in the new language', async () => {
+    api.organisationsWithPaused.mockResolvedValue({
+      organisations: [],
+      paused: [pausedWith('Friday 16 Oct at 08:40 GMT')],
+    });
+    await reloadSignedIn();
+    api.organisationsWithPaused.mockResolvedValue({
+      organisations: [],
+      paused: [pausedWith('viernes 16 oct a las 08:40 GMT')],
+    });
+
+    i18next.emit('languageChanged', 'es');
+    await settle();
+
+    expect(useSignedIn().pausedIn?.suspension.since.written).toBe('viernes 16 oct a las 08:40 GMT');
   });
 });

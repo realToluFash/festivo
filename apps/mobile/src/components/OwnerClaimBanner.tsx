@@ -7,12 +7,13 @@ import {
   ownerClaimView,
 } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { useShownLanguage } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
@@ -43,19 +44,28 @@ export function OwnerClaimBanner({
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [withdrew, setWithdrew] = useState<{ told: boolean } | null>(null);
+  const language = useShownLanguage();
+  const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
     let current = true;
+    const askedAgain = loadedFor.current === organisationId;
 
     api.ownerClaim(organisationId).then(
-      (banner) => current && setLoad({ kind: 'loaded', banner }),
-      () => current && setLoad({ kind: 'failed' }),
+      (banner) => {
+        if (!current) return;
+        loadedFor.current = organisationId;
+        setLoad({ kind: 'loaded', banner });
+      },
+      () =>
+        current &&
+        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' })),
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, language]);
 
   if (load.kind === 'loading') {
     return (

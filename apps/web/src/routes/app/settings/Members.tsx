@@ -32,7 +32,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
-import { dateLocale } from '../../../i18n/index.ts';
+import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
 
@@ -70,20 +70,29 @@ export function Members() {
   const manages = can(session, 'members.manage');
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const language = useShownLanguage();
+  const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
+    const askedAgain = loadedFor.current === organisationId;
 
     Promise.all([api.members(organisationId), api.roles(organisationId)]).then(
-      ([list, catalogue]) => current && setLoad({ kind: 'loaded', list, roles: catalogue.roles }),
-      () => current && setLoad({ kind: 'failed' }),
+      ([list, catalogue]) => {
+        if (!current) return;
+        loadedFor.current = organisationId;
+        setLoad({ kind: 'loaded', list, roles: catalogue.roles });
+      },
+      () =>
+        current &&
+        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' })),
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, language]);
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
