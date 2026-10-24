@@ -73,7 +73,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('verifying an email address', () => {

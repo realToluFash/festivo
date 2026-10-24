@@ -61,7 +61,6 @@ const URL_ON = 'https://soirely.test/join/' + 'cd'.repeat(16);
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > General > Requests to join (sc-562)', () => {

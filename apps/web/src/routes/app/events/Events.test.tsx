@@ -89,7 +89,6 @@ function spaced(text: string | null): string {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Events', () => {
