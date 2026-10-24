@@ -865,12 +865,12 @@
     },
     "how": {
       "invitation": "Invitation",
-      "invitationFrom": "Invitation from {{inviter}}",
-      "self_created": "Created {{organisation}}",
-      "join_code": "Join code",
-      "domain": "Company email address",
-      "request": "Asked to join",
-      "directory": "Company directory"
+      "invitationFrom": "Invitation de {{inviter}}",
+      "self_created": "A créé {{organisation}}",
+      "join_code": "Code pour rejoindre",
+      "domain": "Adresse e-mail professionnelle",
+      "request": "A demandé à rejoindre",
+      "directory": "Annuaire de l’entreprise"
     },
     "when": {
       "since": "since {{date}}",
@@ -995,7 +995,7 @@
       "approveAs": "Approuver avec le rôle {{role}}",
       "cancel": "Annuler",
       "turnDownTitle": "Refuser la demande de {{name}} ?",
-      "turnDownBody": "{{name}} recevra un e-mail lui indiquant que sa demande d’adhésion à {{organisation}} a été refusée. L’e-mail ne précise pas qui l’a refusée.",
+      "turnDownBody": "{{name}} recevra un e-mail lui indiquant que sa demande pour rejoindre {{organisation}} a été refusée. L’e-mail ne précise pas qui l’a refusée.",
       "turnDownConfirm": "Refuser la demande de {{name}}",
       "keep": "Garder la demande",
       "approved": "{{name}} est maintenant membre, avec le rôle {{role}}.",
