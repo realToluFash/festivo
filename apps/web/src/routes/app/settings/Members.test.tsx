@@ -656,7 +656,7 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
 
-    expect(screen.getByRole('heading', { name: /Suspended: company address gone/ })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /Suspended: company domain/ })).toBeDefined();
     expect(
       screen.getByText("Bisi Adeyemi's ire.events address is no longer on their account."),
     ).toBeDefined();
@@ -702,7 +702,7 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
 
-    expect(screen.getByRole('heading', { name: /Suspended: company address gone/ })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /Suspended: company domain/ })).toBeDefined();
     expect(screen.queryByText(/if nobody answers/)).toBeNull();
   });
 
@@ -775,7 +775,7 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
 
-    expect(screen.getByRole('heading', { name: /Suspended: company address gone/ })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /Suspended: company domain/ })).toBeDefined();
     expect(
       screen.getByText(
         'Folake Adeyemi is the only owner of Ìrè Events, so they stay suspended, still an owner, and are not removed.',
