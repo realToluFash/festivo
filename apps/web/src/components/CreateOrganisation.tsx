@@ -42,7 +42,6 @@ export function CreateOrganisation({
   const [limitedUntil, setLimitedUntil] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
-  const sending = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -85,12 +84,11 @@ export function CreateOrganisation({
 
   async function create(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (sending.current) return;
+    if (saving) return;
     setRefused({});
 
     if (!checks.passes(values)) return;
 
-    sending.current = true;
     setSaving(true);
     setFailed(false);
     setLimitedUntil(null);
@@ -105,7 +103,6 @@ export function CreateOrganisation({
       );
     } catch (error) {
       focusAfterSave('name');
-      sending.current = false;
       setSaving(false);
 
       if (error instanceof ApiError && error.is('too_many_attempts')) {

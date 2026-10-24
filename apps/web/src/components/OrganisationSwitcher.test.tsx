@@ -75,7 +75,7 @@ function problem(code: string, status: number, headers: Record<string, string> =
 }
 
 /** POST /api/orgs answers `created`; anything else the shell asks for on the way is empty. */
-function creating(created: () => Response) {
+function creating(created: () => Response | Promise<Response>) {
   return vi
     .spyOn(globalThis, 'fetch')
     .mockImplementation(async (input, init) =>
@@ -472,9 +472,7 @@ describe('creating an organisation', () => {
   it('sends one request for a double press, then one more after a failure (sc-7497)', async () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
     let answer: (response: Response) => void = () => {};
-    const fetch = creating(
-      () => new Promise<Response>((resolve) => (answer = resolve)) as unknown as Response,
-    );
+    const fetch = creating(() => new Promise<Response>((resolve) => (answer = resolve)));
     const posts = () => fetch.mock.calls.filter(([, init]) => init?.method === 'POST');
     inOne();
     openCreate();
