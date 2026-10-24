@@ -36,6 +36,7 @@ use Psl\Str;
 use Psl\Type;
 use Psl\Vec;
 use ResourceBundle;
+use stdClass;
 use Symfony\Component\Uid\Uuid;
 
 final class OrganisationTest extends ApiTestCase
@@ -586,7 +587,7 @@ final class OrganisationTest extends ApiTestCase
      */
     private function patch(Organisation $organisation, array $fields, string $language = 'en'): array
     {
-        return $this->send('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), Json\encode($fields), $language);
+        return $this->send('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), Json\encode([] === $fields ? new stdClass() : $fields), $language);
     }
 
     /** @return array<string, mixed> */
