@@ -19,6 +19,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
+import { useBroughtIntoView } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 const TONES: Record<OwnerClaimView['tone'], { tone: NoticeTone; mark: string }> = {
@@ -107,16 +108,34 @@ export function OwnerClaimBanner({
   );
 }
 
-/** Only the claimant sees it, and only until they leave Members (sc-8204). */
+/** Only the claimant sees it, and only until they leave Members (sc-8204). Focus reads it, so nothing announces it (sc-9382). */
 function Withdrew({ told }: { told: boolean }) {
   const { t } = useTranslation();
-  const words = t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew');
-
-  useEffect(() => AccessibilityInfo.announceForAccessibility(words), [words]);
+  const shown = useBroughtIntoView();
 
   return (
-    <View testID="ownerClaim.withdrew">
-      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} announce />
+    <View ref={shown} accessible testID="ownerClaim.withdrew">
+      <Notice
+        tone="done"
+        mark={tokens.marks.done.glyph}
+        body={t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew')}
+      />
+    </View>
+  );
+}
+
+function WithdrawRefused({ words, onReload }: { words: string; onReload: () => void }) {
+  const { t } = useTranslation();
+  const shown = useBroughtIntoView();
+
+  return (
+    <View ref={shown} accessible testID="ownerClaim.withdrawRefused">
+      <Notice
+        tone="broken"
+        mark="✕"
+        body={words}
+        action={{ label: t('ownerClaim.reload'), onPress: onReload, testID: 'ownerClaim.reload' }}
+      />
     </View>
   );
 }
@@ -282,15 +301,7 @@ function OwnerClaimCard({
         onKeep={() => setWithdrawing(null)}
       />
 
-      {withdrawRefused != null && (
-        <Notice
-          tone="broken"
-          mark="✕"
-          body={withdrawRefused}
-          action={{ label: t('ownerClaim.reload'), onPress: onReload, testID: 'ownerClaim.reload' }}
-          announce
-        />
-      )}
+      {withdrawRefused != null && <WithdrawRefused words={withdrawRefused} onReload={onReload} />}
 
       {view.become && (
         <PrimaryButton
