@@ -62,6 +62,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Suspending a member by hand and restoring them (sc-3575, sc-8735,
+  `membersScreen.suspend*`, `restore*`, `seats*`, `ownerNoSuspend`, `accessConflict`,
+  `emails:memberSuspended.*`, `memberRestored.*`, `memberAccess.footer`, `messages:members.*`).**
+  Settled as sc-3575 wrote it. "Suspend" is the act and "Restore access" the way back; a seat
+  is "a team seat" on "the plan". Three refusals keep their contractions for now because
+  `Members.test.tsx` pins them: `ownerNoSuspend` should read "Owners cannot be suspended",
+  `accessConflict` "your change was not made", and `seatsSuspendedFree` "Suspended members do
+  not take a seat". They wait on [dev2]. es, fr and pt write `ownerNoSuspend` and
+  `members.suspend_owner` as one sentence, as a limit checked twice.
 - **24 Oct 2026. The claim that lapsed (sc-9151, sc-9219, `emails:ownerClaim.lapsed.*`).**
   `{claimant}` can be a bare address, so it is never a possessive: the subject is "{claimant}
   did not become the owner of {organisation}. The claim lapsed", as "is now the owner". Each
