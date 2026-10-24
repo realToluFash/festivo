@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { setLanguage } from '../i18n/index.ts';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
 
 const LAPSES = { at: '2026-10-31T09:00:00+00:00', written: 'Saturday 31 Oct at 10:00 WAT' };
@@ -330,5 +331,75 @@ describe('the claimant withdraws their own claim (sc-8204)', () => {
     expect(await screen.findByText('This claim has already ended.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Load Members again' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Withdraw my claim' })).toBeNull();
+  });
+});
+
+describe('the claim’s dates after a language change (sc-9267)', () => {
+  const PASSES_IN: Record<string, string> = {
+    en: 'Tuesday 27 Oct at 10:00 WAT',
+    es: 'martes 27 oct a las 10:00 WAT',
+  };
+  const EN = 'Bisi is becoming the owner. Ownership passes on Tuesday 27 Oct at 10:00 WAT.';
+
+  afterEach(async () => {
+    await act(() => setLanguage(null));
+  });
+
+  function answeringIn(spanish: () => Promise<Response>): string[] {
+    const asked: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (new URL(String(input)).pathname !== PATH) return new Response(null, { status: 500 });
+
+      const language = new Headers(init?.headers).get('Accept-Language') ?? '';
+      asked.push(language);
+
+      return language === 'es' ? spanish() : bannerIn(language);
+    });
+
+    return asked;
+  }
+
+  function bannerIn(language: string): Response {
+    const passes = { ...PASSES, written: PASSES_IN[language] ?? '' };
+
+    return json({
+      ownerClaim: banner({
+        state: 'open',
+        claim: { ...claim(false, true), foundAt: passes, passesAt: passes },
+      }),
+    });
+  }
+
+  it('is asked for again in the picked language, without a reload', async () => {
+    const asked = answeringIn(async () => bannerIn('es'));
+    open();
+    expect(await screen.findByRole('heading', { name: EN })).toBeTruthy();
+
+    await act(() => setLanguage('es'));
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Bisi ha solicitado la propiedad, que se transfiere el martes 27 oct a las 10:00 WAT.',
+      }),
+    ).toBeTruthy();
+    expect(asked).toEqual(['en', 'es']);
+  });
+
+  it('keeps the line it had after a failed ask, with no error', async () => {
+    const asked = answeringIn(async () => new Response(null, { status: 500 }));
+    open();
+    await screen.findByRole('heading', { name: EN });
+
+    await act(() => setLanguage('es'));
+    await waitFor(() => expect(asked).toEqual(['en', 'es']));
+    await act(async () => {});
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Bisi ha solicitado la propiedad, que se transfiere el Tuesday 27 Oct at 10:00 WAT.',
+      }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
