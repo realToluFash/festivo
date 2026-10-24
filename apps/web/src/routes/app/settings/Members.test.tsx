@@ -95,7 +95,7 @@ const LIST = {
     member({
       id: 'm_chidi',
       user: { id: 'u_chidi', name: 'Chidi Okoro', email: 'chidi@ire.events' },
-      role: COORDINATOR,
+      role: { id: 'role_5', seededAs: 'read_only', name: null },
       status: 'left_or_removed',
       former: 'removed',
       channel: 'invitation',
@@ -231,6 +231,8 @@ describe('Settings > Members', () => {
 
     expect(await screen.findByRole('heading', { name: 'Chidi Okoro' })).toBeDefined();
     expect(screen.getByText(/^Turned down by /)).toBeDefined();
+    expect(screen.getByText('No role yet · Removed')).toBeDefined();
+    expect(screen.queryByText(/Read-only/)).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
   });

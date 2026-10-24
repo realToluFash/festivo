@@ -4,6 +4,7 @@ import {
   approvalRoles,
   historyLine,
   memberChannelWords,
+  memberHeldNoRole,
   memberIsShown,
   memberRowLine,
   memberRowVerb,
@@ -180,6 +181,7 @@ describe("what a member's row says", () => {
     invitedBy: null,
     self: false,
     role: { seededAs: 'coordinator', name: null },
+    history: [],
   };
 
   it('dates a row by what happened last', () => {
@@ -239,5 +241,21 @@ describe("what a member's row says", () => {
     ).toBe(
       'membersScreen.noRoleYet · membersScreen.how.request(Ìrè) · membersScreen.when.asked(12 Oct)',
     );
+  });
+
+  it('gives somebody turned down, withdrawn or expired while awaiting approval no role', () => {
+    const asked = { from: null, to: 'pending_approval' as const };
+    const turnedDown = { from: 'pending_approval' as const, to: 'left_or_removed' as const };
+    const approved = { from: 'pending_approval' as const, to: 'active' as const };
+    const removed = { from: 'active' as const, to: 'left_or_removed' as const };
+    const former = { ...member, status: 'left_or_removed' as const };
+
+    expect(memberHeldNoRole({ ...former, history: [asked, turnedDown] })).toBe(true);
+    expect(memberHeldNoRole({ ...former, history: [asked, approved, removed] })).toBe(false);
+    expect(memberHeldNoRole({ ...former, history: [] })).toBe(false);
+    expect(memberHeldNoRole({ ...member, history: [asked, approved] })).toBe(false);
+    expect(
+      memberRowLine(word, { ...former, history: [asked, turnedDown] }, 'Ìrè', () => '12 Oct'),
+    ).toMatch(/^membersScreen\.noRoleYet · /);
   });
 });

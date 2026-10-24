@@ -106,6 +106,19 @@ interface RowMember {
   self: boolean;
   role: { seededAs: string | null; name: string | null };
   suspension?: { reason: string } | null;
+  history: readonly { from: MemberState | null; to: MemberState }[];
+}
+
+/** Awaiting approval, or turned down, withdrawn or expired while awaiting it: Read-only is only where a request is parked (sc-7217). */
+export function memberHeldNoRole(member: Pick<RowMember, 'status' | 'history'>): boolean {
+  if (member.status === 'pending_approval') return true;
+  const last = member.history.at(-1);
+
+  return (
+    member.status === 'left_or_removed' &&
+    last?.from === 'pending_approval' &&
+    last.to === 'left_or_removed'
+  );
 }
 
 export function memberStatusWord(word: Word, member: RowMember): string {
@@ -148,7 +161,7 @@ export function memberRowLine(
   day: (at: string) => string,
 ): string {
   return [
-    member.status === 'pending_approval'
+    memberHeldNoRole(member)
       ? word('membersScreen.noRoleYet', {})
       : roleName((key) => word(key, {}), member.role),
     ...(member.self ? [word('membersScreen.you', {})] : []),

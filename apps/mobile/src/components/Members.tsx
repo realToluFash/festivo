@@ -12,6 +12,7 @@ import {
   approvalRoles,
   formatDay,
   initials,
+  memberHeldNoRole,
   memberIsShown,
   memberRowLine,
   memberStanding,
@@ -361,7 +362,7 @@ export function MemberPage({
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
   const waiting = member.status === 'pending_approval';
-  const role = waiting ? t('membersScreen.noRoleYet') : roleName(t, member.role);
+  const role = memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role);
   const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
 
   return (
