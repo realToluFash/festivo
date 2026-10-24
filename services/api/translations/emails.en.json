@@ -171,6 +171,6 @@
     "ownerClaim.claimant": "Claimant: {claimant} · {email}",
     "ownerClaim.domain": "Domain: {domain}",
     "ownerClaim.openLink": "Open Members: {link}",
-    "ownerClaim.footer.administrator": "You're getting this because you're an admin of {organisation}.",
+    "ownerClaim.footer.administrator": "You're getting this because you're an Administrator of {organisation}.",
     "ownerClaim.footer.owner": "You're getting this because you're an owner of {organisation}. We sent it to your account's main email address."
 }
