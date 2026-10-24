@@ -861,7 +861,7 @@
       "suspended": "Suspended",
       "left": "Left",
       "removed": "Removed",
-      "domainSuspended": "Suspended: company address gone"
+      "domainSuspended": "Suspended: company domain"
     },
     "how": {
       "invitation": "Invitation",
