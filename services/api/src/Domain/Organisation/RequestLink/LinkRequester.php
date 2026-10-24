@@ -63,9 +63,11 @@ final readonly class LinkRequester
 
     public function standingOf(User $user, Organisation $organisation): ?RequestStanding
     {
-        return match ($this->membershipRepository->findOneBy(['organisation' => $organisation, 'user' => $user])?->getStatus()) {
-            MembershipStatus::Active, MembershipStatus::Suspended => RequestStanding::Member,
-            MembershipStatus::PendingApproval => RequestStanding::Waiting,
+        $status = $this->membershipRepository->findOneBy(['organisation' => $organisation, 'user' => $user])?->getStatus();
+
+        return match (true) {
+            true === $status?->holdsRole() => RequestStanding::Member,
+            MembershipStatus::PendingApproval === $status => RequestStanding::Waiting,
             default => null === $this->coolingOffUntil($user, $organisation) ? null : RequestStanding::CoolingOff,
         };
     }

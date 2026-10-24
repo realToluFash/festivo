@@ -721,6 +721,10 @@ describe('a browser never holds the refresh token', () => {
       removable: true,
       permissions: ['events.read'],
       holders: 2,
+      holderNames: [
+        { name: 'Ada Okeke', suspended: false },
+        { name: 'Émeka Obi', suspended: true },
+      ],
     };
 
     const client = new ApiClient({
@@ -746,6 +750,7 @@ describe('a browser never holds the refresh token', () => {
     await client.deleteRole('org_1', 'role_6', 'role_5');
 
     expect(catalogue.roles[0]?.name).toBe('Door team');
+    expect(catalogue.roles[0]?.holderNames).toEqual(door.holderNames);
     expect(catalogue.areas).toEqual([{ area: 'events', permissions: ['events.read'] }]);
     expect(sent.slice(1)).toEqual([
       {

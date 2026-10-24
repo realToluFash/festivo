@@ -49,6 +49,9 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
+  sc-9068). «y {{count}} más», after the five names it continues; nothing agrees with the
+  people, so one form serves every count. No `_many`, as sc-4188 says.
 - **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
   `validation.request_shape`, sc-8716). The field «no admite ese valor», which also reads right
   for a required field left out; «Revíselo y vuelva a intentarlo». The 422 `detail` speaks of «los
