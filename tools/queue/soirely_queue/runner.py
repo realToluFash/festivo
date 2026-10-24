@@ -436,7 +436,7 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
             pr = row["pr"] if row else None
             head = (store.pr(db, pr) or {}).get("head_sha") if pr else None
             base = machine.checkout(config, role)
-            cwd = make_review(path, base, head or main, pr if head else None)
+            cwd = make_review(path, base, head or main, pr if head else None, rules=main)
             note = "\n".join(filter(None, [note, review.note(cwd, head or main,
                                                               pr if head else None, base)]))
     except checkout.Unprepared as error:

@@ -522,8 +522,9 @@ class Worker(unittest.TestCase):
         (self.root / "soirely-lead").mkdir()
         made = []
 
-        def make(path, base, head, number):
+        def make(path, base, head, number, rules):
             made.append((path.name, base.name, head, number))
+            self.rules = rules
             return review.place(path)
 
         if pr:
@@ -549,6 +550,7 @@ class Worker(unittest.TestCase):
 
         made = self.lead_review(claude, pr=40)
         self.assertEqual(made, [("soirely-lead-2", "soirely-lead", "e" * 40, 40)])
+        self.assertEqual(self.rules, "c" * 40)
         self.assertEqual(calls[0][1], self.root / "soirely-lead-2-review")
         self.assertIn("#40's head eeeeeee", calls[0][0])
         self.assertEqual(self.removed, ["soirely-lead-2"])

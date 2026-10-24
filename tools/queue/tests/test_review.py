@@ -26,7 +26,11 @@ class Worktree(unittest.TestCase):
         for name, text in {".gitignore": "node_modules\nvendor\n",
                            "packages/domain/index.js": "main",
                            "apps/web/package.json": "{}",
-                           "services/api/composer.json": "{}"}.items():
+                           "services/api/composer.json": "{}",
+                           "CLAUDE.md": "main's",
+                           ".claude/settings.json": "{}",
+                           ".claude/skills/soirely-tech-lead/SKILL.md": "main's lead",
+                           "apps/web/.claude/skills/web/SKILL.md": "main's web"}.items():
             (self.lead / name).parent.mkdir(parents=True, exist_ok=True)
             (self.lead / name).write_text(text)
         git(self.lead, "add", ".")
@@ -34,6 +38,12 @@ class Worktree(unittest.TestCase):
         self.main = git(self.lead, "rev-parse", "HEAD")
         git(self.lead, "checkout", "-qb", "feature")
         (self.lead / "packages/domain/index.js").write_text("pr")
+        (self.lead / ".claude/skills/soirely-tech-lead/SKILL.md").write_text("the pr's lead")
+        (self.lead / "CLAUDE.md").write_text("the pr's")
+        git(self.lead, "rm", "-q", "apps/web/.claude/skills/web/SKILL.md")
+        (self.lead / ".claude/settings.local.json").write_text('{"allow": ["*"]}')
+        (self.lead / "services/api/CLAUDE.md").write_text("the pr's api")
+        git(self.lead, "add", ".")
         git(self.lead, "commit", "-qam", "pr")
         self.head = git(self.lead, "rev-parse", "HEAD")
         git(self.lead, "checkout", "-q", "--detach", self.main)
@@ -44,6 +54,9 @@ class Worktree(unittest.TestCase):
         os.symlink("../../packages/domain", modules / "@soirely/domain")
         (self.lead / "apps/web/node_modules/vite").mkdir(parents=True)
         (self.lead / "services/api/vendor/composer").mkdir(parents=True)
+        (self.lead / "services/api/vendor/composer/autoload_real.php").write_text("<?php")
+        (self.lead / "services/api/vendor/psl").mkdir()
+        (self.lead / "services/api/vendor/psl/Str.php").write_text("<?php")
         (self.lead / "services/api/vendor/autoload.php").write_text("<?php")
 
     def tearDown(self):
@@ -59,6 +72,27 @@ class Worktree(unittest.TestCase):
         vendor = tree / "services/api/vendor"
         self.assertFalse(vendor.is_symlink())
         self.assertEqual((vendor / "autoload.php").read_text(), "<?php")
+
+    def test_the_review_runs_under_mains_claude_rules_not_the_heads(self):
+        tree = review.make(self.lead, self.lead, self.head, 40, rules=self.main)
+        self.assertEqual((tree / ".claude/skills/soirely-tech-lead/SKILL.md").read_text(),
+                         "main's lead")
+        self.assertEqual((tree / "CLAUDE.md").read_text(), "main's")
+        self.assertEqual((tree / "apps/web/.claude/skills/web/SKILL.md").read_text(),
+                         "main's web")
+        self.assertFalse((tree / ".claude/settings.local.json").exists())
+        self.assertFalse((tree / "services/api/CLAUDE.md").exists())
+        self.assertEqual((tree / "packages/domain/index.js").read_text(), "pr")
+        self.assertEqual(git(tree, "rev-parse", "HEAD"), self.head)
+
+    def test_what_composer_rewrites_in_place_is_copied_not_shared(self):
+        tree = review.make(self.lead, self.lead, self.head, 40)
+        vendor, base = tree / "services/api/vendor", self.lead / "services/api/vendor"
+        for name in ("autoload.php", "composer/autoload_real.php"):
+            (vendor / name).write_text("<?php // the pr's packages")
+            self.assertEqual((base / name).read_text(), "<?php")
+        self.assertEqual(os.stat(vendor / "psl/Str.php").st_ino,
+                         os.stat(base / "psl/Str.php").st_ino)
 
     def test_the_lead_checkout_stays_on_its_commit(self):
         review.make(self.lead, self.lead, self.head, 40)
