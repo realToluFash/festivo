@@ -402,10 +402,9 @@ describe('a wrong code after Google', () => {
     vi.spyOn(browser, 'leaveFor').mockImplementation(() => {});
 
     open('/oauth/google');
+    await screen.findByText('Signed in with Google', {}, { timeout: 3000 });
 
-    fireEvent.change(await screen.findByLabelText('Code', {}, { timeout: 3000 }), {
-      target: { value: '000000' },
-    });
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '000000' } });
     fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
     expect(
       await screen.findByText('That code did not work. Check your app and try again.'),
@@ -562,9 +561,8 @@ describe('a kept sign-in that ran out', () => {
 
     // qa2's case: the right code typed first, after the five minutes from the Google sign-in.
     open('/oauth/google');
-    fireEvent.change(await screen.findByLabelText('Code', {}, { timeout: 3000 }), {
-      target: { value: '123456' },
-    });
+    await screen.findByText('Signed in with Google', {}, { timeout: 3000 });
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
     fireEvent.click(ways().getByRole('button', { name: 'Continue' }));
 
     expect(
