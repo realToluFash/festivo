@@ -22,6 +22,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  barFits,
   coveredBy,
   groupInWindow,
   keyboardInWindow,
@@ -54,14 +55,20 @@ interface ScreenScrollView {
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
 
 interface ScreenDock {
-  /** Whether the keys cover the screen's end. */
-  keysUp: boolean;
+  /** The height between the scroll view's top and the keys, or null while they leave the screen's end uncovered. */
+  room: number | null;
   show(docked: Docked | null): void;
+}
+
+export interface DockInset {
+  horizontal: number;
+  vertical: number;
 }
 
 interface Docked {
   children: ReactNode;
-  style?: ViewStyle | undefined;
+  inset: DockInset;
+  measured: (height: number) => void;
 }
 
 const Dock = createContext<ScreenDock | null>(null);
@@ -217,17 +224,30 @@ export function useRoomAboveKeyboard(): number | null {
   return room;
 }
 
-/** Rests its children directly on the keys, outside the scroll, while they are up; in place otherwise. */
-export function AboveKeys({ children, style }: Docked) {
+export interface AboveKeysProps {
+  children: ReactNode;
+  inset: DockInset;
+  /** The height of the field the children save, kept in sight above them. */
+  field: number;
+}
+
+/** Rests its children directly on the keys, outside the scroll, while they and the field fit above them; in place otherwise. */
+export function AboveKeys({ children, inset, field }: AboveKeysProps) {
   const dock = useContext(Dock);
-  const docked = dock?.keysUp === true;
+  const [height, setHeight] = useState<number | null>(null);
+  const docked =
+    dock?.room != null &&
+    height != null &&
+    barFits({ room: dock.room, field, bar: height + 2 * inset.vertical, margin: tokens.spaceLg });
 
   useEffect(() => {
-    if (docked) dock.show({ children, style });
-  }, [dock, docked, children, style]);
+    if (docked) dock.show({ children, inset, measured: setHeight });
+  }, [dock, docked, children, inset]);
   useEffect(() => (docked ? () => dock.show(null) : undefined), [dock, docked]);
 
-  return docked ? null : children;
+  return docked ? null : (
+    <View onLayout={(event) => setHeight(event.nativeEvent.layout.height)}>{children}</View>
+  );
 }
 
 /** Brings the view to the top of the screen once it mounts, whatever the scroll it mounted into. */
@@ -311,20 +331,23 @@ export function Screen({
   const avoider = useRef<View>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
+  const [room, setRoom] = useState<number | null>(null);
   const [docked, setDocked] = useState<Docked | null>(null);
-  const keysUp = keysCover > 0;
-  const dock = useMemo<ScreenDock>(() => ({ keysUp, show: setDocked }), [keysUp]);
+  const dock = useMemo<ScreenDock>(() => ({ room, show: setDocked }), [room]);
   // Not KeyboardAvoidingView: it takes the screen's top as a prop and does not re-read it when the
   // frame's header shrinks under the keys, so the freed height ends up as padding above them.
   const avoid = useCallback(() => {
     const top = keyboardTop.current;
     if (top == null) {
       setKeysCover(0);
+      setRoom(null);
       return;
     }
-    avoider.current?.measureInWindow((_x, y, _w, height) =>
-      setKeysCover(keysOver({ y, height }, top)),
-    );
+    avoider.current?.measureInWindow((_x, y, _w, height) => {
+      const cover = keysOver({ y, height }, top);
+      setKeysCover(cover);
+      setRoom(cover > 0 ? top - y : null);
+    });
   }, []);
   // iOS needs the cover too, but only to rest a docked bar on the keys: its scroll view lifts itself.
   useEffect(() => {
@@ -382,7 +405,18 @@ export function Screen({
             ]}
           >
             {body}
-            {docked != null && <View style={docked.style}>{docked.children}</View>}
+            {docked != null && (
+              <View
+                style={{
+                  paddingHorizontal: docked.inset.horizontal,
+                  paddingVertical: docked.inset.vertical,
+                }}
+              >
+                <View onLayout={(event) => docked.measured(event.nativeEvent.layout.height)}>
+                  {docked.children}
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </Dock.Provider>

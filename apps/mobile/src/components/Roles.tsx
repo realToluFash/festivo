@@ -36,7 +36,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { AboveKeys, useAboveKeyboard } from './Screen.tsx';
+import { AboveKeys, type DockInset, useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
@@ -156,6 +156,7 @@ export function RolePage({
   const startingGrant = role?.permissions ?? [];
   const nameInput = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
+  const [nameHeight, setNameHeight] = useState(0);
   const [grant, setGrant] = useState<string[]>(startingGrant);
   const [typed, setTyped] = useState(role?.name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
@@ -252,7 +253,13 @@ export function RolePage({
       <View style={[styles.card, styles.padded, !phone && styles.head]}>
         <View style={[styles.fill, styles.headText]}>
           {naming ? (
-            <View {...(phone ? aboveKeyboard : {})}>
+            <View
+              ref={phone ? aboveKeyboard.ref : undefined}
+              onLayout={(event) => {
+                setNameHeight(event.nativeEvent.layout.height);
+                if (phone) aboveKeyboard.onLayout();
+              }}
+            >
               <Field label={t('rolesScreen.nameLabel')} error={nameError}>
                 <TextField
                   ref={nameInput}
@@ -378,7 +385,7 @@ export function RolePage({
         </View>
       )}
       {editable && dirty && (
-        <Unsaved phone={phone}>
+        <Unsaved phone={phone} field={naming ? nameHeight : 0}>
           <View style={styles.unsaved}>
             <Text size={tokens.typeBodyPhone.size}>
               {unsavedLine(t, creating, title, role?.holders ?? 0)}
@@ -667,9 +674,25 @@ function unsavedLine(t: TFunction, creating: boolean, title: string, holders: nu
   return t('rolesScreen.unsaved', { role: title, count: holders });
 }
 
+const DOCKED: DockInset = { horizontal: tokens.spaceLg, vertical: tokens.spaceSm };
+
 /** On the phone the bar rests on the keys while they are up, far below the name it saves (sc-7099). */
-function Unsaved({ phone, children }: { phone: boolean; children: ReactNode }) {
-  return phone ? <AboveKeys style={styles.docked}>{children}</AboveKeys> : children;
+function Unsaved({
+  phone,
+  field,
+  children,
+}: {
+  phone: boolean;
+  field: number;
+  children: ReactNode;
+}) {
+  return phone ? (
+    <AboveKeys inset={DOCKED} field={field}>
+      {children}
+    </AboveKeys>
+  ) : (
+    children
+  );
 }
 
 const styles = StyleSheet.create({
@@ -748,7 +771,6 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAttentionBorder,
     backgroundColor: tokens.colorAttentionTint,
   },
-  docked: { paddingHorizontal: tokens.spaceLg, paddingVertical: tokens.spaceSm },
   removing: { gap: tokens.spaceMd },
   choices: { gap: tokens.spaceXs },
   choice: {

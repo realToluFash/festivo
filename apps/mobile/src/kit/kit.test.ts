@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { tokens } from '../theme/tokens.ts';
 import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
 import {
+  barFits,
   coveredBy,
   groupInWindow,
   keyboardInWindow,
@@ -96,6 +97,15 @@ describe('a field and its button rest above the keyboard', () => {
     expect(shownEnd(500, { y: 100, height: 600 })).toBe(500);
     expect(coveredBy(shownEnd(500, docked), { y: 300, height: 150 }, 16)).toBe(true);
     expect(coveredBy(500, { y: 300, height: 150 }, 16)).toBe(false);
+  });
+
+  it('with a docked bar only when the field still fits above it', () => {
+    const portrait = { room: 420, field: 90, bar: 190, margin: 16 };
+
+    expect(barFits(portrait)).toBe(true);
+    expect(barFits({ ...portrait, room: 312 })).toBe(true);
+    expect(barFits({ ...portrait, room: 311 })).toBe(false);
+    expect(barFits({ ...portrait, room: 140 })).toBe(false);
   });
 
   it('only when the keyboard covers the group or its margin', () => {

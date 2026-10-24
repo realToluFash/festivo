@@ -23,6 +23,19 @@ export function shownEnd(keyboardTop: number, scrollView: Rect): number {
   return Math.min(keyboardTop, scrollView.y + scrollView.height);
 }
 
+export interface DockRoom {
+  /** The height between the scroll view's top and the keyboard. */
+  room: number;
+  field: number;
+  bar: number;
+  margin: number;
+}
+
+/** Whether a bar may dock on the keys: only when the field it saves, and its margins, still fit above it (sc-7099). */
+export function barFits({ room, field, bar, margin }: DockRoom): boolean {
+  return field + 2 * margin + bar <= room;
+}
+
 export interface ScrollInsets {
   automaticallyAdjustKeyboardInsets: boolean;
   contentInset: { bottom: number } | undefined;
