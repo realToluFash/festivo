@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -21,12 +22,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  barFits,
   coveredBy,
   groupInWindow,
   keyboardInWindow,
   keyboardLift,
   keysOver,
   offsetAboveKeyboard,
+  scrollInsets,
+  shownEnd,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 
@@ -49,6 +53,27 @@ interface ScreenScrollView {
 }
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
+
+interface ScreenDock {
+  /** The height between the scroll view's top and the keys, or null while the keys are down. */
+  room: number | null;
+  /** Whether the keys cover the screen's end, the only time a bar needs resting on them. */
+  covered: boolean;
+  show(docked: Docked | null): void;
+}
+
+export interface DockInset {
+  horizontal: number;
+  vertical: number;
+}
+
+interface Docked {
+  children: ReactNode;
+  inset: DockInset;
+  measured: (height: number) => void;
+}
+
+const Dock = createContext<ScreenDock | null>(null);
 
 const Origin = createContext(0);
 
@@ -89,16 +114,17 @@ function liftAboveKeyboard(
   if (group == null || keyboardTop == null) return;
 
   group.measureLayout(content, (_x, contentY, _w, height) => {
-    scrollHost.measureInWindow((_sx, scrollTop) => {
+    scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
       const groupY = groupInWindow({ scrollTop, contentY, offset: scroll.offset.current });
-      if (!coveredBy(keyboardTop, { y: groupY, height }, tokens.spaceLg)) return;
+      const shown = shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight });
+      if (!coveredBy(shown, { y: groupY, height }, tokens.spaceLg)) return;
 
       view.scrollTo({
         y: offsetAboveKeyboard({
           contentY,
           height,
           scrollTop,
-          keyboardTop,
+          keyboardTop: shown,
           margin: tokens.spaceLg,
         }),
         animated: true,
@@ -168,36 +194,36 @@ export function useAboveKeyboard(): AboveKeyboard {
 
 /** The height a group may take between the scroll view's top and the keyboard, or null while the keys are down. */
 export function useRoomAboveKeyboard(): number | null {
-  const scroll = useContext(ScreenScroll);
-  const [room, setRoom] = useState<number | null>(null);
+  const room = useContext(Dock)?.room;
+
+  return room == null ? null : room - 2 * tokens.spaceLg;
+}
+
+export interface AboveKeysProps {
+  children: ReactNode;
+  inset: DockInset;
+  /** The height of the field the children save, kept in sight above them. */
+  field: number;
+}
+
+/** Rests its children directly on the keys, outside the scroll, while they and the field fit above them; in place otherwise. */
+export function AboveKeys({ children, inset, field }: AboveKeysProps) {
+  const dock = useContext(Dock);
+  const [height, setHeight] = useState<number | null>(null);
+  const docked =
+    dock?.room != null &&
+    dock.covered &&
+    height != null &&
+    barFits({ room: dock.room, field, bar: height + 2 * inset.vertical, margin: tokens.spaceLg });
 
   useEffect(() => {
-    let keyboardTop = keyboardTopNow(scroll?.origin.current ?? 0);
-    const measure = () => {
-      const scrollHost = scroll?.ref.current?.getNativeScrollRef();
-      if (keyboardTop == null || scrollHost == null) {
-        setRoom(null);
-        return;
-      }
-      const top = keyboardTop;
-      scrollHost.measureInWindow((_x, scrollTop) => {
-        setRoom(top - scrollTop - 2 * tokens.spaceLg);
-      });
-    };
-    const unwatch = watchKeyboardTop(scroll, (top) => {
-      keyboardTop = top;
-      measure();
-    });
-    scroll?.resized.add(measure);
-    measure();
+    if (docked) dock.show({ children, inset, measured: setHeight });
+  }, [dock, docked, children, inset]);
+  useEffect(() => (docked ? () => dock.show(null) : undefined), [dock, docked]);
 
-    return () => {
-      unwatch();
-      scroll?.resized.delete(measure);
-    };
-  }, [scroll]);
-
-  return room;
+  return docked ? null : (
+    <View onLayout={(event) => setHeight(event.nativeEvent.layout.height)}>{children}</View>
+  );
 }
 
 /** Brings the view to the top of the screen once it mounts, whatever the scroll it mounted into. */
@@ -281,20 +307,29 @@ export function Screen({
   const avoider = useRef<View>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
+  const [room, setRoom] = useState<number | null>(null);
+  const [docked, setDocked] = useState<Docked | null>(null);
+  const dock = useMemo<ScreenDock>(
+    () => ({ room, covered: keysCover > 0, show: setDocked }),
+    [room, keysCover],
+  );
   // Not KeyboardAvoidingView: it takes the screen's top as a prop and does not re-read it when the
   // frame's header shrinks under the keys, so the freed height ends up as padding above them.
   const avoid = useCallback(() => {
     const top = keyboardTop.current;
     if (top == null) {
       setKeysCover(0);
+      setRoom(null);
       return;
     }
-    avoider.current?.measureInWindow((_x, y, _w, height) =>
-      setKeysCover(keysOver({ y, height }, top)),
-    );
+    avoider.current?.measureInWindow((_x, y, _w, height) => {
+      const cover = keysOver({ y, height }, top);
+      setKeysCover(cover);
+      setRoom(top - y);
+    });
   }, []);
+  // iOS needs the cover too, but only to rest a docked bar on the keys: its scroll view lifts itself.
   useEffect(() => {
-    if (LIFT.avoid == null) return;
     keyboardTop.current = keyboardTopNow(origin.current);
     avoid();
 
@@ -328,7 +363,7 @@ export function Screen({
       // dismissing the keyboard, which otherwise makes every button in a
       // form need pressing twice.
       keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+      {...scrollInsets(LIFT, docked != null)}
     >
       {children}
     </ScrollView>
@@ -338,15 +373,32 @@ export function Screen({
 
   return (
     <ScreenScroll.Provider value={scroll ? screenScroll : null}>
-      <View style={[styles.root, padding, style]}>
-        {LIFT.avoid == null ? (
-          body
-        ) : (
-          <View ref={avoider} onLayout={avoid} style={[styles.fill, { paddingBottom: keysCover }]}>
+      <Dock.Provider value={scroll ? dock : null}>
+        <View style={[styles.root, padding, style]}>
+          <View
+            ref={avoider}
+            onLayout={avoid}
+            style={[
+              styles.fill,
+              { paddingBottom: LIFT.avoid != null || docked != null ? keysCover : 0 },
+            ]}
+          >
             {body}
+            {docked != null && (
+              <View
+                style={{
+                  paddingHorizontal: docked.inset.horizontal,
+                  paddingVertical: docked.inset.vertical,
+                }}
+              >
+                <View onLayout={(event) => docked.measured(event.nativeEvent.layout.height)}>
+                  {docked.children}
+                </View>
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        </View>
+      </Dock.Provider>
     </ScreenScroll.Provider>
   );
 }
