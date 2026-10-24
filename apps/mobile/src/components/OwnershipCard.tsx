@@ -312,6 +312,7 @@ function Transfer({
             submitting={busy}
             editable={!busy}
             autoComplete="current-password"
+            textContentType="password"
             onChangeText={(typed) => {
               setPassword(typed);
               if (refused?.field === 'password') setRefused(null);
