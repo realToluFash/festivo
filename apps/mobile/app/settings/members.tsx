@@ -20,6 +20,7 @@ import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
+import { useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
@@ -59,6 +60,7 @@ export default function MembersScreen() {
   const showing = shown.in === organisationId ? shown.showing : LIST;
   const setShowing = (next: Showing) => setShown({ in: organisationId, showing: next });
   const phone = kind === 'phone';
+  const language = useShownLanguage();
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -68,13 +70,19 @@ export default function MembersScreen() {
 
     Promise.all([api.members(organisationId), api.roles(organisationId)]).then(
       ([list, catalogue]) => settle({ kind: 'loaded', list, roles: catalogue.roles }),
-      () => settle({ kind: 'failed' }),
+      () =>
+        live &&
+        setHeld((before) =>
+          before.in === organisationId && before.load.kind === 'loaded'
+            ? before
+            : { in: organisationId, load: { kind: 'failed' } },
+        ),
     );
 
     return () => {
       live = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, language]);
 
   if (organisation != null && !roleHolds(organisation, 'members.read')) {
     return <Redirect href={DESTINATION_HREF.settings} />;

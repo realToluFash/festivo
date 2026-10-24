@@ -1,6 +1,6 @@
 import type { SignInRuleChange, SignInRulesPage } from '@soirely/api-client';
 import { formatDay, formatTimeOfDay, roleName } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -13,7 +13,7 @@ import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
-import { dateLocale } from '../../src/i18n/index.ts';
+import { dateLocale, useShownLanguage } from '../../src/i18n/index.ts';
 import { limitFromElsewhere, ruleValue } from '../../src/kit/signInRules.ts';
 import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
 import { markRulesSeen } from '../../src/signInRulesSeen.ts';
@@ -31,20 +31,29 @@ export default function SignInRules() {
   const [attempt, setAttempt] = useState(0);
   const phone = kind === 'phone';
   const organisationId = organisation?.id;
+  const language = useShownLanguage();
+  const loadedFor = useRef<string | null>(null);
 
   useEffect(() => {
     if (organisationId == null) return;
     let live = true;
+    const askedAgain = loadedFor.current === organisationId;
 
     api.signInRules(organisationId).then(
-      (page) => live && setLoad({ kind: 'loaded', page }),
-      () => live && setLoad({ kind: 'failed' }),
+      (page) => {
+        if (!live) return;
+        loadedFor.current = organisationId;
+        setLoad({ kind: 'loaded', page });
+      },
+      () =>
+        live &&
+        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' })),
     );
 
     return () => {
       live = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, language]);
 
   useEffect(() => {
     if (organisation != null) markRulesSeen(organisation);
