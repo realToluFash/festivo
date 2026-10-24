@@ -27,13 +27,15 @@ nelmio_cors:
                 'Accept-Language',
                 'Authorization',
                 'Content-Type',
+                'If-Match',
                 'X-Device-Id',
                 'X-Timezone',
             ]
         # A header a browser cannot read is a header the client does not have.
         # Retry-After is how a refused sign-in says when to try again, and Link
-        # is how a list says where its next page is.
-        expose_headers: ['Link', 'Retry-After']
+        # is how a list says where its next page is. ETag is the version an
+        # edit sends back as If-Match.
+        expose_headers: ['ETag', 'Link', 'Retry-After']
         max_age: 3600
     paths:
         '^/api': ~
