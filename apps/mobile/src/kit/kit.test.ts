@@ -11,6 +11,7 @@ import {
   keysOver,
   listRoom,
   offsetAboveKeyboard,
+  offsetToFocus,
   scrollInsets,
   shortWhileTyping,
   shownEnd,
@@ -45,6 +46,32 @@ describe('the keyboard lifts the card once', () => {
 
       expect(lift.avoid != null && lift.adjustScrollInsets, os).toBe(false);
     }
+  });
+});
+
+describe('the focused field stays in a sheet body too short for its notices (sc-4527)', () => {
+  // A 140 body; a 90 notice, then the 16 gap, then the 100 field: the group is 206.
+  const body = { scrollTop: 0, keyboardTop: 140, margin: 16 };
+  const group = { ...body, contentY: 40, height: 206 };
+  const field = { contentY: 146, height: 100 };
+
+  it('rests the field above the body end and lets the notice above it go', () => {
+    const offset = offsetToFocus(group, field);
+
+    expect(offset).toBe(122);
+    expect(field.contentY + field.height - offset + body.margin).toBe(body.keyboardTop);
+  });
+
+  it('keeps the whole group, top first, while it fits', () => {
+    const roomy = { ...group, keyboardTop: 400 };
+
+    expect(offsetToFocus(roomy, field)).toBe(offsetAboveKeyboard(roomy));
+  });
+
+  it('keeps the field top when even the field does not fit', () => {
+    const tiny = { ...group, keyboardTop: 60 };
+
+    expect(offsetToFocus(tiny, field)).toBe(field.contentY - body.margin);
   });
 });
 

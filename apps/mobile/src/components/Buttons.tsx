@@ -47,19 +47,22 @@ export function SecondaryButton({
   label,
   onPress,
   off = false,
+  stacked = false,
   accessibilityLabel,
   testID,
 }: {
   label: string;
   onPress: () => void;
   off?: boolean;
+  /** Under a primary button, as wide and as tall as it. */
+  stacked?: boolean;
   /** When the visible label leans on its row, as "Unlink" does beside "Google". */
   accessibilityLabel?: string;
   testID: string;
 }) {
   return (
     <Pressable
-      style={[styles.secondary, off && styles.secondaryOff]}
+      style={[styles.secondary, stacked && styles.secondaryStacked, off && styles.secondaryOff]}
       onPress={onPress}
       disabled={off}
       accessibilityLabel={accessibilityLabel}
@@ -159,6 +162,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
+  },
+  secondaryStacked: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    height: tokens.sizeHitPhonePrimary,
+    borderRadius: tokens.sizeHitPhonePrimary / 2,
   },
   secondaryOff: { backgroundColor: tokens.colorInset, borderColor: tokens.colorBorder },
   quiet: { minHeight: tokens.sizeHit, alignItems: 'center', justifyContent: 'center' },

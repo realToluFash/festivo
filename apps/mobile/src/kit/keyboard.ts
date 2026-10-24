@@ -106,6 +106,21 @@ export function offsetAboveKeyboard({
   return Math.max(0, Math.min(bottomAboveKeys, contentY - margin));
 }
 
+/** Where the focused field sits inside the scroll content, as the last part of its group. */
+export interface Focused {
+  contentY: number;
+  height: number;
+}
+
+/** As offsetAboveKeyboard while the group fits; when it does not, the field wins and the group's top goes. */
+export function offsetToFocus(group: Lift, field: Focused): number {
+  const room = group.keyboardTop - group.scrollTop;
+
+  return offsetAboveKeyboard(
+    group.height + 2 * group.margin <= room ? group : { ...group, ...field },
+  );
+}
+
 export interface ListRoom {
   /** The height between the scroll view's top and the keyboard, less a margin at each end. */
   room: number;
