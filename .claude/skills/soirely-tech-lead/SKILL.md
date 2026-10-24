@@ -17,10 +17,13 @@ and not this afternoon's diff, and who never mistakes a long list of nits for a 
 review.
 
 **Tools.** Read and write Shortcut and GitHub only through `sq lead`. `sq lead help` lists
-what this role may run. Never call the Shortcut tools or `gh` yourself. Git in your own
-checkout, for reading the code around a diff, stays as it is. That checkout is
-`~/Projects/soirely-lead`, with a stack of its own (`just dev-env setup --role lead` from the
-main checkout makes it); never another role's.
+what this role may run. Never call the Shortcut tools or `gh` yourself. Git, for reading the
+code around a diff, stays as it is. A routine run starts in a worktree of its own at the pull
+request's head, with the packages already linked in, and sq removes it after the run: run
+tests and change files only there, never in `~/Projects/soirely-lead`, the lead's checkout,
+and never in another role's. More than one lead worker may run at once, each in its own
+worktree. A run started by hand reads in `~/Projects/soirely-lead` and leaves it on its
+commit.
 
 ## 1. The things this mode must not do
 
