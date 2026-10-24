@@ -1,0 +1,78 @@
+# Stands in for the SMS provider.
+#
+# Returns a provider-shaped 201 so the API's client parses a real response
+# rather than a simplified one that hides a mapping bug until production.
+#
+# Reload after editing:  docker compose up smocker-init
+
+- request:
+    method: POST
+    path:
+      matcher: ShouldMatch
+      value: '/2010-04-01/Accounts/.*/Messages\.json'
+  response:
+    status: 201
+    headers:
+      Content-Type: [application/json]
+    body: >
+      {
+        "sid": "SM00000000000000000000000000000000",
+        "account_sid": "ACdevelopment00000000000000000000",
+        "status": "queued",
+        "direction": "outbound-api",
+        "num_segments": "1",
+        "error_code": null,
+        "error_message": null
+      }
+
+# An unroutable number, so the failure path can be exercised deliberately.
+- request:
+    method: POST
+    path:
+      matcher: ShouldMatch
+      value: '/2010-04-01/Accounts/.*/Messages\.json'
+    body:
+      matcher: ShouldContainSubstring
+      value: '%2B15005550000'
+  response:
+    status: 400
+    headers:
+      Content-Type: [application/json]
+    body: >
+      {
+        "code": 21211,
+        "message": "The 'To' number is not a valid phone number.",
+        "status": 400
+      }
+
+# Stands in for Meta's WhatsApp Cloud API (sc-750): accepts the code template and answers with a
+# message id as Meta does. Delivery reports are Meta's webhook, which nothing sends in development,
+# so a code here falls back to SMS after 30 seconds unless the screen is closed first.
+- request:
+    method: POST
+    path:
+      matcher: ShouldMatch
+      value: '/whatsapp/v21\.0/.*/messages'
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/json]
+    body: >
+      {
+        "messaging_product": "whatsapp",
+        "contacts": [{ "input": "+2348035550142", "wa_id": "2348035550142" }],
+        "messages": [{ "id": "wamid.development", "message_status": "accepted" }]
+      }
+
+# Stands in for DNS over HTTPS (sc-6640): every name answers "no record", in the JSON form Cloudflare
+# uses. To publish one, add a mock for GET /dns-query whose query `name` is the record's name, answering
+# {"Status":0,"Answer":[{"name":"_soirely-verify.<domain>","type":16,"TTL":300,"data":"\"<value>\""}]}.
+- request:
+    method: GET
+    path: /dns-query
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/dns-json]
+    body: >
+      {"Status": 0, "Answer": []}
