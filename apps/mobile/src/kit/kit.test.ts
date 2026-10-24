@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
-import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
+import {
+  codeProps,
+  FIELD_DEFAULTS,
+  type FieldText,
+  fieldText,
+  passwordProps,
+  pinnedText,
+} from './fields.ts';
 import {
   barFits,
   coveredBy,
@@ -11,6 +18,7 @@ import {
   keysOver,
   listRoom,
   offsetAboveKeyboard,
+  offsetIntoView,
   offsetToFocus,
   scrollInsets,
   shortWhileTyping,
@@ -173,6 +181,33 @@ describe('the keyboard and a screen under the header share one frame', () => {
   });
 });
 
+describe('a line that appears off screen is brought wholly into sight (sc-9382)', () => {
+  const line = { height: 80, shown: 600, margin: 16 };
+
+  it('stays put when it is already wholly on screen', () => {
+    expect(offsetIntoView({ ...line, contentY: 300, offset: 200 })).toBeNull();
+    expect(offsetIntoView({ ...line, contentY: 200, offset: 200 })).toBeNull();
+    expect(offsetIntoView({ ...line, contentY: 720, offset: 200 })).toBeNull();
+  });
+
+  it('comes down to the top, a margin clear, when it is above the screen or partly above it', () => {
+    expect(offsetIntoView({ ...line, contentY: 40, offset: 900 })).toBe(24);
+    expect(offsetIntoView({ ...line, contentY: 180, offset: 200 })).toBe(164);
+  });
+
+  it('never scrolls above the content', () => {
+    expect(offsetIntoView({ ...line, contentY: 8, offset: 300 })).toBe(0);
+  });
+
+  it('comes up to the bottom, a margin clear, when it is below the screen', () => {
+    expect(offsetIntoView({ ...line, contentY: 1000, offset: 0 })).toBe(496);
+  });
+
+  it('keeps its top in sight when it is taller than the screen', () => {
+    expect(offsetIntoView({ ...line, height: 900, contentY: 1000, offset: 0 })).toBe(984);
+  });
+});
+
 describe('a list between a field and its button shrinks to fit above the keyboard', () => {
   const smallPhone = { room: 300, rest: 220, oneRow: 70, most: 264 };
 
@@ -254,5 +289,54 @@ describe('a code field offers the keyboard its code needs', () => {
   it('letters and the hyphen, for a field that also takes a recovery code', () => {
     expect(codeProps(true).keyboardType).toBe('default');
     expect(codeProps(true).autoCapitalize).toBe('none');
+  });
+});
+
+describe('a field held through a submit', () => {
+  const shown = (field: FieldText) => {
+    const text = fieldText(field);
+
+    return text.value ?? text.defaultValue;
+  };
+  const step = (field: FieldText, held: boolean): FieldText => {
+    const next = { ...field, held };
+
+    return { ...next, pinned: pinnedText(next) };
+  };
+  const typed: FieldText = {
+    held: false,
+    value: undefined,
+    defaultValue: undefined,
+    typed: 'hunter22',
+    pinned: undefined,
+  };
+
+  it('still carries the submitted text once released, when uncontrolled', () => {
+    const held = step(typed, true);
+    const released = step(held, false);
+
+    expect(shown(held)).toBe('hunter22');
+    expect(shown(released)).toBe('hunter22');
+  });
+
+  it('carries what was typed after a release into the next hold', () => {
+    const released = step(step(typed, true), false);
+    const heldAgain = step({ ...released, typed: 'hunter23' }, true);
+
+    expect(shown(heldAgain)).toBe('hunter23');
+    expect(shown(step(heldAgain, false))).toBe('hunter23');
+  });
+
+  it('shows its value throughout, when controlled', () => {
+    const controlled = { ...typed, value: 'Acme', typed: 'Acme' };
+
+    expect(fieldText(step(controlled, true))).toEqual({ value: 'Acme' });
+    expect(fieldText(step(step(controlled, true), false))).toEqual({ value: 'Acme' });
+  });
+
+  it('starts from its default value until it is first held', () => {
+    expect(fieldText({ ...typed, defaultValue: 'ada@example.com' })).toEqual({
+      defaultValue: 'ada@example.com',
+    });
   });
 });

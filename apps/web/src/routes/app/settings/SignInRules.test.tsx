@@ -95,7 +95,6 @@ function open(path = '/app/settings/sign-in-rules') {
 afterEach(() => {
   vi.restoreAllMocks();
   window.localStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > Sign-in rules, for someone who manages the organisation', () => {

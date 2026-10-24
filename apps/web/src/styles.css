@@ -2240,9 +2240,13 @@ span {
 
 /* ── A notice that can be put away ─────────────────────────────────────────── */
 
+/* The notice breaks words anywhere so a long address fits; its button's one word never breaks. */
 .notice-dismiss {
+  flex: none;
   min-height: var(--sizeHit);
   margin-left: auto;
+  overflow-wrap: normal;
+  white-space: nowrap;
 }
 
 /* ── Two-factor, in Settings > Security ──────────────────────────────────── */

@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
 function at(path: string) {
@@ -184,7 +183,6 @@ const ISSUED = {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('signing in, for real', () => {

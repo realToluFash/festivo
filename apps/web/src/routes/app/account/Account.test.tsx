@@ -103,7 +103,6 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
   tokens.clear();
 });
 

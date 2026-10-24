@@ -10,13 +10,17 @@ import {
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   View,
   type ViewStyle,
+  findNodeHandle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,6 +30,7 @@ import {
   groupInWindow,
   keysOver,
   offsetAboveKeyboard,
+  offsetIntoView,
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
@@ -222,6 +227,102 @@ export function useScrolledToTop(): RefObject<View | null> {
   return top;
 }
 
+// VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
+const SETTLED_MS = 500;
+
+/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it, or on Android, where TalkBack ignores that focus (sc-9950), reads its words out. */
+export function useBroughtIntoView(words: string): RefObject<View | null> {
+  const scroll = useContext(ScreenScroll);
+  const ref = useRef<View>(null);
+
+  useEffect(() => {
+    const view = scroll?.ref.current;
+    const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+    const scrollHost = view?.getNativeScrollRef();
+
+    if (scroll != null && view != null && content != null && scrollHost != null) {
+      ref.current?.measureLayout(content, (_x, contentY, _w, height) => {
+        scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
+          const y = offsetIntoView({
+            contentY,
+            height,
+            offset: scroll.offset.current,
+            shown,
+            margin: tokens.spaceLg,
+          });
+          if (y != null) view.scrollTo({ y, animated: true });
+        });
+      });
+    }
+
+    const focus = setTimeout(() => {
+      if (Platform.OS === 'android') {
+        AccessibilityInfo.announceForAccessibility(words);
+        return;
+      }
+      const node = findNodeHandle(ref.current);
+      if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+    }, SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, [scroll, words]);
+
+  return ref;
+}
+
+/** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
+function useScreenScrollView() {
+  const windowOrigin = useContext(Origin);
+  const origin = useRef(windowOrigin);
+  const scrollView = useRef<ScrollView>(null);
+  const offset = useRef(0);
+  const [screenScroll] = useState<ScreenScrollView>(() => ({
+    ref: scrollView,
+    resized: new Set(),
+    origin,
+    offset,
+  }));
+  useEffect(() => {
+    origin.current = windowOrigin;
+  }, [windowOrigin]);
+
+  const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    offset.current = event.nativeEvent.contentOffset.y;
+  };
+
+  return {
+    screenScroll,
+    scrollProps: {
+      ref: scrollView,
+      onLayout: () => screenScroll.resized.forEach((resized) => resized()),
+      onScroll: follow,
+      onScrollEndDrag: follow,
+      onMomentumScrollEnd: follow,
+    },
+  };
+}
+
+/** A scrolling column inside a Screen that does not scroll, so what it holds can bring itself into view. */
+export function ScrollColumn({
+  children,
+  style,
+  contentContainerStyle,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+}) {
+  const { screenScroll, scrollProps } = useScreenScrollView();
+
+  return (
+    <ScreenScroll.Provider value={screenScroll}>
+      <ScrollView {...scrollProps} style={style} contentContainerStyle={contentContainerStyle}>
+        {children}
+      </ScrollView>
+    </ScreenScroll.Provider>
+  );
+}
+
 /**
  * The documented way to build a screen. Use this, not a bare View.
  *
@@ -258,19 +359,7 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
-  const windowOrigin = useContext(Origin);
-  const origin = useRef(windowOrigin);
-  const scrollView = useRef<ScrollView>(null);
-  const offset = useRef(0);
-  const [screenScroll] = useState<ScreenScrollView>(() => ({
-    ref: scrollView,
-    resized: new Set(),
-    origin,
-    offset,
-  }));
-  useEffect(() => {
-    origin.current = windowOrigin;
-  }, [windowOrigin]);
+  const { screenScroll, scrollProps } = useScreenScrollView();
   const avoider = useRef<View>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
@@ -297,21 +386,17 @@ export function Screen({
   }, []);
   // iOS needs the cover too, but only to rest a docked bar on the keys: its scroll view lifts itself.
   useEffect(() => {
-    keyboardTop.current = keyboardTopNow(origin.current);
+    keyboardTop.current = keyboardTopNow(screenScroll.origin.current);
     avoid();
 
     return watchKeyboardTop(
-      () => origin.current,
+      () => screenScroll.origin.current,
       (top) => {
         keyboardTop.current = top;
         avoid();
       },
     );
   }, [screenScroll, avoid]);
-
-  const followOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    offset.current = event.nativeEvent.contentOffset.y;
-  };
 
   const padding: ViewStyle = {
     paddingTop: edges.includes('top') ? insets.top : 0,
@@ -322,11 +407,7 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
-      ref={scrollView}
-      onLayout={() => screenScroll.resized.forEach((resized) => resized())}
-      onScroll={followOffset}
-      onScrollEndDrag={followOffset}
-      onMomentumScrollEnd={followOffset}
+      {...scrollProps}
       style={styles.fill}
       contentContainerStyle={[styles.content, contentStyle]}
       // So the first tap after typing hits the control rather than only

@@ -7,7 +7,9 @@ namespace App\Http;
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Exception\ShapeRefusal;
-use Psl\Json;
+use BackedEnum;
+use JsonException;
+use Psl\Iter;
 use Psl\Str;
 use Psl\Type\Exception\CoercionException;
 use Psl\Type\TypeInterface;
@@ -33,9 +35,10 @@ final readonly class Input
             throw new ApiException(ErrorCode::BadRequest, 'A JSON body is required.');
         }
 
+        // Not Json\decode: it reads an integer past PHP_INT_MAX as a string, which a string field would then take.
         try {
-            $decoded = Json\decode($raw);
-        } catch (Json\Exception\DecodeException $e) {
+            $decoded = \json_decode($raw, true, 512, \JSON_THROW_ON_ERROR);
+        } catch (JsonException $e) {
             throw new ApiException(ErrorCode::BadRequest, 'The request body is not valid JSON.', [], $e);
         }
 
@@ -44,7 +47,17 @@ final readonly class Input
             throw new ShapeRefusal('');
         }
 
-        return self::coerce($decoded, $shape, $refusals);
+        $body = self::coerce($decoded, $shape, $refusals);
+
+        $mismatch = self::mismatch($body, $decoded);
+
+        if (null !== $mismatch) {
+            $path = Str\join($mismatch, '.');
+
+            throw new ShapeRefusal($path, $refusals[$path] ?? ShapeRefusal::FIELD);
+        }
+
+        return $body;
     }
 
     /**
@@ -57,6 +70,46 @@ final readonly class Input
     public static function query(Request $request, TypeInterface $shape): mixed
     {
         return self::coerce($request->query->all(), $shape);
+    }
+
+    /**
+     * JSON has one number type, so a whole number read as a float is not a change.
+     *
+     * @return list<string>|null the path of the first value coercion changed
+     */
+    private static function mismatch(mixed $coerced, mixed $sent): ?array
+    {
+        if (\is_array($coerced)) {
+            if (!\is_array($sent) || (\array_is_list($coerced) && !\array_is_list($sent))) {
+                return [];
+            }
+
+            foreach ($coerced as $key => $value) {
+                if (!Iter\contains_key($sent, $key)) {
+                    if (null === $value) {
+                        continue;
+                    }
+
+                    return [(string) $key];
+                }
+
+                $inner = self::mismatch($value, $sent[$key]);
+
+                if (null !== $inner) {
+                    return [(string) $key, ...$inner];
+                }
+            }
+
+            return null;
+        }
+
+        $same = match (true) {
+            $coerced instanceof BackedEnum => $coerced->value === $sent,
+            \is_float($coerced) && \is_int($sent) => true,
+            default => $coerced === $sent,
+        };
+
+        return $same ? null : [];
     }
 
     /**

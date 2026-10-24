@@ -16,7 +16,7 @@ import {
   activeCount,
 } from '../../src/components/Members.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
-import { Screen } from '../../src/components/Screen.tsx';
+import { Screen, ScrollColumn } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
@@ -202,9 +202,9 @@ export default function MembersScreen() {
           <Screen edges={bodyEdges(kind)} scroll={false} contentStyle={styles.landscape}>
             {heading}
             <View style={styles.split}>
-              <ScrollView style={styles.listColumn} contentContainerStyle={styles.columnContent}>
+              <ScrollColumn style={styles.listColumn} contentContainerStyle={styles.columnContent}>
                 {waiting ?? list}
-              </ScrollView>
+              </ScrollColumn>
               <ScrollView style={styles.fill} contentContainerStyle={styles.columnContent}>
                 {page ??
                   (load.kind === 'loaded' && (

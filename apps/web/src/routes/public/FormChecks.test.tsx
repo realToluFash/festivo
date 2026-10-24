@@ -58,7 +58,6 @@ function invalid(label: string | RegExp): boolean {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('sign in checks before it sends', () => {

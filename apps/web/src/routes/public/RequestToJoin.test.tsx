@@ -93,7 +93,6 @@ afterEach(() => {
   sessionStorage.clear();
   vi.useRealTimers();
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('a request link (sc-562)', () => {
