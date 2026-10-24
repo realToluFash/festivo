@@ -21,7 +21,8 @@ import {
   PROVIDER_NAMES,
   type ProviderReturn,
   startProviderSignIn,
-  takeProviderReturn,
+  dropProviderReturn,
+  heldProviderReturn,
 } from '../../../providerSignIn.ts';
 import { heldProof, holdProof } from '../../../recentProof.ts';
 
@@ -65,7 +66,7 @@ export function WaysCard({
   onCodeSpent: () => void;
 }) {
   const { t } = useTranslation();
-  const [returned] = useState<ProviderReturn | null>(takeProviderReturn);
+  const [returned] = useState<ProviderReturn | null>(heldProviderReturn);
   const [stage, setStage] = useState<Stage>(() =>
     returned == null || ('failed' in returned && returned.failed === 'cancelled')
       ? { kind: 'list', notice: null }
@@ -183,6 +184,8 @@ export function WaysCard({
     // Strict mode runs this twice, and a provider's code is spent on first use.
     if (started.current) return;
     started.current = true;
+    // Removed only once committed: React may abandon a render and run the initializer again.
+    if (returned != null) dropProviderReturn();
 
     void api
       .twoFactorStatus()

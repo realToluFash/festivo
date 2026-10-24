@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
+import { renderInterrupted } from '../../../test-interrupted.tsx';
 import { tokens } from '../../../tokens.ts';
 import { routes } from '../../index.tsx';
 import { membership } from '../../../test-memberships.ts';
@@ -106,6 +107,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  sessionStorage.clear();
   __setSessionState({ status: 'unknown' });
   tokens.clear();
 });
@@ -690,6 +692,44 @@ describe('signing out everywhere else', () => {
       { call: 'POST /api/auth/sessions/others', body: { proof: 'p-1', sessionId: HERE } },
     ]);
     sessionStorage.clear();
+  });
+
+  it('signs the others out once, back from Google, when React abandons the render it arrives in', async () => {
+    __setSessionState({
+      status: 'signedIn',
+      session: { ...FOLAKE, hasPassword: false, providers: [{ provider: 'google', email: null }] },
+    });
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({
+      provider: 'google',
+      purpose: { kind: 'signOutOthers' },
+      signIn,
+    });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    const sent = stub({
+      'POST /api/auth/proof': () => json({ proof: 'p-1', expiresAt: '' }),
+      'POST /api/auth/sessions/others': () => json({ signedOut: 2, thisDevice: false }),
+    });
+
+    const { release } = await renderInterrupted(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/app/account/security'] })}
+      />,
+    );
+    expect(
+      sessionStorage.getItem('soirely.provider.returned'),
+      'an abandoned render leaves it in place',
+    ).toBe(returned);
+
+    await release();
+
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toMatch(
+        'Your 2 other devices are signed out.',
+      ),
+    );
+    expect(sent.filter((entry) => entry.call === 'POST /api/auth/sessions/others')).toHaveLength(1);
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 
   it('without this device in the list, says it signs out all of them and lands on sign-in', async () => {
