@@ -2263,6 +2263,11 @@ span {
   margin-block: calc(var(--sizeHit) / -2);
 }
 
+/* The box overhangs a one-line notice, so the ring is drawn inside it rather than across the notice's border. */
+.notice-action-row .notice-dismiss:focus-visible {
+  outline-offset: -2px;
+}
+
 /* ── Two-factor, in Settings > Security ──────────────────────────────────── */
 
 /* Off is an empty ring beside the word, so the state never rests on colour. */
