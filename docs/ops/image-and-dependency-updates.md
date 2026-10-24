@@ -32,8 +32,13 @@ so a new tzdata leaves the UTC times of upcoming events wrong wherever a zone's 
    bin/console app:recompute-event-times
    ```
 
-   The first prints how many events would change (`Would recompute the UTC times of N
-events.`) and writes nothing; the second writes. Locally that is
+   The first prints how many events would change and writes nothing:
+
+   ```text
+   Would recompute the UTC times of N events.
+   ```
+
+   The second writes. Locally that is
    `just console app:recompute-event-times`, with or without `--dry-run`. Only events not
    yet over are touched, and running it twice changes nothing the second time.
 
