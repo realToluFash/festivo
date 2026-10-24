@@ -1,10 +1,11 @@
 import { callingCode, countryChoices } from '@soirely/domain';
 import { type Ref, type RefObject, useMemo } from 'react';
-import { AccessibilityInfo, Keyboard, type View, findNodeHandle } from 'react-native';
+import { Keyboard, type View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { currentLocale } from '../i18n/index.ts';
 import { ListPicker } from './ListPicker.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 
 export function CountryPicker({
   label,
@@ -55,6 +56,5 @@ export function CountryPicker({
 /** A refused Country is no text field: the keyboard closes and the screen reader lands on the picker. */
 export function focusPicker(picker: RefObject<View | null>): void {
   Keyboard.dismiss();
-  const node = findNodeHandle(picker.current);
-  if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+  moveScreenReaderFocus(picker.current);
 }

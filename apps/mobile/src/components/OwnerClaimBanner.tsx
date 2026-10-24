@@ -112,7 +112,7 @@ export function OwnerClaimBanner({
 function Withdrew({ told }: { told: boolean }) {
   const { t } = useTranslation();
   const words = t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew');
-  const shown = useBroughtIntoView(words);
+  const shown = useBroughtIntoView();
 
   return (
     <View ref={shown} accessible testID="ownerClaim.withdrew">
@@ -123,7 +123,7 @@ function Withdrew({ told }: { told: boolean }) {
 
 function WithdrawRefused({ words, onReload }: { words: string; onReload: () => void }) {
   const { t } = useTranslation();
-  const shown = useBroughtIntoView(words);
+  const shown = useBroughtIntoView();
 
   return (
     <View ref={shown} accessible testID="ownerClaim.withdrawRefused">
