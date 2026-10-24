@@ -81,6 +81,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **24 Oct 2026. Who did it, in a history line** (`membersScreen.byYou`, `membersScreen.someone`,
   sc-7217, from QA). Both fill `{{by}}` after «por»: the reader is «usted» («Solicitud rechazada por
   usted»), and a person who has since left is «alguien que ya no es miembro».
+
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads «En pausa», the admins
   «Acceso suspendido», as the English keeps them apart. Restoring is «restablecer». In the
