@@ -539,6 +539,7 @@ function MemberDetail({
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
+  const [restored, setRestored] = useState(false);
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
   const waiting = member.status === 'pending_approval';
@@ -699,13 +700,29 @@ function MemberDetail({
         </ul>
       </section>
 
-      {acts && member.suspension != null && (
-        <Suspension
-          organisation={organisation}
-          member={member}
-          suspension={member.suspension}
-          onChanged={onChanged}
-        />
+      {restored ? (
+        <div className="notice notice-done" role="status">
+          <span className="mark mark-done" aria-hidden="true">
+            ✓
+          </span>
+          <p>
+            {t('membersScreen.restored', {
+              name: member.user.name,
+              organisation: organisation.name,
+            })}
+          </p>
+        </div>
+      ) : (
+        acts &&
+        member.suspension != null && (
+          <Suspension
+            organisation={organisation}
+            member={member}
+            suspension={member.suspension}
+            onRestored={() => setRestored(true)}
+            onChanged={onChanged}
+          />
+        )
       )}
 
       {acts && (
@@ -785,22 +802,22 @@ function MemberDetail({
   );
 }
 
-type Restoring = 'resting' | 'restoring' | 'restored';
-
 /** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below. */
 function Suspension({
   organisation,
   member,
   suspension,
+  onRestored,
   onChanged,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   suspension: DomainSuspension;
+  onRestored: () => void;
   onChanged: (list: MembersList) => void;
 }) {
   const { t } = useTranslation();
-  const [restoring, setRestoring] = useState<Restoring>('resting');
+  const [restoring, setRestoring] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const named = {
     name: member.user.name,
@@ -809,15 +826,16 @@ function Suspension({
   };
 
   async function restore(): Promise<void> {
-    setRestoring('restoring');
+    setRestoring(true);
     setFailed(null);
 
     try {
       await api.restoreMember(organisation.id, member.id);
-      setRestoring('restored');
+      // Told by the member page: once the list reloads unsuspended, this card is gone (sc-564).
+      onRestored();
       onChanged(await api.members(organisation.id));
     } catch (error) {
-      setRestoring('resting');
+      setRestoring(false);
       setFailed(
         error instanceof ApiError && error.is('restore_needs_address')
           ? t('membersScreen.restoreNeedsAddress', named)
@@ -826,17 +844,6 @@ function Suspension({
             : t('membersScreen.actionFailed'),
       );
     }
-  }
-
-  if (restoring === 'restored') {
-    return (
-      <div className="notice notice-done" role="status">
-        <span className="mark mark-done" aria-hidden="true">
-          ✓
-        </span>
-        <p>{t('membersScreen.restored', named)}</p>
-      </div>
-    );
   }
 
   return (
@@ -862,8 +869,8 @@ function Suspension({
         <button
           type="button"
           className="button button-primary"
-          aria-busy={restoring === 'restoring'}
-          disabled={restoring === 'restoring'}
+          aria-busy={restoring}
+          disabled={restoring}
           onClick={() => void restore()}
         >
           {t('membersScreen.restore', named)}

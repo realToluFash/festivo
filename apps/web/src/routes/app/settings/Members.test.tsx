@@ -730,6 +730,45 @@ describe('inviting somebody', () => {
     expect(sent.map((one) => one.line)).toContain('POST /api/orgs/org_1/members/m_bisi/restore');
   });
 
+  it('keeps saying a member is restored once the list reloads without their suspension', async () => {
+    const suspended = {
+      ...LIST.members[1],
+      channel: 'domain',
+      suspension: {
+        reason: 'address_gone',
+        domain: 'ire.events',
+        since: { at: '2026-10-17T13:20:00+00:00', written: 'Saturday, Oct 17 at 14:20 WAT' },
+        removesAt: { at: '2026-11-16T13:20:00+00:00', written: 'Monday, Nov 16 at 14:20 WAT' },
+      },
+    };
+    let restored = false;
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          members: [LIST.members[0], restored ? LIST.members[1] : suspended],
+          invitations: [],
+        }),
+      'POST /api/orgs/org_1/members/m_bisi/restore': () => {
+        restored = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+
+    expect(
+      await screen.findByText("Bisi Adeyemi's access to Ìrè Events is restored."),
+    ).toBeDefined();
+    await waitFor(() =>
+      expect(screen.queryByRole('heading', { name: /Suspended: company address gone/ })).toBeNull(),
+    );
+    expect(screen.getByText("Bisi Adeyemi's access to Ìrè Events is restored.")).toBeDefined();
+  });
+
   it('shows no removal date for a suspended only owner', async () => {
     signedIn();
     answering({
