@@ -2748,7 +2748,13 @@ button.members-row {
 
 .join-offer-title {
   font: var(--typeRowTitle);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+}
+
+@media (width <= 40rem) {
+  .join-offer-text {
+    flex-basis: 100%;
+  }
 }
 
 .join-offers-back {
