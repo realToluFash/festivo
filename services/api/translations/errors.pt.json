@@ -20,7 +20,7 @@
     "unsupported_media_type": "Esse formato não é suportado.",
     "precondition_failed": "Outra pessoa alterou isto desde que o abriu.",
     "precondition_required": "Envie a versão que está a alterar, em If-Match.",
-    "event_currency_in_use": "A moeda não pode ser alterada depois de registados montantes no evento.",
+    "event_currency_in_use": "A moeda não pode ser alterada depois de haver montantes registados neste evento.",
     "unauthenticated": "Inicie sessão para continuar.",
     "invalid_credentials": "Esse endereço de correio electrónico e essa palavra-passe não correspondem.",
     "invalid_refresh_token": "A sua sessão foi encerrada. Inicie sessão novamente.",
