@@ -399,6 +399,21 @@ final class OrganisationTest extends ApiTestCase
     }
 
     #[Test]
+    public function aNumberForTheNameIsRefusedRatherThanSavedAsText(): void
+    {
+        $owner = $this->account('shape-number-name@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        $body = $this->patch($organisation, ['name' => 42]);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(ErrorCode::ValidationFailed->type(), $body['type']);
+        self::assertSame([['propertyPath' => 'name', 'message' => 'This field cannot take that value. Check it and try again.', 'code' => 'invalid_shape']], $body['violations']);
+        self::assertSame('Ìrè Events', $this->list()[0]['name']);
+    }
+
+    #[Test]
     public function aMissingRequiredFieldIsRefusedWithTheSameSentence(): void
     {
         $owner = $this->account('shape-missing@example.com');
