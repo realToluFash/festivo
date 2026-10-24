@@ -45,6 +45,11 @@ Get the actual failure, not the summary — the failed log's lines that `sq dev 
 printed. Then establish **which commit introduced it**. `git log main..HEAD` plus the failing file
 usually settles it; `git log -S'<symbol>' main..HEAD` when it does not.
 
+To reproduce a failure locally, run only the check that failed, with its output in your
+run's own folder: `npm run <check> >"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}/<check>.out" 2>&1; echo "exit=$?"`. Never
+pipe it into `tail` or `grep`, which reports the pipe's status rather than the check's, and
+never write to a fixed name in `/tmp`. The full suite is CI's to run, on the pushed head.
+
 Three failures worth recognising on sight:
 
 - **Pre-existing.** The same check fails on `main` (`sq dev runs` lists main's last runs).
