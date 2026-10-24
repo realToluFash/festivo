@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { tokens } from '../theme/tokens.ts';
-import { codeProps, FIELD_DEFAULTS, passwordProps } from './fields.ts';
+import {
+  codeProps,
+  FIELD_DEFAULTS,
+  type FieldText,
+  fieldText,
+  passwordProps,
+  pinnedText,
+} from './fields.ts';
 import {
   barFits,
   coveredBy,
@@ -282,5 +289,54 @@ describe('a code field offers the keyboard its code needs', () => {
   it('letters and the hyphen, for a field that also takes a recovery code', () => {
     expect(codeProps(true).keyboardType).toBe('default');
     expect(codeProps(true).autoCapitalize).toBe('none');
+  });
+});
+
+describe('a field held through a submit', () => {
+  const shown = (field: FieldText) => {
+    const text = fieldText(field);
+
+    return text.value ?? text.defaultValue;
+  };
+  const step = (field: FieldText, held: boolean): FieldText => {
+    const next = { ...field, held };
+
+    return { ...next, pinned: pinnedText(next) };
+  };
+  const typed: FieldText = {
+    held: false,
+    value: undefined,
+    defaultValue: undefined,
+    typed: 'hunter22',
+    pinned: undefined,
+  };
+
+  it('still carries the submitted text once released, when uncontrolled', () => {
+    const held = step(typed, true);
+    const released = step(held, false);
+
+    expect(shown(held)).toBe('hunter22');
+    expect(shown(released)).toBe('hunter22');
+  });
+
+  it('carries what was typed after a release into the next hold', () => {
+    const released = step(step(typed, true), false);
+    const heldAgain = step({ ...released, typed: 'hunter23' }, true);
+
+    expect(shown(heldAgain)).toBe('hunter23');
+    expect(shown(step(heldAgain, false))).toBe('hunter23');
+  });
+
+  it('shows its value throughout, when controlled', () => {
+    const controlled = { ...typed, value: 'Acme', typed: 'Acme' };
+
+    expect(fieldText(step(controlled, true))).toEqual({ value: 'Acme' });
+    expect(fieldText(step(step(controlled, true), false))).toEqual({ value: 'Acme' });
+  });
+
+  it('starts from its default value until it is first held', () => {
+    expect(fieldText({ ...typed, defaultValue: 'ada@example.com' })).toEqual({
+      defaultValue: 'ada@example.com',
+    });
   });
 });

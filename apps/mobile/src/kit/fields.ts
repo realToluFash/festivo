@@ -28,3 +28,25 @@ export function codeProps(takesRecoveryCode: boolean) {
     autoCapitalize: 'none',
   } as const;
 }
+
+export interface FieldText {
+  held: boolean;
+  value: string | undefined;
+  defaultValue: string | undefined;
+  typed: string;
+  pinned: string | undefined;
+}
+
+/** The text a held field was submitted with, kept once it is released: native rewrites an uncontrolled field whenever this changes, and tells nobody. */
+export function pinnedText({ held, value, typed, pinned }: FieldText): string | undefined {
+  return held && value === undefined ? typed : pinned;
+}
+
+/** What a field hands TextInput as its text, held or not. */
+export function fieldText(field: FieldText): { value?: string; defaultValue?: string } {
+  if (field.value !== undefined) return { value: field.value };
+  if (field.held) return { value: field.typed };
+  const defaultValue = field.pinned ?? field.defaultValue;
+
+  return defaultValue === undefined ? {} : { defaultValue };
+}

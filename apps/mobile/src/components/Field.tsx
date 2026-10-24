@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { codeProps, FIELD_DEFAULTS } from '../kit/fields.ts';
+import { codeProps, FIELD_DEFAULTS, fieldText, pinnedText } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 import { Text } from './Text.tsx';
@@ -132,12 +132,18 @@ export function useHeld(
   value: string | undefined,
   defaultValue: string | undefined,
   onChangeText: ((text: string) => void) | undefined,
-): Pick<TextInputProps, 'value' | 'onChangeText'> {
+): Pick<TextInputProps, 'value' | 'defaultValue' | 'onChangeText'> {
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
+  const [pinned, setPinned] = useState<string>();
+  const field = { held, value, defaultValue, typed, pinned };
+  const pinNow = pinnedText(field);
 
-  if (held) return { value: value ?? typed, onChangeText: undefined };
+  if (pinNow !== pinned) setPinned(pinNow);
+
+  if (held) return { ...fieldText(field), onChangeText: undefined };
 
   return {
+    ...fieldText(field),
     onChangeText: (text) => {
       if (value === undefined) setTyped(text);
       onChangeText?.(text);
