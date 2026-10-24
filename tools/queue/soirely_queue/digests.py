@@ -87,8 +87,7 @@ def tester(p, db, stories):
     if stuck:
         p.add("", "In QA:")
         for story in stuck:
-            claim = next((c for c in reversed(story["comments"])
-                          if c["text"].startswith("QA claim:")), None)
+            claim = R.last_claim(story)
             p.add(line(story, claim["text"] + " at " + claim["at"][11:16] if claim else "no claim"))
     if ready:
         number = R.number(p.role)

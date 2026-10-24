@@ -4,6 +4,7 @@ import pathlib
 import subprocess
 import tempfile
 import unittest
+import urllib.error
 from unittest import mock
 
 from soirely_queue import local, store, work
@@ -83,6 +84,25 @@ class Stack(unittest.TestCase):
                 mock.patch("soirely_queue.local.urllib.request.urlopen",
                            side_effect=ConnectionRefusedError("refused")):
             self.assertIn("port 28080 does not answer", local.stack_problem("qa2"))
+
+    def test_a_stack_whose_api_answers_is_fine(self):
+        running = subprocess.CompletedProcess([], 0, "0.0.0.0:28080\n", "")
+        reply = mock.MagicMock()
+        reply.__enter__.return_value.status = 200
+        with self.compose(return_value=running), \
+                mock.patch("soirely_queue.local.urllib.request.urlopen", return_value=reply):
+            self.assertIsNone(local.stack_problem("qa2"))
+
+    def test_an_api_that_answers_unhealthy_is_named(self):
+        running = subprocess.CompletedProcess([], 0, "0.0.0.0:28080\n", "")
+        unhealthy = urllib.error.HTTPError("http://x", 503, "Service Unavailable", {}, None)
+        with self.compose(return_value=running), \
+                mock.patch("soirely_queue.local.urllib.request.urlopen", side_effect=unhealthy):
+            self.assertIn("port 28080 answers 503", local.stack_problem("qa2"))
+
+    def test_docker_missing_from_path_is_named(self):
+        with self.compose(side_effect=FileNotFoundError("docker")):
+            self.assertIn("not on PATH", local.stack_problem("qa2"))
 
     def test_a_role_with_no_checkout_here_is_not_checked(self):
         with mock.patch("soirely_queue.machine.checkout", return_value=None):

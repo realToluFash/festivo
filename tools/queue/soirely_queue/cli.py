@@ -354,7 +354,7 @@ def cmd_history(s, a):
 
 TAKES_BODY = {actions.comment, actions.note, actions.to_draw, actions.report, actions.edit, actions.new_story,
               actions.new_epic, actions.review, actions.pr_reply, actions.pr_create,
-              actions.pr_close, actions.pr_edit}
+              actions.pr_close, actions.pr_edit, actions.unclaim}
 
 
 def write(fn):

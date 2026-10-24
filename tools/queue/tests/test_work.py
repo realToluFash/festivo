@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 from soirely_queue import roles, work
@@ -406,7 +407,7 @@ class Held(unittest.TestCase):
     def test_a_story_left_in_qa_is_its_tester_s_before_anything_new(self):
         held = story(id_=1, state="In QA", comments=[comment(1, "QA claim: qa2")])
         ready = story(id_=2, state="Ready For QA")
-        items = work.held_items([held, ready]) + work.queue_items([held, ready])
+        items = work.queue_items([held, ready]) + work.held_items([held, ready])
         mine = sorted((i for i in items if "qa2" in i["roles"]), key=lambda i: i["priority"])
         self.assertEqual([(i["kind"], i["story_id"]) for i in mine], [("held", 1), ("story", 2)])
         self.assertEqual([i["roles"] for i in work.held_items([held])], [["qa2"]])
@@ -417,7 +418,9 @@ class Held(unittest.TestCase):
                                 comment(2, "QA claim released: qa2, Docker is down")])
         self.assertEqual(work.held_items([given]), [])
         self.assertIsNone(roles.last_tester(given))
-        self.assertIsNone(work.retester(dict(given, state="Ready For QA")))
+        now = datetime.datetime.now(datetime.timezone.utc)
+        back = dict(given, state="Ready For QA", moved_at=now.isoformat())
+        self.assertIsNone(work.retester(back, now.timestamp()))
 
 
 class EveryWakeStillHappens(unittest.TestCase):

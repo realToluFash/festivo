@@ -1,7 +1,10 @@
 """The guarded writes, against fakes: nothing here reaches Shortcut or GitHub."""
 
 import argparse
+import datetime
+import io
 import unittest
+from contextlib import redirect_stdout
 from unittest import mock
 
 from soirely_queue import actions, cli, github, roles, store, sync
@@ -189,6 +192,7 @@ class Writes(Base):
         self.assertEqual(self.state(1), "Ready For QA")
         self.assertNotIn("qa2", self.labels(1))
         self.assertEqual(self.fake.comments[-1], (1, "QA claim released: qa2, Docker is down"))
+        self.fake.raw[1]["moved_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
         actions.claim(self.as_("qa3"), args(story="sc-1"))
         self.assertEqual(self.state(1), "In QA")
 
@@ -198,6 +202,34 @@ class Writes(Base):
         with self.assertRaisesRegex(actions.Refused, "not under your QA claim"):
             actions.unclaim(self.as_("qa2"), args(story="sc-1", text="no stack"))
         self.assertEqual(self.state(1), "In QA")
+
+    def test_a_story_already_reported_is_not_given_back(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        actions.report(self.as_("qa2"), args(story="sc-1", result="failed", files=None,
+                                             text="Tested on main\nBroken."))
+        with self.assertRaisesRegex(actions.Refused, "not under your QA claim"):
+            actions.unclaim(self.as_("qa2"), args(story="sc-1", text="no stack"))
+        self.assertEqual(self.state(1), "Failed QA")
+
+    def test_the_reason_for_giving_back_can_be_piped_in(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        session = mock.Mock(db=self.db, role="qa2")
+        with mock.patch("soirely_queue.actions.Context",
+                        lambda db, role, cache: self.as_(role)), \
+                mock.patch("sys.stdin", io.StringIO("Docker is down\n")), \
+                redirect_stdout(io.StringIO()):
+            cli.write(actions.unclaim)(session, args(story="sc-1", text=None))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertEqual(self.fake.comments[-1], (1, "QA claim released: qa2, Docker is down"))
+
+    def test_a_tester_whose_stack_is_down_is_told_to_give_back_its_held_story(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        with mock.patch("soirely_queue.local.stack_problem", return_value="no api"), \
+                self.assertRaisesRegex(actions.Refused, "qa2 unclaim sc-1"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
 
     def test_a_tester_takes_up_its_own_held_story_again(self):
         self.fake.add(1, "Ready For QA")

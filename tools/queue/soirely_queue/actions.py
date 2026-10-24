@@ -287,12 +287,17 @@ def label(c, a):
 STALE_CLAIM_HOURS = 3
 
 
-def stack_up(c):
+def stack_up(c, story, held=False):
     """A tester claims only what its own stack can test, so a dead stack strands nothing."""
     problem = local.stack_problem(c.role)
-    if problem:
-        raise Refused(f"your QA stack cannot be tested against: {problem}. Nothing claimed: "
-                      "bring the stack up, or leave the story for another tester")
+    if not problem:
+        return
+    if held:
+        raise Refused(f"your QA stack cannot be tested against: {problem}. sc-{story['id']} "
+                      "is still In QA under your claim: bring the stack up, or give it back "
+                      f"with `sq {c.role} unclaim sc-{story['id']} --text \"<why>\"`")
+    raise Refused(f"your QA stack cannot be tested against: {problem}. Nothing claimed: "
+                  "bring the stack up, or leave the story for another tester")
 
 
 def claim(c, a):
@@ -318,7 +323,7 @@ def claim(c, a):
         if story["state"] == "In QA":
             last = R.last_claim(story)
             if last and R.last_tester(story) == c.role:
-                stack_up(c)
+                stack_up(c, story, held=True)
                 c.refresh(story["id"])
                 return None
             age = time.time() - datetime.datetime.fromisoformat(
@@ -327,8 +332,7 @@ def claim(c, a):
                 raise Refused(f"sc-{story['id']} is In QA under \"{last['text']}\"; "
                               f"a claim goes stale after {STALE_CLAIM_HOURS} hours")
             if last:
-                who = last["text"].split(":", 1)[1].split(",")[0].strip()
-                takeover = f", taking over from {who}'s of {last['at'][11:16]}"
+                takeover = f", taking over from {R.claimant(last)}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
         else:
@@ -336,7 +340,7 @@ def claim(c, a):
             if first and first != c.role:
                 raise Refused(f"sc-{story['id']} came back after {first} failed it, and is "
                               f"{first}'s to retest for {R.RETEST_MINUTES} minutes: pick another")
-        stack_up(c)
+        stack_up(c, story)
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")

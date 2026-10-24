@@ -265,10 +265,13 @@ def last_claim(story):
 def last_tester(story):
     """The tester whose claim on the story came last, from its `QA claim:` comments."""
     claim = last_claim(story)
-    if not claim:
-        return None
-    who = claim["text"].split(":", 1)[1].split(",")[0].strip()
+    who = claimant(claim) if claim else None
     return who if who in TESTERS else None
+
+
+def claimant(claim):
+    """The name a `QA claim:` comment gives."""
+    return claim["text"].split(":", 1)[1].split(",")[0].strip()
 
 
 def may(role, command):

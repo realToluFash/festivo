@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import time
+import urllib.error
 import urllib.request
 
 from . import machine, store
@@ -53,6 +54,8 @@ def stack_problem(role):
     try:
         out = subprocess.run(["docker", "compose", "port", "api", "80"], cwd=place,
                              capture_output=True, text=True, timeout=STACK_SECONDS)
+    except FileNotFoundError:
+        return "docker is not on PATH"
     except (OSError, subprocess.TimeoutExpired):
         return f"Docker did not answer within {STACK_SECONDS} seconds"
     port = out.stdout.strip().rsplit(":", 1)[-1]
@@ -63,6 +66,8 @@ def stack_problem(role):
             if reply.status == 200:
                 return None
             return f"the API on port {port} answers {reply.status}"
+    except urllib.error.HTTPError as error:
+        return f"the API on port {port} answers {error.code}"
     except OSError as error:
         return f"the API on port {port} does not answer ({error})"
 
