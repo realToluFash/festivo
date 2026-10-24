@@ -191,7 +191,7 @@ final class TwoFactorTest extends ApiTestCase
             ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'recoveryCode' => 12345], 'recoveryCode', 'Enter one of your recovery codes.', false],
             ['/api/auth/two-factor/disable', ['code' => 123456], 'code', 'Enter a code from your app, or a recovery code.', true],
             ['/api/auth/two-factor/recovery-codes', ['code' => null], 'code', 'Enter a code from your app, or a recovery code.', true],
-            ['/api/auth/two-factor/disable', [], 'code', 'Enter a code from your app, or a recovery code.', true],
+            ['/api/auth/two-factor/disable', null, 'code', 'Enter a code from your app, or a recovery code.', true],
             ['/api/auth/two-factor/verify', ['challenge' => $challenge], 'code', 'Enter the 6-digit code from your app.', false],
             ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => null, 'recoveryCode' => null], 'code', 'Enter the 6-digit code from your app.', false],
         ];

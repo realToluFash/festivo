@@ -412,6 +412,68 @@ final class OrganisationTest extends ApiTestCase
     }
 
     #[Test]
+    #[DataProvider('languagesOfTheShapeRefusal')]
+    public function aListForABodyIsRefusedInThePersonsLanguageAndChangesNothing(string $language, string $refusal, string $detail): void
+    {
+        $owner = $this->account(Str\format('shape-list-%s@example.com', $language));
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        $body = $this->send('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), '[1,2]', $language);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame(ErrorCode::ValidationFailed->type(), $body['type']);
+        self::assertSame([['propertyPath' => '', 'message' => $refusal, 'code' => 'invalid_shape']], $body['violations']);
+        self::assertSame($detail, $body['detail']);
+        self::assertSame('Ìrè Events', $this->list()[0]['name']);
+        self::assertSame('NG', $this->list()[0]['countryCode']);
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function bodiesThatAreNotAnObject(): iterable
+    {
+        foreach (['PATCH {org}', 'POST /api/orgs', 'POST {org}/events', 'POST /api/auth/refresh'] as $route) {
+            foreach (['[1,2]', '[]', '"Ìrè"', '42', 'true', 'false', 'null'] as $content) {
+                yield Str\format('%s with %s', $route, $content) => [$route, $content];
+            }
+        }
+    }
+
+    #[Test]
+    #[DataProvider('bodiesThatAreNotAnObject')]
+    public function everyRouteReadingABodyRefusesOneThatIsNotAnObject(string $route, string $content): void
+    {
+        $owner = $this->account(Str\format('shape-body-%s@example.com', \md5($route . $content)));
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+        $path = '/api/orgs/' . $organisation->getId()->toRfc4122();
+        [$method, $uri] = match ($route) {
+            'PATCH {org}' => ['PATCH', $path],
+            'POST {org}/events' => ['POST', $path . '/events'],
+            default => Str\split($route, ' '),
+        };
+
+        $body = $this->send($method, $uri, $content);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([['propertyPath' => '', 'message' => 'This field cannot take that value. Check it and try again.', 'code' => 'invalid_shape']], $body['violations']);
+        self::assertSame('The request does not have the expected shape.', $body['detail']);
+    }
+
+    #[Test]
+    public function anEmptyObjectIsStillAPatchThatChangesNothing(): void
+    {
+        $owner = $this->account('shape-empty-object@example.com');
+        $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
+        $this->signIn($owner);
+
+        $this->send('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), '{}');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame('NG', $this->list()[0]['countryCode']);
+    }
+
+    #[Test]
     public function aValidCountrySavesAndAnUnknownOneIsStillRefusedByTheRules(): void
     {
         $owner = $this->account('shape-valid@example.com');
@@ -524,12 +586,13 @@ final class OrganisationTest extends ApiTestCase
      */
     private function patch(Organisation $organisation, array $fields, string $language = 'en'): array
     {
-        $this->client->request(
-            'PATCH',
-            '/api/orgs/' . $organisation->getId()->toRfc4122(),
-            server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => $language],
-            content: Json\encode($fields),
-        );
+        return $this->send('PATCH', '/api/orgs/' . $organisation->getId()->toRfc4122(), Json\encode($fields), $language);
+    }
+
+    /** @return array<string, mixed> */
+    private function send(string $method, string $uri, string $content, string $language = 'en'): array
+    {
+        $this->client->request($method, $uri, server: ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT_LANGUAGE' => $language], content: $content);
 
         return Type\dict(Type\string(), Type\mixed())->coerce(Json\decode((string) $this->client->getResponse()->getContent()));
     }
