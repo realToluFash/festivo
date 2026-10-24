@@ -457,7 +457,7 @@ describe('somebody awaiting approval (sc-392)', () => {
 
     const done = await screen.findByRole('status');
     expect(done.textContent).toContain('Ada Okeke is now a member, as Coordinator.');
-    expect(document.activeElement).toBe(done);
+    await waitFor(() => expect(document.activeElement).toBe(done));
     expect(screen.getByRole('button', { name: 'See Ada Okeke' })).toBeDefined();
     expect(sent.find((one) => one.line.endsWith('/approve'))?.body).toEqual({ roleId: 'role_4' });
   });
