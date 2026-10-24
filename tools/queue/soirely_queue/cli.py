@@ -21,6 +21,7 @@ from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
 CHECKS_POLL = 30
+NO_CHECKS_POLLS = 4
 OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents", "web")
 ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "worker-supervise",
          "start", "stop", "pause",
@@ -267,30 +268,55 @@ def cmd_diff(s, a):
 
 
 def cmd_checks(s, a):
-    found = github.pr_checks(a.pr)
+    head, found = read_checks(a.pr, a.head)
+    empty = 0
     if a.wait:
         deadline = time.monotonic() + a.timeout * 60
-        # Straight after a push the head has no checks yet, which is not "none pending".
-        while not found or any(c.get("bucket") == "pending" for c in found):
+        while head is None or not found or any(c.get("bucket") == "pending" for c in found):
+            # Straight after a push the head has no checks yet; a conflicting head never will.
+            empty = empty + 1 if head is not None and not found else 0
+            if empty > NO_CHECKS_POLLS:
+                break
             if time.monotonic() >= deadline:
-                print(f"PR #{a.pr}: timed out after {a.timeout} minutes with checks still "
-                      "pending")
+                waiting = (f"for the head to reach {a.head[:7]}" if head is None else
+                           "with no checks on the head" if not found else
+                           "with checks still pending")
+                print(f"PR #{a.pr}: timed out after {a.timeout} minutes {waiting}")
                 break
             time.sleep(CHECKS_POLL)
-            found = github.pr_checks(a.pr)
+            head, found = read_checks(a.pr, a.head)
+    if head is None:
+        sys.exit(f"PR #{a.pr}: the head is not {a.head[:7]} yet")
+    if not found:
+        print(f"PR #{a.pr}: no checks on head {head['headRefOid'][:7]} "
+              f"(mergeable: {head['mergeable'].lower()}); a conflicting head runs none, "
+              "so merge origin/main and push")
+        sys.exit(1 if a.wait else 0)
     failed = [c for c in found if c.get("bucket") == "fail"]
+    cancelled = [c for c in found if c.get("bucket") == "cancel"]
     pending = [c for c in found if c.get("bucket") == "pending"]
-    summary = f"PR #{a.pr}: {len(found)} checks, {len(failed)} failed"
-    print(summary + (f", {len(pending)} pending" if pending else ""))
+    summary = f"PR #{a.pr} at {head['headRefOid'][:7]}: {len(found)} checks, {len(failed)} failed"
+    print(summary + "".join(f", {len(group)} {word}" for group, word in
+                            ((cancelled, "cancelled"), (pending, "pending")) if group))
     for check in failed:
         print(f"\n{check['workflow']} / {check['name']} {check['link']}")
         if not a.names:
             log = github.failed_log(check["link"], tail=a.tail)
             print("\n".join("  " + line for line in log.splitlines()))
+    for check in cancelled:
+        print(f"  cancelled: {check['workflow']} / {check['name']} {check['link']}")
     for check in pending:
         print(f"  pending: {check['workflow']} / {check['name']}")
-    if a.wait and (failed or pending or not found):
+    if a.wait and any(c.get("bucket") not in ("pass", "skipping") for c in found):
         sys.exit(1)
+
+
+def read_checks(number, want=None):
+    """The live head and its checks, or no head while the pull request has not reached `want`."""
+    head = github.live(number)
+    if want and not head["headRefOid"].startswith(want):
+        return None, []
+    return head, github.pr_checks(number)
 
 
 def cmd_runs(s, a):
@@ -416,7 +442,8 @@ READS = [
      lambda p: (p.add_argument("pr", type=int), p.add_argument("--names", action="store_true"),
                 p.add_argument("--tail", type=int, default=40),
                 p.add_argument("--wait", action="store_true",
-                               help="return once no check is pending; exit 1 if any failed"),
+                               help="return once no check is pending; exit 1 unless all passed"),
+                p.add_argument("--head", help="with --wait, first wait for the head to be this sha"),
                 p.add_argument("--timeout", type=int, default=20,
                                help="minutes --wait gives up after, exiting 1"))),
     ("runs", cmd_runs, "the last runs on main", None),

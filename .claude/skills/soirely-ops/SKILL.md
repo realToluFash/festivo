@@ -42,7 +42,7 @@ from the main checkout makes it).
   2. **Open the pull request ready for review**, never as a draft:
      `sq ops pr-create --head <branch> --title "… (sc-N)"`, body on stdin. Wait for its checks
      with `sq ops checks N --wait` as a background command, never a polling loop you write;
-     it ends by itself, non-zero on a failure or after `--timeout` minutes. When they
+     it ends by itself, non-zero unless every check passed. When they
      are green, `sq ops move sc-N "In Review"`, which wakes `[lead]`. Answer review
      comments with `sq ops pr-reply N <comment id>`.
   3. **Merge it yourself once the lead passes it** at its head: `sq ops merge N`. sq
