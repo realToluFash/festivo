@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -47,6 +48,8 @@ export function CreateOrganisation({
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
+  // iOS needs the inset to clear the status bar; Android keeps main's 0 until sc-4527 checks it.
+  const top = Platform.OS === 'ios' ? insets.top : 0;
 
   return (
     <Modal
@@ -57,7 +60,13 @@ export function CreateOrganisation({
     >
       {/* Padding on both platforms: a modal is its own window, so neither resizes for the keyboard. */}
       <KeyboardAvoidingView style={styles.fill} behavior="padding">
-        <View style={[styles.scrim, phone ? styles.scrimPhone : styles.scrimTablet]}>
+        <View
+          style={[
+            styles.scrim,
+            phone ? styles.scrimPhone : styles.scrimTablet,
+            { paddingTop: phone ? top : Math.max(tokens.spaceXxl, top) },
+          ]}
+        >
           <Pressable
             style={StyleSheet.absoluteFill}
             onPress={onCancel}
