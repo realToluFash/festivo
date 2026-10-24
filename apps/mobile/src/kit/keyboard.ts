@@ -177,3 +177,24 @@ export interface Typing {
 export function shortWhileTyping({ os, phone, height, keysUp }: Typing): boolean {
   return os === 'android' && phone && keysUp && height <= SHORT_ANDROID_HEIGHT;
 }
+
+export interface SidewaysTyping {
+  os: string;
+  phone: boolean;
+  /** The window's width, in dp. */
+  width: number;
+  /** The window's height, in dp. */
+  height: number;
+  keysUp: boolean;
+}
+
+/** Whether an iPhone on its side with the keys up scrolls a sheet's title with its body, leaving the field room (sc-9442). */
+export function titleScrollsWhileTyping({
+  os,
+  phone,
+  width,
+  height,
+  keysUp,
+}: SidewaysTyping): boolean {
+  return os === 'ios' && phone && keysUp && width > height;
+}

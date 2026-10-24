@@ -222,7 +222,7 @@ final class RefreshTokenCookieTest extends ApiTestCase
     {
         $this->client->request('POST', '/api/auth/refresh', server: [
             'CONTENT_TYPE' => 'application/json',
-        ], content: Json\encode([]));
+        ], content: '{}');
 
         $body = $this->decode();
 

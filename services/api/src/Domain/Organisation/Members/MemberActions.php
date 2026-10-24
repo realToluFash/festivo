@@ -99,20 +99,26 @@ final readonly class MemberActions
         });
     }
 
-    /** Nobody moves a member out of a role they could not grant, or into one: only an owner touches an owner. */
+    /** Nobody moves a member out of a role they could not grant, or into one: only an owner touches an owner. A suspended member keeps the role restore brings back (sc-9549). */
     public function changeRole(Membership $membership, Role $role, User $by): void
     {
-        $before = $membership->getRole();
-        $this->roleManager->mayGrant($membership->getOrganisation(), $by, $before);
-        $this->roleManager->mayGrant($membership->getOrganisation(), $by, $role);
+        $this->underLock($membership, function () use ($membership, $role, $by): void {
+            $before = $membership->getRole();
+            $this->roleManager->mayGrant($membership->getOrganisation(), $by, $before);
+            $this->roleManager->mayGrant($membership->getOrganisation(), $by, $role);
 
-        if ($before->getId()->equals($role->getId())) {
-            return;
-        }
+            if (MembershipStatus::Active !== $membership->getStatus()) {
+                throw ApiException::conflict($this->translator->trans('members.role_not_active'));
+            }
 
-        $this->roleAssignment->assign($membership, $role);
-        $this->record(self::ROLE_CHANGED, $membership, $by, ['roleId' => [$before->getId()->toRfc4122(), $role->getId()->toRfc4122()]]);
-        $this->entityManager->flush();
+            if ($before->getId()->equals($role->getId())) {
+                return;
+            }
+
+            $this->roleAssignment->assign($membership, $role);
+            $this->record(self::ROLE_CHANGED, $membership, $by, ['roleId' => [$before->getId()->toRfc4122(), $role->getId()->toRfc4122()]]);
+            $this->entityManager->flush();
+        });
     }
 
     /** Their events stay with the organisation: only the membership ends, and its history is kept. */

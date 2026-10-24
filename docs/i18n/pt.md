@@ -41,6 +41,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
+  "Editar detalhes", "Save changes" "Guardar alterações", and changes are always "alterações",
+  never "mudanças". A refused save starts "Não foi guardado."; the colleague is "outra pessoa",
+  as `errors:precondition_failed`. What was typed is "o que escreveu". After a save the live
+  region says "Alterações guardadas". The currency refusal is one sentence in `web` and
+  `errors`, "… neste evento".
 - **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
   `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
   sc-8735). "Suspender {{name}}", "Repor o acesso". What is suspended is "o acesso", so nothing

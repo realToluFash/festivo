@@ -180,13 +180,32 @@ Load the ones the story touches. They carry the conventions; this file does not 
 
 ## 6. The checks, before you hand anything over
 
-Run them yourself. Every one, and **read every exit code**.
+Run what your change touches, and **read every exit code**. The whole suite runs in CI, and
+CI green on the pushed head is what proves the change; the local pass only catches your own
+mistakes sooner. Do not run all thirteen checks one after another before every handover:
+
+| You changed                                                | Run locally                                                     |
+| ---------------------------------------------------------- | --------------------------------------------------------------- |
+| Any file                                                   | `npx eslint` and `npx prettier --check` on the changed files    |
+| A web or app test, or the code it covers                   | that file, from its workspace: `npm test -w apps/web -- <path>` |
+| A `scripts/` test, or the script it covers                 | that file, from the root: `npx vitest run <file>`               |
+| An API test, or the class it covers                        | that class: `just test-api <Class>`                             |
+| TypeScript                                                 | `typecheck`                                                     |
+| `services/api` PHP                                         | `lint:php`, `analyse:api`, `guard:api`                          |
+| A migration, a listener, a subscriber, the security config | the whole API suite, `test:api`                                 |
+| A comment                                                  | `lint:comments`                                                 |
+
+A web or app test's path is inside its app (`src/…`), and `-w apps/mobile` runs one the same
+way. From the root, `npx vitest run` picks up neither app's config, so a passing test fails.
+
+Each run has a folder of its own in `$SQ_RUN_DIR`, made by sq and removed when the run
+ends. Logs and scratch files go there, never under a fixed name in `/tmp`, where another
+run's log overwrites yours. A session started by hand has none until it runs
+`export SQ_RUN_DIR="$(mktemp -d)"`:
 
 ```sh
-for check in lint:js lint:css format:check lint:actions lint:comments \
-             typecheck test:scripts test:packages \
-             lint:php lint:api analyse:api guard:api test:api; do
-  npm run "$check" >/tmp/check.out 2>&1
+for check in typecheck analyse:api guard:api; do
+  npm run "$check" >"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}/$check.out" 2>&1
   printf '%-14s exit=%s\n' "$check" "$?"
 done
 ```
@@ -221,7 +240,8 @@ log's last lines. Nothing pending and nothing failed is green.
 
 ## 7. Hand it over
 
-1. **Commits** per outcome — `making-commits`. Stage named paths; never `git add -A`.
+1. **Commits** per outcome — `making-commits`. Stage whole named files; never `git add -A`,
+   and never `git add -p`, which the hook's stash can undo, losing the half left out.
 2. **An open pull request, not a draft** — `create-pr`. A draft cannot be merged, and the
    lead's pass (section 9) is meant to be the last step before the merge.
 3. **Reply to every review comment and every QA finding**, in its thread: what you changed

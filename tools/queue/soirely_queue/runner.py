@@ -6,6 +6,7 @@ Everything a run decides is printed, one line each, for the journal."""
 import datetime
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -414,6 +415,11 @@ def own_result(lines):
     return own[-1] if own else None
 
 
+def run_dir(home, name, item_id):
+    """The run's own scratch folder, named so `worker_ended` finds it after a timeout."""
+    return home / "scratch" / f"{name}-{item_id}"
+
+
 def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=machine.load,
            prepare=checkout.prepare, make_review=review.make, now=None):
     """Runs inside the worker's unit: prepares the checkout, runs the model, records the
@@ -449,11 +455,15 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     entry["account"] = machine.account(folder)
     argv, env = command(values, folder, permissions.for_role(permissions.applied(), role),
                         permissions.denied(home / "sq" / "sq", folder))
+    scratch = run_dir(home, name, item_id)
+    scratch.mkdir(parents=True, exist_ok=True)
+    env["SQ_RUN_DIR"] = str(scratch)
     try:
         code, stdout, stderr, ended = run_claude(
             argv, prompt(row, role, main, note), cwd, env,
             lambda: (store.item(db, item_id) or {"status": None})["status"] == "done")
     finally:
+        shutil.rmtree(scratch, ignore_errors=True)
         if cwd != path:
             review.remove(path)
     every = results(stdout)
@@ -480,6 +490,7 @@ def worker_ended(home, platform, name, item_id, now=None, load=machine.load):
     """`ExecStopPost`: a run stopped by its memory or time limit, or a crash, writes no
     report of its own, so this leaves the record, and takes its review worktree away."""
     role = machine.worker_role(name)
+    shutil.rmtree(run_dir(home, name, item_id), ignore_errors=True)
     if role in review.ROLES:
         try:
             review.remove(machine.checkout(load(), role, name))
