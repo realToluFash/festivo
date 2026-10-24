@@ -260,6 +260,7 @@ final class InputTest extends TestCase
         yield 'a numeric string for a nullable int' => ['"30"', Type\nullable(Type\int())];
         yield 'a fraction for an int' => ['30.5', Type\int()];
         yield 'a fraction for a nullable int' => ['7.25', Type\nullable(Type\int())];
+        yield 'the finest fraction a double holds near 30 for an int' => ['30.00000000000001', Type\int()];
         yield 'a whole number past the integer range in exponent form for an int' => ['1e20', Type\int()];
         yield 'a whole number past the integer range for an int' => ['12345678901234567890', Type\int()];
         yield 'two to the sixty-third for an int' => ['9223372036854775808', Type\int()];

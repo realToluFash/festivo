@@ -449,6 +449,7 @@ final class SignInRulesTest extends ApiTestCase
         yield '7.0' => ['7.0', 7];
         yield '3e1' => ['3e1', 30];
         yield '3.0E1' => ['3.0E1', 30];
+        yield '30.0000000000000001, a fraction finer than a double holds' => ['30.0000000000000001', 30];
     }
 
     /** JSON has one number type, so 30.0 is 30 (sc-10158). */
@@ -468,6 +469,7 @@ final class SignInRulesTest extends ApiTestCase
     {
         yield '30.5' => ['30.5'];
         yield '7.25' => ['7.25'];
+        yield '30.00000000000001' => ['30.00000000000001'];
         yield '1e20, past the integer range' => ['1e20'];
         yield '12345678901234567890, past the integer range' => ['12345678901234567890'];
     }
