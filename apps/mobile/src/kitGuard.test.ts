@@ -117,6 +117,30 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
+describe('a refused submit leaves the keyboard as it was', () => {
+  // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
+  const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
+  const FIELDS = ['TextField', 'PasswordField', 'CodeField'];
+
+  it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
+    const form = sources(['src/components']).find(({ path }) => path.endsWith(`/${file}`));
+    const fields = FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
+
+    expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
+    expect(
+      fields.filter((tag) => /\beditable=/u.test(tag.markup)).map((tag) => `${file}:${tag.line}`),
+      'Pass held={saving}: editable={false} drops the focus and the keyboard.',
+    ).toEqual([]);
+    expect(
+      fields
+        .filter((tag) => tag.markup.includes('onSubmitEditing={() => void'))
+        .filter((tag) => !tag.markup.includes('submitBehavior="submit"'))
+        .map((tag) => `${file}:${tag.line}`),
+      'A field that submits the form keeps its focus on return.',
+    ).toEqual([]);
+  });
+});
+
 describe('a screen is a composition of the kit', () => {
   it('takes its fields from the kit, never a bare TextInput', () => {
     const offenders = sources(['app'])

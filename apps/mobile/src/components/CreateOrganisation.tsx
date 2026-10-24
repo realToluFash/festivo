@@ -30,7 +30,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
-import { Field, TextField } from './Field.tsx';
+import { Field, focusRefused, TextField } from './Field.tsx';
 import {
   type SettledLift,
   keyboardTopNow,
@@ -213,7 +213,7 @@ function Form({
   const nameInput = useRef<TextInput>(null);
   const countryPicker = useRef<View>(null);
   const focus = (field: NewOrganisationField) =>
-    field === 'name' ? nameInput.current?.focus() : focusPicker(countryPicker);
+    field === 'name' ? focusRefused(nameInput) : focusPicker(countryPicker);
   const checks = useFormChecks(
     NEW_ORGANISATION_FIELDS,
     (field, value) => newOrganisationMessage(field, value, t),
@@ -315,8 +315,9 @@ function Form({
               onChangeText={(value) => change('name', value)}
               onBlur={() => checks.left('name', values.name)}
               onSubmitEditing={() => void create()}
+              submitBehavior="submit"
               wrong={errors.name != null}
-              editable={!saving}
+              held={saving}
               autoFocus
               autoComplete="organization"
               textContentType="organizationName"
