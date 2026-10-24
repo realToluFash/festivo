@@ -10,13 +10,16 @@ import {
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   ScrollView,
+  type StyleProp,
   StyleSheet,
   View,
   type ViewStyle,
+  findNodeHandle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,6 +29,7 @@ import {
   groupInWindow,
   keysOver,
   offsetAboveKeyboard,
+  offsetIntoView,
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
@@ -220,6 +224,84 @@ export function useScrolledToTop(): RefObject<View | null> {
   }, [scroll]);
 
   return top;
+}
+
+// VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
+const SETTLED_MS = 500;
+
+/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it. */
+export function useBroughtIntoView(): RefObject<View | null> {
+  const scroll = useContext(ScreenScroll);
+  const ref = useRef<View>(null);
+
+  useEffect(() => {
+    const view = scroll?.ref.current;
+    const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+    const scrollHost = view?.getNativeScrollRef();
+
+    if (scroll != null && view != null && content != null && scrollHost != null) {
+      ref.current?.measureLayout(content, (_x, contentY, _w, height) => {
+        scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
+          const y = offsetIntoView({
+            contentY,
+            height,
+            offset: scroll.offset.current,
+            shown,
+            margin: tokens.spaceLg,
+          });
+          if (y != null) view.scrollTo({ y, animated: true });
+        });
+      });
+    }
+
+    const focus = setTimeout(() => {
+      const node = findNodeHandle(ref.current);
+      if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+    }, SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, [scroll]);
+
+  return ref;
+}
+
+/** A scrolling column inside a Screen that does not scroll, so what it holds can bring itself into view. */
+export function ScrollColumn({
+  children,
+  style,
+  contentContainerStyle,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
+}) {
+  const origin = useRef(useContext(Origin));
+  const scrollView = useRef<ScrollView>(null);
+  const offset = useRef(0);
+  const [screenScroll] = useState<ScreenScrollView>(() => ({
+    ref: scrollView,
+    resized: new Set(),
+    origin,
+    offset,
+  }));
+  const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    offset.current = event.nativeEvent.contentOffset.y;
+  };
+
+  return (
+    <ScreenScroll.Provider value={screenScroll}>
+      <ScrollView
+        ref={scrollView}
+        onScroll={follow}
+        onScrollEndDrag={follow}
+        onMomentumScrollEnd={follow}
+        style={style}
+        contentContainerStyle={contentContainerStyle}
+      >
+        {children}
+      </ScrollView>
+    </ScreenScroll.Provider>
+  );
 }
 
 /**

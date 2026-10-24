@@ -106,6 +106,31 @@ export function offsetAboveKeyboard({
   return Math.max(0, Math.min(bottomAboveKeys, contentY - margin));
 }
 
+export interface InScroll {
+  /** The view's top inside the scroll content. */
+  contentY: number;
+  height: number;
+  /** The scroll offset the native scroll view last reported. */
+  offset: number;
+  /** The scroll view's own height. */
+  shown: number;
+  margin: number;
+}
+
+/** The scroll offset that brings a view wholly into sight, `margin` clear of the edge it came from; null when it is already there. */
+export function offsetIntoView({
+  contentY,
+  height,
+  offset,
+  shown,
+  margin,
+}: InScroll): number | null {
+  if (contentY >= offset && contentY + height <= offset + shown) return null;
+  if (contentY < offset) return Math.max(0, contentY - margin);
+
+  return Math.max(0, Math.min(contentY + height + margin - shown, contentY - margin));
+}
+
 /** Where the focused field sits inside the scroll content, as the last part of its group. */
 export interface Focused {
   contentY: number;

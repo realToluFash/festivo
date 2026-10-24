@@ -11,6 +11,7 @@ import {
   keysOver,
   listRoom,
   offsetAboveKeyboard,
+  offsetIntoView,
   offsetToFocus,
   scrollInsets,
   shortWhileTyping,
@@ -170,6 +171,33 @@ describe('the keyboard and a screen under the header share one frame', () => {
     const keyboardTop = keyboardInWindow(500, origin);
 
     expect(keysOver({ y: 0, height: 656 }, keyboardTop)).toBe(180);
+  });
+});
+
+describe('a line that appears off screen is brought wholly into sight (sc-9382)', () => {
+  const line = { height: 80, shown: 600, margin: 16 };
+
+  it('stays put when it is already wholly on screen', () => {
+    expect(offsetIntoView({ ...line, contentY: 300, offset: 200 })).toBeNull();
+    expect(offsetIntoView({ ...line, contentY: 200, offset: 200 })).toBeNull();
+    expect(offsetIntoView({ ...line, contentY: 720, offset: 200 })).toBeNull();
+  });
+
+  it('comes down to the top, a margin clear, when it is above the screen or partly above it', () => {
+    expect(offsetIntoView({ ...line, contentY: 40, offset: 900 })).toBe(24);
+    expect(offsetIntoView({ ...line, contentY: 180, offset: 200 })).toBe(164);
+  });
+
+  it('never scrolls above the content', () => {
+    expect(offsetIntoView({ ...line, contentY: 8, offset: 300 })).toBe(0);
+  });
+
+  it('comes up to the bottom, a margin clear, when it is below the screen', () => {
+    expect(offsetIntoView({ ...line, contentY: 1000, offset: 0 })).toBe(496);
+  });
+
+  it('keeps its top in sight when it is taller than the screen', () => {
+    expect(offsetIntoView({ ...line, height: 900, contentY: 1000, offset: 0 })).toBe(984);
   });
 });
 
