@@ -15,7 +15,7 @@ import { api } from '../api.ts';
 import { useFocusAfterSave, useFormChecks } from '../formChecks.ts';
 import { currentLocale, dateLocale } from '../i18n/index.ts';
 import { FieldError } from './FieldError.tsx';
-import { keepFocusIn } from '../dialogFocus.ts';
+import { useDialogKeys } from '../dialogFocus.ts';
 
 const FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
 
@@ -66,16 +66,7 @@ export function CreateOrganisation({
     };
   }, []);
 
-  useEffect(() => {
-    const keep = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onCancel();
-      if (event.key === 'Tab' && dialog.current != null) keepFocusIn(dialog.current, event);
-    };
-
-    document.addEventListener('keydown', keep);
-
-    return () => document.removeEventListener('keydown', keep);
-  }, [onCancel]);
+  useDialogKeys(dialog, onCancel, saving);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -91,6 +82,7 @@ export function CreateOrganisation({
     if (!checks.passes(values)) return;
 
     setSaving(true);
+    dialog.current?.focus();
     setFailed(false);
     setLimitedUntil(null);
 
@@ -137,11 +129,13 @@ export function CreateOrganisation({
         className="dialog-scrim"
         tabIndex={-1}
         aria-label={t('createOrganisation.cancel')}
+        disabled={saving}
         onClick={onCancel}
       />
       <div
         ref={dialog}
         className="dialog"
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-organisation-title"
@@ -237,7 +231,7 @@ export function CreateOrganisation({
           <p className="dialog-note">{t('createOrganisation.defaults', { email })}</p>
 
           <div className="dialog-actions">
-            <button className="button" type="button" onClick={onCancel}>
+            <button className="button" type="button" onClick={onCancel} disabled={saving}>
               {t('createOrganisation.cancel')}
             </button>
             <button

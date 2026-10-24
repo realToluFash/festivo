@@ -106,7 +106,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "Account settings" is "Definições da conta", button and sentence alike.
   24 Oct (qa2, #8038): the email subject opens on what happened, "Acesso em pausa: {name} em
   {organisation}", so a phone inbox shows it before the names. The admins' label is "Acesso
-  suspenso: domínio da empresa" for all three reasons, as the setting.
+  suspenso: domínio da empresa" for all three reasons, as the setting. The member's history
+  line (`history.suspendedAddressGone`, sc-8868) is the label's words, whatever the reason.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). A link
   is "a ligação", never "o link" (dev2's draft of `errors:request_link_dead` said "link"); the
