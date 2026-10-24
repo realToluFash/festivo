@@ -49,7 +49,7 @@ final readonly class RoleAssignment
     public function isLastOwner(Membership $membership): bool
     {
         return $membership->getRole()->isOwner()
-            && ($membership->isActive() || MembershipStatus::Suspended === $membership->getStatus())
+            && $membership->getStatus()->holdsRole()
             && 0 === $this->otherActiveOwners($membership);
     }
 

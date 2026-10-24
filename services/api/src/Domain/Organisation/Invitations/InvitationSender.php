@@ -16,7 +16,6 @@ use App\Enum\Actor;
 use App\Enum\ErrorCode;
 use App\Enum\InvitationDelivery;
 use App\Enum\InvitationStatus;
-use App\Enum\MembershipStatus;
 use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\EmailAddressRepository;
@@ -24,7 +23,6 @@ use App\Repository\InvitationRepository;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
-use Psl\Iter;
 use Psl\SecureRandom;
 use Psl\Str;
 use SensitiveParameter;
@@ -58,7 +56,7 @@ final readonly class InvitationSender
 
         $member = $this->membershipRepository->findOneByAddress($organisation, $address);
 
-        if (null !== $member && Iter\contains([MembershipStatus::Active, MembershipStatus::Suspended], $member->getStatus())) {
+        if (null !== $member && $member->getStatus()->holdsRole()) {
             throw new ApiException(ErrorCode::AlreadyAMember, $this->translator->trans('members.already_a_member_named', [
                 '{email}' => $address,
                 '{organisation}' => $organisation->getName(),

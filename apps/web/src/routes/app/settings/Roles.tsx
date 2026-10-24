@@ -2,9 +2,11 @@ import {
   ApiError,
   type Membership,
   type OrganisationRole,
+  type RoleHolder,
   type RolesCatalogue,
 } from '@soirely/api-client';
 import {
+  HOLDERS_SHOWN,
   LOCALE_CODES,
   MARGIN,
   ROLE_NAME_MAXIMUM,
@@ -17,6 +19,7 @@ import {
   roleNameProblem,
   sameGrant,
   settableLevels,
+  shownHolders,
   takenRoleNames,
   whatTheySee,
   withExtra,
@@ -24,7 +27,7 @@ import {
   withoutRole,
 } from '@soirely/domain';
 import i18next, { type TFunction } from 'i18next';
-import { type FormEvent, Fragment, useEffect, useState } from 'react';
+import { type FormEvent, Fragment, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -561,6 +564,7 @@ function Editing({
               ? t('rolesScreen.nobody')
               : t('rolesScreen.holders', { count: role?.holders ?? 0 })}
           </p>
+          {role != null && <Holders holders={role.holderNames} />}
         </div>
         <div className="roles-panel">
           <span className="roles-panel-heading">{t('rolesScreen.seeHeading')}</span>
@@ -568,6 +572,43 @@ function Editing({
         </div>
       </div>
     </form>
+  );
+}
+
+function Holders({ holders }: { holders: readonly RoleHolder[] }) {
+  const { t } = useTranslation();
+  const [all, setAll] = useState(false);
+  const { shown, more } = shownHolders(holders, all);
+  const firstRevealed = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (all) firstRevealed.current?.focus();
+  }, [all]);
+
+  if (holders.length === 0) return null;
+
+  return (
+    <ul className="roles-holders">
+      {shown.map((holder, index) => (
+        <li
+          key={index}
+          ref={index === HOLDERS_SHOWN ? firstRevealed : undefined}
+          tabIndex={index === HOLDERS_SHOWN ? -1 : undefined}
+        >
+          {holder.name}
+          {holder.suspended && (
+            <span className="pill-quiet">{t('membersScreen.state.suspended')}</span>
+          )}
+        </li>
+      ))}
+      {more > 0 && (
+        <li>
+          <button type="button" className="link-button" onClick={() => setAll(true)}>
+            {t('rolesScreen.moreHolders', { count: more })}
+          </button>
+        </li>
+      )}
+    </ul>
   );
 }
 
