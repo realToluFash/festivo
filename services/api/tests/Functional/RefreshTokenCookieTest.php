@@ -229,6 +229,8 @@ final class RefreshTokenCookieTest extends ApiTestCase
         self::assertSame(422, $this->client->getResponse()->getStatusCode());
         self::assertSame(ErrorCode::ValidationFailed->type(), $body['type']);
         self::assertSame('refreshToken', $body['violations'][0]['propertyPath']);
+        self::assertSame('blank', $body['violations'][0]['code']);
+        self::assertSame('This field cannot take that value. Check it and try again.', $body['violations'][0]['message']);
     }
 
     /** @mago-expect lint:no-literal-password */

@@ -163,7 +163,7 @@ final class TokenController
 
         return $body['refreshToken'] ?? throw ApiException::validation([[
             'propertyPath' => 'refreshToken',
-            'message' => 'A refresh token is required unless refreshTokenIn is "cookie".',
+            'message' => $this->translator->trans(ShapeRefusal::FIELD),
             'code' => 'blank',
         ]], $this->translator->trans(ShapeRefusal::REQUEST));
     }
