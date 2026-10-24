@@ -179,6 +179,7 @@ MAY = {
     "to-draw": ("ux",),
     "drawn": ("ux",),
     "report": TESTERS,
+    "unclaim": TESTERS,
     "pr-create": BUILDERS,
     "review": ("lead",),
     "pr-reply": DEVS + LINGUISTS + ("lead", "ops"),
@@ -247,13 +248,26 @@ def linguist_files():
     return set().union(*(locale_files(locale) for locale in LOCALES))
 
 
+CLAIMED, RELEASED = "QA claim:", "QA claim released:"
+
+
+def last_claim(story):
+    """The latest `QA claim:` comment, or None once a release came after it."""
+    for comment in reversed(story.get("comments") or []):
+        if comment["text"].startswith(RELEASED):
+            return None
+        if comment["text"].startswith(CLAIMED):
+            return comment
+    return None
+
+
 def last_tester(story):
     """The tester whose claim on the story came last, from its `QA claim:` comments."""
-    for comment in reversed(story.get("comments") or []):
-        if comment["text"].startswith("QA claim:"):
-            who = comment["text"].split(":", 1)[1].split(",")[0].strip()
-            return who if who in TESTERS else None
-    return None
+    claim = last_claim(story)
+    if not claim:
+        return None
+    who = claim["text"].split(":", 1)[1].split(",")[0].strip()
+    return who if who in TESTERS else None
 
 
 def may(role, command):

@@ -462,6 +462,8 @@ WRITES = [
     ("report", actions.report, "QA report: upload files, comment, move to the result",
      lambda p: (p.add_argument("story"), p.add_argument("result", choices=["passed", "failed"]),
                 p.add_argument("--files", nargs="+"), body(p))),
+    ("unclaim", actions.unclaim, "give back to Ready For QA a story you hold but cannot test",
+     lambda p: (p.add_argument("story"), body(p))),
     ("edit", actions.edit, "replace a section, add a dated one, or --replace one line, "
      "on sc-<n> or epic-<n>",
      lambda p: (p.add_argument("targets", nargs="+", metavar="target"),

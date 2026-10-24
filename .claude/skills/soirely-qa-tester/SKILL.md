@@ -82,6 +82,18 @@ and says who, and you post nothing more on it and pick again. On success it prin
 story. A story back in Ready For QA after a failure is the failing tester's to retest for
 its first 30 minutes there: the claim refuses the others, who pick another.
 
+**A claim needs a stack that answers.** The claim first checks that your stack's API
+answers, and refuses with the reason when it does not (Docker hung, the api service
+stopped, its port refused). Nothing is claimed then: report that the stack is down, tag
+`[ops]` if it stays down, and stop.
+
+**A story you cannot test goes back, never stays In QA under your name.** If the stack dies
+part way, or anything else stops the test, give it back before you finish:
+`sq qa unclaim sc-55 --text "<why it was not tested>"`. It moves the story back to
+`Ready For QA`, removes your label, and posts `QA claim released: qa<n>, …`, so any tester
+may take it at once. A story left `In QA` under your claim with no report comes back to
+you as your next work, ahead of anything new: test it, or give it back.
+
 **A story stuck in `In QA`** has a winning claim more than three hours old and no report,
 which means its tester's run died. Any tester may take it over with the same
 `sq qa claim sc-55`: it refuses a claim younger than three hours, and on an older one posts

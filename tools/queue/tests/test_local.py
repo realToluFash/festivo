@@ -1,6 +1,10 @@
 """ops@<machine>: what each machine checks for itself, and the work it becomes."""
 
+import pathlib
+import subprocess
+import tempfile
 import unittest
+from unittest import mock
 
 from soirely_queue import local, store, work
 
@@ -51,3 +55,35 @@ class Checks(unittest.TestCase):
         self.assertEqual(local.gigabytes("12.5GB"), 12.5)
         self.assertEqual(local.gigabytes("800MB"), 0.8)
         self.assertEqual(local.gigabytes("0B"), 0.0)
+
+
+class Stack(unittest.TestCase):
+    def setUp(self):
+        self.place = tempfile.TemporaryDirectory()
+        self.addCleanup(self.place.cleanup)
+        for name, value in (("load", {}), ("checkout", pathlib.Path(self.place.name))):
+            patcher = mock.patch(f"soirely_queue.machine.{name}", return_value=value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def compose(self, **result):
+        return mock.patch("soirely_queue.local.subprocess.run", **result)
+
+    def test_docker_that_hangs_is_a_stack_that_cannot_be_tested(self):
+        with self.compose(side_effect=subprocess.TimeoutExpired("docker", 30)):
+            self.assertIn("Docker did not answer", local.stack_problem("qa2"))
+
+    def test_an_api_not_running_is_named(self):
+        with self.compose(return_value=subprocess.CompletedProcess([], 1, "", "no such service")):
+            self.assertIn("api service", local.stack_problem("qa2"))
+
+    def test_an_api_that_refuses_its_port_is_named(self):
+        running = subprocess.CompletedProcess([], 0, "0.0.0.0:28080\n", "")
+        with self.compose(return_value=running), \
+                mock.patch("soirely_queue.local.urllib.request.urlopen",
+                           side_effect=ConnectionRefusedError("refused")):
+            self.assertIn("port 28080 does not answer", local.stack_problem("qa2"))
+
+    def test_a_role_with_no_checkout_here_is_not_checked(self):
+        with mock.patch("soirely_queue.machine.checkout", return_value=None):
+            self.assertIsNone(local.stack_problem("qa2"))

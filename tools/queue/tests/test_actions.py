@@ -108,6 +108,10 @@ class Base(unittest.TestCase):
         files = mock.patch("soirely_queue.github.files", return_value=[])
         files.start()
         self.addCleanup(files.stop)
+        # Nor does any reach a tester's Docker stack; one that needs it down patches this.
+        stack = mock.patch("soirely_queue.local.stack_problem", return_value=None)
+        stack.start()
+        self.addCleanup(stack.stop)
 
     def as_(self, role):
         return FakeContext(self.db, role, self.fake)
@@ -167,6 +171,39 @@ class Writes(Base):
         with self.assertRaisesRegex(actions.Refused, "qa2's to retest"):
             actions.claim(self.as_("qa"), args(story="sc-1"))
         actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In QA")
+
+    def test_a_tester_whose_stack_is_down_claims_nothing(self):
+        self.fake.add(1, "Ready For QA")
+        with mock.patch("soirely_queue.local.stack_problem",
+                        return_value="Docker did not answer within 30 seconds"), \
+                self.assertRaisesRegex(actions.Refused, "Docker did not answer"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertEqual(self.fake.comments, [])
+
+    def test_a_tester_gives_back_a_story_it_cannot_test_to_any_tester(self):
+        self.fake.add(1, "Ready For QA", ["qa failed"])
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        actions.unclaim(self.as_("qa2"), args(story="sc-1", text="Docker is down"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertNotIn("qa2", self.labels(1))
+        self.assertEqual(self.fake.comments[-1], (1, "QA claim released: qa2, Docker is down"))
+        actions.claim(self.as_("qa3"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In QA")
+
+    def test_only_the_claiming_tester_gives_a_story_back(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa3"), args(story="sc-1"))
+        with self.assertRaisesRegex(actions.Refused, "not under your QA claim"):
+            actions.unclaim(self.as_("qa2"), args(story="sc-1", text="no stack"))
+        self.assertEqual(self.state(1), "In QA")
+
+    def test_a_tester_takes_up_its_own_held_story_again(self):
+        self.fake.add(1, "Ready For QA")
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.fake.comments, [(1, "QA claim: qa2")])
         self.assertEqual(self.state(1), "In QA")
 
     def test_the_lead_never_hands_a_story_to_qa(self):
