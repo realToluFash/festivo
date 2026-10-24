@@ -802,6 +802,56 @@ describe('inviting somebody', () => {
     expect(screen.queryByText(/if nobody answers/)).toBeNull();
   });
 
+  it.each(['address_gone', 'domain_closed', 'domain_managed_elsewhere'])(
+    'says a %s suspension came through the company domain in the history',
+    async (reason) => {
+      signedIn();
+      answering({
+        ...READS,
+        'GET /api/orgs/org_1/members': () =>
+          json({
+            members: [
+              LIST.members[0],
+              {
+                ...LIST.members[1],
+                channel: 'domain',
+                status: 'suspended',
+                suspension: {
+                  reason,
+                  domain: 'ire.events',
+                  since: {
+                    at: '2026-10-17T13:20:00+00:00',
+                    written: 'Saturday, Oct 17 at 14:20 WAT',
+                  },
+                  removesAt: null,
+                },
+                history: [
+                  {
+                    from: 'active',
+                    to: 'suspended',
+                    channel: 'domain',
+                    by: null,
+                    at: '2026-10-17T13:20:00+00:00',
+                  },
+                ],
+              },
+            ],
+            invitations: [],
+          }),
+      });
+      open();
+
+      fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+      expect(
+        within(screen.getByRole('region', { name: 'How they got here' })).getByText(
+          'Suspended: company domain',
+        ),
+      ).toBeDefined();
+      expect(screen.queryByText(/no longer gives access/)).toBeNull();
+    },
+  );
+
   it('lets an administrator restore the suspended only owner, and shows Remove refused in the server words', async () => {
     signedIn(
       membership({
@@ -878,7 +928,9 @@ describe('inviting somebody', () => {
       ),
     ).toBeDefined();
     expect(
-      screen.getByText('Suspended: their company email address no longer gives access'),
+      within(screen.getByRole('region', { name: 'How they got here' })).getByText(
+        'Suspended: company domain',
+      ),
     ).toBeDefined();
     expect(screen.queryByText(/Only an owner can change/)).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
