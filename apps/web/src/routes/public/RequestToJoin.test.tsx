@@ -91,6 +91,7 @@ const ASK = 'POST /api/request-links/ask';
 
 afterEach(() => {
   sessionStorage.clear();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   __setSessionState({ status: 'unknown' });
 });
@@ -202,6 +203,38 @@ describe('a request link (sc-562)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }));
 
     expect(await screen.findByText(/^Too many requests for now\. Try again at /)).toBeDefined();
+  });
+
+  it('names the day too when the limit lifts after midnight (sc-7162)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 21, 18, 58, 30));
+    signedIn();
+    answering({
+      [LINK]: () => json(PREVIEW),
+      [ASK]: () => problem(429, 'too_many_attempts', { retryAfter: 86_400 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }));
+
+    expect(
+      await screen.findByText('Too many requests for now. Try again on Thursday, Oct 22 at 18:59.'),
+    ).toBeDefined();
+  });
+
+  it('gives only the time when the limit lifts later today (sc-7162)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 21, 18, 58, 30));
+    signedIn();
+    answering({
+      [LINK]: () => json(PREVIEW),
+      [ASK]: () => problem(429, 'too_many_attempts', { retryAfter: 3_600 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }));
+
+    expect(await screen.findByText('Too many requests for now. Try again at 19:59.')).toBeDefined();
   });
 
   it('shows one page for a dead link, naming nobody', async () => {

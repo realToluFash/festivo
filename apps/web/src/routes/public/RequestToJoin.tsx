@@ -1,6 +1,7 @@
 import { ApiError, type RequestLinkPreview } from '@soirely/api-client';
 import {
   REQUEST_MESSAGE_MAXIMUM,
+  fallsOnLaterDay,
   formatDay,
   formatTimeOfDay,
   initials,
@@ -349,7 +350,12 @@ function Limited({ until }: { until: Date | null }) {
         <p>
           {until == null
             ? t('requestToJoin.limitedLater')
-            : t('requestToJoin.limited', { time: formatTimeOfDay(until, currentLocale()) })}
+            : fallsOnLaterDay(until)
+              ? t('requestToJoin.limitedOnDay', {
+                  day: formatDay(until, currentLocale()),
+                  time: formatTimeOfDay(until, currentLocale()),
+                })
+              : t('requestToJoin.limited', { time: formatTimeOfDay(until, currentLocale()) })}
         </p>
       </div>
       <Link className="button" to={landing}>

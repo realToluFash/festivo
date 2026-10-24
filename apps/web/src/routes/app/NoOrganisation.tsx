@@ -1,5 +1,5 @@
 import { ApiError, type Membership } from '@soirely/api-client';
-import { countryChoices, deviceCountry } from '@soirely/domain';
+import { type NewOrganisationField, countryChoices, deviceCountry } from '@soirely/domain';
 import { type FormEvent, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -7,6 +7,7 @@ import { Link } from 'react-router';
 import { api } from '../../api.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { InvitationRows } from '../../components/InvitationRows.tsx';
+import { useFocusAfterSave } from '../../formChecks.ts';
 import { currentLocale } from '../../i18n/index.ts';
 import type { WaitingInvitations } from '../../invitations.ts';
 import { joinOrganisation, useSession } from '../../session.ts';
@@ -71,8 +72,11 @@ function StartOrganisation({
   const [failed, setFailed] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
+  const focusAfterSave = useFocusAfterSave<NewOrganisationField>(saving, (field) =>
+    (field === 'name' ? nameInput : countryInput).current?.focus(),
+  );
 
-  function change(field: 'name' | 'countryCode', value: string): void {
+  function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
     setErrors((previous) => {
       const next = { ...previous };
@@ -111,6 +115,7 @@ function StartOrganisation({
       joinOrganisation(membership);
       onStarted(membership);
     } catch (error) {
+      focusAfterSave('name');
       setSaving(false);
 
       if (error instanceof ApiError && error.is('validation_failed')) {
@@ -119,6 +124,7 @@ function StartOrganisation({
         // A refusal naming only a field this form lacks, such as the derived contact address.
         if (fields.name != null || fields.countryCode != null) {
           setErrors({ name: fields.name, countryCode: fields.countryCode } as Errors);
+          if (fields.name == null) focusAfterSave('countryCode');
           return;
         }
       }
