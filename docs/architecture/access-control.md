@@ -78,7 +78,7 @@ Putting a person in a role, by any path, goes through `RoleManager::mayGrant()`,
 `security.yaml` has no `access_control`. Two mechanisms answering one question is how the
 previous build ended up with routes that one of them allowed.
 
-The framework's own routes (API Platform's documentation, entrypoint and error pages, and
+The framework's own routes (API Platform's documentation and error pages, and
 the development error preview) have nowhere to put an attribute. They are listed by name in
 `FrameworkRoutes`, each public, and a framework route not on that list is refused at boot
 like any other.
