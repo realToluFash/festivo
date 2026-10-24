@@ -8,7 +8,8 @@ import { tokens } from '../theme/tokens.ts';
  *
  * It takes `weight` and resolves it to `fontWeight`, and `faced()` turns the
  * weight into a face, so no screen ever writes a `fontFamily` — see
- * src/theme/fonts.ts. `mono` is for step numbers and keyboard shortcuts only.
+ * src/theme/fonts.ts. `mono` is for step numbers, keyboard shortcuts and codes
+ * a person copies character by character, never for money or counts.
  *
  * It deliberately does NOT accept `onPress`. A Text with an onPress crashed the
  * previous build on React Native Web, so the replacement is a Pressable with a

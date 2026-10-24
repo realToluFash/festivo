@@ -1,6 +1,6 @@
 import type { TextStyle } from 'react-native';
 
-/** JetBrains Mono is for step numbers and keyboard shortcuts only, never for money. */
+/** JetBrains Mono is for step numbers, keyboard shortcuts and codes copied character by character, never for money. */
 export const SANS = {
   400: 'InstrumentSans-Regular',
   500: 'InstrumentSans-Medium',
