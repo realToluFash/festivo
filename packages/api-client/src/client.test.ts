@@ -2165,6 +2165,7 @@ describe('events (sc-1486)', () => {
     startsAt: '2026-11-14T16:00:00+01:00',
     endsAt: '2026-11-15T02:00:00+01:00',
     timeZone: 'Africa/Lagos',
+    dayCount: 2,
     currency: 'NGN',
     createdAt: '2026-10-21T09:00:00+00:00',
   };
@@ -2223,6 +2224,9 @@ describe('events (sc-1486)', () => {
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, timeZone: undefined } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+    await expect(
+      client(() => json({ event: { ...EVENT, dayCount: 0 } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
   });
 
