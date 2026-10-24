@@ -35,6 +35,7 @@ import { Text } from '../src/components/Text.tsx';
 import { currentLocale } from '../src/i18n/index.ts';
 import { type WaitingInvitations, useInvitationsOnOpen } from '../src/invitations.ts';
 import { landingFor } from '../src/landing.ts';
+import { useLayout } from '../src/layout/useLayout.ts';
 import { phoneProblemMessage } from '../src/phoneProblem.ts';
 import { rememberOrganisation } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
@@ -323,6 +324,7 @@ function FoundOrganisation() {
 
 function Details({ account, onAsked }: { account: Account; onAsked: (account: Account) => void }) {
   const { t } = useTranslation();
+  const { kind } = useLayout();
   const [name, setName] = useState(account.name);
   const [organisationName, setOrganisationName] = useState('');
   const [countryCode, setCountryCode] = useState(
@@ -581,7 +583,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
           </View>
           {offers.map((offer) => (
             <View key={offer.id} style={styles.offer}>
-              <View style={styles.offerText}>
+              <View style={[styles.offerText, kind === 'phone' && styles.offerTextPhone]}>
                 <Text size={tokens.typeRowTitle.size} weight="semibold">
                   {t('domainJoining.usesSoirely', { organisation: offer.name })}
                 </Text>
@@ -753,4 +755,5 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   offerText: { flexGrow: 1, flexShrink: 1, flexBasis: 180, minWidth: 0, gap: tokens.spaceHair },
+  offerTextPhone: { flexBasis: '100%' },
 });
