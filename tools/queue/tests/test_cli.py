@@ -71,3 +71,60 @@ class InsideAWorker(unittest.TestCase):
         store.claim(self.db, "pm", 1000, worker="pm")
         self.assertEqual(self.run_command(cli.cmd_next), "1")
         self.assertEqual(self.run_command(cli.cmd_tick), "busy")
+
+
+def check(name, bucket):
+    return {"name": name, "bucket": bucket, "workflow": "Pull request", "link": f"https://x/{name}"}
+
+
+class Checks(unittest.TestCase):
+    def run_checks(self, *answers, wait=True, timeout=20, clock=(0,)):
+        answers = list(answers)
+        ticks = iter(clock)
+        last = [0]
+
+        def monotonic():
+            last[0] = next(ticks, last[0])
+            return last[0]
+        out = io.StringIO()
+        code = 0
+        with redirect_stdout(out), \
+                mock.patch("soirely_queue.github.pr_checks", lambda n: answers.pop(0)), \
+                mock.patch("soirely_queue.github.failed_log", lambda link, tail: "boom"), \
+                mock.patch("time.monotonic", monotonic), mock.patch("time.sleep") as slept:
+            try:
+                cli.cmd_checks(mock.Mock(), mock.Mock(pr=7, names=False, tail=40, wait=wait,
+                                                      timeout=timeout))
+            except SystemExit as stopped:
+                code = stopped.code
+        return out.getvalue(), code, slept.call_count
+
+    def test_nothing_pending_leaves_pending_out_of_the_summary(self):
+        out, code, _ = self.run_checks([check("api", "pass")], wait=False)
+        self.assertEqual(out.splitlines(), ["PR #7: 1 checks, 0 failed"])
+        self.assertNotIn("pending", out)
+        self.assertEqual(code, 0)
+
+    def test_a_wait_ends_green_once_nothing_is_pending(self):
+        out, code, slept = self.run_checks([], [check("api", "pending")],
+                                           [check("api", "pass"), check("web", "pass")])
+        self.assertEqual(out.splitlines(), ["PR #7: 2 checks, 0 failed"])
+        self.assertEqual((code, slept), (0, 2))
+
+    def test_a_wait_that_ends_with_a_failure_exits_non_zero(self):
+        out, code, _ = self.run_checks([check("api", "pending"), check("web", "pending")],
+                                       [check("api", "fail"), check("web", "pass")])
+        self.assertTrue(out.startswith("PR #7: 2 checks, 1 failed\n"))
+        self.assertIn("  boom", out)
+        self.assertEqual(code, 1)
+
+    def test_a_wait_gives_up_at_its_timeout(self):
+        pending = [check("api", "pending")]
+        out, code, slept = self.run_checks(pending, pending, pending, timeout=1,
+                                           clock=(0, 0, 30, 61))
+        self.assertEqual(out.splitlines(), [
+            "PR #7: timed out after 1 minutes with checks still pending",
+            "PR #7: 1 checks, 0 failed, 1 pending",
+            "  pending: Pull request / api",
+        ])
+        self.assertEqual((code, slept), (1, 2))

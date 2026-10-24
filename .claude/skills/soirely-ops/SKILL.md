@@ -40,7 +40,9 @@ from the main checkout makes it).
      sq takes only a story in Backlog, Ready For Dev or In Progress that nobody holds, and
      tells `[pm]` it has left their queue. `needs qa` you change only on your own stories.
   2. **Open the pull request ready for review**, never as a draft:
-     `sq ops pr-create --head <branch> --title "… (sc-N)"`, body on stdin. When its checks
+     `sq ops pr-create --head <branch> --title "… (sc-N)"`, body on stdin. Wait for its checks
+     with `sq ops checks N --wait` as a background command, never a polling loop you write;
+     it ends by itself, non-zero on a failure or after `--timeout` minutes. When they
      are green, `sq ops move sc-N "In Review"`, which wakes `[lead]`. Answer review
      comments with `sq ops pr-reply N <comment id>`.
   3. **Merge it yourself once the lead passes it** at its head: `sq ops merge N`. sq

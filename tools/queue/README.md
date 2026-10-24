@@ -37,7 +37,7 @@ Every read goes through a ledger of what the role has already been shown.
 | `comments sc-N [--open \| --all] [--from R] [--since ID]`   | the threads involving the role; the rest as one line each                                                                                       |
 | `pr N [--section S]`                                        | status, lead verdict, open threads; or one section of the body                                                                                  |
 | `diff N [paths… \| --all]`                                  | the file list with +/-; or those files' diffs, cached by head sha                                                                               |
-| `checks N [--names]`                                        | failing checks with the last 40 lines of each failed log                                                                                        |
+| `checks N [--names] [--wait [--timeout M]]`                 | failing checks with the last 40 lines of each failed log; `--wait` returns once none is pending, exits 1 on a failure or after M minutes (20)   |
 | `runs`, `find "<query>"`, `epics`, `epic N`, `history sc-N` | one line per run, story, epic or state change                                                                                                   |
 | `states sc-N sc-M … [--body DIR]`                           | one line per id, read fresh: state, epic, name; a missing id says so and the rest still print; `--body` saves each description as `DIR/sc-N.md` |
 

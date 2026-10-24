@@ -20,6 +20,7 @@ from .ledger import Printer
 from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
+CHECKS_POLL = 30
 OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents", "web")
 ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "worker-supervise",
          "start", "stop", "pause",
@@ -267,9 +268,20 @@ def cmd_diff(s, a):
 
 def cmd_checks(s, a):
     found = github.pr_checks(a.pr)
+    if a.wait:
+        deadline = time.monotonic() + a.timeout * 60
+        # Straight after a push the head has no checks yet, which is not "none pending".
+        while not found or any(c.get("bucket") == "pending" for c in found):
+            if time.monotonic() >= deadline:
+                print(f"PR #{a.pr}: timed out after {a.timeout} minutes with checks still "
+                      "pending")
+                break
+            time.sleep(CHECKS_POLL)
+            found = github.pr_checks(a.pr)
     failed = [c for c in found if c.get("bucket") == "fail"]
     pending = [c for c in found if c.get("bucket") == "pending"]
-    print(f"PR #{a.pr}: {len(found)} checks, {len(failed)} failed, {len(pending)} pending")
+    summary = f"PR #{a.pr}: {len(found)} checks, {len(failed)} failed"
+    print(summary + (f", {len(pending)} pending" if pending else ""))
     for check in failed:
         print(f"\n{check['workflow']} / {check['name']} {check['link']}")
         if not a.names:
@@ -277,6 +289,8 @@ def cmd_checks(s, a):
             print("\n".join("  " + line for line in log.splitlines()))
     for check in pending:
         print(f"  pending: {check['workflow']} / {check['name']}")
+    if a.wait and (failed or pending or not found):
+        sys.exit(1)
 
 
 def cmd_runs(s, a):
@@ -398,9 +412,13 @@ READS = [
     ("diff", cmd_diff, "a pull request's files, or the diff of the paths you name",
      lambda p: (p.add_argument("pr", type=int), p.add_argument("paths", nargs="*"),
                 p.add_argument("--all", action="store_true"))),
-    ("checks", cmd_checks, "a pull request's checks, with the failed logs' last lines",
+    ("checks", cmd_checks, "a pull request's checks and failed logs; --wait for them",
      lambda p: (p.add_argument("pr", type=int), p.add_argument("--names", action="store_true"),
-                p.add_argument("--tail", type=int, default=40))),
+                p.add_argument("--tail", type=int, default=40),
+                p.add_argument("--wait", action="store_true",
+                               help="return once no check is pending; exit 1 if any failed"),
+                p.add_argument("--timeout", type=int, default=20,
+                               help="minutes --wait gives up after, exiting 1"))),
     ("runs", cmd_runs, "the last runs on main", None),
     ("find", cmd_find, "Shortcut search, one line per story",
      lambda p: (p.add_argument("query"), p.add_argument("--limit", type=int, default=20))),
