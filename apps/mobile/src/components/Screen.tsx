@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -50,6 +51,19 @@ interface ScreenScrollView {
 
 const ScreenScroll = createContext<ScreenScrollView | null>(null);
 
+interface ScreenDock {
+  /** Whether the keys cover the screen's end. */
+  keysUp: boolean;
+  show(docked: Docked | null): void;
+}
+
+interface Docked {
+  children: ReactNode;
+  style?: ViewStyle | undefined;
+}
+
+const Dock = createContext<ScreenDock | null>(null);
+
 const Origin = createContext(0);
 
 // At the app's root, not a Screen's: under the frame's header a Screen's root starts lower.
@@ -89,16 +103,18 @@ function liftAboveKeyboard(
   if (group == null || keyboardTop == null) return;
 
   group.measureLayout(content, (_x, contentY, _w, height) => {
-    scrollHost.measureInWindow((_sx, scrollTop) => {
+    scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
       const groupY = groupInWindow({ scrollTop, contentY, offset: scroll.offset.current });
-      if (!coveredBy(keyboardTop, { y: groupY, height }, tokens.spaceLg)) return;
+      // A bar docked above the keys ends the scroll view higher than the keys' top.
+      const shown = Math.min(keyboardTop, scrollTop + scrollHeight);
+      if (!coveredBy(shown, { y: groupY, height }, tokens.spaceLg)) return;
 
       view.scrollTo({
         y: offsetAboveKeyboard({
           contentY,
           height,
           scrollTop,
-          keyboardTop,
+          keyboardTop: shown,
           margin: tokens.spaceLg,
         }),
         animated: true,
@@ -200,6 +216,19 @@ export function useRoomAboveKeyboard(): number | null {
   return room;
 }
 
+/** Rests its children directly on the keys, outside the scroll, while they are up; in place otherwise. */
+export function AboveKeys({ children, style }: Docked) {
+  const dock = useContext(Dock);
+  const docked = dock?.keysUp === true;
+
+  useEffect(() => {
+    if (docked) dock.show({ children, style });
+  }, [dock, docked, children, style]);
+  useEffect(() => (docked ? () => dock.show(null) : undefined), [dock, docked]);
+
+  return docked ? null : children;
+}
+
 /** Brings the view to the top of the screen once it mounts, whatever the scroll it mounted into. */
 export function useScrolledToTop(): RefObject<View | null> {
   const scroll = useContext(ScreenScroll);
@@ -281,6 +310,9 @@ export function Screen({
   const avoider = useRef<View>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
+  const [docked, setDocked] = useState<Docked | null>(null);
+  const keysUp = keysCover > 0;
+  const dock = useMemo<ScreenDock>(() => ({ keysUp, show: setDocked }), [keysUp]);
   // Not KeyboardAvoidingView: it takes the screen's top as a prop and does not re-read it when the
   // frame's header shrinks under the keys, so the freed height ends up as padding above them.
   const avoid = useCallback(() => {
@@ -293,8 +325,8 @@ export function Screen({
       setKeysCover(keysOver({ y, height }, top)),
     );
   }, []);
+  // iOS needs the cover too, but only to rest a docked bar on the keys: its scroll view lifts itself.
   useEffect(() => {
-    if (LIFT.avoid == null) return;
     keyboardTop.current = keyboardTopNow(origin.current);
     avoid();
 
@@ -338,15 +370,21 @@ export function Screen({
 
   return (
     <ScreenScroll.Provider value={scroll ? screenScroll : null}>
-      <View style={[styles.root, padding, style]}>
-        {LIFT.avoid == null ? (
-          body
-        ) : (
-          <View ref={avoider} onLayout={avoid} style={[styles.fill, { paddingBottom: keysCover }]}>
+      <Dock.Provider value={scroll ? dock : null}>
+        <View style={[styles.root, padding, style]}>
+          <View
+            ref={avoider}
+            onLayout={avoid}
+            style={[
+              styles.fill,
+              { paddingBottom: LIFT.avoid != null || docked != null ? keysCover : 0 },
+            ]}
+          >
             {body}
+            {docked != null && <View style={docked.style}>{docked.children}</View>}
           </View>
-        )}
-      </View>
+        </View>
+      </Dock.Provider>
     </ScreenScroll.Provider>
   );
 }
