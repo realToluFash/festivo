@@ -48,7 +48,7 @@ export function CreateOrganisation({
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
-  // On iOS the modal covers the status bar; on Android it opens below it.
+  // iOS needs the inset to clear the status bar; Android keeps main's 0 until sc-4527 checks it.
   const top = Platform.OS === 'ios' ? insets.top : 0;
 
   return (
