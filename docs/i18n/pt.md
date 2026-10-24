@@ -41,6 +41,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Withdrawing your own claim** (`ownerClaim.withdraw*`, `youWithdrew*`,
+  `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`, sc-8556). The claimant
+  "retira" o pedido; anybody else "interrompe" um. Button "Retirar o meu pedido", confirm
+  "Retirar o seu pedido?" with "Retirar" / "Manter o meu pedido", pending "A retirar". "Any
+  Administrator, you included" became "Pode voltar a fazer um pedido, tal como qualquer pessoa
+  com a função Administrador", since "incluindo-o a si" agrees with a gender. The email date
+  takes a label, "Data em que o pedido foi retirado: {deadline}", never "retirada", a retreat.
 - **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
   `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is "assumir a
   propriedade", never "tornar-se proprietário", which agrees with a gender; the claim is "o
