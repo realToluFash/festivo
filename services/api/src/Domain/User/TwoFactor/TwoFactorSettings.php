@@ -8,6 +8,7 @@ use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Http\AfterResponse;
 use App\Http\Exception\ApiException;
 use App\Repository\RecoveryCodeRepository;
 use App\Repository\TwoFactorFactorRepository;
@@ -31,6 +32,7 @@ final readonly class TwoFactorSettings
         private AuthenticatorCodes $authenticatorCodes,
         private SecretBox $secretBox,
         private TwoFactorMailer $twoFactorMailer,
+        private AfterResponse $afterResponse,
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
@@ -74,7 +76,7 @@ final readonly class TwoFactorSettings
     }
 
     /** @return list<string> the recovery codes, shown this once */
-    public function activate(User $user, #[SensitiveParameter] string $code): array
+    public function activate(User $user, #[SensitiveParameter] string $code, ?string $asked = null): array
     {
         $factor = $this->twoFactorFactorRepository->findOneFor($user);
 
@@ -87,6 +89,9 @@ final readonly class TwoFactorSettings
         $user->setTwoFactorSetupPrompt(false);
         $codes = $this->recoveryCodes->issueFor($user);
         $this->entityManager->flush();
+
+        $now = $this->clock->now();
+        $this->afterResponse->defer(fn () => $this->twoFactorMailer->sendTurnedOn($user, $now, $asked));
 
         return $codes;
     }

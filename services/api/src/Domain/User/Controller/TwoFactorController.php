@@ -47,7 +47,7 @@ final readonly class TwoFactorController
         $body = Input::body($request, Type\shape(['code' => Type\optional(Type\mixed())]));
         $code = $this->codeField->required($body, 'code', CodeField::FROM_APP);
 
-        return new JsonResponse(['recoveryCodes' => $this->twoFactorSettings->activate($this->user(), $code)]);
+        return new JsonResponse(['recoveryCodes' => $this->twoFactorSettings->activate($this->user(), $code, $request->getLocale())]);
     }
 
     #[Route('/api/auth/two-factor/recovery-codes', name: 'auth_two_factor_recovery_codes', methods: ['POST'])]
