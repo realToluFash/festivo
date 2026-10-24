@@ -20,7 +20,7 @@
     "unsupported_media_type": "That format is not supported.",
     "precondition_failed": "Somebody else changed this since you opened it.",
     "precondition_required": "Send the version you are changing, as If-Match.",
-    "event_currency_in_use": "The currency cannot change once amounts are recorded against the event.",
+    "event_currency_in_use": "The currency cannot change once amounts are recorded against this event.",
     "unauthenticated": "Please sign in to continue.",
     "invalid_credentials": "That email and password do not match.",
     "invalid_refresh_token": "Your session has ended. Please sign in again.",
