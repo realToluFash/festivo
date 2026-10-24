@@ -3,7 +3,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SIGNED_OUT, api } from './api.ts';
 import { setLanguage } from './i18n/index.ts';
-import { __setSessionState, forgetSession, refreshAccount, useSessionState } from './session.ts';
+import {
+  __setSessionState,
+  forgetSession,
+  joinOrganisation,
+  refreshAccount,
+  useSessionState,
+} from './session.ts';
 import { membership } from './test-memberships.ts';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
@@ -164,5 +170,28 @@ describe('the organisations after a language change (sc-9267)', () => {
 
     await waitFor(() => expect(read).toHaveBeenCalled());
     expect(shownDeadline()).toBe('Saturday 31 Oct at 10:44 GMT');
+  });
+  it('keeps an organisation joined while the read was on its way', async () => {
+    signedInWith(membership({ twoFactorDue: due('Saturday 31 Oct at 10:44 GMT') }));
+    let answer: (read: Awaited<ReturnType<typeof api.organisationsWithPaused>>) => void = () => {};
+    vi.spyOn(api, 'organisationsWithPaused').mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+
+    await act(() => setLanguage('es'));
+    act(() => joinOrganisation(membership({ id: 'org_2', name: 'Ọ̀ṣun Parties' })));
+    await act(async () => {
+      answer({
+        organisations: [membership({ twoFactorDue: due('sábado 31 oct a las 10:44 GMT') })],
+        paused: [],
+      });
+    });
+
+    const current = renderHook(() => useSessionState()).result.current;
+    expect(
+      current.status === 'signedIn' ? current.session.organisations.map(({ id }) => id) : [],
+    ).toEqual(['org_1', 'org_2']);
   });
 });

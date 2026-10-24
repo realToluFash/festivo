@@ -23,6 +23,7 @@ vi.mock('react', () => ({
 }));
 
 const {
+  joinOrganisation,
   launchSignedIn,
   reloadSignedIn,
   replaceOrganisation,
@@ -296,6 +297,25 @@ describe('the organisations after a language change (sc-9267)', () => {
     await settle();
 
     expect(useSignedIn().organisation?.twoFactorDue?.written).toBe('Saturday 31 Oct at 10:44 GMT');
+  });
+
+  it('keeps an organisation joined while the read was on its way', async () => {
+    let answer: (read: unknown) => void = () => {};
+    api.organisationsWithPaused.mockReturnValue(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+
+    i18next.emit('languageChanged', 'es');
+    joinOrganisation({ ...organisation, id: 'org_2', name: 'Ọ̀ṣun Parties' });
+    answer({
+      organisations: [{ ...organisation, twoFactorDue: due('sábado 31 oct a las 10:44 GMT') }],
+      paused: [],
+    });
+    await settle();
+
+    expect(useSignedIn().organisations.map(({ id }) => id)).toEqual(['org_1', 'org_2']);
   });
 
   it('carries the paused organisation’s dates in the new language', async () => {

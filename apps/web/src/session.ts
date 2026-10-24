@@ -156,10 +156,17 @@ export async function rereadOrganisations(): Promise<void> {
   if (state.status !== 'signedIn' || state.session.awaiting != null) return;
 
   const asked = generation;
+  const known = state.session.organisations;
   rereads += 1;
   const reread = rereads;
   const read = await api.organisationsWithPaused().catch(() => null);
-  if (read == null || generation !== asked || reread !== rereads || state.status !== 'signedIn')
+  if (
+    read == null ||
+    generation !== asked ||
+    reread !== rereads ||
+    state.status !== 'signedIn' ||
+    state.session.organisations !== known
+  )
     return;
 
   const current = state.session;

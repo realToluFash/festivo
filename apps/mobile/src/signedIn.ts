@@ -79,10 +79,17 @@ export async function rereadOrganisations(): Promise<void> {
   if (state.account == null) return;
 
   const account = state.account;
+  const known = state.organisations;
   rereads += 1;
   const reread = rereads;
   const read = await api.organisationsWithPaused().catch(() => null);
-  if (read == null || reread !== rereads || state.account?.id !== account.id) return;
+  if (
+    read == null ||
+    reread !== rereads ||
+    state.account?.id !== account.id ||
+    state.organisations !== known
+  )
+    return;
 
   const organisation =
     read.organisations.find((membership) => membership.id === state.organisation?.id) ??
