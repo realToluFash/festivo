@@ -838,7 +838,9 @@ describe('inviting somebody', () => {
         'Folake Adeyemi is the only owner of Ìrè Events, so they stay suspended, still an owner, and are not removed.',
       ),
     ).toBeDefined();
-    expect(screen.getByText('Suspended when their company address went')).toBeDefined();
+    expect(
+      screen.getByText('Suspended: their company email address no longer gives access'),
+    ).toBeDefined();
     expect(screen.queryByText(/Only an owner can change/)).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
 
@@ -847,7 +849,7 @@ describe('inviting somebody', () => {
     const refused = await screen.findByText('An organisation always has at least one owner.');
     expect(sent.map((one) => one.line)).toContain('DELETE /api/orgs/org_1/members/m_folake');
     expect(
-      screen.getByText("Folake Adeyemi is the only owner, so they can't be removed."),
+      screen.getByText('Folake Adeyemi is the only owner, so they cannot be removed.'),
     ).toBeDefined();
     expect(
       screen.getByText(
