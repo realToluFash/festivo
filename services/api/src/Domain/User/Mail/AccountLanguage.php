@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Locale\Listener\RequestLocaleListener;
 use App\Locale\SupportedLocales;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** The one way to choose a person's language (sc-852): theirs, else the one asked in, else the default. */
@@ -15,6 +16,7 @@ final readonly class AccountLanguage
 {
     public function __construct(
         private TranslatorInterface $translator,
+        private RequestStack $requestStack,
     ) {
     }
 
@@ -28,6 +30,12 @@ final readonly class AccountLanguage
         }
 
         return SupportedLocales::narrow($asked ?? $this->translator->getLocale());
+    }
+
+    /** What a screen writes a date in (sc-9267): the language the request asked for, which a picker switch sends before the account has saved it; else theirs. */
+    public function shown(User $user): string
+    {
+        return self::askedIn($this->requestStack->getMainRequest()) ?? $this->of($user);
     }
 
     /** @return bool whether it had none, and now has the one asked in */
