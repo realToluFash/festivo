@@ -198,6 +198,9 @@ is held to what both can do:
 - **Shadows differ by platform**, and every elevated surface also carries a 1px border —
   the shadow is a hint, never the structure.
 - Use `apps/mobile/src/components/Screen.tsx` for safe areas, and never double-pad the top.
+- **Text on web breaks words anywhere** (`apps/web/src/styles.css`), so a one-line mark of
+  fixed height, such as a pill, a tag or a button's one word, sets `flex: none` and
+  `white-space: nowrap`, and the text beside it gives way.
 
 ## 8. Inputs, accessibility, and verifying
 
