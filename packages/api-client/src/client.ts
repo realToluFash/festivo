@@ -1447,6 +1447,20 @@ export class ApiClient {
     );
   }
 
+  /** By the claimant only (sc-8204), leaving the way open. `told` when the record had been found, so everybody told then is emailed. Refused `owner_claim_ended` once it has ended. */
+  async withdrawOwnerClaim(
+    organisationId: string,
+  ): Promise<{ ownerClaim: OwnerClaimBanner | null; told: boolean }> {
+    const raw = await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/withdraw`,
+      {},
+    );
+    const withdrawn = (raw as Record<string, unknown> | null)?.withdrawn as
+      Record<string, unknown> | undefined;
+
+    return { ownerClaim: this.ownerClaimBanner(raw), told: withdrawn?.told === true };
+  }
+
   private ownerClaimBanner(raw: unknown): OwnerClaimBanner | null {
     const body = (raw ?? {}) as Record<string, unknown>;
     const banner = body.ownerClaim === null ? null : asOwnerClaimBanner(body.ownerClaim);

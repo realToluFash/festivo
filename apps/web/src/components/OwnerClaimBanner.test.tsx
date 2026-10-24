@@ -196,3 +196,105 @@ describe('the Members banner while no owner is active (sc-6640)', () => {
     expect(screen.getByRole('button', { name: 'Load Members again' })).toBeTruthy();
   });
 });
+
+describe('the claimant withdraws their own claim (sc-8204)', () => {
+  it('offers Withdraw my claim only to the claimant, before and after the record is found', async () => {
+    for (const [mine, found, offered] of [
+      [true, false, true],
+      [true, true, true],
+      [false, false, false],
+      [false, true, false],
+    ] as const) {
+      answering({
+        [`GET ${PATH}`]: () =>
+          json({
+            ownerClaim: banner({ state: found ? 'found' : 'open', claim: claim(mine, found) }),
+          }),
+      });
+      const { unmount } = open();
+
+      await screen.findByRole('heading');
+      expect(screen.queryByRole('button', { name: 'Withdraw my claim' }) != null).toBe(offered);
+      unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('asks first, and Keep my claim or Escape leaves the claim as it was', async () => {
+    const sent = answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+    });
+    open();
+
+    const withdraw = await screen.findByRole('button', { name: 'Withdraw my claim' });
+    fireEvent.click(withdraw);
+    const dialog = screen.getByRole('dialog', { name: 'Withdraw your claim?' });
+    expect(
+      screen.getByText(
+        "You won't become the owner of Ìrè Events. Any Administrator, you included, can start a new claim.",
+      ),
+    ).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Keep my claim' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep my claim' }));
+    expect(dialog.isConnected).toBe(false);
+    expect(document.activeElement).toBe(withdraw);
+
+    fireEvent.click(withdraw);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(sent.some((one) => one.line === `POST ${PATH}/withdraw`)).toBe(false);
+    expect(screen.getByText('soirely-claim=abc123')).toBeTruthy();
+  });
+
+  it('after a withdrawal before the record is found, says so and offers Become the owner again', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/withdraw`]: () => json({ ownerClaim: banner(), withdrawn: { told: false } }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    const line = await screen.findByText('You withdrew your claim.');
+    expect(line.closest('[role="status"]')).toBe(document.activeElement);
+    expect(screen.queryByText(/Everybody who was told is emailed/)).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Ìrè Events has no active owner' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Become the owner' })).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('after a withdrawal once the record was found, says everybody told is emailed', async () => {
+    answering({
+      [`GET ${PATH}`]: () =>
+        json({ ownerClaim: banner({ state: 'found', claim: claim(true, true) }) }),
+      [`POST ${PATH}/withdraw`]: () => json({ ownerClaim: banner(), withdrawn: { told: true } }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    const line = await screen.findByText(
+      'You withdrew your claim. Everybody who was told is emailed.',
+    );
+    expect(line.closest('[role="status"]')).toBe(document.activeElement);
+  });
+
+  it('says so when the claim ended before the withdrawal arrived, and offers a reload', async () => {
+    answering({
+      [`GET ${PATH}`]: () =>
+        json({ ownerClaim: banner({ state: 'found', claim: claim(true, true) }) }),
+      [`POST ${PATH}/withdraw`]: () => problem('owner_claim_ended'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    expect(await screen.findByText('This claim has already ended.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Load Members again' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Withdraw my claim' })).toBeNull();
+  });
+});

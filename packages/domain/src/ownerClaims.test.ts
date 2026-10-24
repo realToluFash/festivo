@@ -85,6 +85,19 @@ describe('the Members banner while no owner is active (sc-6640)', () => {
     expect(closed.lines).toEqual([{ key: 'ownerClaim.youStopped', values: { claimant: 'Bisi' } }]);
   });
 
+  test('only the claimant is offered Withdraw my claim, before and after the record is found (sc-8204)', () => {
+    const offered = [
+      banner({ state: 'open', claim: claim(true, false) }),
+      banner({ state: 'found', claim: claim(true, true) }),
+      banner({ state: 'open', claim: claim(false, false) }),
+      banner({ state: 'found', claim: claim(false, true) }),
+      banner(),
+      banner({ state: 'closed', stopped: { claimant: 'Bisi', mine: false } }),
+    ].map((input) => ownerClaimView(input, 'Ìrè').withdraw);
+
+    expect(offered).toEqual([true, true, false, false, false, false]);
+  });
+
   test('only the two refusals are worded on the banner', () => {
     expect(ownerClaimRefusalKey('owner_claim_address')).toBe('ownerClaim.refusedAddress');
     expect(ownerClaimRefusalKey('owner_claim_managed')).toBe('ownerClaim.refusedManaged');

@@ -12,7 +12,7 @@ use DateTimeImmutable;
 use Psl\Str;
 use Psl\Type;
 
-/** `owner_claim_started`, `_stopped` and `_granted` (sc-6640): each at a verified primary address, and none lists who else was told. */
+/** `owner_claim_started`, `_stopped`, `_withdrawn` and `_granted` (sc-6640, sc-8204): each at a verified primary address, and none lists who else was told. */
 final readonly class OwnerClaimMailer
 {
     public function __construct(
@@ -37,6 +37,15 @@ final readonly class OwnerClaimMailer
 
         $this->send($claim, 'ownerClaim.stopped', static fn (User $reader, string $locale, UserMailer $mailer): array => [
             '{name}' => OwnerClaimDescriber::named($by),
+            '{deadline}' => $mailer->deadline($at, $reader, $locale),
+        ], 'ownerClaim.openLink');
+    }
+
+    public function sendWithdrawn(OwnerClaim $claim): void
+    {
+        $at = Type\instance_of(DateTimeImmutable::class)->coerce($claim->getEndedAt());
+
+        $this->send($claim, 'ownerClaim.withdrawn', static fn (User $reader, string $locale, UserMailer $mailer): array => [
             '{deadline}' => $mailer->deadline($at, $reader, $locale),
         ], 'ownerClaim.openLink');
     }

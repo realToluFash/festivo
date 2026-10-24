@@ -107,5 +107,6 @@
     "owner_claims.has_owner": "{organisation} has an active owner.",
     "owner_claims.administrators_only": "Only an Administrator can become the owner.",
     "owner_claims.own": "You can't stop your own claim.",
+    "owner_claims.not_claimant": "Only the person who started this claim can withdraw it.",
     "owner_claims.who_may_stop": "Only an Administrator or a suspended owner can stop this claim."
 }

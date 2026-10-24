@@ -1348,6 +1348,17 @@
     "keepsWorking": "Les événements, les invités et vos autorisations continuent de fonctionner. Seules les actions réservées au rôle Propriétaire, comme la facturation, attendent qu’une personne ait ce rôle.",
     "pausedTitle": "{{claimant}} est en train de devenir propriétaire de l’organisation {{organisation}}",
     "pausedUnfound": "Son enregistrement DNS n’a pas encore été trouvé. Sans lui, la demande expirera le {{when}}.",
-    "pausedStopped": "Vous avez arrêté la demande faite par {{claimant}}. Seule l’assistance Soirely peut désormais rétablir la propriété de l’organisation {{organisation}}."
+    "pausedStopped": "Vous avez arrêté la demande faite par {{claimant}}. Seule l’assistance Soirely peut désormais rétablir la propriété de l’organisation {{organisation}}.",
+    "withdraw": "Withdraw my claim",
+    "withdrawTitle": "Withdraw your claim?",
+    "withdrawBody": "You won't become the owner of {{organisation}}. Any Administrator, you included, can start a new claim.",
+    "withdrawYes": "Withdraw",
+    "withdrawNo": "Keep my claim",
+    "withdrawing": "Withdrawing",
+    "close": "Close",
+    "youWithdrew": "You withdrew your claim.",
+    "youWithdrewTold": "You withdrew your claim. Everybody who was told is emailed.",
+    "withdrawEnded": "This claim has already ended.",
+    "withdrawNotClaimant": "Only the person who started this claim can withdraw it."
   }
 }
