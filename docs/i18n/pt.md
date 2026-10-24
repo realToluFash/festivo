@@ -41,6 +41,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
+  `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
+  sc-8735). "Suspender {{name}}", "Repor o acesso". What is suspended is "o acesso", so nothing
+  agrees with the member: "O acesso de {{name}} foi suspenso", "Um acesso suspenso não ocupa
+  lugar", "Só é possível suspender um acesso ativo". The member's language is "o idioma que
+  usa", never "o seu idioma", which reads as the admin's. A team seat is "lugar de equipa" of
+  "o plano", as `errors:team_seats_in_use`. "An administrator of" in the email is "alguém que
+  administre {organisation}", which also covers owners. The email facts read "Data da
+  suspensão" and "Data da reposição". `ownerNoSuspend` and `members.suspend_owner` say the
+  same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
   "caducar", as the web. The subject is "{claimant} não assumiu a propriedade de
   {organisation}. O pedido caducou", never "o pedido de {claimant}" with a bare address. Each

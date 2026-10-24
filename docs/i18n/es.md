@@ -49,6 +49,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
+  `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
+  sc-8735). Suspending is «suspender a {{name}}», restoring «restablecer el acceso». What is
+  suspended or restored is «el acceso», so «Se ha suspendido el acceso de {{name}}» agrees with
+  no one; the admins read «Esta persona» before any «su». A team seat is «plaza de equipo» of
+  «el plan», as `errors:team_seats_in_use`. "An administrator of" in the email is «quien
+  administre {organisation}», which also covers owners. The email facts read «Fecha de
+  suspensión» and «Fecha de restablecimiento». The screen's `ownerNoSuspend` and
+  `members.suspend_owner` open on the same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
   «caducar», as the web. The subject puts the claimant as subject, «{claimant} no ha obtenido la
   propiedad de {organisation}. La solicitud ha caducado», never «la solicitud de {claimant}»
