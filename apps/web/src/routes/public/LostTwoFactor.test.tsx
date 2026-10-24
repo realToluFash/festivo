@@ -117,7 +117,6 @@ async function atTheStart(answers: Record<string, () => Response>) {
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('getting back in without the authenticator', () => {
