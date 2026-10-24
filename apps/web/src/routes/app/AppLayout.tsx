@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, Navigate, Outlet, useLocation } from 'react-router';
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
@@ -76,8 +76,10 @@ export function AppLayout() {
 function Shell() {
   const { t } = useTranslation();
   const session = useSession();
-  const { pathname } = useLocation();
-  const [switched, setSwitched] = useState<{ name: string; at: string } | null>(null);
+  const location = useLocation();
+  const { pathname } = location;
+  const navigate = useNavigate();
+  const [switched, setSwitched] = useState<{ id: string; name: string; at: string } | null>(null);
   const [creating, setCreating] = useState(false);
   const [choosing, setChoosing] = useState(0);
   const organisation = session.organisation;
@@ -85,6 +87,30 @@ function Shell() {
   const closeCreate = useCallback(() => setCreating(false), []);
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
+  const switchTo = switchOf(location.state);
+
+  function switchInto(next: { id: string; name: string }): void {
+    setSwitched({ id: next.id, name: next.name, at: pathname });
+    void navigate(
+      { pathname, search: location.search, hash: location.hash },
+      { replace: true, state: { switchTo: next.id } },
+    );
+  }
+
+  // The switch is a navigation, so a form with unsaved changes can ask first; the state goes once the page has the new organisation.
+  useEffect(() => {
+    if (switchTo == null) return;
+
+    if (organisation?.id !== switchTo || session.pausedIn != null) {
+      switchOrganisation(switchTo);
+      return;
+    }
+
+    void navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: null },
+    );
+  }, [switchTo, organisation?.id, session.pausedIn, location, navigate]);
 
   return (
     <div className="shell">
@@ -104,10 +130,7 @@ function Shell() {
             email={session.email}
             paused={session.pausedIn != null}
             opened={choosing}
-            onSwitch={(next) => {
-              switchOrganisation(next.id);
-              setSwitched({ name: next.name, at: pathname });
-            }}
+            onSwitch={switchInto}
             onCreate={() => setCreating(true)}
           />
         )}
@@ -135,7 +158,7 @@ function Shell() {
           <SignInRulesNotices key={organisation.id} organisation={organisation} />
         )}
         {/* Said on the page it happened on, and gone once the person moves on. */}
-        {switched != null && switched.at === pathname && (
+        {switched != null && switched.at === pathname && switched.id === organisation?.id && (
           <div className="notice notice-done" role="status">
             <span className="mark mark-done" aria-hidden="true">
               ✓
@@ -151,7 +174,7 @@ function Shell() {
               others={session.organisations}
               onSwitch={(next) => {
                 switchOrganisation(next.id);
-                setSwitched({ name: next.name, at: pathname });
+                setSwitched({ id: next.id, name: next.name, at: pathname });
               }}
               onChoose={() => setChoosing((times) => times + 1)}
             />
@@ -162,11 +185,11 @@ function Shell() {
                 const joined = session.organisations.find((membership) => membership.id === id);
 
                 switchOrganisation(id);
-                if (joined != null) setSwitched({ name: joined.name, at: pathname });
+                if (joined != null) setSwitched({ id, name: joined.name, at: pathname });
               }}
               onStarted={(started) => {
                 switchOrganisation(started.id);
-                setSwitched({ name: started.name, at: pathname });
+                setSwitched({ id: started.id, name: started.name, at: pathname });
               }}
             />
           ) : organisation != null && overdue && !pathname.startsWith('/app/account') ? (
@@ -184,11 +207,17 @@ function Shell() {
           onCreated={(created) => {
             setCreating(false);
             joinOrganisation(created);
-            switchOrganisation(created.id);
-            setSwitched({ name: created.name, at: pathname });
+            switchInto(created);
           }}
         />
       )}
     </div>
   );
+}
+
+function switchOf(state: unknown): string | null {
+  const switchTo =
+    typeof state === 'object' && state != null && 'switchTo' in state ? state.switchTo : null;
+
+  return typeof switchTo === 'string' ? switchTo : null;
 }

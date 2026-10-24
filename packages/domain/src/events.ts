@@ -50,3 +50,41 @@ export function eventProblems(draft: EventDraft): { field: EventField; problem: 
 export function filledEndDate(startDate: string, endDate: string, endChosen: boolean): string {
   return endChosen ? endDate : startDate;
 }
+
+/** An event's saved values as the form types them: its wall-clock date and time, read off the offset form the API serves. */
+export function draftOf(event: { name: string; startsAt: string; endsAt: string }): EventDraft {
+  return {
+    name: event.name,
+    startDate: event.startsAt.slice(0, 10),
+    startTime: event.startsAt.slice(11, 16),
+    endDate: event.endsAt.slice(0, 10),
+    endTime: event.endsAt.slice(11, 16),
+  };
+}
+
+export interface EventDetails {
+  name: string;
+  startsAt: string;
+  endsAt: string;
+  timeZone: string;
+  currency: string;
+}
+
+/** Only what differs from the saved event, in the API's terms; empty when nothing changed, and then nothing is sent (sc-3587). */
+export function eventChanges(
+  saved: EventDetails,
+  typed: { draft: EventDraft; timeZone: string; currency: string },
+): Partial<EventDetails> {
+  const was = { ...draftOf(saved), timeZone: saved.timeZone, currency: saved.currency };
+  const changes: Partial<EventDetails> = {};
+  const startsAt = localDateTime(typed.draft.startDate, typed.draft.startTime) ?? '';
+  const endsAt = localDateTime(typed.draft.endDate, typed.draft.endTime) ?? '';
+
+  if (eventNameOf(typed.draft.name) !== was.name) changes.name = eventNameOf(typed.draft.name);
+  if (startsAt !== localDateTime(was.startDate, was.startTime)) changes.startsAt = startsAt;
+  if (endsAt !== localDateTime(was.endDate, was.endTime)) changes.endsAt = endsAt;
+  if (typed.timeZone !== was.timeZone) changes.timeZone = typed.timeZone;
+  if (typed.currency !== was.currency) changes.currency = typed.currency;
+
+  return changes;
+}

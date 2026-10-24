@@ -540,3 +540,244 @@ describe("An event's page", () => {
     expect(screen.queryByText('Not yours')).toBeNull();
   });
 });
+
+describe("Editing an event's details (sc-3587)", () => {
+  type Sent = { line: string; body: unknown; ifMatch: string | null };
+
+  function tagged(body: unknown, tag: string, status = 200): Response {
+    return new Response(JSON.stringify(body), { status, headers: { ETag: tag } });
+  }
+
+  /** The event as the API holds it, at a version, and every request sent with its If-Match. */
+  function serving(answers: Record<string, Answer> = {}) {
+    const sent: Sent[] = [];
+    const held = { event: event(), version: 1 };
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      const body = typeof init?.body === 'string' ? (JSON.parse(init.body) as unknown) : null;
+      sent.push({ line, body, ifMatch: new Headers(init?.headers).get('If-Match') });
+
+      const answer = await answers[line]?.(body);
+      if (answer != null) return answer;
+
+      if (line === 'PATCH /api/events/ev_1') {
+        held.event = { ...held.event, ...(body as object) };
+        held.version += 1;
+      }
+
+      return tagged({ event: held.event }, `"${held.version}"`);
+    });
+
+    return { sent, held };
+  }
+
+  async function editing(): Promise<void> {
+    at('/app/events/ev_1/edit');
+    await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+  }
+
+  function value(label: string): string {
+    return (screen.getByLabelText(label) as HTMLInputElement).value;
+  }
+
+  it('is offered on the event page with events.manage, and not without it', async () => {
+    signedIn();
+    serving();
+    at('/app/events/ev_1');
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+
+    fireEvent.click(
+      within(heading.closest('section')!).getByRole('link', { name: 'Edit details' }),
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Edit details' })).toBeDefined();
+
+    cleanup();
+    signedIn(READER);
+    at('/app/events/ev_1');
+    await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' });
+    expect(screen.queryByRole('link', { name: 'Edit details' })).toBeNull();
+  });
+
+  it("opens with the event's values, its times as saved in its zone", async () => {
+    signedIn();
+    serving();
+    await editing();
+
+    expect([
+      value('Event name'),
+      (document.getElementById('event-start-date') as HTMLInputElement).value,
+      (document.getElementById('event-start-time') as HTMLInputElement).value,
+      (document.getElementById('event-end-date') as HTMLInputElement).value,
+      (document.getElementById('event-end-time') as HTMLInputElement).value,
+      value('Time zone'),
+      value('Currency'),
+    ]).toEqual([
+      'Adaeze and Tunde',
+      '2026-11-14',
+      '16:00',
+      '2026-11-15',
+      '02:00',
+      'Africa/Lagos',
+      'NGN',
+    ]);
+    expect(
+      screen.getByText(
+        'Changing the zone keeps the times as typed. Sat 16:00 stays 16:00 in the new zone.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('sends nothing when nothing changed, and the page says so', async () => {
+    signedIn();
+    const { sent } = serving();
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByText('Nothing changed, so nothing was sent.')).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('PATCH'))).toEqual([]);
+  });
+
+  it('sends only what changed with the tag it read, then shows the new values and Saved', async () => {
+    signedIn();
+    const { sent } = serving();
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: '  Adé at 40 ' } });
+    fireEvent.change(screen.getByLabelText('Time zone'), { target: { value: 'Europe/London' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Adé at 40' })).toBeDefined();
+    expect(sent.find(({ line }) => line === 'PATCH /api/events/ev_1')).toEqual({
+      line: 'PATCH /api/events/ev_1',
+      body: { name: 'Adé at 40', timeZone: 'Europe/London' },
+      ifMatch: '"1"',
+    });
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Saved'));
+  });
+
+  it('shows every problem at once with focus on the first, and sends nothing', async () => {
+    signedIn();
+    const { sent } = serving();
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: '   ' } });
+    fireEvent.change(document.getElementById('event-end-date')!, {
+      target: { value: '2026-11-13' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(await screen.findByText('Give the event a name.')).toBeDefined();
+    expect(screen.getByText('The end is before the start. Choose a later end.')).toBeDefined();
+    await waitFor(() => expect(document.activeElement?.id).toBe('event-name'));
+    expect(sent.filter(({ line }) => line.startsWith('PATCH'))).toEqual([]);
+  });
+
+  it('says somebody else changed it, keeps what was typed, and shows the latest after asking', async () => {
+    signedIn();
+    const { held } = serving({
+      'PATCH /api/events/ev_1': () => problem(412, 'precondition_failed'),
+    });
+    await editing();
+    held.event = { ...held.event, name: 'Their name' };
+    held.version = 2;
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'My name' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText(
+        'Not saved. Somebody else changed this event since you opened it. What you typed is still here.',
+      ),
+    ).toBeDefined();
+    expect(value('Event name')).toBe('My name');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show the latest' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'Show the latest version?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Show the latest' }));
+
+    await waitFor(() => expect(value('Event name')).toBe('Their name'));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('says the currency cannot change once amounts are recorded', async () => {
+    signedIn();
+    serving({ 'PATCH /api/events/ev_1': () => problem(409, 'event_currency_in_use') });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'GHS' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText(
+        'The currency cannot change once amounts are recorded against this event.',
+      ),
+    ).toBeDefined();
+    expect(value('Currency')).toBe('GHS');
+  });
+
+  it('says it was not saved when saving fails, keeping everything typed', async () => {
+    signedIn();
+    serving({ 'PATCH /api/events/ev_1': () => problem(500, 'internal_error') });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Kept' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText('Not saved. Your changes are still here. Try again.'),
+    ).toBeDefined();
+    expect(value('Event name')).toBe('Kept');
+  });
+
+  it('asks before leaving with unsaved changes, and leaves when told to', async () => {
+    signedIn();
+    serving();
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    const dialog = await screen.findByRole('alertdialog', { name: 'Leave without saving?' });
+    expect(document.activeElement).toBe(
+      within(dialog).getByRole('button', { name: 'Keep editing' }),
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }));
+    expect(value('Event name')).toBe('Unsaved');
+
+    fireEvent.click(document.querySelector('.event-back')!);
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Leave without saving',
+      }),
+    );
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+    ).toBeDefined();
+  });
+
+  it('leaves at once when nothing was changed', async () => {
+    signedIn();
+    serving();
+    await editing();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
+    ).toBeDefined();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('is refused to a role without events.manage', async () => {
+    signedIn(READER);
+    const { sent } = serving();
+    at('/app/events/ev_1/edit');
+
+    expect(await screen.findByRole('heading', { level: 1 })).toBeDefined();
+    expect(screen.queryByRole('heading', { name: 'Edit details' })).toBeNull();
+    expect(sent.filter(({ line }) => line.includes('/api/events/'))).toEqual([]);
+  });
+});

@@ -2230,6 +2230,34 @@ describe('events (sc-1486)', () => {
     ).rejects.toThrow(/events controller/);
   });
 
+  test('an edit opens with the tag it read, and sends it back as If-Match', async () => {
+    const headers: (string | null)[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (_url, init) => {
+        headers.push(new Headers(init?.headers).get('If-Match'));
+
+        return new Response(JSON.stringify({ event: EVENT }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"2"' },
+        });
+      },
+    });
+
+    expect(await api.taggedEvent(EVENT.id)).toEqual({ event: EVENT, tag: '"2"' });
+    expect(await api.updateEvent(EVENT.id, { name: 'Renamed' }, '"2"')).toEqual({
+      event: EVENT,
+      tag: '"2"',
+    });
+    expect(headers).toEqual([null, '"2"']);
+  });
+
+  test('an event answered without its ETag is an error, as an edit could not be saved', async () => {
+    await expect(client(() => json({ event: EVENT })).api.taggedEvent('e1')).rejects.toThrow(
+      /ETag/,
+    );
+  });
+
   test('a refused create carries its violations by field', async () => {
     const { api } = client(() =>
       problem(422, 'validation_failed', {

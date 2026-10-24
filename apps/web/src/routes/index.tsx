@@ -4,6 +4,7 @@ import { Account } from './app/account/Account.tsx';
 import { Security } from './app/account/Security.tsx';
 import { AppLayout } from './app/AppLayout.tsx';
 import { Dashboard } from './app/Dashboard.tsx';
+import { EditEvent } from './app/events/EditEvent.tsx';
 import { EventGuests, EventView } from './app/events/EventView.tsx';
 import { Events } from './app/events/Events.tsx';
 import { NewEvent } from './app/events/NewEvent.tsx';
@@ -73,6 +74,7 @@ export const routes = [
       { path: 'events', element: <Events /> },
       { path: 'events/new', element: <NewEvent /> },
       { path: 'events/:eventId', element: <EventView /> },
+      { path: 'events/:eventId/edit', element: <EditEvent /> },
       { path: 'events/:eventId/guests', element: <EventGuests /> },
       { path: 'guests', element: <Dashboard /> },
       { path: 'account', element: <Account /> },
