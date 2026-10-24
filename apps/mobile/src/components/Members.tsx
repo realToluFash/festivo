@@ -455,12 +455,14 @@ export function MemberPage({
         )}
       </View>
 
-      {acts && member.suspension != null && (
+      {member.suspension != null && (
         <Suspension
           kind={kind}
           organisation={organisation}
           member={member}
           suspension={member.suspension}
+          standing={standing}
+          acts={acts}
           onChanged={onChanged}
         />
       )}
@@ -719,7 +721,7 @@ function FixedRole({
           )}
         </>
       )}
-      {standing === 'ownerOnly' && (
+      {standing === 'ownerOnly' && member.suspension == null && (
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('membersScreen.ownerOnly')}
         </Text>
@@ -839,18 +841,22 @@ function RolePicker({
   );
 }
 
-/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below. */
+/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below; read-only to a viewer who can't act. */
 function Suspension({
   kind,
   organisation,
   member,
   suspension,
+  standing,
+  acts,
   onChanged,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
   suspension: DomainSuspension;
+  standing: MemberStanding;
+  acts: boolean;
   onChanged: (list: MembersList) => void;
 }) {
   const { t } = useTranslation();
@@ -902,12 +908,20 @@ function Suspension({
           <FieldError message={failed} />
         </View>
       )}
-      <PrimaryButton
-        label={t('membersScreen.restore', named)}
-        busy={busy}
-        onPress={() => void restore()}
-        testID="members.restore"
-      />
+      {acts ? (
+        <PrimaryButton
+          label={t('membersScreen.restore', named)}
+          busy={busy}
+          onPress={() => void restore()}
+          testID="members.restore"
+        />
+      ) : (
+        standing === 'ownerOnly' && (
+          <Text size={tokens.typeBodyPhone.size} muted>
+            {t('membersScreen.ownerOnly')}
+          </Text>
+        )
+      )}
     </View>
   );
 }
