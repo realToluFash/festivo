@@ -52,7 +52,7 @@ def make(path, packages, head, pr=None, rules=None):
     try:
         if rules:
             put_back_rules(tree, rules)
-    except (OSError, tarfile.TarError) as error:
+    except (OSError, tarfile.TarError, subprocess.CalledProcessError) as error:
         remove(path)
         raise Unprepared(f"putting {rules[:7]}'s Claude rules into {tree} failed: {error}") \
             from error

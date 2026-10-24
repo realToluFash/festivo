@@ -3,6 +3,7 @@ import pathlib
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 from soirely_queue import checkout, review
 
@@ -116,4 +117,17 @@ class Worktree(unittest.TestCase):
     def test_a_head_that_cannot_be_found_is_unprepared_and_leaves_nothing(self):
         with self.assertRaises(checkout.Unprepared):
             review.make(self.lead, self.lead, "f" * 40)
+        self.assertFalse(review.place(self.lead).exists())
+
+    def test_rules_that_cannot_be_archived_are_unprepared_and_leave_nothing(self):
+        run = subprocess.run
+
+        def failing_archive(args, **kwargs):
+            if "archive" in args:
+                raise subprocess.CalledProcessError(128, args, stderr=b"No space left")
+            return run(args, **kwargs)
+
+        with mock.patch.object(review.subprocess, "run", failing_archive), \
+                self.assertRaises(checkout.Unprepared):
+            review.make(self.lead, self.lead, self.head, 40, rules=self.main)
         self.assertFalse(review.place(self.lead).exists())
