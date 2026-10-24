@@ -107,6 +107,6 @@
     "owner_claims.has_owner": "Une personne ayant le rôle Propriétaire est déjà en fonction dans {organisation}.",
     "owner_claims.administrators_only": "Seule une personne ayant le rôle Administrateur peut devenir propriétaire.",
     "owner_claims.own": "Vous ne pouvez pas arrêter votre propre demande.",
-    "owner_claims.not_claimant": "Only the person who started this claim can withdraw it.",
+    "owner_claims.not_claimant": "Seule la personne qui a fait cette demande peut la retirer.",
     "owner_claims.who_may_stop": "Seule une personne ayant le rôle Administrateur, ou la personne propriétaire suspendue, peut arrêter cette demande."
 }
