@@ -20,7 +20,7 @@
     "unsupported_media_type": "Ce format n’est pas pris en charge.",
     "precondition_failed": "Quelqu’un d’autre a modifié cet élément depuis que vous l’avez ouvert.",
     "precondition_required": "Veuillez envoyer la version que vous modifiez, dans If-Match.",
-    "event_currency_in_use": "La devise ne peut plus changer une fois que des montants sont enregistrés pour l’événement.",
+    "event_currency_in_use": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
     "unauthenticated": "Veuillez vous connecter pour continuer.",
     "invalid_credentials": "Cette adresse e-mail et ce mot de passe ne correspondent pas.",
     "invalid_refresh_token": "Votre session a expiré. Veuillez vous reconnecter.",
