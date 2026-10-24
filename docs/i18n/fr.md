@@ -54,6 +54,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
+  `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is « devenir
+  propriétaire », with no article, so it agrees with nobody; "has an active owner" is « une
+  personne ayant le rôle Propriétaire est déjà en fonction ». The claim is « la demande », and
+  a claimant's is « la demande faite par {{claimant}} », never « de {{claimant}} ». A domain
+  takes « une adresse {{domain}} » and « du domaine {{domain}} », for the same elision.
+  "Soirely support" is « l’assistance Soirely », as the drafted errors; restoring is
+  « rétablir ». « Type » stays as in English (`same-as-english.json`). Members is « Membres ».
 - **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
   `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
   `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: « la
