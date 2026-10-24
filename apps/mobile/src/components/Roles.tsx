@@ -676,7 +676,7 @@ function unsavedLine(t: TFunction, creating: boolean, title: string, holders: nu
 
 const DOCKED: DockInset = { horizontal: tokens.spaceLg, vertical: tokens.spaceSm };
 
-/** On the phone the bar rests on the keys while they are up, far below the name it saves (sc-7099). */
+/** On the phone the bar rests on the keys while it and the name it saves both fit above them (sc-7099). */
 function Unsaved({
   phone,
   field,
