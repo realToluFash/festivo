@@ -694,7 +694,7 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     at('/complete-profile');
 
     expect(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' })).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
 
     expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
     expect(screen.queryByRole('button', { name: 'Ask to join Ìrè Events' })).toBeNull();
