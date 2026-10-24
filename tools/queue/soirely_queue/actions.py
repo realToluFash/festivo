@@ -831,7 +831,7 @@ def pr_edit(c, a):
     if live["state"] == "CLOSED":
         raise Refused(f"PR #{a.pr} is closed unmerged")
     owns(c, live["story_id"], f"PR #{a.pr} is {{}}'s to edit; ask [ops]")
-    found = T.matching(live["body"], a.section)
+    found = [h for h in T.matching(live["body"], a.section) if h != T.TOP]
     if len(found) != 1:
         headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
         raise Refused(f"{'no heading' if not found else f'{len(found)} headings'} match "

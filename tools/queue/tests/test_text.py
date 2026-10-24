@@ -73,6 +73,13 @@ class Sections(unittest.TestCase):
         self.assertEqual(T.matching(body, "Evidence of work"), ["Evidence of work"])
         self.assertEqual(T.matching(body, "Design"), [])
 
+    def test_find_takes_the_first_heading_matching_names(self):
+        body = "## Acceptance criteria\na\n## AC notes\nn\n## Risks\nr\n## Risks, more\nm\n"
+        for name in ("ac", "risks", "Risks, more", "evidence"):
+            found = T.find(body, name)
+            self.assertEqual(found and found[0], (T.matching(body, name) or [None])[0])
+        self.assertEqual(T.find(body, "ac")[0], "Acceptance criteria")
+
     def test_outstanding_items(self):
         report = "Tested on main\n\nOutstanding items:\n- first\n- second\n\nAfter."
         self.assertEqual(T.outstanding_items(report), ["first", "second"])

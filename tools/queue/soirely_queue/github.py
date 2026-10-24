@@ -144,8 +144,13 @@ def lead_verdicts(reviews):
     return lead
 
 
+def story_of(branch, title):
+    """The story a pull request is for: its branch names it, or failing that its title."""
+    found = STORY.search(branch) or STORY.search(title or "")
+    return int(found.group(1)) if found else None
+
+
 def slim(node):
-    story = STORY.search(node["headRefName"]) or STORY.search(node["title"])
     return {
         "number": node["number"],
         "title": node["title"],
@@ -153,7 +158,7 @@ def slim(node):
         "state": node["state"].lower(),
         "draft": node["isDraft"],
         "branch": node["headRefName"],
-        "story_id": int(story.group(1)) if story else None,
+        "story_id": story_of(node["headRefName"], node["title"]),
         "head_sha": node["headRefOid"],
         "base": node["baseRefName"],
         "body": node.get("body") or "",
@@ -357,8 +362,7 @@ def live(number):
             "mergeStateStatus": (pull.get("mergeable_state") or "unknown").upper(),
             "state": "MERGED" if pull.get("merged") else pull["state"].upper(),
             "draft": bool(pull.get("draft")), "body": pull.get("body") or "",
-            "story_id": int(found.group(1)) if (found := STORY.search(pull["head"]["ref"])
-                                                or STORY.search(pull.get("title") or "")) else None,
+            "story_id": story_of(pull["head"]["ref"], pull.get("title")),
             "mergeCommit": pull["merge_commit_sha"] if pull.get("merged") else None}
 
 

@@ -38,24 +38,14 @@ def sections(markdown):
 
 def find(markdown, name):
     """The section whose heading matches the name: exact first, then by prefix."""
-    wanted = name.strip().lower()
-    candidates = sections(markdown)
-    for heading, level, body in candidates:
-        if heading.lower() == wanted:
-            return heading, level, body
-    aliases = {"ac": ("ac", "acceptance")}
-    prefixes = aliases.get(wanted, (wanted,))
-    for heading, level, body in candidates:
-        if heading.lower().startswith(prefixes):
-            return heading, level, body
-    return None
+    found = matching(markdown, name)
+    return next((s for s in sections(markdown) if s[0] == found[0]), None) if found else None
 
 
 def matching(markdown, name):
-    """Every heading the name matches as `find` matches it: the exact ones, or failing
-    those, the ones it begins."""
+    """Every heading the name matches: the exact ones, or failing those, the ones it begins."""
     wanted = name.strip().lower()
-    headings = [h for h, _, _ in sections(markdown) if h != TOP]
+    headings = [h for h, _, _ in sections(markdown)]
     exact = [h for h in headings if h.lower() == wanted]
     if exact:
         return exact
