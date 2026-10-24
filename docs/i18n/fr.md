@@ -172,8 +172,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   domaine d'entreprise », « Activée » / « Désactivée »; a working domain « Ouvert aux
   demandes », a stopped one « Sans effet ». "… instead" is « … plutôt ».
   The button alone is « Demander l'accès » (`domainJoining.ask`), since « Demander à rejoindre »
-  squeezed the organisation name beside it on the app phone (QA, sc-4434); its screen-reader
-  label keeps « Demander à rejoindre {{organisation}} ».
+  squeezed the organisation name beside it on the app phone (QA, sc-4434). Its screen-reader
+  label starts with the same words, « Demander l’accès à {{organisation}} », so the name a
+  voice-control user says is the one they see (WCAG 2.5.3, sc-8863). Any label beside a
+  shortened button begins with that button's words.
 
 - **21 Oct 2026. Members in the app** (`mobile:membersScreen.*`, sc-4259). The screen is
   « Membres »; a member is removed with « Retirer », as the glossary's Remove. A person's state
