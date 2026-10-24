@@ -65,6 +65,12 @@ final readonly class UserMailer
         return $this->accountLanguage->of($user, $asked);
     }
 
+    /** The language a server-written date on a screen is in: the one the request asked for, else the account's (sc-9267). */
+    public function shownLocaleFor(User $user): string
+    {
+        return $this->accountLanguage->shown($user);
+    }
+
     /** A time for a person (sc-868), in the zone and with the label `deadline()` shares: their zone, else UTC, "WAT" or "UTC+04:00". */
     public function moment(DateTimeImmutable $at, User $user, string $locale): string
     {
