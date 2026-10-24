@@ -1,48 +1,18 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { startTransition, use, type ReactNode } from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { LinkedNotice } from './LinkedNotice.tsx';
+import { renderInterrupted } from '../test-interrupted.tsx';
 
 const LINKED = 'soirely.provider.linked';
 const NOTICE = 'Apple is now linked to your account. You can sign in with either.';
-
-function suspendingOnce(): { Slow: () => ReactNode; release: () => Promise<void> } {
-  let resolve = () => {};
-  const ready = new Promise<void>((done) => (resolve = done));
-
-  return {
-    Slow: () => {
-      use(ready);
-      return null;
-    },
-    release: async () => {
-      await act(async () => {
-        resolve();
-        await ready;
-      });
-    },
-  };
-}
 
 describe('the linked notice', () => {
   afterEach(() => sessionStorage.clear());
 
   it('survives a render that React abandons and restarts', async () => {
     sessionStorage.setItem(LINKED, 'Apple');
-    const { Slow, release } = suspendingOnce();
-    const { rerender } = render(<></>);
-
-    await act(async () =>
-      startTransition(() =>
-        rerender(
-          <>
-            <LinkedNotice />
-            <Slow />
-          </>,
-        ),
-      ),
-    );
+    const { release } = await renderInterrupted(<LinkedNotice />);
     expect(screen.queryByText(NOTICE), 'the first render never commits').toBeNull();
     expect(sessionStorage.getItem(LINKED), 'an abandoned render leaves it in place').toBe('Apple');
 
