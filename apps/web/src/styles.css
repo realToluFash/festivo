@@ -2261,9 +2261,10 @@ span {
 /* Taking no height, the button centres on the sentence instead of making the row 44px tall and pulling the sentence off its mark. */
 .notice-action-row .notice-dismiss {
   margin-block: calc(var(--sizeHit) / -2);
+  padding-inline: var(--spaceXxs);
 }
 
-/* The box overhangs a one-line notice, so the ring is drawn inside it rather than across the notice's border. */
+/* The box overhangs a one-line notice, so the ring is drawn inside it rather than across the notice's border, in the padding clear of the word. */
 .notice-action-row .notice-dismiss:focus-visible {
   outline-offset: -2px;
 }
