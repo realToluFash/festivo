@@ -3,6 +3,7 @@ import { type NewOrganisationField, deviceRegion } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   type LayoutRectangle,
   Modal,
@@ -31,12 +32,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, TextField } from './Field.tsx';
-import {
-  type SettledLift,
-  keyboardTopNow,
-  settledLift,
-  watchKeyboardTop,
-} from './keyboardWatch.ts';
+import { type SettledLift, keyboardTopNow, settledLift } from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
@@ -59,6 +55,7 @@ export function CreateOrganisation({
   // The `create_keyboard` drawing is for Android phones; the iPhone keeps its row (sc-9442).
   const drawn = Platform.OS === 'android' && phone;
   const keysUp = useKeysUp();
+  const typing = phone && keysUp;
 
   return (
     <Modal
@@ -86,7 +83,7 @@ export function CreateOrganisation({
             style={[
               styles.frame,
               phone ? styles.framePhone : styles.frameTablet,
-              phone && { paddingBottom: keysUp ? 0 : insets.bottom },
+              phone && { paddingBottom: typing ? 0 : insets.bottom },
             ]}
             accessibilityViewIsModal
           >
@@ -96,7 +93,7 @@ export function CreateOrganisation({
                 email={email}
                 drawn={drawn}
                 keysUp={keysUp}
-                phone={phone}
+                typing={typing}
                 onCreated={onCreated}
                 onCancel={onCancel}
               />
@@ -108,18 +105,25 @@ export function CreateOrganisation({
   );
 }
 
-/** Whether the keyboard is up. */
+/** Whether the keyboard is up, changing when the avoiding view starts to move. */
 function useKeysUp(): boolean {
   const [up, setUp] = useState(() => keyboardTopNow(0) != null);
 
-  useEffect(
-    () =>
-      watchKeyboardTop(
-        () => 0,
-        (top) => setUp(top != null),
-      ),
-    [],
-  );
+  useEffect(() => {
+    // iOS's avoiding view pads on the Will events and Android's on the Did ones.
+    const ios = Platform.OS === 'ios';
+    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () =>
+      setUp(true),
+    );
+    const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () =>
+      setUp(false),
+    );
+
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
 
   return up;
 }
@@ -180,7 +184,7 @@ function Form({
   email,
   drawn,
   keysUp,
-  phone,
+  typing,
   onCreated,
   onCancel,
 }: {
@@ -188,8 +192,7 @@ function Form({
   /** The buttons stack, Create organisation on top (`create_keyboard`). */
   drawn: boolean;
   keysUp: boolean;
-  /** With the keys up on a phone, the title and the footer tighten and the footer shows its divider. */
-  phone: boolean;
+  typing: boolean;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -220,7 +223,6 @@ function Form({
   );
   const errors = { ...refused, ...checks.errors };
   const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp);
-  const typing = phone && keysUp;
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
