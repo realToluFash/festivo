@@ -108,18 +108,15 @@ export function OwnerClaimBanner({
   );
 }
 
-/** Only the claimant sees it, and only until they leave Members (sc-8204). Focus reads it, so nothing announces it (sc-9382). */
+/** Only the claimant sees it, and only until they leave Members (sc-8204). */
 function Withdrew({ told }: { told: boolean }) {
   const { t } = useTranslation();
+  const words = t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew');
   const shown = useBroughtIntoView();
 
   return (
     <View ref={shown} accessible testID="ownerClaim.withdrew">
-      <Notice
-        tone="done"
-        mark={tokens.marks.done.glyph}
-        body={t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew')}
-      />
+      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} />
     </View>
   );
 }

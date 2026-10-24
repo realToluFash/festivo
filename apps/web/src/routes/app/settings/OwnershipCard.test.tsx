@@ -103,7 +103,6 @@ function settings() {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > General, ownership and leaving', () => {

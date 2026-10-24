@@ -567,6 +567,36 @@ final class DomainSuspensionTest extends ApiTestCase
         self::assertStringEndsWith(' WAT', $suspension($owner)['removesAt']['written']);
     }
 
+    /** sc-9267: both readers' lines are written in the language the request asks for, not the one they saved. */
+    #[Test]
+    public function theSuspendedLinesAreWrittenInTheLanguageTheRequestAsksFor(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $tunde = $this->domainMember($organisation, 'tunde@ire.events');
+        $this->verifiedAlternative($tunde, 'tunde@okafor.family');
+        $this->makePrimary($tunde, 'tunde@okafor.family');
+        $membership = $this->membershipOf($tunde, $organisation);
+        $owner->setLocale('pt');
+        $tunde->setLocale('pt');
+        self::service(EntityManagerInterface::class)->flush();
+        $removesAt = $membership->getRemovesAt() ?? self::fail('no removal');
+        $mailer = self::service(UserMailer::class);
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+
+        $this->signIn($tunde);
+        $paused = Type\vec(Type\shape(['suspension' => Type\shape(['removesAt' => Type\shape(['written' => Type\string()], true)], true)], true))->coerce($this->send('GET', '/api/orgs')['paused']);
+        $this->signIn($owner);
+        $members = Type\vec(Type\shape(['id' => Type\string(), 'suspension' => Type\mixed()], true))->coerce(
+            $this->send('GET', Str\format('/api/orgs/%s/members', $organisation->getId()->toRfc4122()))['members'],
+        );
+        $row = Iter\search($members, static fn (array $member): bool => $member['id'] === $membership->getId()->toRfc4122()) ?? self::fail('not listed');
+        $listed = Type\shape(['removesAt' => Type\shape(['written' => Type\string()], true)], true)->coerce($row['suspension']);
+
+        self::assertSame($mailer->deadline($removesAt, $tunde, 'fr'), $paused[0]['suspension']['removesAt']['written']);
+        self::assertSame($mailer->deadline($removesAt, $owner, 'fr'), $listed['removesAt']['written']);
+        self::assertNotSame($mailer->deadline($removesAt, $owner, 'pt'), $listed['removesAt']['written']);
+    }
+
     #[Test]
     public function anAdministratorCanRemoveASuspendedMember(): void
     {

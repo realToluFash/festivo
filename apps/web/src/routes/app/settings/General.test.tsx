@@ -63,7 +63,6 @@ beforeEach(() => signedIn());
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > General', () => {

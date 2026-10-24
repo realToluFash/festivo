@@ -58,7 +58,6 @@ function app() {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('No organisation', () => {

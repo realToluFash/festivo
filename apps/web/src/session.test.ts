@@ -21,7 +21,6 @@ function signedOutBy(detail: unknown) {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('a session the API ended', () => {

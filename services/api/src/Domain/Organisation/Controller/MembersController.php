@@ -85,7 +85,7 @@ final readonly class MembersController
             static fn (Invitation $invitation): string => $invitation->getAcceptedBy()?->getId()->toRfc4122() ?? '',
         );
         $now = new DateTimeImmutable();
-        $locale = $this->userMailer->localeFor($caller);
+        $locale = $this->userMailer->shownLocaleFor($caller);
         $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
         $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
 

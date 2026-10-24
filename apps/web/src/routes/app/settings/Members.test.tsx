@@ -236,9 +236,13 @@ function open() {
   );
 }
 
+async function historyOf(name: string) {
+  await screen.findByRole('heading', { level: 1, name });
+  return screen.findByRole('region', { name: 'How they got here' });
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > Members', () => {
@@ -322,7 +326,7 @@ describe('Settings > Members', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
 
-    const history = within(screen.getByRole('list'));
+    const history = within(await historyOf('Bisi Adeyemi'));
     expect(history.getByText('Invited by Folake Adeyemi')).toBeDefined();
     expect(history.getByText('Accepted the invitation')).toBeDefined();
     expect(history.getByText('Suspended by you')).toBeDefined();
@@ -371,7 +375,7 @@ describe('Settings > Members', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Kemi Lawal/ }));
 
-    const lines = within(screen.getByRole('list'))
+    const lines = within(await historyOf('Kemi Lawal'))
       .getAllByRole('listitem')
       .map((item) => item.textContent ?? '');
     expect(lines).toHaveLength(3);

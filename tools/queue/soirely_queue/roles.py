@@ -185,6 +185,7 @@ MAY = {
     "resolve": ("lead",),
     "merge": BUILDERS,
     "pr-close": BUILDERS,
+    "pr-edit": BUILDERS,
     "to-qa": DEVS + ("ops",),
     "rerun": DEVS + ("ops",),
 }

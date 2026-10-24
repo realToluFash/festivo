@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Domain\Organisation\Deletion\DeletedOrganisationPruner;
 use App\Domain\Organisation\Deletion\OrganisationRestorer;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\Membership;
@@ -88,6 +89,23 @@ final class OrganisationDeletionTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         self::assertSame([self::DELETED_AT, '2026-11-16T13:20:00+00:00', $written], [$body['deletedAt'], $body['restoreClosesAt'], $body['restoreCloses']]);
+    }
+
+    /** sc-9267: written in the language the request asks for, not the one the owner saved. */
+    #[Test]
+    public function theRestoreDeadlineIsWrittenInTheLanguageTheRequestAsksFor(): void
+    {
+        $owner = self::em()->find(User::class, $this->owner->getId()) ?? self::fail('no owner');
+        $owner->setLocale('pt');
+        self::em()->flush();
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'es');
+
+        $previewed = $this->as($this->owner, 'GET', $this->path('/deletion'));
+        $deleted = $this->delete($this->owner, 'Ìrè Events');
+
+        $written = static fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable('2026-11-16T13:20:00+00:00'), $owner, $locale);
+        self::assertSame([$written('es'), $written('es')], [$previewed['restoreCloses'], $deleted['restoreCloses']]);
+        self::assertNotSame($written('pt'), $written('es'));
     }
 
     /** @return iterable<string, array{?string, string}> */

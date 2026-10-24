@@ -355,7 +355,7 @@ final readonly class TwoFactorRecoveries
             return null;
         }
 
-        $locale = $this->userMailer->localeFor($user);
+        $locale = $this->userMailer->shownLocaleFor($user);
 
         return ApiException::tooManyAttemptsUntil(
             'You can ask 3 times a day.',
