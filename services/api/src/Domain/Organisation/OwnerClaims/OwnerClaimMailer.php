@@ -97,7 +97,7 @@ final readonly class OwnerClaimMailer
             $this->userMailer->send($primary->getAddress(), $locale, $key . '.subject', [
                 $this->userMailer->line($key . '.heading', $locale, $words),
                 ...(null === $reasonKey ? [] : [$this->userMailer->line($reasonKey, $locale, $words)]),
-                $this->userMailer->line('ownerClaim.claimant', $locale, $words),
+                $this->userMailer->line($words['{claimant}'] === $words['{email}'] ? 'ownerClaim.claimantAddress' : 'ownerClaim.claimant', $locale, $words),
                 $this->userMailer->line('ownerClaim.domain', $locale, $words),
                 $this->userMailer->line($key . '.when', $locale, $words),
                 $this->userMailer->line($linkKey, $locale, $words),

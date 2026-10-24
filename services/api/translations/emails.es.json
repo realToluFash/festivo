@@ -177,6 +177,7 @@
     "ownerClaim.lapsed.claimantGone": "{claimant} is no longer an administrator of {organisation}.",
     "ownerClaim.lapsed.when": "Lapsed: {deadline}",
     "ownerClaim.claimant": "Solicitante: {claimant} · {email}",
+    "ownerClaim.claimantAddress": "Solicitante: {email}",
     "ownerClaim.domain": "Dominio: {domain}",
     "ownerClaim.openLink": "Abrir Miembros: {link}",
     "ownerClaim.footer.administrator": "Recibe este correo porque tiene el rol Administrador en {organisation}.",

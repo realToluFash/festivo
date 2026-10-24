@@ -390,6 +390,26 @@ final class OwnerClaimTest extends ApiTestCase
     }
 
     #[Test]
+    public function aClaimantWithNoDisplayNameIsTheirAddressOnce(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $this->found($organisation, $administrator, '-72 hours -1 minute');
+        $this->demote($administrator, $organisation);
+        $entityManager = self::service(EntityManagerInterface::class);
+        ($entityManager->find(User::class, $administrator->getId()) ?? self::fail('no such account'))->setName('');
+        $entityManager->flush();
+
+        self::service(OwnerClaimHandler::class)->settleDue();
+
+        $mails = $this->mailsTitled("bisi@ire.events's claim to own Ìrè Events lapsed");
+        self::assertCount(2, $mails);
+        self::assertStringContainsString(
+            "bisi@ire.events is no longer an administrator of Ìrè Events.\n\nClaimant: bisi@ire.events\n\nDomain:",
+            (string) $mails[0]->getTextBody(),
+        );
+    }
+
+    #[Test]
     public function aClaimNeverFoundLapsingAtSevenDaysEmailsNobody(): void
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
