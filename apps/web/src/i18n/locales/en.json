@@ -1581,8 +1581,8 @@
     "noOwner": "{{organisation}} has no active owner",
     "howTo": "To become the owner, you publish a DNS record on your company domain to prove you control it.",
     "become": "Become the owner",
-    "lapsed": "Your claim lapsed on {{when}}. We didn't find the record in the 7 days.",
-    "recordRemoved": "The record was removed, so ownership didn't pass.",
+    "lapsed": "Your claim lapsed on {{when}}. We did not find the record within the 7 days.",
+    "recordRemoved": "The record was removed, so ownership did not pass.",
     "refusedAddress": "To become the owner, your main address must be at {{domain}}.",
     "refusedManaged": "{{domain}} is managed by another organisation. Contact Soirely support.",
     "failed": "That didn't work. Please try again.",
@@ -1604,7 +1604,7 @@
     "passesOn": "Ownership passes on {{when}}.",
     "keepPublished": "Keep this record published until then. We look it up again at that instant, and ownership passes only if it is still there.",
     "becoming": "{{claimant}} is becoming the owner. Ownership passes on {{when}}.",
-    "becomingUnfound": "{{claimant}} is becoming the owner. Their DNS record isn't found yet. Without it, the claim lapses on {{when}}.",
+    "becomingUnfound": "{{claimant}} is becoming the owner. Their DNS record has not been found yet. Without it, the claim lapses on {{when}}.",
     "stop": "Stop this claim",
     "stopConfirm": "Stop {{claimant}}'s claim?",
     "stopBody": "It ends at once, and everybody who was told about it is emailed. After a stop, ownership of {{organisation}} has to be restored by Soirely support.",
@@ -1616,7 +1616,7 @@
     "closed": "Ownership has to be restored by Soirely support.",
     "keepsWorking": "Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.",
     "pausedTitle": "{{claimant}} is becoming the owner of {{organisation}}",
-    "pausedUnfound": "Their DNS record isn't found yet. Without it, the claim lapses on {{when}}.",
+    "pausedUnfound": "Their DNS record has not been found yet. Without it, the claim lapses on {{when}}.",
     "pausedStopped": "You stopped {{claimant}}'s claim. Ownership of {{organisation}} now has to be restored by Soirely support."
   }
 }
