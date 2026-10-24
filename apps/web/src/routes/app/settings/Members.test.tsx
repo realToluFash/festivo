@@ -392,6 +392,10 @@ describe('somebody awaiting approval (sc-392)', () => {
 
     const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
     fireEvent.click(section.getByRole('button', { name: 'Approve' }));
+    expect(document.activeElement).toBe(section.getByRole('radio', { name: /Read-only/ }));
+    fireEvent.click(section.getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(section.getByRole('button', { name: 'Approve' }));
+    fireEvent.click(section.getByRole('button', { name: 'Approve' }));
     expect(section.queryByRole('radio', { name: /Owner/ })).toBeNull();
     expect((section.getByRole('radio', { name: /Read-only/ }) as HTMLInputElement).checked).toBe(
       true,
@@ -399,7 +403,9 @@ describe('somebody awaiting approval (sc-392)', () => {
     fireEvent.click(section.getByRole('radio', { name: /Coordinator/ }));
     fireEvent.click(section.getByRole('button', { name: 'Approve as Coordinator' }));
 
-    expect(await screen.findByText('Ada Okeke is now a member, as Coordinator.')).toBeDefined();
+    const done = await screen.findByRole('status');
+    expect(done.textContent).toContain('Ada Okeke is now a member, as Coordinator.');
+    expect(document.activeElement).toBe(done);
     expect(screen.getByRole('button', { name: 'See Ada Okeke' })).toBeDefined();
     expect(sent.find((one) => one.line.endsWith('/approve'))?.body).toEqual({ roleId: 'role_4' });
   });
@@ -447,13 +453,17 @@ describe('somebody awaiting approval (sc-392)', () => {
 
     const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
     fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
+    expect(document.activeElement).toBe(section.getByRole('heading', { name: /Turn down/ }));
     fireEvent.click(section.getByRole('button', { name: 'Keep the request' }));
+    expect(document.activeElement).toBe(section.getByRole('button', { name: 'Turn down' }));
     fireEvent.click(section.getByRole('button', { name: 'Turn down' }));
     expect(section.getByText(/The email does not say who turned it down/)).toBeDefined();
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(false);
     fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
 
-    expect(await screen.findByText('Ada Okeke’s request is turned down.')).toBeDefined();
+    const done = await screen.findByRole('status');
+    expect(done.textContent).toContain('Ada Okeke’s request is turned down.');
+    expect(document.activeElement).toBe(done);
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
   });
 
