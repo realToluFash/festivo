@@ -19,6 +19,7 @@ use App\Http\Access\Interfaces\MembershipDirectoryInterface;
 use App\Http\Exception\ApiException;
 use App\Locale\SupportedLocales;
 use App\Repository\InvitationRepository;
+use Collator;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Dict;
 use Psl\Iter;
@@ -71,8 +72,28 @@ final readonly class RoleManager
     {
         return $this->entityManager->getRepository(Membership::class)->count([
             'role' => $role,
-            'status' => [MembershipStatus::Active, MembershipStatus::Suspended],
+            'status' => MembershipStatus::holding(),
         ]);
+    }
+
+    /** @return list<Membership> whom `holders` counts, by name in the root collation, then by email (sc-6447) */
+    public function holdersOf(Role $role): array
+    {
+        $memberships = Type\vec(Type\instance_of(Membership::class))->coerce($this->entityManager->createQuery(
+            'SELECT m, u, e FROM ' . Membership::class . ' m JOIN m.user u LEFT JOIN u.emailAddresses e WHERE m.role = :role AND m.status IN (:holding)',
+        )
+            ->setParameter('role', $role)
+            ->setParameter('holding', Vec\map(MembershipStatus::holding(), static fn (MembershipStatus $status): string => $status->value))
+            ->getResult());
+        $collator = new Collator('root');
+        $collator->setStrength(Collator::PRIMARY);
+        $email = static fn (Membership $membership): string => $membership->getUser()->getPrimaryEmailAddress()?->getAddress() ?? '';
+
+        return Vec\sort($memberships, static function (Membership $a, Membership $b) use ($collator, $email): int {
+            $byName = (int) $collator->compare($a->getUser()->getName(), $b->getUser()->getName());
+
+            return 0 !== $byName ? $byName : $email($a) <=> $email($b);
+        });
     }
 
     /** @param list<string> $permissions */

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\Roles\RoleManager;
+use App\Entity\Membership;
 use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\ErrorCode;
+use App\Enum\MembershipStatus;
 use App\Enum\Permission;
 use App\Enum\PermissionArea;
 use App\Http\Access\Interfaces\MembershipDirectoryInterface;
@@ -16,6 +18,7 @@ use App\Http\Access\Policy\InOrganisation;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\OrganisationRepository;
+use Psl\Iter;
 use Psl\Type;
 use Psl\Vec;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -53,7 +56,7 @@ final readonly class RolesController
         ]);
     }
 
-    /** Every role with what it holds and how many hold it, and the registry the grid draws, area by area. */
+    /** Every role with what it holds and who holds it, and the registry the grid draws, area by area. */
     #[Route('/api/orgs/{organisationId}/roles', name: 'orgs_roles', methods: ['GET'])]
     #[InOrganisation(Permission::MembersRead)]
     public function list(string $organisationId): JsonResponse
@@ -112,6 +115,8 @@ final readonly class RolesController
     /** @return array<string, mixed> */
     private function role(Role $role): array
     {
+        $holders = $this->roleManager->holdersOf($role);
+
         return [
             'id' => $role->getId()->toRfc4122(),
             'seededAs' => $role->getSeededAs()?->value,
@@ -119,7 +124,11 @@ final readonly class RolesController
             'fixed' => $role->isOwner(),
             'removable' => null === $role->getSeededAs(),
             'permissions' => Vec\map($role->getPermissions(), static fn (Permission $permission): string => $permission->value),
-            'holders' => $this->roleManager->holders($role),
+            'holders' => Iter\count($holders),
+            'holderNames' => Vec\map($holders, static fn (Membership $membership): array => [
+                'name' => $membership->getUser()->getName(),
+                'suspended' => MembershipStatus::Suspended === $membership->getStatus(),
+            ]),
         ];
     }
 

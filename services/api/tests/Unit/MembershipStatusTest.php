@@ -16,6 +16,7 @@ use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Psl\Vec;
 
 final class MembershipStatusTest extends TestCase
 {
@@ -66,6 +67,15 @@ final class MembershipStatusTest extends TestCase
         $membership->setStatus(MembershipStatus::Suspended, new DateTimeImmutable());
 
         self::assertFalse($membership->isActive());
+    }
+
+    #[Test]
+    public function aRoleIsHeldWhileActiveOrSuspendedAndNoOtherTime(): void
+    {
+        self::assertSame(
+            [MembershipStatus::Active, MembershipStatus::Suspended],
+            Vec\filter(MembershipStatus::cases(), static fn (MembershipStatus $status): bool => $status->holdsRole()),
+        );
     }
 
     #[Test]
