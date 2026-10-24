@@ -64,6 +64,27 @@
     "guestsComing": "A lista de convidados deste evento estará disponível em breve.",
     "backToEvent": "Evento"
   },
+  "eventEdit": {
+    "open": "Edit details",
+    "title": "Edit details",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "zoneHint": "Changing the zone keeps the times as typed. {{day}} {{time}} stays {{time}} in the new zone.",
+    "zoneHintPlain": "Changing the zone keeps the times as typed.",
+    "currencyInUse": "The currency cannot change once amounts are recorded against this event.",
+    "notSaved": "Not saved. Your changes are still here. Try again.",
+    "changedElsewhere": "Not saved. Somebody else changed this event since you opened it. What you typed is still here.",
+    "showLatest": "Show the latest",
+    "showLatestTitle": "Show the latest version?",
+    "showLatestBody": "What you typed will be replaced by the version somebody else saved.",
+    "keepEditing": "Keep editing",
+    "leaveTitle": "Leave without saving?",
+    "leaveBody": "Your changes to this event will be lost.",
+    "leave": "Leave without saving",
+    "saved": "Saved",
+    "nothingChanged": "Nothing changed, so nothing was sent."
+  },
   "language": {
     "label": "Idioma",
     "automatic": "Automático",

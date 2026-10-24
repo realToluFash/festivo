@@ -2,11 +2,12 @@ import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { formatEventRange } from '@soirely/domain';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
-import { useSession } from '../../../session.ts';
+import { can, useSession } from '../../../session.ts';
+import { type EditOutcome } from './EditEvent.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -134,6 +135,22 @@ function EventOf({
 
 function EventPage({ event }: { event: OrganisationEvent }) {
   const { t } = useTranslation();
+  const session = useSession();
+  const outcome = editOutcome(useLocation().state);
+  const [announced, setAnnounced] = useState('');
+
+  useEffect(() => {
+    if (outcome == null) return;
+
+    // Set after the region is in the page, so a screen reader hears the change rather than missing a region born full.
+    const id = window.setTimeout(
+      () =>
+        setAnnounced(outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')),
+      0,
+    );
+
+    return () => window.clearTimeout(id);
+  }, [outcome, t]);
 
   return (
     <section className="card event-page-card" aria-labelledby="event-title">
@@ -147,13 +164,27 @@ function EventPage({ event }: { event: OrganisationEvent }) {
           timeZone: event.timeZone,
         })}
       </p>
-      <div>
+      <p className={announced === '' ? 'visually-hidden' : 'event-page-outcome'} role="status">
+        {announced}
+      </p>
+      <div className="event-page-actions">
+        {can(session, 'events.manage') && (
+          <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
+            {t('eventEdit.open')}
+          </Link>
+        )}
         <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
           {t('eventPage.guests')}
         </Link>
       </div>
     </section>
   );
+}
+
+function editOutcome(state: unknown): EditOutcome | null {
+  const edit = typeof state === 'object' && state != null && 'edit' in state ? state.edit : null;
+
+  return edit === 'saved' || edit === 'unchanged' ? edit : null;
 }
 
 function GuestsComing() {
