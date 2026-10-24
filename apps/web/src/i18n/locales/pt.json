@@ -864,13 +864,13 @@
       "domainSuspended": "Acesso suspenso: domínio da empresa"
     },
     "how": {
-      "invitation": "Invitation",
-      "invitationFrom": "Invitation from {{inviter}}",
-      "self_created": "Created {{organisation}}",
-      "join_code": "Join code",
-      "domain": "Company email address",
-      "request": "Asked to join",
-      "directory": "Company directory"
+      "invitation": "Convite",
+      "invitationFrom": "Convite de {{inviter}}",
+      "self_created": "Criou {{organisation}}",
+      "join_code": "Código de adesão",
+      "domain": "Endereço de e-mail da empresa",
+      "request": "Pediu para aderir",
+      "directory": "Diretório da empresa"
     },
     "when": {
       "since": "since {{date}}",
