@@ -26,6 +26,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Fixtures\OpenIdConnect\TestSigningKeys;
 use App\Tests\Traits\OnboardsAccounts;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -424,6 +425,29 @@ final class SignInRulesTest extends ApiTestCase
         $this->set(['inactivityTimeoutDays' => 3]);
 
         self::assertSame(422, $this->statusCode());
+    }
+
+    /** @return iterable<string, array{array<string, mixed>, string}> */
+    public static function rulesOfAnotherJsonType(): iterable
+    {
+        yield 'a numeric string for the timeout' => [['inactivityTimeoutDays' => '30'], 'inactivityTimeoutDays'];
+        yield '1 for Google or Apple only' => [['providerOnly' => 1], 'providerOnly'];
+        yield '0 for Google or Apple only' => [['providerOnly' => 0], 'providerOnly'];
+        yield '"true" for two-factor for everyone' => [['everyoneNeedsTwoFactor' => 'true'], 'everyoneNeedsTwoFactor'];
+        yield '"false" for two-factor for administrators' => [['administratorsNeedTwoFactor' => 'false'], 'administratorsNeedTwoFactor'];
+    }
+
+    /** @param array<string, mixed> $rules */
+    #[Test]
+    #[DataProvider('rulesOfAnotherJsonType')]
+    public function aRuleOfAnotherJsonTypeIsRefusedAndChangesNothing(array $rules, string $path): void
+    {
+        $body = $this->set($rules);
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame([$path, 'invalid_shape'], [$body['violations'][0]['propertyPath'] ?? null, $body['violations'][0]['code'] ?? null]);
+        $saved = $this->as($this->owner, 'GET', $this->path());
+        self::assertSame([false, null], [$saved['providerOnly'] ?? null, $saved['inactivityTimeoutDays'] ?? null]);
     }
 
     #[Test]
