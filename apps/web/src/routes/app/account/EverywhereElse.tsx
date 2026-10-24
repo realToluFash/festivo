@@ -14,7 +14,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { AppleMark, GoogleMark } from '../../../components/ProviderSignIn.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import {
   PROVIDER_NAMES,
   type ProviderReturn,
@@ -135,7 +135,7 @@ export function EverywhereElse({
 
   const until =
     refusal?.kind === 'limited' && refusal.until != null
-      ? formatTimeOfDay(refusal.until, currentLocale())
+      ? formatTimeOfDay(refusal.until, dateLocale())
       : null;
   const passwordError =
     checks.errors.password ??

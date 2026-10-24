@@ -17,6 +17,7 @@ import {
   LOCALE_CODES,
   followPluralLocales,
   followValueStops,
+  formattingLocale,
   narrowLocale,
 } from '@soirely/domain';
 import i18next from 'i18next';
@@ -65,6 +66,11 @@ export async function initI18n(): Promise<void> {
 /** The resolved locale, narrowed to one we have a catalogue for. */
 export function currentLocale(): string {
   return narrowLocale(i18next.resolvedLanguage ?? i18next.language);
+}
+
+/** What dates and times are written in: the browser's region, while it speaks the shown language. */
+export function dateLocale(): string {
+  return formattingLocale(currentLocale(), navigator.language);
 }
 
 /** Null clears the override and goes back to what the browser says. */

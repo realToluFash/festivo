@@ -13,7 +13,7 @@ import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
 import { markRulesSeen } from '../../../signInRulesSeen.ts';
 
@@ -608,7 +608,7 @@ function InForce({ organisation, page }: { organisation: Membership; page: SignI
 
 function Changes({ changes }: { changes: SignInRuleChange[] }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   return (
     <section className="card settings-card" aria-labelledby="rules-changes">

@@ -8,7 +8,7 @@ import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
-import { currentLocale } from '../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { type ProviderOnly, type TimedOut, providerOnlyBy } from '../../session.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
@@ -327,7 +327,7 @@ function refusalFrom(error: unknown, typed: string): Status {
     if (liftsAt != null) {
       return {
         kind: 'rateLimited',
-        retryAt: formatTimeOfDay(liftsAt, currentLocale()),
+        retryAt: formatTimeOfDay(liftsAt, dateLocale()),
         liftsAt: liftsAt.getTime(),
       };
     }

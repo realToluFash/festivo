@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { markRulesSeen, useRulesSeen } from '../signInRulesSeen.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 
@@ -84,7 +84,7 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
             <p>
               {t('signInRules.changedBody', {
                 organisation: name,
-                day: formatDay(changedAt, currentLocale()),
+                day: formatDay(changedAt, dateLocale()),
               })}
             </p>
             <Link className="link-button" to="/app/settings/sign-in-rules">

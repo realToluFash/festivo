@@ -11,7 +11,7 @@ import { Footnote, PrimaryButton, SecondaryButton } from '../src/components/Butt
 import { Field, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
 import { Text } from '../src/components/Text.tsx';
-import { currentLocale } from '../src/i18n/index.ts';
+import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
@@ -149,8 +149,7 @@ function refusalFrom(error: unknown): Status {
   if (error instanceof ApiError && error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
 
-    if (liftsAt != null)
-      return { kind: 'limited', time: formatTimeOfDay(liftsAt, currentLocale()) };
+    if (liftsAt != null) return { kind: 'limited', time: formatTimeOfDay(liftsAt, dateLocale()) };
   }
 
   return { kind: 'failed' };

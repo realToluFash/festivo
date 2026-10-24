@@ -17,7 +17,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { PasswordRule } from '../../../components/PasswordRule.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
@@ -381,7 +381,7 @@ function codeRefusal(
       paused:
         liftsAt == null
           ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) }),
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) }),
     };
   }
 
@@ -584,7 +584,7 @@ function refusalFrom(error: unknown, t: TFunction): Refusal {
       message:
         liftsAt == null
           ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) }),
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) }),
     };
   }
 

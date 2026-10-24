@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { rulesNotices } from '../kit/signInRules.ts';
 import { markRulesSeen, useRulesSeen } from '../signInRulesSeen.ts';
@@ -86,7 +86,7 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
             title={t('signInRules.changedTitle')}
             body={t('signInRules.changedBody', {
               organisation: name,
-              day: formatDay(changedAt, currentLocale()),
+              day: formatDay(changedAt, dateLocale()),
             })}
             action={{
               label: t('signInRules.changedSee'),

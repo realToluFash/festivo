@@ -13,7 +13,7 @@ import { Screen } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
-import { currentLocale } from '../../src/i18n/index.ts';
+import { dateLocale } from '../../src/i18n/index.ts';
 import { limitFromElsewhere, ruleValue } from '../../src/kit/signInRules.ts';
 import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
 import { markRulesSeen } from '../../src/signInRulesSeen.ts';
@@ -157,7 +157,7 @@ export default function SignInRules() {
 
 function Changes({ kind, changes }: { kind: LayoutKind; changes: SignInRuleChange[] }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   return (
     <View style={[cardFrame(kind), styles.section]}>

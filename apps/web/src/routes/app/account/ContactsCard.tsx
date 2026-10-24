@@ -28,7 +28,7 @@ import { ConfirmItsYou } from '../../../components/ConfirmItsYou.tsx';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../../formChecks.ts';
 import { PhoneEntry } from '../../../components/PhoneEntry.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 
 type Kind = 'email' | 'phone';
@@ -621,7 +621,7 @@ function addRefusal(refusal: unknown, kind: Kind, t: T): string {
 
     return lifts == null
       ? t('contacts.limitedSoon')
-      : t('contacts.limitedBody', { time: formatTimeOfDay(lifts, currentLocale()) });
+      : t('contacts.limitedBody', { time: formatTimeOfDay(lifts, dateLocale()) });
   }
   if (refusal instanceof ApiError && refusal.is('validation_failed'))
     return Object.values(refusal.fieldErrors())[0] ?? t('contacts.failed');

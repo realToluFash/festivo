@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import {
   NEW_ORGANISATION_FIELDS,
@@ -99,7 +99,7 @@ function Form({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
   const [values, setValues] = useState<Record<NewOrganisationField, string>>(() => ({
     name: '',
     countryCode:
