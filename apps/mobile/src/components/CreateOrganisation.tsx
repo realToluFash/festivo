@@ -30,7 +30,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
-import { Field, focusRefused, TextField } from './Field.tsx';
+import { Field, focusChecked, focusRefused, TextField } from './Field.tsx';
 import {
   type SettledLift,
   keyboardTopNow,
@@ -215,7 +215,7 @@ function Form({
   const checks = useFormChecks(
     NEW_ORGANISATION_FIELDS,
     (field, value) => newOrganisationMessage(field, value, t),
-    (field) => (field === 'name' ? nameInput.current?.focus() : focusPicker(countryPicker)),
+    (field) => (field === 'name' ? focusChecked(nameInput) : focusPicker(countryPicker)),
   );
   const errors = { ...refused, ...checks.errors };
   const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(pinned && keysUp);
@@ -316,7 +316,7 @@ function Form({
               onSubmitEditing={() => void create()}
               submitBehavior="submit"
               wrong={errors.name != null}
-              held={saving}
+              submitting={saving}
               autoFocus
               autoComplete="organization"
               textContentType="organizationName"

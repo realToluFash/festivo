@@ -2,6 +2,7 @@ import { type ReactNode, type Ref, type RefObject, useState } from 'react';
 import {
   AccessibilityInfo,
   findNodeHandle,
+  Keyboard,
   Pressable,
   StyleSheet,
   TextInput,
@@ -121,7 +122,7 @@ export function FieldError({
 
 export type TextFieldProps = TextInputProps & {
   wrong?: boolean;
-  held?: boolean;
+  submitting?: boolean;
   ref?: Ref<TextInput> | undefined;
 };
 
@@ -129,9 +130,10 @@ export type TextFieldProps = TextInputProps & {
 export function useHeld(
   held: boolean,
   value: string | undefined,
+  defaultValue: string | undefined,
   onChangeText: ((text: string) => void) | undefined,
 ): Pick<TextInputProps, 'value' | 'onChangeText'> {
-  const [typed, setTyped] = useState(value ?? '');
+  const [typed, setTyped] = useState(value ?? defaultValue ?? '');
 
   if (held) return { value: value ?? typed, onChangeText: undefined };
 
@@ -145,7 +147,7 @@ export function useHeld(
 
 /** To the field a server refusal names: the keyboard moves there if it was up, and a server refusal never raises it. */
 export function focusRefused(field: RefObject<TextInput | null>): void {
-  if (TextInput.State.currentlyFocusedInput() != null) {
+  if (Keyboard.isVisible()) {
     field.current?.focus();
     return;
   }
@@ -154,16 +156,23 @@ export function focusRefused(field: RefObject<TextInput | null>): void {
   if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
 }
 
+/** To the field a client check names, with the keyboard up on it. */
+export function focusChecked(field: RefObject<TextInput | null>): void {
+  // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
+  if (field.current?.isFocused() === true && !Keyboard.isVisible()) field.current.blur();
+  field.current?.focus();
+}
+
 export function TextField({
   wrong = false,
-  held = false,
+  submitting = false,
   style,
   ref,
   value,
   onChangeText,
   ...rest
 }: TextFieldProps) {
-  const holding = useHeld(held, value, onChangeText);
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
 
   return (
     <TextInput
@@ -184,7 +193,7 @@ export type CodeFieldProps = TextFieldProps & {
 
 export function CodeField({
   wrong = false,
-  held = false,
+  submitting = false,
   takesRecoveryCode = false,
   style,
   ref,
@@ -192,7 +201,7 @@ export function CodeField({
   onChangeText,
   ...rest
 }: CodeFieldProps) {
-  const holding = useHeld(held, value, onChangeText);
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
 
   return (
     <TextInput

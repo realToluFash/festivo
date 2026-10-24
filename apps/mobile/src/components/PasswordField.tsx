@@ -23,7 +23,6 @@ const REVEAL_ROOM = 72;
 export function PasswordField({
   wrong = false,
   submitting = false,
-  held = false,
   value,
   onChangeText,
   onSubmitEditing,
@@ -33,7 +32,6 @@ export function PasswordField({
 }: Omit<TextInputProps, 'secureTextEntry'> & {
   wrong?: boolean;
   submitting?: boolean;
-  held?: boolean;
   testID: string;
   ref?: Ref<TextInput> | undefined;
 }) {
@@ -56,7 +54,7 @@ export function PasswordField({
   }, []);
 
   useFocusEffect(useCallback(() => () => setRevealed(false), []));
-  const holding = useHeld(held, value, onChangeText);
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
 
   return (
     <View>

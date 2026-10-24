@@ -19,7 +19,7 @@ import { tokens } from '../theme/tokens.ts';
 import { useHeaderWithoutBack } from './AppFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { Field, TextField } from './Field.tsx';
+import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useAboveKeyboard, useRoomAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -188,7 +188,7 @@ function Choosing({
           ? t('timeZone.choose')
           : t('timeZone.chooseNoMatch', { typed: typed.trim() }),
       );
-      input.current?.focus();
+      focusChecked(input);
       return;
     }
 
@@ -219,7 +219,7 @@ function Choosing({
             <TextField
               ref={input}
               wrong={error != null}
-              held={saving}
+              submitting={saving}
               autoFocus
               autoCapitalize="none"
               placeholder={t('timeZone.placeholder')}

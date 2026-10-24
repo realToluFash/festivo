@@ -129,7 +129,7 @@ describe('a refused submit leaves the keyboard as it was', () => {
     expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
     expect(
       fields.filter((tag) => /\beditable=/u.test(tag.markup)).map((tag) => `${file}:${tag.line}`),
-      'Pass held={saving}: editable={false} drops the focus and the keyboard.',
+      'Pass submitting={saving}: editable={false} drops the focus and the keyboard.',
     ).toEqual([]);
     expect(
       fields
@@ -137,6 +137,15 @@ describe('a refused submit leaves the keyboard as it was', () => {
         .filter((tag) => !tag.markup.includes('submitBehavior="submit"'))
         .map((tag) => `${file}:${tag.line}`),
       'A field that submits the form keeps its focus on return.',
+    ).toEqual([]);
+    expect(
+      (form?.text ?? '')
+        .split('\n')
+        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
+        .filter(({ line }) => /\.current\?\.focus\(\)/u.test(line))
+        .filter(({ line }) => !line.includes('onSubmitEditing='))
+        .map(({ at }) => at),
+      'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.',
     ).toEqual([]);
   });
 });
