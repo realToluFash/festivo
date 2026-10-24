@@ -15,6 +15,7 @@ import {
   LOCALE_CODES,
   followPluralLocales,
   followValueStops,
+  formattingLocale,
   narrowLocale,
 } from '@soirely/domain';
 import { getLocales } from 'expo-localization';
@@ -70,6 +71,11 @@ async function resolveLocale(): Promise<string> {
 
 export function currentLocale(): string {
   return narrowLocale(i18next.resolvedLanguage ?? i18next.language);
+}
+
+/** What dates and times are written in: the phone's region, while it speaks the shown language. */
+export function dateLocale(): string {
+  return formattingLocale(currentLocale(), getLocales()[0]?.languageTag);
 }
 
 /** Null clears the override and goes back to the device setting. */

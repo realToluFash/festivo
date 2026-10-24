@@ -24,7 +24,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import {
   membersAfterWrite,
   withApproved,
@@ -319,7 +319,7 @@ function MemberRow({
         </Text>
         {member.user.email != null && <Text size={tokens.typeBody.size}>{member.user.email}</Text>}
         <Text size={tokens.typeSmall.size} muted>
-          {memberRowLine(t, member, organisation.name, (at) => formatDay(at, currentLocale()))}
+          {memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()))}
         </Text>
         <MemberState member={member} />
       </View>
@@ -496,7 +496,7 @@ function RequestLines({
           channel: t(`membersScreen.how.${member.channel ?? 'request'}`, {
             organisation: organisation.name,
           }),
-          date: member.since == null ? '' : formatDay(member.since, currentLocale()),
+          date: member.since == null ? '' : formatDay(member.since, dateLocale()),
         })}
       </Text>
       {member.removesAt != null && (

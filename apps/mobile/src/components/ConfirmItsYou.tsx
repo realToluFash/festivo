@@ -10,7 +10,7 @@ import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import {
   type ProvingField,
@@ -133,7 +133,7 @@ export function ConfirmItsYou({
           error,
           t,
           via === 'password' || via == null ? null : PROVIDER_NAMES[via],
-          currentLocale(),
+          dateLocale(),
         ),
       );
     }

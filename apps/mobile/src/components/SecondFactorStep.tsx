@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { type CodeMode, codeRefusal, typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AuthFrame, AuthHeading } from './AuthFrame.tsx';
@@ -109,7 +109,7 @@ export function SecondFactorStep({
           : refusal.kind === 'paused'
             ? {
                 kind: 'paused',
-                time: formatTimeOfDay(refusal.liftsAt, currentLocale()),
+                time: formatTimeOfDay(refusal.liftsAt, dateLocale()),
                 liftsAt: refusal.liftsAt.getTime(),
               }
             : { kind: 'failed' },

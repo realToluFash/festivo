@@ -4,7 +4,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { FieldError } from './FieldError.tsx';
 
 type Mode = 'app' | 'recovery';
@@ -217,7 +217,7 @@ function statusFrom(refusal: unknown, mode: Mode, t: (key: string) => string): S
     if (liftsAt != null) {
       return {
         kind: 'paused',
-        time: formatTimeOfDay(liftsAt, currentLocale()),
+        time: formatTimeOfDay(liftsAt, dateLocale()),
         liftsAt: liftsAt.getTime(),
       };
     }

@@ -31,7 +31,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { Forbidden } from '../Forbidden.tsx';
 
@@ -410,7 +410,7 @@ function MemberRow({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
-  const line = memberRowLine(t, member, organisation.name, (at) => formatDay(at, currentLocale()));
+  const line = memberRowLine(t, member, organisation.name, (at) => formatDay(at, dateLocale()));
   const content = (
     <>
       <span className="org-tile" aria-hidden="true">
@@ -452,7 +452,7 @@ function InvitationRow({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const day = (at: string | null) => (at == null ? '' : formatDay(at, currentLocale()));
+  const day = (at: string | null) => (at == null ? '' : formatDay(at, dateLocale()));
   const ended: Record<string, string | null> = {
     pending: invitation.expiresAt,
     expired: invitation.expiresAt,
@@ -693,7 +693,7 @@ function MemberDetail({
           {history.map((step, index) => (
             <li key={index}>
               <span>{step.what}</span>
-              <span className="muted">{formatDay(step.at, currentLocale())}</span>
+              <span className="muted">{formatDay(step.at, dateLocale())}</span>
             </li>
           ))}
         </ul>
@@ -890,7 +890,7 @@ function RequestLines({
           channel: t(`membersScreen.how.${member.channel ?? 'request'}`, {
             organisation: organisation.name,
           }),
-          date: member.since == null ? '' : formatDay(member.since, currentLocale()),
+          date: member.since == null ? '' : formatDay(member.since, dateLocale()),
         })}
       </span>
       {member.removesAt != null && (

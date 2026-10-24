@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useFocusAfterSave, useFormChecks } from '../formChecks.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { currentLocale, dateLocale } from '../i18n/index.ts';
 import { FieldError } from './FieldError.tsx';
 
 const FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
@@ -107,7 +107,7 @@ export function CreateOrganisation({
 
       if (error instanceof ApiError && error.is('too_many_attempts')) {
         const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
-        setLimitedUntil(liftsAt == null ? '' : formatTimeOfDay(liftsAt, locale));
+        setLimitedUntil(liftsAt == null ? '' : formatTimeOfDay(liftsAt, dateLocale()));
         return;
       }
 

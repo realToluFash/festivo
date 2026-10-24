@@ -8,7 +8,7 @@ import { SvgXml } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -592,7 +592,7 @@ function refusalMessage(refusal: unknown, wrong: string, t: TFunction): string {
 
     return liftsAt == null
       ? t('twoFactorCard.failedBody')
-      : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) });
+      : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) });
   }
 
   if (refusal.is('recovery_code_used')) return t('twoFactor.recoveryUsed');

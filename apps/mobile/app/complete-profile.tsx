@@ -32,7 +32,7 @@ import { Notice } from '../src/components/Notice.tsx';
 import { OnboardingSteps } from '../src/components/OnboardingSteps.tsx';
 import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
 import { Text } from '../src/components/Text.tsx';
-import { currentLocale } from '../src/i18n/index.ts';
+import { dateLocale } from '../src/i18n/index.ts';
 import { type WaitingInvitations, useInvitationsOnOpen } from '../src/invitations.ts';
 import { landingFor } from '../src/landing.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
@@ -109,8 +109,8 @@ export default function CompleteProfile() {
           <Waiting
             organisation={request.organisation.name}
             asked={t('domainJoining.asked', {
-              day: formatDay(request.askedAt, currentLocale()),
-              time: formatTimeOfDay(request.askedAt, currentLocale()),
+              day: formatDay(request.askedAt, dateLocale()),
+              time: formatTimeOfDay(request.askedAt, dateLocale()),
             })}
             onWithdrawn={() => {
               setFounding(true);

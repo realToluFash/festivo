@@ -10,7 +10,7 @@ import {
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -77,7 +77,7 @@ function InvitationRow({
           </Text>
           <Text size={tokens.typeSmall.size} muted>
             {t(keys.until, {
-              date: formatDay(invitation.expiresAt, currentLocale()),
+              date: formatDay(invitation.expiresAt, dateLocale()),
               email: invitation.email,
             })}
           </Text>

@@ -15,7 +15,7 @@ import { PasswordField } from '../src/components/PasswordField.tsx';
 import { PasswordRule } from '../src/components/PasswordRule.tsx';
 import { OrRule, ProviderButtons } from '../src/components/ProviderSignIn.tsx';
 import { Text } from '../src/components/Text.tsx';
-import { currentLocale } from '../src/i18n/index.ts';
+import { dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { useLayout } from '../src/layout/useLayout.ts';
 import {
@@ -49,7 +49,7 @@ export default function Register() {
 
       router.push('/verify-email');
     } catch (error) {
-      setStatus(registrationRefusal(error, currentLocale()));
+      setStatus(registrationRefusal(error, dateLocale()));
     }
   }
 

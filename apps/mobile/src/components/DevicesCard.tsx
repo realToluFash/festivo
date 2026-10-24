@@ -11,7 +11,7 @@ import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import {
   type EverywhereRefusal,
   deviceMoment,
@@ -265,7 +265,7 @@ function Row({
   onEndHere: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   return (
     <View style={styles.row} testID={here ? 'devices.here' : `devices.row.${device.id}`}>
@@ -320,7 +320,7 @@ function Check({
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
   const name = deviceName(device, t);
 
   return (
@@ -459,7 +459,7 @@ function EverywhereElse({
 
   const until =
     refusal?.kind === 'limited' && refusal.until != null
-      ? formatTimeOfDay(refusal.until, currentLocale())
+      ? formatTimeOfDay(refusal.until, dateLocale())
       : null;
   const passwordError =
     checks.errors.password ??

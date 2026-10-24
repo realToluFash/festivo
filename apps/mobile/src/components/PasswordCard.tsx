@@ -6,7 +6,7 @@ import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
 import { retryAfter } from '../kit/code.ts';
@@ -184,7 +184,7 @@ function Changing({
       onChanged(signedOut);
     } catch (error) {
       setSaving(false);
-      setRefusal(passwordRefusal(error, t, currentLocale()));
+      setRefusal(passwordRefusal(error, t, dateLocale()));
     }
   }
 
@@ -364,7 +364,7 @@ function Setting({
       stepUp.current = await api.passPasswordCode(cleanCode(code.current));
       setStep('password');
     } catch (error) {
-      const refused = setCodeRefusalFrom(error, t, currentLocale());
+      const refused = setCodeRefusalFrom(error, t, dateLocale());
       setCodeRefusal(refused.refusal);
       setPaused(refused.paused);
     } finally {

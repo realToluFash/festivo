@@ -9,7 +9,7 @@ import {
 } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 
 /** What follows "You joined": a button into it, or, on `/complete-profile`, a line saying where finishing goes. */
@@ -74,7 +74,7 @@ function InvitationRow({
           <p className="invitation-row-line">{t(keys.line, { inviter, role })}</p>
           <p className="invitation-row-until">
             {t(keys.until, {
-              date: formatDay(invitation.expiresAt, currentLocale()),
+              date: formatDay(invitation.expiresAt, dateLocale()),
               email: invitation.email,
             })}
           </p>

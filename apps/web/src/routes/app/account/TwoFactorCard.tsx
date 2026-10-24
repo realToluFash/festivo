@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Pending } from '../../../components/Pending.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
 
 type Stage =
@@ -585,5 +585,5 @@ function pausedMessage(refusal: ApiError, t: TFunction): string {
 
   return liftsAt == null
     ? t('twoFactorCard.failedBody')
-    : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) });
+    : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) });
 }

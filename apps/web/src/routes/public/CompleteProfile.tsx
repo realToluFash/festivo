@@ -28,7 +28,7 @@ import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
-import { currentLocale } from '../../i18n/index.ts';
+import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { type WaitingInvitations, useWaitingInvitations } from '../../invitations.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import {
@@ -145,7 +145,7 @@ function Waiting({ request, email }: { request: JoinRequest; email: string }) {
   const [withdrawing, setWithdrawing] = useState(false);
   const [failed, setFailed] = useState(false);
   const organisation = request.organisation.name;
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   async function startOwn(): Promise<void> {
     setWithdrawing(true);
