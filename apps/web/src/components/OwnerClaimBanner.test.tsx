@@ -117,6 +117,19 @@ describe('the Members banner while no owner is active (sc-6640)', () => {
     ).toBeTruthy();
   });
 
+  it('gives the server’s refusal when the organisation lists no domain to name', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ domain: null }) }),
+      [`POST ${PATH}`]: () => problem('owner_claim_address'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+
+    expect(await screen.findByText('Refused.')).toBeTruthy();
+    expect(screen.queryByText("That didn't work. Please try again.")).toBeNull();
+  });
+
   it('says the record is not found yet after Check record', async () => {
     answering({
       [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),

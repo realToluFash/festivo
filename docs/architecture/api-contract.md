@@ -312,7 +312,8 @@ else `GET /api/orgs/{id}/members` leaves them out entirely.
   with `found`. `POST …/owner-claim/stop` is any signed-in account's route, allowed to an
   active Administrator or a suspended Owner (who reads the claim as `paused[].ownerClaim` on
   `GET /api/orgs`), never to the claimant (`409 owner_claim_own`); `409 owner_claim_ended`
-  once it has ended.
+  once it has ended. An account with no membership in the organisation gets `404 not_found`,
+  as on every other `/api/orgs/{id}` route.
 - `app:owner-claims:run` (every minute) passes a claim at `found + 72 h` if the record is
   still published there, lapses it at that instant if not, lapses an unfound one at
   `started + 7 × 24 h`, and looks an unfound record up hourly. The banner, Members and the

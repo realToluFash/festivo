@@ -105,11 +105,14 @@ function OwnerClaimCard({
       }
 
       const key = error instanceof ApiError ? ownerClaimRefusalKey(error.code) : null;
-      setRefusal(
-        key != null && banner.domain != null
-          ? t(key, { domain: banner.domain })
-          : t('ownerClaim.failed'),
-      );
+
+      if (key == null) {
+        setRefusal(t('ownerClaim.failed'));
+      } else if (banner.domain == null) {
+        setRefusal((error as ApiError).problem.title);
+      } else {
+        setRefusal(t(key, { domain: banner.domain }));
+      }
       setBusy(false);
     }
   }
