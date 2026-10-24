@@ -180,6 +180,7 @@ function RolesLoaded({
             key={role.id}
             type="button"
             className="roles-pick"
+            title={name(role)}
             aria-pressed={pane.kind !== 'new' && pane.id === role.id}
             onClick={() => open({ kind: 'role', id: role.id })}
           >
@@ -352,6 +353,13 @@ function Editing({
       setStatus('failed');
     }
   }
+
+  const saveLabel =
+    status === 'saving'
+      ? t('rolesScreen.saving')
+      : creating
+        ? t('rolesScreen.create')
+        : t('rolesScreen.save', { role: title });
 
   return (
     <form noValidate onSubmit={(event) => void save(event)}>
@@ -533,12 +541,13 @@ function Editing({
                 {t('rolesScreen.discard')}
               </button>
             )}
-            <button type="submit" className="button button-primary" disabled={status === 'saving'}>
-              {status === 'saving'
-                ? t('rolesScreen.saving')
-                : creating
-                  ? t('rolesScreen.create')
-                  : t('rolesScreen.save', { role: title })}
+            <button
+              type="submit"
+              className="button button-primary"
+              title={saveLabel}
+              disabled={status === 'saving'}
+            >
+              <span className="roles-button-label">{saveLabel}</span>
             </button>
           </div>
         </div>
@@ -679,6 +688,12 @@ function Removing({
     onRemoved(withoutRole(roles, role, moving));
   }
 
+  const removeLabel =
+    role.holders === 0
+      ? t('rolesScreen.removeConfirmEmpty', { role: title })
+      : t('rolesScreen.removeConfirm', { role: title });
+  const keepLabel = t('rolesScreen.keep', { role: title });
+
   return (
     <div className="roles-removing">
       <h2 id="role-title">{t('rolesScreen.removeTitle', { role: title })}</h2>
@@ -741,14 +756,13 @@ function Removing({
           type="button"
           className="button button-dark"
           disabled={status === 'removing'}
+          title={removeLabel}
           onClick={() => void remove()}
         >
-          {role.holders === 0
-            ? t('rolesScreen.removeConfirmEmpty', { role: title })
-            : t('rolesScreen.removeConfirm', { role: title })}
+          <span className="roles-button-label">{removeLabel}</span>
         </button>
-        <button type="button" className="button" onClick={onKeep}>
-          {t('rolesScreen.keep', { role: title })}
+        <button type="button" className="button" title={keepLabel} onClick={onKeep}>
+          <span className="roles-button-label">{keepLabel}</span>
         </button>
       </div>
     </div>
