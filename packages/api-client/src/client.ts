@@ -311,11 +311,13 @@ export interface TwoFactorDeadline {
   written: string;
 }
 
-export type DomainSuspensionReason = 'address_gone' | 'domain_closed' | 'domain_managed_elsewhere';
+/** `manual` is somebody who manages members suspending them (sc-3575): it is never removed by itself, and its organisation is never listed as paused. */
+export type SuspensionReason =
+  'address_gone' | 'domain_closed' | 'domain_managed_elsewhere' | 'manual';
 
-/** A member who joined through the company domain, paused when it stopped bringing them in (sc-564); each instant in the reader's zone, and no removal for the only owner. */
-export interface DomainSuspension {
-  reason: DomainSuspensionReason;
+/** Why and since when a member is suspended: by the company domain (sc-564) or by hand (sc-3575); each instant in the reader's zone, and no removal for the only owner. */
+export interface Suspension {
+  reason: SuspensionReason;
   domain: string | null;
   since: TwoFactorDeadline;
   removesAt: TwoFactorDeadline | null;
@@ -325,7 +327,7 @@ export interface DomainSuspension {
 
 /** An organisation the account's access to is paused in: no grant at all, only why. */
 export interface PausedOrganisation extends Organisation {
-  suspension: DomainSuspension;
+  suspension: Suspension;
   /** An open claim to own it, for a suspended Owner to stop (sc-6640). */
   ownerClaim: OwnerClaim | null;
 }
@@ -466,7 +468,7 @@ export interface OrganisationMember {
   invitedAt: string | null;
   self: boolean;
   history: MembershipStep[];
-  suspension: DomainSuspension | null;
+  suspension: Suspension | null;
 }
 
 export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
@@ -1409,6 +1411,14 @@ export class ApiClient {
     );
   }
 
+  /** Refused 403 for yourself or an Owner, and 409 unless they are active. */
+  async suspendMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/suspend`,
+      {},
+    );
+  }
+
   /** Null for anybody the banner is not shown to (sc-6640). */
   async ownerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
     return this.ownerClaimBanner(
@@ -1474,7 +1484,8 @@ export class ApiClient {
     return banner;
   }
 
-  /** Refused `restore_needs_address` while an address that went is not back, verified and primary (sc-564). */
+  /** Refused 409 unless they are suspended, `restore_needs_address` while an address that went is not back, verified and primary (sc-564),
+   * and `team_seats_in_use`, with the `limit`, when every seat is taken. */
   async restoreMember(organisationId: string, membershipId: string): Promise<void> {
     await this.request<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,
@@ -2433,7 +2444,7 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     invitedAt: stringOrNull(member.invitedAt),
     self: member.self === true,
     history: history as MembershipStep[],
-    suspension: asDomainSuspension(member.suspension),
+    suspension: asSuspension(member.suspension),
   };
 }
 
@@ -2552,13 +2563,14 @@ function asTwoFactorDeadline(raw: unknown): TwoFactorDeadline | null {
     : null;
 }
 
-const SUSPENSION_REASONS: readonly DomainSuspensionReason[] = [
+const SUSPENSION_REASONS: readonly SuspensionReason[] = [
   'address_gone',
   'domain_closed',
   'domain_managed_elsewhere',
+  'manual',
 ];
 
-function asDomainSuspension(raw: unknown): DomainSuspension | null {
+function asSuspension(raw: unknown): Suspension | null {
   const suspension = (raw ?? {}) as Record<string, unknown>;
   const reason = oneOf(suspension.reason, SUSPENSION_REASONS);
   const since = asTwoFactorDeadline(suspension.since);
@@ -2577,7 +2589,7 @@ function asDomainSuspension(raw: unknown): DomainSuspension | null {
 
 function asPausedOrganisation(raw: unknown): PausedOrganisation | null {
   const organisation = asOrganisation(raw);
-  const suspension = asDomainSuspension((raw as Record<string, unknown> | null)?.suspension);
+  const suspension = asSuspension((raw as Record<string, unknown> | null)?.suspension);
   const claim = (raw as Record<string, unknown> | null)?.ownerClaim;
   const ownerClaim = claim == null ? null : asOwnerClaim(claim);
 

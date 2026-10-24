@@ -81,5 +81,6 @@
     "owner_claim_closed": "Seule l’assistance Soirely peut rétablir la propriété.",
     "owner_claim_ended": "Cette demande a déjà pris fin.",
     "owner_claim_unavailable": "Une personne ayant le rôle Propriétaire est déjà en fonction dans cette organisation.",
-    "owner_claim_own": "Vous ne pouvez pas arrêter votre propre demande."
+    "owner_claim_own": "Vous ne pouvez pas arrêter votre propre demande.",
+    "team_seats_in_use": "Toutes les places d’équipe du forfait de cette organisation sont occupées."
 }

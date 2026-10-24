@@ -119,6 +119,7 @@ services:
       # Must equal the return route the app sends Apple; defaults to this stack's own API port.
       OAUTH_APPLE_RETURN_URI: ${OAUTH_APPLE_RETURN_URI:-http://localhost:${API_PORT:-8080}/api/auth/oauth/apple/return}
       CORS_WEB_ORIGIN: ${CORS_WEB_ORIGIN:-http://localhost:5173}
+      TEAM_SEAT_LIMIT: ${TEAM_SEAT_LIMIT:-}
       CORS_EXPO_WEB_ORIGIN: ${CORS_EXPO_WEB_ORIGIN:-http://localhost:8081}
       REDIS_HOST: redis
       REDIS_PORT_INTERNAL: 6379

@@ -6,6 +6,7 @@ namespace App\Domain\Organisation\Controller;
 
 use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
+use App\Domain\Organisation\Members\MemberSuspension;
 use App\Domain\Organisation\OrganisationCreator;
 use App\Domain\Organisation\OrganisationRules;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimDescriber;
@@ -44,6 +45,7 @@ final readonly class OrganisationController
         private SignInRules $signInRules,
         private OrganisationCreator $organisationCreator,
         private DomainSuspender $domainSuspender,
+        private MemberSuspension $memberSuspension,
         private OwnerClaimDescriber $ownerClaimDescriber,
     ) {
     }
@@ -68,10 +70,10 @@ final readonly class OrganisationController
                 $this->signInRules->twoFactorDue($membership),
             )),
             'paused' => Vec\map(
-                $user instanceof User ? $this->membershipRepository->findSuspendedFor($user) : [],
+                $user instanceof User ? $this->membershipRepository->findPausedFor($user) : [],
                 fn (Membership $membership): array => [
                     ...OrganisationSerialiser::organisation($membership->getOrganisation()),
-                    'suspension' => $user instanceof User ? $this->domainSuspender->describe($membership, $user) : null,
+                    'suspension' => $user instanceof User ? $this->memberSuspension->describe($membership, $user) : null,
                     'ownerClaim' => $user instanceof User ? $this->ownerClaimDescriber->forSuspendedOwner($membership->getOrganisation(), $user) : null,
                 ],
             ),

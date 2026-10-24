@@ -320,7 +320,7 @@ final readonly class OwnerClaimHandler
     {
         return null !== $this->membershipRepository->findActive($user, $organisation->getId())
             || Iter\any(
-                $this->membershipRepository->findSuspendedFor($user),
+                $this->membershipRepository->findPausedFor($user),
                 static fn (Membership $membership): bool => $membership->getOrganisation()->getId()->equals($organisation->getId()),
             );
     }
