@@ -108,6 +108,21 @@ final class TwoFactorTest extends ApiTestCase
     }
 
     #[Test]
+    public function theTurnedOnEmailSpeaksTheLanguageItWasTurnedOnInWhenTheAccountHasNone(): void
+    {
+        $this->fresh()->setLocale(null);
+        self::em()->flush();
+        $this->authenticated();
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+        $secret = Type\string()->coerce($this->call('POST', '/api/auth/two-factor/enrol')['secret']);
+
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow($secret)]);
+
+        self::assertCount(10, Type\vec(Type\string())->coerce($this->last()['recoveryCodes']));
+        self::assertStringContainsString('17 octobre 2026', (string) $this->turnedOnEmails()[0]->getTextBody());
+    }
+
+    #[Test]
     public function aPasswordSignInGetsAChallengeAndNoTokensUntilTheCodePasses(): void
     {
         $secret = $this->turnedOn()['secret'];

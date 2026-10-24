@@ -16,15 +16,15 @@ final readonly class TwoFactorMailer
     ) {
     }
 
-    public function sendTurnedOn(User $user, DateTimeImmutable $at): void
+    public function sendTurnedOn(User $user, DateTimeImmutable $at, ?string $asked = null): void
     {
-        $locale = $this->userMailer->localeFor($user);
+        $locale = $this->userMailer->localeFor($user, $asked);
         $when = $this->userMailer->moment($at, $user, $locale);
 
         $this->userMailer->sendTo($user, 'twoFactor.on.subject', [
             $this->userMailer->line('twoFactor.on.body', $locale, ['{when}' => $when]),
             $this->userMailer->line('twoFactor.on.notYou', $locale),
-        ]);
+        ], $locale);
     }
 
     public function sendTurnedOff(User $user, DateTimeImmutable $at): void
