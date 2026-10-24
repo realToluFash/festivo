@@ -160,6 +160,12 @@ class Membership
         return $this->joinedAt;
     }
 
+    /** Somebody who asked and was never let in was never a member (sc-8168), whatever they are now. */
+    public function hasBeenActive(): bool
+    {
+        return null !== $this->joinedAt;
+    }
+
     public function getTwoFactorBlockedAt(): ?DateTimeImmutable
     {
         return $this->twoFactorBlockedAt;
