@@ -1205,6 +1205,11 @@
     "fromTheWeb": "To invite somebody, use Soirely on the web.",
     "pickSomebody": "Choose somebody in the list to see them here.",
     "backToList": "‹ Members",
+    "suspendedTitle": "Access for {{name}} is suspended",
+    "suspendedBody": "They can't use {{organisation}}. Their role, their events and their history are kept.",
+    "restoreAccess": "Restore access",
+    "seatsInUse_one": "The only team seat on this organisation's plan is in use, so nothing has changed.",
+    "seatsInUse_other": "All {{count}} team seats on this organisation's plan are in use, so nothing has changed.",
     "suspendedBecause": {
       "address_gone": "{{name}}'s {{domain}} address is no longer on their account.",
       "domain_closed": "{{organisation}} no longer lets people join through {{domain}}.",

@@ -9,6 +9,7 @@ use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationSender;
 use App\Domain\Organisation\Members\JoinRequests;
 use App\Domain\Organisation\Members\MemberActions;
+use App\Domain\Organisation\Members\MemberSuspension;
 use App\Domain\Organisation\Members\OwnershipTransfer;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\Roles\RoleManager;
@@ -58,6 +59,7 @@ final readonly class MembersController
         private TranslatorInterface $translator,
         private MembershipDirectoryInterface $membershipDirectory,
         private DomainSuspender $domainSuspender,
+        private MemberSuspension $memberSuspension,
         private JoinRequests $joinRequests,
         private UserMailer $userMailer,
         private OwnerClaimHandler $ownerClaimHandler,
@@ -99,7 +101,7 @@ final readonly class MembersController
                     $accepted[$membership->getUser()->getId()->toRfc4122()] ?? [],
                     $caller,
                     $written,
-                    $this->domainSuspender->describe($membership, $caller),
+                    $this->memberSuspension->describe($membership, $caller),
                 ),
             ),
             'invitations' => Vec\map($invitations, static fn (Invitation $invitation): array => MemberSerialiser::invitation($invitation, $now)),
@@ -166,7 +168,17 @@ final readonly class MembersController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
-    /** Refused `restore_needs_address` while a member whose address went has no verified primary one at the domain again. */
+    /** Takes effect on the member's next request, as a removal does: only an active membership grants anything. */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/suspend', name: 'orgs_members_suspend', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function suspend(string $organisationId, string $membershipId): Response
+    {
+        $this->memberActions->suspend($this->organisation($organisationId), $membershipId, $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** Refused `restore_needs_address` while a member whose address went has no verified primary one at the domain again, and `team_seats_in_use` while every seat is taken. */
     #[Route('/api/orgs/{organisationId}/members/{membershipId}/restore', name: 'orgs_members_restore', methods: ['POST'])]
     #[InOrganisation(Permission::MembersManage)]
     public function restore(string $organisationId, string $membershipId): Response

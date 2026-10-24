@@ -1,6 +1,6 @@
 import {
   ApiError,
-  type DomainSuspension,
+  type Suspension,
   type Membership,
   type MembersList,
   type OrganisationMember,
@@ -854,7 +854,7 @@ function Suspension({
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
-  suspension: DomainSuspension;
+  suspension: Suspension;
   standing: MemberStanding;
   acts: boolean;
   onChanged: (list: MembersList) => void;
@@ -862,6 +862,7 @@ function Suspension({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const byHand = suspension.reason === 'manual';
   const named = {
     name: member.user.name,
     organisation: organisation.name,
@@ -879,7 +880,9 @@ function Suspension({
       setFailed(
         error instanceof ApiError && error.is('restore_needs_address')
           ? t('membersScreen.restoreNeedsAddress', named)
-          : refusalTitle(error, t('membersScreen.actionFailed')),
+          : error instanceof ApiError && error.is('team_seats_in_use')
+            ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
+            : refusalTitle(error, t('membersScreen.actionFailed')),
       );
     } finally {
       setBusy(false);
@@ -888,10 +891,23 @@ function Suspension({
 
   return (
     <View style={cardFrame(kind)}>
-      <Notice tone="attention" mark="!" title={t('membersScreen.state.domainSuspended')} />
-      <Text size={tokens.typeBodyPhone.size}>
-        {t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}
-      </Text>
+      {byHand ? (
+        <>
+          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+            {t('membersScreen.suspendedTitle', named)}
+          </Text>
+          <Text size={tokens.typeBodyPhone.size} muted>
+            {t('membersScreen.suspendedBody', named)}
+          </Text>
+        </>
+      ) : (
+        <>
+          <Notice tone="attention" mark="!" title={t('membersScreen.state.domainSuspended')} />
+          <Text size={tokens.typeBodyPhone.size}>
+            {t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}
+          </Text>
+        </>
+      )}
       {suspension.onlyOwner ? (
         <Text size={tokens.typeBodyPhone.size} muted>
           {t('membersScreen.suspendedOnlyOwner', named)}
@@ -910,7 +926,7 @@ function Suspension({
       )}
       {acts ? (
         <PrimaryButton
-          label={t('membersScreen.restore', named)}
+          label={t(byHand ? 'membersScreen.restoreAccess' : 'membersScreen.restore', named)}
           busy={busy}
           onPress={() => void restore()}
           testID="members.restore"

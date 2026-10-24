@@ -175,5 +175,15 @@
     "ownerClaim.domain": "Domain: {domain}",
     "ownerClaim.openLink": "Open Members: {link}",
     "ownerClaim.footer.administrator": "You're getting this because you're an Administrator of {organisation}.",
-    "ownerClaim.footer.owner": "You're getting this because you're an owner of {organisation}. We sent it to your account's main email address."
+    "ownerClaim.footer.owner": "You're getting this because you're an owner of {organisation}. We sent it to your account's main email address.",
+    "memberSuspended.subject": "Your access to {organisation} is suspended",
+    "memberSuspended.body": "You can't use {organisation} in Soirely for now. Your role, your events and your history there are kept, and your access can be restored.",
+    "memberSuspended.ask": "If you don't know why, ask an administrator of {organisation}.",
+    "memberSuspended.facts": "Organisation: {organisation}\nSuspended: {when}\nYour account: {email}",
+    "memberSuspended.others": "Any other organisations you belong to in Soirely are not affected.",
+    "memberRestored.subject": "Your access to {organisation} is back",
+    "memberRestored.body": "You can use {organisation} in Soirely again, as {role}, the role you had.",
+    "memberRestored.facts": "Organisation: {organisation}\nRestored: {when}\nYour role: {role}",
+    "memberRestored.open": "Open {organisation}: {link}",
+    "memberAccess.footer": "You're getting this because you're a member of {organisation}."
 }

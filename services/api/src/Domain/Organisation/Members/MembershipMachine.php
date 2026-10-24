@@ -15,10 +15,12 @@ use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Enum\Suspension;
 use App\Http\Exception\ApiException;
 use App\Repository\MembershipRepository;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use LogicException;
 use Psr\Clock\ClockInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -73,14 +75,16 @@ final readonly class MembershipMachine
         return $this->join($organisation, $user, $readOnly, MembershipStatus::PendingApproval, $channel, $user);
     }
 
-    /** `$at` is the instant it happened, when that is not now: a request removed at its deadline (sc-392). */
-    public function move(Membership $membership, MembershipStatus $to, MembershipChannel $channel, ?User $actor, ?DateTimeImmutable $at = null): void
+    /** `$at` is the instant it happened, when that is not now: a request removed at its deadline (sc-392). A move to suspended says why. */
+    public function move(Membership $membership, MembershipStatus $to, MembershipChannel $channel, ?User $actor, ?DateTimeImmutable $at = null, ?Suspension $why = null): void
     {
         $now = $at ?? $this->clock->now();
         $from = $membership->getStatus();
         $membership->setStatus($to, $now);
 
-        if (MembershipStatus::Suspended !== $to) {
+        if (MembershipStatus::Suspended === $to) {
+            $membership->setSuspension($why ?? throw new LogicException('A suspension says why.'), $now);
+        } else {
             $membership->setSuspension(null, null);
             $membership->setRemovesAt(null);
         }

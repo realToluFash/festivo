@@ -215,6 +215,12 @@ describe("what a member's row says", () => {
     );
   });
 
+  it('says only Suspended for a member somebody suspended by hand', () => {
+    expect(
+      memberStatusWord(word, { ...member, status: 'suspended', suspension: { reason: 'manual' } }),
+    ).toBe('membersScreen.state.suspended');
+  });
+
   it('names the inviter when there is one', () => {
     const invited = { ...member, channel: 'invitation' as const, invitedBy: { name: 'Ada' } };
 

@@ -11,6 +11,7 @@ use App\Entity\TwoFactorFactor;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Enum\Suspension;
 use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Types\Types;
@@ -89,6 +90,16 @@ final class MembershipRepository extends ServiceEntityRepository
             ->addOrderBy('m.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    public function countActiveIn(Organisation $organisation): int
+    {
+        return (int) $this->active()
+            ->select('COUNT(m.id)')
+            ->andWhere('m.organisation = :organisation')
+            ->setParameter('organisation', $organisation)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     /** @return list<Membership> in every state, in organisations that still exist */
@@ -189,8 +200,8 @@ final class MembershipRepository extends ServiceEntityRepository
             ->getResult();
     }
 
-    /** @return list<Membership> the caller's own suspended ones, in organisations that still exist */
-    public function findSuspendedFor(User $user): array
+    /** @return list<Membership> the caller's own domain suspensions, in organisations that still exist: one by hand reads as a removal (sc-3575) */
+    public function findPausedFor(User $user): array
     {
         /** @var list<Membership> */
         return $this->createQueryBuilder('m')
@@ -198,8 +209,10 @@ final class MembershipRepository extends ServiceEntityRepository
             ->innerJoin('m.organisation', 'o')
             ->where('m.user = :user')
             ->andWhere('m.status = :suspended')
+            ->andWhere('m.suspension <> :manual')
             ->setParameter('user', $user)
             ->setParameter('suspended', MembershipStatus::Suspended)
+            ->setParameter('manual', Suspension::Manual)
             ->orderBy('m.createdAt', 'ASC')
             ->addOrderBy('m.id', 'ASC')
             ->getQuery()
