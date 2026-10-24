@@ -282,6 +282,40 @@ describe('the claimant withdraws their own claim (sc-8204)', () => {
     expect(line.closest('[role="status"]')).toBe(document.activeElement);
   });
 
+  it('drops the withdrawn line once the claimant starts a new claim', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/withdraw`]: () => json({ ownerClaim: banner(), withdrawn: { told: false } }),
+      [`POST ${PATH}`]: () =>
+        json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }, 201),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Withdraw my claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Prove you control ire.events' }),
+    ).toBeTruthy();
+    expect(screen.queryByText('You withdrew your claim.')).toBeNull();
+  });
+
+  it('sends focus back to Withdraw my claim when the withdrawal fails', async () => {
+    answering({
+      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ state: 'open', claim: claim(true) }) }),
+      [`POST ${PATH}/withdraw`]: () => problem('internal', 500),
+    });
+    open();
+
+    const withdraw = await screen.findByRole('button', { name: 'Withdraw my claim' });
+    fireEvent.click(withdraw);
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(document.activeElement).toBe(withdraw);
+  });
+
   it('says so when the claim ended before the withdrawal arrived, and offers a reload', async () => {
     answering({
       [`GET ${PATH}`]: () =>

@@ -79,12 +79,16 @@ export function OwnerClaimBanner({
         organisationId={organisationId}
         organisation={organisation}
         banner={load.banner}
-        onBanner={(banner) => setLoad({ kind: 'loaded', banner })}
+        onBanner={(banner) => {
+          setWithdrew(null);
+          setLoad({ kind: 'loaded', banner });
+        }}
         onWithdrawn={(banner, told) => {
           setWithdrew({ told });
           setLoad({ kind: 'loaded', banner });
         }}
         onReload={() => {
+          setWithdrew(null);
           setLoad({ kind: 'loading' });
           setAttempt((n) => n + 1);
         }}
