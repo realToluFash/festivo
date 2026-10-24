@@ -265,6 +265,38 @@ export function useBroughtIntoView(): RefObject<View | null> {
   return ref;
 }
 
+/** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
+function useScreenScrollView() {
+  const windowOrigin = useContext(Origin);
+  const origin = useRef(windowOrigin);
+  const scrollView = useRef<ScrollView>(null);
+  const offset = useRef(0);
+  const [screenScroll] = useState<ScreenScrollView>(() => ({
+    ref: scrollView,
+    resized: new Set(),
+    origin,
+    offset,
+  }));
+  useEffect(() => {
+    origin.current = windowOrigin;
+  }, [windowOrigin]);
+
+  const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    offset.current = event.nativeEvent.contentOffset.y;
+  };
+
+  return {
+    screenScroll,
+    scrollProps: {
+      ref: scrollView,
+      onLayout: () => screenScroll.resized.forEach((resized) => resized()),
+      onScroll: follow,
+      onScrollEndDrag: follow,
+      onMomentumScrollEnd: follow,
+    },
+  };
+}
+
 /** A scrolling column inside a Screen that does not scroll, so what it holds can bring itself into view. */
 export function ScrollColumn({
   children,
@@ -275,29 +307,11 @@ export function ScrollColumn({
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
 }) {
-  const origin = useRef(useContext(Origin));
-  const scrollView = useRef<ScrollView>(null);
-  const offset = useRef(0);
-  const [screenScroll] = useState<ScreenScrollView>(() => ({
-    ref: scrollView,
-    resized: new Set(),
-    origin,
-    offset,
-  }));
-  const follow = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    offset.current = event.nativeEvent.contentOffset.y;
-  };
+  const { screenScroll, scrollProps } = useScreenScrollView();
 
   return (
     <ScreenScroll.Provider value={screenScroll}>
-      <ScrollView
-        ref={scrollView}
-        onScroll={follow}
-        onScrollEndDrag={follow}
-        onMomentumScrollEnd={follow}
-        style={style}
-        contentContainerStyle={contentContainerStyle}
-      >
+      <ScrollView {...scrollProps} style={style} contentContainerStyle={contentContainerStyle}>
         {children}
       </ScrollView>
     </ScreenScroll.Provider>
@@ -340,19 +354,7 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
-  const windowOrigin = useContext(Origin);
-  const origin = useRef(windowOrigin);
-  const scrollView = useRef<ScrollView>(null);
-  const offset = useRef(0);
-  const [screenScroll] = useState<ScreenScrollView>(() => ({
-    ref: scrollView,
-    resized: new Set(),
-    origin,
-    offset,
-  }));
-  useEffect(() => {
-    origin.current = windowOrigin;
-  }, [windowOrigin]);
+  const { screenScroll, scrollProps } = useScreenScrollView();
   const avoider = useRef<View>(null);
   const keyboardTop = useRef<number | null>(null);
   const [keysCover, setKeysCover] = useState(0);
@@ -379,21 +381,17 @@ export function Screen({
   }, []);
   // iOS needs the cover too, but only to rest a docked bar on the keys: its scroll view lifts itself.
   useEffect(() => {
-    keyboardTop.current = keyboardTopNow(origin.current);
+    keyboardTop.current = keyboardTopNow(screenScroll.origin.current);
     avoid();
 
     return watchKeyboardTop(
-      () => origin.current,
+      () => screenScroll.origin.current,
       (top) => {
         keyboardTop.current = top;
         avoid();
       },
     );
   }, [screenScroll, avoid]);
-
-  const followOffset = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    offset.current = event.nativeEvent.contentOffset.y;
-  };
 
   const padding: ViewStyle = {
     paddingTop: edges.includes('top') ? insets.top : 0,
@@ -404,11 +402,7 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
-      ref={scrollView}
-      onLayout={() => screenScroll.resized.forEach((resized) => resized())}
-      onScroll={followOffset}
-      onScrollEndDrag={followOffset}
-      onMomentumScrollEnd={followOffset}
+      {...scrollProps}
       style={styles.fill}
       contentContainerStyle={[styles.content, contentStyle]}
       // So the first tap after typing hits the control rather than only
