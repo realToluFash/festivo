@@ -169,6 +169,73 @@ final class JoinRequestsTest extends ApiTestCase
     }
 
     #[Test]
+    public function aRequesterNeverLetInIsNowhereForAViewerWhoCannotManageMembers(): void
+    {
+        self::mockTime(self::ASKED);
+        [$owner, $organisation] = $this->organisation();
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $reads = $this->role($organisation, SeededRole::Coordinator);
+        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
+        $turnedDown = $this->asks($organisation, 'kemi@lawal.ng');
+        $expired = $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+        $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
+        self::mockTime('2026-11-11 08:40:00');
+        $this->runJob();
+        $this->signIn($coordinator);
+
+        $this->listed($organisation);
+        $content = (string) $this->client->getResponse()->getContent();
+
+        foreach ([$turnedDown, $expired] as $requester) {
+            self::assertSame(MembershipStatus::LeftOrRemoved, $this->membershipOf($requester, $organisation)->getStatus());
+            self::assertStringNotContainsString($requester->getId()->toRfc4122(), $content);
+            self::assertStringNotContainsString($this->membershipOf($requester, $organisation)->getId()->toRfc4122(), $content);
+        }
+    }
+
+    #[Test]
+    public function whoeverManagesMembersStillSeesARequesterNeverLetInUnderFormer(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $turnedDown = $this->asks($organisation, 'kemi@lawal.ng');
+        $this->signIn($owner);
+        $this->send('POST', $this->path($organisation, $turnedDown, '/turn-down'));
+
+        $listed = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'kemi@lawal.ng' === ($member['user']['email'] ?? null)));
+
+        self::assertSame('left_or_removed', $listed['status'] ?? null);
+        self::assertSame(
+            [[null, 'pending_approval'], ['pending_approval', 'left_or_removed']],
+            Vec\map(
+                Type\vec(Type\shape(['from' => Type\nullable(Type\string()), 'to' => Type\string()], true))->coerce($listed['history'] ?? null),
+                static fn (array $step): array => [$step['from'], $step['to']],
+            ),
+        );
+    }
+
+    #[Test]
+    public function aFormerMemberWhoAskedAgainStillShowsUnderFormerToAViewerWhoCannotManageMembers(): void
+    {
+        [$owner, $organisation] = $this->organisation();
+        $coordinator = $this->member($organisation, 'tunde@ire.events', SeededRole::Coordinator);
+        $reads = $this->role($organisation, SeededRole::Coordinator);
+        $reads->setPermissions([...$reads->getPermissions(), Permission::MembersRead]);
+        $removed = $this->member($organisation, 'bola@ire.events', SeededRole::ReadOnly);
+        $returning = $this->member($organisation, 'chidi@ire.events', SeededRole::ReadOnly);
+        $this->signIn($owner);
+        $this->send('DELETE', $this->path($organisation, $removed, ''));
+        $this->send('DELETE', $this->path($organisation, $returning, ''));
+        self::service(MembershipMachine::class)->ask($this->membershipOf($returning, $organisation)->getOrganisation(), $this->fresh($returning), MembershipChannel::Request);
+        $this->send('POST', $this->path($organisation, $returning, '/turn-down'));
+        $this->signIn($coordinator);
+
+        $former = Vec\filter($this->listed($organisation), static fn (array $member): bool => 'left_or_removed' === $member['status']);
+
+        self::assertEqualsCanonicalizing(['bola@ire.events', 'chidi@ire.events'], Vec\map($former, static fn (array $member): mixed => $member['user']['email'] ?? null));
+    }
+
+    #[Test]
     public function aRoleCountsOnlyThePeopleWhoHoldIt(): void
     {
         [$owner, $organisation] = $this->organisation();

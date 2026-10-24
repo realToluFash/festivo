@@ -83,17 +83,16 @@ final readonly class MembersController
             static fn (Invitation $invitation): string => $invitation->getAcceptedBy()?->getId()->toRfc4122() ?? '',
         );
         $now = new DateTimeImmutable();
-        // Somebody waiting for approval is shown only to the people who decide on them (sc-392, #529).
         $locale = $this->userMailer->localeFor($caller);
         $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
         $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
 
+        // Somebody who asked to join and was never let in is shown only to the people who decide on them (sc-392, sc-8168).
+        $shown = static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus() && $membership->hasBeenActive();
+
         return new JsonResponse([
             'members' => Vec\map(
-                Vec\filter(
-                    $this->membershipRepository->findInOrganisation($organisation),
-                    static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus(),
-                ),
+                Vec\filter($this->membershipRepository->findInOrganisation($organisation), $shown),
                 fn (Membership $membership): array => MemberSerialiser::member(
                     $membership,
                     $history[$membership->getId()->toRfc4122()] ?? [],
