@@ -201,6 +201,7 @@ describe('Settings > Roles', () => {
 
     fireEvent.click(within(who).getByRole('button', { name: 'and 2 more' }));
 
+    expect(document.activeElement?.textContent).toBe('Kemi Lawal');
     expect(
       within(who)
         .getAllByRole('listitem')
