@@ -1568,7 +1568,7 @@
     "coolingOff": "{{organisation}} a répondu à votre dernière demande. À partir du {{date}}, vous pourrez en faire une nouvelle.",
     "coolingOffLater": "{{organisation}} a répondu à votre dernière demande. Vous pourrez en faire une nouvelle dans quelques semaines.",
     "limited": "Trop de demandes pour le moment. Réessayez à {{time}}.",
-    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
+    "limitedOnDay": "Trop de demandes pour le moment. Réessayez le {{day}} à {{time}}.",
     "limitedLater": "Trop de demandes pour le moment. Réessayez plus tard.",
     "deadTitle": "Ce lien ne fonctionne pas",
     "deadBody": "Ce lien ne fonctionne plus. Demandez-en un nouveau à l’organisation.",
