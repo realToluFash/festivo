@@ -182,8 +182,9 @@ feature merges.
    the four guides, and `same-as-english.json`. Anything else you think needs changing, such
    as a key, a component or a format, is a `[dev]` comment.
 6. **Check it**: `node scripts/locale-status.mjs` shows nothing left for the ticket's keys in
-   any locale. Run the catalogue guards (`npm test -w apps/web -w apps/mobile`); CI runs the
-   API's.
+   any locale. Run the catalogue guards (`npm test -w apps/web -w apps/mobile`), output to
+   `"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}/guards.out"` rather than a pipe or a fixed name in `/tmp`; CI runs the
+   API's and the rest of the suite.
 7. **Push and open one pull request** with `sq l10n pr-create --head l10n/sc-<id> --title "…"`
    and the body on stdin, in the `create-pr` shape. Its title names the outcome, for example
    `feat(i18n): the sign-in screens in every language (sc-900)`. It is **not a draft**,

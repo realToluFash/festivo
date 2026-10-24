@@ -133,6 +133,10 @@ no argument, in this order:
   demo and in production. Only the environment differs, as `.env.example` already shows.
 - **Test the script, not just the config.** A `scripts/*.mjs` change carries a test beside
   it (`writing-tests`), and `test:scripts` runs it.
+- **Locally, run only what the change touches**: its tests (`test:scripts`, `test:queue`),
+  and lint and format on the changed files. CI green on the pushed head proves it. Logs go
+  to `"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}/<check>.out"`, never a fixed name in `/tmp`, and never through a pipe
+  into `tail` or `grep`, which reports the pipe's status rather than the check's.
 
 ## 5. Deploying
 
