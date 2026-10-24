@@ -15,6 +15,7 @@ import {
   grantableRoles,
   historyLine,
   initials,
+  memberHeldNoRole,
   memberIsShown,
   memberRowLine,
   memberStanding,
@@ -398,7 +399,6 @@ function MemberRow({
   onOpen: () => void;
 }) {
   const { t } = useTranslation();
-  const former = member.status === 'left_or_removed';
   const line = memberRowLine(t, member, organisation.name, (at) => formatDay(at, currentLocale()));
   const content = (
     <>
@@ -415,9 +415,7 @@ function MemberRow({
     </>
   );
 
-  return former ? (
-    <div className="members-row">{content}</div>
-  ) : (
+  return (
     <button type="button" className="members-row" onClick={onOpen}>
       {content}
       <span aria-hidden="true">›</span>
@@ -533,6 +531,7 @@ function MemberDetail({
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
   const waiting = member.status === 'pending_approval';
+  const noRole = memberHeldNoRole(member);
   const onlyOwner = standing === 'suspendedOnlyOwner';
   const acts = (standing === 'manageable' || onlyOwner) && !waiting;
   const refusal = useRef<HTMLDivElement>(null);
@@ -619,7 +618,7 @@ function MemberDetail({
           <p className="muted">
             {member.self
               ? t('membersScreen.youAs', { role: roleName(t, member.role) })
-              : `${waiting ? t('membersScreen.noRoleYet') : roleName(t, member.role)} · ${memberStatusWord(t, member)}`}
+              : `${noRole ? t('membersScreen.noRoleYet') : roleName(t, member.role)} · ${memberStatusWord(t, member)}`}
           </p>
           {member.user.email != null && <p className="muted">{member.user.email}</p>}
         </div>
@@ -639,6 +638,8 @@ function MemberDetail({
               />
             )}
           </>
+        ) : noRole ? (
+          <p className="members-row-name">{t('membersScreen.noRoleYet')}</p>
         ) : member.self ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>

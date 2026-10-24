@@ -95,13 +95,21 @@ const LIST = {
     member({
       id: 'm_chidi',
       user: { id: 'u_chidi', name: 'Chidi Okoro', email: 'chidi@ire.events' },
-      role: COORDINATOR,
+      role: { id: 'role_5', seededAs: 'read_only', name: null },
       status: 'left_or_removed',
       former: 'removed',
       channel: 'invitation',
       since: '2026-07-12T09:00:00+00:00',
       self: false,
-      history: [],
+      history: [
+        {
+          from: 'pending_approval',
+          to: 'left_or_removed',
+          channel: 'request',
+          by: FOLAKE,
+          at: '2026-07-12T09:00:00+00:00',
+        },
+      ],
     }),
   ],
   invitations: [
@@ -211,16 +219,22 @@ describe('Settings > Members', () => {
     expect(screen.queryByText('Chidi Okoro')).toBeNull();
   });
 
-  it('keeps former members under Former, without a way into them', async () => {
+  it('keeps former members under Former, and opens their history with nothing to change', async () => {
     signedIn();
     answering(READS);
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /^Former/ }));
 
-    expect(screen.getByText('Chidi Okoro')).toBeDefined();
     expect(screen.getByText('Removed')).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Chidi Okoro/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Chidi Okoro/ }));
+
+    expect(await screen.findByRole('heading', { name: 'Chidi Okoro' })).toBeDefined();
+    expect(screen.getByText(/^Turned down by /)).toBeDefined();
+    expect(screen.getByText('No role yet · Removed')).toBeDefined();
+    expect(screen.queryByText(/Read-only/)).toBeNull();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
   });
 
   it('says so when a filter holds nobody', async () => {
