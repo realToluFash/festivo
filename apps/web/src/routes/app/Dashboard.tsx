@@ -1,0 +1,36 @@
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+
+import { api } from '../../api.ts';
+import { useSession } from '../../session.ts';
+
+export function Dashboard() {
+  const { t } = useTranslation();
+  const session = useSession();
+  const organisationId = session.organisation?.id;
+  const [counted, setCounted] = useState<{ organisationId: string; count: number } | null>(null);
+
+  useEffect(() => {
+    if (organisationId == null) return;
+    let current = true;
+
+    api.events(organisationId).then(
+      (events) => current && setCounted({ organisationId, count: events.length }),
+      () => undefined,
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisationId]);
+
+  return (
+    <>
+      <h1>{t('nav.dashboard')}</h1>
+      <p className="muted">{t('nav.signedInAs', { name: session.name })}</p>
+      {counted != null && counted.organisationId === organisationId && (
+        <p>{t('nav.eventCount', { count: counted.count })}</p>
+      )}
+    </>
+  );
+}
