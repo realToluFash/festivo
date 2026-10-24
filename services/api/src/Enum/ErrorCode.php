@@ -28,6 +28,9 @@ enum ErrorCode: string
     case LastSignInMethod = 'last_sign_in_method';
     case ProviderKeptByRule = 'provider_kept_by_rule';
     case UnsupportedMediaType = 'unsupported_media_type';
+    case PreconditionFailed = 'precondition_failed';
+    case PreconditionRequired = 'precondition_required';
+    case EventCurrencyInUse = 'event_currency_in_use';
 
     case AlreadyAMember = 'already_a_member';
     case EmailTaken = 'email_taken';
@@ -119,6 +122,9 @@ enum ErrorCode: string
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
             self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,
+            self::PreconditionFailed => 412,
+            self::PreconditionRequired => 428,
+            self::EventCurrencyInUse => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,
