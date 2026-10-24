@@ -1,7 +1,5 @@
 import { type ReactNode, type Ref, type RefObject, useState } from 'react';
 import {
-  AccessibilityInfo,
-  findNodeHandle,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -13,6 +11,7 @@ import {
 import { codeProps, FIELD_DEFAULTS, fieldText, pinnedText } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
@@ -158,8 +157,7 @@ export function focusRefused(field: RefObject<TextInput | null>): void {
     return;
   }
 
-  const node = findNodeHandle(field.current);
-  if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+  moveScreenReaderFocus(field.current);
 }
 
 /** To the field a client check names, with the keyboard up on it. */

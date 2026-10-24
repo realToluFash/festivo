@@ -10,7 +10,6 @@ import {
   useState,
 } from 'react';
 import {
-  AccessibilityInfo,
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -19,7 +18,6 @@ import {
   StyleSheet,
   View,
   type ViewStyle,
-  findNodeHandle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,6 +32,7 @@ import {
   shownEnd,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
@@ -255,8 +254,7 @@ export function useBroughtIntoView(): RefObject<View | null> {
     }
 
     const focus = setTimeout(() => {
-      const node = findNodeHandle(ref.current);
-      if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+      moveScreenReaderFocus(ref.current);
     }, SETTLED_MS);
 
     return () => clearTimeout(focus);
