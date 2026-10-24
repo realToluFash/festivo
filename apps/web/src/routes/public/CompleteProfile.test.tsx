@@ -676,6 +676,38 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     expect(sent.filter((request) => request.path === '/api/invitations')).toEqual([]);
   });
 
+  it('never shows the joined line while the organisation can still be founded (sc-9210)', async () => {
+    answering({
+      ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')),
+      'POST /api/invitations/inv_1/accept': () =>
+        json({ organisation: membership({ ...ADUNNI, role: ROLE }) }),
+    });
+    at('/complete-profile');
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Typed then dropped' },
+    });
+
+    const torn: string[] = [];
+    const observer = new MutationObserver(() => {
+      if (screen.queryByText('You joined Adunni Weddings as Event manager.') == null) return;
+      if (screen.queryByLabelText('Organisation name') != null) torn.push('Organisation name');
+      if (screen.queryByText('Or start your own organisation') != null) torn.push('Or start');
+      if (screen.queryByText('You do not need to start an organisation now.') == null) {
+        torn.push('intro');
+      }
+      if (screen.getByRole('button', { name: 'Save and continue' }).hasAttribute('disabled')) {
+        torn.push('Save held');
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    expect(await screen.findByText('You joined Adunni Weddings as Event manager.')).toBeDefined();
+    observer.disconnect();
+    expect(torn).toEqual([]);
+  });
+
   it('stops offering the organisation at the domain once an invitation is accepted', async () => {
     const sent = answering({
       ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')),
