@@ -1154,6 +1154,8 @@
     "roleTitle": "Rol",
     "roleFor": "Rol de {{name}}",
     "roleTakesEffect": "Se aplica en cuanto esa persona vuelva a usar Soirely; no se cierra ninguna sesión.",
+    "roleKeptWhileSuspended": "El rol se conserva mientras el acceso esté suspendido. Podrá cambiarlo cuando se restablezca.",
+    "accessConflict": "Otra persona ha cambiado el acceso de {{name}} mientras esta página estaba abierta, así que su cambio no se ha aplicado. Este es el estado actual.",
     "rolePick": "Elija otro rol",
     "roleSave": "Cambiar su rol a {{role}}",
     "roleChanged": "{{name}} tiene ahora el rol {{role}}. Se aplica en cuanto vuelva a usar Soirely; no se cierra ninguna sesión.",
