@@ -1901,7 +1901,7 @@ span {
 .roles-pick-text,
 .roles-row-text {
   display: flex;
-  flex: 1 1 15rem;
+  flex: 1 1 13rem;
   flex-direction: column;
   gap: var(--spaceXxs);
   min-width: 0;
@@ -2115,6 +2115,7 @@ span {
 
 .roles-replacement .roles-row-name {
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 /* Under the name, past the radio: a 20px control and the row's gap. */
