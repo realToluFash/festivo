@@ -171,7 +171,9 @@ final readonly class OwnerClaimHandler
         $this->settleDue($organisation);
 
         if (null === $this->administratorMembership($by, $organisation) && !$this->isSuspendedOwner($by, $organisation)) {
-            throw new ApiException(ErrorCode::Forbidden, $this->translator->trans('owner_claims.who_may_stop'));
+            throw $this->isMember($by, $organisation)
+                ? new ApiException(ErrorCode::Forbidden, $this->translator->trans('owner_claims.who_may_stop'))
+                : ApiException::notFound('Not found.');
         }
 
         if (true === $this->ownerClaimRepository->findOpenIn($organisation)?->getClaimant()->getId()->equals($by->getId())) {
@@ -275,6 +277,16 @@ final readonly class OwnerClaimHandler
         $this->found($claim, $now);
 
         return OwnerClaimMoment::Found;
+    }
+
+    /** Active or suspended: anybody else is answered as if the organisation did not exist. */
+    private function isMember(User $user, Organisation $organisation): bool
+    {
+        return null !== $this->membershipRepository->findActive($user, $organisation->getId())
+            || Iter\any(
+                $this->membershipRepository->findSuspendedFor($user),
+                static fn (Membership $membership): bool => $membership->getOrganisation()->getId()->equals($organisation->getId()),
+            );
     }
 
     private function mayClaim(Organisation $organisation, User $by): void

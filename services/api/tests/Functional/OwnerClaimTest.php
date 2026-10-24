@@ -387,6 +387,13 @@ final class OwnerClaimTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(403);
         self::assertTrue($this->claim($claim)->isOpen());
+
+        $this->signIn($this->member('ade@okafor.family'));
+        $body = $this->send('POST', $this->claimPath($organisation) . '/stop');
+
+        self::assertResponseStatusCodeSame(404, 'an outsider is answered as if the organisation did not exist');
+        self::assertSame(ErrorCode::NotFound->type(), $body['type'] ?? null);
+        self::assertTrue($this->claim($claim)->isOpen());
     }
 
     #[Test]

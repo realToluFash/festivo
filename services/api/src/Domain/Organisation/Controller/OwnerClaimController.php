@@ -61,7 +61,7 @@ final readonly class OwnerClaimController
         return $this->banner($organisation, extra: ['found' => null !== $claim->getFoundAt()]);
     }
 
-    /** A suspended Owner may stop it too, so this is any account's, and OwnerClaimHandler::stop decides who: never the claimant, refused `owner_claim_own`. */
+    /** A suspended Owner may stop it too, so this is any account's, and OwnerClaimHandler::stop decides who: never the claimant, refused `owner_claim_own`, and 404 to a non-member as `InOrganisation` answers. */
     #[Route('/api/orgs/{organisationId}/owner-claim/stop', name: 'orgs_owner_claim_stop', methods: ['POST'])]
     #[Authenticated]
     public function stop(string $organisationId): JsonResponse
