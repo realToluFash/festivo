@@ -8,8 +8,8 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Exception\ShapeRefusal;
 use BackedEnum;
+use JsonException;
 use Psl\Iter;
-use Psl\Json;
 use Psl\Str;
 use Psl\Type\Exception\CoercionException;
 use Psl\Type\TypeInterface;
@@ -35,9 +35,10 @@ final readonly class Input
             throw new ApiException(ErrorCode::BadRequest, 'A JSON body is required.');
         }
 
+        // Not Json\decode: it reads an integer past PHP_INT_MAX as a string, which a string field would then take.
         try {
-            $decoded = Json\decode($raw);
-        } catch (Json\Exception\DecodeException $e) {
+            $decoded = \json_decode($raw, true, 512, \JSON_THROW_ON_ERROR);
+        } catch (JsonException $e) {
             throw new ApiException(ErrorCode::BadRequest, 'The request body is not valid JSON.', [], $e);
         }
 

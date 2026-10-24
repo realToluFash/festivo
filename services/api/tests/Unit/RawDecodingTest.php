@@ -28,6 +28,9 @@ final class RawDecodingTest extends TestCase
     /** @var list<string> */
     private const FORBIDDEN = ['json_decode', 'json_encode'];
 
+    /** @var array<string, string> each file's reason sits above its call */
+    private const EXEMPT = ['Http/Input.php' => 'json_decode'];
+
     #[Test]
     public function noSourceFileCallsPhpsOwnJsonFunctions(): void
     {
@@ -38,6 +41,10 @@ final class RawDecodingTest extends TestCase
             self::assertIsString($contents);
 
             foreach (self::FORBIDDEN as $function) {
+                if ((self::EXEMPT[$this->relative($file)] ?? null) === $function) {
+                    continue;
+                }
+
                 if (\str_contains($contents, $function . '(')) {
                     $offenders[] = \sprintf('%s calls %s()', $this->relative($file), $function);
                 }
