@@ -515,7 +515,7 @@ describe('somebody awaiting approval (sc-392)', () => {
 
     const done = await screen.findByRole('status');
     expect(done.textContent).toContain('Ada Okeke’s request is turned down.');
-    expect(document.activeElement).toBe(done);
+    await waitFor(() => expect(document.activeElement).toBe(done));
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
   });
 
