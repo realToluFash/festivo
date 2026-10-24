@@ -885,6 +885,91 @@ describe('inviting somebody', () => {
     expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
   });
 
+  it('tells an administrator why an active owner beside another owner has no role picker', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        role: { id: 'role_2', seededAs: 'administrator', name: null },
+        permissions: OWNER_PERMISSIONS.filter((one) => !one.startsWith('billing')),
+      }),
+    );
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          members: [
+            member({ self: false }),
+            member({
+              id: 'm_tunde',
+              user: { id: 'u_tunde', name: 'Tunde Bakare', email: 'tunde@ire.events' },
+              self: false,
+            }),
+            member({
+              id: 'm_bisi',
+              user: { ...BISI, email: 'bisi@ire.events' },
+              role: { id: 'role_2', seededAs: 'administrator', name: null },
+              self: true,
+            }),
+          ],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
+
+    expect(
+      await screen.findAllByText("Only an owner can change an owner's role or remove them."),
+    ).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+  });
+
+  it('shows a suspended member read-only, removal date included, to a viewer who cannot manage members', async () => {
+    signedIn(membership({ permissions: ['members.read', 'events.read'] }));
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          members: [
+            { ...LIST.members[0], self: false },
+            {
+              ...LIST.members[1],
+              channel: 'domain',
+              suspension: {
+                reason: 'address_gone',
+                domain: 'ire.events',
+                since: {
+                  at: '2026-10-17T13:20:00+00:00',
+                  written: 'Saturday, Oct 17 at 14:20 WAT',
+                },
+                removesAt: {
+                  at: '2026-11-16T13:20:00+00:00',
+                  written: 'Monday, Nov 16 at 14:20 WAT',
+                },
+                onlyOwner: false,
+              },
+            },
+          ],
+          invitations: [],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+    expect(screen.getByRole('heading', { name: /Suspended: company domain/ })).toBeDefined();
+    expect(
+      screen.getByText("Bisi Adeyemi's ire.events address is no longer on their account."),
+    ).toBeDefined();
+    expect(
+      screen.getByText('If nobody answers by Monday, Nov 16 at 14:20 WAT, they are removed.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+    expect(screen.queryByText(/Only an owner can change/)).toBeNull();
+  });
+
   it('offers neither a role change nor removal on your own row', async () => {
     signedIn();
     answering(READS);
