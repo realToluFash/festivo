@@ -42,14 +42,14 @@ final readonly class DeletionController
     /** The deadline a deletion sent now would get, written in the caller's zone. */
     #[Route('/api/orgs/{organisationId}/deletion', name: 'orgs_deletion', methods: ['GET'])]
     #[InOrganisation(Permission::OrganisationManage)]
-    public function preview(Request $request, string $organisationId): JsonResponse
+    public function preview(string $organisationId): JsonResponse
     {
         $organisation = $this->organisation($organisationId);
         $this->ownerCheck->require($organisation, $this->user(), 'organisation.owner_required');
 
         return new JsonResponse([
             ...$this->organisationHoldings->of($organisation),
-            ...$this->window(RestoreWindow::toTheSecond($this->clock->now()), $request),
+            ...$this->window(RestoreWindow::toTheSecond($this->clock->now())),
         ]);
     }
 
@@ -61,18 +61,18 @@ final readonly class DeletionController
         $body = Input::body($request, Type\shape(['name' => Type\string()]));
         $at = $this->organisationDeleter->delete($organisation, $this->user(), $body['name'], $request->getLocale());
 
-        return new JsonResponse(['deletedAt' => $at->format(\DATE_ATOM), ...$this->window($at, $request)]);
+        return new JsonResponse(['deletedAt' => $at->format(\DATE_ATOM), ...$this->window($at)]);
     }
 
     /** @return array{restoreClosesAt: string, restoreCloses: string} */
-    private function window(DateTimeImmutable $deletedAt, Request $request): array
+    private function window(DateTimeImmutable $deletedAt): array
     {
         $closes = RestoreWindow::closesAt($deletedAt);
         $user = $this->user();
 
         return [
             'restoreClosesAt' => $closes->format(\DATE_ATOM),
-            'restoreCloses' => $this->userMailer->deadline($closes, $user, $this->userMailer->localeFor($user, $request->getLocale())),
+            'restoreCloses' => $this->userMailer->deadline($closes, $user, $this->userMailer->shownLocaleFor($user)),
         ];
     }
 
