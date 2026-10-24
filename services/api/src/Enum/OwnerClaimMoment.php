@@ -9,5 +9,6 @@ enum OwnerClaimMoment
 {
     case Found;
     case Passed;
+    case Lapsed;
     case Ended;
 }
