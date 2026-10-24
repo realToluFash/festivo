@@ -20,14 +20,16 @@ export function LinkedNotice() {
       <span className="mark mark-done" aria-hidden="true">
         ✓
       </span>
-      <p className="notice-title">{t('oauth.linked', { provider })}</p>
-      <button
-        className="link-button notice-dismiss"
-        type="button"
-        onClick={() => setProvider(null)}
-      >
-        {t('oauth.dismiss')}
-      </button>
+      <div className="notice-action-row">
+        <p className="notice-title">{t('oauth.linked', { provider })}</p>
+        <button
+          className="link-button notice-dismiss"
+          type="button"
+          onClick={() => setProvider(null)}
+        >
+          {t('oauth.dismiss')}
+        </button>
+      </div>
     </div>
   );
 }

@@ -2242,10 +2242,30 @@ span {
 /* The notice breaks words anywhere so a long address fits; its button's one word never breaks. */
 .notice-dismiss {
   flex: none;
+  min-width: var(--sizeHit);
   min-height: var(--sizeHit);
   margin-left: auto;
   overflow-wrap: normal;
   white-space: nowrap;
+}
+
+.notice-action-row {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-width: 0;
+}
+
+/* Taking no height, the button centres on the sentence instead of making the row 44px tall and pulling the sentence off its mark. */
+.notice-action-row .notice-dismiss {
+  margin-block: calc(var(--sizeHit) / -2);
+  padding-inline: var(--spaceXxs);
+}
+
+/* The box overhangs a one-line notice, so the ring is drawn inside it rather than across the notice's border, in the padding clear of the word. */
+.notice-action-row .notice-dismiss:focus-visible {
+  outline-offset: -2px;
 }
 
 /* ── Two-factor, in Settings > Security ──────────────────────────────────── */
