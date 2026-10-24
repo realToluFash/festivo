@@ -81,5 +81,5 @@
     "owner_claim_closed": "Ownership has to be restored by Soirely support.",
     "owner_claim_ended": "This claim has already ended.",
     "owner_claim_unavailable": "This organisation has an active owner.",
-    "owner_claim_own": "You can't stop your own claim."
+    "owner_claim_own": "You cannot stop your own claim."
 }

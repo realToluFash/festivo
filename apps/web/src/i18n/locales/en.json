@@ -1585,7 +1585,7 @@
     "recordRemoved": "The record was removed, so ownership did not pass.",
     "refusedAddress": "To become the owner, your main address must be at {{domain}}.",
     "refusedManaged": "{{domain}} is managed by another organisation. Contact Soirely support.",
-    "failed": "That didn't work. Please try again.",
+    "failed": "That did not work. Please try again.",
     "prove": "Prove you control {{domain}}",
     "addRecord": "Add this TXT record to the DNS for {{domain}}. The value is new for this claim.",
     "type": "Type",

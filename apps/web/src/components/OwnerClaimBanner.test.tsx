@@ -127,7 +127,7 @@ describe('the Members banner while no owner is active (sc-6640)', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
 
     expect(await screen.findByText('Refused.')).toBeTruthy();
-    expect(screen.queryByText("That didn't work. Please try again.")).toBeNull();
+    expect(screen.queryByText('That did not work. Please try again.')).toBeNull();
   });
 
   it('says the record is not found yet after Check record', async () => {
