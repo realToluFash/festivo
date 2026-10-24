@@ -1901,7 +1901,7 @@ span {
 .roles-pick-text,
 .roles-row-text {
   display: flex;
-  flex: 1 1 13rem;
+  flex: 1;
   flex-direction: column;
   gap: var(--spaceXxs);
   min-width: 0;
@@ -2138,6 +2138,13 @@ span {
   .roles[data-open='false'] .roles-detail,
   .roles[data-open='true'] .roles-list {
     display: none;
+  }
+}
+
+@media (width <= 40rem) {
+  .roles-pick-text,
+  .roles-row-text {
+    flex-basis: 13rem;
   }
 }
 
