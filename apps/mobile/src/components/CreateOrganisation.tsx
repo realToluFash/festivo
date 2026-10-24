@@ -49,11 +49,14 @@ export function CreateOrganisation({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
+  const { kind, width, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
+  const wide = phone && width > height;
   // The `create_keyboard` drawing is for Android phones; the iPhone keeps its row (sc-9442).
   const drawn = Platform.OS === 'android' && phone;
+  // Android stays as sc-4527 left it, upright and on its side; its side insets belong to sc-8606.
+  const iPhone = Platform.OS === 'ios' && phone;
   const keysUp = useKeysUp();
   const typing = phone && keysUp;
 
@@ -62,6 +65,8 @@ export function CreateOrganisation({
       visible={open}
       transparent
       animationType={phone ? 'slide' : 'fade'}
+      // An iOS modal is portrait-only by default, and a rotation under it measures the keys sideways.
+      supportedOrientations={['portrait', 'landscape']}
       onRequestClose={onCancel}
     >
       {/* Padding on both platforms: a modal is its own window, so neither resizes for the keyboard. */}
@@ -71,6 +76,7 @@ export function CreateOrganisation({
             styles.scrim,
             phone ? styles.scrimPhone : styles.scrimTablet,
             { paddingTop: phone ? insets.top : Math.max(tokens.spaceXxl, insets.top) },
+            iPhone && { paddingLeft: insets.left, paddingRight: insets.right },
           ]}
         >
           <Pressable
@@ -94,6 +100,7 @@ export function CreateOrganisation({
                 drawn={drawn}
                 keysUp={keysUp}
                 typing={typing}
+                titleScrolls={typing && wide}
                 onCreated={onCreated}
                 onCancel={onCancel}
               />
@@ -185,6 +192,7 @@ function Form({
   drawn,
   keysUp,
   typing,
+  titleScrolls,
   onCreated,
   onCancel,
 }: {
@@ -193,6 +201,8 @@ function Form({
   drawn: boolean;
   keysUp: boolean;
   typing: boolean;
+  /** An iPhone on its side has no room above the keys for a fixed title as well as the field. */
+  titleScrolls: boolean;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -364,15 +374,18 @@ function Form({
 
   return (
     <>
-      <View style={[styles.heading, typing && styles.headingTyping]}>{title}</View>
+      {!titleScrolls && (
+        <View style={[styles.heading, typing && styles.headingTyping]}>{title}</View>
+      )}
       <ScrollView
         ref={body}
         style={styles.body}
-        contentContainerStyle={styles.form}
+        contentContainerStyle={[styles.form, titleScrolls && styles.formTitled]}
         keyboardShouldPersistTaps="handled"
         onLayout={(event) => onBodyLayout(event.nativeEvent.layout.height)}
         testID="createOrganisation"
       >
+        {titleScrolls && title}
         {intro}
         {fields}
       </ScrollView>
@@ -420,6 +433,7 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceXs,
     paddingBottom: tokens.spaceXl,
   },
+  formTitled: { paddingTop: tokens.spaceLg },
   group: { gap: tokens.spaceXl },
   footer: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.space3xl },
   footerTyping: {
