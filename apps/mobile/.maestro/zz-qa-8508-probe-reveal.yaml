@@ -1,0 +1,53 @@
+# Probe (d) for sc-8508: type into password.new and password.current, then press Show on each, to tell "no input" from "input not drawn".
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-only.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/settings/security
+- tapOn:
+    text: 'Not Now'
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'password.change'
+    timeout: 30000
+- tapOn:
+    id: 'password.change'
+- scrollUntilVisible:
+    element:
+      id: 'password.new'
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'password.new'
+- waitForAnimationToEnd
+- inputText: 'newpass-1234567890'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-new-typed
+- tapOn:
+    id: 'password.new.reveal'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-new-revealed
+- scrollUntilVisible:
+    element:
+      id: 'password.current'
+    direction: UP
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: 'password.current'
+- waitForAnimationToEnd
+- inputText: 'curpass-abc'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-current-typed
+- scrollUntilVisible:
+    element:
+      id: 'password.current'
+    direction: UP
+    centerElement: true
+- tapOn:
+    id: 'password.current.reveal'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-current-revealed

@@ -1,0 +1,50 @@
+# sc-8508: type into ownership.password, press Show to see what it holds, then send a wrong password and read the refusal.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-only.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/settings/organisation
+- tapOn:
+    text: 'Not Now'
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer'
+    timeout: 60000
+- tapOn:
+    id: 'ownership.transfer'
+- scrollUntilVisible:
+    element:
+      id: 'ownership.owner.${MEMBER}'
+    timeout: 15000
+- tapOn:
+    id: 'ownership.owner.${MEMBER}'
+- scrollUntilVisible:
+    element:
+      id: 'ownership.password'
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: 'ownership.password'
+- waitForAnimationToEnd
+- inputText: 'wrong-password-123'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-typed-masked
+- tapOn:
+    id: 'ownership.password.reveal'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-typed-revealed
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer.send'
+- tapOn:
+    id: 'ownership.transfer.send'
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.password'
+    direction: UP
+    centerElement: true
+- takeScreenshot: ${SHOT}-wrong-refused

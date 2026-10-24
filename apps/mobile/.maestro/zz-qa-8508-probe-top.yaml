@@ -1,0 +1,32 @@
+# Probe (b) for sc-8508: password.current tapped near the top of the screen, so no lift scroll runs when the keys come up.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-only.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/settings/security
+- tapOn:
+    text: 'Not Now'
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'password.change'
+    timeout: 30000
+- tapOn:
+    id: 'password.change'
+- scrollUntilVisible:
+    element:
+      id: 'password.current'
+    centerElement: true
+    timeout: 30000
+- swipe:
+    start: 50%, 55%
+    end: 50%, 45%
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-before-tap
+- tapOn:
+    id: 'password.current'
+- waitForAnimationToEnd
+- inputText: 'abc12345'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-typed
