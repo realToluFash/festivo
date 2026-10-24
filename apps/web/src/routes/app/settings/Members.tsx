@@ -240,6 +240,12 @@ function MembersOverview({
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
   const filters = FILTERS.filter((one) => manages || one !== 'waiting');
+  const done = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (answered != null) done.current?.focus();
+  }, [answered]);
+
   const count = (one: MemberFilter) =>
     one === 'invited'
       ? pending
@@ -277,7 +283,7 @@ function MembersOverview({
       )}
 
       {answered != null && (
-        <div className="notice notice-done" role="status">
+        <div ref={done} className="notice notice-done" role="status" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -911,8 +917,10 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [left, setLeft] = useState<Answering | null>(null);
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
+  const step = useCallback((element: HTMLElement | null) => element?.focus(), []);
 
   async function answer(): Promise<void> {
     setBusy(true);
@@ -934,12 +942,23 @@ function JoinRequestAnswer({
       }
     } catch (error) {
       setBusy(false);
-      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+      setFailed(
+        error instanceof ApiError
+          ? (error.problem.violations?.find((one) => one.propertyPath === 'roleId')?.message ??
+              error.problem.title)
+          : t('membersScreen.actionFailed'),
+      );
     }
+  }
+
+  function open(next: Answering): void {
+    setLeft(null);
+    setAnswering(next);
   }
 
   function back(): void {
     setFailed(null);
+    setLeft(answering);
     setAnswering('resting');
   }
 
@@ -947,13 +966,19 @@ function JoinRequestAnswer({
     return (
       <div className="actions">
         <button
+          ref={left === 'approving' ? step : undefined}
           type="button"
           className="button button-primary"
-          onClick={() => setAnswering('approving')}
+          onClick={() => open('approving')}
         >
           {t('membersScreen.awaiting.approve')}
         </button>
-        <button type="button" className="button" onClick={() => setAnswering('turningDown')}>
+        <button
+          ref={left === 'turningDown' ? step : undefined}
+          type="button"
+          className="button"
+          onClick={() => open('turningDown')}
+        >
           {t('membersScreen.awaiting.turnDown')}
         </button>
       </div>
@@ -963,7 +988,9 @@ function JoinRequestAnswer({
   if (answering === 'turningDown') {
     return (
       <div className="members-answer">
-        <h3>{t('membersScreen.awaiting.turnDownTitle', { name })}</h3>
+        <h3 ref={step} tabIndex={-1}>
+          {t('membersScreen.awaiting.turnDownTitle', { name })}
+        </h3>
         <p>{t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}</p>
         {failed != null && <FieldError id={`turn-down-${member.id}`} message={failed} />}
         <div className="actions">
@@ -991,6 +1018,7 @@ function JoinRequestAnswer({
         {offered.map((one) => (
           <label key={one.id} className="members-role">
             <input
+              ref={picked === one.id ? step : undefined}
               type="radio"
               name={`approve-role-${member.id}`}
               value={one.id}

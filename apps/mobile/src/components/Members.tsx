@@ -32,13 +32,14 @@ import {
   withRole,
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
-import { refusalTitle } from '../kit/refusal.ts';
+import { refusalFor, refusalTitle } from '../kit/refusal.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 const AVATAR = 40;
@@ -113,6 +114,22 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
   );
 }
 
+/** Scrolled into view when it appears, since the answer was given further down the list. */
+function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => void }) {
+  const top = useScrolledToTop();
+
+  return (
+    <View ref={top} accessibilityLiveRegion="polite">
+      <Notice
+        tone="done"
+        mark={tokens.marks.done.glyph}
+        body={answered.text}
+        action={{ label: answered.next.label, onPress: onNext, testID: 'members.answered.next' }}
+      />
+    </View>
+  );
+}
+
 /** The list half of `MembersApp-*`: the chips, the rows, and the line that says where invitations are sent. */
 export function MemberList({
   kind,
@@ -159,22 +176,15 @@ export function MemberList({
       )}
 
       {answered != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={answered.text}
-            action={{
-              label: answered.next.label,
-              onPress: () => {
-                const next = answered.next;
-                if ('member' in next) onOpen(next.member);
-                else setFilter(next.filter);
-              },
-              testID: 'members.answered.next',
-            }}
-          />
-        </View>
+        <AnsweredLine
+          key={answered.text}
+          answered={answered}
+          onNext={() => {
+            const next = answered.next;
+            if ('member' in next) onOpen(next.member);
+            else setFilter(next.filter);
+          }}
+        />
       )}
 
       {manages && waiting.length > 0 && (
@@ -526,7 +536,7 @@ function JoinRequestAnswer({
         await api.turnDownMember(organisation.id, member.id);
       }
     } catch (error) {
-      setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      setFailed(refusalFor(error, 'roleId', t('membersScreen.actionFailed')));
       setBusy(false);
       return;
     }
