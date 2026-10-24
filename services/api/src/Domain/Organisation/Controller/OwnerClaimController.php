@@ -72,6 +72,17 @@ final readonly class OwnerClaimController
         return $this->banner($organisation);
     }
 
+    /** Refused `owner_claim_ended` once it has passed, lapsed or been stopped, and 403 to anybody but the claimant; `told` says whether anybody is emailed. */
+    #[Route('/api/orgs/{organisationId}/owner-claim/withdraw', name: 'orgs_owner_claim_withdraw', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersRead)]
+    public function withdraw(string $organisationId): JsonResponse
+    {
+        $organisation = $this->organisation($organisationId);
+        $claim = $this->ownerClaimHandler->withdraw($organisation, $this->user());
+
+        return $this->banner($organisation, extra: ['withdrawn' => ['told' => null !== $claim->getFoundAt()]]);
+    }
+
     /** @param array<string, mixed> $extra */
     private function banner(Organisation $organisation, int $status = Response::HTTP_OK, array $extra = []): JsonResponse
     {

@@ -13,6 +13,8 @@ export interface OwnerClaimView {
   record: boolean;
   become: boolean;
   stop: boolean;
+  /** Withdraw my claim, only ever on the claimant's own card (sc-8204). */
+  withdraw: boolean;
 }
 
 interface Instant {
@@ -46,7 +48,7 @@ export function ownerClaimView(
   organisation: string,
 ): OwnerClaimView {
   const { claim } = banner;
-  const none = { record: false, become: false, stop: false };
+  const none = { record: false, become: false, stop: false, withdraw: false };
 
   if (banner.state === 'closed' || claim == null) {
     if (banner.state === 'closed') {
@@ -91,6 +93,7 @@ export function ownerClaimView(
           tone: 'done',
           title: line('ownerClaim.found'),
           lines: [line('ownerClaim.passesOn', passes), line('ownerClaim.keepPublished')],
+          withdraw: true,
         }
       : {
           ...none,
@@ -108,6 +111,7 @@ export function ownerClaimView(
         title: line('ownerClaim.prove', named),
         lines: [line('ownerClaim.addRecord', named)],
         record: true,
+        withdraw: true,
       }
     : {
         ...none,

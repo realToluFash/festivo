@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useFormChecks } from '../formChecks.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { PROVIDER_NAMES, type ReturnPurpose, startProviderSignIn } from '../providerSignIn.ts';
 import { dropProof, holdProof } from '../recentProof.ts';
 import { FieldError } from './FieldError.tsx';
@@ -337,7 +337,7 @@ function provingRefusal(
       message:
         refusal.until == null
           ? t('passwordCard.pausedSoon')
-          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, currentLocale()) }),
+          : t('passwordCard.pausedBody', { time: formatTimeOfDay(refusal.until, dateLocale()) }),
     };
   if (refusal.kind === 'field')
     return {

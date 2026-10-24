@@ -5,10 +5,11 @@ import {
   ownerClaimRefusalKey,
   ownerClaimView,
 } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
+import { keepFocusIn } from '../dialogFocus.ts';
 
 const MARKS = { attention: '!', waiting: '…', done: '✓', info: 'i' } as const;
 
@@ -25,6 +26,7 @@ export function OwnerClaimBanner({
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [withdrew, setWithdrew] = useState<{ told: boolean } | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -52,17 +54,45 @@ export function OwnerClaimBanner({
   if (load.kind === 'failed' || load.banner == null) return null;
 
   return (
-    <OwnerClaimCard
-      key={`${load.banner.state}-${load.banner.claim?.id ?? ''}`}
-      organisationId={organisationId}
-      organisation={organisation}
-      banner={load.banner}
-      onBanner={(banner) => setLoad({ kind: 'loaded', banner })}
-      onReload={() => {
-        setLoad({ kind: 'loading' });
-        setAttempt((n) => n + 1);
-      }}
-    />
+    <>
+      {withdrew != null && <Withdrew told={withdrew.told} />}
+      <OwnerClaimCard
+        key={`${load.banner.state}-${load.banner.claim?.id ?? ''}`}
+        organisationId={organisationId}
+        organisation={organisation}
+        banner={load.banner}
+        onBanner={(banner) => {
+          setWithdrew(null);
+          setLoad({ kind: 'loaded', banner });
+        }}
+        onWithdrawn={(banner, told) => {
+          setWithdrew({ told });
+          setLoad({ kind: 'loaded', banner });
+        }}
+        onReload={() => {
+          setWithdrew(null);
+          setLoad({ kind: 'loading' });
+          setAttempt((n) => n + 1);
+        }}
+      />
+    </>
+  );
+}
+
+/** Only the claimant sees it, and only until they leave Members (sc-8204). */
+function Withdrew({ told }: { told: boolean }) {
+  const { t } = useTranslation();
+  const line = useRef<HTMLDivElement>(null);
+
+  useEffect(() => line.current?.focus(), []);
+
+  return (
+    <div ref={line} className="notice notice-done" role="status" tabIndex={-1}>
+      <span className="mark mark-done" aria-hidden="true">
+        ✓
+      </span>
+      <p>{t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew')}</p>
+    </div>
   );
 }
 
@@ -71,12 +101,14 @@ function OwnerClaimCard({
   organisation,
   banner,
   onBanner,
+  onWithdrawn,
   onReload,
 }: {
   organisationId: string;
   organisation: string;
   banner: Banner;
   onBanner: (banner: Banner | null) => void;
+  onWithdrawn: (banner: Banner | null, told: boolean) => void;
   onReload: () => void;
 }) {
   const { t } = useTranslation();
@@ -86,6 +118,9 @@ function OwnerClaimCard({
   const [notFound, setNotFound] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [stopEnded, setStopEnded] = useState(false);
+  const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
+  const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
+  const withdrawButton = useRef<HTMLButtonElement>(null);
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
 
   async function start(): Promise<void> {
@@ -157,6 +192,31 @@ function OwnerClaimCard({
     }
   }
 
+  async function withdraw(): Promise<void> {
+    setWithdrawing('pending');
+
+    try {
+      const withdrawn = await api.withdrawOwnerClaim(organisationId);
+      onWithdrawn(withdrawn.ownerClaim, withdrawn.told);
+    } catch (error) {
+      setWithdrawing(null);
+
+      if (error instanceof ApiError && error.is('owner_claim_ended')) {
+        setWithdrawRefused(t('ownerClaim.withdrawEnded'));
+      } else if (error instanceof ApiError && error.is('forbidden')) {
+        setWithdrawRefused(t('ownerClaim.withdrawNotClaimant'));
+      } else {
+        setRefusal(t('ownerClaim.failed'));
+        withdrawButton.current?.focus();
+      }
+    }
+  }
+
+  function keepClaim(): void {
+    setWithdrawing(null);
+    withdrawButton.current?.focus();
+  }
+
   return (
     <section className="card owner-claim" aria-labelledby="owner-claim-title">
       <div className="owner-claim-head">
@@ -169,7 +229,7 @@ function OwnerClaimCard({
         <p key={line.key}>{words(line)}</p>
       ))}
 
-      {view.record && banner.claim?.record != null && (
+      {view.record && withdrawRefused == null && banner.claim?.record != null && (
         <>
           <RecordPanel record={banner.claim.record} />
           {notFound && (
@@ -194,6 +254,42 @@ function OwnerClaimCard({
             </button>
           </div>
         </>
+      )}
+
+      {view.withdraw && withdrawRefused == null && (
+        <div className="actions">
+          <button
+            ref={withdrawButton}
+            type="button"
+            className="button"
+            onClick={() => setWithdrawing('asking')}
+          >
+            {t('ownerClaim.withdraw')}
+          </button>
+        </div>
+      )}
+
+      {withdrawing != null && (
+        <WithdrawConfirm
+          organisation={organisation}
+          pending={withdrawing === 'pending'}
+          onWithdraw={() => void withdraw()}
+          onKeep={keepClaim}
+        />
+      )}
+
+      {withdrawRefused != null && (
+        <div className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <div className="notice-body">
+            <p>{withdrawRefused}</p>
+            <button type="button" className="link-button" onClick={onReload}>
+              {t('ownerClaim.reload')}
+            </button>
+          </div>
+        </div>
       )}
 
       {view.become && (
@@ -270,6 +366,88 @@ function OwnerClaimCard({
 
       <p className="muted owner-claim-keeps">{words(OWNER_CLAIM_KEEPS_WORKING)}</p>
     </section>
+  );
+}
+
+/** Centred on a desk, a sheet at phone width; nothing closes it while the request is in flight (sc-8204). */
+function WithdrawConfirm({
+  organisation,
+  pending,
+  onWithdraw,
+  onKeep,
+}: {
+  organisation: string;
+  pending: boolean;
+  onWithdraw: () => void;
+  onKeep: () => void;
+}) {
+  const { t } = useTranslation();
+  const dialog = useRef<HTMLDivElement>(null);
+  const keep = useRef<HTMLButtonElement>(null);
+  const unlessPending = (act: () => void) => () => !pending && act();
+
+  useEffect(() => keep.current?.focus(), []);
+
+  useEffect(() => {
+    const keys = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape' && !pending) onKeep();
+      if (event.key === 'Tab' && dialog.current != null) keepFocusIn(dialog.current, event);
+    };
+
+    document.addEventListener('keydown', keys);
+
+    return () => document.removeEventListener('keydown', keys);
+  }, [pending, onKeep]);
+
+  return (
+    <>
+      <div className="dialog-scrim" aria-hidden="true" />
+      <div
+        ref={dialog}
+        className="dialog owner-claim-withdraw"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="owner-claim-withdraw-title"
+        aria-describedby="owner-claim-withdraw-body"
+      >
+        <button
+          type="button"
+          className="dialog-close"
+          aria-label={t('ownerClaim.close')}
+          aria-disabled={pending}
+          onClick={unlessPending(onKeep)}
+        >
+          ✕
+        </button>
+        <div className="dialog-heading">
+          <h2 id="owner-claim-withdraw-title">{t('ownerClaim.withdrawTitle')}</h2>
+          <p id="owner-claim-withdraw-body">{t('ownerClaim.withdrawBody', { organisation })}</p>
+        </div>
+        <div className="dialog-actions">
+          <button
+            type="button"
+            className="button button-primary"
+            aria-disabled={pending}
+            aria-busy={pending}
+            onClick={unlessPending(onWithdraw)}
+          >
+            {pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
+          </button>
+          <button
+            ref={keep}
+            type="button"
+            className="button"
+            aria-disabled={pending}
+            onClick={unlessPending(onKeep)}
+          >
+            {t('ownerClaim.withdrawNo')}
+          </button>
+        </div>
+        <span className="visually-hidden" role="status">
+          {pending ? t('ownerClaim.withdrawing') : ''}
+        </span>
+      </div>
+    </>
   );
 }
 

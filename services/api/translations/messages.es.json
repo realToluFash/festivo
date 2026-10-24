@@ -107,5 +107,6 @@
     "owner_claims.has_owner": "{organisation} ya tiene a alguien con el rol Propietario en activo.",
     "owner_claims.administrators_only": "Solo alguien con el rol Administrador puede obtener la propiedad.",
     "owner_claims.own": "No puede detener su propia solicitud.",
+    "owner_claims.not_claimant": "Only the person who started this claim can withdraw it.",
     "owner_claims.who_may_stop": "Solo puede detener esta solicitud alguien con el rol Administrador o la persona con el rol Propietario suspendida."
 }

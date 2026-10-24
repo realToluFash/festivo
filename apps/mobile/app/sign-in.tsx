@@ -13,7 +13,7 @@ import { Notice } from '../src/components/Notice.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { ProviderButtons, ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
-import { currentLocale } from '../src/i18n/index.ts';
+import { currentLocale, dateLocale } from '../src/i18n/index.ts';
 import { emailMessage, useFormChecks } from '../src/kit/formChecks.ts';
 import { tokens } from '../src/theme/tokens.ts';
 import { nextAfterSignIn } from '../src/challenge.ts';
@@ -349,7 +349,7 @@ function refusalFrom(error: unknown): Status {
     if (liftsAt != null) {
       return {
         kind: 'rateLimited',
-        retryAt: formatTimeOfDay(liftsAt, currentLocale()),
+        retryAt: formatTimeOfDay(liftsAt, dateLocale()),
         liftsAt: liftsAt.getTime(),
       };
     }

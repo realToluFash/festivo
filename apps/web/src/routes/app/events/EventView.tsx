@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { useSession } from '../../../session.ts';
 
 type Load =
@@ -143,7 +143,7 @@ function EventPage({ event }: { event: OrganisationEvent }) {
       </div>
       <p>
         {t('eventPage.when', {
-          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, currentLocale()),
+          range: formatEventRange(event.startsAt, event.endsAt, event.timeZone, dateLocale()),
           timeZone: event.timeZone,
         })}
       </p>

@@ -1348,6 +1348,17 @@
     "keepsWorking": "Events, guests and your permissions keep working. Only Owner actions, such as billing, wait for an owner.",
     "pausedTitle": "{{claimant}} is becoming the owner of {{organisation}}",
     "pausedUnfound": "Their DNS record has not been found yet. Without it, the claim lapses on {{when}}.",
-    "pausedStopped": "You stopped {{claimant}}'s claim. Ownership of {{organisation}} now has to be restored by Soirely support."
+    "pausedStopped": "You stopped {{claimant}}'s claim. Ownership of {{organisation}} now has to be restored by Soirely support.",
+    "withdraw": "Withdraw my claim",
+    "withdrawTitle": "Withdraw your claim?",
+    "withdrawBody": "You won't become the owner of {{organisation}}. Any Administrator, you included, can start a new claim.",
+    "withdrawYes": "Withdraw",
+    "withdrawNo": "Keep my claim",
+    "withdrawing": "Withdrawing",
+    "close": "Close",
+    "youWithdrew": "You withdrew your claim.",
+    "youWithdrewTold": "You withdrew your claim. Everybody who was told is emailed.",
+    "withdrawEnded": "This claim has already ended.",
+    "withdrawNotClaimant": "Only the person who started this claim can withdraw it."
   }
 }

@@ -107,5 +107,6 @@
     "owner_claims.has_owner": "Já há alguém ativo com a função Proprietário em {organisation}.",
     "owner_claims.administrators_only": "Só alguém com a função Administrador pode assumir a propriedade.",
     "owner_claims.own": "Não pode interromper o seu próprio pedido.",
+    "owner_claims.not_claimant": "Only the person who started this claim can withdraw it.",
     "owner_claims.who_may_stop": "Só alguém com a função Administrador, ou a pessoa suspensa com a função Proprietário, pode interromper este pedido."
 }

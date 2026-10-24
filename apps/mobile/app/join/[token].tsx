@@ -18,7 +18,7 @@ import { Field, TextField } from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { holdLink } from '../../src/heldLink.ts';
-import { currentLocale } from '../../src/i18n/index.ts';
+import { dateLocale } from '../../src/i18n/index.ts';
 import { useFormChecks } from '../../src/kit/formChecks.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -145,11 +145,11 @@ function Asking({
                 ? t('requestToJoin.limitedLater')
                 : fallsOnLaterDay(view.until)
                   ? t('requestToJoin.limitedOnDay', {
-                      day: formatDay(view.until, currentLocale()),
-                      time: formatTimeOfDay(view.until, currentLocale()),
+                      day: formatDay(view.until, dateLocale()),
+                      time: formatTimeOfDay(view.until, dateLocale()),
                     })
                   : t('requestToJoin.limited', {
-                      time: formatTimeOfDay(view.until, currentLocale()),
+                      time: formatTimeOfDay(view.until, dateLocale()),
                     })
             }
             announce
@@ -344,7 +344,7 @@ function Standing({ preview }: { preview: RequestLinkPreview }) {
           ? t('requestToJoin.coolingOffLater', { organisation })
           : t('requestToJoin.coolingOff', {
               organisation,
-              date: formatDay(from, currentLocale()),
+              date: formatDay(from, dateLocale()),
             });
 
   return (

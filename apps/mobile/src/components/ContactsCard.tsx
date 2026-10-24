@@ -18,7 +18,7 @@ import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../kit/formChecks.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { phoneProblemMessage } from '../phoneProblem.ts';
@@ -510,7 +510,7 @@ function addRefusal(refusal: unknown, kind: Kind, t: TFunction): string {
 
     return lifts == null
       ? t('contacts.limitedSoon')
-      : t('contacts.limitedBody', { time: formatTimeOfDay(lifts, currentLocale()) });
+      : t('contacts.limitedBody', { time: formatTimeOfDay(lifts, dateLocale()) });
   }
   if (refusal instanceof ApiError && refusal.is('validation_failed'))
     return Object.values(refusal.fieldErrors())[0] ?? t('contacts.failed');

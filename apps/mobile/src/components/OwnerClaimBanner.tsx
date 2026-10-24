@@ -8,7 +8,8 @@ import {
 } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -41,6 +42,7 @@ export function OwnerClaimBanner({
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const [withdrew, setWithdrew] = useState<{ told: boolean } | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -69,18 +71,43 @@ export function OwnerClaimBanner({
   if (load.kind === 'failed' || load.banner == null) return null;
 
   return (
-    <OwnerClaimCard
-      key={`${load.banner.state}-${load.banner.claim?.id ?? ''}`}
-      kind={kind}
-      organisationId={organisationId}
-      organisation={organisation}
-      banner={load.banner}
-      onBanner={(banner) => setLoad({ kind: 'loaded', banner })}
-      onReload={() => {
-        setLoad({ kind: 'loading' });
-        setAttempt((n) => n + 1);
-      }}
-    />
+    <>
+      {withdrew != null && <Withdrew told={withdrew.told} />}
+      <OwnerClaimCard
+        key={`${load.banner.state}-${load.banner.claim?.id ?? ''}`}
+        kind={kind}
+        organisationId={organisationId}
+        organisation={organisation}
+        banner={load.banner}
+        onBanner={(banner) => {
+          setWithdrew(null);
+          setLoad({ kind: 'loaded', banner });
+        }}
+        onWithdrawn={(banner, told) => {
+          setWithdrew({ told });
+          setLoad({ kind: 'loaded', banner });
+        }}
+        onReload={() => {
+          setWithdrew(null);
+          setLoad({ kind: 'loading' });
+          setAttempt((n) => n + 1);
+        }}
+      />
+    </>
+  );
+}
+
+/** Only the claimant sees it, and only until they leave Members (sc-8204). */
+function Withdrew({ told }: { told: boolean }) {
+  const { t } = useTranslation();
+  const words = t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew');
+
+  useEffect(() => AccessibilityInfo.announceForAccessibility(words), [words]);
+
+  return (
+    <View testID="ownerClaim.withdrew">
+      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} announce />
+    </View>
   );
 }
 
@@ -90,6 +117,7 @@ function OwnerClaimCard({
   organisation,
   banner,
   onBanner,
+  onWithdrawn,
   onReload,
 }: {
   kind: LayoutKind;
@@ -97,6 +125,7 @@ function OwnerClaimCard({
   organisation: string;
   banner: Banner;
   onBanner: (banner: Banner | null) => void;
+  onWithdrawn: (banner: Banner | null, told: boolean) => void;
   onReload: () => void;
 }) {
   const { t } = useTranslation();
@@ -106,6 +135,8 @@ function OwnerClaimCard({
   const [notFound, setNotFound] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [stopEnded, setStopEnded] = useState(false);
+  const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
+  const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
   const { tone, mark } = TONES[view.tone];
 
@@ -178,6 +209,25 @@ function OwnerClaimCard({
     }
   }
 
+  async function withdraw(): Promise<void> {
+    setWithdrawing('pending');
+
+    try {
+      const withdrawn = await api.withdrawOwnerClaim(organisationId);
+      onWithdrawn(withdrawn.ownerClaim, withdrawn.told);
+    } catch (error) {
+      setWithdrawing(null);
+
+      if (error instanceof ApiError && error.is('owner_claim_ended')) {
+        setWithdrawRefused(t('ownerClaim.withdrawEnded'));
+      } else if (error instanceof ApiError && error.is('forbidden')) {
+        setWithdrawRefused(t('ownerClaim.withdrawNotClaimant'));
+      } else {
+        setRefusal(t('ownerClaim.failed'));
+      }
+    }
+  }
+
   return (
     <View style={[cardFrame(kind), styles.card]} testID="ownerClaim.banner">
       <Notice tone={tone} mark={mark} title={words(view.title)} heading />
@@ -187,7 +237,7 @@ function OwnerClaimCard({
         </Text>
       ))}
 
-      {view.record && banner.claim?.record != null && (
+      {view.record && withdrawRefused == null && banner.claim?.record != null && (
         <>
           <RecordPanel record={banner.claim.record} />
           {notFound && (
@@ -203,6 +253,33 @@ function OwnerClaimCard({
             testID="ownerClaim.check"
           />
         </>
+      )}
+
+      {view.withdraw && withdrawRefused == null && (
+        <SecondaryButton
+          label={t('ownerClaim.withdraw')}
+          onPress={() => setWithdrawing('asking')}
+          testID="ownerClaim.withdraw"
+        />
+      )}
+
+      <WithdrawConfirm
+        open={withdrawing != null}
+        phone={kind === 'phone'}
+        organisation={organisation}
+        pending={withdrawing === 'pending'}
+        onWithdraw={() => void withdraw()}
+        onKeep={() => setWithdrawing(null)}
+      />
+
+      {withdrawRefused != null && (
+        <Notice
+          tone="broken"
+          mark="✕"
+          body={withdrawRefused}
+          action={{ label: t('ownerClaim.reload'), onPress: onReload, testID: 'ownerClaim.reload' }}
+          announce
+        />
       )}
 
       {view.become && (
@@ -286,6 +363,88 @@ function StopConfirm({
         />
       </View>
     </View>
+  );
+}
+
+/** A dialog on a tablet, a sheet on a phone; nothing closes it while the request is in flight (sc-8204). */
+function WithdrawConfirm({
+  open,
+  phone,
+  organisation,
+  pending,
+  onWithdraw,
+  onKeep,
+}: {
+  open: boolean;
+  phone: boolean;
+  organisation: string;
+  pending: boolean;
+  onWithdraw: () => void;
+  onKeep: () => void;
+}) {
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const unlessPending = (act: () => void) => () => !pending && act();
+
+  return (
+    <Modal
+      visible={open}
+      transparent
+      animationType={phone ? 'slide' : 'fade'}
+      onRequestClose={unlessPending(onKeep)}
+    >
+      <View
+        style={[
+          styles.scrim,
+          phone ? styles.scrimPhone : styles.scrimTablet,
+          { backgroundColor: phone ? tokens.scrimSheet : tokens.scrimDialog },
+        ]}
+      >
+        <View
+          style={[
+            styles.sheet,
+            phone ? styles.sheetPhone : styles.sheetTablet,
+            phone && { paddingBottom: tokens.space3xl + insets.bottom },
+          ]}
+          accessibilityViewIsModal
+          testID="ownerClaim.withdrawConfirm"
+        >
+          {phone && <View style={styles.grabber} />}
+          <Pressable
+            style={styles.close}
+            onPress={unlessPending(onKeep)}
+            accessibilityRole="button"
+            accessibilityLabel={t('ownerClaim.close')}
+            accessibilityState={{ disabled: pending }}
+            testID="ownerClaim.withdrawClose"
+          >
+            <Text size={tokens.typeButton.size} muted>
+              ✕
+            </Text>
+          </Pressable>
+          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+            {t('ownerClaim.withdrawTitle')}
+          </Text>
+          <Text size={tokens.typeBodyPhone.size}>
+            {t('ownerClaim.withdrawBody', { organisation })}
+          </Text>
+          <View style={phone ? styles.stacked : styles.actions}>
+            <PrimaryButton
+              label={pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
+              onPress={onWithdraw}
+              busy={pending}
+              testID="ownerClaim.withdrawYes"
+            />
+            <SecondaryButton
+              label={t('ownerClaim.withdrawNo')}
+              onPress={unlessPending(onKeep)}
+              off={pending}
+              testID="ownerClaim.withdrawNo"
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -432,5 +591,43 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusInset,
   },
   recordRow: { gap: tokens.spaceXxs },
+  scrim: { flex: 1 },
+  scrimPhone: { justifyContent: 'flex-end' },
+  scrimTablet: { justifyContent: 'center', padding: tokens.spaceXxl },
+  sheet: {
+    gap: tokens.spaceLg,
+    padding: tokens.space3xl,
+    borderWidth: 1,
+    borderColor: tokens.colorBorder,
+    backgroundColor: tokens.colorCard,
+  },
+  sheetPhone: {
+    borderBottomWidth: 0,
+    borderTopLeftRadius: tokens.radiusSheet,
+    borderTopRightRadius: tokens.radiusSheet,
+  },
+  sheetTablet: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 480,
+    borderRadius: tokens.radiusCardLarge,
+  },
+  grabber: {
+    alignSelf: 'center',
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: tokens.colorBorder,
+  },
+  close: {
+    position: 'absolute',
+    top: tokens.spaceLg,
+    right: tokens.spaceLg,
+    width: tokens.sizeHit,
+    height: tokens.sizeHit,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stacked: { gap: tokens.spaceSm },
   wraps: { flexShrink: 1 },
 });

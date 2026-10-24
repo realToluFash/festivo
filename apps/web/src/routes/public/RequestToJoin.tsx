@@ -18,7 +18,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
-import { currentLocale } from '../../i18n/index.ts';
+import { dateLocale } from '../../i18n/index.ts';
 import { landingFor, refreshAccount, restoreSession, useSessionState } from '../../session.ts';
 
 type View =
@@ -352,10 +352,10 @@ function Limited({ until }: { until: Date | null }) {
             ? t('requestToJoin.limitedLater')
             : fallsOnLaterDay(until)
               ? t('requestToJoin.limitedOnDay', {
-                  day: formatDay(until, currentLocale()),
-                  time: formatTimeOfDay(until, currentLocale()),
+                  day: formatDay(until, dateLocale()),
+                  time: formatTimeOfDay(until, dateLocale()),
                 })
-              : t('requestToJoin.limited', { time: formatTimeOfDay(until, currentLocale()) })}
+              : t('requestToJoin.limited', { time: formatTimeOfDay(until, dateLocale()) })}
         </p>
       </div>
       <Link className="button" to={landing}>
@@ -379,7 +379,7 @@ function Standing({ preview }: { preview: RequestLinkPreview }) {
           ? t('requestToJoin.coolingOffLater', { organisation })
           : t('requestToJoin.coolingOff', {
               organisation,
-              date: formatDay(from, currentLocale()),
+              date: formatDay(from, dateLocale()),
             });
 
   return (

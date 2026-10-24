@@ -9,7 +9,7 @@ import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
-import { currentLocale } from '../../i18n/index.ts';
+import { dateLocale } from '../../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { holdRegistration } from '../../pendingRegistration.ts';
 
@@ -224,7 +224,7 @@ function refusalFrom(error: unknown): Status {
     if (liftsAt != null) {
       return {
         kind: 'rateLimited',
-        retryAt: formatTimeOfDay(liftsAt, currentLocale()),
+        retryAt: formatTimeOfDay(liftsAt, dateLocale()),
         liftsAt: liftsAt.getTime(),
       };
     }

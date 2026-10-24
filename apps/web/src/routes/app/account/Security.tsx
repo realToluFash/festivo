@@ -20,7 +20,7 @@ import { EverywhereElse } from './EverywhereElse.tsx';
 import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { WaysCard } from './WaysCard.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { type ProviderReturn, takeProviderReturn } from '../../../providerSignIn.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
@@ -299,7 +299,7 @@ function Row({
   onEndHere: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   return (
     <li className="device">
@@ -350,7 +350,7 @@ function Check({
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   return (
     <>

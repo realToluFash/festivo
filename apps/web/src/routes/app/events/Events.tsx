@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 
 type Load =
@@ -94,7 +94,7 @@ function EventsOf({ organisationId, creates }: { organisationId: string; creates
             <span className="events-row-name">{event.name}</span>
             <span className="pill-quiet">{t('events.draft')}</span>
             <span className="muted events-row-date">
-              {formatEventDate(event.startsAt, event.timeZone, currentLocale())}
+              {formatEventDate(event.startsAt, event.timeZone, dateLocale())}
             </span>
           </Link>
         </li>

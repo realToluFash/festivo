@@ -42,6 +42,17 @@ export function narrowLocale(locale: string | null | undefined): LocaleCode {
   return LOCALE_CODES.includes(lang) ? lang : DEFAULT_LOCALE;
 }
 
+/** A region refines the shown language's dates, never replaces it: en-GB on an English screen, plain `es` on a Spanish one. */
+export function formattingLocale(shown: LocaleCode, deviceTag: string | null | undefined): string {
+  if (deviceTag == null || deviceTag.trim() === '' || language(deviceTag) !== shown) return shown;
+
+  try {
+    return Intl.DateTimeFormat.supportedLocalesOf(deviceTag.trim().replace(/_/g, '-'))[0] ?? shown;
+  } catch {
+    return shown;
+  }
+}
+
 /** The tag whose plural rule a locale's copy follows: `pt` is written for Portugal, where 0 is plural. */
 export function pluralLocale(locale: LocaleCode): string {
   return LOCALES.find((l) => l.code === locale)?.plurals ?? locale;

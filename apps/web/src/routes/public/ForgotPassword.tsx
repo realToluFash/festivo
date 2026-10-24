@@ -8,7 +8,7 @@ import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
-import { currentLocale } from '../../i18n/index.ts';
+import { dateLocale } from '../../i18n/index.ts';
 
 type Status =
   | { kind: 'asking' }
@@ -155,8 +155,7 @@ function refusalFrom(error: unknown): Status {
   if (error instanceof ApiError && error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
 
-    if (liftsAt != null)
-      return { kind: 'limited', time: formatTimeOfDay(liftsAt, currentLocale()) };
+    if (liftsAt != null) return { kind: 'limited', time: formatTimeOfDay(liftsAt, dateLocale()) };
   }
 
   return { kind: 'failed' };

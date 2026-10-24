@@ -21,7 +21,7 @@ import { RequestToJoin } from './RequestToJoin.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
-import { currentLocale } from '../../i18n/index.ts';
+import { dateLocale } from '../../i18n/index.ts';
 import {
   adoptAccount,
   forgetSession,
@@ -203,7 +203,7 @@ function useWords(preview: InvitationPreview) {
     organisation: preview.organisation.name,
     inviter: preview.invitedBy?.name ?? preview.organisation.name,
     role: preview.role == null ? '' : roleName(t, preview.role),
-    until: formatDay(preview.expiresAt, currentLocale()),
+    until: formatDay(preview.expiresAt, dateLocale()),
   };
 }
 

@@ -1,7 +1,7 @@
 import i18next from 'i18next';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { LANGUAGE_KEY, currentLocale, setLanguage, storedLanguage } from './index.ts';
+import { LANGUAGE_KEY, currentLocale, dateLocale, setLanguage, storedLanguage } from './index.ts';
 
 /**
  * How this app resolves a language.
@@ -54,6 +54,28 @@ describe('resolution', () => {
 
     expect(i18next.t('nav.eventCount', { count: 0 })).toBe('0 eventos');
     expect(i18next.t('nav.eventCount', { count: 1 })).toBe('1 evento');
+  });
+});
+
+describe('the locale dates are written in', () => {
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await setLanguage(null);
+  });
+
+  it("keeps an en-GB browser's region on an English screen, and the catalogue stays en", async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    await setLanguage('en');
+
+    expect(dateLocale()).toBe('en-GB');
+    expect(currentLocale()).toBe('en');
+  });
+
+  it('writes a language picked on that browser alone, never es-GB', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    await setLanguage('es');
+
+    expect(dateLocale()).toBe('es');
   });
 });
 

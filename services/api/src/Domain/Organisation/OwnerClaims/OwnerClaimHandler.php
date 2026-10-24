@@ -46,6 +46,7 @@ final readonly class OwnerClaimHandler
     public const string STARTED = 'owner_claim.started';
     public const string FOUND = 'owner_claim.found';
     public const string STOPPED = 'owner_claim.stopped';
+    public const string WITHDRAWN = 'owner_claim.withdrawn';
     public const string LAPSED = 'owner_claim.lapsed';
     public const string PASSED = 'owner_claim.passed';
     public const string ENDED = 'owner_claim.ended';
@@ -192,6 +193,41 @@ final readonly class OwnerClaimHandler
         });
 
         $this->mail(fn () => $this->ownerClaimMailer->sendStopped($claim, $by));
+
+        return $claim;
+    }
+
+    /** The claimant changing their mind (sc-8204): nobody objected, so unlike a stop it leaves the way open. */
+    public function withdraw(Organisation $organisation, User $by): OwnerClaim
+    {
+        $receivedAt = $this->clock->now();
+        $this->settleDue($organisation);
+
+        $claim = $this->entityManager->wrapInTransaction(function () use ($organisation, $by, $receivedAt): OwnerClaim|ApiException {
+            $claim = $this->lockedOpen($organisation);
+
+            if (null === $claim) {
+                return new ApiException(ErrorCode::OwnerClaimEnded, $this->translator->trans('owner_claims.ended'));
+            }
+
+            if (!$claim->getClaimant()->getId()->equals($by->getId())) {
+                return new ApiException(ErrorCode::Forbidden, $this->translator->trans('owner_claims.not_claimant'));
+            }
+
+            $claim->setOutcome(OwnerClaimOutcome::Withdrawn, $receivedAt);
+            $this->record(self::WITHDRAWN, $claim, $by, ['outcome' => [null, OwnerClaimOutcome::Withdrawn->value]]);
+            $this->entityManager->flush();
+
+            return $claim;
+        });
+
+        if ($claim instanceof ApiException) {
+            throw $claim;
+        }
+
+        if (null !== $claim->getFoundAt()) {
+            $this->mail(fn () => $this->ownerClaimMailer->sendWithdrawn($claim));
+        }
 
         return $claim;
     }
