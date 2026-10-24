@@ -91,9 +91,9 @@ final readonly class OrganisationController
 
         $body = Input::body($request, Type\shape([
             'name' => Type\string(),
-            'countryCode' => Type\string(),
+            'countryCode' => Type\always_assert(Type\string()),
             'timezone' => Type\optional(Type\string()),
-        ]));
+        ]), ['countryCode' => 'validation.country_invalid']);
 
         $organisation = $this->organisationCreator->create($user, $body['name'], $body['countryCode'], $body['timezone'] ?? '');
         $membership = $this->membershipRepository->findActive($user, $organisation->getId())
@@ -116,12 +116,12 @@ final readonly class OrganisationController
 
         $body = Input::body($request, Type\shape([
             'name' => Type\optional(Type\string()),
-            'countryCode' => Type\optional(Type\string()),
+            'countryCode' => Type\optional(Type\always_assert(Type\string())),
             'currency' => Type\optional(Type\string()),
             'timezone' => Type\optional(Type\string()),
             'contactAddress' => Type\optional(Type\string()),
             'locale' => Type\optional(Type\string()),
-        ]));
+        ]), ['countryCode' => 'validation.country_invalid']);
 
         $fields = $this->organisationRules->check([
             'name' => $body['name'] ?? $organisation->getName(),

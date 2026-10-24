@@ -6,6 +6,7 @@ namespace App\Http;
 
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use Psl\Json;
 use Psl\Type\Exception\CoercionException;
 use Psl\Type\TypeInterface;
@@ -18,11 +19,12 @@ final readonly class Input
     /**
      * @template T
      *
-     * @param TypeInterface<T> $shape
+     * @param TypeInterface<T>      $shape
+     * @param array<string, string> $refusals the refusal key for a field whose meaning has its own sentence, by path
      *
      * @return T
      */
-    public static function body(Request $request, TypeInterface $shape): mixed
+    public static function body(Request $request, TypeInterface $shape, array $refusals = []): mixed
     {
         $raw = $request->getContent();
 
@@ -36,7 +38,7 @@ final readonly class Input
             throw new ApiException(ErrorCode::BadRequest, 'The request body is not valid JSON.', [], $e);
         }
 
-        return self::coerce($decoded, $shape);
+        return self::coerce($decoded, $shape, $refusals);
     }
 
     /**
@@ -54,23 +56,19 @@ final readonly class Input
     /**
      * @template T
      *
-     * @param TypeInterface<T> $shape
+     * @param TypeInterface<T>      $shape
+     * @param array<string, string> $refusals
      *
      * @return T
      */
-    public static function coerce(mixed $value, TypeInterface $shape): mixed
+    public static function coerce(mixed $value, TypeInterface $shape, array $refusals = []): mixed
     {
         try {
             return $shape->coerce($value);
         } catch (CoercionException $e) {
-            throw ApiException::validation(
-                [[
-                    'propertyPath' => \implode('.', $e->getPaths()),
-                    'message' => $e->getMessage(),
-                    'code' => 'invalid_shape',
-                ]],
-                'The request does not have the expected shape.',
-            );
+            $path = \implode('.', $e->getPaths());
+
+            throw new ShapeRefusal($path, $refusals[$path] ?? ShapeRefusal::FIELD, $e);
         }
     }
 }

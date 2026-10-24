@@ -247,6 +247,7 @@ final class RefreshTokenCookieTest extends ApiTestCase
             Json\encode($body['violations']),
             'the delivery is what was refused, not the token beside it',
         );
+        self::assertSame('invalid_shape', $body['violations'][0]['code']);
     }
 
     private function account(string $address): void

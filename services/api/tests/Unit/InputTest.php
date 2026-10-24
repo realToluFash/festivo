@@ -6,6 +6,7 @@ namespace App\Tests\Unit;
 
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use App\Http\Input;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -72,6 +73,22 @@ final class InputTest extends TestCase
         self::assertSame(ErrorCode::ValidationFailed, $e->errorCode);
         self::assertSame('seats', $e->violations[0]['propertyPath']);
         self::assertSame('invalid_shape', $e->violations[0]['code']);
+        self::assertSame(ShapeRefusal::FIELD, $e->violations[0]['message']);
+    }
+
+    #[Test]
+    public function aFieldNamedWithItsOwnRefusalIsRefusedWithIt(): void
+    {
+        $request = Request::create('/x', 'POST', content: '{"countryCode":null}');
+        $shape = Type\shape(['countryCode' => Type\string()]);
+
+        try {
+            Input::body($request, $shape, ['countryCode' => 'validation.country_invalid']);
+            self::fail('Expected the input to be refused.');
+        } catch (ShapeRefusal $e) {
+            self::assertSame('countryCode', $e->propertyPath);
+            self::assertSame('validation.country_invalid', $e->refusal);
+        }
     }
 
     #[Test]
