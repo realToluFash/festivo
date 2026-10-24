@@ -326,7 +326,7 @@ final class OwnerClaimTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(ErrorCode::OwnerClaimOwn->type(), $body['type'] ?? null);
-        self::assertSame("You can't stop your own claim.", $body['detail'] ?? null);
+        self::assertSame('You cannot stop your own claim.', $body['detail'] ?? null);
         self::assertTrue($this->claim($claim)->isOpen());
         self::assertNull(self::service(OwnerClaimRepository::class)->findStopIn($organisation), 'the way stays open');
     }

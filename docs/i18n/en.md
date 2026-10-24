@@ -75,9 +75,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   is "stopped", or "passes" ownership. The record is "the DNS record", or "the record" once
   named. Who restores ownership is "Soirely support". The administrators' email footer names
   the role, "an Administrator of {organisation}", as the refusals do. Contractions came out of
-  `lapsed` and `recordRemoved`; `failed` ("That didn't work.") and `owner_claims.own` /
-  `owner_claim_own` ("You can't stop your own claim.") keep theirs until [dev3] rewords the
-  tests that match them (`OwnerClaimBanner.test.tsx`, `OwnerClaimTest.php`).
+  `lapsed`, `recordRemoved`, `failed` ("That did not work.") and `owner_claims.own` /
+  `owner_claim_own` ("You cannot stop your own claim.").
 - **24 Oct 2026. The only owner left suspended (sc-7831, `accessPaused.stillOnlyOwner`,
   `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
   `membersScreen.history.suspendedAddressGone`).** `onlyOwnerNotRemovable` is a refusal, so
