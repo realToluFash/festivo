@@ -40,7 +40,6 @@ function at(path: string) {
 afterEach(() => {
   vi.restoreAllMocks();
   // A module-level store: one test's session is the next test's unless it is put back.
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('the public tree', () => {

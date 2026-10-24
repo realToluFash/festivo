@@ -73,7 +73,6 @@ function json(body: unknown, status = 200): Response {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('a few details', () => {

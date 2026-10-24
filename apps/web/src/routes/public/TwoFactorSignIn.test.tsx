@@ -85,7 +85,6 @@ function enter(code: string, button = 'Verify and sign in'): void {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('a sign-in that asks for a second factor', () => {

@@ -59,7 +59,6 @@ function problem(code: string, status: number, headers: Record<string, string> =
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('asking for a reset link', () => {

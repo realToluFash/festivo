@@ -62,7 +62,6 @@ function listed(domains: { domain: string; stopped: boolean }[]) {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > General > Company domain joining (sc-561)', () => {

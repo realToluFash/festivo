@@ -184,7 +184,6 @@ const ISSUED = {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('signing in, for real', () => {

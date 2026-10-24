@@ -80,7 +80,6 @@ function fillIn(password = 'lagos-evening-air') {
 afterEach(() => {
   sessionStorage.clear();
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('creating an account', () => {

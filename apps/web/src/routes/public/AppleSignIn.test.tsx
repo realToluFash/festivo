@@ -75,7 +75,6 @@ const FIRST_TIME = `code=the-code&state=the-state&user=${encodeURIComponent(
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('continue with Apple', () => {

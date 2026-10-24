@@ -68,7 +68,6 @@ const THE_WAY_BACK = { timeout: 3000 };
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('continue with Google', () => {
