@@ -53,7 +53,7 @@
     "validation.locale_invalid": "Elija English, Español, Français o Português.",
     "validation.name_required": "Introduzca su nombre.",
     "validation.organisation_name_required": "Indique el nombre de la organización.",
-    "validation.organisation_name_too_long": "Supera los {count} caracteres.",
+    "validation.organisation_name_too_long": "Ese nombre tiene {length} caracteres. Acórtelo a {count} como máximo.",
     "validation.password_breached": "Esta contraseña ha aparecido en una filtración de datos conocida. Elija otra.",
     "validation.password_too_long": "Eso supera los {count} caracteres.",
     "validation.password_too_short": "Utilice al menos {count} caracteres.",

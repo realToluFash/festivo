@@ -53,7 +53,7 @@
     "validation.locale_invalid": "Choose English, Español, Français or Português.",
     "validation.name_required": "Enter your name.",
     "validation.organisation_name_required": "Enter the organisation's name.",
-    "validation.organisation_name_too_long": "That is longer than {count} characters.",
+    "validation.organisation_name_too_long": "That name is {length} characters. Use {count} or fewer.",
     "validation.password_breached": "This password has appeared in a known data breach. Choose another.",
     "validation.password_too_long": "That is longer than {count} characters.",
     "validation.password_too_short": "Use at least {count} characters.",
