@@ -130,6 +130,7 @@ export const {
 
 const EXPO_GO = 'host.exp.Exponent';
 const EXPO_GO_ANDROID = 'host.exp.exponent';
+const RELEASE_PACKAGE = 'com.soirely.app';
 
 export function renderQaEnv(
   example,
@@ -202,6 +203,18 @@ export function androidSdk(env = process.env, platform = process.platform, home 
     env.ANDROID_SDK_ROOT ??
     join(home, platform === 'darwin' ? 'Library/Android/sdk' : 'Android/Sdk')
   );
+}
+
+// The emulator's own architecture only: a build for all four takes four times as long.
+export function releaseAbi(arch = process.arch) {
+  return arch === 'arm64' ? 'arm64-v8a' : 'x86_64';
+}
+
+// A release build refuses http, and a QA stack serves nothing else.
+export function allowCleartext(manifest) {
+  if (manifest.includes('android:usesCleartextTraffic=')) return manifest;
+  if (!manifest.includes('<application ')) throw new Error('no <application> in the manifest');
+  return manifest.replace('<application ', '<application android:usesCleartextTraffic="true" ');
 }
 
 export function expoSdkMajor(expoRange) {
@@ -826,6 +839,82 @@ function link(args) {
   run(tools.adb, ['-s', emulatorSerial(), ...intent], { env: tools.env });
 }
 
+// A release build of the worktree's commit, with the bundle and fonts inside, so the app runs
+// without Metro and with the network off from first launch. Expo Go cannot do either.
+function buildRelease(tools, root, sha) {
+  const mobile = join(root, 'apps/mobile');
+  const apk = join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
+  const env = { ...tools.env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+
+  // prebuild rewrites the start scripts in package.json to expo run:*, a change nobody asked for.
+  const pkg = join(mobile, 'package.json');
+  const scripts = readFileSync(pkg, 'utf8');
+  try {
+    run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install', '--clean'], {
+      cwd: mobile,
+      env,
+    });
+  } finally {
+    writeFileSync(pkg, scripts);
+  }
+  const manifest = join(mobile, 'android/app/src/main/AndroidManifest.xml');
+  writeFileSync(manifest, allowCleartext(readFileSync(manifest, 'utf8')));
+
+  const [command, args] = capped('10G', './gradlew', [
+    'assembleRelease',
+    '--no-daemon',
+    '--max-workers=4',
+    `-PreactNativeArchitectures=${releaseAbi()}`,
+    '-Dorg.gradle.jvmargs=-Xmx4g',
+  ]);
+  run(command, args, { cwd: join(mobile, 'android'), env: { ...env, NODE_ENV: 'production' } });
+
+  mkdirSync(dirname(apk), { recursive: true });
+  copyFileSync(join(mobile, 'android/app/build/outputs/apk/release/app-release.apk'), apk);
+  return apk;
+}
+
+async function release(args) {
+  const tools = androidTools();
+  if (!existsSync(tools.emulator)) {
+    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
+  }
+  const root = qaWorktree();
+  assertQaStack(root);
+  if (git(['status', '--porcelain', '--untracked-files=no'], root) !== '') {
+    throw new Error(`${root} has uncommitted changes: a release build names one commit`);
+  }
+  const sha = git(['rev-parse', 'HEAD'], root);
+  const subject = git(['log', '-1', '--format=%s', sha], root);
+  const onMain =
+    spawnSync('git', ['merge-base', '--is-ancestor', sha, 'origin/main'], {
+      cwd: root,
+    }).status === 0;
+  const { open } = emulatorFor(args);
+
+  step(`A release build of ${sha.slice(0, 12)} (${subject})`);
+  if (!onMain) console.log('  not on origin/main: this is a branch build');
+  let apk = join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
+  if (existsSync(apk) && !args.includes('--rebuild')) {
+    console.log(`  already built: ${apk}`);
+  } else {
+    apk = buildRelease(tools, root, sha);
+  }
+
+  step(`The ${open}`);
+  await bootEmulator(tools, CONFIG.emulators[open].name);
+  for (const port of reversedPorts(CONFIG.ports)) {
+    adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+  }
+  run(tools.adb, ['-s', emulatorSerial(), 'install', '-r', apk], { env: tools.env });
+  adbOut(tools, ['shell', 'am', 'start', '-n', `${RELEASE_PACKAGE}/.MainActivity`]);
+  console.log(
+    `\nSoirely ${sha.slice(0, 12)}, a release build, open on the ${open} (${emulatorSerial()}).` +
+      `\nOffline: adb -s ${emulatorSerial()} shell cmd connectivity airplane-mode enable,` +
+      ` and reverse --remove-all to cut the stack too.`,
+  );
+}
+
 function maestroDevice(args) {
   if (args.includes('--android')) {
     if (!emulatorOnline(androidTools())) {
@@ -890,7 +979,7 @@ function chrome() {
   ]);
 }
 
-const COMMANDS = { setup, checkout, status, ios, android, link, maestro, account, chrome };
+const COMMANDS = { setup, checkout, status, ios, android, release, link, maestro, account, chrome };
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const argv = process.argv.slice(2);

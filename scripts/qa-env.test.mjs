@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  allowCleartext,
   androidFlows,
   androidSdk,
   branchForStory,
@@ -19,6 +20,7 @@ import {
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
+  releaseAbi,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -207,6 +209,29 @@ describe('the Android SDK', () => {
   it('is where Android Studio puts it, without either', () => {
     expect(androidSdk({}, 'linux', '/h')).toBe('/h/Android/Sdk');
     expect(androidSdk({}, 'darwin', '/h')).toBe('/h/Library/Android/sdk');
+  });
+});
+
+describe('a release build', () => {
+  it("is for the emulator's architecture", () => {
+    expect(releaseAbi('x64')).toBe('x86_64');
+    expect(releaseAbi('arm64')).toBe('arm64-v8a');
+  });
+
+  it('may reach a stack over http', () => {
+    const manifest = '<manifest>\n  <application android:name=".MainApplication">\n</manifest>';
+    expect(allowCleartext(manifest)).toContain(
+      '<application android:usesCleartextTraffic="true" android:name=".MainApplication">',
+    );
+  });
+
+  it('leaves a manifest that already decides alone', () => {
+    const manifest = '<application android:usesCleartextTraffic="false" android:name=".X">';
+    expect(allowCleartext(manifest)).toBe(manifest);
+  });
+
+  it('is an error when prebuild wrote no application', () => {
+    expect(() => allowCleartext('<manifest/>')).toThrow(/no <application>/);
   });
 });
 

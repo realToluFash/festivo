@@ -63,6 +63,16 @@ offline state then never meet, and nor do two testers. Run `/soirely-qa-tester`,
 `node .qa/bin/qa-env.mjs`. Expo Go does not own the app's `soirely://` scheme, so on Android
 a provider's redirect is handed back with `node .qa/bin/qa-env.mjs link 'soirely://oauth/…'`.
 
+Expo Go fetches the bundle from Metro and draws its own splash, so a bullet about the app
+offline from first launch, or its own splash screen, needs the app itself.
+`node .qa/bin/qa-env.mjs release` (`just qa-env release --tester N` from the main checkout)
+builds a release APK of the QA worktree's commit, with the bundle and fonts inside, installs
+it on the tester's phone emulator (`--tablet` for the other) and opens it. Run `checkout main`
+first for main. It needs no Expo account: `expo prebuild` writes `apps/mobile/android`, which
+is ignored, and Gradle builds it, the first time in about ten minutes. The APK is kept in
+`.qa/release`, named by its commit, so the next install of the same commit skips the build
+(`--rebuild` forces one). The iOS build comes with the Mac runner.
+
 There are several developers. Developer 1 works in this checkout on the development ports.
 `just dev-env setup --developer N` (2 to 4) makes developer N's: a worktree at
 `../soirely-devN` with its own containers and database, on ports of its own (`STACKS` in
