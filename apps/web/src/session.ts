@@ -17,6 +17,7 @@ import { useSyncExternalStore } from 'react';
 
 import { followAccount } from './accountLanguage.ts';
 import { GATED, SIGNED_OUT, api } from './api.ts';
+import { currentLocale } from './i18n/index.ts';
 
 export interface Session {
   name: string;
@@ -125,6 +126,7 @@ async function askForAccount(): Promise<void> {
 
 /** The account, with its organisations; one behind the onboarding gate is not asked for them. */
 export async function adoptAccount(account: Account, asked = generation): Promise<void> {
+  const askedIn = currentLocale();
   const { organisations, paused } =
     account.verified && account.complete
       ? await api.organisationsWithPaused()
@@ -133,6 +135,8 @@ export async function adoptAccount(account: Account, asked = generation): Promis
   if (generation !== asked) return;
 
   set({ status: 'signedIn', session: sessionFrom(account, organisations, paused) });
+  // The account's language, followed after this read and before the session was set (sc-9267).
+  if (currentLocale() !== askedIn) void rereadOrganisations();
 }
 
 /** After a gate has been passed, or the API says one has closed: the account read afresh. */
