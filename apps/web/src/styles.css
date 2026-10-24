@@ -1852,6 +1852,7 @@ span {
   flex: 1 1 15rem;
   flex-direction: column;
   gap: var(--spaceXxs);
+  min-width: 0;
 }
 
 .roles-list-head {
@@ -1860,6 +1861,13 @@ span {
   align-items: flex-start;
   gap: var(--spaceXs);
   padding-bottom: var(--spaceSm);
+}
+
+.roles h1,
+.roles h2,
+.roles p,
+.roles-grid-head {
+  overflow-wrap: anywhere;
 }
 
 .roles-list-head h1,
@@ -1893,7 +1901,7 @@ span {
 .roles-pick-text,
 .roles-row-text {
   display: flex;
-  flex: 1;
+  flex: 1 1 15rem;
   flex-direction: column;
   gap: var(--spaceXxs);
   min-width: 0;
@@ -1901,9 +1909,18 @@ span {
 
 .roles-pick-name {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm);
+}
+
+.roles-pick-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roles-pick-name > span {
+  flex: none;
 }
 
 .roles-detail {
@@ -2031,6 +2048,17 @@ span {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spaceSm);
+  min-width: 0;
+}
+
+.roles-actions .button {
+  max-width: 100%;
+}
+
+.roles-button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roles-panels {
