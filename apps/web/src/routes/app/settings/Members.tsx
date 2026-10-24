@@ -9,6 +9,7 @@ import {
 } from '@soirely/api-client';
 import {
   type MemberFilter,
+  type MemberStanding,
   approvalRoles,
   emailProblem,
   formatDay,
@@ -664,7 +665,9 @@ function MemberDetail({
         ) : standing !== 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            {standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>}
+            {standing === 'ownerOnly' && member.suspension == null && (
+              <p className="muted">{t('membersScreen.ownerOnly')}</p>
+            )}
           </>
         ) : (
           <RolePicker
@@ -688,11 +691,13 @@ function MemberDetail({
         </ul>
       </section>
 
-      {acts && member.suspension != null && (
+      {member.suspension != null && (
         <Suspension
           organisation={organisation}
           member={member}
           suspension={member.suspension}
+          standing={standing}
+          acts={acts}
           onChanged={onChanged}
         />
       )}
@@ -776,16 +781,20 @@ function MemberDetail({
 
 type Restoring = 'resting' | 'restoring' | 'restored';
 
-/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below. */
+/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below; read-only to a viewer who can't act. */
 function Suspension({
   organisation,
   member,
   suspension,
+  standing,
+  acts,
   onChanged,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   suspension: DomainSuspension;
+  standing: MemberStanding;
+  acts: boolean;
   onChanged: (list: MembersList) => void;
 }) {
   const { t } = useTranslation();
@@ -847,17 +856,21 @@ function Suspension({
         )
       )}
       {failed != null && <FieldError id="restore-failed" message={failed} />}
-      <div className="actions">
-        <button
-          type="button"
-          className="button button-primary"
-          aria-busy={restoring === 'restoring'}
-          disabled={restoring === 'restoring'}
-          onClick={() => void restore()}
-        >
-          {t('membersScreen.restore', named)}
-        </button>
-      </div>
+      {acts ? (
+        <div className="actions">
+          <button
+            type="button"
+            className="button button-primary"
+            aria-busy={restoring === 'restoring'}
+            disabled={restoring === 'restoring'}
+            onClick={() => void restore()}
+          >
+            {t('membersScreen.restore', named)}
+          </button>
+        </div>
+      ) : (
+        standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>
+      )}
     </section>
   );
 }
