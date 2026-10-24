@@ -259,6 +259,7 @@ final readonly class OwnerClaimHandler
             match ($moment) {
                 OwnerClaimMoment::Found => $this->mail(fn () => $this->ownerClaimMailer->sendStarted($claim)),
                 OwnerClaimMoment::Passed => $this->mail(fn () => $this->ownerClaimMailer->sendGranted($claim)),
+                OwnerClaimMoment::Lapsed => $this->mail(fn () => $this->ownerClaimMailer->sendLapsed($claim)),
                 OwnerClaimMoment::Ended, null => null,
             };
             $moved += null === $moment ? 0 : 1;
@@ -284,14 +285,16 @@ final readonly class OwnerClaimHandler
             }
 
             if (!$this->isPublished($claim)) {
-                return $this->end($claim, OwnerClaimOutcome::RecordRemoved, $passesAt);
+                return $this->lapse($claim, OwnerClaimOutcome::RecordRemoved, $passesAt);
             }
 
             $membership = $this->administratorMembership($claim->getClaimant(), $organisation);
 
-            return null === $membership
-                ? $this->end($claim, OwnerClaimOutcome::ClaimantGone, $passesAt)
-                : $this->pass($claim, $membership, $passesAt);
+            if (null === $membership) {
+                return $this->lapse($claim, OwnerClaimOutcome::ClaimantGone, $passesAt);
+            }
+
+            return $this->pass($claim, $membership, $passesAt);
         }
 
         if ($claim->getLapsesAt() <= $now) {
@@ -434,6 +437,14 @@ final readonly class OwnerClaimHandler
         $this->record($outcome->lapsed() ? self::LAPSED : self::ENDED, $claim, $by, ['outcome' => [null, $outcome->value]]);
 
         return OwnerClaimMoment::Ended;
+    }
+
+    private function lapse(OwnerClaim $claim, OwnerClaimOutcome $outcome, DateTimeImmutable $at): OwnerClaimMoment
+    {
+        $claim->setOutcome($outcome, $at);
+        $this->record(self::LAPSED, $claim, null, ['outcome' => [null, $outcome->value]]);
+
+        return OwnerClaimMoment::Lapsed;
     }
 
     /** @param array<string, array{0: mixed, 1: mixed}> $changes */

@@ -31,6 +31,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
 use DateInterval;
 use DateTimeImmutable;
+use DateTimeZone;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -267,6 +268,7 @@ final class OwnerClaimTest extends ApiTestCase
         self::assertSame([null, 'ire.events'], $audit['domain'] ?? null);
         self::assertSame([null, $claim->getRecordValue()], $audit['record'] ?? null);
         self::assertCount(2, $this->mailsTitled('is now the owner of Ìrè Events'));
+        self::assertCount(0, $this->mailsTitled('lapsed'));
         self::assertEquals(
             $passesAt->add(new DateInterval(Membership::UNANSWERED_FOR)),
             $this->membershipOf($owner, $organisation)->getRemovesAt(),
@@ -312,8 +314,132 @@ final class OwnerClaimTest extends ApiTestCase
         $lapsed = $this->claim($claim);
         self::assertSame(OwnerClaimOutcome::ClaimantGone, $lapsed->getOutcome());
         self::assertEquals($lapsed->getPassesAt(), $lapsed->getEndedAt());
+        self::assertNotNull($this->audited(OwnerClaimHandler::LAPSED, $lapsed), 'audited with the word its email uses');
         self::assertFalse($this->membershipOf($administrator, $organisation)->getRole()->isOwner());
         self::assertCount(0, $this->mailsTitled('is now the owner of Ìrè Events'));
+    }
+
+    #[Test]
+    public function aFoundClaimLapsingForARemovedRecordTellsEverybodyTheStartWentTo(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $other = $this->member('kemi@ire.events', 'Kemi');
+        $this->join($organisation, $other, SeededRole::Administrator);
+        $claim = $this->found($organisation, $administrator, '-72 hours -1 minute');
+        $started = Vec\map($this->mailsTitled('will become the owner of Ìrè Events'), self::to(...));
+        ScriptedTxtRecordLookup::unpublish(self::RECORD);
+
+        self::assertSame(1, self::service(OwnerClaimHandler::class)->settleDue());
+
+        $mails = $this->mailsTitled("Bisi's claim to own Ìrè Events lapsed. Nobody became the owner");
+        self::assertEqualsCanonicalizing(['bisi@ire.events', 'kemi@ire.events', 'folake@okafor.family'], Vec\map($mails, self::to(...)));
+        self::assertEqualsCanonicalizing($started, Vec\map($mails, self::to(...)), 'exactly where the start went');
+        $passesAt = $this->claim($claim)->getPassesAt() ?? self::fail('no passing instant');
+
+        foreach ($mails as $mail) {
+            $body = (string) $mail->getTextBody();
+            self::assertStringContainsString("Bisi's claim to own Ìrè Events lapsed. Nobody became the owner.\n\nThe DNS record was removed.\n\nClaimant: Bisi · bisi@ire.events\n\nDomain: ire.events\n\nLapsed: ", $body);
+            self::assertStringContainsString('Open Members: ', $body);
+            self::assertStringNotContainsString('stop this claim', $body);
+        }
+
+        $folake = Iter\search($mails, static fn (Email $mail): bool => 'folake@okafor.family' === self::to($mail)) ?? self::fail('the suspended owner was not told');
+        self::assertStringContainsString("because you're an owner of Ìrè Events", (string) $folake->getTextBody());
+        self::assertMatchesRegularExpression(
+            '/^Lapsed: .*' . $passesAt->setTimezone(new DateTimeZone('UTC'))->format('H:i') . ' UTC$/m',
+            (string) $folake->getTextBody(),
+            'the passing instant, not the send time, labelled UTC for an account with no zone',
+        );
+    }
+
+    #[Test]
+    public function aFoundClaimLapsingForAClaimantNoLongerAnAdministratorSaysSo(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $this->found($organisation, $administrator, '-72 hours -1 minute');
+        $this->demote($administrator, $organisation);
+
+        self::service(OwnerClaimHandler::class)->settleDue();
+
+        $mails = $this->mailsTitled("Bisi's claim to own Ìrè Events lapsed");
+        self::assertEqualsCanonicalizing(['bisi@ire.events', 'folake@okafor.family'], Vec\map($mails, self::to(...)));
+
+        foreach ($mails as $mail) {
+            self::assertStringContainsString("Nobody became the owner.\n\nBisi is no longer an administrator of Ìrè Events.\n\nClaimant:", (string) $mail->getTextBody());
+        }
+    }
+
+    #[Test]
+    public function aRecordGoneAndAClaimantGoneTogetherGiveTheRecordLine(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $claim = $this->found($organisation, $administrator, '-72 hours -1 minute');
+        $this->demote($administrator, $organisation);
+        ScriptedTxtRecordLookup::unpublish(self::RECORD);
+
+        self::service(OwnerClaimHandler::class)->settleDue();
+
+        self::assertSame(OwnerClaimOutcome::RecordRemoved, $this->claim($claim)->getOutcome());
+        $mails = $this->mailsTitled('lapsed');
+        self::assertCount(2, $mails);
+
+        foreach ($mails as $mail) {
+            self::assertStringContainsString('The DNS record was removed.', (string) $mail->getTextBody());
+            self::assertStringNotContainsString('no longer an administrator', (string) $mail->getTextBody());
+        }
+    }
+
+    #[Test]
+    public function aClaimNeverFoundLapsingAtSevenDaysEmailsNobody(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $claim = $this->started($organisation, $administrator);
+        $this->moveClaim($claim, 'lapses_at', '-1 minute');
+
+        self::assertSame(1, self::service(OwnerClaimHandler::class)->settleDue());
+
+        self::assertSame(OwnerClaimOutcome::Unfound, $this->claim($claim)->getOutcome());
+        self::assertCount(0, $this->mailsTitled('claim to own'));
+    }
+
+    #[Test]
+    public function aStoppedOrWithdrawnClaimSendsNoLapseEmailAtItsPassingInstant(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $other = $this->member('kemi@ire.events', 'Kemi');
+        $this->join($organisation, $other, SeededRole::Administrator);
+        $withdrawn = $this->found($organisation, $administrator, '-72 hours +1 minute');
+        $this->send('POST', $this->claimPath($organisation) . '/withdraw');
+        self::assertResponseStatusCodeSame(200);
+
+        $this->signIn($other);
+        $stopped = $this->found($organisation, $other, '-72 hours +1 minute');
+        $this->signIn($administrator);
+        $this->send('POST', $this->claimPath($organisation) . '/stop');
+        self::assertResponseStatusCodeSame(200);
+        ScriptedTxtRecordLookup::unpublish(self::RECORD);
+        $this->moveClaim($withdrawn, 'passes_at', '-1 minute');
+        $this->moveClaim($stopped, 'passes_at', '-1 minute');
+
+        self::service(OwnerClaimHandler::class)->settleDue();
+
+        self::assertCount(0, $this->mailsTitled('lapsed'));
+    }
+
+    #[Test]
+    public function afterALapseAnotherAdministratorIsOfferedBecomeTheOwnerAgain(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $other = $this->member('kemi@ire.events', 'Kemi');
+        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->found($organisation, $administrator, '-72 hours -1 minute');
+        $this->demote($administrator, $organisation);
+        self::service(OwnerClaimHandler::class)->settleDue();
+
+        $this->signIn($other);
+        self::assertSame('no_owner', $this->banner($organisation)['state']);
+        self::assertNull(self::service(OwnerClaimRepository::class)->findStopIn($organisation), 'a lapse is not an objection');
+        $this->started($organisation, $other);
     }
 
     #[Test]
@@ -663,6 +789,15 @@ final class OwnerClaimTest extends ApiTestCase
         self::service(DomainSuspender::class)->addressChanged($user);
         $entityManager->flush();
         self::service(AfterResponse::class)->reset();
+    }
+
+    private function demote(User $user, Organisation $organisation): void
+    {
+        $readOnly = Type\instance_of(Role::class)->coerce(
+            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly]),
+        );
+        self::service(RoleAssignment::class)->assign($this->membershipOf($user, $organisation), $readOnly);
+        self::service(EntityManagerInterface::class)->flush();
     }
 
     private function membershipOf(User $user, Organisation $organisation): Membership
