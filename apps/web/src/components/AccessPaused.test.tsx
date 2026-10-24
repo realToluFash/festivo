@@ -27,6 +27,7 @@ function paused(reason: PausedOrganisation['suspension']['reason']): PausedOrgan
       removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday, Nov 15 at 09:40 WAT' },
       onlyOwner: false,
     },
+    ownerClaim: null,
   };
 }
 
@@ -150,5 +151,50 @@ describe('AccessPaused', () => {
         name: 'Your access to Ìrè Events is paused because ire.events is now managed by another organisation.',
       }),
     ).toBeDefined();
+  });
+
+  it('shows a suspended owner who is becoming the owner, and stops it after confirming (sc-6640)', async () => {
+    const stopped = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ownerClaim: null }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    const claimed = {
+      ...paused('address_gone'),
+      ownerClaim: {
+        id: 'claim_1',
+        claimant: { id: 'u_bisi', name: 'Bisi', email: 'bisi@ire.events' },
+        mine: false,
+        domain: 'ire.events',
+        record: null,
+        startedAt: { at: '2026-10-24T09:00:00+00:00', written: 'Saturday 24 Oct at 10:00 WAT' },
+        lapsesAt: { at: '2026-10-31T09:00:00+00:00', written: 'Saturday 31 Oct at 10:00 WAT' },
+        foundAt: { at: '2026-10-24T09:00:00+00:00', written: 'Saturday 24 Oct at 10:00 WAT' },
+        passesAt: { at: '2026-10-27T09:00:00+00:00', written: 'Tuesday 27 Oct at 10:00 WAT' },
+      },
+    };
+    render(
+      <MemoryRouter>
+        <AccessPaused paused={claimed} others={[]} onSwitch={vi.fn()} onChoose={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole('heading', { name: 'Bisi is becoming the owner of Ìrè Events' }),
+    ).toBeDefined();
+    expect(screen.getByText('Ownership passes on Tuesday 27 Oct at 10:00 WAT.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
+
+    expect(
+      await screen.findByText(
+        "You stopped Bisi's claim. Ownership of Ìrè Events now has to be restored by Soirely support.",
+      ),
+    ).toBeDefined();
+    expect(String(stopped.mock.calls[0]?.[0])).toBe(
+      'http://api.test/api/orgs/org_1/owner-claim/stop',
+    );
+    stopped.mockRestore();
   });
 });

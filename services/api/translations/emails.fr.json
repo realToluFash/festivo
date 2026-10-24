@@ -154,5 +154,20 @@
     "joinRequest.waiting.subject": "Une personne attend de rejoindre {organisation}",
     "joinRequest.waiting.person": "{name} ({email}) : demande retirée le {deadline} faute de réponse",
     "joinRequest.waiting.answer": "Approuvez ou refusez les demandes dans Membres : {link}",
-    "joinRequest.waiting.footer": "Vous recevez ce message parce que vous gérez les membres de {organisation}. Nous l’envoyons au maximum une fois par jour."
+    "joinRequest.waiting.footer": "Vous recevez ce message parce que vous gérez les membres de {organisation}. Nous l’envoyons au maximum une fois par jour.",
+    "ownerClaim.started.subject": "{claimant} will become the owner of {organisation} on {deadline}",
+    "ownerClaim.started.heading": "{claimant} will become the owner of {organisation} on {deadline}.",
+    "ownerClaim.started.when": "They proved they control {domain} with a new DNS record. Ownership passes then only if the record is still published.",
+    "ownerClaim.stopLink": "If this should not happen, stop this claim in Members: {link}",
+    "ownerClaim.stopped.subject": "{name} stopped {claimant}'s claim to own {organisation}",
+    "ownerClaim.stopped.heading": "{name} stopped {claimant}'s claim to own {organisation}.",
+    "ownerClaim.stopped.when": "Stopped on {deadline}. Ownership of {organisation} now has to be restored by Soirely support.",
+    "ownerClaim.granted.subject": "{claimant} is now the owner of {organisation}",
+    "ownerClaim.granted.heading": "{claimant} is now the owner of {organisation}.",
+    "ownerClaim.granted.when": "Ownership passed on {deadline}.",
+    "ownerClaim.claimant": "Claimant: {claimant} · {email}",
+    "ownerClaim.domain": "Domain: {domain}",
+    "ownerClaim.openLink": "Open Members: {link}",
+    "ownerClaim.footer.administrator": "You're getting this because you're an admin of {organisation}.",
+    "ownerClaim.footer.owner": "You're getting this because you're an owner of {organisation}. We sent it to your account's main email address."
 }

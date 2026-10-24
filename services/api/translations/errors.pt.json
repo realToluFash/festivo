@@ -74,5 +74,11 @@
     "request_link_dead": "Esta ligação já não funciona. Peça uma nova à organização.",
     "join_request_waiting": "O seu pedido de adesão já aguarda resposta.",
     "join_request_cooling_off": "Ainda não pode voltar a pedir para aderir a esta organização.",
-    "join_request_answered": "Este pedido já foi respondido ou foi removido."
+    "join_request_answered": "Este pedido já foi respondido ou foi removido.",
+    "owner_claim_address": "Para se tornar proprietário, o seu endereço principal tem de pertencer ao domínio da organização.",
+    "owner_claim_managed": "Esse domínio é gerido por outra organização. Contacte o apoio da Soirely.",
+    "owner_claim_open": "Outra pessoa já está a tornar-se proprietária desta organização.",
+    "owner_claim_closed": "A propriedade tem de ser reposta pelo apoio da Soirely.",
+    "owner_claim_ended": "Este pedido já terminou.",
+    "owner_claim_unavailable": "Esta organização tem um proprietário ativo."
 }

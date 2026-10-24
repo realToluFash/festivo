@@ -74,5 +74,11 @@
     "request_link_dead": "This link doesn't work any more. Ask the organisation for a new one.",
     "join_request_waiting": "Your request to join is already waiting for an answer.",
     "join_request_cooling_off": "You cannot ask to join this organisation again yet.",
-    "join_request_answered": "This request has already been answered, or was removed."
+    "join_request_answered": "This request has already been answered, or was removed.",
+    "owner_claim_address": "To become the owner, your main address must be at the organisation's domain.",
+    "owner_claim_managed": "That domain is managed by another organisation. Contact Soirely support.",
+    "owner_claim_open": "Somebody is already becoming the owner of this organisation.",
+    "owner_claim_closed": "Ownership has to be restored by Soirely support.",
+    "owner_claim_ended": "This claim has already ended.",
+    "owner_claim_unavailable": "This organisation has an active owner."
 }

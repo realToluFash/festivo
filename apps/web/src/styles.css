@@ -2489,6 +2489,71 @@ span {
   align-self: flex-start;
 }
 
+/* The banner while an organisation has no active Owner (sc-6640): wraps rather than truncates at every width. */
+.owner-claim {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.owner-claim p,
+.owner-claim h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.owner-claim-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.owner-claim-skeleton {
+  min-height: calc(var(--sizeHit) * 2);
+  background: var(--colorInset);
+}
+
+.mark-waiting {
+  border: var(--borderMark) var(--colorInkSecondary);
+  color: var(--colorInkSecondary);
+}
+
+.owner-claim-record {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceLg);
+  background: var(--colorInset);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+}
+
+.owner-claim-record-row dt {
+  color: var(--colorInkSecondary);
+}
+
+.owner-claim-record-row dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+}
+
+.owner-claim-record-row code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--fontFamilyMono);
+  word-break: break-all;
+}
+
+.owner-claim-picker fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
 .members-chips {
   display: flex;
   flex-wrap: wrap;

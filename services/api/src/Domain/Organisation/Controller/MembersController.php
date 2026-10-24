@@ -10,6 +10,7 @@ use App\Domain\Organisation\Invitations\InvitationSender;
 use App\Domain\Organisation\Members\JoinRequests;
 use App\Domain\Organisation\Members\MemberActions;
 use App\Domain\Organisation\Members\OwnershipTransfer;
+use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Invitation;
@@ -59,6 +60,7 @@ final readonly class MembersController
         private DomainSuspender $domainSuspender,
         private JoinRequests $joinRequests,
         private UserMailer $userMailer,
+        private OwnerClaimHandler $ownerClaimHandler,
     ) {
     }
 
@@ -70,6 +72,7 @@ final readonly class MembersController
         $caller = $this->user();
         $this->joinRequests->expireDue($organisation);
         $this->domainSuspender->removeExpired($organisation);
+        $this->ownerClaimHandler->settleDue($organisation);
         $history = Dict\group_by(
             $this->membershipTransitionRepository->findInOrganisation($organisation),
             static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),

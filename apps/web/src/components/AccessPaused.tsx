@@ -3,6 +3,8 @@ import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
+
 /** In place of every page of an organisation the account's access to is paused in (sc-564). */
 export function AccessPaused({
   paused,
@@ -48,6 +50,13 @@ export function AccessPaused({
             <p>{t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}</p>
           </div>
         )
+      )}
+      {paused.ownerClaim != null && (
+        <PausedOwnerClaim
+          organisationId={paused.id}
+          organisation={paused.name}
+          claim={paused.ownerClaim}
+        />
       )}
       <h2>{t('accessPaused.nextTitle')}</h2>
       <p>

@@ -27,6 +27,7 @@ import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { currentLocale } from '../../../i18n/index.ts';
@@ -265,6 +266,10 @@ function MembersOverview({
           </button>
         )}
       </div>
+
+      {organisation.role.seededAs === 'administrator' && (
+        <OwnerClaimBanner organisationId={organisation.id} organisation={organisation.name} />
+      )}
 
       {flash != null && (
         <div className="notice notice-done" role="status">
