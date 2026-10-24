@@ -84,6 +84,7 @@ export function CreateOrganisation({
 
   async function create(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (saving) return;
     setRefused({});
 
     if (!checks.passes(values)) return;
@@ -238,7 +239,12 @@ export function CreateOrganisation({
             <button className="button" type="button" onClick={onCancel}>
               {t('createOrganisation.cancel')}
             </button>
-            <button className="button button-primary" type="submit" aria-busy={saving}>
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={saving}
+              aria-busy={saving}
+            >
               {saving ? t('createOrganisation.creating') : t('createOrganisation.create')}
             </button>
           </div>
