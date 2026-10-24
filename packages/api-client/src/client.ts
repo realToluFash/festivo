@@ -348,7 +348,6 @@ export interface OwnerClaim {
 /** The banner at the top of Members, only for an active Administrator while no Owner is active. */
 export interface OwnerClaimBanner {
   state: OwnerClaimState;
-  /** The domain a claim by the reader is for; the organisation's own, which a refusal names, when their address is elsewhere. */
   domain: string | null;
   claim: OwnerClaim | null;
   /** Once a claim is stopped, self-serve is closed for good. */
