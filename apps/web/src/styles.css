@@ -2584,6 +2584,39 @@ span {
   word-break: break-all;
 }
 
+/* Withdraw your claim? (sc-8204): the scrim is not a way out, and the sheet stacks its buttons. */
+.dialog-scrim[aria-hidden='true'] {
+  cursor: default;
+}
+
+.dialog-close {
+  position: absolute;
+  top: var(--spaceLg);
+  right: var(--spaceLg);
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: transparent;
+  color: var(--colorInkSecondary);
+  cursor: pointer;
+}
+
+.owner-claim-withdraw .dialog-actions {
+  justify-content: flex-start;
+}
+
+@media (width <= 40rem) {
+  .owner-claim-withdraw {
+    border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
+  }
+
+  .owner-claim-withdraw .dialog-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .members-chips {
   display: flex;
   flex-wrap: wrap;

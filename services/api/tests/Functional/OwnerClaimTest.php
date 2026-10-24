@@ -410,6 +410,97 @@ final class OwnerClaimTest extends ApiTestCase
     }
 
     #[Test]
+    public function theClaimantWithdrawsBeforeTheRecordIsFoundAndNobodyIsEmailed(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $claim = $this->started($organisation, $administrator);
+        self::assertTrue(Type\shape(['mine' => Type\bool()], true)->coerce($this->banner($organisation)['claim'])['mine']);
+
+        $body = $this->send('POST', $this->claimPath($organisation) . '/withdraw');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['told' => false], $body['withdrawn'] ?? null);
+        self::assertSame('no_owner', $this->bannerOf($body)['state']);
+        self::assertNull($this->bannerOf($body)['lapsed'], 'a withdrawal is not a lapse');
+        $withdrawn = $this->claim($claim);
+        self::assertSame(OwnerClaimOutcome::Withdrawn, $withdrawn->getOutcome());
+        self::assertTrue(true === $this->audited(OwnerClaimHandler::WITHDRAWN, $withdrawn)->getActorId()?->equals($administrator->getId()));
+        self::assertNull(self::service(EntityManagerInterface::class)->getRepository(AuditEntry::class)->findOneBy(['action' => OwnerClaimHandler::STOPPED, 'subjectId' => $claim->getId()]), 'audited as a withdrawal, not a stop');
+        self::assertCount(0, $this->mailsTitled('withdrew their claim'));
+    }
+
+    #[Test]
+    public function theClaimantWithdrawsAfterTheRecordIsFoundAndEverybodyToldIsEmailed(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $other = $this->member('kemi@ire.events', 'Kemi');
+        $this->join($organisation, $other, SeededRole::Administrator);
+        $this->found($organisation, $administrator, '-1 hour');
+
+        $body = $this->send('POST', $this->claimPath($organisation) . '/withdraw');
+
+        self::assertResponseStatusCodeSame(200);
+        self::assertSame(['told' => true], $body['withdrawn'] ?? null);
+        $mails = $this->mailsTitled('Bisi withdrew their claim to own Ìrè Events. Nobody became the owner');
+        self::assertEqualsCanonicalizing(['bisi@ire.events', 'kemi@ire.events', 'folake@okafor.family'], Vec\map($mails, self::to(...)), 'the suspended owner included');
+        self::assertCount(0, $this->mailsTitled('stopped'));
+        self::assertNull(self::service(OwnerClaimRepository::class)->findStopIn($organisation), 'the way stays open');
+    }
+
+    #[Test]
+    public function afterAWithdrawalEveryAdministratorCanClaimAgainAtOnceWithAFreshValue(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $other = $this->member('kemi@ire.events', 'Kemi');
+        $this->join($organisation, $other, SeededRole::Administrator);
+        $first = $this->found($organisation, $administrator, '-1 hour');
+        $this->send('POST', $this->claimPath($organisation) . '/withdraw');
+        self::assertResponseStatusCodeSame(200);
+
+        $this->signIn($other);
+        self::assertSame('no_owner', $this->banner($organisation)['state']);
+        $this->signIn($administrator);
+        self::assertSame('no_owner', $this->banner($organisation)['state']);
+
+        $second = $this->started($organisation, $administrator);
+        self::assertNotSame($first->getRecordValue(), $second->getRecordValue());
+        $this->send('POST', $this->claimPath($organisation) . '/check');
+        self::assertResponseStatusCodeSame(200);
+        self::assertNull($this->claim($second)->getFoundAt(), "the withdrawn claim's value, still published, is not accepted");
+    }
+
+    #[Test]
+    public function onlyTheClaimantMayWithdraw(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $other = $this->member('kemi@ire.events', 'Kemi');
+        $this->join($organisation, $other, SeededRole::Administrator);
+        $claim = $this->started($organisation, $administrator);
+        $this->signIn($other);
+        self::assertFalse(Type\shape(['mine' => Type\bool()], true)->coerce($this->banner($organisation)['claim'])['mine']);
+
+        $body = $this->send('POST', $this->claimPath($organisation) . '/withdraw');
+
+        self::assertResponseStatusCodeSame(403);
+        self::assertSame('Only the person who started this claim can withdraw it.', $body['detail'] ?? null);
+        self::assertTrue($this->claim($claim)->isOpen());
+    }
+
+    #[Test]
+    public function withdrawingAClaimThatHasEndedSaysSo(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $claim = $this->found($organisation, $administrator, '-72 hours');
+
+        $body = $this->send('POST', $this->claimPath($organisation) . '/withdraw');
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(ErrorCode::OwnerClaimEnded->type(), $body['type'] ?? null);
+        self::assertSame('This claim has already ended.', $body['detail'] ?? null);
+        self::assertSame(OwnerClaimOutcome::Passed, $this->claim($claim)->getOutcome(), 'at the passing instant, ownership has passed');
+    }
+
+    #[Test]
     public function restoringTheSuspendedOwnerEndsTheClaim(): void
     {
         [$owner, $organisation, $administrator] = $this->onlyOwnerSuspended();

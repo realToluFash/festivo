@@ -2320,4 +2320,25 @@ describe('claiming an organisation with no active owner (sc-6640)', () => {
 
     expect(await client.checkOwnerClaim('org_1')).toEqual({ ownerClaim: banner, found: true });
   });
+
+  test('says whether anybody is told of a withdrawal (sc-8204)', async () => {
+    const banner = {
+      state: 'no_owner',
+      domain: 'ire.events',
+      claim: null,
+      stopped: null,
+      lapsed: null,
+    };
+
+    expect(
+      await answering({ ownerClaim: banner, withdrawn: { told: true } }).client.withdrawOwnerClaim(
+        'org_1',
+      ),
+    ).toEqual({ ownerClaim: banner, told: true });
+    expect(
+      await answering({ ownerClaim: banner, withdrawn: { told: false } }).client.withdrawOwnerClaim(
+        'org_1',
+      ),
+    ).toEqual({ ownerClaim: banner, told: false });
+  });
 });

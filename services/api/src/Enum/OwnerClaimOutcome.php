@@ -9,6 +9,7 @@ enum OwnerClaimOutcome: string
 {
     case Passed = 'passed';
     case Stopped = 'stopped';
+    case Withdrawn = 'withdrawn';
     case Unfound = 'unfound';
     case RecordRemoved = 'record_removed';
     case OwnerBack = 'owner_back';

@@ -15,6 +15,7 @@ import { api } from '../api.ts';
 import { useFocusAfterSave, useFormChecks } from '../formChecks.ts';
 import { currentLocale, dateLocale } from '../i18n/index.ts';
 import { FieldError } from './FieldError.tsx';
+import { keepFocusIn } from '../dialogFocus.ts';
 
 const FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
 
@@ -252,26 +253,6 @@ export function CreateOrganisation({
       </div>
     </>
   );
-}
-
-function keepFocusIn(dialog: HTMLElement, event: KeyboardEvent): void {
-  const controls = [
-    ...dialog.querySelectorAll<HTMLElement>('input, select, textarea, button, a[href]'),
-  ].filter((control) => !control.matches(':disabled'));
-  const first = controls[0];
-  const last = controls[controls.length - 1];
-
-  if (first == null || last == null) return;
-
-  const inside = dialog.contains(document.activeElement);
-
-  if (event.shiftKey && (!inside || document.activeElement === first)) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && (!inside || document.activeElement === last)) {
-    event.preventDefault();
-    first.focus();
-  }
 }
 
 function problemMessage(field: NewOrganisationField, value: string, t: TFunction): string | null {
