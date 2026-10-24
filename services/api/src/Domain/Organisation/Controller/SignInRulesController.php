@@ -131,7 +131,7 @@ final readonly class SignInRulesController
 
         return [
             'at' => $deadline->format(DateTimeInterface::ATOM),
-            'written' => $this->userMailer->deadline($deadline, $this->user(), $this->userMailer->localeFor($this->user())),
+            'written' => $this->userMailer->deadline($deadline, $this->user(), $this->userMailer->shownLocaleFor($this->user())),
         ];
     }
 

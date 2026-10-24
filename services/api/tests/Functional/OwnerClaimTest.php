@@ -10,6 +10,7 @@ use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup;
 use App\Domain\Organisation\Roles\RoleAssignment;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\EmailAddress;
@@ -677,6 +678,22 @@ final class OwnerClaimTest extends ApiTestCase
         self::assertSame($lagos['at'], $london['at']);
         self::assertStringEndsWith(' WAT', $lagos['written']);
         self::assertMatchesRegularExpression('/ (GMT|BST)$/', $london['written']);
+    }
+
+    /** sc-9267: written in the language the request asks for, not the one the reader saved. */
+    #[Test]
+    public function thePassingInstantIsWrittenInTheLanguageTheRequestAsksFor(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $administrator->setLocale('pt');
+        $this->found($organisation, $administrator, '-1 hour');
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
+
+        $passes = $this->passesAt($organisation, $administrator);
+
+        $written = static fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable($passes['at']), $administrator, $locale);
+        self::assertSame($written('fr'), $passes['written']);
+        self::assertNotSame($written('pt'), $passes['written']);
     }
 
     /** @return array{at: string, written: string} */

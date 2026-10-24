@@ -11,7 +11,6 @@ final class FrameworkRoutes
 {
     public const array PUBLIC = [
         'api_doc',
-        'api_entrypoint',
         'api_genid',
         'api_validation_errors',
         '_api_errors',

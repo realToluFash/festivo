@@ -133,7 +133,7 @@ final readonly class SignInRules
 
         return [
             'at' => $deadline->format(DateTimeInterface::ATOM),
-            'written' => $this->userMailer->deadline($deadline, $user, $this->userMailer->localeFor($user)),
+            'written' => $this->userMailer->deadline($deadline, $user, $this->userMailer->shownLocaleFor($user)),
             'overdue' => $deadline <= $this->clock->now(),
         ];
     }
