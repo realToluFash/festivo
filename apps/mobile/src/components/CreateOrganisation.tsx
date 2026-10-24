@@ -31,7 +31,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
-import { Field, TextField } from './Field.tsx';
+import { Field, focusChecked, focusRefused, TextField } from './Field.tsx';
 import { type SettledLift, keyboardTopNow, settledLift } from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
@@ -214,12 +214,10 @@ function Form({
   const [saving, setSaving] = useState(false);
   const nameInput = useRef<TextInput>(null);
   const countryPicker = useRef<View>(null);
-  const focus = (field: NewOrganisationField) =>
-    field === 'name' ? nameInput.current?.focus() : focusPicker(countryPicker);
   const checks = useFormChecks(
     NEW_ORGANISATION_FIELDS,
     (field, value) => newOrganisationMessage(field, value, t),
-    focus,
+    (field) => (field === 'name' ? focusChecked(nameInput) : focusPicker(countryPicker)),
   );
   const errors = { ...refused, ...checks.errors };
   const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp);
@@ -256,7 +254,8 @@ function Form({
     if (outcome.kind === 'failed') setFailed(true);
     if (outcome.kind === 'refused') {
       setRefused(outcome.errors);
-      focus(outcome.errors.name != null ? 'name' : 'countryCode');
+      if (outcome.errors.name != null) focusRefused(nameInput);
+      else focusPicker(countryPicker);
     }
   }
 
@@ -317,8 +316,9 @@ function Form({
               onChangeText={(value) => change('name', value)}
               onBlur={() => checks.left('name', values.name)}
               onSubmitEditing={() => void create()}
+              submitBehavior="submit"
               wrong={errors.name != null}
-              editable={!saving}
+              submitting={saving}
               autoFocus
               autoComplete="organization"
               textContentType="organizationName"
