@@ -13,6 +13,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -54,7 +55,7 @@ final readonly class JsonExceptionListener
             $code,
             $e instanceof ValidationFailedException ? '' : $e->getMessage(),
             $violations,
-            $e instanceof ApiException ? $e->headers : [],
+            $this->headersOf($e),
             $e instanceof ApiException ? $e->members : [],
         );
 
@@ -77,6 +78,20 @@ final readonly class JsonExceptionListener
         }
 
         return [ErrorCode::InternalError, []];
+    }
+
+    /** @return array<string, string> */
+    private function headersOf(Throwable $e): array
+    {
+        if ($e instanceof ApiException) {
+            return $e->headers;
+        }
+
+        if ($e instanceof MethodNotAllowedHttpException) {
+            return ['Allow' => (string) $e->getHeaders()['Allow']];
+        }
+
+        return [];
     }
 
     /** @return list<array{propertyPath: string, message: string, code: string}> */
