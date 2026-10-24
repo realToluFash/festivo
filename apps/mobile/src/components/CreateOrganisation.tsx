@@ -3,6 +3,7 @@ import { type NewOrganisationField, deviceRegion } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   type LayoutRectangle,
   Modal,
@@ -31,12 +32,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, TextField } from './Field.tsx';
-import {
-  type SettledLift,
-  keyboardTopNow,
-  settledLift,
-  watchKeyboardTop,
-} from './keyboardWatch.ts';
+import { type SettledLift, keyboardTopNow, settledLift } from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
@@ -56,10 +52,10 @@ export function CreateOrganisation({
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
-  const android = Platform.OS === 'android';
-  // The `create_keyboard` drawing is for Android phones; iOS keeps main's sheet (Decided, 24 Oct).
-  const drawn = android && phone;
+  // The `create_keyboard` drawing is for Android phones; the iPhone keeps its row (sc-9442).
+  const drawn = Platform.OS === 'android' && phone;
   const keysUp = useKeysUp();
+  const typing = phone && keysUp;
 
   return (
     <Modal
@@ -87,7 +83,7 @@ export function CreateOrganisation({
             style={[
               styles.frame,
               phone ? styles.framePhone : styles.frameTablet,
-              phone && { paddingBottom: drawn && keysUp ? 0 : insets.bottom },
+              phone && { paddingBottom: typing ? 0 : insets.bottom },
             ]}
             accessibilityViewIsModal
           >
@@ -95,9 +91,9 @@ export function CreateOrganisation({
             {open && (
               <Form
                 email={email}
-                pinned={android}
                 drawn={drawn}
                 keysUp={keysUp}
+                typing={typing}
                 onCreated={onCreated}
                 onCancel={onCancel}
               />
@@ -109,18 +105,25 @@ export function CreateOrganisation({
   );
 }
 
-/** Whether the keyboard is up. */
+/** Whether the keyboard is up, changing when the avoiding view starts to move. */
 function useKeysUp(): boolean {
   const [up, setUp] = useState(() => keyboardTopNow(0) != null);
 
-  useEffect(
-    () =>
-      watchKeyboardTop(
-        () => 0,
-        (top) => setUp(top != null),
-      ),
-    [],
-  );
+  useEffect(() => {
+    // iOS's avoiding view pads on the Will events and Android's on the Did ones.
+    const ios = Platform.OS === 'ios';
+    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () =>
+      setUp(true),
+    );
+    const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () =>
+      setUp(false),
+    );
+
+    return () => {
+      shown.remove();
+      hidden.remove();
+    };
+  }, []);
 
   return up;
 }
@@ -179,18 +182,17 @@ function useFocusInSight(keysUp: boolean) {
 
 function Form({
   email,
-  pinned,
   drawn,
   keysUp,
+  typing,
   onCreated,
   onCancel,
 }: {
   email: string;
-  /** On Android only the body scrolls, so the title and the buttons stay above the keys (sc-4527). */
-  pinned: boolean;
-  /** The buttons stack, Create organisation on top, and the keys-up chrome shows (`create_keyboard`). */
+  /** The buttons stack, Create organisation on top (`create_keyboard`). */
   drawn: boolean;
   keysUp: boolean;
+  typing: boolean;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -220,7 +222,7 @@ function Form({
     focus,
   );
   const errors = { ...refused, ...checks.errors };
-  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(pinned && keysUp);
+  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -360,30 +362,13 @@ function Form({
     </View>
   );
 
-  if (!pinned) {
-    return (
-      <ScrollView
-        contentContainerStyle={styles.form}
-        keyboardShouldPersistTaps="handled"
-        testID="createOrganisation"
-      >
-        <View style={styles.heading}>
-          {title}
-          {intro}
-        </View>
-        {fields}
-        {buttons}
-      </ScrollView>
-    );
-  }
-
   return (
     <>
-      <View style={[styles.pinnedHeading, drawn && keysUp && styles.headingTyping]}>{title}</View>
+      <View style={[styles.heading, typing && styles.headingTyping]}>{title}</View>
       <ScrollView
         ref={body}
         style={styles.body}
-        contentContainerStyle={styles.pinnedForm}
+        contentContainerStyle={styles.form}
         keyboardShouldPersistTaps="handled"
         onLayout={(event) => onBodyLayout(event.nativeEvent.layout.height)}
         testID="createOrganisation"
@@ -391,7 +376,7 @@ function Form({
         {intro}
         {fields}
       </ScrollView>
-      <View style={[styles.footer, drawn && keysUp && styles.footerTyping]}>{buttons}</View>
+      <View style={[styles.footer, typing && styles.footerTyping]}>{buttons}</View>
     </>
   );
 }
@@ -426,12 +411,10 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: tokens.colorBorder,
   },
-  form: { gap: tokens.spaceXl, padding: tokens.space3xl },
-  heading: { gap: tokens.spaceXs },
-  pinnedHeading: { paddingHorizontal: tokens.space3xl, paddingTop: tokens.space3xl },
+  heading: { paddingHorizontal: tokens.space3xl, paddingTop: tokens.space3xl },
   headingTyping: { paddingTop: tokens.spaceLg },
   body: { flexShrink: 1 },
-  pinnedForm: {
+  form: {
     gap: tokens.spaceXl,
     paddingHorizontal: tokens.space3xl,
     paddingTop: tokens.spaceXs,
