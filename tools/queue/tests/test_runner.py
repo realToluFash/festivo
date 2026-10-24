@@ -449,7 +449,8 @@ class Worker(unittest.TestCase):
         self.answers = []
 
         def claude(argv, input, cwd, env, finished):
-            calls.append((argv, {"input": input, "cwd": cwd, "env": env}))
+            calls.append((argv, {"input": input, "cwd": cwd, "env": env,
+                                 "run_dir_there": pathlib.Path(env["SQ_RUN_DIR"]).is_dir()}))
             self.answers.append(finished())
             store.finish(self.db, 1, "done")
             self.answers.append(finished())
@@ -493,6 +494,36 @@ class Worker(unittest.TestCase):
         self.assertEqual(self.platform.notes[0][0], "Soirely: ops needs you")
         self.assertEqual(store.get_meta(self.db, "owner:ops")["lines"],
                          ["Waiting on the owner to merge #280."])
+
+    def test_the_run_gets_a_private_folder_that_is_removed_afterwards(self):
+        _, calls = self.work_with({"result": "Done."})
+        folder = pathlib.Path(calls[0][1]["env"]["SQ_RUN_DIR"])
+        self.assertEqual(folder, runner.run_dir(self.home, "ops", 1))
+        self.assertTrue(calls[0][1]["run_dir_there"])
+        self.assertFalse(folder.exists())
+
+    def test_a_further_worker_gets_a_folder_of_its_own(self):
+        self.assertNotEqual(runner.run_dir(self.home, "dev", 1),
+                            runner.run_dir(self.home, "dev-2", 1))
+
+    def test_the_folder_is_removed_when_the_model_crashes(self):
+        def claude(argv, input, cwd, env, finished):
+            (pathlib.Path(env["SQ_RUN_DIR"]) / "check.out").write_text("partial")
+            raise OSError("claude is not installed")
+
+        with self.assertRaises(OSError):
+            runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
+                          load=lambda: config(self.root),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
+        self.assertFalse(runner.run_dir(self.home, "ops", 1).exists())
+
+    def test_a_worker_stopped_by_its_limit_has_its_folder_removed(self):
+        folder = runner.run_dir(self.home, "ops", 1)
+        folder.mkdir(parents=True)
+        (folder / "check.out").write_text("half a log")
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
+            runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
+        self.assertFalse(folder.exists())
 
     def test_a_checkout_that_cannot_fetch_is_reported_and_runs_no_model(self):
         def unprepared(*_):
