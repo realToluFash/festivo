@@ -51,6 +51,44 @@ def find(markdown, name):
     return None
 
 
+def matching(markdown, name):
+    """Every heading the name matches as `find` matches it: the exact ones, or failing
+    those, the ones it begins."""
+    wanted = name.strip().lower()
+    headings = [h for h, _, _ in sections(markdown) if h != TOP]
+    exact = [h for h in headings if h.lower() == wanted]
+    if exact:
+        return exact
+    prefixes = {"ac": ("ac", "acceptance")}.get(wanted, (wanted,))
+    return [h for h in headings if h.lower().startswith(prefixes)]
+
+
+def swap(markdown, heading, body):
+    """The text with one section's own text replaced and every other byte as it was: the
+    blank lines around the old text, and the line endings, stay."""
+    lines = markdown.splitlines(keepends=True)
+    marks, fence = [], False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        elif not fence and HEADING.match(line):
+            marks.append(i)
+    start = next(i for i in marks if HEADING.match(lines[i]).group(2) == heading)
+    end = next((i for i in marks if i > start), len(lines))
+    eol = "\r\n" if lines[start].endswith("\r\n") else "\n"
+    old = lines[start + 1:end]
+    text = [line for line in old if line.strip()]
+    if not text:
+        tail = eol if end < len(lines) else ""
+        middle = [eol, eol.join(body.strip().splitlines()) + eol, tail]
+        return "".join(lines[:start + 1] + middle + lines[end:])
+    first = next(i for i, line in enumerate(old) if line.strip())
+    last = max(i for i, line in enumerate(old) if line.strip())
+    ending = old[last][len(old[last].rstrip("\r\n")):]
+    new = eol.join(body.strip().splitlines()) + ending
+    return "".join(lines[:start + 1] + old[:first] + [new] + old[last + 1:] + lines[end:])
+
+
 def is_ac(heading):
     return heading.lower().startswith(("ac", "acceptance"))
 

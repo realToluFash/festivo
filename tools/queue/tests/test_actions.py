@@ -1063,6 +1063,68 @@ class Closing(Base):
             self.close("lead")
 
 
+BODY = ("## Description\n\nWhat it did.\n\n## Risks\n\n- the old one\n\n## References\n\n"
+        "sc-1\n\n## Evidence of work\n\nTests.\n\n## Next Steps\n\nNone.\n")
+
+
+class EditingABody(Base):
+    def live(self, state="OPEN"):
+        return {"headRefOid": HEAD, "state": state, "body": BODY, "story_id": 1,
+                "mergeCommit": None}
+
+    def edit(self, role, section="Risks", text="- the new one", state="OPEN"):
+        with mock.patch("soirely_queue.github.live", return_value=self.live(state)), \
+                mock.patch("soirely_queue.github.edit_body") as edited, \
+                mock.patch("soirely_queue.sync.sync_github") as synced, \
+                mock.patch("soirely_queue.github.merge") as merged:
+            said = actions.pr_edit(self.as_(role), args(pr=9, section=section, text=text))
+        merged.assert_not_called()
+        synced.assert_not_called()
+        return said, edited
+
+    def test_one_section_changes_and_reads_back_at_once(self):
+        self.fake.add(1, "In Review", ["dev2"])
+        store.put_pr(self.db, dict(pr("pass"), body=BODY))
+        said, edited = self.edit("dev2", section="risks")
+        new = BODY.replace("- the old one", "- the new one")
+        edited.assert_called_once_with(9, new)
+        self.assertIn("PR #9: replaced Risks", said)
+        self.assertEqual(store.pr(self.db, 9)["body"], new)
+        self.assertEqual(store.pr(self.db, 9)["lead"], pr("pass")["lead"])
+        self.assertEqual(self.state(1), "In Review")
+
+    def test_a_merged_body_is_corrected_and_a_closed_one_is_not(self):
+        self.fake.add(1, "Done", ["ops"])
+        self.edit("ops", state="MERGED")
+        with self.assertRaisesRegex(actions.Refused, "closed unmerged"):
+            self.edit("ops", state="CLOSED")
+
+    def test_an_unclear_name_or_empty_text_changes_nothing(self):
+        self.fake.add(1, "In Review", ["ops"])
+        for section, why in (("Design", "no heading match Design; the body has: Description; "
+                              "Risks; References; Evidence of work; Next Steps"),
+                             ("R", "2 headings match R")):
+            with self.assertRaisesRegex(actions.Refused, why), \
+                    mock.patch("soirely_queue.github.edit_body") as edited:
+                self.edit("ops", section=section)
+            edited.assert_not_called()
+        for text in (" \n", "## Risks\n- x"):
+            with self.assertRaises(actions.Refused):
+                self.edit("ops", text=text)
+
+    def test_whoever_may_close_it_may_edit_it(self):
+        self.fake.add(1, "In Review", ["translation"])
+        self.edit("l10n")
+        self.edit("ops")
+        with self.assertRaisesRegex(actions.Refused, "l10n's to edit"):
+            self.edit("dev")
+        self.fake.add(1, "In Review", ["dev3"])
+        self.edit("dev")
+        for role in ("lead", "pm", "qa"):
+            with self.assertRaisesRegex(actions.Refused, f"{role} may not pr-edit"):
+                self.edit(role)
+
+
 class PermissionAsks(Base):
     def setUp(self):
         super().setUp()

@@ -354,7 +354,7 @@ def cmd_history(s, a):
 
 TAKES_BODY = {actions.comment, actions.note, actions.to_draw, actions.report, actions.edit, actions.new_story,
               actions.new_epic, actions.review, actions.pr_reply, actions.pr_create,
-              actions.pr_close}
+              actions.pr_close, actions.pr_edit}
 
 
 def write(fn):
@@ -514,6 +514,9 @@ WRITES = [
                 p.add_argument("--text", help="anything QA should know"))),
     ("pr-close", actions.pr_close, "close a pull request unmerged, saying why on it",
      lambda p: (p.add_argument("pr", type=int), body(p))),
+    ("pr-edit", actions.pr_edit, "replace one section of a pull request's body",
+     lambda p: (p.add_argument("pr", type=int), p.add_argument("--section", required=True),
+                body(p))),
     ("to-qa", actions.to_qa, "hand a merged story to QA, naming the merge commit",
      lambda p: (p.add_argument("story"), p.add_argument("--text"))),
     ("rerun", actions.rerun, "rerun a pull request's failed jobs, or a --run",

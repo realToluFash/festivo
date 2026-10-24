@@ -56,6 +56,23 @@ class Sections(unittest.TestCase):
         nested = STORY + "\n## English copy (l10n)\n\nwords\n"
         self.assertIn("words", T.replace(nested, "Design", "redrawn"))
 
+    def test_swap_changes_one_section_and_every_other_byte_stays(self):
+        body = ("Fixes it.\r\n\r\n## Description\r\n\r\nOld words.\r\nMore.\r\n\r\n"
+                "## Risks\r\n- one  \r\n\r\n\r\n## References\r\n```\r\n## no\r\n```\r\n"
+                "## Next Steps\r\nNone.")
+        out = T.swap(body, "Risks", "- new\n- two")
+        self.assertEqual(out, body.replace("- one  ", "- new\r\n- two"))
+        out = T.swap(body, "Next Steps", "Merge it.")
+        self.assertEqual(out, body.replace("None.", "Merge it."))
+        self.assertEqual(T.swap("## A\n\n## B\nb\n", "A", "a"), "## A\n\na\n\n## B\nb\n")
+
+    def test_matching_names_every_heading_a_name_could_mean(self):
+        body = "## Risks\nr\n## Evidence of work\ne\n## Evidence, again\nx\n"
+        self.assertEqual(T.matching(body, "risks"), ["Risks"])
+        self.assertEqual(T.matching(body, "Evidence"), ["Evidence of work", "Evidence, again"])
+        self.assertEqual(T.matching(body, "Evidence of work"), ["Evidence of work"])
+        self.assertEqual(T.matching(body, "Design"), [])
+
     def test_outstanding_items(self):
         report = "Tested on main\n\nOutstanding items:\n- first\n- second\n\nAfter."
         self.assertEqual(T.outstanding_items(report), ["first", "second"])

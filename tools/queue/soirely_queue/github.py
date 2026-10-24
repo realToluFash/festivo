@@ -356,7 +356,9 @@ def live(number):
     return {"headRefOid": pull["head"]["sha"], "mergeable": MERGEABLE[pull.get("mergeable")],
             "mergeStateStatus": (pull.get("mergeable_state") or "unknown").upper(),
             "state": "MERGED" if pull.get("merged") else pull["state"].upper(),
-            "draft": bool(pull.get("draft")),
+            "draft": bool(pull.get("draft")), "body": pull.get("body") or "",
+            "story_id": int(found.group(1)) if (found := STORY.search(pull["head"]["ref"])
+                                                or STORY.search(pull.get("title") or "")) else None,
             "mergeCommit": pull["merge_commit_sha"] if pull.get("merged") else None}
 
 
@@ -413,6 +415,11 @@ def close(number, text):
         stdin=json.dumps({"body": text}))
     api(f"{repo_path()}/pulls/{number}", "--method", "PATCH", "--input", "-",
         stdin=json.dumps({"state": "closed"}))
+
+
+def edit_body(number, body):
+    api(f"{repo_path()}/pulls/{number}", "--method", "PATCH", "--input", "-",
+        stdin=json.dumps({"body": body}))
 
 
 def ready(number):
