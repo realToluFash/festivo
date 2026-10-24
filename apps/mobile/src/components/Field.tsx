@@ -143,7 +143,7 @@ export function useHeld(
   };
 }
 
-/** To the field a refusal names: the keyboard moves there if it was up, and a refusal never raises it. */
+/** To the field a server refusal names: the keyboard moves there if it was up, and a server refusal never raises it. */
 export function focusRefused(field: RefObject<TextInput | null>): void {
   if (TextInput.State.currentlyFocusedInput() != null) {
     field.current?.focus();

@@ -19,7 +19,7 @@ import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CodeField, Field, focusRefused } from './Field.tsx';
+import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
@@ -159,7 +159,7 @@ function Changing({
         : field === 'currentPassword'
           ? t('passwordCard.currentBlank')
           : t('passwordCard.newBlank'),
-    (field) => focusRefused(field === 'currentPassword' ? currentInput : nextInput),
+    (field) => (field === 'currentPassword' ? currentInput : nextInput).current?.focus(),
   );
 
   async function submit(): Promise<void> {
@@ -168,7 +168,7 @@ function Changing({
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(next.current)) {
-      focusRefused(nextInput);
+      nextInput.current?.focus();
       return;
     }
 
@@ -322,12 +322,12 @@ function Setting({
 
       return problem === 'blank' ? t('passwordCard.setCodeBlank') : t('passwordCard.setCodeShort');
     },
-    () => focusRefused(codeInput),
+    () => codeInput.current?.focus(),
   );
   const passwordChecks = useFormChecks(
     ['password'] as const,
     (_field, value) => (value === '' ? t('passwordCard.setNewBlank') : null),
-    () => focusRefused(passwordInput),
+    () => passwordInput.current?.focus(),
   );
 
   async function send(): Promise<void> {
@@ -378,7 +378,7 @@ function Setting({
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(password.current)) {
-      focusRefused(passwordInput);
+      passwordInput.current?.focus();
       return;
     }
 

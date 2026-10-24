@@ -212,12 +212,10 @@ function Form({
   const [saving, setSaving] = useState(false);
   const nameInput = useRef<TextInput>(null);
   const countryPicker = useRef<View>(null);
-  const focus = (field: NewOrganisationField) =>
-    field === 'name' ? focusRefused(nameInput) : focusPicker(countryPicker);
   const checks = useFormChecks(
     NEW_ORGANISATION_FIELDS,
     (field, value) => newOrganisationMessage(field, value, t),
-    focus,
+    (field) => (field === 'name' ? nameInput.current?.focus() : focusPicker(countryPicker)),
   );
   const errors = { ...refused, ...checks.errors };
   const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(pinned && keysUp);
@@ -254,7 +252,8 @@ function Form({
     if (outcome.kind === 'failed') setFailed(true);
     if (outcome.kind === 'refused') {
       setRefused(outcome.errors);
-      focus(outcome.errors.name != null ? 'name' : 'countryCode');
+      if (outcome.errors.name != null) focusRefused(nameInput);
+      else focusPicker(countryPicker);
     }
   }
 
