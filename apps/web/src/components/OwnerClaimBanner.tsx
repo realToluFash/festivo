@@ -5,7 +5,7 @@ import {
   ownerClaimRefusalKey,
   ownerClaimView,
 } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -84,7 +84,7 @@ function Withdrew({ told }: { told: boolean }) {
   const { t } = useTranslation();
   const line = useRef<HTMLDivElement>(null);
 
-  useEffect(() => line.current?.focus(), []);
+  useLayoutEffect(() => line.current?.focus(), []);
 
   return (
     <div ref={line} className="notice notice-done" role="status" tabIndex={-1}>
