@@ -22,6 +22,7 @@ use Doctrine\DBAL\Connection;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psl\Dict;
 use Psl\Json;
 use Psl\Str;
 use Psl\Type;
@@ -66,6 +67,7 @@ final class EventsTest extends ApiTestCase
         self::assertSame('2026-11-15T02:00:00+01:00', $event['endsAt']);
         self::assertSame('Africa/Lagos', $event['timeZone']);
         self::assertSame('NGN', $event['currency']);
+        self::assertSame(2, $event['dayCount']);
         self::assertSame($this->organisation->getId()->toRfc4122(), $event['organisationId']);
 
         self::assertSame($event, $this->event($this->as($this->owner, 'GET', '/api/events/' . $event['id'])));
@@ -184,6 +186,19 @@ final class EventsTest extends ApiTestCase
     }
 
     #[Test]
+    public function everyResponseCountsTheDatesTheEventTouches(): void
+    {
+        $overnight = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'name' => 'Overnight', 'startsAt' => '2026-11-14T19:00', 'endsAt' => '2026-11-15T02:00']));
+        $daytime = $this->event($this->as($this->owner, 'POST', $this->path('events'), [...self::valid(), 'name' => 'Daytime', 'startsAt' => '2026-11-14T10:00', 'endsAt' => '2026-11-14T23:00']));
+
+        self::assertSame([2, 1], [$overnight['dayCount'], $daytime['dayCount']]);
+        self::assertSame(2, $this->event($this->as($this->owner, 'GET', '/api/events/' . $overnight['id']))['dayCount']);
+
+        $listed = Type\vec(Type\shape(['name' => Type\string(), 'dayCount' => Type\int()], true))->coerce($this->as($this->owner, 'GET', $this->path('events'))['events']);
+        self::assertSame(['Daytime' => 1, 'Overnight' => 2], Dict\from_entries(Vec\map($listed, static fn (array $event): array => [$event['name'], $event['dayCount']])));
+    }
+
+    #[Test]
     public function theListIsSoonestFirstThenByName(): void
     {
         $this->create('Later', '2026-12-01T10:00');
@@ -298,7 +313,7 @@ final class EventsTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return array{id: string, organisationId: string, name: string, status: string, startsAt: string, endsAt: string, timeZone: string, currency: string, createdAt: string}
+     * @return array{id: string, organisationId: string, name: string, status: string, startsAt: string, endsAt: string, timeZone: string, dayCount: int, currency: string, createdAt: string}
      */
     private function event(array $body): array
     {
@@ -310,6 +325,7 @@ final class EventsTest extends ApiTestCase
             'startsAt' => Type\string(),
             'endsAt' => Type\string(),
             'timeZone' => Type\string(),
+            'dayCount' => Type\int(),
             'currency' => Type\string(),
             'createdAt' => Type\string(),
         ])->assert($body['event'] ?? null);

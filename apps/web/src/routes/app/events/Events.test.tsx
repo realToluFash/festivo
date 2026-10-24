@@ -25,6 +25,7 @@ function event(overrides: Record<string, unknown> = {}) {
     startsAt: '2026-11-14T16:00:00+01:00',
     endsAt: '2026-11-15T02:00:00+01:00',
     timeZone: 'Africa/Lagos',
+    dayCount: 2,
     currency: 'NGN',
     createdAt: '2026-10-21T09:00:00+00:00',
     ...overrides,

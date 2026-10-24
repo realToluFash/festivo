@@ -287,6 +287,8 @@ export interface OrganisationEvent {
   startsAt: string;
   endsAt: string;
   timeZone: string;
+  /** The calendar dates in `timeZone` the event touches, at least 1; an end at 00:00 does not touch the new date (sc-98). */
+  dayCount: number;
   currency: string;
   createdAt: string;
 }
@@ -2288,7 +2290,16 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     'createdAt',
   ] as const;
 
-  if (status == null || fields.some((field) => typeof candidate[field] !== 'string')) return null;
+  const dayCount = candidate.dayCount;
+
+  if (
+    status == null ||
+    fields.some((field) => typeof candidate[field] !== 'string') ||
+    typeof dayCount !== 'number' ||
+    !Number.isInteger(dayCount) ||
+    dayCount < 1
+  )
+    return null;
 
   return {
     id: candidate.id as string,
@@ -2298,6 +2309,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     startsAt: candidate.startsAt as string,
     endsAt: candidate.endsAt as string,
     timeZone: candidate.timeZone as string,
+    dayCount,
     currency: candidate.currency as string,
     createdAt: candidate.createdAt as string,
   };
