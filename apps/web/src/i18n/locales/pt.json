@@ -1014,6 +1014,8 @@
     "builtIn": "Predefinida",
     "holders_one": "{{count}} pessoa",
     "holders_other": "{{count}} pessoas",
+    "moreHolders_one": "and {{count}} more",
+    "moreHolders_other": "and {{count}} more",
     "nameLabel": "Nome da função",
     "nameBlank": "Dê um nome à função.",
     "nameTooLong": "Encurte o nome para um máximo de {{most}} caracteres.",

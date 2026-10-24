@@ -33,6 +33,10 @@ function role(
   name: string | null,
   permissions: string[],
   holders = 0,
+  holderNames = Array.from({ length: holders }, (_, n) => ({
+    name: `Holder ${n + 1}`,
+    suspended: false,
+  })),
 ) {
   return {
     id,
@@ -42,8 +46,19 @@ function role(
     removable: seededAs == null,
     permissions,
     holders,
+    holderNames,
   };
 }
+
+const DOOR_TEAM = [
+  'Ada Okeke',
+  'bisi Ade',
+  'Chidi Eze',
+  'Émeka Obi',
+  'Funmi Bello',
+  'Kemi Lawal',
+  'Tope Alade',
+].map((name) => ({ name, suspended: name === 'Émeka Obi' }));
 
 const ROLES = [
   role('role_1', 'owner', null, OWNER_PERMISSIONS, 1),
@@ -63,7 +78,7 @@ const ROLES = [
   ),
   role('role_4', 'coordinator', null, ['events.read', 'events.manage', 'budget.read'], 2),
   role('role_5', 'read_only', null, ['events.read', 'budget.read']),
-  role('role_6', null, 'Door team', ['events.read', 'guests.read'], 2),
+  role('role_6', null, 'Door team', ['events.read', 'guests.read'], 7, DOOR_TEAM),
 ];
 
 function signedIn(organisation = IRE): void {
@@ -162,6 +177,74 @@ describe('Settings > Roles', () => {
     expect(screen.getByRole('button', { name: /^Coordinator.*2 people/ })).toBeDefined();
   });
 
+  it('names the open role’s first five holders, and the rest once asked', async () => {
+    answering();
+    await roles();
+
+    pick(/^Door team/);
+
+    const who = screen.getByText('Who has this role').parentElement as HTMLElement;
+    expect(within(who).getByText('7 people')).toBeDefined();
+    expect(
+      within(who)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'Ada Okeke',
+      'bisi Ade',
+      'Chidi Eze',
+      'Émeka ObiSuspended',
+      'Funmi Bello',
+      'and 2 more',
+    ]);
+    expect(screen.getByRole('button', { name: /^Door team/ }).textContent).not.toMatch(/Ada/);
+
+    fireEvent.click(within(who).getByRole('button', { name: 'and 2 more' }));
+
+    expect(
+      within(who)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual([
+      'Ada Okeke',
+      'bisi Ade',
+      'Chidi Eze',
+      'Émeka ObiSuspended',
+      'Funmi Bello',
+      'Kemi Lawal',
+      'Tope Alade',
+    ]);
+    expect(within(who).queryByRole('button')).toBeNull();
+  });
+
+  it('names nobody on a role nobody holds, and every holder of five without "and N more"', async () => {
+    answering((method) =>
+      method === 'GET'
+        ? new Response(
+            JSON.stringify({
+              roles: ROLES.map((one) =>
+                one.id === 'role_4'
+                  ? { ...one, holders: 5, holderNames: DOOR_TEAM.slice(0, 5) }
+                  : one,
+              ),
+              areas: AREAS,
+            }),
+            { status: 200 },
+          )
+        : null,
+    );
+    await roles();
+
+    pick(/^Read-only/);
+    const who = () => screen.getByText('Who has this role').parentElement as HTMLElement;
+    expect(within(who()).getByText('Nobody yet.')).toBeDefined();
+    expect(within(who()).queryByRole('list')).toBeNull();
+
+    pick(/^Coordinator/);
+    expect(within(who()).getAllByRole('listitem')).toHaveLength(5);
+    expect(within(who()).queryByRole('button')).toBeNull();
+  });
+
   it('shows Owner with everything and no control to change it', async () => {
     answering();
     await roles();
@@ -236,6 +319,41 @@ describe('Settings > Roles', () => {
     );
   });
 
+  it('names the people a removed role moved onto its replacement, without a reload', async () => {
+    let removed = false;
+    answering((method) => {
+      if (method === 'DELETE') {
+        removed = true;
+        return new Response(null, { status: 204 });
+      }
+
+      return removed
+        ? new Response(
+            JSON.stringify({
+              roles: ROLES.filter((one) => one.id !== 'role_6').map((one) =>
+                one.id === 'role_5' ? { ...one, holders: 7, holderNames: DOOR_TEAM } : one,
+              ),
+              areas: AREAS,
+            }),
+            { status: 200 },
+          )
+        : null;
+    });
+    await roles();
+    pick(/^Door team/);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+    fireEvent.click(screen.getByLabelText(/^Read-only/));
+    fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
+
+    await waitFor(() => expect(screen.queryByRole('button', { name: /^Door team/ })).toBeNull());
+    pick(/^Read-only/);
+
+    const who = screen.getByText('Who has this role').parentElement as HTMLElement;
+    expect(within(who).getByText('7 people')).toBeDefined();
+    expect(within(who).getByText('Ada Okeke')).toBeDefined();
+    expect(within(who).getByRole('button', { name: 'and 2 more' })).toBeDefined();
+  });
+
   it('checks a new role’s name before sending, and says the server’s refusal under it', async () => {
     const sent = answering((method) => (method === 'POST' ? nameTaken() : null));
     await roles();
@@ -272,7 +390,7 @@ describe('Settings > Roles', () => {
     fireEvent.change(screen.getByLabelText('Role name'), { target: { value: ' Door crew ' } });
     fireEvent.click(level('Seating', 'Read'));
 
-    expect(screen.getByText(/Unsaved changes to Door team\. 2 people get them/)).toBeDefined();
+    expect(screen.getByText(/Unsaved changes to Door team\. 7 people get them/)).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Save Door team' }));
 
     await screen.findByText("Saved. Applies on each person's next request.");

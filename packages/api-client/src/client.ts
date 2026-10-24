@@ -260,6 +260,14 @@ export interface OrganisationRole extends MemberRole {
   removable: boolean;
   permissions: string[];
   holders: number;
+  /** Whom `holders` counts, alphabetical by name, ties by email (sc-6447). */
+  holderNames: RoleHolder[];
+}
+
+/** A name as its person wrote it, never translated; a suspended holder still holds the role. */
+export interface RoleHolder {
+  name: string;
+  suspended: boolean;
 }
 
 /** Every role, and every registered permission grouped by area, in the order the grid shows them. */
@@ -2196,13 +2204,16 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
 
   const role = raw as Record<string, unknown>;
   const permissions = stringList(role.permissions);
+  const holderNames = Array.isArray(role.holderNames) ? role.holderNames.map(asRoleHolder) : null;
 
   if (
     typeof role.id !== 'string' ||
     typeof role.fixed !== 'boolean' ||
     typeof role.removable !== 'boolean' ||
     typeof role.holders !== 'number' ||
-    permissions == null
+    permissions == null ||
+    holderNames == null ||
+    !holderNames.every((holder) => holder != null)
   )
     return null;
 
@@ -2214,7 +2225,16 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
     removable: role.removable,
     permissions,
     holders: role.holders,
+    holderNames,
   };
+}
+
+function asRoleHolder(raw: unknown): RoleHolder | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { name, suspended } = raw as Record<string, unknown>;
+
+  return typeof name === 'string' && typeof suspended === 'boolean' ? { name, suspended } : null;
 }
 
 function asRolesCatalogue(raw: unknown): RolesCatalogue | null {

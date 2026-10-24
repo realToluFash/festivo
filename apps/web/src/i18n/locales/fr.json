@@ -1014,6 +1014,8 @@
     "builtIn": "Intégré",
     "holders_one": "{{count}} personne",
     "holders_other": "{{count}} personnes",
+    "moreHolders_one": "and {{count}} more",
+    "moreHolders_other": "and {{count}} more",
     "nameLabel": "Nom du rôle",
     "nameBlank": "Donnez un nom au rôle.",
     "nameTooLong": "Raccourcissez le nom à {{most}} caractères maximum.",
