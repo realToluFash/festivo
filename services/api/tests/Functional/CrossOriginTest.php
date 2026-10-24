@@ -115,6 +115,19 @@ final class CrossOriginTest extends ApiTestCase
 
         self::assertStringContainsString('retry-after', $exposed);
         self::assertStringContainsString('link', $exposed);
+        self::assertStringContainsString('etag', $exposed);
+    }
+
+    #[Test]
+    public function aPreflightAllowsAnEditsIfMatch(): void
+    {
+        $this->client->request('OPTIONS', '/api/events/0193f5a8-0000-7000-8000-000000000000', server: [
+            'HTTP_ORIGIN' => self::ALLOWED,
+            'HTTP_ACCESS_CONTROL_REQUEST_METHOD' => 'PATCH',
+            'HTTP_ACCESS_CONTROL_REQUEST_HEADERS' => 'content-type, if-match',
+        ]);
+
+        self::assertStringContainsString('if-match', Str\lowercase((string) $this->client->getResponse()->headers->get('Access-Control-Allow-Headers')));
     }
 
     #[Test]
