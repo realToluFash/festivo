@@ -230,32 +230,38 @@ export function useScrolledToTop(): RefObject<View | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 const SETTLED_MS = 500;
 
+function bringIntoView(scroll: ScreenScrollView | null, line: View | null): void {
+  const view = scroll?.ref.current;
+  const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (scroll == null || view == null || content == null || scrollHost == null || line == null)
+    return;
+
+  line.measureLayout(content, (_x, contentY, _w, height) => {
+    scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
+      const y = offsetIntoView({
+        contentY,
+        height,
+        offset: scroll.offset.current,
+        shown,
+        margin: tokens.spaceLg,
+      });
+      if (y != null) view.scrollTo({ y, animated: true });
+    });
+  });
+}
+
 /** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it, or on Android, where TalkBack ignores that focus (sc-9950), reads its words out. */
 export function useBroughtIntoView(words: string): RefObject<View | null> {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
 
   useEffect(() => {
-    const view = scroll?.ref.current;
-    const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
-    const scrollHost = view?.getNativeScrollRef();
-
-    if (scroll != null && view != null && content != null && scrollHost != null) {
-      ref.current?.measureLayout(content, (_x, contentY, _w, height) => {
-        scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
-          const y = offsetIntoView({
-            contentY,
-            height,
-            offset: scroll.offset.current,
-            shown,
-            margin: tokens.spaceLg,
-          });
-          if (y != null) view.scrollTo({ y, animated: true });
-        });
-      });
-    }
+    bringIntoView(scroll, ref.current);
 
     const focus = setTimeout(() => {
+      // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
+      bringIntoView(scroll, ref.current);
       if (Platform.OS === 'android') {
         AccessibilityInfo.announceForAccessibility(words);
         return;
