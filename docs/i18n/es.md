@@ -110,7 +110,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   24 Oct (qa2, #8038): the email subject opens on what happened, «Acceso en pausa: {name} en
   {organisation}», so a phone inbox shows it before the names. The admins' label is «Acceso
   suspendido: dominio de empresa», as the setting, for all three reasons. "… first" is
-  «necesita primero», never an opening «Antes,».
+  «necesita primero», never an opening «Antes,». The member's history line
+  (`history.suspendedAddressGone`, sc-8868) is the label's words, whatever the reason.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The act
   is «solicitar unirse», as domain joining; the setting «Solicitudes para unirse», so its state
