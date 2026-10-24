@@ -76,8 +76,11 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
   `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
   `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: « la
-  seule personne ayant le rôle Propriétaire dans {{organisation}} », and what is not removed is
-  « son accès », so nothing agrees with the member: « son accès ne peut donc pas être retiré ».
+  seule personne ayant le rôle Propriétaire dans {{organisation}} ». What is not removed is the
+  person, from the organisation, never « son accès » (under « Retirer de … » and « Votre accès
+  … est en pause » that reads as access not taken away). Nothing agrees with the member:
+  « cette personne ne peut donc pas être retirée de l’organisation », « cette personne garde ce
+  rôle et reste membre de l’organisation », and to the owner « vous en restez donc membre ».
   The history line is « Accès suspendu : son adresse e-mail professionnelle ne lui ouvre plus
   l’accès », « ne donne plus accès » would say « accès » twice.
 - **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
