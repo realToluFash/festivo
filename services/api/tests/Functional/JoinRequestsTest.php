@@ -23,6 +23,7 @@ use App\Enum\SeededRole;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
 use App\Tests\Traits\OnboardsAccounts;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -286,6 +287,25 @@ final class JoinRequestsTest extends ApiTestCase
         self::assertSame('Wednesday 11 Nov at 08:40 GMT', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
         $this->fresh($owner)->setTimezone(null);
         self::assertSame('Wednesday 11 Nov at 08:40 UTC', Type\shape(['written' => Type\string()], true)->coerce($removes())['written']);
+    }
+
+    /** sc-9267: written in the language the request asks for, not the one the reader saved. */
+    #[Test]
+    public function theRemovalIsWrittenInTheLanguageTheRequestAsksFor(): void
+    {
+        self::mockTime(self::ASKED);
+        [$owner, $organisation] = $this->organisation();
+        $this->asks($organisation, 'ada@okeke.ng');
+        $this->signIn($owner);
+        $this->fresh($owner)->setLocale('pt');
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'es');
+
+        $pending = Iter\first(Vec\filter($this->listed($organisation), static fn (array $member): bool => 'pending_approval' === $member['status']));
+        $removes = Type\shape(['at' => Type\string(), 'written' => Type\string()], true)->coerce($pending['removesAt'] ?? null);
+
+        $written = fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable($removes['at']), $this->fresh($owner), $locale);
+        self::assertSame($written('es'), $removes['written']);
+        self::assertNotSame($written('pt'), $removes['written']);
     }
 
     #[Test]

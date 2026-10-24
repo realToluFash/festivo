@@ -46,7 +46,7 @@ final readonly class TwoFactorRecoveryController
             ...$this->recoveryView->opening($user),
             'supportAddress' => $this->supportAddress,
             'recovery' => $resumed[1] ?? null,
-            'state' => null === $resumed ? null : $this->recoveryView->state($resumed[0], $request->getLocale()),
+            'state' => null === $resumed ? null : $this->recoveryView->state($resumed[0]),
         ]);
     }
 
@@ -56,7 +56,7 @@ final readonly class TwoFactorRecoveryController
         $user = $this->twoFactorRecoveries->personAt($this->field($request, 'challenge'));
         [$recovery, $handle] = $this->twoFactorRecoveries->start($user);
 
-        return new JsonResponse(['recovery' => $handle, 'state' => $this->recoveryView->state($recovery, $request->getLocale())], Response::HTTP_CREATED);
+        return new JsonResponse(['recovery' => $handle, 'state' => $this->recoveryView->state($recovery)], Response::HTTP_CREATED);
     }
 
     /** Polled while the codes are out and while it waits, so it must never spend a try or send a code itself. */
@@ -66,7 +66,7 @@ final readonly class TwoFactorRecoveryController
         $recovery = $this->recovery($request);
         $this->twoFactorRecoveries->poll($recovery);
 
-        return $this->answer($recovery, $request);
+        return $this->answer($recovery);
     }
 
     #[Route('/api/auth/two-factor/recovery/resend', name: 'auth_two_factor_recovery_resend', methods: ['POST'])]
@@ -75,7 +75,7 @@ final readonly class TwoFactorRecoveryController
         $recovery = $this->recovery($request);
         $this->twoFactorRecoveries->resend($recovery);
 
-        return $this->answer($recovery, $request);
+        return $this->answer($recovery);
     }
 
     #[Route('/api/auth/two-factor/recovery/text-instead', name: 'auth_two_factor_recovery_text_instead', methods: ['POST'])]
@@ -84,7 +84,7 @@ final readonly class TwoFactorRecoveryController
         $recovery = $this->recovery($request);
         $this->twoFactorRecoveries->textInstead($recovery);
 
-        return $this->answer($recovery, $request);
+        return $this->answer($recovery);
     }
 
     #[Route('/api/auth/two-factor/recovery/prove', name: 'auth_two_factor_recovery_prove', methods: ['POST'])]
@@ -101,7 +101,7 @@ final readonly class TwoFactorRecoveryController
 
         $this->twoFactorRecoveries->prove($recovery, $emailCode, $phoneCode, $request->headers->get('User-Agent'));
 
-        return $this->answer($recovery, $request);
+        return $this->answer($recovery);
     }
 
     #[Route('/api/auth/two-factor/recovery/cancel', name: 'auth_two_factor_recovery_cancel', methods: ['POST'])]
@@ -110,7 +110,7 @@ final readonly class TwoFactorRecoveryController
         $recovery = $this->recovery($request);
         $this->twoFactorRecoveries->cancel($recovery);
 
-        return $this->answer($recovery, $request);
+        return $this->answer($recovery);
     }
 
     /** From any email about a request. The same answer whatever the link names, so it confirms nothing. */
@@ -136,9 +136,9 @@ final readonly class TwoFactorRecoveryController
         return $this->twoFactorRecoveries->find($this->field($request, 'recovery'));
     }
 
-    private function answer(TwoFactorRecovery $recovery, Request $request): JsonResponse
+    private function answer(TwoFactorRecovery $recovery): JsonResponse
     {
-        return new JsonResponse(['state' => $this->recoveryView->state($recovery, $request->getLocale())]);
+        return new JsonResponse(['state' => $this->recoveryView->state($recovery)]);
     }
 
     private function field(Request $request, string $name): string
