@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { linkedNotice, linkedNoticeShown } from '../providerSignIn.ts';
+import { linkedNotice, dropLinkedNotice } from '../providerSignIn.ts';
 
 /** Shown once, on whatever screen the first sign-in that linked a provider lands on. */
 export function LinkedNotice() {
@@ -10,7 +10,7 @@ export function LinkedNotice() {
 
   // Removed only once committed: React may abandon a render and run the initializer again.
   useEffect(() => {
-    if (provider != null) linkedNoticeShown();
+    if (provider != null) dropLinkedNotice();
   }, [provider]);
 
   if (provider == null) return null;

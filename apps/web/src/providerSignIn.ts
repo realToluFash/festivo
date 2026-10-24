@@ -198,6 +198,6 @@ export function linkedNotice(): string | null {
 }
 
 /** The notice was shown: no later screen or reload shows it again. */
-export function linkedNoticeShown(): void {
+export function dropLinkedNotice(): void {
   sessionStorage.removeItem(LINKED);
 }
