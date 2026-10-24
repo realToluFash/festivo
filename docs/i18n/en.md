@@ -62,6 +62,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The claim that lapsed (sc-9151, sc-9219, `emails:ownerClaim.lapsed.*`).**
+  `{claimant}` can be a bare address, so it is never a possessive: the subject is "{claimant}
+  did not become the owner of {organisation}. The claim lapsed", as "is now the owner". Each
+  reason ends ", so ownership did not pass.", as the web `recordRemoved`; the role is "an
+  Administrator", and the date "Lapsed on {deadline}.", as "Withdrawn on". `OwnerClaimTest` pins
+  the old English, so the English reword waits on [dev]; es, fr and pt already say the new one.
 - **24 Oct 2026. The rest of a role's holders (sc-9068, `rolesScreen.moreHolders_*`, web
   and app).** "and {{count}} more", kept: it closes the list of five names it follows, and the
   button reveals them in place, so "Show" would only lengthen it. The count is never below 1.
