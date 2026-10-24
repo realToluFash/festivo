@@ -8,6 +8,7 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Exception\ShapeRefusal;
 use Psl\Json;
+use Psl\Str;
 use Psl\Type\Exception\CoercionException;
 use Psl\Type\TypeInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -38,6 +39,11 @@ final readonly class Input
             throw new ApiException(ErrorCode::BadRequest, 'The request body is not valid JSON.', [], $e);
         }
 
+        // `[]` and `{}` decode to the same array, so only the text tells a list from an object.
+        if (!Str\starts_with(\ltrim($raw), '{')) {
+            throw new ShapeRefusal('');
+        }
+
         return self::coerce($decoded, $shape, $refusals);
     }
 
@@ -66,7 +72,7 @@ final readonly class Input
         try {
             return $shape->coerce($value);
         } catch (CoercionException $e) {
-            $path = \implode('.', $e->getPaths());
+            $path = Str\join($e->getPaths(), '.');
 
             throw new ShapeRefusal($path, $refusals[$path] ?? ShapeRefusal::FIELD, $e);
         }
