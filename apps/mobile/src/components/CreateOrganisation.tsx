@@ -56,9 +56,8 @@ export function CreateOrganisation({
   const { kind } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
-  const android = Platform.OS === 'android';
-  // The `create_keyboard` drawing is for Android phones; iOS keeps main's sheet (Decided, 24 Oct).
-  const drawn = android && phone;
+  // The `create_keyboard` drawing is for Android phones; the iPhone keeps its row (sc-9442).
+  const drawn = Platform.OS === 'android' && phone;
   const keysUp = useKeysUp();
 
   return (
@@ -87,7 +86,7 @@ export function CreateOrganisation({
             style={[
               styles.frame,
               phone ? styles.framePhone : styles.frameTablet,
-              phone && { paddingBottom: drawn && keysUp ? 0 : insets.bottom },
+              phone && { paddingBottom: keysUp ? 0 : insets.bottom },
             ]}
             accessibilityViewIsModal
           >
@@ -95,9 +94,9 @@ export function CreateOrganisation({
             {open && (
               <Form
                 email={email}
-                pinned={android}
                 drawn={drawn}
                 keysUp={keysUp}
+                phone={phone}
                 onCreated={onCreated}
                 onCancel={onCancel}
               />
@@ -179,18 +178,18 @@ function useFocusInSight(keysUp: boolean) {
 
 function Form({
   email,
-  pinned,
   drawn,
   keysUp,
+  phone,
   onCreated,
   onCancel,
 }: {
   email: string;
-  /** On Android only the body scrolls, so the title and the buttons stay above the keys (sc-4527). */
-  pinned: boolean;
-  /** The buttons stack, Create organisation on top, and the keys-up chrome shows (`create_keyboard`). */
+  /** The buttons stack, Create organisation on top (`create_keyboard`). */
   drawn: boolean;
   keysUp: boolean;
+  /** With the keys up on a phone, the title and the footer tighten and the footer shows its divider. */
+  phone: boolean;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -220,7 +219,8 @@ function Form({
     focus,
   );
   const errors = { ...refused, ...checks.errors };
-  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(pinned && keysUp);
+  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp);
+  const typing = phone && keysUp;
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -360,30 +360,13 @@ function Form({
     </View>
   );
 
-  if (!pinned) {
-    return (
-      <ScrollView
-        contentContainerStyle={styles.form}
-        keyboardShouldPersistTaps="handled"
-        testID="createOrganisation"
-      >
-        <View style={styles.heading}>
-          {title}
-          {intro}
-        </View>
-        {fields}
-        {buttons}
-      </ScrollView>
-    );
-  }
-
   return (
     <>
-      <View style={[styles.pinnedHeading, drawn && keysUp && styles.headingTyping]}>{title}</View>
+      <View style={[styles.heading, typing && styles.headingTyping]}>{title}</View>
       <ScrollView
         ref={body}
         style={styles.body}
-        contentContainerStyle={styles.pinnedForm}
+        contentContainerStyle={styles.form}
         keyboardShouldPersistTaps="handled"
         onLayout={(event) => onBodyLayout(event.nativeEvent.layout.height)}
         testID="createOrganisation"
@@ -391,7 +374,7 @@ function Form({
         {intro}
         {fields}
       </ScrollView>
-      <View style={[styles.footer, drawn && keysUp && styles.footerTyping]}>{buttons}</View>
+      <View style={[styles.footer, typing && styles.footerTyping]}>{buttons}</View>
     </>
   );
 }
@@ -426,12 +409,10 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: tokens.colorBorder,
   },
-  form: { gap: tokens.spaceXl, padding: tokens.space3xl },
-  heading: { gap: tokens.spaceXs },
-  pinnedHeading: { paddingHorizontal: tokens.space3xl, paddingTop: tokens.space3xl },
+  heading: { paddingHorizontal: tokens.space3xl, paddingTop: tokens.space3xl },
   headingTyping: { paddingTop: tokens.spaceLg },
   body: { flexShrink: 1 },
-  pinnedForm: {
+  form: {
     gap: tokens.spaceXl,
     paddingHorizontal: tokens.space3xl,
     paddingTop: tokens.spaceXs,
