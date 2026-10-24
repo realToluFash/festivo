@@ -8,6 +8,7 @@ use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
 use App\Http\Exception\ShapeRefusal;
 use App\Http\Input;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psl\Type;
@@ -203,19 +204,97 @@ final class InputTest extends TestCase
     }
 
     /**
-     * Why bodies coerce rather than assert: JSON has a single number type, so a
-     * latitude the client sent as `51` decodes to an int. Coercion reads it as
-     * the declared float; a strict assertion would refuse a coordinate that was
-     * sent correctly.
+     * JSON has a single number type, so a latitude the client sent as `51`
+     * decodes to an int. That is the declared float, not a coercion of it.
      */
     #[Test]
     public function aJsonIntegerSatisfiesADeclaredFloat(): void
     {
-        $request = Request::create('/x', 'POST', content: '{"latitude":51}');
+        $request = Request::create('/x', 'POST', content: '{"latitude":51,"longitude":null}');
 
-        $input = Input::body($request, Type\shape(['latitude' => Type\float()]));
+        $input = Input::body($request, Type\shape([
+            'latitude' => Type\float(),
+            'longitude' => Type\nullable(Type\float()),
+        ]));
 
         self::assertSame(51.0, $input['latitude']);
+        self::assertNull($input['longitude']);
+    }
+
+    /** @return iterable<string, array{string, Type\TypeInterface<mixed>}> */
+    public static function valuesOfAnotherJsonType(): iterable
+    {
+        yield 'a number for a string' => ['42', Type\string()];
+        yield 'a fraction for a string' => ['4.5', Type\string()];
+        yield 'a number past the integer range for a string' => ['12345678901234567890', Type\string()];
+        yield 'a boolean for a string' => ['true', Type\string()];
+        yield 'a list for a string' => ['["a"]', Type\string()];
+        yield 'an object for a string' => ['{"a":"b"}', Type\string()];
+        yield 'a numeric string for an int' => ['"30"', Type\int()];
+        yield 'a numeric string for a nullable int' => ['"30"', Type\nullable(Type\int())];
+        yield 'a fractional number for an int' => ['30.0', Type\int()];
+        yield 'a numeric string for a float' => ['"5"', Type\float()];
+        yield '0 for a boolean' => ['0', Type\bool()];
+        yield '1 for a boolean' => ['1', Type\bool()];
+        yield '"true" for a boolean' => ['"true"', Type\bool()];
+        yield '"false" for an optional boolean' => ['"false"', Type\optional(Type\bool())];
+        yield 'an object for a list' => ['{"a":"b"}', Type\vec(Type\string())];
+        yield 'a number for a string-backed enum' => ['1', Type\backed_enum(ErrorCode::class)];
+    }
+
+    /**
+     * @param Type\TypeInterface<mixed> $field
+     */
+    #[Test]
+    #[DataProvider('valuesOfAnotherJsonType')]
+    public function aJsonValueOfAnotherTypeIsRefusedRatherThanCoerced(string $value, Type\TypeInterface $field): void
+    {
+        $request = Request::create('/x', 'POST', content: '{"field":' . $value . '}');
+
+        $e = $this->refused($request, Type\shape(['field' => $field]));
+
+        self::assertSame(ErrorCode::ValidationFailed, $e->errorCode);
+        self::assertSame('field', $e->violations[0]['propertyPath']);
+        self::assertSame('invalid_shape', $e->violations[0]['code']);
+        self::assertSame(ShapeRefusal::FIELD, $e->violations[0]['message']);
+    }
+
+    #[Test]
+    public function aNumberForAFieldWithItsOwnRefusalIsRefusedWithIt(): void
+    {
+        $request = Request::create('/x', 'POST', content: '{"countryCode":42}');
+
+        try {
+            Input::body($request, Type\shape(['countryCode' => Type\string()]), ['countryCode' => 'validation.country_invalid']);
+            self::fail('Expected the input to be refused.');
+        } catch (ShapeRefusal $e) {
+            self::assertSame('countryCode', $e->propertyPath);
+            self::assertSame('validation.country_invalid', $e->refusal);
+        }
+    }
+
+    #[Test]
+    public function aNestedValueOfAnotherTypeNamesTheWholePath(): void
+    {
+        $request = Request::create('/x', 'POST', content: '{"venue":{"rooms":[{"name":"Hall"},{"name":7}]}}');
+
+        $e = $this->refused($request, Type\shape([
+            'venue' => Type\shape([
+                'rooms' => Type\vec(Type\shape(['name' => Type\string()])),
+            ]),
+        ]));
+
+        self::assertSame('venue.rooms.1.name', $e->violations[0]['propertyPath']);
+    }
+
+    #[Test]
+    public function anEnumIsReadFromItsBackingValue(): void
+    {
+        $request = Request::create('/x', 'POST', content: '{"error":"bad_request"}');
+
+        $input = Input::body($request, Type\shape(['error' => Type\backed_enum(ErrorCode::class)]));
+
+        self::assertSame(ErrorCode::BadRequest, $input['error']);
     }
 
     /**

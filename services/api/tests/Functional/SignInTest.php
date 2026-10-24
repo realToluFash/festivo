@@ -104,6 +104,20 @@ final class SignInTest extends ApiTestCase
     }
 
     #[Test]
+    public function aNumberForTheAddressIsRefusedAsTheWrongShapeRatherThanAnUnknownAddress(): void
+    {
+        $this->client->request('POST', '/api/auth/login', server: [
+            'CONTENT_TYPE' => 'application/json',
+        ], content: Json\encode(['email' => 123, 'password' => self::PASSWORD]));
+
+        $body = Json\typed((string) $this->client->getResponse()->getContent(), Type\dict(Type\string(), Type\mixed()));
+
+        self::assertSame(422, $this->client->getResponse()->getStatusCode());
+        self::assertSame(ErrorCode::ValidationFailed->type(), $body['type']);
+        self::assertSame(['email', 'invalid_shape'], [$body['violations'][0]['propertyPath'] ?? null, $body['violations'][0]['code'] ?? null]);
+    }
+
+    #[Test]
     public function anAlternativeAddressDoesNotSignAnybodyIn(): void
     {
         $user = $this->account('alt-primary@example.com');

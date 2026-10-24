@@ -93,7 +93,7 @@ final readonly class OrganisationController
 
         $body = Input::body($request, Type\shape([
             'name' => Type\string(),
-            'countryCode' => Type\always_assert(Type\string()),
+            'countryCode' => Type\string(),
             'timezone' => Type\optional(Type\string()),
         ]), ['countryCode' => 'validation.country_invalid']);
 
@@ -118,7 +118,7 @@ final readonly class OrganisationController
 
         $body = Input::body($request, Type\shape([
             'name' => Type\optional(Type\string()),
-            'countryCode' => Type\optional(Type\always_assert(Type\string())),
+            'countryCode' => Type\optional(Type\string()),
             'currency' => Type\optional(Type\string()),
             'timezone' => Type\optional(Type\string()),
             'contactAddress' => Type\optional(Type\string()),
