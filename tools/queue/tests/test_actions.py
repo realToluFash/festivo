@@ -827,6 +827,22 @@ class Merging(Base):
                 actions.merge(self.as_("dev2"), args(pr=9, text=None))
             merge.assert_not_called()
 
+    def test_a_follow_up_pr_is_still_its_builders_and_held_by_open_threads(self):
+        self.fake.add(1, "Ready For QA", ["dev2"])
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "dev2's to merge"):
+                actions.merge(self.as_("ops"), args(pr=9, text=None))
+            self.fake.add(1, "In QA", ["ops"])
+            with self.assertRaisesRegex(actions.Refused, "ops's to merge"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            self.fake.add(1, "Ready For QA", ["dev2"])
+            store.put_pr(self.db, pr("pass", threads=[{"resolved": False, "comments": []}]))
+            with self.assertRaisesRegex(actions.Refused, "1 review threads are open"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
     def test_merging_a_merged_pr_whose_story_moved_on_is_refused(self):
         self.fake.add(1, "Ready For QA", ["dev2"])
         store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
