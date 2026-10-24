@@ -54,6 +54,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Withdrawing your own claim** (`ownerClaim.withdraw*`, `youWithdrew*`,
+  `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`, sc-8556). The claimant
+  « retire » sa demande ; anybody else « arrête » une demande. Button « Retirer ma demande »,
+  confirm « Retirer votre demande ? » with « Retirer » / « Maintenir ma demande »; pending is
+  « Retrait en cours », as « Vérification de l’enregistrement ». "You included" is « vous y
+  compris », which agrees with nobody. The email is « sa demande de propriété pour
+  {organisation} », as the stopped email, and ends « Personne n’en est devenu propriétaire ».
 - **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
   `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is « devenir
   propriétaire », with no article, so it agrees with nobody; "has an active owner" is « une

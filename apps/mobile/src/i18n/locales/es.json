@@ -1349,16 +1349,16 @@
     "pausedTitle": "{{claimant}} ha solicitado la propiedad de {{organisation}}",
     "pausedUnfound": "Aún no se ha encontrado el registro DNS de esta persona. Sin él, la solicitud caduca el {{when}}.",
     "pausedStopped": "Ha detenido la solicitud de {{claimant}}. Ahora solo el servicio de asistencia de Soirely puede restablecer la propiedad de {{organisation}}.",
-    "withdraw": "Withdraw my claim",
-    "withdrawTitle": "Withdraw your claim?",
-    "withdrawBody": "You won't become the owner of {{organisation}}. Any Administrator, you included, can start a new claim.",
-    "withdrawYes": "Withdraw",
-    "withdrawNo": "Keep my claim",
-    "withdrawing": "Withdrawing",
-    "close": "Close",
-    "youWithdrew": "You withdrew your claim.",
-    "youWithdrewTold": "You withdrew your claim. Everybody who was told is emailed.",
-    "withdrawEnded": "This claim has already ended.",
-    "withdrawNotClaimant": "Only the person who started this claim can withdraw it."
+    "withdraw": "Retirar mi solicitud",
+    "withdrawTitle": "¿Retirar su solicitud?",
+    "withdrawBody": "No obtendrá la propiedad de {{organisation}}. Cualquier persona con el rol Administrador, también usted, podrá iniciar una nueva solicitud.",
+    "withdrawYes": "Retirar",
+    "withdrawNo": "Mantener mi solicitud",
+    "withdrawing": "Retirando",
+    "close": "Cerrar",
+    "youWithdrew": "Ha retirado su solicitud.",
+    "youWithdrewTold": "Ha retirado su solicitud. Se avisa por correo electrónico a todas las personas a las que se informó.",
+    "withdrawEnded": "Esta solicitud ya ha terminado.",
+    "withdrawNotClaimant": "Solo la persona que inició esta solicitud puede retirarla."
   }
 }

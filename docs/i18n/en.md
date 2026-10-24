@@ -62,6 +62,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Withdrawing your own claim (sc-8204, sc-8556, `ownerClaim.withdraw*`,
+  `youWithdrew*`, `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`).** The
+  claimant "withdraws" their claim; anybody else "stops" one. The confirm is "Withdraw your
+  claim?" with Withdraw / Keep my claim, the button "Withdraw my claim" in the first person, as
+  the person acts on their own claim. `withdrawBody` keeps "won't": it is a confirm, not an
+  error. `withdrawEnded` and `owner_claims.not_claimant` match the claim's other refusals. The
+  email date reads "Withdrawn on {deadline}.", as "Stopped on" and "Ownership passed on".
 - **24 Oct 2026. Getting an owner back (sc-6640, sc-8216, `ownerClaim.*`, web and app,
   `emails:ownerClaim.*`, `messages:owner_claims.*`, `errors:owner_claim_*`).** Settled as sc-6640
   wrote it. The act is "become the owner"; what is under way is "the claim", which "lapses",

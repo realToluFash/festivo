@@ -49,6 +49,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Withdrawing your own claim** (`ownerClaim.withdraw*`, `youWithdrew*`,
+  `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`, sc-8556). The claimant
+  «retira» su solicitud; anybody else «detiene» una. Button «Retirar mi solicitud», confirm
+  «¿Retirar su solicitud?» with «Retirar» / «Mantener mi solicitud». "You included" is «también
+  usted», as «usted incluido» assumes a man. The email puts the claim as «la solicitud», not «su
+  solicitud», which reads as the reader's; the date «Retirada el {deadline}», as «Detenida el».
 - **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
   `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is «obtener la
   propiedad», never «convertirse en propietario», which assumes a man; the claim is «la

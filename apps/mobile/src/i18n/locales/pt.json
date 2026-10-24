@@ -1349,16 +1349,16 @@
     "pausedTitle": "{{claimant}} pediu para assumir a propriedade de {{organisation}}",
     "pausedUnfound": "O registo DNS desta pessoa ainda não foi encontrado. Se não for encontrado até {{when}}, o pedido caduca.",
     "pausedStopped": "Interrompeu o pedido de {{claimant}}. Agora, só o apoio ao cliente da Soirely pode repor a propriedade de {{organisation}}.",
-    "withdraw": "Withdraw my claim",
-    "withdrawTitle": "Withdraw your claim?",
-    "withdrawBody": "You won't become the owner of {{organisation}}. Any Administrator, you included, can start a new claim.",
-    "withdrawYes": "Withdraw",
-    "withdrawNo": "Keep my claim",
-    "withdrawing": "Withdrawing",
-    "close": "Close",
-    "youWithdrew": "You withdrew your claim.",
-    "youWithdrewTold": "You withdrew your claim. Everybody who was told is emailed.",
-    "withdrawEnded": "This claim has already ended.",
-    "withdrawNotClaimant": "Only the person who started this claim can withdraw it."
+    "withdraw": "Retirar o meu pedido",
+    "withdrawTitle": "Retirar o seu pedido?",
+    "withdrawBody": "Não vai assumir a propriedade de {{organisation}}. Pode voltar a fazer um pedido, tal como qualquer pessoa com a função Administrador.",
+    "withdrawYes": "Retirar",
+    "withdrawNo": "Manter o meu pedido",
+    "withdrawing": "A retirar",
+    "close": "Fechar",
+    "youWithdrew": "Retirou o seu pedido.",
+    "youWithdrewTold": "Retirou o seu pedido. Todas as pessoas que foram avisadas recebem um e-mail.",
+    "withdrawEnded": "Este pedido já terminou.",
+    "withdrawNotClaimant": "Só a pessoa que fez este pedido pode retirá-lo."
   }
 }
