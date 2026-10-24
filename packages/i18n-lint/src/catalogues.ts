@@ -77,11 +77,27 @@ export function keyParity(
       if (!actual.includes(key)) missing.push({ locale, key });
     }
     for (const key of actual) {
-      if (!expected.includes(key)) extra.push({ locale, key });
+      if (!expected.includes(key) && !isOwnPluralForm(key, locale, expected)) {
+        extra.push({ locale, key });
+      }
     }
   }
 
   return { missing, extra };
+}
+
+/** `_many` in es: without it, i18next falls back to the reference's sentence. */
+function isOwnPluralForm(key: string, locale: string, expected: readonly string[]): boolean {
+  const form = /^(.+)_([a-z]+)$/.exec(key);
+  if (form == null) return false;
+
+  const [, base, category] = form;
+
+  return (
+    (new Intl.PluralRules(locale).resolvedOptions().pluralCategories as string[]).includes(
+      category!,
+    ) && expected.includes(`${base}_other`)
+  );
 }
 
 /** An empty message renders as nothing at all, which reads as a layout bug. */
@@ -117,7 +133,11 @@ export function slotParity(surface: Surface, reference = 'en'): SlotMismatch[] {
     if (locale === reference) continue;
 
     for (const [key, text] of stringsOf(load(surface, locale))) {
-      const reference = expected.get(key);
+      const reference =
+        expected.get(key) ??
+        (isOwnPluralForm(key, locale, [...expected.keys()])
+          ? expected.get(key.replace(/_[a-z]+$/, '_other'))
+          : undefined);
       if (reference == null) continue;
 
       const want = slotsIn(reference);
