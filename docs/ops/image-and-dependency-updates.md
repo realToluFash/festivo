@@ -28,11 +28,14 @@ so a new tzdata leaves the UTC times of upcoming events wrong wherever a zone's 
    environment's api container:
 
    ```sh
+   bin/console app:recompute-event-times --dry-run
    bin/console app:recompute-event-times
    ```
 
-   Locally that is `just console app:recompute-event-times`. Only events not yet over are
-   touched, and running it twice changes nothing the second time.
+   The first prints how many events would change (`Would recompute the UTC times of N
+events.`) and writes nothing; the second writes. Locally that is
+   `just console app:recompute-event-times`, with or without `--dry-run`. Only events not
+   yet over are touched, and running it twice changes nothing the second time.
 
 3. Record the count it prints (`Recomputed the UTC times of N events.`), with the
    environment, the old and new tzdata versions and the commit, in the pull request or the
