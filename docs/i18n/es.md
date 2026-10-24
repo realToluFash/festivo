@@ -49,6 +49,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
+  `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is «obtener la
+  propiedad», never «convertirse en propietario», which assumes a man; the claim is «la
+  solicitud» and the claimant «ha solicitado la propiedad», which holds before and after the
+  record is found. Ownership «se transfiere»; a person with it «tiene el rol Propietario».
+  The claimant's record is «el registro DNS de esta persona», as «su» reads as the reader's.
+  "Soirely support" is «el servicio de asistencia de Soirely», as `ownership.deleteWindow`;
+  restoring is «restablecer». Dates take «el {{when}}» and «hasta el {{when}}».
 - **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
   `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
   `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: «la única

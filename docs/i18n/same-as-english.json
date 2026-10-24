@@ -37,7 +37,9 @@
     "mobile:rolesScreen.area.messages",
     "mobile:rolesScreen.area.organisation",
     "web:requestToJoin.message",
-    "mobile:requestToJoin.message"
+    "mobile:requestToJoin.message",
+    "web:ownerClaim.type",
+    "mobile:ownerClaim.type"
   ],
   "pt": [
     "web:app.name",

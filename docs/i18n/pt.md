@@ -41,6 +41,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
+  `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is "assumir a
+  propriedade", never "tornar-se proprietário", which agrees with a gender; the claim is "o
+  pedido", and the claimant "pediu para assumir a propriedade", true before and after the
+  record is found. dev3's draft of `owner_claim_own` said "você" and "reivindicação"; it now
+  says "Não pode interromper o seu próprio pedido". A DNS record is "registo", never
+  "registro"; the claimant's is "o registo DNS desta pessoa". "Stop" is "interromper",
+  "Soirely support" "o apoio ao cliente da Soirely", restoring "repor". The weekday dates
+  follow the rule below: "até {{when}}" where the meaning allows, otherwise a label at the
+  end, "Data da transferência: {{when}}"; the email subject puts it in brackets.
 - **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
   `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
   `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: "a única
