@@ -1,9 +1,4 @@
-import {
-  ApiError,
-  type InvitationPreview,
-  type JoinOffers,
-  type JoinRequest,
-} from '@soirely/api-client';
+import { ApiError, type JoinOffers, type JoinRequest } from '@soirely/api-client';
 import {
   answeringInvitation,
   countryChoices,
@@ -29,7 +24,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
-import { type WaitingInvitations, useWaitingInvitations } from '../../invitations.ts';
+import { useWaitingInvitations } from '../../invitations.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import {
   adoptAccount,
@@ -245,21 +240,12 @@ function Details({
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
   // Read once, when the page opens asking for an organisation; the rows stay until the person leaves (sc-3353).
-  const loaded = useWaitingInvitations(needsOrganisation);
+  const waiting = useWaitingInvitations(needsOrganisation);
   // Finishing lands in the first one accepted; another is a membership reached from the switcher.
-  const [firstJoined, setFirstJoined] = useState<string | null>(null);
-  const waiting: WaitingInvitations = {
-    ...loaded,
-    answer: async (invitation: InvitationPreview, choice: 'accept' | 'decline') => {
-      const outcome = await loaded.answer(invitation, choice);
-      if (outcome.kind === 'accepted') setFirstJoined((first) => first ?? outcome.organisationId);
-
-      return outcome;
-    },
-  };
-  const stillOpen = waitingInvitations(loaded.invitations, loaded.outcomes);
+  const firstJoined = waiting.firstJoined;
+  const stillOpen = waitingInvitations(waiting.invitations, waiting.outcomes);
   const asksForOrganisation = needsOrganisation && firstJoined == null;
-  const answering = answeringInvitation(loaded.outcomes);
+  const answering = answeringInvitation(waiting.outcomes);
   const nameInput = useRef<HTMLInputElement>(null);
   const organisationInput = useRef<HTMLInputElement>(null);
   const phoneInput = useRef<HTMLInputElement>(null);
@@ -442,7 +428,7 @@ function Details({
         {errors.name != null && <FieldError id="name-error" message={errors.name} />}
       </div>
 
-      {loaded.invitations.length > 0 && (
+      {waiting.invitations.length > 0 && (
         <section className="profile-invitations" aria-labelledby="profile-invitations-heading">
           <div className="profile-invitations-head">
             <p id="profile-invitations-heading" className="profile-invitations-heading">
@@ -461,7 +447,7 @@ function Details({
             place="profile"
             after={{
               note: (id) => {
-                const outcome = loaded.outcomes[id];
+                const outcome = waiting.outcomes[id];
                 const first =
                   outcome?.kind === 'accepted' && outcome.organisationId === firstJoined;
 

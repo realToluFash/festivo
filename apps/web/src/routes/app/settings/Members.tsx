@@ -1361,7 +1361,17 @@ function RolePicker({
   const [failed, setFailed] = useState<string | null>(null);
   const offered = roles.some((one) => one.id === member.role.id)
     ? roles
-    : [{ ...member.role, fixed: false, removable: false, permissions: [], holders: 0 }, ...roles];
+    : [
+        {
+          ...member.role,
+          fixed: false,
+          removable: false,
+          permissions: [],
+          holders: 0,
+          holderNames: [],
+        },
+        ...roles,
+      ];
   const role = offered.find((one) => one.id === picked);
   const changed = picked !== member.role.id && role != null;
 

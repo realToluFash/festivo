@@ -6,6 +6,7 @@ namespace App\Tests\Functional;
 
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\Roles\RoleAssignment;
+use App\Domain\Organisation\Roles\RoleManager;
 use App\Domain\User\TwoFactor\Recovery\RecoveryApprovers;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
@@ -485,6 +486,56 @@ final class RolesTest extends ApiTestCase
         self::assertTrue(self::em()->getRepository(Membership::class)->findOneBy(['user' => $second])?->getRole()->isOwner());
     }
 
+    #[Test]
+    public function aRoleNamesWhomItCountsByNameIgnoringCaseAndAccentsThenByEmail(): void
+    {
+        $door = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+        $this->member('zara@ire.events', null, $door, name: 'zara Bello');
+        $this->member('emeka@ire.events', null, $door, MembershipStatus::Suspended, name: 'Émeka Obi');
+        $this->member('ada2@ire.events', null, $door, name: 'Ada Okeke');
+        $this->member('ada1@ire.events', null, $door, name: 'Ada Okeke');
+        $this->member('bisi@ire.events', null, $door, name: 'bisi Ade');
+        $this->member('left@ire.events', null, $door, MembershipStatus::LeftOrRemoved, name: 'Aaron Left');
+        $this->member('asked@ire.events', null, $door, MembershipStatus::PendingApproval, name: 'Aaron Asked');
+
+        $listed = Iter\first(Vec\filter($this->roles(), static fn (array $role): bool => $door === $role['id'])) ?? self::fail('no role');
+
+        self::assertSame(5, $listed['holders']);
+        self::assertSame([
+            ['name' => 'Ada Okeke', 'suspended' => false],
+            ['name' => 'Ada Okeke', 'suspended' => false],
+            ['name' => 'bisi Ade', 'suspended' => false],
+            ['name' => 'Émeka Obi', 'suspended' => true],
+            ['name' => 'zara Bello', 'suspended' => false],
+        ], $listed['holderNames']);
+    }
+
+    #[Test]
+    public function namesThatTieAreOrderedByEmail(): void
+    {
+        $door = Type\string()->coerce($this->as($this->owner, 'POST', $this->path('roles'), ['name' => 'Door team', 'permissions' => ['events.read']])['id']);
+        $this->member('b@ire.events', null, $door, name: 'Ada Okeke');
+        $this->member('c@ire.events', null, $door, name: 'ada okeke');
+        $this->member('a@ire.events', null, $door, name: 'Ada Okeke');
+        $role = self::em()->find(Role::class, $door) ?? self::fail('no role');
+
+        self::assertSame(['a@ire.events', 'b@ire.events', 'c@ire.events'], Vec\map(
+            self::service(RoleManager::class)->holdersOf($role),
+            static fn (Membership $membership): string => $membership->getUser()->getPrimaryEmailAddress()?->getAddress() ?? '',
+        ));
+    }
+
+    #[Test]
+    public function anOrganisationWithNobodyElseListsOnlyItsOwner(): void
+    {
+        $roles = $this->roles();
+
+        foreach ($roles as $role) {
+            self::assertCount(Type\int()->coerce($role['holders']), Type\vec(Type\mixed())->coerce($role['holderNames']));
+        }
+        self::assertSame([['name' => 'Person', 'suspended' => false]], Iter\first($roles)['holderNames'] ?? null);
+    }
+
     /** sc-509's approvers, now that Administrator exists. */
     #[Test]
     public function anAdministratorAnswersRequestsToGetBackIn(): void
@@ -498,17 +549,17 @@ final class RolesTest extends ApiTestCase
         self::assertContains($this->owner->getId()->toRfc4122(), $approvers);
     }
 
-    private function account(string $address): User
+    private function account(string $address, string $name = 'Person'): User
     {
-        $user = self::service(UserRegistrar::class)->register($address, 'Person', self::PASSWORD)->user;
+        $user = self::service(UserRegistrar::class)->register($address, $name, self::PASSWORD)->user;
         self::onboard($user, withOrganisation: false);
 
         return $user;
     }
 
-    private function member(string $address, ?SeededRole $seeded, ?string $roleId = null, MembershipStatus $status = MembershipStatus::Active): User
+    private function member(string $address, ?SeededRole $seeded, ?string $roleId = null, MembershipStatus $status = MembershipStatus::Active, string $name = 'Person'): User
     {
-        $user = $this->account($address);
+        $user = $this->account($address, $name);
         $role = null === $seeded
             ? self::em()->find(Role::class, $roleId)
             : self::em()->getRepository(Role::class)->findOneBy(['organisation' => $this->organisation, 'seededAs' => $seeded]);

@@ -62,6 +62,9 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The rest of a role's holders (sc-9068, `rolesScreen.moreHolders_*`, web
+  and app).** "and {{count}} more", kept: it closes the list of five names it follows, and the
+  button reveals them in place, so "Show" would only lengthen it. The count is never below 1.
 - **24 Oct 2026. A request refused for its shape (sc-8708, sc-8716,
   `messages:validation.invalid_shape`, `validation.request_shape`).** Kept as sc-8708 wrote
   them: "This field cannot take that value. Check it and try again." under the field, and "The

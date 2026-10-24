@@ -1041,6 +1041,8 @@
     "builtIn": "Predefinido",
     "holders_one": "{{count}} persona",
     "holders_other": "{{count}} personas",
+    "moreHolders_one": "y {{count}} más",
+    "moreHolders_other": "y {{count}} más",
     "nameLabel": "Nombre del rol",
     "nameBlank": "Póngale un nombre al rol.",
     "nameTooLong": "Acorte el nombre a {{most}} caracteres como máximo.",

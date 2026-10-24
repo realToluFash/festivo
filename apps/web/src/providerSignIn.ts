@@ -193,9 +193,11 @@ export function codePassed(signedIn: SignedIn): SignedIn {
 }
 
 /** "Google is now linked": the provider to name, once, on the screen the person lands on. */
-export function takeLinkedNotice(): string | null {
-  const linked = sessionStorage.getItem(LINKED);
-  sessionStorage.removeItem(LINKED);
+export function linkedNotice(): string | null {
+  return sessionStorage.getItem(LINKED);
+}
 
-  return linked;
+/** The notice was shown: no later screen or reload shows it again. */
+export function dropLinkedNotice(): void {
+  sessionStorage.removeItem(LINKED);
 }

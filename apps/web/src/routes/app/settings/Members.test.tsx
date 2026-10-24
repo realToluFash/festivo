@@ -22,6 +22,7 @@ function role(id: string, seededAs: string, permissions: string[]) {
     removable: false,
     permissions,
     holders: 1,
+    holderNames: [{ name: 'Folake Adeyemi', suspended: false }],
   };
 }
 

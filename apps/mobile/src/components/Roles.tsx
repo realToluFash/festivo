@@ -2,9 +2,11 @@ import {
   ApiError,
   type Membership,
   type OrganisationRole,
+  type RoleHolder,
   type RolesCatalogue,
 } from '@soirely/api-client';
 import {
+  HOLDERS_SHOWN,
   LOCALE_CODES,
   MARGIN,
   ROLE_NAME_MAXIMUM,
@@ -17,6 +19,7 @@ import {
   roleNameProblem,
   sameGrant,
   settableLevels,
+  shownHolders,
   takenRoleNames,
   whatTheySee,
   withExtra,
@@ -24,8 +27,15 @@ import {
   withoutRole,
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
-import { type ReactNode, useRef, useState } from 'react';
-import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Pressable,
+  StyleSheet,
+  type TextInput,
+  View,
+  findNodeHandle,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -427,6 +437,7 @@ export function RolePage({
             ? t('rolesScreen.nobody')
             : t('rolesScreen.holders', { count: role?.holders ?? 0 })}
         </Text>
+        {role != null && <Holders holders={role.holderNames} />}
       </View>
 
       <View style={[styles.card, styles.padded]}>
@@ -436,6 +447,52 @@ export function RolePage({
         <WhatTheySee grant={grant} areas={catalogue.areas.map((entry) => entry.area)} />
         {phone && remove}
       </View>
+    </View>
+  );
+}
+
+function Holders({ holders }: { holders: readonly RoleHolder[] }) {
+  const { t } = useTranslation();
+  const [all, setAll] = useState(false);
+  const { shown, more } = shownHolders(holders, all);
+  const firstRevealed = useRef<View>(null);
+
+  useEffect(() => {
+    const node = all ? findNodeHandle(firstRevealed.current) : null;
+    if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+  }, [all]);
+
+  if (holders.length === 0) return null;
+
+  return (
+    <View style={styles.holders}>
+      {shown.map((holder, index) => (
+        <View
+          key={index}
+          ref={index === HOLDERS_SHOWN ? firstRevealed : undefined}
+          style={styles.holder}
+          accessible
+        >
+          <Text size={tokens.typeBodyPhone.size}>{holder.name}</Text>
+          {holder.suspended && (
+            <Text size={tokens.typeSmall.size} weight="semibold" style={styles.holderWord}>
+              {t('membersScreen.state.suspended')}
+            </Text>
+          )}
+        </View>
+      ))}
+      {more > 0 && (
+        <Pressable
+          style={styles.moreHolders}
+          onPress={() => setAll(true)}
+          accessibilityRole="button"
+          testID="roles.moreHolders"
+        >
+          <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
+            {t('rolesScreen.moreHolders', { count: more })}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -771,6 +828,16 @@ const styles = StyleSheet.create({
     borderColor: tokens.colorAttentionBorder,
     backgroundColor: tokens.colorAttentionTint,
   },
+  holders: { gap: tokens.spaceXs },
+  accent: { color: tokens.colorAccentText },
+  holder: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: tokens.spaceSm,
+  },
+  holderWord: { color: tokens.colorInkSecondary },
+  moreHolders: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   removing: { gap: tokens.spaceMd },
   choices: { gap: tokens.spaceXs },
   choice: {

@@ -2093,6 +2093,23 @@ span {
   text-transform: uppercase;
 }
 
+.roles-holders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roles-holders li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  overflow-wrap: anywhere;
+}
+
 .roles-removing {
   display: flex;
   flex-direction: column;
