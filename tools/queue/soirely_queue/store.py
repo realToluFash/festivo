@@ -202,22 +202,23 @@ def claim_key(row):
 
 def claim(db, role, now=None, kinds=None, skip=(), worker=None, workers=1):
     """The role's top open item, or None. One claim per worker, at most `workers` per role,
-    one per pool item, and never two on one story. `kinds` limits it to some kinds of
+    one per pool item, and never two on one story or one pull request. `kinds` limits it to some kinds of
     work; `skip` holds the (pool, claim key) pairs taken on another machine."""
     now = now or time.time()
     db.execute("begin immediate")
     try:
-        held = db.execute("select coalesce(worker, claimed_by) as worker, story_id from work "
+        held = db.execute("select coalesce(worker, claimed_by) as worker, story_id, pr from work "
                           "where status = 'claimed' and claimed_by = ? and lease_until >= ?",
                           (role, now)).fetchall()
         if len(held) >= workers or (worker or role) in {row["worker"] for row in held}:
             db.execute("commit")
             return None
         busy = {row["story_id"] for row in held if row["story_id"]}
+        reviewing = {row["pr"] for row in held if row["pr"]}
         rows = [row for row in waiting(db, role)
                 if (kinds is None or row["kind"] in kinds)
                 and (row["pool"], claim_key(row)) not in skip
-                and row["story_id"] not in busy]
+                and row["story_id"] not in busy and row["pr"] not in reviewing]
         if not rows:
             db.execute("commit")
             return None
