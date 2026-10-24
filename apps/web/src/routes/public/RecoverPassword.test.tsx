@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
 const ACCOUNT = {
@@ -59,7 +58,6 @@ function problem(code: string, status: number, headers: Record<string, string> =
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('asking for a reset link', () => {

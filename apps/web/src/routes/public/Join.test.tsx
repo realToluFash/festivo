@@ -96,7 +96,6 @@ const LINK = 'POST /api/invitations/link';
 afterEach(() => {
   sessionStorage.clear();
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('an invitation, signed out', () => {

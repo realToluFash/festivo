@@ -62,7 +62,6 @@ const UNDER_LOAD = { timeout: 3000 };
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('turning two-factor on', () => {

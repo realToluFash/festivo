@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { browser } from '../../providerSignIn.ts';
-import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
 const ACCOUNT = {
@@ -68,7 +67,6 @@ const THE_WAY_BACK = { timeout: 3000 };
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('continue with Google', () => {
