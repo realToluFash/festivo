@@ -54,6 +54,10 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
+  sc-9068). « et {{count}} autre », « et {{count}} autres », after the five names: « autre »
+  is the same for women and men, and reads as people where « de plus » reads as a quantity.
+  No `_many` (sc-4188).
 - **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
   `validation.request_shape`, sc-8716). « Ce champ n’accepte pas cette valeur », which also
   holds for a required field left out, then « Vérifiez-le et réessayez », the pronoun for the
