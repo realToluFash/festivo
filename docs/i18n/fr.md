@@ -90,6 +90,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   given on approval is « avec le rôle {{role}} », so nothing agrees with the person; the
   person refused « ne fait donc pas partie de l’organisation », never « n’a pas été ajouté ».
   The waiting email’s count takes `many`, « 1 000 000 de personnes ».
+- **24 Oct 2026. No « à » or « de » straight before {organisation}** (sc-7217, from QA). A
+  name that opens on an article reads « à Les Événements… », where French wants « aux ».
+  Take a verb that needs no preposition, with the organisation as its object: « sa demande
+  pour rejoindre {{organisation}} » (« demande d’adhésion » alone, with no object, stays); or
+  name it: « les membres de l’organisation {organisation} »; « chez {organisation} » also
+  holds. Older strings that still read « à {{organisation}} » are swept as they are touched.
 
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads « En pause », the admins
