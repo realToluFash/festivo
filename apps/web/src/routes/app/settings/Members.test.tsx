@@ -140,6 +140,44 @@ const LIST = {
   ],
 };
 
+const ACTIVE_BISI = member({
+  ...LIST.members[1],
+  status: 'active',
+  history: LIST.members[1]?.history.slice(0, 1),
+});
+
+const SUSPENDED_BISI = member({
+  ...LIST.members[1],
+  history: [
+    ...(LIST.members[1]?.history.slice(0, 1) ?? []),
+    {
+      from: 'active',
+      to: 'suspended',
+      channel: 'settings',
+      by: FOLAKE,
+      at: '2026-06-10T09:00:00+00:00',
+    },
+  ],
+  suspension: {
+    reason: 'manual',
+    domain: null,
+    since: { at: '2026-06-10T09:00:00+00:00', written: 'Wednesday, Jun 10 at 10:00 WAT' },
+    removesAt: null,
+    onlyOwner: false,
+  },
+});
+
+function listWith(bisi: ReturnType<typeof member>) {
+  return { ...LIST, members: [LIST.members[0], bisi, LIST.members[2]] };
+}
+
+const ADMINISTRATOR = membership({
+  id: 'org_1',
+  name: 'Ìrè Events',
+  role: { id: 'role_2', seededAs: 'administrator', name: null },
+  permissions: OWNER_PERMISSIONS.filter((one) => !one.startsWith('billing')),
+});
+
 function signedIn(organisation = IRE): void {
   const session: Session = {
     name: 'Folake Adeyemi',
@@ -640,6 +678,7 @@ describe('inviting somebody', () => {
     signedIn();
     const sent = answering({
       ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
       'PATCH /api/orgs/org_1/members/m_bisi': () => new Response(null, { status: 204 }),
     });
     open();
@@ -664,6 +703,7 @@ describe('inviting somebody', () => {
     signedIn();
     const sent = answering({
       ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)),
       'DELETE /api/orgs/org_1/members/m_bisi': () => new Response(null, { status: 204 }),
     });
     open();
@@ -1153,5 +1193,189 @@ describe('inviting somebody', () => {
     ).toBeDefined();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+  });
+});
+
+describe('suspending and restoring a member', () => {
+  it('suspends only once it is confirmed, and says so at the top', async () => {
+    signedIn();
+    let suspended = false;
+    const sent = answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(suspended ? SUSPENDED_BISI : ACTIVE_BISI)),
+      'POST /api/orgs/org_1/members/m_bisi/suspend': () => {
+        suspended = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    expect(sent.some((one) => one.line.endsWith('/suspend'))).toBe(false);
+    expect(document.activeElement?.textContent).toBe('Suspend Bisi Adeyemi?');
+    expect(screen.getByRole('button', { name: 'Keep Bisi Adeyemi' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend Bisi Adeyemi' }));
+
+    expect(await screen.findByText('Bisi Adeyemi is suspended.')).toBeDefined();
+    expect(await screen.findByText('Access for Bisi Adeyemi is suspended')).toBeDefined();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.getByText(/Their role is kept while they're suspended/)).toBeDefined();
+  });
+
+  it('offers no Suspend on your own detail, and says why on an owner', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...LIST,
+          members: [
+            ...LIST.members,
+            member({
+              id: 'm_kemi',
+              user: { id: 'u_kemi', name: 'Kemi Lawal', email: null },
+              self: false,
+            }),
+          ],
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Folake Adeyemi/ }));
+    expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Members/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Kemi Lawal/ }));
+
+    expect(
+      screen.getByText(
+        "Owners can't be suspended. To suspend Kemi Lawal, change their role first.",
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+  });
+
+  it('offers neither Suspend nor Restore without members.manage', async () => {
+    signedIn(membership({ permissions: ['members.read', 'events.read'] }));
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(SUSPENDED_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+    expect(screen.queryByRole('button', { name: 'Restore access' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+  });
+
+  it('restores without asking, with the role they held', async () => {
+    signedIn();
+    let restored = false;
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(restored ? ACTIVE_BISI : SUSPENDED_BISI)),
+      'POST /api/orgs/org_1/members/m_bisi/restore': () => {
+        restored = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore access' }));
+
+    expect(await screen.findByText('Bisi Adeyemi has access again, as Coordinator.')).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Suspend' })).toBeDefined();
+  });
+
+  it('asks first before removing a suspended member, and keeps them suspended on Keep', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(SUSPENDED_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
+
+    expect(
+      screen.getByText(
+        'Removing Bisi Adeyemi ends their membership of Ìrè Events. Their events stay with Ìrè Events.',
+      ),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Keep them suspended' }));
+    expect(screen.getByRole('button', { name: 'Restore access' })).toBeDefined();
+  });
+
+  it('says every seat is in use, and names the plan only to an owner, with no plan link', async () => {
+    for (const [session, way] of [
+      [
+        IRE,
+        'To restore Bisi Adeyemi, free a seat by suspending or removing someone who no longer needs access, or change the plan.',
+      ],
+      [
+        ADMINISTRATOR,
+        'To restore Bisi Adeyemi, free a seat by suspending or removing someone who no longer needs access. Only an Owner can change the plan.',
+      ],
+    ] as const) {
+      signedIn(session);
+      answering({
+        ...READS,
+        'GET /api/orgs/org_1/members': () => json(listWith(SUSPENDED_BISI)),
+        'POST /api/orgs/org_1/members/m_bisi/restore': () =>
+          json(
+            {
+              type: 'https://soirely.com/errors/team_seats_in_use',
+              title: "Every team seat on this organisation's plan is in use.",
+              status: 409,
+              limit: 5,
+            },
+            409,
+          ),
+      });
+      const view = open();
+
+      fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Restore access' }));
+
+      expect(
+        await screen.findByText(
+          "All 5 team seats on this organisation's plan are in use, so nothing has changed.",
+        ),
+      ).toBeDefined();
+      expect(screen.getByText(way)).toBeDefined();
+      expect(screen.getByText("Suspended members don't take a seat.")).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Open Members ›' })).toBeDefined();
+      expect(screen.queryByRole('link', { name: 'Change the plan ›' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Restore access' }).hasAttribute('disabled')).toBe(
+        false,
+      );
+      view.unmount();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('reloads and says why when somebody else changed their access first', async () => {
+    signedIn();
+    let reloaded = false;
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(reloaded ? SUSPENDED_BISI : ACTIVE_BISI)),
+      'POST /api/orgs/org_1/members/m_bisi/suspend': () => {
+        reloaded = true;
+        return json(
+          { type: 'https://soirely.com/errors/conflict', title: 'Conflict', status: 409 },
+          409,
+        );
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend Bisi Adeyemi' }));
+
+    expect(
+      await screen.findByText(
+        "Someone else changed the access for Bisi Adeyemi while this page was open, so your change wasn't made. This is how it stands now.",
+      ),
+    ).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();
   });
 });

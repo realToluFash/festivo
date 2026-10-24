@@ -13,7 +13,7 @@ use Psl\Iter;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 
-/** A suspension's 30 days run only beside another active Owner, starting afresh when one arrives (sc-564). Flushing is the caller's. */
+/** A domain suspension's 30 days run only beside another active Owner, starting afresh when one arrives (sc-564). Flushing is the caller's. */
 final readonly class RemovalClock
 {
     public function __construct(
@@ -44,7 +44,7 @@ final readonly class RemovalClock
 
     private function start(Membership $membership, bool $held, ?DateTimeImmutable $at): void
     {
-        if (MembershipStatus::Suspended !== $membership->getStatus()) {
+        if (MembershipStatus::Suspended !== $membership->getStatus() || true !== $membership->getSuspension()?->runsOut()) {
             return;
         }
 

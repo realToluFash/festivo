@@ -1,11 +1,11 @@
 import {
   ApiError,
-  type DomainSuspension,
   type Membership,
   type MembersList,
   type OrganisationMember,
   type OrganisationRole,
   type SentInvitation,
+  type Suspension as MemberSuspension,
 } from '@soirely/api-client';
 import {
   type MemberFilter,
@@ -23,7 +23,7 @@ import {
   memberStatusWord,
   roleName,
 } from '@soirely/domain';
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -516,6 +516,12 @@ function InvitationRow({
 
 type Removal = 'resting' | 'confirming' | 'removing' | 'removed';
 
+type Suspending = 'resting' | 'confirming' | 'suspending';
+
+/** What the last suspend or restore came to, said at the top of the member's page (sc-3575). */
+type AccessOutcome =
+  { kind: 'suspended' } | { kind: 'restored'; role: string } | { kind: 'conflict' };
+
 function MemberDetail({
   organisation,
   member,
@@ -541,6 +547,11 @@ function MemberDetail({
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
   const [restored, setRestored] = useState(false);
+  const [suspending, setSuspending] = useState<Suspending>('resting');
+  const [suspendFailed, setSuspendFailed] = useState<string | null>(null);
+  const [outcome, setOutcome] = useState<AccessOutcome | null>(null);
+  const said = useRef<HTMLDivElement>(null);
+  const asking = useRef<HTMLHeadingElement>(null);
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
   const waiting = member.status === 'pending_approval';
@@ -548,10 +559,52 @@ function MemberDetail({
   const onlyOwner = standing === 'suspendedOnlyOwner';
   const acts = (standing === 'manageable' || onlyOwner) && !waiting;
   const refusal = useRef<HTMLDivElement>(null);
+  const owner = member.role.seededAs === 'owner';
+  const active = member.status === 'active';
+  const byHand = member.status === 'suspended' && member.suspension?.reason === 'manual';
 
   useEffect(() => {
     if (onlyOwner && failed != null) refusal.current?.focus();
   }, [onlyOwner, failed]);
+
+  useEffect(() => {
+    if (outcome != null) said.current?.focus();
+  }, [outcome]);
+
+  useEffect(() => {
+    if (suspending === 'confirming') asking.current?.focus();
+  }, [suspending]);
+
+  async function reload(): Promise<void> {
+    onChanged(await api.members(organisation.id));
+  }
+
+  function changedElsewhere(): void {
+    setOutcome({ kind: 'conflict' });
+    reload().catch(() => undefined);
+  }
+
+  async function suspend(): Promise<void> {
+    setSuspending('suspending');
+    setSuspendFailed(null);
+
+    try {
+      await api.suspendMember(organisation.id, member.id);
+      setSuspending('resting');
+      setOutcome({ kind: 'suspended' });
+      await reload();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setSuspending('resting');
+        changedElsewhere();
+      } else {
+        setSuspending('confirming');
+        setSuspendFailed(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+      }
+    }
+  }
 
   async function remove(): Promise<void> {
     setRemoval('removing');
@@ -636,6 +689,14 @@ function MemberDetail({
           {member.user.email != null && <p className="muted">{member.user.email}</p>}
         </div>
       </div>
+      {outcome != null && (
+        <AccessNotice
+          ref={said}
+          outcome={outcome}
+          name={member.user.name}
+          organisation={organisation.name}
+        />
+      )}
       <section className="card" aria-labelledby="role-title">
         <h2 id="role-title">{t('membersScreen.roleTitle')}</h2>
         {waiting ? (
@@ -673,6 +734,11 @@ function MemberDetail({
             {!callerOwns && (
               <p className="muted">{t('membersScreen.askOwner', { name: member.user.name })}</p>
             )}
+          </>
+        ) : byHand && standing === 'manageable' ? (
+          <>
+            <p className="members-row-name">{roleName(t, member.role)}</p>
+            <p className="muted">{t('membersScreen.roleKeptWhileSuspended')}</p>
           </>
         ) : standing !== 'manageable' ? (
           <>
@@ -716,20 +782,90 @@ function MemberDetail({
           </p>
         </div>
       ) : (
-        member.suspension != null && (
+        member.suspension != null &&
+        (!byHand || removal === 'resting') && (
           <Suspension
             organisation={organisation}
             member={member}
             suspension={member.suspension}
             standing={standing}
             acts={acts}
-            onRestored={() => setRestored(true)}
+            onRestored={() =>
+              byHand
+                ? setOutcome({ kind: 'restored', role: roleName(t, member.role) })
+                : setRestored(true)
+            }
+            onChangedElsewhere={changedElsewhere}
+            onRemove={() => setRemoval('confirming')}
+            onMembers={onBack}
             onChanged={onChanged}
           />
         )
       )}
 
-      {acts && (
+      {manages && !member.self && owner && active && (
+        <div className="notice notice-quiet">
+          <span className="mark mark-info" aria-hidden="true">
+            i
+          </span>
+          <p>{t('membersScreen.ownerNoSuspend', { name: member.user.name })}</p>
+        </div>
+      )}
+
+      {standing === 'manageable' && active && !owner && (
+        <section className="card" aria-labelledby="suspend-title">
+          {suspending === 'resting' ? (
+            <>
+              <h2 id="suspend-title">
+                {t('membersScreen.suspendTitle', { name: member.user.name })}
+              </h2>
+              <p className="muted">
+                {t('membersScreen.suspendBody', { organisation: organisation.name })}
+              </p>
+              <button type="button" className="button" onClick={() => setSuspending('confirming')}>
+                {t('membersScreen.suspendButton')}
+              </button>
+            </>
+          ) : (
+            <>
+              <h2 id="suspend-title" ref={asking} tabIndex={-1}>
+                {t('membersScreen.suspendConfirmTitle', { name: member.user.name })}
+              </h2>
+              <p>
+                {t('membersScreen.suspendConfirmBody', {
+                  name: member.user.name,
+                  organisation: organisation.name,
+                })}
+              </p>
+              <p className="muted">{t('membersScreen.suspendConfirmEmail')}</p>
+              {suspendFailed != null && <FieldError id="suspend-failed" message={suspendFailed} />}
+              <div className="actions">
+                <button
+                  type="button"
+                  className="button button-dark"
+                  aria-busy={suspending === 'suspending'}
+                  disabled={suspending === 'suspending'}
+                  onClick={() => void suspend()}
+                >
+                  {t('membersScreen.suspendConfirm', { name: member.user.name })}
+                </button>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    setSuspendFailed(null);
+                    setSuspending('resting');
+                  }}
+                >
+                  {t('membersScreen.suspendKeep', { name: member.user.name })}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {acts && (!byHand || removal !== 'resting') && (
         <section className="card" aria-labelledby="remove-title">
           {removal === 'resting' || (onlyOwner && removal === 'removing') ? (
             <>
@@ -771,10 +907,13 @@ function MemberDetail({
                 {t('membersScreen.removeConfirmTitle', { name: member.user.name })}
               </h2>
               <p>
-                {t('membersScreen.removeConfirmBody', {
-                  name: member.user.name,
-                  organisation: organisation.name,
-                })}
+                {t(
+                  byHand ? 'membersScreen.suspendedRemoveBody' : 'membersScreen.removeConfirmBody',
+                  {
+                    name: member.user.name,
+                    organisation: organisation.name,
+                  },
+                )}
               </p>
               {failed != null && <FieldError id="remove-failed" message={failed} />}
               <div className="actions">
@@ -795,7 +934,9 @@ function MemberDetail({
                     setRemoval('resting');
                   }}
                 >
-                  {t('membersScreen.removeKeep', { name: member.user.name })}
+                  {byHand
+                    ? t('membersScreen.suspendedRemoveKeep')
+                    : t('membersScreen.removeKeep', { name: member.user.name })}
                 </button>
               </div>
             </>
@@ -806,7 +947,7 @@ function MemberDetail({
   );
 }
 
-/** A domain member paused when the company domain stopped bringing them in (sc-564): Restore, or Remove below; read-only to a viewer who can't act. */
+/** Suspended by the company domain (sc-564), Remove below, or by hand (sc-3575), Remove in the card; read-only to a viewer who can't act. */
 function Suspension({
   organisation,
   member,
@@ -814,19 +955,27 @@ function Suspension({
   standing,
   acts,
   onRestored,
+  onChangedElsewhere,
+  onRemove,
+  onMembers,
   onChanged,
 }: {
   organisation: Membership;
   member: OrganisationMember;
-  suspension: DomainSuspension;
+  suspension: MemberSuspension;
   standing: MemberStanding;
   acts: boolean;
   onRestored: () => void;
+  onChangedElsewhere: () => void;
+  onRemove: () => void;
+  onMembers: () => void;
   onChanged: (list: MembersList) => void;
 }) {
   const { t } = useTranslation();
   const [restoring, setRestoring] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const [seats, setSeats] = useState<number | null>(null);
+  const byHand = suspension.reason === 'manual';
   const named = {
     name: member.user.name,
     organisation: organisation.name,
@@ -836,6 +985,7 @@ function Suspension({
   async function restore(): Promise<void> {
     setRestoring(true);
     setFailed(null);
+    setSeats(null);
 
     try {
       await api.restoreMember(organisation.id, member.id);
@@ -844,33 +994,60 @@ function Suspension({
       onChanged(await api.members(organisation.id));
     } catch (error) {
       setRestoring(false);
-      setFailed(
-        error instanceof ApiError && error.is('restore_needs_address')
-          ? t('membersScreen.restoreNeedsAddress', named)
-          : error instanceof ApiError
-            ? error.problem.title
-            : t('membersScreen.actionFailed'),
-      );
+
+      if (error instanceof ApiError && error.is('team_seats_in_use')) {
+        setSeats(error.problem.limit ?? 0);
+      } else if (error instanceof ApiError && error.is('restore_needs_address')) {
+        setFailed(t('membersScreen.restoreNeedsAddress', named));
+      } else if (error instanceof ApiError && error.status === 409) {
+        onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+      }
     }
   }
 
   return (
     <section className="card" aria-labelledby="suspension-title">
-      <h2 id="suspension-title">
-        <span className="mark mark-attention" aria-hidden="true">
-          !
-        </span>{' '}
-        {t('membersScreen.state.domainSuspended')}
-      </h2>
-      <p>{t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}</p>
-      {suspension.onlyOwner ? (
-        <p className="muted">{t('membersScreen.suspendedOnlyOwner', named)}</p>
+      {byHand ? (
+        <>
+          <h2 id="suspension-title">{t('membersScreen.suspendedTitle', named)}</h2>
+          <p className="muted">{t('membersScreen.suspendedBody', named)}</p>
+          {acts && (
+            <p className="muted">
+              {t('membersScreen.suspendedRestoreNote', { role: roleName(t, member.role) })}
+            </p>
+          )}
+        </>
       ) : (
-        suspension.removesAt != null && (
-          <p className="muted">
-            {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
-          </p>
-        )
+        <>
+          <h2 id="suspension-title">
+            <span className="mark mark-attention" aria-hidden="true">
+              !
+            </span>{' '}
+            {t('membersScreen.state.domainSuspended')}
+          </h2>
+          <p>{t(`membersScreen.suspendedBecause.${suspension.reason}`, named)}</p>
+          {suspension.onlyOwner ? (
+            <p className="muted">{t('membersScreen.suspendedOnlyOwner', named)}</p>
+          ) : (
+            suspension.removesAt != null && (
+              <p className="muted">
+                {t('membersScreen.suspendedRemovedOn', { when: suspension.removesAt.written })}
+              </p>
+            )
+          )}
+        </>
+      )}
+      {seats != null && (
+        <SeatsInUse
+          name={member.user.name}
+          limit={seats}
+          owns={organisation.role.seededAs === 'owner'}
+          onMembers={onMembers}
+        />
       )}
       {failed != null && <FieldError id="restore-failed" message={failed} />}
       {acts ? (
@@ -882,13 +1059,101 @@ function Suspension({
             disabled={restoring}
             onClick={() => void restore()}
           >
-            {t('membersScreen.restore', named)}
+            {t(byHand ? 'membersScreen.restoreAccess' : 'membersScreen.restore', named)}
           </button>
+          {byHand && (
+            <button type="button" className="button button-danger" onClick={onRemove}>
+              {t('membersScreen.removeTitle', named)}
+            </button>
+          )}
         </div>
       ) : (
         standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>
       )}
     </section>
+  );
+}
+
+/** Restore refused at the seat limit (sc-3575): the reason, the way through, and why suspending frees a seat. */
+function SeatsInUse({
+  name,
+  limit,
+  owns,
+  onMembers,
+}: {
+  name: string;
+  limit: number;
+  owns: boolean;
+  onMembers: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="notice notice-broken" role="alert">
+      <span className="mark mark-broken" aria-hidden="true">
+        ✕
+      </span>
+      <div className="notice-body">
+        <p className="notice-title">{t('membersScreen.seatsInUse', { count: limit })}</p>
+        <p>
+          {owns
+            ? t('membersScreen.seatsWayOwner', { name })
+            : t('membersScreen.seatsWayAdmin', { name })}
+        </p>
+        <div className="actions">
+          <button type="button" className="link-button" onClick={onMembers}>
+            {t('membersScreen.seatsOpenMembers')}
+          </button>
+        </div>
+        <p className="muted">{t('membersScreen.seatsSuspendedFree')}</p>
+      </div>
+    </div>
+  );
+}
+
+/** The status line after a suspend or restore, or the 409 when somebody else got there first; focus moves to it. */
+function AccessNotice({
+  ref,
+  outcome,
+  name,
+  organisation,
+}: {
+  ref: Ref<HTMLDivElement>;
+  outcome: AccessOutcome;
+  name: string;
+  organisation: string;
+}) {
+  const { t } = useTranslation();
+
+  if (outcome.kind === 'conflict') {
+    return (
+      <div ref={ref} tabIndex={-1} className="notice notice-quiet" role="status">
+        <span className="mark mark-info" aria-hidden="true">
+          i
+        </span>
+        <p>{t('membersScreen.accessConflict', { name })}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} tabIndex={-1} className="notice notice-done" role="status">
+      <span className="mark mark-done" aria-hidden="true">
+        ✓
+      </span>
+      <div className="notice-body">
+        <p className="notice-title">
+          {outcome.kind === 'suspended'
+            ? t('membersScreen.suspendedNow', { name })
+            : t('membersScreen.restoredNow', { name, role: outcome.role })}
+        </p>
+        <p>
+          {outcome.kind === 'suspended'
+            ? t('membersScreen.suspendedNowNext', { organisation })
+            : t('membersScreen.restoredNowNext', { organisation })}
+        </p>
+      </div>
+    </div>
   );
 }
 

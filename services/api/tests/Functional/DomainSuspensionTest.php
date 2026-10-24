@@ -8,6 +8,7 @@ use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\DomainJoining\JoinRequester;
 use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Domain\Organisation\Members\MembershipMachine;
+use App\Domain\Organisation\Members\MemberSuspension;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
@@ -20,12 +21,12 @@ use App\Entity\OrganisationDomain;
 use App\Entity\ProviderIdentity;
 use App\Entity\Role;
 use App\Entity\User;
-use App\Enum\DomainSuspension;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
 use App\Enum\SeededRole;
+use App\Enum\Suspension;
 use App\Http\AfterResponse;
 use App\Repository\MembershipRepository;
 use App\Tests\ApiTestCase;
@@ -63,12 +64,12 @@ final class DomainSuspensionTest extends ApiTestCase
         self::assertResponseStatusCodeSame(200);
         $membership = $this->membershipOf($tunde, $organisation);
         self::assertSame(MembershipStatus::Suspended, $membership->getStatus());
-        self::assertSame(DomainSuspension::AddressGone, $membership->getSuspension());
+        self::assertSame(Suspension::AddressGone, $membership->getSuspension());
         self::assertNull(self::service(MembershipRepository::class)->findActive($tunde, $organisation->getId()), 'no access to the organisation at all');
         self::assertSame([
             'status' => ['active', 'suspended'],
             'suspension' => [null, 'address_gone'],
-        ], $this->audited(DomainSuspender::SUSPENDED, $membership)->getChanges());
+        ], $this->audited(MemberSuspension::SUSPENDED, $membership)->getChanges());
     }
 
     #[Test]
@@ -113,7 +114,7 @@ final class DomainSuspensionTest extends ApiTestCase
         self::assertSame([
             'status' => ['suspended', 'active'],
             'suspension' => ['address_gone', null],
-        ], $this->audited(DomainSuspender::RESTORED, $membership)->getChanges());
+        ], $this->audited(MemberSuspension::RESTORED, $membership)->getChanges());
     }
 
     #[Test]
@@ -127,7 +128,7 @@ final class DomainSuspensionTest extends ApiTestCase
         $this->send('DELETE', Str\format('/api/orgs/%s/domains/ire.events', $organisation->getId()->toRfc4122()));
 
         self::assertResponseStatusCodeSame(200);
-        self::assertSame(DomainSuspension::DomainClosed, $this->membershipOf($tunde, $organisation)->getSuspension());
+        self::assertSame(Suspension::DomainClosed, $this->membershipOf($tunde, $organisation)->getSuspension());
 
         $this->send('POST', $this->restorePath($organisation, $tunde));
         self::assertResponseStatusCodeSame(204);
@@ -147,7 +148,7 @@ final class DomainSuspensionTest extends ApiTestCase
         self::service(DomainSuspender::class)->domainProved($proved);
         self::service(EntityManagerInterface::class)->flush();
 
-        self::assertSame(DomainSuspension::DomainManagedElsewhere, $this->membershipOf($tunde, $organisation)->getSuspension());
+        self::assertSame(Suspension::DomainManagedElsewhere, $this->membershipOf($tunde, $organisation)->getSuspension());
         self::assertSame(MembershipStatus::Active, $this->membershipOf($kemi, $prover)->getStatus(), 'the organisation that proved it keeps its own');
     }
 
@@ -286,7 +287,7 @@ final class DomainSuspensionTest extends ApiTestCase
         $membership = $this->membershipOf($owner, $organisation);
         self::assertSame(MembershipStatus::Active, $membership->getStatus());
         self::assertTrue($membership->getRole()->isOwner());
-        self::assertSame($administrator->getId()->toRfc4122(), $this->audited(DomainSuspender::RESTORED, $membership)->getActorId()?->toRfc4122());
+        self::assertSame($administrator->getId()->toRfc4122(), $this->audited(MemberSuspension::RESTORED, $membership)->getActorId()?->toRfc4122());
     }
 
     #[Test]
@@ -682,7 +683,7 @@ final class DomainSuspensionTest extends ApiTestCase
             $membership->setStatus(MembershipStatus::Suspended, $at);
         }
 
-        $membership->setSuspension(DomainSuspension::AddressGone, $at);
+        $membership->setSuspension(Suspension::AddressGone, $at);
         self::service(RemovalClock::class)->wind($membership);
 
         if (null !== $membership->getRemovesAt()) {

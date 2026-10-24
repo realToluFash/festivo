@@ -23,7 +23,7 @@ final readonly class MemberSerialiser
      * @param list<MembershipTransition>         $history    this membership's, oldest first
      * @param list<Invitation>                   $accepted   invitations this member accepted here
      * @param Closure(DateTimeImmutable): string $written    a deadline as the caller reads it (sc-868)
-     * @param array<string, mixed>|null          $suspension DomainSuspender::describe(), for the caller
+     * @param array<string, mixed>|null          $suspension MemberSuspension::describe(), for the caller
      *
      * @return array<string, mixed>
      */

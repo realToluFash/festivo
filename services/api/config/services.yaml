@@ -96,6 +96,9 @@ services:
         arguments:
             $whatsAppEnabled: '%env(bool:WHATSAPP_ENABLED)%'
             $smsOnlyCountries: '%env(PHONE_CODES_SMS_ONLY_COUNTRIES)%'
+    App\Domain\Organisation\Members\TeamSeats:
+        arguments:
+            $teamSeatLimit: '%env(TEAM_SEAT_LIMIT)%'
     App\Domain\User\Controller\WhatsAppWebhookController:
         arguments:
             $verifyToken: '%env(WHATSAPP_WEBHOOK_VERIFY_TOKEN)%'
@@ -152,6 +155,9 @@ services:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\SignInMethods\SignInMethodMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Members\MemberAccessMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Organisation\DomainJoining\DomainSuspensionMailer:
@@ -230,6 +236,13 @@ when@test:
         App\Domain\User\Verification\RecordingWhatsAppSender:
             public: true
         App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Domain\User\Verification\RecordingWhatsAppSender'
+        # No limit in the suite, whatever the stack's environment says: the seat tests set their own.
+        App\Domain\Organisation\Members\TeamSeats:
+            public: true
+            autowire: true
+            arguments:
+                $teamSeatLimit: ''
+
         # Pinned off, as the container's environment wins over .env.test: codes are texted in the
         # suite as before sc-750, and the WhatsApp tests replace this with WhatsApp first.
         App\Domain\User\Verification\PhoneCodeChannels:

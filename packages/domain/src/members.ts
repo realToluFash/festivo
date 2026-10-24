@@ -125,7 +125,11 @@ export function memberStatusWord(word: Word, member: RowMember): string {
   if (member.status === 'left_or_removed')
     return word(`membersScreen.state.${member.former ?? 'removed'}`, {});
 
-  if (member.status === 'suspended' && member.suspension != null)
+  if (
+    member.status === 'suspended' &&
+    member.suspension != null &&
+    member.suspension.reason !== 'manual'
+  )
     return word('membersScreen.state.domainSuspended', {});
 
   return word(`membersScreen.state.${member.status}`, {});
