@@ -2748,7 +2748,6 @@ button.members-row {
 
 .join-offer-title {
   font: var(--typeRowTitle);
-  overflow-wrap: break-word;
 }
 
 @media (width <= 40rem) {
