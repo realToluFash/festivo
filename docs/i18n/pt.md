@@ -41,6 +41,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: "a única
+  pessoa com a função Proprietário em {{organisation}}" and "não sai da organização". The
+  refusal names "esta pessoa", so "removida" agrees with the noun, not the member, as the app's
+  `onlyOwner`. Restoring needs "o endereço de e-mail principal desta pessoa". The history line
+  is "Acesso suspenso: o endereço de e-mail da empresa deixou de dar acesso".
 - **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
   `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
   The act is "transferir a propriedade", the organisation "cedida"; the people are "alguém com
@@ -59,7 +66,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `messages:members.request_answered`, sc-7217). "Approve" is "Aprovar", "turn down"
   "Recusar", and what is refused is "o pedido", never the person: "Recusar o pedido de
   {{name}}?", "Recusar o pedido de {{name}}", "Pedido recusado por {{by}}". A request nobody answered "é
-  removido a {{deadline}}", the date with "a", as the row line. A role given on approval is
+  removido se ninguém responder até {{deadline}}": the slot opens on a weekday, so "até",
+  never "a" (24 Oct, from QA; see the weekday rule below). A role given on approval is
   "com a função {{role}}"; the person refused "não passou a fazer parte da organização", never
   "não foi adicionado", so nothing agrees with them. The waiting email's count takes `=0`
   (PHP's ICU counts 0 as one in "pt") and `many`, "1 000 000 de pessoas".
@@ -71,6 +79,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   fazer parte", and the only Owner "não sai da organização" rather than "não é removido". A
   closed domain "deixou de aceitar adesões", as the setting's "Adesão por domínio da empresa".
   "Account settings" is "Definições da conta", button and sentence alike.
+  24 Oct (qa2, #8038): the email subject opens on what happened, "Acesso em pausa: {name} em
+  {organisation}", so a phone inbox shows it before the names. The admins' label is "Acesso
+  suspenso: domínio da empresa" for all three reasons, as the setting.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). A link
   is "a ligação", never "o link" (dev2's draft of `errors:request_link_dead` said "link"); the

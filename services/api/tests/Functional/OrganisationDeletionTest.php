@@ -70,7 +70,7 @@ final class OrganisationDeletionTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         self::assertSame(
-            ['events' => 0, 'guests' => 0, 'members' => 2, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday, Nov 16 at 14:20 WAT'],
+            ['events' => 0, 'guests' => 0, 'members' => 2, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday 16 Nov at 14:20 WAT'],
             $body,
         );
     }
@@ -93,9 +93,9 @@ final class OrganisationDeletionTest extends ApiTestCase
     /** @return iterable<string, array{?string, string}> */
     public static function readers(): iterable
     {
-        yield 'Lagos' => ['Africa/Lagos', 'Monday, Nov 16 at 14:20 WAT'];
-        yield 'London' => ['Europe/London', 'Monday, Nov 16 at 13:20 GMT'];
-        yield 'no zone' => [null, 'Monday, Nov 16 at 13:20 UTC'];
+        yield 'Lagos' => ['Africa/Lagos', 'Monday 16 Nov at 14:20 WAT'];
+        yield 'London' => ['Europe/London', 'Monday 16 Nov at 13:20 GMT'];
+        yield 'no zone' => [null, 'Monday 16 Nov at 13:20 UTC'];
     }
 
     /** @return iterable<string, array{string}> */
@@ -194,7 +194,7 @@ final class OrganisationDeletionTest extends ApiTestCase
         $to = Vec\sort(Vec\map($mails, static fn (object $mail): string => Type\instance_of(Email::class)->coerce($mail)->getTo()[0]->getAddress()));
         self::assertSame(['bisi@ire.events', 'folake@ire.events'], $to);
         $toBisi = Type\instance_of(Email::class)->coerce(Iter\first(Vec\filter($mails, static fn (object $mail): bool => 'bisi@ire.events' === Type\instance_of(Email::class)->coerce($mail)->getTo()[0]->getAddress())));
-        self::assertStringContainsString('Soirely support can restore it until Monday, Nov 16 at 13:20 GMT; after that it is gone for good.', (string) $toBisi->getTextBody());
+        self::assertStringContainsString('Soirely support can restore it until Monday 16 Nov at 13:20 GMT; after that it is gone for good.', (string) $toBisi->getTextBody());
         self::assertStringContainsString('Folake Adeyemi deleted Ìrè Events', (string) $toBisi->getTextBody());
     }
 

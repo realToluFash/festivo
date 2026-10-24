@@ -414,13 +414,13 @@ final class TwoFactorRecoveryTest extends ApiTestCase
 
         $this->fresh($this->person)->setTimezone('Africa/Lagos');
         self::em()->flush();
-        self::assertSame('Saturday, Oct 24 at 14:20 WAT', $ends($this->state($handle)));
+        self::assertSame('Saturday 24 Oct at 14:20 WAT', $ends($this->state($handle)));
         $this->fresh($this->person)->setTimezone('Europe/London');
         self::em()->flush();
-        self::assertSame('Saturday, Oct 24 at 14:20 BST', $ends($this->state($handle)));
+        self::assertSame('Saturday 24 Oct at 14:20 BST', $ends($this->state($handle)));
         $this->fresh($this->person)->setTimezone(null);
         self::em()->flush();
-        self::assertSame('Saturday, Oct 24 at 13:20 UTC', $ends($this->state($handle)));
+        self::assertSame('Saturday 24 Oct at 13:20 UTC', $ends($this->state($handle)));
         self::assertSame('2026-10-24T13:20:00+00:00', $this->state($handle)['expiresAt']);
 
         self::mockTime('2026-10-24 13:19:59');
@@ -461,7 +461,7 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(ErrorCode::TooManyAttempts->type(), $this->last()['type']);
         self::assertNotNull($this->client->getResponse()->headers->get('Retry-After'));
         $retryAt = Type\string()->coerce($this->last()['retryAt'] ?? null);
-        self::assertMatchesRegularExpression('/^[A-Z][a-z]+day, [A-Z][a-z]{2} \d{1,2} at \d{2}:\d{2} UTC$/', $retryAt, 'the instant, with its day and zone (#1118)');
+        self::assertMatchesRegularExpression('/^[A-Z][a-z]+day \d{1,2} [A-Z][a-z]{2} at \d{2}:\d{2} UTC$/', $retryAt, 'the instant, with its day and zone (#1118)');
         self::assertSame('You can ask 3 times a day. Try again ' . $retryAt . '.', $this->last()['detail']);
     }
 

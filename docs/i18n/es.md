@@ -49,6 +49,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: «la única
+  persona con el rol Propietario en {{organisation}}» and «no sale de la organización», never
+  «no se le quita». The refusal is «no se puede quitar a esta persona de la organización».
+  Restoring needs «la dirección principal de esta persona», since «su dirección» could read as
+  the admin's. The history line is «Acceso suspendido: …», a state that agrees with no one.
 - **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
   `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
   The act is «transferir la propiedad», and the organisation is «cedida»; the people are
@@ -78,6 +85,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   «dejará de formar parte» agree with no one; «su acceso» alone would read as the reader's.
   "Account settings" is «Configuración de la cuenta», button and sentence alike. The footer
   says «propietario o administrador», as `twoFactorRecovery.approver.footer`.
+  24 Oct (qa2, #8038): the email subject opens on what happened, «Acceso en pausa: {name} en
+  {organisation}», so a phone inbox shows it before the names. The admins' label is «Acceso
+  suspendido: dominio de empresa», as the setting, for all three reasons. "… first" is
+  «necesita primero», never an opening «Antes,».
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The act
   is «solicitar unirse», as domain joining; the setting «Solicitudes para unirse», so its state

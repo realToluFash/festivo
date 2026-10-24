@@ -15,6 +15,9 @@
     "title": "No pertenece a ninguna organización",
     "body": "Los eventos, los equipos y los planes pertenecen a una organización, y ahora mismo no forma parte de ninguna. Su cuenta sigue siendo suya y no ha desaparecido nada.",
     "wayOn": "Pida a quien gestiona la suya que vuelva a invitar a {{email}}.",
+    "startTitle": "Cree su propia organización",
+    "startBody": "Al configurar una organización nueva, usted tendrá la función Propietario.",
+    "start": "Crear organización",
     "signedInAs": "Sesión iniciada como {{email}}.",
     "account": "Su cuenta"
   },
@@ -1126,7 +1129,7 @@
       "suspended": "Acceso suspendido",
       "left": "Ha salido",
       "removed": "Acceso retirado",
-      "domainSuspended": "Acceso suspendido: sin dirección de empresa"
+      "domainSuspended": "Acceso suspendido: dominio de empresa"
     },
     "how": {
       "invitation": "Invitación",
@@ -1208,12 +1211,12 @@
       "domain_managed_elsewhere": "Ahora {{domain}} lo gestiona otra organización."
     },
     "suspendedRemovedOn": "Si nadie responde antes del {{when}}, se quitará a esta persona de la organización.",
-    "suspendedOnlyOwner": "{{name}} is the only owner of {{organisation}}, so they stay suspended, still an owner, and are not removed.",
-    "onlyOwnerNotRemovable": "{{name}} is the only owner, so they can't be removed.",
-    "onlyOwnerRestoreNeedsAddress": "Restore works once their main email address is a verified {{domain}} address again.",
+    "suspendedOnlyOwner": "{{name}} es la única persona con el rol Propietario en {{organisation}}, así que mantiene ese rol y no sale de la organización, aunque su acceso sigue suspendido.",
+    "onlyOwnerNotRemovable": "{{name}} es la única persona con el rol Propietario, así que no se puede quitar a esta persona de la organización.",
+    "onlyOwnerRestoreNeedsAddress": "El acceso se podrá restablecer cuando la dirección principal de esta persona vuelva a ser una dirección de {{domain}} verificada.",
     "restore": "Restablecer",
     "restored": "Se ha restablecido el acceso de {{name}} a {{organisation}}.",
-    "restoreNeedsAddress": "Antes, {{name}} necesita una dirección de {{domain}} verificada.",
+    "restoreNeedsAddress": "{{name}} necesita primero una dirección de {{domain}} verificada.",
     "noRoleYet": "Aún sin rol",
     "awaiting": {
       "title": "Pendiente de aprobación",
@@ -1244,7 +1247,7 @@
     "kept": "Su trabajo en {{organisation}} se conserva y sigue figurando a su nombre.",
     "untouched": "Sus otras organizaciones y su acceso a eventos concretos no se ven afectados.",
     "removedBy": "Si nadie restablece su acceso antes del {{when}}, dejará de formar parte de {{organisation}}.",
-    "stillOnlyOwner": "You are still the only owner of {{organisation}}, so you are not removed.",
+    "stillOnlyOwner": "Sigue siendo la única persona con el rol Propietario en {{organisation}}, así que no sale de la organización.",
     "nextTitle": "Qué ocurre ahora",
     "nextAddressGone": "Vuelva a añadir su dirección de {{domain}} en Configuración de la cuenta y hágala principal. Después, pida a un administrador de {{organisation}} que restablezca su acceso.",
     "nextNothingNeeded": "Un administrador de {{organisation}} puede restablecer su acceso. Usted no tiene que hacer nada.",
@@ -1296,6 +1299,7 @@
     "coolingOff": "{{organisation}} ya ha respondido a su última solicitud. Podrá volver a solicitar unirse a partir del {{date}}.",
     "coolingOffLater": "{{organisation}} ya ha respondido a su última solicitud. Podrá volver a solicitar unirse dentro de unas semanas.",
     "limited": "Demasiadas solicitudes por ahora. Inténtelo de nuevo a las {{time}}.",
+    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
     "limitedLater": "Demasiadas solicitudes por ahora. Inténtelo de nuevo más tarde.",
     "deadTitle": "Este enlace no funciona",
     "deadBody": "Este enlace ya no funciona. Pida uno nuevo a la organización.",

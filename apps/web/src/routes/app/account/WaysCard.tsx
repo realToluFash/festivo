@@ -48,6 +48,7 @@ export function WaysCard({
   hasPassword,
   providers,
   onChanged,
+  onRefused,
   onSetPassword,
   onSignedOutHere,
   onCodeSpent,
@@ -56,6 +57,8 @@ export function WaysCard({
   hasPassword: boolean;
   providers: readonly LinkedProvider[];
   onChanged: () => Promise<void>;
+  /** The server refused an unlink, so the rows on screen may be stale; a failed read leaves them. */
+  onRefused: () => Promise<void>;
   onSetPassword: () => void;
   onSignedOutHere: () => void;
   /** A two-factor or recovery code was accepted, so the two-factor card's count may be stale. */
@@ -171,6 +174,7 @@ export function WaysCard({
       await onChanged();
       setStage({ kind: 'list', notice: { kind: 'unlinked', provider } });
     } catch (error) {
+      if (error instanceof ApiError) await onRefused().catch(() => {});
       setStage({ kind: 'list', notice: refused(error, provider) });
     }
   }

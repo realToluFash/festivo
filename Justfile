@@ -203,7 +203,7 @@ prune-build-cache:
 # stack instead — `just qa-env setup --tester N` makes tester N's, at ../soirely-qa,
 # ../soirely-qa2 or ../soirely-qa3 — so that no two share a database, a port or a simulator.
 
-# Developer 2's own stack, at ../soirely-dev2: `just dev-env setup --developer 2`.
+# Developer N's own stack, at ../soirely-devN: `just dev-env setup --developer N` (2 to 4).
 # The other roles' the same way: `just dev-env setup --role lead` (ops, l10n).
 dev-env *args:
     node scripts/dev-env.mjs {{args}}

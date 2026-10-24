@@ -68,8 +68,13 @@ def developer(p, db, stories):
     if mine:
         top = mine[0]
         todo = [s for s in mine if s["state"] == "Ready For Dev"]
-        if top["state"] == "Ready For Dev" and p.role == "dev2" and len(todo) >= 2:
-            top = todo[1]
+        own = [s for s in todo if R.OWN_LABELS[p.role] & set(s["labels"])]
+        # Developer N takes the Nth shared story, so developers reaching Ready For Dev
+        # together part; a story labelled for this developer alone comes before them all.
+        shared = [s for s in todo if not set(R.DEVELOPERS.values()) & set(s["labels"])]
+        nth = R.number(p.role)
+        if top["state"] == "Ready For Dev":
+            top = own[0] if own else shared[nth - 1] if len(shared) >= nth else top
         verb = "story" if R.OWN_LABELS[p.role] & set(top["labels"]) else "claim"
         p.add("", "Next:", f"  {SQ} {p.role} {verb} sc-{top['id']}")
 
@@ -86,7 +91,7 @@ def tester(p, db, stories):
                           if c["text"].startswith("QA claim:")), None)
             p.add(line(story, claim["text"] + " at " + claim["at"][11:16] if claim else "no claim"))
     if ready:
-        number = int(p.role[2:] or 1)
+        number = R.number(p.role)
         pick = ready[number - 1] if len(ready) >= number else ready[0]
         p.add("", "Next:", f"  {SQ} {p.role} claim sc-{pick['id']}")
 

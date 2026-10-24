@@ -111,7 +111,7 @@ final class NewDeviceSignInTest extends ApiTestCase
         $text = (string) $mail->getTextBody();
 
         self::assertSame('content-device@example.com', $mail->getTo()[0]->getAddress());
-        self::assertMatchesRegularExpression('/^When: \w+, \w+ \d+ at \d\d:\d\d UTC$/m', $text);
+        self::assertMatchesRegularExpression('/^When: \w+ \d+ \w+ at \d\d:\d\d UTC$/m', $text);
         self::assertStringContainsString('Device: Safari on iPhone', $text);
         self::assertStringContainsString('Network address: 102.89.33.14', $text);
         self::assertMatchesRegularExpression('#^Review your devices: \S+/app/account/security$#m', $text);

@@ -15,6 +15,9 @@
     "title": "You are not in an organisation",
     "body": "Events, teams and plans all belong to an organisation, and you are not part of one right now. Your account is still yours, and nothing in it has gone.",
     "wayOn": "Ask whoever runs yours to invite {{email}} again.",
+    "startTitle": "Start your own",
+    "startBody": "Set up a new organisation and you become its owner.",
+    "start": "Start organisation",
     "signedInAs": "Signed in as {{email}}.",
     "account": "Your account"
   },
@@ -1296,6 +1299,7 @@
     "coolingOff": "{{organisation}} answered your last request. You can ask again from {{date}}.",
     "coolingOffLater": "{{organisation}} answered your last request. You can ask again in a few weeks.",
     "limited": "Too many requests for now. Try again at {{time}}.",
+    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
     "limitedLater": "Too many requests for now. Try again later.",
     "deadTitle": "This link doesn't work",
     "deadBody": "This link doesn't work any more. Ask the organisation for a new one.",

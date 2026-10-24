@@ -22,7 +22,7 @@ import { TwoFactorCard } from './TwoFactorCard.tsx';
 import { WaysCard } from './WaysCard.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { type ProviderReturn, takeProviderReturn } from '../../../providerSignIn.ts';
-import { forgetSession, refreshAccount, useSession } from '../../../session.ts';
+import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
 type Devices =
@@ -144,6 +144,7 @@ export function Security() {
         hasPassword={session.hasPassword}
         providers={session.providers}
         onChanged={() => refreshAccount()}
+        onRefused={rereadCredentials}
         onSetPassword={() => {
           setSettingPassword(true);
           document.getElementById('password-title')?.scrollIntoView({ block: 'start' });

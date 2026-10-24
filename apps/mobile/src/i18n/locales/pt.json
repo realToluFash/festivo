@@ -15,6 +15,9 @@
     "title": "Não está em nenhuma organização",
     "body": "Eventos, equipas e planos pertencem a uma organização, e neste momento não faz parte de nenhuma. A sua conta continua a ser sua e nada desapareceu.",
     "wayOn": "Peça a quem gere a sua que volte a convidar {{email}}.",
+    "startTitle": "Crie a sua própria organização",
+    "startBody": "Configure uma nova organização e terá a função Proprietário.",
+    "start": "Criar organização",
     "signedInAs": "Sessão iniciada como {{email}}.",
     "account": "A sua conta"
   },
@@ -1126,7 +1129,7 @@
       "suspended": "Acesso suspenso",
       "left": "Saiu",
       "removed": "Acesso retirado",
-      "domainSuspended": "Acesso suspenso: sem endereço da empresa"
+      "domainSuspended": "Acesso suspenso: domínio da empresa"
     },
     "how": {
       "invitation": "Convite",
@@ -1208,9 +1211,9 @@
       "domain_managed_elsewhere": "{{domain}} passou a ser gerido por outra organização."
     },
     "suspendedRemovedOn": "Se ninguém responder até {{when}}, o acesso é retirado.",
-    "suspendedOnlyOwner": "{{name}} is the only owner of {{organisation}}, so they stay suspended, still an owner, and are not removed.",
-    "onlyOwnerNotRemovable": "{{name}} is the only owner, so they can't be removed.",
-    "onlyOwnerRestoreNeedsAddress": "Restore works once their main email address is a verified {{domain}} address again.",
+    "suspendedOnlyOwner": "{{name}} é a única pessoa com a função Proprietário em {{organisation}}, por isso mantém essa função e não sai da organização, embora o acesso continue suspenso.",
+    "onlyOwnerNotRemovable": "{{name}} é a única pessoa com a função Proprietário, por isso esta pessoa não pode ser removida da organização.",
+    "onlyOwnerRestoreNeedsAddress": "O acesso só pode ser reposto quando o endereço de e-mail principal desta pessoa voltar a ser um endereço de {{domain}} verificado.",
     "restore": "Repor",
     "restored": "O acesso de {{name}} a {{organisation}} foi reposto.",
     "restoreNeedsAddress": "{{name}} precisa primeiro de um endereço de {{domain}} verificado.",
@@ -1219,7 +1222,7 @@
       "title": "A aguardar aprovação",
       "note": "Só quem gere os membros vê estes pedidos. Ninguém entra na organização sem que uma destas pessoas aprove o pedido.",
       "asked": "{{channel}} · data do pedido: {{date}}",
-      "removes": "O pedido é removido a {{deadline}} se ninguém responder",
+      "removes": "O pedido é removido se ninguém responder até {{deadline}}",
       "approve": "Aprovar",
       "turnDown": "Recusar",
       "roleFor": "Função de {{name}}",
@@ -1244,7 +1247,7 @@
     "kept": "O seu trabalho em {{organisation}} é mantido e continua atribuído a si.",
     "untouched": "As suas outras organizações e o seu acesso a eventos individuais não são afetados.",
     "removedBy": "Se ninguém repuser o seu acesso até {{when}}, deixará de fazer parte de {{organisation}}.",
-    "stillOnlyOwner": "You are still the only owner of {{organisation}}, so you are not removed.",
+    "stillOnlyOwner": "Continua a ser a única pessoa com a função Proprietário em {{organisation}}, por isso não sai da organização.",
     "nextTitle": "O que acontece a seguir",
     "nextAddressGone": "Volte a adicionar o seu endereço de {{domain}} em Definições da conta e torne-o principal. Depois, peça a um administrador de {{organisation}} que reponha o seu acesso.",
     "nextNothingNeeded": "Um administrador de {{organisation}} pode repor o seu acesso. Não precisa de fazer nada.",
@@ -1296,6 +1299,7 @@
     "coolingOff": "{{organisation}} respondeu ao seu último pedido. A partir de {{date}}, pode voltar a pedir para aderir.",
     "coolingOffLater": "{{organisation}} respondeu ao seu último pedido. Pode voltar a pedir para aderir daqui a algumas semanas.",
     "limited": "Demasiados pedidos por agora. Tente novamente às {{time}}.",
+    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
     "limitedLater": "Demasiados pedidos por agora. Tente novamente mais tarde.",
     "deadTitle": "Esta ligação não funciona",
     "deadBody": "Esta ligação já não funciona. Peça uma nova à organização.",

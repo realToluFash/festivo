@@ -2,7 +2,8 @@
 
 import re
 
-DEVELOPERS = {"dev": "dev1", "dev2": "dev2"}
+DEVELOPERS = {"dev": "dev1", "dev2": "dev2", "dev3": "dev3", "dev4": "dev4"}
+DEVS = tuple(DEVELOPERS)
 
 TRANSLATION_QUEUE = ["To Do", "Failed Code Review", "In Progress", "Failed QA"]
 # A developer's queue, rework first: findings, then a failed test, then its own build, then
@@ -48,14 +49,26 @@ def translation(labels, state):
     return "translation" in labels
 
 
-def dev1_filter(labels, state):
-    return "translation" not in labels and "dev2" not in labels and OPS_LABEL not in labels
+def number(role):
+    """Developer `dev` is 1, `devN` is N; the testers count the same way."""
+    return int(role.lstrip("devqa") or 1)
 
 
-def dev2_filter(labels, state):
-    if state == "Ready For Dev":
-        return "translation" not in labels and "dev1" not in labels and OPS_LABEL not in labels
-    return "dev2" in labels
+def developer_filter(role):
+    """Ready For Dev with no developer label is one shared pool; beyond that a developer
+    sees only its own label, and developer 1 also what carries none."""
+    own = DEVELOPERS[role]
+
+    def keep(labels, state):
+        if "translation" in labels or OPS_LABEL in labels:
+            return False
+        taken = set(DEVELOPERS.values()) & set(labels)
+        if own in taken:
+            return True
+        if taken:
+            return False
+        return state == "Ready For Dev" or number(role) == 1
+    return keep
 
 
 def everything(labels, state):
@@ -67,11 +80,11 @@ ROLES = {
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
     "ux": {"skill": "soirely-designer", "queue": ["Needs Design"],
            "filter": not_translation, "heartbeat": 120, "sweeps": True},
-    "dev": {"skill": "soirely-developer", "queue": BUILD_QUEUE,
-            "filter": dev1_filter, "heartbeat": 30, "prs": True},
-    "dev2": {"skill": "soirely-developer", "invoke": "/soirely-developer dev2",
-             "queue": BUILD_QUEUE, "filter": dev2_filter,
-             "heartbeat": 30, "prs": True, "offset": 1},
+    **{role: {"skill": "soirely-developer", "queue": BUILD_QUEUE,
+              "filter": developer_filter(role), "heartbeat": 30, "prs": True,
+              **({"invoke": f"/soirely-developer {role}", "offset": number(role) - 1}
+                 if role != "dev" else {})}
+       for role in DEVS},
     "qa": {"skill": "soirely-qa-tester", "queue": ["Ready For QA"], "filter": everything,
            "heartbeat": 30, "memoryMax": "8G"},
     "qa2": {"skill": "soirely-qa-tester", "invoke": "/soirely-qa-tester qa2",
@@ -105,7 +118,7 @@ def pool(role, state, labels):
     """Roles that share a queue claim from one pool, so two never take the same story."""
     if role.startswith("qa"):
         return "qa"
-    if role in DEVELOPERS and state == "Ready For Dev" and not {"dev1", "dev2"} & set(labels):
+    if role in DEVELOPERS and state == "Ready For Dev" and not set(DEVELOPERS.values()) & set(labels):
         return "dev"
     return role
 
@@ -141,7 +154,6 @@ def author(text):
     return FORMER.get(parsed["from"], parsed["from"]) if parsed else None
 
 
-DEVS = ("dev", "dev2")
 # Every role that opens pull requests merges its own, once the lead has passed it.
 BUILDERS = DEVS + ("l10n", "ops")
 TESTERS = ("qa", "qa2", "qa3")
@@ -201,12 +213,13 @@ MOVES = {
             "In Review": ("In Progress", "Failed Code Review", "Passed Code Review"),
             WAITING: ("In Progress", "Ready For Dev")},
 }
-MOVES["dev2"] = MOVES["dev"]
+for _developer in DEVS:
+    MOVES[_developer] = MOVES["dev"]
 for _tester in TESTERS:
     MOVES[_tester] = MOVES["qa"]
 
 # A role that labels may only touch these labels; the product manager may touch any.
-OWN_LABELS = {"dev": {"dev1"}, "dev2": {"dev2"}, "cd": {"idea"},
+OWN_LABELS = {**{d: {label} for d, label in DEVELOPERS.items()}, "cd": {"idea"},
               **{t: {"qa passed", "qa failed", "needs qa", TESTERS_LABELS[t]} for t in TESTERS},
               "l10n": {"translation"}, "ops": {OPS_LABEL, "needs qa"}}
 

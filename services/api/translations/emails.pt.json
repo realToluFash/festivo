@@ -136,7 +136,7 @@
     "ownershipTransferred.youGaveIt": "Transferiu para {to} a propriedade de {organisation}. Tem agora a função Administrador: pode continuar a geri-la no dia a dia, mas não a pode ceder nem eliminar.",
     "ownershipTransferred.youHaveIt": "{from} transferiu-lhe a propriedade de {organisation}. Pode agora alterar a faturação, os membros, as funções e as definições da organização, e eliminá-la. {from} tem agora a função Administrador.",
     "ownershipTransferred.footer": "Está a receber esta mensagem porque é membro de {organisation}.",
-    "domainSuspended.subject": "O acesso de {name} a {organisation} está em pausa",
+    "domainSuspended.subject": "Acesso em pausa: {name} em {organisation}",
     "domainSuspended.addressGone": "O acesso de {name} a {organisation} está em pausa porque o endereço de {domain} já não está na conta desta pessoa.",
     "domainSuspended.domainClosed": "O acesso de {name} a {organisation} está em pausa porque {organisation} deixou de aceitar adesões através de {domain}.",
     "domainSuspended.managedElsewhere": "O acesso de {name} a {organisation} está em pausa porque {domain} passou a ser gerido por outra organização.",
@@ -149,10 +149,10 @@
     "joinRequest.turnedDown.subject": "O seu pedido de adesão a {organisation}",
     "joinRequest.turnedDown.body": "O seu pedido de adesão a {organisation} na Soirely foi recusado, por isso não passou a fazer parte da organização.",
     "joinRequest.expired.subject": "O seu pedido de adesão a {organisation} foi removido",
-    "joinRequest.expired.body": "Ninguém de {organisation} respondeu ao seu pedido de adesão, por isso foi removido a {deadline}.",
+    "joinRequest.expired.body": "Ninguém de {organisation} respondeu ao seu pedido de adesão até {deadline}, por isso foi removido.",
     "joinRequest.askAgain": "Pode voltar a pedir para aderir a {organisation} depois de passarem 30 dias. Se achar que se trata de um erro, fale com alguém que conheça na organização.",
     "joinRequest.waiting.subject": "Há alguém à espera para aderir a {organisation}",
-    "joinRequest.waiting.person": "{name} ({email}): o pedido é removido a {deadline} se ninguém responder",
+    "joinRequest.waiting.person": "{name} ({email}): o pedido é removido se ninguém responder até {deadline}",
     "joinRequest.waiting.answer": "Aprove ou recuse os pedidos em Membros: {link}",
     "joinRequest.waiting.footer": "Está a receber esta mensagem porque gere os membros de {organisation}. Enviamo-la, no máximo, uma vez por dia."
 }

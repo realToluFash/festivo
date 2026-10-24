@@ -54,6 +54,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: « la
+  seule personne ayant le rôle Propriétaire dans {{organisation}} », and what is not removed is
+  « son accès », so nothing agrees with the member: « son accès ne peut donc pas être retiré ».
+  The history line is « Accès suspendu : son adresse e-mail professionnelle ne lui ouvre plus
+  l’accès », « ne donne plus accès » would say « accès » twice.
 - **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
   `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
   The act is « transférer la propriété », the organisation « cédée ». « Propriétaire » with no
@@ -83,6 +90,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   given on approval is « avec le rôle {{role}} », so nothing agrees with the person; the
   person refused « ne fait donc pas partie de l’organisation », never « n’a pas été ajouté ».
   The waiting email’s count takes `many`, « 1 000 000 de personnes ».
+- **24 Oct 2026. No « à » or « de » straight before {organisation}** (sc-7217, from QA). A
+  name that opens on an article reads « à Les Événements… », where French wants « aux ».
+  Take a verb that needs no preposition, with the organisation as its object: « sa demande
+  pour rejoindre {{organisation}} » (« demande d’adhésion » alone, with no object, stays); or
+  name it: « les membres de l’organisation {organisation} »; « chez {organisation} » also
+  holds. Older strings that still read « à {{organisation}} » are swept as they are touched.
 
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads « En pause », the admins
@@ -92,6 +105,13 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   adhésions via {{domain}} », as the setting's « Adhésion par domaine d'entreprise ». An
   address at a domain is « votre adresse {{domain}} ». "What happens next" is « La suite ».
   "Account settings" is « Paramètres du compte », button and sentence alike.
+  24 Oct (qa2, #8038): no « de » stands before {{organisation}} or {{name}}, which may open on a
+  vowel. The organisation is « de l’organisation {{organisation}} », or « à » and « dans »; a
+  person is the subject (« {{name}} a de nouveau accès à », « {{name}} n’a plus d’adresse »)
+  or « pour {name} ». The email opens « L’accès à {organisation} est en pause pour {name} »,
+  its subject on the pause, « Accès en pause : {name} dans {organisation} », so a phone inbox
+  shows it before the names. The admins' label is « Accès suspendu : domaine d’entreprise »
+  for all three reasons, as the setting.
 - **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
   `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). The
   setting is « Demandes d'adhésion », so its state agrees: « Activées » / « Désactivées »; the
@@ -297,6 +317,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
 - **17 Oct 2026. Section names stand alone as nouns** in running text: « Compte réunit… »,
   « Sécurité réunit… » (`settings.chooseLine`), « Organisation réunit les réglages de
   {{name}} » (`settings.chooseLineWithOrganisation`), « vérifiez Sécurité » (emails).
+- **24 Oct 2026. A running count with no count slot is « Caractères : N sur M »** (sc-6302,
+  `eventForm.nameCount`). « N caractères sur M » misagrees at 0 and 1, which French counts
+  as one, and the key gets no `count` to pick a plural. With the noun as a label first,
+  nothing has to agree with N. Use the same shape for any other counter without a plural.
 - **17 Oct 2026. A picker's search field reads « Rechercher un/une … »** in the singular:
   « Rechercher un pays », « Rechercher une devise », « Rechercher un fuseau horaire ».
 

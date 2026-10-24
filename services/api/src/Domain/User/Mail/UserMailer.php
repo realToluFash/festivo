@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\User\Mail;
 
 use App\Entity\User;
+use App\Locale\SupportedLocales;
 use DateTimeImmutable;
 use DateTimeZone;
 use IntlDateFormatter;
@@ -68,7 +69,7 @@ final readonly class UserMailer
     public function moment(DateTimeImmutable $at, User $user, string $locale): string
     {
         [$local, $label] = self::local($at, $user);
-        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::LONG, IntlDateFormatter::SHORT, $local->getTimezone()->getName());
+        $formatter = IntlDateFormatter::create(SupportedLocales::dates($locale), IntlDateFormatter::LONG, IntlDateFormatter::SHORT, $local->getTimezone()->getName());
 
         if (null === $formatter) {
             return $local->format('Y-m-d H:i') . ' ' . $label;
@@ -79,12 +80,13 @@ final readonly class UserMailer
         return ($formatter->format($local) ?: $local->format('Y-m-d H:i')) . ' ' . $label;
     }
 
-    /** A deadline as the screens write it (sc-509): "Saturday, Oct 24 at 14:20 WAT". */
+    /** A deadline in the house order for English (sc-6758), not always as the screens write it: "Saturday 24 Oct at 14:20 WAT". */
     public function deadline(DateTimeImmutable $at, User $user, string $locale): string
     {
         [$local, $label] = self::local($at, $user);
-        $pattern = new IntlDatePatternGenerator($locale)->getBestPattern('EEEEMMMd') ?: 'EEEE, MMM d';
-        $formatter = IntlDateFormatter::create($locale, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);
+        $dates = SupportedLocales::dates($locale);
+        $pattern = new IntlDatePatternGenerator($dates)->getBestPattern('EEEEMMMd') ?: 'EEEE d MMM';
+        $formatter = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);
 
         return $this->line('time.dateAt', $locale, [
             '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),

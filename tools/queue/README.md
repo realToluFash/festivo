@@ -12,7 +12,7 @@ sq status | sync [--full] | install
 ```
 
 `sq` is `python3 .git/soirely-roles/sq/sq` once installed (`python3 tools/queue/sq install`),
-so a branch switch never takes it away. Roles: pm, ux, dev, dev2, qa, qa2, qa3, lead, bm,
+so a branch switch never takes it away. Roles: pm, ux, dev, dev2, dev3, dev4, qa, qa2, qa3, lead, bm,
 ops, en, es, fr, pt, cd.
 
 ## Reads print each thing once
@@ -49,11 +49,11 @@ Every read goes through a ledger of what the role has already been shown.
 | `story`                        | the queue's | the story through the ledger, AC (and Design for a tester) in full, tasks, links, involving threads, PRs                           |
 | `review`                       | lead        | the AC, the involving threads, PR status with open and resolved threads, Risks, the diff stat, what changed since the last verdict |
 | `threads`                      | lead        | the PR's status with every open thread, when a reply lands on any open thread, whoever opened it, in any story state               |
-| `merge`                        | dev, dev2   | the PR's status, read live; a conflict says to bring main in rather than merge                                                     |
-| `answer-threads`               | dev, dev2   | the PR's status with every open thread, when the lead passed the head but a thread it has not had your reply on holds the merge    |
-| `to-qa`                        | dev, dev2   | the merge commit, and the one command that hands the story to QA                                                                   |
-| `to-review`, `merged-unpassed` | dev, dev2   | the PR's status and the command to run                                                                                             |
-| `checks-red`                   | dev, dev2   | each failing check with its log's last 40 lines                                                                                    |
+| `merge`                        | developers  | the PR's status, read live; a conflict says to bring main in rather than merge                                                     |
+| `answer-threads`               | developers  | the PR's status with every open thread, when the lead passed the head but a thread it has not had your reply on holds the merge    |
+| `to-qa`                        | developers  | the merge commit, and the one command that hands the story to QA                                                                   |
+| `to-review`, `merged-unpassed` | developers  | the PR's status and the command to run                                                                                             |
+| `checks-red`                   | developers  | each failing check with its log's last 40 lines                                                                                    |
 | `main`                         | ops         | main's last runs and the failed log                                                                                                |
 | `pick`, `sweep`                | the role    | the role's digest (below)                                                                                                          |
 
@@ -84,7 +84,7 @@ story or pull request, read fresh rather than from the last sync, and says why i
 | `pr-reply N <comment id>`                                                        | developers, linguists, lead, ops   | replies in the thread holding that comment, signed `(from role)` so the queue knows whose word it ends on                                                                                                                                                                                                              |
 | `merge N`                                                                        | developers, linguists              | developer: only with the lead's pass at the live head, no open thread, green checks and MERGEABLE; merges with `--match-head-commit`, moves the story to Ready For QA and tells `[qa]` the merge commit. Linguist: its own locale files only, merge commit, branch deleted                                             |
 | `to-qa sc-N`                                                                     | developers                         | for a PR that merged at a head the pass covers, carried over a merge of main included: Ready For QA, and `[qa]` told the merge commit                                                                                                                                                                                  |
-| `pr-close N --text WHY`                                                          | developers, linguists, ops         | posts WHY on the pull request, then closes it unmerged. The builder of its story closes its own, the two developers each other's; the linguist alone a translation ticket's; ops any                                                                                                                                   |
+| `pr-close N --text WHY`                                                          | developers, linguists, ops         | posts WHY on the pull request, then closes it unmerged. The builder of its story closes its own, the developers each other's; the linguist alone a translation ticket's; ops any                                                                                                                                       |
 | `rerun N \| --run ID`                                                            | developers, ops                    | reruns the failed jobs                                                                                                                                                                                                                                                                                                 |
 
 ## How work is found

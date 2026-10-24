@@ -42,7 +42,7 @@ name.
 ## Why each one
 
 **Needs Design and Ready For Dev split To Do.** Today To Do is queued by the product
-manager, the designer, the business manager and both developers (`ROLES` in
+manager, the designer, the business manager and the developers (`ROLES` in
 `tools/queue/soirely_queue/roles.py`). A story entering it wakes five workers, about $0.15
 each before any work, and they race: a developer can start building before the AC is
 settled or the screens exist. After the split, To Do is the product manager's alone.
@@ -75,7 +75,7 @@ to merge it. The state can become untrue, so the commit decides, not the state:
 
 ## Labels for roles with more than one agent
 
-**Developers: `dev1` and `dev2`, as today.** A story stays with its developer for its whole
+**Developers: `dev1` to `devN`, one label each.** A story stays with its developer for its whole
 life, across separate workers: build, review fixes, merge, Failed QA fixes. That developer's
 checkout holds the branch, so the label routes every step to the right one. Ready For Dev is
 shared: whichever developer claims a story first labels it.
@@ -91,8 +91,9 @@ shared: whichever developer claims a story first labels it.
 - Claims stay in `sq`, as now, so two testers can never take one story, label or not.
 
 Tester 1's role stays `qa` and its tag stays `[qa]`; only the label is `qa1`, to match
-`dev1`. No other role has more than one agent. More capacity means a new instance, such as
-`dev3` with its own label and checkout, the way `dev2` works.
+`dev1`. More capacity means a new instance with its own label and checkout, the way `dev3`
+and `dev4` joined `dev2`: an entry in `DEVELOPERS` in `tools/queue/soirely_queue/roles.py`
+and a stack in `STACKS` in `scripts/dev-env.mjs`.
 
 ## Where it lives
 

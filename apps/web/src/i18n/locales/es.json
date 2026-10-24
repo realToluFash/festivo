@@ -861,16 +861,16 @@
       "suspended": "Suspended",
       "left": "Left",
       "removed": "Removed",
-      "domainSuspended": "Acceso suspendido: sin dirección de empresa"
+      "domainSuspended": "Acceso suspendido: dominio de empresa"
     },
     "how": {
-      "invitation": "Invitation",
-      "invitationFrom": "Invitation from {{inviter}}",
-      "self_created": "Created {{organisation}}",
-      "join_code": "Join code",
-      "domain": "Company email address",
-      "request": "Asked to join",
-      "directory": "Company directory"
+      "invitation": "Invitación",
+      "invitationFrom": "Invitación de {{inviter}}",
+      "self_created": "Creó {{organisation}}",
+      "join_code": "Código para unirse",
+      "domain": "Correo electrónico de la empresa",
+      "request": "Pidió unirse",
+      "directory": "Directorio de la empresa"
     },
     "when": {
       "since": "since {{date}}",
@@ -925,7 +925,7 @@
       },
       "approved": "Approved by {{by}}",
       "suspended": "Suspended by {{by}}",
-      "suspendedAddressGone": "Suspended when their company address went",
+      "suspendedAddressGone": "Acceso suspendido: su correo electrónico de empresa ya no da acceso",
       "restored": "Restored by {{by}}",
       "left": "Left {{organisation}}",
       "removed": "Removed by {{by}}",
@@ -977,12 +977,12 @@
       "domain_managed_elsewhere": "Ahora {{domain}} lo gestiona otra organización."
     },
     "suspendedRemovedOn": "Si nadie responde antes del {{when}}, se quitará a esta persona de la organización.",
-    "suspendedOnlyOwner": "{{name}} is the only owner of {{organisation}}, so they stay suspended, still an owner, and are not removed.",
-    "onlyOwnerNotRemovable": "{{name}} is the only owner, so they can't be removed.",
-    "onlyOwnerRestoreNeedsAddress": "Restore works once their main email address is a verified {{domain}} address again.",
+    "suspendedOnlyOwner": "{{name}} es la única persona con el rol Propietario en {{organisation}}, así que mantiene ese rol y no sale de la organización, aunque su acceso sigue suspendido.",
+    "onlyOwnerNotRemovable": "{{name}} es la única persona con el rol Propietario, así que no se puede quitar a esta persona de la organización.",
+    "onlyOwnerRestoreNeedsAddress": "El acceso se podrá restablecer cuando la dirección principal de esta persona vuelva a ser una dirección de {{domain}} verificada.",
     "restore": "Restablecer",
     "restored": "Se ha restablecido el acceso de {{name}} a {{organisation}}.",
-    "restoreNeedsAddress": "Antes, {{name}} necesita una dirección de {{domain}} verificada.",
+    "restoreNeedsAddress": "{{name}} necesita primero una dirección de {{domain}} verificada.",
     "noRoleYet": "Aún sin rol",
     "awaiting": {
       "title": "Pendiente de aprobación",
@@ -1517,7 +1517,7 @@
     "kept": "Su trabajo en {{organisation}} se conserva y sigue figurando a su nombre.",
     "untouched": "Sus otras organizaciones y su acceso a eventos concretos no se ven afectados.",
     "removedBy": "Si nadie restablece su acceso antes del {{when}}, dejará de formar parte de {{organisation}}.",
-    "stillOnlyOwner": "You are still the only owner of {{organisation}}, so you are not removed.",
+    "stillOnlyOwner": "Sigue siendo la única persona con el rol Propietario en {{organisation}}, así que no sale de la organización.",
     "nextTitle": "Qué ocurre ahora",
     "nextAddressGone": "Vuelva a añadir su dirección de {{domain}} en Configuración de la cuenta y hágala principal. Después, pida a un administrador de {{organisation}} que restablezca su acceso.",
     "nextNothingNeeded": "Un administrador de {{organisation}} puede restablecer su acceso. Usted no tiene que hacer nada.",
@@ -1568,6 +1568,7 @@
     "coolingOff": "{{organisation}} ya ha respondido a su última solicitud. Podrá volver a solicitar unirse a partir del {{date}}.",
     "coolingOffLater": "{{organisation}} ya ha respondido a su última solicitud. Podrá volver a solicitar unirse dentro de unas semanas.",
     "limited": "Demasiadas solicitudes por ahora. Inténtelo de nuevo a las {{time}}.",
+    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
     "limitedLater": "Demasiadas solicitudes por ahora. Inténtelo de nuevo más tarde.",
     "deadTitle": "Este enlace no funciona",
     "deadBody": "Este enlace ya no funciona. Pida uno nuevo a la organización.",
