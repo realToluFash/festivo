@@ -1154,6 +1154,8 @@
     "roleTitle": "Rôle",
     "roleFor": "Rôle de {{name}}",
     "roleTakesEffect": "S’applique dès que cette personne utilise de nouveau Soirely ; aucune session n’est fermée.",
+    "roleKeptWhileSuspended": "Le rôle est conservé pendant la suspension. Vous pourrez le changer une fois l’accès rétabli.",
+    "accessConflict": "Quelqu’un d’autre a modifié l’accès pour {{name}} pendant que cette page était ouverte : votre modification n’a donc pas été appliquée. Voici où en est cet accès.",
     "rolePick": "Choisissez un autre rôle",
     "roleSave": "Lui attribuer le rôle {{role}}",
     "roleChanged": "{{name}} a maintenant le rôle {{role}}. Cela s’applique dès sa prochaine utilisation de Soirely ; aucune session n’est fermée.",

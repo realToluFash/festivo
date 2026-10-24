@@ -1154,6 +1154,8 @@
     "roleTitle": "Função",
     "roleFor": "Função de {{name}}",
     "roleTakesEffect": "Aplica-se assim que essa pessoa voltar a usar a Soirely; nenhuma sessão é encerrada.",
+    "roleKeptWhileSuspended": "A função é mantida enquanto o acesso estiver suspenso. Pode alterá-la depois de o acesso ser reposto.",
+    "accessConflict": "Outra pessoa alterou o acesso de {{name}} enquanto esta página estava aberta, por isso a sua alteração não foi aplicada. Esta é a situação atual.",
     "rolePick": "Escolha outra função",
     "roleSave": "Atribuir a função {{role}}",
     "roleChanged": "{{name}} tem agora a função {{role}}. Aplica-se assim que voltar a usar a Soirely; nenhuma sessão é encerrada.",

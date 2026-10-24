@@ -86,6 +86,7 @@
     "members.suspend_self": "Não pode suspender o seu próprio acesso. Para deixar de usar esta organização, saia dela em Geral.",
     "members.suspend_owner": "Não é possível suspender alguém com a função Proprietário. Altere primeiro a função desta pessoa.",
     "members.not_active": "Só é possível suspender um acesso ativo. Outra pessoa já alterou este acesso, por isso nada mudou.",
+    "members.role_not_active": "Only an active member's role can be changed. Restore their access first, then change their role.",
     "members.choose_new_owner": "Choose who becomes the owner.",
     "domain_joining.domain_blank": "Introduza um domínio, como {example}.",
     "domain_joining.domain_full": "A lista já tem {count} domínios, o máximo possível. Remova um para adicionar outro.",

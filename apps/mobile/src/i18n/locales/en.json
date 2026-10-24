@@ -1154,6 +1154,8 @@
     "roleTitle": "Role",
     "roleFor": "Role for {{name}}",
     "roleTakesEffect": "Takes effect on their next request; nobody is signed out.",
+    "roleKeptWhileSuspended": "Their role is kept while they're suspended. You can change it once their access is restored.",
+    "accessConflict": "Someone else changed the access for {{name}} while this page was open, so your change wasn't made. This is how it stands now.",
     "rolePick": "Pick a different role",
     "roleSave": "Change their role to {{role}}",
     "roleChanged": "{{name}} is now {{role}}. Takes effect on their next request; nobody is signed out.",

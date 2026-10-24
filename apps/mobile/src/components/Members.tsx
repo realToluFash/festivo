@@ -383,6 +383,15 @@ export function MemberPage({
   const waiting = member.status === 'pending_approval';
   const role = memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role);
   const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
+  const [conflict, setConflict] = useState(false);
+
+  function changedElsewhere(): void {
+    setConflict(true);
+    api
+      .members(organisation.id)
+      .then(onChanged)
+      .catch(() => undefined);
+  }
 
   return (
     <View style={styles.stack}>
@@ -416,6 +425,16 @@ export function MemberPage({
         </View>
       </View>
 
+      {conflict && (
+        <View accessibilityLiveRegion="polite">
+          <Notice
+            tone="quiet"
+            mark={tokens.marks.info.glyph}
+            body={t('membersScreen.accessConflict', { name: member.user.name })}
+          />
+        </View>
+      )}
+
       <View style={cardFrame(kind)}>
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
           {t('membersScreen.roleTitle')}
@@ -436,6 +455,15 @@ export function MemberPage({
               />
             )}
           </>
+        ) : standing === 'manageable' && member.status === 'suspended' ? (
+          <>
+            <Text size={tokens.typeTitleSection.size} weight="semibold">
+              {role}
+            </Text>
+            <Text size={tokens.typeBodyPhone.size} muted>
+              {t('membersScreen.roleKeptWhileSuspended')}
+            </Text>
+          </>
         ) : standing === 'manageable' ? (
           <RolePicker
             organisation={organisation}
@@ -443,6 +471,7 @@ export function MemberPage({
             list={list}
             roles={roles}
             onChanged={onChanged}
+            onChangedElsewhere={changedElsewhere}
           />
         ) : (
           <FixedRole
@@ -737,12 +766,14 @@ function RolePicker({
   list,
   roles,
   onChanged,
+  onChangedElsewhere,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
   onChanged: (list: MembersList) => void;
+  onChangedElsewhere: () => void;
 }) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(member.role.id);
@@ -764,8 +795,12 @@ function RolePicker({
     try {
       await api.changeMemberRole(organisation.id, member.id, picked);
     } catch (error) {
-      setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
       setBusy(false);
+      if (error instanceof ApiError && error.status === 409) {
+        onChangedElsewhere();
+      } else {
+        setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      }
       return;
     }
 
