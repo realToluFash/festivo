@@ -331,14 +331,14 @@ final class OwnerClaimTest extends ApiTestCase
 
         self::assertSame(1, self::service(OwnerClaimHandler::class)->settleDue());
 
-        $mails = $this->mailsTitled("Bisi's claim to own Ìrè Events lapsed. Nobody became the owner");
+        $mails = $this->mailsTitled('Bisi did not become the owner of Ìrè Events. The claim lapsed');
         self::assertEqualsCanonicalizing(['bisi@ire.events', 'kemi@ire.events', 'folake@okafor.family'], Vec\map($mails, self::to(...)));
         self::assertEqualsCanonicalizing($started, Vec\map($mails, self::to(...)), 'exactly where the start went');
         $passesAt = $this->claim($claim)->getPassesAt() ?? self::fail('no passing instant');
 
         foreach ($mails as $mail) {
             $body = (string) $mail->getTextBody();
-            self::assertStringContainsString("Bisi's claim to own Ìrè Events lapsed. Nobody became the owner.\n\nThe DNS record was removed.\n\nClaimant: Bisi · bisi@ire.events\n\nDomain: ire.events\n\nLapsed: ", $body);
+            self::assertStringContainsString("Bisi did not become the owner of Ìrè Events. The claim lapsed.\n\nThe DNS record was removed, so ownership did not pass.\n\nClaimant: Bisi · bisi@ire.events\n\nDomain: ire.events\n\nLapsed on ", $body);
             self::assertStringContainsString('Open Members: ', $body);
             self::assertStringNotContainsString('stop this claim', $body);
         }
@@ -346,7 +346,7 @@ final class OwnerClaimTest extends ApiTestCase
         $folake = Iter\search($mails, static fn (Email $mail): bool => 'folake@okafor.family' === self::to($mail)) ?? self::fail('the suspended owner was not told');
         self::assertStringContainsString("because you're an owner of Ìrè Events", (string) $folake->getTextBody());
         self::assertMatchesRegularExpression(
-            '/^Lapsed: .*' . $passesAt->setTimezone(new DateTimeZone('UTC'))->format('H:i') . ' UTC$/m',
+            '/^Lapsed on .*' . $passesAt->setTimezone(new DateTimeZone('UTC'))->format('H:i') . ' UTC\.$/m',
             (string) $folake->getTextBody(),
             'the passing instant, not the send time, labelled UTC for an account with no zone',
         );
@@ -361,11 +361,11 @@ final class OwnerClaimTest extends ApiTestCase
 
         self::service(OwnerClaimHandler::class)->settleDue();
 
-        $mails = $this->mailsTitled("Bisi's claim to own Ìrè Events lapsed");
+        $mails = $this->mailsTitled('Bisi did not become the owner of Ìrè Events');
         self::assertEqualsCanonicalizing(['bisi@ire.events', 'folake@okafor.family'], Vec\map($mails, self::to(...)));
 
         foreach ($mails as $mail) {
-            self::assertStringContainsString("Nobody became the owner.\n\nBisi is no longer an administrator of Ìrè Events.\n\nClaimant:", (string) $mail->getTextBody());
+            self::assertStringContainsString("The claim lapsed.\n\nBisi is no longer an Administrator of Ìrè Events, so ownership did not pass.\n\nClaimant:", (string) $mail->getTextBody());
         }
     }
 
@@ -384,8 +384,8 @@ final class OwnerClaimTest extends ApiTestCase
         self::assertCount(2, $mails);
 
         foreach ($mails as $mail) {
-            self::assertStringContainsString('The DNS record was removed.', (string) $mail->getTextBody());
-            self::assertStringNotContainsString('no longer an administrator', (string) $mail->getTextBody());
+            self::assertStringContainsString('The DNS record was removed, so ownership did not pass.', (string) $mail->getTextBody());
+            self::assertStringNotContainsString('no longer an Administrator', (string) $mail->getTextBody());
         }
     }
 
@@ -401,10 +401,10 @@ final class OwnerClaimTest extends ApiTestCase
 
         self::service(OwnerClaimHandler::class)->settleDue();
 
-        $mails = $this->mailsTitled("bisi@ire.events's claim to own Ìrè Events lapsed");
+        $mails = $this->mailsTitled('bisi@ire.events did not become the owner of Ìrè Events');
         self::assertCount(2, $mails);
         self::assertStringContainsString(
-            "bisi@ire.events is no longer an administrator of Ìrè Events.\n\nClaimant: bisi@ire.events\n\nDomain:",
+            "bisi@ire.events is no longer an Administrator of Ìrè Events, so ownership did not pass.\n\nClaimant: bisi@ire.events\n\nDomain:",
             (string) $mails[0]->getTextBody(),
         );
     }
@@ -419,7 +419,7 @@ final class OwnerClaimTest extends ApiTestCase
         self::assertSame(1, self::service(OwnerClaimHandler::class)->settleDue());
 
         self::assertSame(OwnerClaimOutcome::Unfound, $this->claim($claim)->getOutcome());
-        self::assertCount(0, $this->mailsTitled('claim to own'));
+        self::assertCount(0, $this->mailsTitled('The claim lapsed'));
     }
 
     #[Test]
