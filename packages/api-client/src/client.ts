@@ -348,7 +348,8 @@ export interface OwnerClaim {
 /** The banner at the top of Members, only for an active Administrator while no Owner is active. */
 export interface OwnerClaimBanner {
   state: OwnerClaimState;
-  domains: string[];
+  /** The domain a claim by the reader is for; the organisation's own, which a refusal names, when their address is elsewhere. */
+  domain: string | null;
   claim: OwnerClaim | null;
   /** Once a claim is stopped, self-serve is closed for good. */
   stopped: { by: string; claimant: string; mine: boolean; at: TwoFactorDeadline } | null;
@@ -1416,12 +1417,10 @@ export class ApiClient {
     );
   }
 
-  /** Refused `owner_claim_address`, `owner_claim_managed`, `owner_claim_open` or `owner_claim_closed`. */
-  async startOwnerClaim(organisationId: string, domain: string): Promise<OwnerClaimBanner | null> {
+  /** For the domain of the caller's own address. Refused `owner_claim_address`, `owner_claim_managed`, `owner_claim_open` or `owner_claim_closed`. */
+  async startOwnerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
     return this.ownerClaimBanner(
-      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/owner-claim`, {
-        domain,
-      }),
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/owner-claim`, {}),
     );
   }
 
@@ -1439,7 +1438,7 @@ export class ApiClient {
     };
   }
 
-  /** By an Administrator or a suspended Owner. Refused `owner_claim_ended` once it has ended. */
+  /** By an Administrator other than the claimant, or a suspended Owner. Refused `owner_claim_own` for the claimant, `owner_claim_ended` once it has ended. */
   async stopOwnerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
     return this.ownerClaimBanner(
       await this.post<unknown>(
@@ -2621,11 +2620,11 @@ function asOwnerClaimBanner(raw: unknown): OwnerClaimBanner | undefined {
   const lapsedOutcome = oneOf(lapsed?.outcome, ['unfound', 'record_removed'] as const);
   const lapsedAt = asTwoFactorDeadline(lapsed?.at);
 
-  if (state == null || !Array.isArray(banner.domains) || claim === undefined) return undefined;
+  if (state == null || claim === undefined) return undefined;
 
   return {
     state,
-    domains: banner.domains.filter((domain): domain is string => typeof domain === 'string'),
+    domain: typeof banner.domain === 'string' ? banner.domain : null,
     claim,
     stopped:
       stopped != null && stoppedAt != null

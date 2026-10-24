@@ -10,7 +10,7 @@ const PASSES = { at: '2026-10-27T09:00:00+00:00', written: 'Tuesday 27 Oct at 10
 function banner(overrides: Record<string, unknown> = {}) {
   return {
     state: 'no_owner',
-    domains: ['ire.events'],
+    domain: 'ire.events',
     claim: null,
     stopped: null,
     lapsed: null,
@@ -82,7 +82,7 @@ describe('the Members banner while no owner is active (sc-6640)', () => {
     await waitFor(() => expect(container.querySelector('.owner-claim')).toBeNull());
   });
 
-  it('starts the claim with one press when the organisation has one domain, then shows the record', async () => {
+  it('starts the claim in one press, with no domain to pick, then shows the record', async () => {
     const sent = answering({
       [`GET ${PATH}`]: () => json({ ownerClaim: banner() }),
       [`POST ${PATH}`]: () =>
@@ -100,21 +100,7 @@ describe('the Members banner while no owner is active (sc-6640)', () => {
     expect(
       screen.getByText('We check every hour until Saturday 31 Oct at 10:00 WAT.'),
     ).toBeTruthy();
-    expect(sent.find((one) => one.line === `POST ${PATH}`)?.body).toEqual({ domain: 'ire.events' });
-  });
-
-  it('asks which domain when there are several, and sends nothing until one is chosen', async () => {
-    const sent = answering({
-      [`GET ${PATH}`]: () => json({ ownerClaim: banner({ domains: ['ire.events', 'ire.ng'] }) }),
-    });
-    open();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Become the owner' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Start the claim' }));
-
-    expect(await screen.findByText('Choose a domain.')).toBeTruthy();
-    expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'ire.events' }));
-    expect(sent.some((one) => one.line === `POST ${PATH}`)).toBe(false);
+    expect(sent.find((one) => one.line === `POST ${PATH}`)?.body).toEqual({});
   });
 
   it('says why when the claimant’s address is not at the domain', async () => {

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Organisation\OwnerClaims;
 
 use App\Audit\Auditor;
-use App\Domain\Organisation\DomainJoining\DomainNameNormaliser;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\Interfaces\TxtRecordLookupInterface;
 use App\Domain\Organisation\Members\MemberActions;
@@ -103,14 +102,29 @@ final readonly class OwnerClaimHandler
         );
     }
 
-    public function start(Organisation $organisation, User $by, string $typed): OwnerClaim
+    /** The claimant's own domain when the organisation lists it; otherwise the organisation's, proved first, which a refusal names. */
+    public function domainFor(Organisation $organisation, User $user): ?string
+    {
+        $listings = $this->organisationDomainRepository->findForOrganisation($organisation);
+        $own = JoinOfferFinder::domainFor($user);
+
+        if (Iter\any($listings, static fn (OrganisationDomain $listing): bool => $listing->getDomain() === $own)) {
+            return $own;
+        }
+
+        $proved = Vec\filter($listings, static fn (OrganisationDomain $listing): bool => null !== $listing->getProvedAt());
+
+        return (Iter\first($proved) ?? Iter\first($listings))?->getDomain();
+    }
+
+    public function start(Organisation $organisation, User $by): OwnerClaim
     {
         $this->settleDue($organisation);
 
-        return $this->entityManager->wrapInTransaction(function () use ($organisation, $by, $typed): OwnerClaim {
+        return $this->entityManager->wrapInTransaction(function () use ($organisation, $by): OwnerClaim {
             $this->entityManager->refresh($organisation, LockMode::PESSIMISTIC_WRITE);
             $this->mayClaim($organisation, $by);
-            $domain = $this->claimableDomain($organisation, $by, DomainNameNormaliser::normalise($typed));
+            $domain = $this->claimableDomain($organisation, $by);
             $now = $this->clock->now();
             $claim = new OwnerClaim($organisation, $by, $domain, self::VALUE_PREFIX . SecureRandom\string(32, self::VALUE_ALPHABET), $now);
             $claim->setCheckedAt($now);
@@ -158,6 +172,10 @@ final readonly class OwnerClaimHandler
 
         if (null === $this->administratorMembership($by, $organisation) && !$this->isSuspendedOwner($by, $organisation)) {
             throw new ApiException(ErrorCode::Forbidden, $this->translator->trans('owner_claims.who_may_stop'));
+        }
+
+        if (true === $this->ownerClaimRepository->findOpenIn($organisation)?->getClaimant()->getId()->equals($by->getId())) {
+            throw new ApiException(ErrorCode::OwnerClaimOwn, $this->translator->trans('owner_claims.own'));
         }
 
         $claim = $this->entityManager->wrapInTransaction(function () use ($organisation, $by): OwnerClaim {
@@ -280,19 +298,16 @@ final readonly class OwnerClaimHandler
         }
     }
 
-    private function claimableDomain(Organisation $organisation, User $by, string $domain): string
+    private function claimableDomain(Organisation $organisation, User $by): string
     {
-        $listed = Iter\any(
-            $this->organisationDomainRepository->findForOrganisation($organisation),
-            static fn (OrganisationDomain $listing): bool => $listing->getDomain() === $domain,
-        );
+        $domain = $this->domainFor($organisation, $by);
 
-        if (!$listed) {
-            throw ApiException::validation([[
-                'propertyPath' => 'domain',
-                'message' => $this->translator->trans('owner_claims.not_listed', ['{organisation}' => $organisation->getName()]),
-                'code' => ErrorCode::ValidationFailed->value,
-            ]]);
+        if (null === $domain) {
+            throw new ApiException(ErrorCode::OwnerClaimAddress);
+        }
+
+        if (JoinOfferFinder::domainFor($by) !== $domain) {
+            throw new ApiException(ErrorCode::OwnerClaimAddress, $this->translator->trans('owner_claims.address', ['{domain}' => $domain]));
         }
 
         $managedElsewhere = Iter\any(
@@ -302,10 +317,6 @@ final readonly class OwnerClaimHandler
 
         if ($managedElsewhere) {
             throw new ApiException(ErrorCode::OwnerClaimManaged, $this->translator->trans('owner_claims.managed', ['{domain}' => $domain]));
-        }
-
-        if (JoinOfferFinder::domainFor($by) !== $domain) {
-            throw new ApiException(ErrorCode::OwnerClaimAddress, $this->translator->trans('owner_claims.address', ['{domain}' => $domain]));
         }
 
         return $domain;

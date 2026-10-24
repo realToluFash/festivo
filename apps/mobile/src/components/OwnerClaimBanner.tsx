@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -101,9 +101,6 @@ function OwnerClaimCard({
 }) {
   const { t } = useTranslation();
   const view = ownerClaimView(banner, organisation);
-  const [picking, setPicking] = useState(false);
-  const [picked, setPicked] = useState<string | null>(null);
-  const [unpicked, setUnpicked] = useState(false);
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -112,12 +109,12 @@ function OwnerClaimCard({
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
   const { tone, mark } = TONES[view.tone];
 
-  async function start(domain: string): Promise<void> {
+  async function start(): Promise<void> {
     setBusy(true);
     setRefusal(null);
 
     try {
-      onBanner(await api.startOwnerClaim(organisationId, domain));
+      onBanner(await api.startOwnerClaim(organisationId));
     } catch (error) {
       if (
         error instanceof ApiError &&
@@ -129,7 +126,11 @@ function OwnerClaimCard({
       }
 
       const key = error instanceof ApiError ? ownerClaimRefusalKey(error.code) : null;
-      setRefusal(key != null ? t(key, { domain }) : t('ownerClaim.failed'));
+      setRefusal(
+        key != null && banner.domain != null
+          ? t(key, { domain: banner.domain })
+          : t('ownerClaim.failed'),
+      );
       setBusy(false);
     }
   }
@@ -174,27 +175,6 @@ function OwnerClaimCard({
     }
   }
 
-  function become(): void {
-    if (banner.domains.length > 1) {
-      setPicking(true);
-
-      return;
-    }
-
-    void start(banner.domains[0] ?? '');
-  }
-
-  function startPicked(): void {
-    if (picked == null) {
-      setUnpicked(true);
-      AccessibilityInfo.announceForAccessibility(t('ownerClaim.chooseDomain'));
-
-      return;
-    }
-
-    void start(picked);
-  }
-
   return (
     <View style={[cardFrame(kind), styles.card]} testID="ownerClaim.banner">
       <Notice tone={tone} mark={mark} title={words(view.title)} heading />
@@ -222,60 +202,13 @@ function OwnerClaimCard({
         </>
       )}
 
-      {view.become && !picking && (
+      {view.become && (
         <PrimaryButton
           label={t('ownerClaim.become')}
-          onPress={become}
+          onPress={() => void start()}
           busy={busy}
           testID="ownerClaim.become"
         />
-      )}
-
-      {view.become && picking && (
-        <View style={styles.picker} accessibilityRole="radiogroup">
-          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
-            {t('ownerClaim.pickTitle')}
-          </Text>
-          {banner.domains.map((domain) => (
-            <Pressable
-              key={domain}
-              style={styles.choice}
-              onPress={() => {
-                setPicked(domain);
-                setUnpicked(false);
-              }}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: picked === domain }}
-              testID={`ownerClaim.domain.${domain}`}
-            >
-              <View style={[styles.radio, picked === domain && styles.radioOn]} />
-              <Text size={tokens.typeBodyPhone.size} style={styles.wraps}>
-                {domain}
-              </Text>
-            </Pressable>
-          ))}
-          {unpicked && (
-            <Text size={tokens.typeBody.size} style={styles.error}>
-              {t('ownerClaim.chooseDomain')}
-            </Text>
-          )}
-          <View style={styles.actions}>
-            <PrimaryButton
-              label={t('ownerClaim.start')}
-              onPress={startPicked}
-              busy={busy}
-              testID="ownerClaim.start"
-            />
-            <SecondaryButton
-              label={t('ownerClaim.cancel')}
-              onPress={() => {
-                setPicking(false);
-                setRefusal(null);
-              }}
-              testID="ownerClaim.cancel"
-            />
-          </View>
-        </View>
       )}
 
       {view.stop && !confirming && !stopEnded && (
@@ -482,22 +415,6 @@ export function PausedOwnerClaim({
 const styles = StyleSheet.create({
   card: { gap: tokens.spaceLg },
   skeleton: { minHeight: 96, backgroundColor: tokens.colorInset },
-  picker: { gap: tokens.spaceSm },
-  choice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: tokens.spaceSm,
-    minHeight: 44,
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: tokens.colorInkSecondary,
-  },
-  radioOn: { borderWidth: 6, borderColor: tokens.colorAccent },
-  error: { color: tokens.colorBrokenText },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: tokens.spaceSm },
   confirm: {
     gap: tokens.spaceSm,

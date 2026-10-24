@@ -5,7 +5,7 @@ import {
   ownerClaimRefusalKey,
   ownerClaimView,
 } from '@soirely/domain';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -81,7 +81,6 @@ function OwnerClaimCard({
 }) {
   const { t } = useTranslation();
   const view = ownerClaimView(banner, organisation);
-  const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [refusal, setRefusal] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -89,12 +88,12 @@ function OwnerClaimCard({
   const [stopEnded, setStopEnded] = useState(false);
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
 
-  async function start(domain: string): Promise<void> {
+  async function start(): Promise<void> {
     setBusy(true);
     setRefusal(null);
 
     try {
-      onBanner(await api.startOwnerClaim(organisationId, domain));
+      onBanner(await api.startOwnerClaim(organisationId));
     } catch (error) {
       if (
         error instanceof ApiError &&
@@ -106,7 +105,11 @@ function OwnerClaimCard({
       }
 
       const key = error instanceof ApiError ? ownerClaimRefusalKey(error.code) : null;
-      setRefusal(key != null ? t(key, { domain }) : t('ownerClaim.failed'));
+      setRefusal(
+        key != null && banner.domain != null
+          ? t(key, { domain: banner.domain })
+          : t('ownerClaim.failed'),
+      );
       setBusy(false);
     }
   }
@@ -151,16 +154,6 @@ function OwnerClaimCard({
     }
   }
 
-  function become(): void {
-    if (banner.domains.length > 1) {
-      setPicking(true);
-
-      return;
-    }
-
-    void start(banner.domains[0] ?? '');
-  }
-
   return (
     <section className="card owner-claim" aria-labelledby="owner-claim-title">
       <div className="owner-claim-head">
@@ -200,29 +193,17 @@ function OwnerClaimCard({
         </>
       )}
 
-      {view.become && !picking && (
+      {view.become && (
         <div className="actions">
           <button
             type="button"
             className="button button-primary"
             aria-busy={busy}
-            onClick={() => !busy && become()}
+            onClick={() => !busy && void start()}
           >
             {t('ownerClaim.become')}
           </button>
         </div>
-      )}
-
-      {view.become && picking && (
-        <DomainPicker
-          domains={banner.domains}
-          busy={busy}
-          onStart={(domain) => void start(domain)}
-          onCancel={() => {
-            setPicking(false);
-            setRefusal(null);
-          }}
-        />
       )}
 
       {view.stop && !confirming && !stopEnded && (
@@ -286,73 +267,6 @@ function OwnerClaimCard({
 
       <p className="muted owner-claim-keeps">{words(OWNER_CLAIM_KEEPS_WORKING)}</p>
     </section>
-  );
-}
-
-function DomainPicker({
-  domains,
-  busy,
-  onStart,
-  onCancel,
-}: {
-  domains: string[];
-  busy: boolean;
-  onStart: (domain: string) => void;
-  onCancel: () => void;
-}) {
-  const { t } = useTranslation();
-  const [picked, setPicked] = useState<string | null>(null);
-  const [unpicked, setUnpicked] = useState(false);
-  const first = useRef<HTMLInputElement>(null);
-
-  function submit(event: FormEvent): void {
-    event.preventDefault();
-
-    if (picked == null) {
-      setUnpicked(true);
-      first.current?.focus();
-
-      return;
-    }
-
-    onStart(picked);
-  }
-
-  return (
-    <form className="owner-claim-picker" onSubmit={submit} noValidate>
-      <fieldset aria-describedby={unpicked ? 'owner-claim-unpicked' : undefined}>
-        <legend>{t('ownerClaim.pickTitle')}</legend>
-        {domains.map((domain, index) => (
-          <label key={domain} className="members-role">
-            <input
-              ref={index === 0 ? first : undefined}
-              type="radio"
-              name="owner-claim-domain"
-              value={domain}
-              checked={picked === domain}
-              onChange={() => {
-                setPicked(domain);
-                setUnpicked(false);
-              }}
-            />
-            {domain}
-          </label>
-        ))}
-        {unpicked && (
-          <p id="owner-claim-unpicked" className="field-error">
-            {t('ownerClaim.chooseDomain')}
-          </p>
-        )}
-      </fieldset>
-      <div className="actions">
-        <button type="submit" className="button button-primary" aria-busy={busy} disabled={busy}>
-          {t('ownerClaim.start')}
-        </button>
-        <button type="button" className="button" onClick={onCancel}>
-          {t('ownerClaim.cancel')}
-        </button>
-      </div>
-    </form>
   );
 }
 

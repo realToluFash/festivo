@@ -80,5 +80,6 @@
     "owner_claim_open": "Une autre personne est déjà en train de devenir propriétaire de cette organisation.",
     "owner_claim_closed": "La propriété doit être rétablie par l’assistance Soirely.",
     "owner_claim_ended": "Cette demande est déjà terminée.",
-    "owner_claim_unavailable": "Cette organisation a un propriétaire actif."
+    "owner_claim_unavailable": "Cette organisation a un propriétaire actif.",
+    "owner_claim_own": "Vous ne pouvez pas arrêter votre propre demande."
 }

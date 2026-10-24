@@ -2548,12 +2548,6 @@ span {
   word-break: break-all;
 }
 
-.owner-claim-picker fieldset {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
 .members-chips {
   display: flex;
   flex-wrap: wrap;

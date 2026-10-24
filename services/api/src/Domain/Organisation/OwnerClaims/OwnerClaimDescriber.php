@@ -6,16 +6,13 @@ namespace App\Domain\Organisation\OwnerClaims;
 
 use App\Domain\User\Mail\UserMailer;
 use App\Entity\Organisation;
-use App\Entity\OrganisationDomain;
 use App\Entity\OwnerClaim;
 use App\Entity\User;
-use App\Repository\OrganisationDomainRepository;
 use App\Repository\OwnerClaimRepository;
 use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Psl\Str;
-use Psl\Vec;
 
 /** The banner at the top of Members (sc-6640), each instant written in the reader's own zone as sc-868 writes it. */
 final readonly class OwnerClaimDescriber
@@ -23,7 +20,6 @@ final readonly class OwnerClaimDescriber
     public function __construct(
         private OwnerClaimHandler $ownerClaimHandler,
         private OwnerClaimRepository $ownerClaimRepository,
-        private OrganisationDomainRepository $organisationDomainRepository,
         private UserMailer $userMailer,
     ) {
     }
@@ -58,10 +54,7 @@ final readonly class OwnerClaimDescriber
                 null === $open->getFoundAt() => 'open',
                 default => 'found',
             },
-            'domains' => Vec\map(
-                $this->organisationDomainRepository->findForOrganisation($organisation),
-                static fn (OrganisationDomain $listing): string => $listing->getDomain(),
-            ),
+            'domain' => $this->ownerClaimHandler->domainFor($organisation, $reader),
             'claim' => null === $open ? null : $this->claim($open, $reader, $written),
             'stopped' => null === $stop ? null : [
                 'by' => self::named($stop->getStoppedBy()),

@@ -50,6 +50,7 @@ enum ErrorCode: string
     case OwnerClaimClosed = 'owner_claim_closed';
     case OwnerClaimEnded = 'owner_claim_ended';
     case OwnerClaimUnavailable = 'owner_claim_unavailable';
+    case OwnerClaimOwn = 'owner_claim_own';
 
     case Unauthenticated = 'unauthenticated';
     case InvalidCredentials = 'invalid_credentials';
@@ -113,7 +114,7 @@ enum ErrorCode: string
             self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress => 409,
             self::InvitationNotFound, self::RequestLinkDead => 404,
             self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
-            self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable => 409,
+            self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn => 409,
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
             self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,

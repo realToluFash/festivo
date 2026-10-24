@@ -80,5 +80,6 @@
     "owner_claim_open": "Outra pessoa já está a tornar-se proprietária desta organização.",
     "owner_claim_closed": "A propriedade tem de ser reposta pelo apoio da Soirely.",
     "owner_claim_ended": "Este pedido já terminou.",
-    "owner_claim_unavailable": "Esta organização tem um proprietário ativo."
+    "owner_claim_unavailable": "Esta organização tem um proprietário ativo.",
+    "owner_claim_own": "Você não pode interromper a sua própria reivindicação."
 }

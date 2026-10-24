@@ -296,11 +296,14 @@ else `GET /api/orgs/{id}/members` leaves them out entirely.
 
 - `GET /api/orgs/{id}/owner-claim` (`members.read`) answers `{ownerClaim}`: `null` unless
   the caller is an active Administrator and every Owner is `suspended`. Otherwise
-  `{state, domains, claim, stopped, lapsed}`, `state` one of `no_owner`, `open` (record not
+  `{state, domain, claim, stopped, lapsed}`, `state` one of `no_owner`, `open` (record not
   found), `found` and `closed` (a claim was stopped: self-serve is over for good). `claim`
   carries `record` (`{type, name, value}`) for the claimant alone, and every instant as
-  `{at, written}` in the caller's zone.
-- `POST /api/orgs/{id}/owner-claim` takes `domain` and answers `201` with the banner. Refused
+  `{at, written}` in the caller's zone. `domain` is the one the caller's claim would be for:
+  their verified primary address's, when the organisation lists it; otherwise the
+  organisation's own (proved first), which the address refusal names.
+- `POST /api/orgs/{id}/owner-claim` takes no body: the claim is for the domain of the caller's
+  verified primary address. It answers `201` with the banner. Refused
   `409 owner_claim_address` (the caller's verified primary address is elsewhere),
   `owner_claim_managed` (another organisation proved it), `owner_claim_open`,
   `owner_claim_closed`, `owner_claim_unavailable` (an Owner is active), or `403` for anybody
@@ -308,7 +311,8 @@ else `GET /api/orgs/{id}/members` leaves them out entirely.
 - `POST …/owner-claim/check` looks the claimant's record up at once and answers the banner
   with `found`. `POST …/owner-claim/stop` is any signed-in account's route, allowed to an
   active Administrator or a suspended Owner (who reads the claim as `paused[].ownerClaim` on
-  `GET /api/orgs`); `409 owner_claim_ended` once it has ended.
+  `GET /api/orgs`), never to the claimant (`409 owner_claim_own`); `409 owner_claim_ended`
+  once it has ended.
 - `app:owner-claims:run` (every minute) passes a claim at `found + 72 h` if the record is
   still published there, lapses it at that instant if not, lapses an unfound one at
   `started + 7 × 24 h`, and looks an unfound record up hourly. The banner, Members and the

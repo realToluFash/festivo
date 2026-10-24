@@ -9,6 +9,7 @@ use App\Domain\Organisation\Members\MembershipMachine;
 use App\Domain\Organisation\OrganisationFounder;
 use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup;
+use App\Domain\Organisation\Roles\RoleAssignment;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\EmailAddress;
@@ -65,7 +66,7 @@ final class OwnerClaimTest extends ApiTestCase
 
         $this->signIn($administrator);
         self::assertSame('no_owner', $this->banner($organisation)['state'] ?? null);
-        self::assertSame(['ire.events'], $this->banner($organisation)['domains'] ?? null);
+        self::assertSame('ire.events', $this->banner($organisation)['domain'] ?? null);
 
         $this->signIn($reader);
         self::assertNull($this->send('GET', $this->claimPath($organisation))['ownerClaim'], 'a member who is not an Administrator');
@@ -85,12 +86,13 @@ final class OwnerClaimTest extends ApiTestCase
         $this->join($organisation, $outsider, SeededRole::Administrator);
         $this->signIn($outsider);
 
-        $body = $this->send('POST', $this->claimPath($organisation), ['domain' => 'ire.events']);
+        $body = $this->send('POST', $this->claimPath($organisation));
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(ErrorCode::OwnerClaimAddress->type(), $body['type'] ?? null);
         self::assertSame('To become the owner, your main address must be at ire.events.', $body['detail'] ?? null);
         self::assertNull(self::service(OwnerClaimRepository::class)->findOpenIn($organisation));
+        self::assertSame('ire.events', $this->banner($organisation)['domain'] ?? null, 'the banner names the organisation\'s domain, as the refusal does');
     }
 
     #[Test]
@@ -101,7 +103,7 @@ final class OwnerClaimTest extends ApiTestCase
         $this->list($prover, 'ire.events')->setProvedAt(new DateTimeImmutable());
         $this->signIn($administrator);
 
-        $body = $this->send('POST', $this->claimPath($organisation), ['domain' => 'ire.events']);
+        $body = $this->send('POST', $this->claimPath($organisation));
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(ErrorCode::OwnerClaimManaged->type(), $body['type'] ?? null);
@@ -114,12 +116,12 @@ final class OwnerClaimTest extends ApiTestCase
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
         $this->signIn($administrator);
 
-        $banner = $this->bannerOf($this->send('POST', $this->claimPath($organisation), ['domain' => 'ire.events']));
+        $banner = $this->bannerOf($this->send('POST', $this->claimPath($organisation)));
 
         self::assertResponseStatusCodeSame(201);
         self::assertSame('open', $banner['state']);
         // The keys the clients read (packages/api-client asOwnerClaimBanner), so a rename here fails here.
-        self::assertSame(['state', 'domains', 'claim', 'stopped', 'lapsed'], Vec\keys($banner));
+        self::assertSame(['state', 'domain', 'claim', 'stopped', 'lapsed'], Vec\keys($banner));
         self::assertSame(
             ['id', 'claimant', 'mine', 'domain', 'record', 'startedAt', 'lapsesAt', 'foundAt', 'passesAt'],
             Vec\keys(Type\dict(Type\string(), Type\mixed())->coerce($banner['claim'])),
@@ -168,7 +170,7 @@ final class OwnerClaimTest extends ApiTestCase
         $this->started($organisation, $administrator);
         $this->signIn($other);
 
-        $body = $this->send('POST', $this->claimPath($organisation), ['domain' => 'ire.events']);
+        $body = $this->send('POST', $this->claimPath($organisation));
 
         self::assertResponseStatusCodeSame(409);
         self::assertSame(ErrorCode::OwnerClaimOpen->type(), $body['type'] ?? null);
@@ -178,6 +180,33 @@ final class OwnerClaimTest extends ApiTestCase
         self::assertFalse($claim['mine']);
         self::assertNull($claim['record'], 'only the claimant is shown the record');
         self::assertSame('Bisi', $claim['claimant']['name']);
+    }
+
+    #[Test]
+    public function theOtherAdministratorSeesTheLapseUntilTheRecordIsFoundAndThePassingInstantAfter(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $other = $this->member('kemi@ire.events', 'Kemi');
+        $this->join($organisation, $other, SeededRole::Administrator);
+        $claim = $this->started($organisation, $administrator);
+        $instants = Type\shape(['lapsesAt' => Type\shape(['at' => Type\string()], true), 'passesAt' => Type\nullable(Type\shape(['at' => Type\string()], true))], true);
+        $this->signIn($other);
+
+        $before = $this->banner($organisation);
+        self::assertSame('open', $before['state']);
+        $waiting = $instants->coerce($before['claim']);
+        self::assertSame($claim->getLapsesAt()->format(\DATE_ATOM), $waiting['lapsesAt']['at']);
+        self::assertNull($waiting['passesAt']);
+
+        $this->signIn($administrator);
+        ScriptedTxtRecordLookup::publish(self::RECORD, $claim->getRecordValue());
+        $this->send('POST', $this->claimPath($organisation) . '/check');
+        $found = $this->claim($claim);
+        $this->signIn($other);
+
+        $after = $this->banner($organisation);
+        self::assertSame('found', $after['state']);
+        self::assertSame($found->getPassesAt()?->format(\DATE_ATOM), $instants->coerce($after['claim'])['passesAt']['at'] ?? null);
     }
 
     #[Test]
@@ -268,6 +297,41 @@ final class OwnerClaimTest extends ApiTestCase
     }
 
     #[Test]
+    public function theClaimantIsNoLongerAnActiveAdministratorAtThePassingInstantAndTheClaimLapses(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $claim = $this->found($organisation, $administrator, '-72 hours -1 minute');
+        $readOnly = Type\instance_of(Role::class)->coerce(
+            self::service(EntityManagerInterface::class)->getRepository(Role::class)->findOneBy(['organisation' => $organisation, 'seededAs' => SeededRole::ReadOnly]),
+        );
+        self::service(RoleAssignment::class)->assign($this->membershipOf($administrator, $organisation), $readOnly);
+        self::service(EntityManagerInterface::class)->flush();
+
+        self::assertSame(1, self::service(OwnerClaimHandler::class)->settleDue());
+
+        $lapsed = $this->claim($claim);
+        self::assertSame(OwnerClaimOutcome::ClaimantGone, $lapsed->getOutcome());
+        self::assertEquals($lapsed->getPassesAt(), $lapsed->getEndedAt());
+        self::assertFalse($this->membershipOf($administrator, $organisation)->getRole()->isOwner());
+        self::assertCount(0, $this->mailsTitled('is now the owner of Ìrè Events'));
+    }
+
+    #[Test]
+    public function theClaimantCannotStopTheirOwnClaim(): void
+    {
+        [, $organisation, $administrator] = $this->onlyOwnerSuspended();
+        $claim = $this->found($organisation, $administrator, '-1 hour');
+
+        $body = $this->send('POST', $this->claimPath($organisation) . '/stop');
+
+        self::assertResponseStatusCodeSame(409);
+        self::assertSame(ErrorCode::OwnerClaimOwn->type(), $body['type'] ?? null);
+        self::assertSame("You can't stop your own claim.", $body['detail'] ?? null);
+        self::assertTrue($this->claim($claim)->isOpen());
+        self::assertNull(self::service(OwnerClaimRepository::class)->findStopIn($organisation), 'the way stays open');
+    }
+
+    #[Test]
     public function anAdministratorStopsTheClaimAndTheWayIsClosed(): void
     {
         [, $organisation, $administrator] = $this->onlyOwnerSuspended();
@@ -286,7 +350,7 @@ final class OwnerClaimTest extends ApiTestCase
         self::assertCount(3, $this->mailsTitled("Kemi stopped Bisi's claim to own Ìrè Events"), 'both Administrators and the suspended owner were told before');
 
         $this->signIn($administrator);
-        $body = $this->send('POST', $this->claimPath($organisation), ['domain' => 'ire.events']);
+        $body = $this->send('POST', $this->claimPath($organisation));
         self::assertResponseStatusCodeSame(409);
         self::assertSame(ErrorCode::OwnerClaimClosed->type(), $body['type'] ?? null);
         self::assertSame('Ownership has to be restored by Soirely support.', $body['detail'] ?? null);
@@ -382,7 +446,7 @@ final class OwnerClaimTest extends ApiTestCase
     private function started(Organisation $organisation, User $administrator): OwnerClaim
     {
         $this->signIn($administrator);
-        $this->send('POST', $this->claimPath($organisation), ['domain' => 'ire.events']);
+        $this->send('POST', $this->claimPath($organisation));
         self::assertResponseStatusCodeSame(201);
 
         return $this->openClaim($organisation);

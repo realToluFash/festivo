@@ -2288,15 +2288,15 @@ describe('claiming an organisation with no active owner (sc-6640)', () => {
   };
 
   test('reads the banner with the claimant’s record', async () => {
-    const banner = { state: 'open', domains: ['ire.events'], claim, stopped: null, lapsed: null };
+    const banner = { state: 'open', domain: 'ire.events', claim, stopped: null, lapsed: null };
     const { client, sent } = answering({ ownerClaim: banner });
 
-    expect(await client.startOwnerClaim('org_1', 'ire.events')).toEqual(banner);
+    expect(await client.startOwnerClaim('org_1')).toEqual(banner);
     expect(sent).toEqual([
       {
         url: 'http://api.test/api/orgs/org_1/owner-claim',
         method: 'POST',
-        body: { domain: 'ire.events' },
+        body: {},
       },
     ]);
   });
@@ -2311,7 +2311,7 @@ describe('claiming an organisation with no active owner (sc-6640)', () => {
   test('says whether Check record found it', async () => {
     const banner = {
       state: 'found',
-      domains: [],
+      domain: 'ire.events',
       claim: { ...claim, foundAt: when, passesAt: when },
       stopped: null,
       lapsed: null,
