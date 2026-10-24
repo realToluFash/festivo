@@ -1927,10 +1927,6 @@ span {
   white-space: nowrap;
 }
 
-.roles-pick-name > span {
-  flex: none;
-}
-
 .roles-detail {
   display: flex;
   flex: 3 1 32rem;
@@ -2227,8 +2223,10 @@ span {
   gap: var(--spaceSm);
 }
 
+/* Text on web breaks words anywhere; a pill's never break, so what is beside it gives way. */
 .pill-quiet {
   display: inline-flex;
+  flex: none;
   align-items: center;
   height: var(--sizePill);
   padding: 0 var(--spaceMd);
@@ -2236,6 +2234,7 @@ span {
   background: var(--colorInset);
   color: var(--colorInkSecondary);
   font: var(--typePill);
+  white-space: nowrap;
 }
 
 /* ── A notice that can be put away ─────────────────────────────────────────── */
