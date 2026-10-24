@@ -1380,6 +1380,66 @@ describe('suspending and restoring a member', () => {
     ).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();
   });
+
+  it('offers no role change on a member suspended through the company domain (sc-9549)', async () => {
+    const suspended = {
+      ...LIST,
+      members: [
+        LIST.members[0],
+        {
+          ...LIST.members[1],
+          status: 'suspended',
+          channel: 'domain',
+          suspension: {
+            reason: 'domain_closed',
+            domain: 'ire.events',
+            since: { at: '2026-10-17T13:20:00+00:00', written: 'Saturday, Oct 17 at 14:20 WAT' },
+            removesAt: { at: '2026-11-16T13:20:00+00:00', written: 'Monday, Nov 16 at 14:20 WAT' },
+            onlyOwner: false,
+          },
+        },
+      ],
+      invitations: [],
+    };
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(suspended) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+    expect(screen.getByText(/Their role is kept while they're suspended/)).toBeDefined();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Pick a different role' })).toBeNull();
+  });
+
+  it('reloads and says why when a role change meets a member suspended meanwhile (sc-9549)', async () => {
+    signedIn();
+    let reloaded = false;
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(reloaded ? SUSPENDED_BISI : ACTIVE_BISI)),
+      'PATCH /api/orgs/org_1/members/m_bisi': () => {
+        reloaded = true;
+        return json(
+          { type: 'https://soirely.com/errors/conflict', title: 'Conflict', status: 409 },
+          409,
+        );
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Read-only/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change their role to Read-only' }));
+
+    expect(
+      await screen.findByText(
+        "Someone else changed the access for Bisi Adeyemi while this page was open, so your change wasn't made. This is how it stands now.",
+      ),
+    ).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();
+    expect(screen.queryByRole('radio')).toBeNull();
+  });
 });
 
 describe('the dates the server wrote after a language change (sc-9267)', () => {

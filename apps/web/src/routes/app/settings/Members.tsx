@@ -744,7 +744,7 @@ function MemberDetail({
               <p className="muted">{t('membersScreen.askOwner', { name: member.user.name })}</p>
             )}
           </>
-        ) : byHand && standing === 'manageable' ? (
+        ) : member.status === 'suspended' && standing === 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
             <p className="muted">{t('membersScreen.roleKeptWhileSuspended')}</p>
@@ -762,6 +762,7 @@ function MemberDetail({
             member={member}
             roles={roles}
             onChanged={onChanged}
+            onChangedElsewhere={changedElsewhere}
           />
         )}
       </section>
@@ -1357,11 +1358,13 @@ function RolePicker({
   member,
   roles,
   onChanged,
+  onChangedElsewhere,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   roles: OrganisationRole[];
   onChanged: (list: MembersList) => void;
+  onChangedElsewhere: () => void;
 }) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(member.role.id);
@@ -1395,7 +1398,13 @@ function RolePicker({
       setDone(t('membersScreen.roleChanged', { name: member.user.name, role: roleName(t, role) }));
       onChanged(await api.members(organisation.id));
     } catch (error) {
-      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+      if (error instanceof ApiError && error.status === 409) {
+        onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+      }
     } finally {
       setBusy(false);
     }
