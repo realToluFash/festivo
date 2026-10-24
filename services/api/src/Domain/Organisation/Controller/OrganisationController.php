@@ -8,6 +8,7 @@ use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\Http\OrganisationSerialiser;
 use App\Domain\Organisation\OrganisationCreator;
 use App\Domain\Organisation\OrganisationRules;
+use App\Domain\Organisation\OwnerClaims\OwnerClaimDescriber;
 use App\Domain\Organisation\SignInRules\SignInRules;
 use App\Entity\Membership;
 use App\Entity\User;
@@ -43,10 +44,11 @@ final readonly class OrganisationController
         private SignInRules $signInRules,
         private OrganisationCreator $organisationCreator,
         private DomainSuspender $domainSuspender,
+        private OwnerClaimDescriber $ownerClaimDescriber,
     ) {
     }
 
-    /** Each organisation the caller is an active member of, with their role in it, and those their access to is paused in (sc-564). */
+    /** Each organisation the caller is an active member of, with their role in it, and those their access to is paused in (sc-564), with any claim to own it a suspended Owner may stop (sc-6640). */
     #[Route('/api/orgs', name: 'orgs_list', methods: ['GET'])]
     #[Authenticated]
     public function list(): JsonResponse
@@ -70,6 +72,7 @@ final readonly class OrganisationController
                 fn (Membership $membership): array => [
                     ...OrganisationSerialiser::organisation($membership->getOrganisation()),
                     'suspension' => $user instanceof User ? $this->domainSuspender->describe($membership, $user) : null,
+                    'ownerClaim' => $user instanceof User ? $this->ownerClaimDescriber->forSuspendedOwner($membership->getOrganisation(), $user) : null,
                 ],
             ),
         ]);

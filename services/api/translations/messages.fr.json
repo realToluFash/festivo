@@ -97,5 +97,15 @@
     "request_link.dead": "Ce lien ne fonctionne plus. Demandez-en un nouveau à l’organisation.",
     "request_link.member": "Vous faites déjà partie de {organisation}.",
     "request_link.message_long": "Raccourcissez votre message à {count} caractères maximum.",
-    "request_link.waiting": "Votre demande d’adhésion à {organisation} attend déjà une réponse."
+    "request_link.waiting": "Votre demande d’adhésion à {organisation} attend déjà une réponse.",
+    "owner_claims.address": "To become the owner, your main address must be at {domain}.",
+    "owner_claims.managed": "{domain} is managed by another organisation. Contact Soirely support.",
+    "owner_claims.open": "{claimant} is already becoming the owner.",
+    "owner_claims.closed": "Ownership has to be restored by Soirely support.",
+    "owner_claims.ended": "This claim has already ended.",
+    "owner_claims.nothing_to_stop": "This claim has already ended, so there was nothing to stop.",
+    "owner_claims.has_owner": "{organisation} has an active owner.",
+    "owner_claims.administrators_only": "Only an Administrator can become the owner.",
+    "owner_claims.own": "You can't stop your own claim.",
+    "owner_claims.who_may_stop": "Only an Administrator or a suspended owner can stop this claim."
 }

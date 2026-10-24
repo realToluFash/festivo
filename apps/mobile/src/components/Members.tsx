@@ -39,6 +39,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
 import { useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -163,6 +164,14 @@ export function MemberList({
 
   return (
     <View style={styles.stack}>
+      {organisation.role.seededAs === 'administrator' && (
+        <OwnerClaimBanner
+          kind={kind}
+          organisationId={organisation.id}
+          organisation={organisation.name}
+        />
+      )}
+
       {flash != null && (
         <View accessibilityLiveRegion="polite">
           <Notice

@@ -10,6 +10,7 @@ import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { Notice } from './Notice.tsx';
+import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
 import { Screen } from './Screen.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text } from './Text.tsx';
@@ -67,6 +68,13 @@ export function AccessPaused({
               body={t('accessPaused.removedBy', { ...named, when: suspension.removesAt.written })}
             />
           )
+        )}
+        {paused.ownerClaim != null && (
+          <PausedOwnerClaim
+            organisationId={paused.id}
+            organisation={paused.name}
+            claim={paused.ownerClaim}
+          />
         )}
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
           {t('accessPaused.nextTitle')}

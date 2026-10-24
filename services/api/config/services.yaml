@@ -68,6 +68,12 @@ services:
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
 
+    # One adapter behind the port; in development it reaches the DNS mock, where a record can be published.
+    App\Integrations\Dns\DnsOverHttpsTxtLookup:
+        arguments:
+            $endpoint: '%env(DNS_TXT_ENDPOINT)%'
+    App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Integrations\Dns\DnsOverHttpsTxtLookup'
+
     # One adapter behind the port; in development it reaches the SMS mock.
     App\Integrations\Twilio\TwilioTextMessageSender:
         arguments:
@@ -151,6 +157,9 @@ services:
     App\Domain\Organisation\DomainJoining\DomainSuspensionMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\OwnerClaims\OwnerClaimMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Organisation\SignInRules\SignInRulesMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
@@ -202,6 +211,9 @@ when@test:
         # "this password is in a breach" assertable at all: the real corpus is
         # somebody else's data and could answer differently tomorrow.
         App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Domain\User\Password\ScriptedBreachedPasswordChecker'
+
+        # No test asks real DNS: a test publishes the record it means to be found.
+        App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup'
 
         # No test reaches a provider; the suite signs its own tokens and can rotate the key.
         App\Tests\Fixtures\OpenIdConnect\TestSigningKeys:

@@ -74,5 +74,12 @@
     "request_link_dead": "Este enlace ya no funciona. Pida uno nuevo a la organización.",
     "join_request_waiting": "Su solicitud para unirse ya está pendiente de respuesta.",
     "join_request_cooling_off": "Todavía no puede volver a solicitar unirse a esta organización.",
-    "join_request_answered": "Esta solicitud ya tiene respuesta o se ha retirado."
+    "join_request_answered": "Esta solicitud ya tiene respuesta o se ha retirado.",
+    "owner_claim_address": "Para convertirse en propietario, su dirección principal debe ser del dominio de la organización.",
+    "owner_claim_managed": "Ese dominio lo gestiona otra organización. Póngase en contacto con el soporte de Soirely.",
+    "owner_claim_open": "Otra persona ya está en proceso de convertirse en propietaria de esta organización.",
+    "owner_claim_closed": "La propiedad debe restablecerla el soporte de Soirely.",
+    "owner_claim_ended": "Esta solicitud ya ha terminado.",
+    "owner_claim_unavailable": "Esta organización tiene un propietario activo.",
+    "owner_claim_own": "No puedes detener tu propia solicitud."
 }

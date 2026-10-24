@@ -326,6 +326,33 @@ export interface DomainSuspension {
 /** An organisation the account's access to is paused in: no grant at all, only why. */
 export interface PausedOrganisation extends Organisation {
   suspension: DomainSuspension;
+  /** An open claim to own it, for a suspended Owner to stop (sc-6640). */
+  ownerClaim: OwnerClaim | null;
+}
+
+export type OwnerClaimState = 'no_owner' | 'open' | 'found' | 'closed';
+
+/** An Administrator becoming the owner while no Owner is active (sc-6640); each instant as the reader writes it. */
+export interface OwnerClaim {
+  id: string;
+  claimant: { id: string; name: string; email: string | null };
+  mine: boolean;
+  domain: string;
+  record: { type: 'TXT'; name: string; value: string } | null;
+  startedAt: TwoFactorDeadline;
+  lapsesAt: TwoFactorDeadline;
+  foundAt: TwoFactorDeadline | null;
+  passesAt: TwoFactorDeadline | null;
+}
+
+/** The banner at the top of Members, only for an active Administrator while no Owner is active. */
+export interface OwnerClaimBanner {
+  state: OwnerClaimState;
+  domain: string | null;
+  claim: OwnerClaim | null;
+  /** Once a claim is stopped, self-serve is closed for good. */
+  stopped: { by: string; claimant: string; mine: boolean; at: TwoFactorDeadline } | null;
+  lapsed: { outcome: 'unfound' | 'record_removed'; at: TwoFactorDeadline } | null;
 }
 
 export interface TwoFactorDue extends TwoFactorDeadline {
@@ -1380,6 +1407,57 @@ export class ApiClient {
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
       { method: 'DELETE' },
     );
+  }
+
+  /** Null for anybody the banner is not shown to (sc-6640). */
+  async ownerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/owner-claim`),
+    );
+  }
+
+  /** For the domain of the caller's own address. Refused `owner_claim_address`, `owner_claim_managed`, `owner_claim_open` or `owner_claim_closed`. */
+  async startOwnerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/owner-claim`, {}),
+    );
+  }
+
+  async checkOwnerClaim(
+    organisationId: string,
+  ): Promise<{ ownerClaim: OwnerClaimBanner | null; found: boolean }> {
+    const raw = await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/check`,
+      {},
+    );
+
+    return {
+      ownerClaim: this.ownerClaimBanner(raw),
+      found: (raw as Record<string, unknown> | null)?.found === true,
+    };
+  }
+
+  /** By an Administrator other than the claimant, or a suspended Owner. Refused `owner_claim_own` for the claimant, `owner_claim_ended` once it has ended. */
+  async stopOwnerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/stop`,
+        {},
+      ),
+    );
+  }
+
+  private ownerClaimBanner(raw: unknown): OwnerClaimBanner | null {
+    const body = (raw ?? {}) as Record<string, unknown>;
+    const banner = body.ownerClaim === null ? null : asOwnerClaimBanner(body.ownerClaim);
+
+    if (banner === undefined) {
+      throw new Error(
+        'The API answered an owner claim in a shape this client does not know. Check OwnerClaimDescriber in services/api.',
+      );
+    }
+
+    return banner;
   }
 
   /** Refused `restore_needs_address` while an address that went is not back, verified and primary (sc-564). */
@@ -2486,8 +2564,79 @@ function asDomainSuspension(raw: unknown): DomainSuspension | null {
 function asPausedOrganisation(raw: unknown): PausedOrganisation | null {
   const organisation = asOrganisation(raw);
   const suspension = asDomainSuspension((raw as Record<string, unknown> | null)?.suspension);
+  const claim = (raw as Record<string, unknown> | null)?.ownerClaim;
+  const ownerClaim = claim == null ? null : asOwnerClaim(claim);
 
-  return organisation == null || suspension == null ? null : { ...organisation, suspension };
+  return organisation == null || suspension == null || ownerClaim === undefined
+    ? null
+    : { ...organisation, suspension, ownerClaim };
+}
+
+const OWNER_CLAIM_STATES: readonly OwnerClaimState[] = ['no_owner', 'open', 'found', 'closed'];
+
+/** `undefined` for a shape this client does not know, so it is never read as no claim. */
+function asOwnerClaim(raw: unknown): OwnerClaim | undefined {
+  const claim = (raw ?? {}) as Record<string, unknown>;
+  const claimant = (claim.claimant ?? {}) as Record<string, unknown>;
+  const record = claim.record as Record<string, unknown> | null | undefined;
+  const startedAt = asTwoFactorDeadline(claim.startedAt);
+  const lapsesAt = asTwoFactorDeadline(claim.lapsesAt);
+
+  if (
+    typeof claim.id !== 'string' ||
+    typeof claimant.id !== 'string' ||
+    typeof claimant.name !== 'string' ||
+    typeof claim.domain !== 'string' ||
+    startedAt == null ||
+    lapsesAt == null
+  ) {
+    return undefined;
+  }
+
+  return {
+    id: claim.id,
+    claimant: { id: claimant.id, name: claimant.name, email: stringOrNull(claimant.email) },
+    mine: claim.mine === true,
+    domain: claim.domain,
+    record:
+      typeof record?.name === 'string' && typeof record.value === 'string'
+        ? { type: 'TXT', name: record.name, value: record.value }
+        : null,
+    startedAt,
+    lapsesAt,
+    foundAt: asTwoFactorDeadline(claim.foundAt),
+    passesAt: asTwoFactorDeadline(claim.passesAt),
+  };
+}
+
+function asOwnerClaimBanner(raw: unknown): OwnerClaimBanner | undefined {
+  const banner = (raw ?? {}) as Record<string, unknown>;
+  const state = oneOf(banner.state, OWNER_CLAIM_STATES);
+  const claim = banner.claim == null ? null : asOwnerClaim(banner.claim);
+  const stopped = banner.stopped as Record<string, unknown> | null | undefined;
+  const stoppedAt = asTwoFactorDeadline(stopped?.at);
+  const lapsed = banner.lapsed as Record<string, unknown> | null | undefined;
+  const lapsedOutcome = oneOf(lapsed?.outcome, ['unfound', 'record_removed'] as const);
+  const lapsedAt = asTwoFactorDeadline(lapsed?.at);
+
+  if (state == null || claim === undefined) return undefined;
+
+  return {
+    state,
+    domain: typeof banner.domain === 'string' ? banner.domain : null,
+    claim,
+    stopped:
+      stopped != null && stoppedAt != null
+        ? {
+            by: typeof stopped.by === 'string' ? stopped.by : '',
+            claimant: typeof stopped.claimant === 'string' ? stopped.claimant : '',
+            mine: stopped.mine === true,
+            at: stoppedAt,
+          }
+        : null,
+    lapsed:
+      lapsedOutcome != null && lapsedAt != null ? { outcome: lapsedOutcome, at: lapsedAt } : null,
+  };
 }
 
 function asTwoFactorDue(raw: unknown): TwoFactorDue | null {

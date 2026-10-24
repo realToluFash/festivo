@@ -218,6 +218,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
             removesAt: null,
             onlyOwner: false,
           },
+          ownerClaim: null,
         },
       },
     });

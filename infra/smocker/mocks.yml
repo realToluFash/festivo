@@ -63,3 +63,16 @@
         "contacts": [{ "input": "+2348035550142", "wa_id": "2348035550142" }],
         "messages": [{ "id": "wamid.development", "message_status": "accepted" }]
       }
+
+# Stands in for DNS over HTTPS (sc-6640): every name answers "no record", in the JSON form Cloudflare
+# uses. To publish one, add a mock for GET /dns-query whose query `name` is the record's name, answering
+# {"Status":0,"Answer":[{"name":"_soirely-verify.<domain>","type":16,"TTL":300,"data":"\"<value>\""}]}.
+- request:
+    method: GET
+    path: /dns-query
+  response:
+    status: 200
+    headers:
+      Content-Type: [application/dns-json]
+    body: >
+      {"Status": 0, "Answer": []}
