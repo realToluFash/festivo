@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { keepFocusIn } from '../dialogFocus.ts';
+import { useDialogKeys } from '../dialogFocus.ts';
 
 const MARKS = { attention: '!', waiting: '…', done: '✓', info: 'i' } as const;
 
@@ -388,16 +388,7 @@ function WithdrawConfirm({
 
   useEffect(() => keep.current?.focus(), []);
 
-  useEffect(() => {
-    const keys = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !pending) onKeep();
-      if (event.key === 'Tab' && dialog.current != null) keepFocusIn(dialog.current, event);
-    };
-
-    document.addEventListener('keydown', keys);
-
-    return () => document.removeEventListener('keydown', keys);
-  }, [pending, onKeep]);
+  useDialogKeys(dialog, onKeep, pending);
 
   return (
     <>

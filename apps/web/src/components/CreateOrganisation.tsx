@@ -15,7 +15,7 @@ import { api } from '../api.ts';
 import { useFocusAfterSave, useFormChecks } from '../formChecks.ts';
 import { currentLocale, dateLocale } from '../i18n/index.ts';
 import { FieldError } from './FieldError.tsx';
-import { keepFocusIn } from '../dialogFocus.ts';
+import { useDialogKeys } from '../dialogFocus.ts';
 
 const FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
 
@@ -66,16 +66,7 @@ export function CreateOrganisation({
     };
   }, []);
 
-  useEffect(() => {
-    const keep = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !saving) onCancel();
-      if (event.key === 'Tab' && dialog.current != null) keepFocusIn(dialog.current, event);
-    };
-
-    document.addEventListener('keydown', keep);
-
-    return () => document.removeEventListener('keydown', keep);
-  }, [onCancel, saving]);
+  useDialogKeys(dialog, onCancel, saving);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
