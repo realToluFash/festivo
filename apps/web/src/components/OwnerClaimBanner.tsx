@@ -5,11 +5,11 @@ import {
   ownerClaimRefusalKey,
   ownerClaimView,
 } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { keepFocusIn } from '../dialogFocus.ts';
+import { useDialogKeys } from '../dialogFocus.ts';
 
 const MARKS = { attention: '!', waiting: '…', done: '✓', info: 'i' } as const;
 
@@ -84,7 +84,7 @@ function Withdrew({ told }: { told: boolean }) {
   const { t } = useTranslation();
   const line = useRef<HTMLDivElement>(null);
 
-  useEffect(() => line.current?.focus(), []);
+  useLayoutEffect(() => line.current?.focus(), []);
 
   return (
     <div ref={line} className="notice notice-done" role="status" tabIndex={-1}>
@@ -388,16 +388,7 @@ function WithdrawConfirm({
 
   useEffect(() => keep.current?.focus(), []);
 
-  useEffect(() => {
-    const keys = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape' && !pending) onKeep();
-      if (event.key === 'Tab' && dialog.current != null) keepFocusIn(dialog.current, event);
-    };
-
-    document.addEventListener('keydown', keys);
-
-    return () => document.removeEventListener('keydown', keys);
-  }, [pending, onKeep]);
+  useDialogKeys(dialog, onKeep, pending);
 
   return (
     <>
