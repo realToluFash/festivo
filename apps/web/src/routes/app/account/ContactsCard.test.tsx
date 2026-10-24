@@ -288,6 +288,21 @@ describe('email addresses and phone numbers', () => {
     expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 
+  it('leaves a link result in place for the Security page, whose trip it was', async () => {
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({ provider: 'google', purpose: { kind: 'link' }, signIn });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    answering({
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+
+    open();
+
+    expect(await screen.findByText('folake.adeyemi@gmail.com')).toBeDefined();
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBe(returned);
+  });
+
   it('asks before removing a verified address, and removes an unverified one at once', async () => {
     const unverified = {
       ...ME,

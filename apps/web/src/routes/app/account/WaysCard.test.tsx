@@ -273,6 +273,36 @@ describe('linking a provider', () => {
     expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
   });
 
+  it('leaves a Make primary result in place for the Account page, whose trip it was', async () => {
+    const signIn = { code: 'the-code', codeVerifier: 'v', redirectUri: 'r', nonce: 'n' };
+    const returned = JSON.stringify({
+      provider: 'google',
+      purpose: { kind: 'makePrimary', address: 'e2' },
+      signIn,
+    });
+    sessionStorage.setItem('soirely.provider.returned', returned);
+    const sent = answering({});
+
+    open();
+
+    await waitFor(() => expect(sent.map((s) => s.call)).toContain('GET /api/auth/two-factor'));
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBe(returned);
+  });
+
+  it('forgets a link the person cancelled at Google, once the page is up', async () => {
+    sessionStorage.setItem(
+      'soirely.provider.returned',
+      JSON.stringify({ provider: 'google', purpose: { kind: 'link' }, failed: 'cancelled' }),
+    );
+    const sent = answering({});
+
+    open();
+
+    await waitFor(() => expect(sent.map((s) => s.call)).toContain('GET /api/auth/two-factor'));
+    expect(screen.getByRole('list', { name: 'Ways to sign in' })).toBeDefined();
+    expect(sessionStorage.getItem('soirely.provider.returned')).toBeNull();
+  });
+
   it("refuses a Google account that is another Soirely account's, and changes nothing", async () => {
     holdProof({ proof: 'the-proof', expiresAt: new Date(Date.now() + 300_000).toISOString() });
     backFromGoogle({ kind: 'link' });
