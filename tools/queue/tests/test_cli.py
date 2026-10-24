@@ -79,7 +79,7 @@ def check(name, bucket):
 
 class Checks(unittest.TestCase):
     def run_checks(self, *answers, wait=True, timeout=20, clock=(0,), heads=("abc1234f",),
-                   head=None):
+                   head=None, mergeable="CONFLICTING"):
         answers = list(answers)
         heads = list(heads)
         ticks = iter(clock)
@@ -91,7 +91,7 @@ class Checks(unittest.TestCase):
 
         def live(number):
             sha = heads.pop(0) if len(heads) > 1 else heads[0]
-            return {"headRefOid": sha, "mergeable": "CONFLICTING"}
+            return {"headRefOid": sha, "mergeable": mergeable}
         out = io.StringIO()
         code = 0
         with redirect_stdout(out), \
@@ -136,10 +136,20 @@ class Checks(unittest.TestCase):
     def test_a_head_with_no_checks_stops_early_and_says_why(self):
         out, code, slept = self.run_checks(*[[]] * 10)
         self.assertEqual(out.splitlines(), [
-            "PR #7: no checks on head abc1234 (mergeable: conflicting); a conflicting head "
+            "PR #7: no checks on head abc1234, which conflicts with main; a conflicting head "
             "runs none, so merge origin/main and push",
         ])
         self.assertEqual((code, slept), (1, cli.NO_CHECKS_POLLS))
+
+    def test_a_head_slow_to_get_checks_is_not_told_to_merge_main(self):
+        out, code, _ = self.run_checks(*[[]] * 10, mergeable="MERGEABLE")
+        self.assertEqual(out.splitlines(), ["PR #7: no checks appeared on head abc1234 after 2 minutes"])
+        self.assertEqual(code, 1)
+
+    def test_a_look_before_checks_are_queued_says_none_yet(self):
+        out, code, _ = self.run_checks([], wait=False, mergeable="UNKNOWN")
+        self.assertEqual(out.splitlines(), ["PR #7: no checks on head abc1234 yet"])
+        self.assertEqual(code, 0)
 
     def test_a_wait_for_a_head_ignores_the_previous_heads_checks(self):
         out, code, slept = self.run_checks([check("api", "pending")], [check("api", "pass")],

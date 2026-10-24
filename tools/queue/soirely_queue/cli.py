@@ -288,9 +288,15 @@ def cmd_checks(s, a):
     if head is None:
         sys.exit(f"PR #{a.pr}: the head is not {a.head[:7]} yet")
     if not found:
-        print(f"PR #{a.pr}: no checks on head {head['headRefOid'][:7]} "
-              f"(mergeable: {head['mergeable'].lower()}); a conflicting head runs none, "
-              "so merge origin/main and push")
+        sha = head["headRefOid"][:7]
+        if head["mergeable"] == "CONFLICTING":
+            print(f"PR #{a.pr}: no checks on head {sha}, which conflicts with main; "
+                  "a conflicting head runs none, so merge origin/main and push")
+        elif a.wait:
+            print(f"PR #{a.pr}: no checks appeared on head {sha} after "
+                  f"{NO_CHECKS_POLLS * CHECKS_POLL // 60} minutes")
+        else:
+            print(f"PR #{a.pr}: no checks on head {sha} yet")
         sys.exit(1 if a.wait else 0)
     failed = [c for c in found if c.get("bucket") == "fail"]
     cancelled = [c for c in found if c.get("bucket") == "cancel"]
