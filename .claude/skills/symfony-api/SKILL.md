@@ -56,9 +56,14 @@ client's tracking parameter is not an error, and the handler receives declared k
 Pass `allowUnknownFields: true` only when a payload must travel onwards intact; it keeps
 whatever was sent, so never spread that result into an entity.
 
-**Bodies coerce, they do not assert.** `assert()` closes the shape but would refuse
-`{"latitude": 51}` for a declared float, because JSON has one number type and that decodes
-to an int. The coordinate was sent correctly; refusing it would be the bug.
+**A body value of the wrong type is refused.** `Input::body` is strict: a value that
+coercion would change — `"30"` for an int, `42` for a string, `1` for a bool, a list for a
+string — is a 422 on its path, so a web form must send the number an `<input
+type="number">` holds, not its string. Do not wrap a field in `always_assert` to make it
+strict; the body already is. It is still not `assert()`, because two values are not changes:
+a whole number for a float (`{"latitude": 51}` — JSON has one number type, and the
+coordinate was sent correctly) and an enum's backing value. A query string carries only
+strings, so `Input::query` still coerces.
 
 **A provider's response is input too.** Coerce it at the adapter, never at the call site —
 see `NominatimProvider::result()`. Declare the fields the adapter actually reads, and make
