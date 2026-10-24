@@ -678,6 +678,16 @@ class Merging(Base):
             actions.merge(self.as_("l10n"), args(pr=9, text=None))
         merge.assert_called_once_with(9, HEAD, delete_branch=True)
 
+    def test_the_linguist_merges_the_apis_icu_catalogues(self):
+        store.put_pr(self.db, pr())
+        files = [(f"services/api/translations/{name}+intl-icu.pt.json", 1, 0)
+                 for name in ("messages", "errors", "emails")]
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.files", return_value=files), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            actions.merge(self.as_("l10n"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD, delete_branch=True)
+
     def test_the_linguist_merges_no_code(self):
         store.put_pr(self.db, pr())
         files = [("apps/web/src/i18n/locales/fr.json", 1, 0), ("apps/web/src/App.tsx", 1, 0)]
