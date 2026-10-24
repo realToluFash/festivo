@@ -495,6 +495,73 @@ describe('creating an organisation', () => {
     await waitFor(() => expect(posts()).toHaveLength(2));
   });
 
+  it('cannot be dismissed while the create is pending, then switches and says so (sc-8898)', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    const created = membership({ id: 'org_9', name: 'Supper' });
+    let answer: (response: Response) => void = () => {};
+    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    pressCreate();
+    await screen.findByRole('button', { name: 'Creating…' });
+
+    const dialog = screen.getByRole('dialog', { name: 'Create an organisation' });
+    const [scrim, cancel] = screen.getAllByRole('button', { name: 'Cancel' }) as HTMLElement[];
+    expect(cancel?.matches(':disabled')).toBe(true);
+    expect(scrim?.matches(':disabled')).toBe(true);
+    fireEvent.click(cancel as HTMLElement);
+    fireEvent.click(scrim as HTMLElement);
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    expect(screen.getByRole('dialog')).toBe(dialog);
+
+    expect(document.activeElement).toBe(dialog);
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(document.activeElement).toBe(dialog);
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(dialog);
+
+    answer(json({ organisation: created }, 201));
+    expect(await screen.findByText('Now working in Supper.')).toBeDefined();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /Organisation: Supper, your role Owner/ }),
+    );
+  });
+
+  it.each([
+    [
+      'Cancel',
+      () => fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[1] as HTMLElement),
+    ],
+    [
+      'the scrim',
+      () => fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0] as HTMLElement),
+    ],
+    ['Escape', () => fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' })],
+  ])('closes with %s again once a pending create fails (sc-8898)', async (_, dismiss) => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    let answer: (response: Response) => void = () => {};
+    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
+    inOne();
+    openCreate();
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
+    pressCreate();
+    await screen.findByRole('button', { name: 'Creating…' });
+
+    answer(problem('too_many_attempts', 429));
+    expect(await screen.findByText('Too many new organisations for now.')).toBeDefined();
+    expect(screen.getByRole('dialog')).toBeDefined();
+
+    dismiss();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: /Organisation: Ìrè Events/ }),
+    );
+  });
+
   it.each([
     [['countryCode'], 'Country'],
     [['name'], 'Organisation name'],

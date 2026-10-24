@@ -6,7 +6,11 @@ export function keepFocusIn(dialog: HTMLElement, event: KeyboardEvent): void {
   const first = controls[0];
   const last = controls[controls.length - 1];
 
-  if (first == null || last == null) return;
+  if (first == null || last == null) {
+    event.preventDefault();
+    dialog.focus();
+    return;
+  }
 
   const inside = dialog.contains(document.activeElement);
 

@@ -1658,6 +1658,10 @@ span {
   cursor: pointer;
 }
 
+.dialog-scrim:disabled {
+  cursor: progress;
+}
+
 .dialog {
   position: fixed;
   top: 6rem;
@@ -1677,6 +1681,10 @@ span {
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowDialog);
+}
+
+.dialog:focus {
+  outline: none;
 }
 
 .dialog-heading {
