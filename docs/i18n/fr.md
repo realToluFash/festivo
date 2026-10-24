@@ -54,6 +54,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
+  « expirer », as the web. The subject is « La demande de propriété faite par {claimant} pour
+  {organisation} a expiré. Personne n’en est devenu propriétaire », as the stopped and withdrawn
+  emails, so nothing agrees with the claimant. Each reason ends « la propriété n’a donc pas été
+  transférée »; the date « Expirée le {deadline} », as « Retirée le ».
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
   sc-9068). « et {{count}} autre », « et {{count}} autres », after the five names: « autre »
   is the same for women and men, and reads as people where « de plus » reads as a quantity.
