@@ -1568,7 +1568,7 @@
     "coolingOff": "{{organisation}} ya ha respondido a su última solicitud. Podrá volver a solicitar unirse a partir del {{date}}.",
     "coolingOffLater": "{{organisation}} ya ha respondido a su última solicitud. Podrá volver a solicitar unirse dentro de unas semanas.",
     "limited": "Demasiadas solicitudes por ahora. Inténtelo de nuevo a las {{time}}.",
-    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
+    "limitedOnDay": "Demasiadas solicitudes por ahora. Inténtelo de nuevo el {{day}} a las {{time}}.",
     "limitedLater": "Demasiadas solicitudes por ahora. Inténtelo de nuevo más tarde.",
     "deadTitle": "Este enlace no funciona",
     "deadBody": "Este enlace ya no funciona. Pida uno nuevo a la organización.",
