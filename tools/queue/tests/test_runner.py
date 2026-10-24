@@ -585,3 +585,21 @@ class RunUntilDone(unittest.TestCase):
                                                       self.folder.name, dict(os.environ),
                                                       finished, poll=0.1)
         self.assertEqual((code, ended, calls), (0, None, []))
+
+    def test_a_process_that_escaped_with_the_pipes_does_not_hold_the_worker(self):
+        pidfile = pathlib.Path(self.folder.name) / "orphan.pid"
+        script = pathlib.Path(self.folder.name) / "escaped.py"
+        script.write_text(textwrap.dedent(f"""
+            import subprocess, sys
+            sys.stdin.read()
+            subprocess.run(["sh", "-c", "sleep 30 & echo $! > {pidfile}"])
+            print('{{"type": "result", "result": "Done."}}', flush=True)
+        """))
+        started = time.monotonic()
+        with mock.patch.object(runner, "READER_SECONDS", 0.5):
+            code, stdout, _, _ = runner.run_until_done([sys.executable, str(script)], "",
+                                                       self.folder.name, dict(os.environ),
+                                                       lambda: False, poll=0.1)
+        subprocess.run(["kill", pidfile.read_text().strip()])
+        self.assertLess(time.monotonic() - started, 10)
+        self.assertEqual((code, runner.own_result([stdout])["result"]), (0, "Done."))

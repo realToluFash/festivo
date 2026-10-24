@@ -20,6 +20,7 @@ VERSION_EVERY_SECONDS = 10 * 60
 # is done and whose answer is written is given this long to exit, then ended.
 SETTLE_SECONDS = 15
 STOP_GRACE_SECONDS = 5
+READER_SECONDS = 5
 MILESTONES = ("At each milestone (a branch pushed, a part built, a result found) write one "
               "line with `sq {role} note sc-<n> --text '…'` and push what you have, so a "
               "run stopped part way loses minutes, not the thread.")
@@ -385,10 +386,10 @@ def run_until_done(argv, input, cwd, env, finished, poll=1.0, clock=time.monoton
             break
         sleep(poll)
     child.wait()
-    for reader in readers:
-        reader.join(timeout=5)
-    child.stdout.close()
-    child.stderr.close()
+    for reader, pipe in zip(readers, (child.stdout, child.stderr)):
+        reader.join(timeout=READER_SECONDS)
+        if not reader.is_alive():
+            pipe.close()
     return (0 if ended is not None else child.returncode), "".join(lines), "".join(errors), \
         ended
 
