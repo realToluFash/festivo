@@ -28,6 +28,8 @@ import {
   keyboardLift,
   keysOver,
   offsetAboveKeyboard,
+  scrollInsets,
+  shownEnd,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 
@@ -105,8 +107,7 @@ function liftAboveKeyboard(
   group.measureLayout(content, (_x, contentY, _w, height) => {
     scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
       const groupY = groupInWindow({ scrollTop, contentY, offset: scroll.offset.current });
-      // A bar docked above the keys ends the scroll view higher than the keys' top.
-      const shown = Math.min(keyboardTop, scrollTop + scrollHeight);
+      const shown = shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight });
       if (!coveredBy(shown, { y: groupY, height }, tokens.spaceLg)) return;
 
       view.scrollTo({
@@ -360,7 +361,7 @@ export function Screen({
       // dismissing the keyboard, which otherwise makes every button in a
       // form need pressing twice.
       keyboardShouldPersistTaps="handled"
-      automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+      {...scrollInsets(LIFT, docked != null)}
     >
       {children}
     </ScrollView>

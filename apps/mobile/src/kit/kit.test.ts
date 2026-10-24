@@ -10,7 +10,9 @@ import {
   keysOver,
   listRoom,
   offsetAboveKeyboard,
+  scrollInsets,
   shortWhileTyping,
+  shownEnd,
 } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -20,6 +22,20 @@ describe('the keyboard lifts the card once', () => {
 
   it('on Android, by the avoiding view alone', () => {
     expect(keyboardLift('android')).toEqual({ avoid: 'padding', adjustScrollInsets: false });
+  });
+
+  it('by the frame alone while a bar is docked on the keys', () => {
+    for (const os of ['ios', 'android']) {
+      const insets = scrollInsets(keyboardLift(os), true);
+
+      expect(insets.automaticallyAdjustKeyboardInsets, os).toBe(false);
+      expect(insets.contentInset?.bottom, os).toBeGreaterThan(0);
+      expect(insets.contentInset?.bottom, os).toBeLessThan(1);
+    }
+    expect(scrollInsets(keyboardLift('ios'), false)).toEqual({
+      automaticallyAdjustKeyboardInsets: true,
+      contentInset: undefined,
+    });
   });
 
   it('never by both on one platform', () => {
@@ -71,6 +87,15 @@ describe('a field and its button rest above the keyboard', () => {
         16,
       ),
     ).toBe(true);
+  });
+
+  it('above a bar docked on the keys, where the scroll view ends', () => {
+    const docked = { y: 100, height: 300 };
+
+    expect(shownEnd(500, docked)).toBe(400);
+    expect(shownEnd(500, { y: 100, height: 600 })).toBe(500);
+    expect(coveredBy(shownEnd(500, docked), { y: 300, height: 150 }, 16)).toBe(true);
+    expect(coveredBy(500, { y: 300, height: 150 }, 16)).toBe(false);
   });
 
   it('only when the keyboard covers the group or its margin', () => {

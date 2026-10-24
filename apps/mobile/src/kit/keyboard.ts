@@ -18,6 +18,28 @@ export interface Rect {
   height: number;
 }
 
+/** Where the scroll view's visible area ends: at the keys, or above them where a bar docked on the keys ends it. */
+export function shownEnd(keyboardTop: number, scrollView: Rect): number {
+  return Math.min(keyboardTop, scrollView.y + scrollView.height);
+}
+
+export interface ScrollInsets {
+  automaticallyAdjustKeyboardInsets: boolean;
+  contentInset: { bottom: number } | undefined;
+}
+
+// A docked bar ends the frame above the keys, but iOS set the scroll view's bottom inset to the
+// keys' whole overlap as they rose and keeps it. Only a change of contentInset resets it, and a
+// zero one is no change, so the docked inset is a hairline.
+export const DOCKED_INSET = { bottom: 0.5 };
+
+/** While a bar is docked the frame clears the keys, so the scroll view must not inset for them too. */
+export function scrollInsets(lift: KeyboardLift, docked: boolean): ScrollInsets {
+  return docked
+    ? { automaticallyAdjustKeyboardInsets: false, contentInset: DOCKED_INSET }
+    : { automaticallyAdjustKeyboardInsets: lift.adjustScrollInsets, contentInset: undefined };
+}
+
 /** Whether the keyboard covers any of a group, or its margin, in window coordinates. */
 export function coveredBy(keyboardTop: number, group: Rect, margin: number): boolean {
   return group.y + group.height + margin > keyboardTop;
