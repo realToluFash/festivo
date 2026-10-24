@@ -44,6 +44,8 @@
     "validation.country_invalid": "Elija un país.",
     "validation.currency_invalid": "Elija una moneda.",
     "validation.email_invalid": "Introduzca una dirección de correo electrónico.",
+    "validation.invalid_shape": "This field cannot take that value. Check it and try again.",
+    "validation.request_shape": "The request does not have the expected shape.",
     "validation.event_end_before_start": "El evento termina antes de empezar. Elija un final posterior.",
     "validation.event_end_required": "Elija cuándo termina el evento.",
     "validation.event_name_required": "Póngale un nombre al evento.",

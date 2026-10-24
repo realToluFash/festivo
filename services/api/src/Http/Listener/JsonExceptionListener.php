@@ -6,13 +6,16 @@ namespace App\Http\Listener;
 
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use App\Http\ProblemRenderer;
+use App\Locale\Listener\RequestLocaleListener;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
+use Symfony\Contracts\Translation\TranslatorInterface;
 use Throwable;
 
 #[AsEventListener(event: KernelEvents::EXCEPTION, priority: -64)]
@@ -21,6 +24,7 @@ final readonly class JsonExceptionListener
     public function __construct(
         private LoggerInterface $logger,
         private ProblemRenderer $problemRenderer,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -33,6 +37,12 @@ final readonly class JsonExceptionListener
         }
 
         $e = $event->getThrowable();
+
+        if ($e instanceof ShapeRefusal) {
+            $locale = $request->attributes->get(RequestLocaleListener::ATTRIBUTE);
+            $e = $e->in($this->translator, \is_string($locale) ? $locale : null);
+        }
+
         [$code, $violations] = $this->classify($e);
 
         if ($code->status() >= 500) {

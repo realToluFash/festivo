@@ -12,6 +12,7 @@ use App\Enum\ErrorCode;
 use App\Enum\RefreshTokenDelivery;
 use App\Http\Access\Policy\PublicAccess;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use App\Http\Input;
 use App\Http\RefreshTokenCookies;
 use App\Repository\RefreshTokenRepository;
@@ -26,6 +27,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 #[PublicAccess]
 final class TokenController
@@ -37,6 +39,7 @@ final class TokenController
         private readonly LoggerInterface $logger,
         private readonly SignInRules $signInRules,
         private readonly ClockInterface $clock,
+        private readonly TranslatorInterface $translator,
     ) {
     }
 
@@ -160,9 +163,9 @@ final class TokenController
 
         return $body['refreshToken'] ?? throw ApiException::validation([[
             'propertyPath' => 'refreshToken',
-            'message' => 'A refresh token is required unless refreshTokenIn is "cookie".',
+            'message' => $this->translator->trans(ShapeRefusal::FIELD),
             'code' => 'blank',
-        ]], 'The request does not have the expected shape.');
+        ]], $this->translator->trans(ShapeRefusal::REQUEST));
     }
 
     private function find(#[SensitiveParameter] string $plain): RefreshToken

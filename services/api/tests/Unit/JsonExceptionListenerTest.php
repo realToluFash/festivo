@@ -6,6 +6,7 @@ namespace App\Tests\Unit;
 
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use App\Http\Listener\CorrelationIdListener;
 use App\Http\Listener\JsonExceptionListener;
 use App\Http\ProblemRenderer;
@@ -107,6 +108,19 @@ final class JsonExceptionListenerTest extends TestCase
         self::assertSame('The request does not have the expected shape.', $body['detail']);
     }
 
+    #[Test]
+    public function aShapeRefusalIsWordedThroughTheCatalogueNeverByTheParser(): void
+    {
+        $body = $this->handle(new ShapeRefusal('countryCode', 'validation.country_invalid'));
+
+        self::assertSame(422, $body['status']);
+        self::assertSame('translated:validation.request_shape', $body['detail']);
+        self::assertSame(
+            [['propertyPath' => 'countryCode', 'message' => 'translated:validation.country_invalid', 'code' => 'invalid_shape']],
+            $body['violations'],
+        );
+    }
+
     /** Symfony writes the whole violation list, class names and all, as the exception's message. */
     #[Test]
     public function aSymfonyValidationFailureIsDetailedByItsFirstViolationNotItsMessage(): void
@@ -174,6 +188,6 @@ final class JsonExceptionListenerTest extends TestCase
             static fn (string $id): string => 'translated:' . $id,
         );
 
-        return new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator));
+        return new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator), $translator);
     }
 }
