@@ -106,7 +106,6 @@ function at(path: string) {
 afterEach(() => {
   vi.restoreAllMocks();
   window.localStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('switching organisation', () => {
@@ -554,6 +553,10 @@ describe('creating an organisation', () => {
     answer(problem('too_many_attempts', 429));
     expect(await screen.findByText('Too many new organisations for now.')).toBeDefined();
     expect(screen.getByRole('dialog')).toBeDefined();
+    // Focus back on the name is the sign the dialog has unlocked its Escape as well as its buttons.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText('Organisation name')),
+    );
 
     dismiss();
     expect(screen.queryByRole('dialog')).toBeNull();
