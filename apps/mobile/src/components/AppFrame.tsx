@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.ts';
+import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -508,7 +509,13 @@ function Switcher({
   const { t } = useTranslation();
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      supportedOrientations={TURNS_WITH_THE_APP}
+      onRequestClose={onClose}
+    >
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('switcher.close')}>
         <View style={styles.sheetFrame} onStartShouldSetResponder={() => true}>
           <ScrollView contentContainerStyle={styles.sheet}>

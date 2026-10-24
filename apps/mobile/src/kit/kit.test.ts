@@ -21,6 +21,7 @@ import {
   offsetIntoView,
   offsetToFocus,
   scrollInsets,
+  searchBesideTitle,
   shortWhileTyping,
   shownEnd,
 } from './keyboard.ts';
@@ -221,6 +222,26 @@ describe('a list between a field and its button shrinks to fit above the keyboar
 
   it('never taller than with the keyboard down', () => {
     expect(listRoom({ ...smallPhone, room: 900 })).toBe(264);
+  });
+});
+
+describe("a list's search moves beside its title on an iPhone on its side (sc-10118)", () => {
+  const onItsSide = { os: 'ios', phone: true, width: 667, height: 375 };
+
+  it('on its side', () => {
+    expect(searchBesideTitle(onItsSide)).toBe(true);
+  });
+
+  it('not upright', () => {
+    expect(searchBesideTitle({ ...onItsSide, width: 375, height: 667 })).toBe(false);
+  });
+
+  it('not on an Android phone', () => {
+    expect(searchBesideTitle({ ...onItsSide, os: 'android' })).toBe(false);
+  });
+
+  it('not on an iPad', () => {
+    expect(searchBesideTitle({ ...onItsSide, phone: false, width: 1194, height: 834 })).toBe(false);
   });
 });
 
