@@ -925,7 +925,7 @@
       },
       "approved": "Approved by {{by}}",
       "suspended": "Suspended by {{by}}",
-      "suspendedAddressGone": "Acceso suspendido: su correo electrónico de empresa ya no da acceso",
+      "suspendedAddressGone": "Acceso suspendido: dominio de empresa",
       "restored": "Restored by {{by}}",
       "left": "Left {{organisation}}",
       "removed": "Removed by {{by}}",
