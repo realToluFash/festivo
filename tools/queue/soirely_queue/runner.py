@@ -332,8 +332,10 @@ def alive(pid):
     return True
 
 
-def stop_tree(pid, table=process_table, sleep=time.sleep):
-    """Ends `pid` and everything under it, and returns the commands left running under it."""
+def stop_tree(pid, running, table=process_table, sleep=time.sleep):
+    """Ends `pid` and everything under it, and returns the commands left running under it.
+    `running()` says whether `pid` itself is still up: it is our own child, so `alive` would
+    see it until it is reaped."""
     snapshot = table()
     left = descendants(pid, snapshot)
     for target in [pid, *left]:
@@ -342,10 +344,10 @@ def stop_tree(pid, table=process_table, sleep=time.sleep):
         except (ProcessLookupError, PermissionError):
             pass
     for _ in range(STOP_GRACE_SECONDS * 10):
-        if not any(alive(target) for target in [pid, *left]):
+        if not running() and not any(alive(target) for target in left):
             break
         sleep(0.1)
-    for target in [pid, *left]:
+    for target in ([pid] if running() else []) + [target for target in left if alive(target)]:
         try:
             os.kill(target, signal.SIGKILL)
         except (ProcessLookupError, PermissionError):
@@ -370,12 +372,16 @@ def run_until_done(argv, input, cwd, env, finished, poll=1.0, clock=time.monoton
         child.stdin.close()
     except BrokenPipeError:
         pass
-    settled, ended = None, None
+    settled, ended, read, answered = None, None, 0, False
     while child.poll() is None:
-        if settled is None and own_result(list(lines)) and finished():
+        if not answered:
+            fresh = lines[read:]
+            read += len(fresh)
+            answered = own_result(fresh) is not None
+        if settled is None and answered and finished():
             settled = clock()
         if settled is not None and clock() - settled >= SETTLE_SECONDS:
-            ended = stop(child.pid)
+            ended = stop(child.pid, lambda: child.poll() is None)
             break
         sleep(poll)
     child.wait()

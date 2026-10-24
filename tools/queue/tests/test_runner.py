@@ -17,6 +17,7 @@ from .fakes import FakeRefs
 
 MINUTE = 60
 ON_ZERO = 3 * MINUTE * 1000  # a minute whose offset is 0
+FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 ON_ONE = ON_ZERO + MINUTE
 
 
@@ -445,9 +446,13 @@ class Worker(unittest.TestCase):
 
     def work_with(self, result, code=0, *later, ended=None):
         calls = []
+        self.answers = []
 
         def claude(argv, input, cwd, env, finished):
             calls.append((argv, {"input": input, "cwd": cwd, "env": env}))
+            self.answers.append(finished())
+            store.finish(self.db, 1, "done")
+            self.answers.append(finished())
             stream = [dict(event, type="result") for event in (result, *later)]
             return code, "".join(json.dumps(event) + "\n" for event in stream), "", ended
 
@@ -469,14 +474,17 @@ class Worker(unittest.TestCase):
         self.assertEqual(kwargs["env"]["CLAUDE_CONFIG_DIR"], str(self.root / "claude"))
         self.assertEqual(self.platform.notes, [])
 
+    def test_the_item_counts_as_finished_once_the_run_closes_it(self):
+        self.work_with({"result": "Done."})
+        self.assertEqual(self.answers, [False, True])
+
     def test_the_report_is_the_runs_own_answer_not_a_later_notice(self):
-        entry, _ = self.work_with(
-            {"total_cost_usd": 0.40, "result": "Failed QA, posted."}, 0,
-            {"total_cost_usd": 0.42, "result": "The bundler exited.",
-             "origin": {"kind": "task-notification"}},
-            ended=["expo start --port 28081"])
-        self.assertEqual(entry["report"], "Failed QA, posted.")
-        self.assertEqual(entry["cost_usd"], 0.42)
+        # Both results as claude 2.1.310 wrote them, the second after a background sleep ended.
+        own, notice = [json.loads(line) for line in
+                       (FIXTURES / "background-task-results.jsonl").read_text().splitlines()]
+        entry, _ = self.work_with(own, 0, notice, ended=["expo start --port 28081"])
+        self.assertEqual(entry["report"], "started")
+        self.assertEqual(entry["cost_usd"], notice["total_cost_usd"])
         self.assertEqual(entry["exit"], 0)
         self.assertEqual(entry["ended"], ["expo start --port 28081"])
 
@@ -548,7 +556,7 @@ class RunUntilDone(unittest.TestCase):
 
     def test_a_done_run_is_ended_with_what_it_left_running(self):
         (code, stdout, _, ended), took = self.run_fake("307", lambda: True)
-        self.assertLess(took, 30)
+        self.assertLess(took, runner.STOP_GRACE_SECONDS)
         self.assertEqual(code, 0)
         self.assertEqual(ended, ["sleep 307"])
         self.assertEqual(runner.own_result([stdout])["result"], "Done, item closed.")
