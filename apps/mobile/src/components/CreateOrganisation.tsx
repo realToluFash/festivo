@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
-import { offsetToFocus } from '../kit/keyboard.ts';
+import { offsetToFocus, titleScrollsWhileTyping } from '../kit/keyboard.ts';
 import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
@@ -52,7 +52,6 @@ export function CreateOrganisation({
   const { kind, width, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
-  const wide = phone && width > height;
   // The `create_keyboard` drawing is for Android phones; the iPhone keeps its row (sc-9442).
   const drawn = Platform.OS === 'android' && phone;
   // Android stays as sc-4527 left it, upright and on its side; its side insets belong to sc-8606.
@@ -100,7 +99,13 @@ export function CreateOrganisation({
                 drawn={drawn}
                 keysUp={keysUp}
                 typing={typing}
-                titleScrolls={typing && wide}
+                titleScrolls={titleScrollsWhileTyping({
+                  os: Platform.OS,
+                  phone,
+                  width,
+                  height,
+                  keysUp,
+                })}
                 onCreated={onCreated}
                 onCancel={onCancel}
               />
