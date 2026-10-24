@@ -422,7 +422,12 @@ function WithdrawConfirm({
               ✕
             </Text>
           </Pressable>
-          <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+          <Text
+            size={tokens.typeTitleSection.size}
+            weight="bold"
+            accessibilityRole="header"
+            style={styles.clearOfClose}
+          >
             {t('ownerClaim.withdrawTitle')}
           </Text>
           <Text size={tokens.typeBodyPhone.size}>
@@ -621,6 +626,7 @@ const styles = StyleSheet.create({
   },
   close: {
     position: 'absolute',
+    zIndex: 1,
     top: tokens.spaceLg,
     right: tokens.spaceLg,
     width: tokens.sizeHit,
@@ -628,6 +634,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  clearOfClose: { marginRight: tokens.sizeHit },
   stacked: { gap: tokens.spaceSm },
   wraps: { flexShrink: 1 },
 });
