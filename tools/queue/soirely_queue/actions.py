@@ -834,7 +834,7 @@ def pr_edit(c, a):
     found = [h for h in T.matching(live["body"], a.section) if h != T.TOP]
     if len(found) != 1:
         headings = "; ".join(h for h, _, _ in T.sections(live["body"]) if h != T.TOP)
-        raise Refused(f"{'no heading' if not found else f'{len(found)} headings'} match "
+        raise Refused(f"{'no heading matches' if not found else f'{len(found)} headings match'} "
                       f"{a.section}; the body has: {headings or 'no headings'}")
     body = T.swap(live["body"], found[0], a.text)
     github.edit_body(a.pr, body)

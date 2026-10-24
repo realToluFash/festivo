@@ -1114,7 +1114,7 @@ class EditingABody(Base):
 
     def test_an_unknown_name_changes_nothing(self):
         self.fake.add(1, "In Review", ["ops"])
-        self.refused("no heading match Design; the body has: Description; Risks; References; "
+        self.refused("no heading matches Design; the body has: Description; Risks; References; "
                      "Evidence of work; Next Steps", section="Design")
 
     def test_a_name_matching_two_headings_changes_nothing(self):

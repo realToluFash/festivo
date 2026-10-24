@@ -72,6 +72,9 @@ class Sections(unittest.TestCase):
         self.assertEqual(T.matching(body, "Evidence"), ["Evidence of work", "Evidence, again"])
         self.assertEqual(T.matching(body, "Evidence of work"), ["Evidence of work"])
         self.assertEqual(T.matching(body, "Design"), [])
+        exact_below = "## Risks, more\nm\n## Risks\nr\n"
+        self.assertEqual(T.matching(exact_below, "Risks"), ["Risks"])
+        self.assertEqual(T.find(exact_below, "Risks")[0], "Risks")
 
     def test_find_takes_the_first_heading_matching_names(self):
         body = "## Acceptance criteria\na\n## AC notes\nn\n## Risks\nr\n## Risks, more\nm\n"
