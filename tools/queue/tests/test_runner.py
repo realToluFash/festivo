@@ -1,9 +1,13 @@
 """`sq run` and `sq worker`, against a fake platform: nothing here starts a unit or a model."""
 
 import json
+import os
 import pathlib
 import subprocess
+import sys
 import tempfile
+import textwrap
+import time
 import unittest
 from unittest import mock
 
@@ -439,12 +443,13 @@ class Worker(unittest.TestCase):
     def tearDown(self):
         self.folder.cleanup()
 
-    def work_with(self, result, code=0):
+    def work_with(self, result, code=0, *later, ended=None):
         calls = []
 
-        def claude(argv, **kwargs):
-            calls.append((argv, kwargs))
-            return subprocess.CompletedProcess(argv, code, json.dumps(result), "")
+        def claude(argv, input, cwd, env, finished):
+            calls.append((argv, {"input": input, "cwd": cwd, "env": env}))
+            stream = [dict(event, type="result") for event in (result, *later)]
+            return code, "".join(json.dumps(event) + "\n" for event in stream), "", ended
 
         entry = runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
                               load=lambda: config(self.root),
@@ -463,6 +468,17 @@ class Worker(unittest.TestCase):
         self.assertEqual(runlog.last(self.home, "ops")["account"], "owner@example.test")
         self.assertEqual(kwargs["env"]["CLAUDE_CONFIG_DIR"], str(self.root / "claude"))
         self.assertEqual(self.platform.notes, [])
+
+    def test_the_report_is_the_runs_own_answer_not_a_later_notice(self):
+        entry, _ = self.work_with(
+            {"total_cost_usd": 0.40, "result": "Failed QA, posted."}, 0,
+            {"total_cost_usd": 0.42, "result": "The bundler exited.",
+             "origin": {"kind": "task-notification"}},
+            ended=["expo start --port 28081"])
+        self.assertEqual(entry["report"], "Failed QA, posted.")
+        self.assertEqual(entry["cost_usd"], 0.42)
+        self.assertEqual(entry["exit"], 0)
+        self.assertEqual(entry["ended"], ["expo start --port 28081"])
 
     def test_a_report_waiting_on_the_owner_notifies(self):
         self.work_with({"result": "PR #280 is open.\nWaiting on the owner to merge #280."})
@@ -494,3 +510,70 @@ class Worker(unittest.TestCase):
             entry = runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
         self.assertEqual(entry["report"], "the worker ended without a report: timeout")
         self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
+
+
+FAKE_CLAUDE = textwrap.dedent("""
+    import json, subprocess, sys, time
+    sys.stdin.read()
+    def result(text, **more):
+        print(json.dumps(dict(type="result", result=text, **more)), flush=True)
+    # As claude does, the background shell gets a session of its own.
+    background = subprocess.Popen(["sleep", sys.argv[1]], start_new_session=True)
+    result("Done, item closed.", total_cost_usd=1.0)
+    background.wait()
+    result("The background sleep ended.", total_cost_usd=1.1,
+           origin={"kind": "task-notification"})
+""")
+
+
+class RunUntilDone(unittest.TestCase):
+    """A stand-in for claude that answers, leaves a background process running, and stays up
+    until it ends, as `claude -p` does."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.script = pathlib.Path(self.folder.name) / "claude.py"
+        self.script.write_text(FAKE_CLAUDE)
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def run_fake(self, seconds, finished):
+        started = time.monotonic()
+        with mock.patch.object(runner, "SETTLE_SECONDS", 0):
+            outcome = runner.run_until_done([sys.executable, str(self.script), seconds],
+                                            "the prompt", self.folder.name, dict(os.environ),
+                                            finished, poll=0.1)
+        return outcome, time.monotonic() - started
+
+    def test_a_done_run_is_ended_with_what_it_left_running(self):
+        (code, stdout, _, ended), took = self.run_fake("307", lambda: True)
+        self.assertLess(took, 30)
+        self.assertEqual(code, 0)
+        self.assertEqual(ended, ["sleep 307"])
+        self.assertEqual(runner.own_result([stdout])["result"], "Done, item closed.")
+        self.assertNotIn("sleep 307",
+                         [command for _, command in runner.process_table().values()])
+
+    def test_a_run_whose_item_is_open_is_left_to_end_by_itself(self):
+        (code, stdout, _, ended), _ = self.run_fake("1", lambda: False)
+        self.assertEqual(code, 0)
+        self.assertIsNone(ended)
+        self.assertEqual([event["result"] for event in runner.results(stdout)],
+                         ["Done, item closed.", "The background sleep ended."])
+        self.assertEqual(runner.own_result([stdout])["result"], "Done, item closed.")
+
+    def test_a_done_item_without_an_answer_yet_is_not_ended(self):
+        calls = []
+
+        def finished():
+            calls.append(1)
+            return True
+
+        script = pathlib.Path(self.folder.name) / "quiet.py"
+        script.write_text("import sys, time\nsys.stdin.read()\ntime.sleep(1)\n")
+        with mock.patch.object(runner, "SETTLE_SECONDS", 0):
+            code, _, _, ended = runner.run_until_done([sys.executable, str(script)], "",
+                                                      self.folder.name, dict(os.environ),
+                                                      finished, poll=0.1)
+        self.assertEqual((code, ended, calls), (0, None, []))

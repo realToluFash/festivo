@@ -6,14 +6,20 @@ Everything a run decides is printed, one line each, for the journal."""
 import datetime
 import json
 import os
+import signal
 import subprocess
 import sys
+import threading
 import time
 
 from . import (checkout, drawing, local, machine, permissions, roles, runlog, shared, store,
                sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
+# `claude -p` stays up while a background shell it started still runs, so a run whose item
+# is done and whose answer is written is given this long to exit, then ended.
+SETTLE_SECONDS = 15
+STOP_GRACE_SECONDS = 5
 MILESTONES = ("At each milestone (a branch pushed, a part built, a result found) write one "
               "line with `sq {role} note sc-<n> --text '…'` and push what you have, so a "
               "run stopped part way loses minutes, not the thread.")
@@ -275,7 +281,7 @@ def prompt(row, role, main, note):
 
 def command(values, config_dir, allowed=(), denied=()):
     argv = ["claude", "-p", "--model", values["model"], "--effort", values["effort"],
-            "--permission-mode", "auto", "--output-format", "json"]
+            "--permission-mode", "auto", "--output-format", "stream-json", "--verbose"]
     if values.get("maxBudgetUsd"):
         argv += ["--max-budget-usd", str(values["maxBudgetUsd"])]
     if allowed:
@@ -292,7 +298,116 @@ def command(values, config_dir, allowed=(), denied=()):
     return argv, env
 
 
-def worker(db, home, platform, name, item_id, run_claude=subprocess.run, load=machine.load,
+def process_table():
+    """`{pid: (parent pid, command)}` for every process on the machine."""
+    out = subprocess.run(["ps", "-A", "-o", "pid=,ppid=,command="], capture_output=True,
+                         text=True).stdout
+    table = {}
+    for line in out.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+            table[int(parts[0])] = (int(parts[1]), parts[2] if len(parts) > 2 else "")
+    return table
+
+
+def descendants(pid, table):
+    """Every process started under `pid`, however many sessions down: claude starts each
+    background shell in a session of its own, out of reach of its process group."""
+    found, frontier = [], [pid]
+    while frontier:
+        parent = frontier.pop()
+        children = [child for child, (ppid, _) in table.items() if ppid == parent]
+        found += children
+        frontier += children
+    return found
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def stop_tree(pid, table=process_table, sleep=time.sleep):
+    """Ends `pid` and everything under it, and returns the commands left running under it."""
+    snapshot = table()
+    left = descendants(pid, snapshot)
+    for target in [pid, *left]:
+        try:
+            os.kill(target, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError):
+            pass
+    for _ in range(STOP_GRACE_SECONDS * 10):
+        if not any(alive(target) for target in [pid, *left]):
+            break
+        sleep(0.1)
+    for target in [pid, *left]:
+        try:
+            os.kill(target, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            pass
+    return [snapshot[target][1] for target in left if target in snapshot]
+
+
+def run_until_done(argv, input, cwd, env, finished, poll=1.0, clock=time.monotonic,
+                   sleep=time.sleep, stop=stop_tree):
+    """Runs claude, reading its stream as it comes. Once the run has written its own answer
+    and `finished()` says its item is done, anything it left running is ended. Returns
+    `(exit status, stdout, stderr, the commands that were ended)`."""
+    child = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    lines, errors = [], []
+    readers = [threading.Thread(target=lambda: lines.extend(child.stdout), daemon=True),
+               threading.Thread(target=lambda: errors.extend(child.stderr), daemon=True)]
+    for reader in readers:
+        reader.start()
+    try:
+        child.stdin.write(input)
+        child.stdin.close()
+    except BrokenPipeError:
+        pass
+    settled, ended = None, None
+    while child.poll() is None:
+        if settled is None and own_result(list(lines)) and finished():
+            settled = clock()
+        if settled is not None and clock() - settled >= SETTLE_SECONDS:
+            ended = stop(child.pid)
+            break
+        sleep(poll)
+    child.wait()
+    for reader in readers:
+        reader.join(timeout=5)
+    child.stdout.close()
+    child.stderr.close()
+    return (0 if ended is not None else child.returncode), "".join(lines), "".join(errors), \
+        ended
+
+
+def results(stdout):
+    found = []
+    for line in (stdout or "").splitlines():
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(event, dict) and event.get("type") == "result":
+            found.append(event)
+    return found
+
+
+def own_result(lines):
+    """The run's own answer: a later result answers a background task's notice, such as the
+    bundler it left running ending, and is not the report."""
+    own = [event for event in results("".join(lines))
+           if (event.get("origin") or {}).get("kind") != "task-notification"]
+    return own[-1] if own else None
+
+
+def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=machine.load,
            prepare=checkout.prepare, now=None):
     """Runs inside the worker's unit: prepares the checkout, runs the model, records the
     run. `name` is the role, or `pm-2` and on for a further worker of it."""
@@ -319,13 +434,18 @@ def worker(db, home, platform, name, item_id, run_claude=subprocess.run, load=ma
     entry["account"] = machine.account(folder)
     argv, env = command(values, folder, permissions.for_role(permissions.applied(), role),
                         permissions.denied(home / "sq" / "sq", folder))
-    finished = run_claude(argv, input=prompt(row, role, main, note), capture_output=True,
-                          text=True, cwd=path, env=env)
-    try:
-        result = json.loads(finished.stdout or "{}")
-    except json.JSONDecodeError:
-        result = {"result": (finished.stdout or finished.stderr or "")[-2000:]}
-    entry.update(runlog.from_result(result, finished.returncode))
+    code, stdout, stderr, ended = run_claude(
+        argv, prompt(row, role, main, note), path, env,
+        lambda: (store.item(db, item_id) or {"status": None})["status"] == "done")
+    every = results(stdout)
+    own = own_result([stdout])
+    if own:
+        result = dict(own, total_cost_usd=every[-1].get("total_cost_usd"))
+    else:
+        result = {"result": (stdout or stderr or "")[-2000:]}
+    entry.update(runlog.from_result(result, code))
+    if ended is not None:
+        entry["ended"] = ended
     runlog.append(home, role, entry)
     waits = runlog.waits_on_owner(entry["report"])
     if waits:

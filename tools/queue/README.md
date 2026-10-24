@@ -129,7 +129,9 @@ The database is `.git/soirely-roles/queue.db`, shared by every worktree and neve
 has work. `machine.py` reads `~/.config/soirely/agents.json`, `runner.py` decides and
 launches, `systemd.py` writes the units, `checkout.py` brings each checkout up to `main`
 before a worker starts, `update.py` keeps the installed `sq` on a `main` CI passed, and
-`runlog.py` records each run's cost and report in `<sq home>/runs/<role>.jsonl`. The
+`runlog.py` records each run's cost and report in `<sq home>/runs/<role>.jsonl`. A worker
+whose item is done and whose answer is written ends whatever it left running, such as a
+bundler, since `claude -p` would otherwise wait on it until `maxRuntime`. The
 design, the commands and the guards are in [docs/agents](../../docs/agents/README.md).
 
 ## Tests
