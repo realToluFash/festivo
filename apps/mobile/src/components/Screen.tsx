@@ -14,6 +14,7 @@ import {
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   ScrollView,
   type StyleProp,
   StyleSheet,
@@ -229,8 +230,8 @@ export function useScrolledToTop(): RefObject<View | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 const SETTLED_MS = 500;
 
-/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it. */
-export function useBroughtIntoView(): RefObject<View | null> {
+/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it, or on Android, where TalkBack ignores that focus (sc-9950), reads its words out. */
+export function useBroughtIntoView(words: string): RefObject<View | null> {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
 
@@ -255,12 +256,16 @@ export function useBroughtIntoView(): RefObject<View | null> {
     }
 
     const focus = setTimeout(() => {
+      if (Platform.OS === 'android') {
+        AccessibilityInfo.announceForAccessibility(words);
+        return;
+      }
       const node = findNodeHandle(ref.current);
       if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
     }, SETTLED_MS);
 
     return () => clearTimeout(focus);
-  }, [scroll]);
+  }, [scroll, words]);
 
   return ref;
 }
