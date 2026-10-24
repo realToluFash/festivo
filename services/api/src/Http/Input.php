@@ -42,6 +42,11 @@ final readonly class Input
             throw new ApiException(ErrorCode::BadRequest, 'The request body is not valid JSON.', [], $e);
         }
 
+        // `[]` and `{}` decode to the same array, so only the text tells a list from an object.
+        if (!Str\starts_with(\ltrim($raw), '{')) {
+            throw new ShapeRefusal('');
+        }
+
         $body = self::coerce($decoded, $shape, $refusals);
 
         $mismatch = self::mismatch($body, $decoded);

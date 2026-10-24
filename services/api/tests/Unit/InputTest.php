@@ -78,6 +78,21 @@ final class InputTest extends TestCase
     }
 
     #[Test]
+    public function aBodyThatIsNotAnObjectIsRefusedAsAWhole(): void
+    {
+        $shape = Type\shape(['name' => Type\optional(Type\string())]);
+
+        foreach (['[1,2]', '[]', ' []', '"Ada"', '42', 'true', 'null'] as $content) {
+            $e = $this->refused(Request::create('/x', 'POST', content: $content), $shape);
+
+            self::assertSame(ErrorCode::ValidationFailed, $e->errorCode, $content);
+            self::assertSame([['propertyPath' => '', 'message' => ShapeRefusal::FIELD, 'code' => 'invalid_shape']], $e->violations, $content);
+        }
+
+        self::assertSame([], Input::body(Request::create('/x', 'POST', content: " {}\n"), $shape));
+    }
+
+    #[Test]
     public function aFieldNamedWithItsOwnRefusalIsRefusedWithIt(): void
     {
         $request = Request::create('/x', 'POST', content: '{"countryCode":null}');

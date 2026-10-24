@@ -166,6 +166,9 @@ Say in the report which assertion you broke and what it printed.
 - **A test that exists to catch one specific regression says which, in one line.** That is
   one of the few comments `code-comments` keeps — the rest of the suite needs none, because
   the method names are sentences.
+- **An API test sends an empty body as `{}`, never `Json\encode([])`.** That writes `[]`, a
+  list, which `Input::body` refuses whole (sc-9412), so the request never reaches the
+  behaviour under test. Encode `[] === $fields ? new stdClass() : $fields`.
 
 ## Four locales, every time
 
