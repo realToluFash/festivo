@@ -227,6 +227,8 @@ final class InputTest extends TestCase
         yield 'a number for a string' => ['42', Type\string()];
         yield 'a fraction for a string' => ['4.5', Type\string()];
         yield 'a boolean for a string' => ['true', Type\string()];
+        yield 'a list for a string' => ['["a"]', Type\string()];
+        yield 'an object for a string' => ['{"a":"b"}', Type\string()];
         yield 'a numeric string for an int' => ['"30"', Type\int()];
         yield 'a numeric string for a nullable int' => ['"30"', Type\nullable(Type\int())];
         yield 'a fractional number for an int' => ['30.0', Type\int()];
