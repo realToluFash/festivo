@@ -23,6 +23,17 @@ export function formatTimeOfDay(moment: string | Date, locale: string): string {
   }).format(date);
 }
 
+/** In the reader's own zone, where their calendar turns over. */
+export function fallsOnLaterDay(moment: string | Date, now: Date = new Date()): boolean {
+  const date = asDate(moment);
+
+  if (date == null) return false;
+
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+
+  return date.getTime() >= tomorrow.getTime();
+}
+
 export function secondsUntil(moment: string | Date, now: Date = new Date()): number {
   const date = asDate(moment);
 

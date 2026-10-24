@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  fallsOnLaterDay,
   formatCountdown,
   formatDay,
   formatEventDate,
@@ -92,6 +93,27 @@ describe('when a lock lifts', () => {
   it('answers with nothing for a Retry-After that is missing or nonsense', () => {
     expect(lockLiftsAt(Number.NaN, now)).toBeNull();
     expect(lockLiftsAt(0, now)).toBeNull();
+  });
+});
+
+describe('whether a moment falls on a later day', () => {
+  const evening = new Date(2026, 9, 21, 18, 59);
+
+  it('is not, later the same evening', () => {
+    expect(fallsOnLaterDay(new Date(2026, 9, 21, 23, 59), evening)).toBe(false);
+  });
+
+  it('is, at the same time tomorrow', () => {
+    expect(fallsOnLaterDay(new Date(2026, 9, 22, 18, 59), evening)).toBe(true);
+  });
+
+  it('is, a minute past local midnight', () => {
+    expect(fallsOnLaterDay(new Date(2026, 9, 22, 0, 1), evening)).toBe(true);
+    expect(fallsOnLaterDay(new Date(2026, 9, 22, 0, 0), evening)).toBe(true);
+  });
+
+  it('answers no for something that is not a date', () => {
+    expect(fallsOnLaterDay('not a date', evening)).toBe(false);
   });
 });
 

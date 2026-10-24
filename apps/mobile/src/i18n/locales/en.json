@@ -1299,6 +1299,7 @@
     "coolingOff": "{{organisation}} answered your last request. You can ask again from {{date}}.",
     "coolingOffLater": "{{organisation}} answered your last request. You can ask again in a few weeks.",
     "limited": "Too many requests for now. Try again at {{time}}.",
+    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
     "limitedLater": "Too many requests for now. Try again later.",
     "deadTitle": "This link doesn't work",
     "deadBody": "This link doesn't work any more. Ask the organisation for a new one.",
