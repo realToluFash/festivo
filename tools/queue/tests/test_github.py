@@ -154,15 +154,18 @@ class RestCalls(unittest.TestCase):
             found = github.live(7)
         self.assertEqual(found, {"headRefOid": HEAD, "mergeable": "CONFLICTING",
                                  "mergeStateStatus": "DIRTY", "state": "OPEN",
-                                 "draft": False, "mergeCommit": None})
+                                 "draft": False, "body": "", "story_id": None,
+                                 "mergeCommit": None})
 
     def test_a_merged_pull_request_gives_its_merge_commit(self):
-        merged = {"mergeable": None, "head": {"sha": HEAD, "ref": "x"}, "state": "closed",
+        merged = {"mergeable": None, "head": {"sha": HEAD, "ref": "feature/sc-12/x"},
+                  "title": "t", "body": "## Risks\nNone.", "state": "closed",
                   "merged": True, "mergeable_state": "unknown", "merge_commit_sha": MERGED}
         with mock.patch("soirely_queue.github.gh", FakeGh(routes({"repos/o/n/pulls/7": merged}))):
             found = github.live(7)
-        self.assertEqual((found["state"], found["mergeCommit"], found["mergeable"]),
-                         ("MERGED", MERGED, "UNKNOWN"))
+        self.assertEqual((found["state"], found["mergeCommit"], found["mergeable"],
+                          found["story_id"], found["body"]),
+                         ("MERGED", MERGED, "UNKNOWN", 12, "## Risks\nNone."))
 
     def compare(self, before, after):
         old, new = "b" * 40, HEAD
