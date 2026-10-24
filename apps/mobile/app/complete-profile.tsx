@@ -582,7 +582,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
             </Text>
           </View>
           {offers.map((offer) => (
-            <View key={offer.id} style={styles.offer}>
+            <View key={offer.id} style={[styles.offer, kind === 'phone' && styles.offerPhone]}>
               <View style={[styles.offerText, kind === 'phone' && styles.offerTextPhone]}>
                 <Text size={tokens.typeRowTitle.size} weight="semibold">
                   {t('domainJoining.usesSoirely', { organisation: offer.name })}
@@ -755,5 +755,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorInset,
   },
   offerText: { flexGrow: 1, flexShrink: 1, flexBasis: 180, minWidth: 0, gap: tokens.spaceHair },
-  offerTextPhone: { flexBasis: '100%' },
+  offerPhone: { flexDirection: 'column', alignItems: 'flex-start' },
+  offerTextPhone: { flexBasis: 'auto', alignSelf: 'stretch' },
 });
