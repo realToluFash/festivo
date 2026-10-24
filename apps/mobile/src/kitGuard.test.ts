@@ -64,6 +64,28 @@ describe('the account cards share one frame', () => {
   });
 });
 
+describe('screen reader focus moves on both platforms', () => {
+  it('is moved only in screenReaderFocus.ts', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/screenReaderFocus.ts'))
+      .filter(({ text }) => movesFocus(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use moveScreenReaderFocus(view) from src/components/screenReaderFocus.ts.',
+    ).toEqual([]);
+  });
+
+  it('notices a screen that moves focus itself', () => {
+    expect(movesFocus('if (node != null) AccessibilityInfo.setAccessibilityFocus(node);')).toBe(
+      true,
+    );
+    expect(movesFocus("AccessibilityInfo.sendAccessibilityEvent(view, 'focus');")).toBe(true);
+    expect(movesFocus('moveScreenReaderFocus(ref.current);')).toBe(false);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -213,4 +235,8 @@ function caretSet(markup: string): boolean {
 
 function takesRecoveryCode(markup: string): boolean {
   return /\btakesRecoveryCode(?!=\{false\})\b/u.test(markup);
+}
+
+function movesFocus(text: string): boolean {
+  return /\b(setAccessibilityFocus|sendAccessibilityEvent)\(/u.test(text);
 }

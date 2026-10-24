@@ -6,7 +6,7 @@ import {
   type View,
 } from 'react-native';
 
-/** Moves the screen reader's focus to the view. TalkBack ignores the focus event VoiceOver follows, and takes a hover instead (sc-9950). */
+/** TalkBack ignores the focus event VoiceOver follows, and takes a hover instead (sc-9950). */
 export function moveScreenReaderFocus(view: View | TextInput | null): void {
   if (view == null) return;
 
