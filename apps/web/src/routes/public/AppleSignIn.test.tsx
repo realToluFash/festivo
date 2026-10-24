@@ -103,6 +103,7 @@ describe('continue with Apple', () => {
       'POST http://api.test/api/auth/oauth/apple': () =>
         json({ ...ISSUED, account: ACCOUNT, linked: false }),
       'GET http://api.test/api/orgs': () => json({ organisations: [] }),
+      'GET http://api.test/api/auth/me': () => json(ACCOUNT),
     });
     at(path);
 
@@ -135,6 +136,7 @@ describe('continue with Apple', () => {
       'POST http://api.test/api/auth/oauth/apple': () =>
         json({ ...ISSUED, account: { ...ACCOUNT, providers: [] }, linked: true }),
       'GET http://api.test/api/orgs': () => json({ organisations: [] }),
+      'GET http://api.test/api/auth/me': () => json(ACCOUNT),
     });
     at(path);
 

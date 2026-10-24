@@ -100,6 +100,7 @@ describe('continue with Google', () => {
       'POST http://api.test/api/auth/oauth/google': () =>
         json({ ...ISSUED, account: ACCOUNT, linked: false }),
       'GET http://api.test/api/orgs': () => json({ organisations: [] }),
+      'GET http://api.test/api/auth/me': () => json(ACCOUNT),
     });
     at('/oauth/google?code=the-code&state=the-state');
 
@@ -134,6 +135,7 @@ describe('continue with Google', () => {
       'POST http://api.test/api/auth/oauth/google': () =>
         json({ ...ISSUED, account: { ...ACCOUNT, providers: [] }, linked: true }),
       'GET http://api.test/api/orgs': () => json({ organisations: [] }),
+      'GET http://api.test/api/auth/me': () => json(ACCOUNT),
     });
     at('/oauth/google?code=the-code&state=the-state');
 
