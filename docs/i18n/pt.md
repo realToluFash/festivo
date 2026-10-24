@@ -41,6 +41,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
+  "caducar", as the web. The subject is "{claimant} não assumiu a propriedade de
+  {organisation}. O pedido caducou", never "o pedido de {claimant}" with a bare address. Each
+  reason ends "por isso a propriedade não foi transferida"; the date takes a label, "Data em
+  que o pedido caducou: {deadline}.", as the withdrawn email.
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
   sc-9068). "e mais {{count}}", after the five names, the order Portuguese counts on in; "e
   outros" or "outras pessoas" would make the count agree with a gender nobody knows. No
