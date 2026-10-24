@@ -49,7 +49,7 @@ final class AddressController
         ]);
     }
 
-    #[Route('/api/addresses/{id}', name: 'address_resolve', methods: ['GET'], requirements: ['id' => '.+'])]
+    #[Route('/api/addresses/{id}', name: 'address_resolve', methods: ['GET'], requirements: ['id' => '[^/]+'])]
     public function resolve(string $id, Request $request): JsonResponse
     {
         $this->limit($request);
