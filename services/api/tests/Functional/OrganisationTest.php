@@ -398,14 +398,22 @@ final class OrganisationTest extends ApiTestCase
         self::assertDoesNotMatchRegularExpression('/coerce|type|array\{|string|int\b/i', Json\encode([$body['detail'], $body['violations']]));
     }
 
+    /** @return iterable<string, array{int|float}> */
+    public static function numbersForTheName(): iterable
+    {
+        yield '42' => [42];
+        yield '42.0' => [42.0];
+    }
+
     #[Test]
-    public function aNumberForTheNameIsRefusedRatherThanSavedAsText(): void
+    #[DataProvider('numbersForTheName')]
+    public function aNumberForTheNameIsRefusedRatherThanSavedAsText(int|float $name): void
     {
         $owner = $this->account('shape-number-name@example.com');
         $organisation = $this->found($owner, 'Ìrè Events', 'NG', 'Africa/Lagos');
         $this->signIn($owner);
 
-        $body = $this->patch($organisation, ['name' => 42]);
+        $body = $this->patch($organisation, ['name' => $name]);
 
         self::assertResponseStatusCodeSame(422);
         self::assertSame(ErrorCode::ValidationFailed->type(), $body['type']);

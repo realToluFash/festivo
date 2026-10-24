@@ -435,6 +435,65 @@ final class SignInRulesTest extends ApiTestCase
         yield '0 for Google or Apple only' => [['providerOnly' => 0], 'providerOnly'];
         yield '"true" for two-factor for everyone' => [['everyoneNeedsTwoFactor' => 'true'], 'everyoneNeedsTwoFactor'];
         yield '"false" for two-factor for administrators' => [['administratorsNeedTwoFactor' => 'false'], 'administratorsNeedTwoFactor'];
+        yield '"30.0" for the timeout' => [['inactivityTimeoutDays' => '30.0'], 'inactivityTimeoutDays'];
+        yield 'true for the timeout' => [['inactivityTimeoutDays' => true], 'inactivityTimeoutDays'];
+        yield 'a list for the timeout' => [['inactivityTimeoutDays' => [30]], 'inactivityTimeoutDays'];
+        yield 'an object for the timeout' => [['inactivityTimeoutDays' => ['days' => 30]], 'inactivityTimeoutDays'];
+        yield '1.0 for Google or Apple only' => [['providerOnly' => 1.0], 'providerOnly'];
+    }
+
+    /** @return iterable<string, array{string, int}> */
+    public static function wholeTimeoutsWrittenAsFloats(): iterable
+    {
+        yield '30.0' => ['30.0', 30];
+        yield '7.0' => ['7.0', 7];
+        yield '3e1' => ['3e1', 30];
+        yield '3.0E1' => ['3.0E1', 30];
+    }
+
+    /** JSON has one number type, so 30.0 is 30 (sc-10158). */
+    #[Test]
+    #[DataProvider('wholeTimeoutsWrittenAsFloats')]
+    public function aWholeTimeoutWrittenAsAFloatIsSavedAsTheWholeNumber(string $sent, int $days): void
+    {
+        $body = $this->setRaw('{"inactivityTimeoutDays":' . $sent . '}');
+
+        self::assertSame(200, $this->statusCode());
+        self::assertSame($days, $body['inactivityTimeoutDays'] ?? null);
+        self::assertSame($days, $this->as($this->owner, 'GET', $this->path())['inactivityTimeoutDays'] ?? null);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function timeoutsThatAreNotWholeNumbers(): iterable
+    {
+        yield '30.5' => ['30.5'];
+        yield '7.25' => ['7.25'];
+        yield '1e20, past the integer range' => ['1e20'];
+        yield '12345678901234567890, past the integer range' => ['12345678901234567890'];
+    }
+
+    #[Test]
+    #[DataProvider('timeoutsThatAreNotWholeNumbers')]
+    public function aTimeoutThatIsNotAnIntegerIsRefusedRatherThanRoundedOrWrapped(string $sent): void
+    {
+        $body = $this->setRaw('{"inactivityTimeoutDays":' . $sent . '}');
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame(ErrorCode::ValidationFailed->type(), $body['type'] ?? null);
+        self::assertSame([['propertyPath' => 'inactivityTimeoutDays', 'message' => 'This field cannot take that value. Check it and try again.', 'code' => 'invalid_shape']], $body['violations'] ?? null);
+        self::assertNull($this->as($this->owner, 'GET', $this->path())['inactivityTimeoutDays'] ?? null);
+    }
+
+    #[Test]
+    public function aWholeTimeoutWrittenAsAFloatThatIsNotOfferedIsRefusedAsTheIntegerIs(): void
+    {
+        $asInteger = $this->setRaw('{"inactivityTimeoutDays":14}');
+        $asFloat = $this->setRaw('{"inactivityTimeoutDays":14.0}');
+
+        self::assertSame(422, $this->statusCode());
+        self::assertSame($asInteger['violations'] ?? null, $asFloat['violations'] ?? null);
+        self::assertSame('choice', $asFloat['violations'][0]['code'] ?? null);
+        self::assertSame('Choose 7 days, 30 days or no limit.', $asFloat['violations'][0]['message'] ?? null);
     }
 
     /** @param array<string, mixed> $rules */
@@ -593,6 +652,17 @@ final class SignInRulesTest extends ApiTestCase
     private function set(array $rules): array
     {
         return $this->as($this->owner, 'PATCH', $this->path(), $rules);
+    }
+
+    /** @return array<string, mixed> */
+    private function setRaw(string $json): array
+    {
+        $this->client->request('PATCH', $this->path(), server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->fresh($this->owner)),
+        ], content: $json);
+
+        return $this->last();
     }
 
     private function account(string $address, string $name): User
