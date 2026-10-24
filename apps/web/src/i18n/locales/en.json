@@ -35,7 +35,7 @@
     "whenHeading": "When",
     "zoneHeading": "Time zone and currency",
     "name": "Event name",
-    "nameCount": "{{length}} of {{most}} characters",
+    "nameCount": "{{count}} of {{most}} characters",
     "starts": "Starts",
     "ends": "Ends",
     "date": "Date",
