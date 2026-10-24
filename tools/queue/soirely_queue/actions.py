@@ -762,7 +762,8 @@ def merge(c, a):
         return f"merged PR #{a.pr}"
     story = c.story(pr["story_id"]) if pr["story_id"] else None
     side = bool(story) and W.side_pr(story, pr)
-    if not story or story["state"] not in R.MERGING and not side:
+    follow_up = bool(story) and not side and story["state"] in R.FOLLOWING_UP
+    if not story or story["state"] not in R.MERGING and not side and not follow_up:
         raise Refused(f"its story is {story['state'] if story else 'unknown'}, not "
                       "Passed Code Review")
     if R.builder_of(story["labels"]) != c.role and not (
@@ -782,6 +783,8 @@ def merge(c, a):
     if side:
         return (f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}, "
                 f"the linguist's to move, and the linguist is woken{resync(c)}")
+    if follow_up:
+        return f"merged PR #{a.pr} as {merged}; sc-{story['id']} stays {story['state']}{resync(c)}"
     try:
         went = hand_to_qa(c, story, pr, merged, a.text)
     except ShortcutError as error:
