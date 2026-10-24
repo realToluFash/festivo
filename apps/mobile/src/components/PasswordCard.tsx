@@ -19,7 +19,7 @@ import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { CodeField, Field } from './Field.tsx';
+import { CodeField, Field, focusChecked } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
@@ -159,7 +159,7 @@ function Changing({
         : field === 'currentPassword'
           ? t('passwordCard.currentBlank')
           : t('passwordCard.newBlank'),
-    (field) => (field === 'currentPassword' ? currentInput : nextInput).current?.focus(),
+    (field) => focusChecked(field === 'currentPassword' ? currentInput : nextInput),
   );
 
   async function submit(): Promise<void> {
@@ -168,7 +168,7 @@ function Changing({
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(next.current)) {
-      nextInput.current?.focus();
+      focusChecked(nextInput);
       return;
     }
 
@@ -228,7 +228,6 @@ function Changing({
           ref={currentInput}
           wrong={currentError != null}
           submitting={saving}
-          editable={!saving}
           autoComplete="current-password"
           textContentType="password"
           onChangeText={(text) => {
@@ -250,7 +249,6 @@ function Changing({
             ref={nextInput}
             wrong={nextError != null}
             submitting={saving}
-            editable={!saving}
             autoComplete="new-password"
             textContentType="newPassword"
             onChangeText={(text) => {
@@ -262,6 +260,7 @@ function Changing({
             onBlur={() => checks.left('newPassword', next.current)}
             returnKeyType="done"
             onSubmitEditing={() => void submit()}
+            submitBehavior="submit"
             accessibilityLabel={t('passwordCard.new')}
             testID="password.new"
           />
@@ -321,12 +320,12 @@ function Setting({
 
       return problem === 'blank' ? t('passwordCard.setCodeBlank') : t('passwordCard.setCodeShort');
     },
-    () => codeInput.current?.focus(),
+    () => focusChecked(codeInput),
   );
   const passwordChecks = useFormChecks(
     ['password'] as const,
     (_field, value) => (value === '' ? t('passwordCard.setNewBlank') : null),
-    () => passwordInput.current?.focus(),
+    () => focusChecked(passwordInput),
   );
 
   async function send(): Promise<void> {
@@ -377,7 +376,7 @@ function Setting({
 
     // The rule is stated before submit, so a short password is never sent.
     if (!meetsPasswordLength(password.current)) {
-      passwordInput.current?.focus();
+      focusChecked(passwordInput);
       return;
     }
 
@@ -419,7 +418,6 @@ function Setting({
               ref={passwordInput}
               wrong={error != null}
               submitting={busy}
-              editable={!busy}
               autoComplete="new-password"
               textContentType="newPassword"
               onChangeText={(text) => {
@@ -431,6 +429,7 @@ function Setting({
               onBlur={() => passwordChecks.left('password', password.current)}
               returnKeyType="done"
               onSubmitEditing={() => void save()}
+              submitBehavior="submit"
               accessibilityLabel={t('passwordCard.setNewLabel')}
               testID="password.setNew"
             />
@@ -479,7 +478,7 @@ function Setting({
           <CodeField
             ref={codeInput}
             wrong={codeError != null}
-            editable={!busy}
+            submitting={busy}
             onChangeText={(text) => {
               code.current = text;
               setCodeRefusal(null);
@@ -488,6 +487,7 @@ function Setting({
             onBlur={() => codeChecks.left('code', code.current)}
             returnKeyType="done"
             onSubmitEditing={() => void passCode()}
+            submitBehavior="submit"
             accessibilityLabel={t('passwordCard.setCodeLabel')}
             testID="password.setCode"
           />

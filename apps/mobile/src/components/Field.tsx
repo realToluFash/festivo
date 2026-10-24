@@ -1,5 +1,14 @@
-import type { ReactNode, Ref } from 'react';
-import { Pressable, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { type ReactNode, type Ref, type RefObject, useState } from 'react';
+import {
+  AccessibilityInfo,
+  findNodeHandle,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  type TextInputProps,
+  View,
+} from 'react-native';
 
 import { codeProps, FIELD_DEFAULTS } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
@@ -113,14 +122,64 @@ export function FieldError({
 
 export type TextFieldProps = TextInputProps & {
   wrong?: boolean;
+  submitting?: boolean;
   ref?: Ref<TextInput> | undefined;
 };
 
-export function TextField({ wrong = false, style, ref, ...rest }: TextFieldProps) {
+/** Held while a submit runs: focused and the keyboard up, which `editable={false}` would drop, but nothing typed is taken. */
+export function useHeld(
+  held: boolean,
+  value: string | undefined,
+  defaultValue: string | undefined,
+  onChangeText: ((text: string) => void) | undefined,
+): Pick<TextInputProps, 'value' | 'onChangeText'> {
+  const [typed, setTyped] = useState(value ?? defaultValue ?? '');
+
+  if (held) return { value: value ?? typed, onChangeText: undefined };
+
+  return {
+    onChangeText: (text) => {
+      if (value === undefined) setTyped(text);
+      onChangeText?.(text);
+    },
+  };
+}
+
+/** To the field a server refusal names: the keyboard moves there if it was up, and a server refusal never raises it. */
+export function focusRefused(field: RefObject<TextInput | null>): void {
+  if (Keyboard.isVisible()) {
+    field.current?.focus();
+    return;
+  }
+
+  const node = findNodeHandle(field.current);
+  if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+}
+
+/** To the field a client check names, with the keyboard up on it. */
+export function focusChecked(field: RefObject<TextInput | null>): void {
+  // Android's back gesture hides the keys and leaves the field focused, and focus() skips a focused field.
+  if (field.current?.isFocused() === true && !Keyboard.isVisible()) field.current.blur();
+  field.current?.focus();
+}
+
+export function TextField({
+  wrong = false,
+  submitting = false,
+  style,
+  ref,
+  value,
+  onChangeText,
+  ...rest
+}: TextFieldProps) {
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
+
   return (
     <TextInput
       {...FIELD_DEFAULTS}
       {...rest}
+      value={value}
+      {...holding}
       ref={ref}
       style={faced([styles.input, wrong && styles.wrong, style])}
       aria-invalid={wrong}
@@ -134,16 +193,23 @@ export type CodeFieldProps = TextFieldProps & {
 
 export function CodeField({
   wrong = false,
+  submitting = false,
   takesRecoveryCode = false,
   style,
   ref,
+  value,
+  onChangeText,
   ...rest
 }: CodeFieldProps) {
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
+
   return (
     <TextInput
       {...codeProps(takesRecoveryCode)}
       autoComplete="sms-otp"
       {...rest}
+      value={value}
+      {...holding}
       ref={ref}
       style={faced([styles.code, wrong && styles.wrong, style])}
       aria-invalid={wrong}
