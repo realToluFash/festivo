@@ -8,6 +8,8 @@ import { joinOrganisation } from './session.ts';
 export interface WaitingInvitations {
   invitations: readonly InvitationPreview[];
   outcomes: Readonly<Record<string, InvitationOutcome>>;
+  /** The organisation of the first invitation accepted this visit, set in the same update as its outcome. */
+  firstJoined: string | null;
   /** Resolves with what came of it, once the row says so. */
   answer: (
     invitation: InvitationPreview,
@@ -20,6 +22,7 @@ export function useWaitingInvitations(load = true): WaitingInvitations {
   const [loading] = useState(load);
   const [invitations, setInvitations] = useState<readonly InvitationPreview[]>([]);
   const [outcomes, setOutcomes] = useState<Record<string, InvitationOutcome>>({});
+  const [firstJoined, setFirstJoined] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading) return;
@@ -38,8 +41,10 @@ export function useWaitingInvitations(load = true): WaitingInvitations {
     };
   }, [loading]);
 
-  const settle = (id: string, outcome: InvitationOutcome): void =>
+  const settle = (id: string, outcome: InvitationOutcome): void => {
     setOutcomes((now) => ({ ...now, [id]: outcome }));
+    if (outcome.kind === 'accepted') setFirstJoined((first) => first ?? outcome.organisationId);
+  };
 
   async function answer(
     invitation: InvitationPreview,
@@ -70,5 +75,5 @@ export function useWaitingInvitations(load = true): WaitingInvitations {
     return outcome;
   }
 
-  return { invitations, outcomes, answer };
+  return { invitations, outcomes, firstJoined, answer };
 }
