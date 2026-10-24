@@ -62,6 +62,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. A request refused for its shape (sc-8708, sc-8716,
+  `messages:validation.invalid_shape`, `validation.request_shape`).** Kept as sc-8708 wrote
+  them: "This field cannot take that value. Check it and try again." under the field, and "The
+  request does not have the expected shape." as the 422 `detail`. The field sentence also
+  answers a required field left out (the refresh call with no token), so the other locales
+  word it as the value the field will not take, never as a format. The API tests pin both
+  English sentences, so a reword waits on [dev].
 - **24 Oct 2026. Withdrawing your own claim (sc-8204, sc-8556, `ownerClaim.withdraw*`,
   `youWithdrew*`, `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`).** The
   claimant "withdraws" their claim; anybody else "stops" one. The confirm is "Withdraw your
