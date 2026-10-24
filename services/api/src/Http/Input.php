@@ -72,7 +72,7 @@ final readonly class Input
         try {
             return $shape->coerce($value);
         } catch (CoercionException $e) {
-            $path = \implode('.', $e->getPaths());
+            $path = Str\join($e->getPaths(), '.');
 
             throw new ShapeRefusal($path, $refusals[$path] ?? ShapeRefusal::FIELD, $e);
         }
