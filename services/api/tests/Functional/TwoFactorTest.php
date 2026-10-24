@@ -81,6 +81,33 @@ final class TwoFactorTest extends ApiTestCase
     }
 
     #[Test]
+    public function onlyTheMatchingCodeEmailsTheAddressThatItWasTurnedOn(): void
+    {
+        $this->authenticated();
+        $this->call('POST', '/api/auth/two-factor/enrol');
+        self::assertCount(0, $this->turnedOnEmails(), 'starting setup sends nothing');
+        $secret = Type\string()->coerce($this->call('POST', '/api/auth/two-factor/enrol')['secret']);
+        self::assertCount(0, $this->turnedOnEmails(), 'nor does starting it again');
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => '000000']);
+        self::assertCount(0, $this->turnedOnEmails(), 'nor does a wrong code');
+
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow($secret)]);
+        $sent = $this->turnedOnEmails();
+        self::assertCount(1, $sent);
+        $email = $sent[0];
+        self::assertSame(self::ADDRESS, $email->getTo()[0]->getAddress());
+        self::assertStringContainsString('turned on for your Soirely account on 17 October 2026', (string) $email->getTextBody());
+        self::assertStringContainsString('"Lost your authenticator and your recovery codes?"', (string) $email->getTextBody());
+
+        $this->call('POST', '/api/auth/two-factor/enrol');
+        self::assertSame(ErrorCode::TwoFactorAlreadyOn->type(), $this->last()['type']);
+        self::assertCount(0, $this->turnedOnEmails(), 'setting it up while it is on sends nothing');
+        $this->call('POST', '/api/auth/two-factor/activate', ['code' => $this->codeNow($secret)]);
+        self::assertSame(ErrorCode::TwoFactorNotEnrolled->type(), $this->last()['type']);
+        self::assertCount(0, $this->turnedOnEmails(), 'nor does a code while it is on');
+    }
+
+    #[Test]
     public function aPasswordSignInGetsAChallengeAndNoTokensUntilTheCodePasses(): void
     {
         $secret = $this->turnedOn()['secret'];
@@ -395,6 +422,15 @@ final class TwoFactorTest extends ApiTestCase
         $body = $this->call('POST', '/api/auth/login', ['email' => self::ADDRESS, 'password' => self::PASSWORD]);
 
         return [$this->statusCode(), $body];
+    }
+
+    /** @return list<Email> */
+    private function turnedOnEmails(): array
+    {
+        return Vec\filter(
+            Vec\map(self::getMailerMessages(), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message)),
+            static fn (Email $email): bool => 'Two-factor authentication was turned on' === $email->getSubject(),
+        );
     }
 
     private function codeNow(#[SensitiveParameter] string $secret): string

@@ -88,6 +88,8 @@ final readonly class TwoFactorSettings
         $codes = $this->recoveryCodes->issueFor($user);
         $this->entityManager->flush();
 
+        $this->twoFactorMailer->sendTurnedOn($user, $this->clock->now());
+
         return $codes;
     }
 
