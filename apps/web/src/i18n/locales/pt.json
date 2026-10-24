@@ -1568,7 +1568,7 @@
     "coolingOff": "{{organisation}} respondeu ao seu último pedido. A partir de {{date}}, pode voltar a pedir para aderir.",
     "coolingOffLater": "{{organisation}} respondeu ao seu último pedido. Pode voltar a pedir para aderir daqui a algumas semanas.",
     "limited": "Demasiados pedidos por agora. Tente novamente às {{time}}.",
-    "limitedOnDay": "Too many requests for now. Try again on {{day}} at {{time}}.",
+    "limitedOnDay": "Demasiados pedidos por agora. A partir de {{day}}, às {{time}}, pode tentar novamente.",
     "limitedLater": "Demasiados pedidos por agora. Tente novamente mais tarde.",
     "deadTitle": "Esta ligação não funciona",
     "deadBody": "Esta ligação já não funciona. Peça uma nova à organização.",
