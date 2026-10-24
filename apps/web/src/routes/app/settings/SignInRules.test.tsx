@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import type { Membership } from '@soirely/api-client';
+import { setLanguage } from '../../../i18n/index.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { routes } from '../../index.tsx';
@@ -645,5 +646,95 @@ describe('what the rules ask of a member, on every page', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Turn on two-factor' }));
 
     await waitFor(() => expect(screen.queryByText('Turn on two-factor to carry on')).toBeNull());
+  });
+});
+
+describe('the two-factor deadline after a language change (sc-9267)', () => {
+  const WRITTEN: Record<string, string> = {
+    en: 'Saturday 31 Oct at 10:44 GMT',
+    es: 'sábado 31 oct a las 10:44 GMT',
+  };
+
+  afterEach(async () => {
+    await act(() => setLanguage(null));
+  });
+
+  function answeringIn(spanish: () => Promise<Response> = async () => rulesIn('es')): string[] {
+    const asked: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (!new URL(String(input)).pathname.endsWith('/sign-in-rules')) {
+        return new Response(null, { status: 500 });
+      }
+
+      const language = new Headers(init?.headers).get('Accept-Language') ?? '';
+      asked.push(language);
+
+      return language === 'es' ? spanish() : rulesIn(language);
+    });
+
+    return asked;
+  }
+
+  function rulesIn(language: string): Response {
+    const deadline = { at: '2026-10-31T10:44:00+00:00', written: WRITTEN[language] ?? '' };
+
+    return new Response(
+      JSON.stringify({
+        ...PAGE,
+        everyoneNeedsTwoFactor: true,
+        ownTwoFactor: true,
+        twoFactorDeadline: deadline,
+        withoutTwoFactor: [],
+      }),
+      { status: 200 },
+    );
+  }
+
+  it('is asked for again in the picked language, without a reload', async () => {
+    signedIn(membership());
+    const asked = answeringIn();
+    open();
+    expect(await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT')).toBeDefined();
+
+    await act(() => setLanguage('es'));
+
+    expect(
+      await screen.findByText('Obligatoria a partir del sábado 31 oct a las 10:44 GMT'),
+    ).toBeDefined();
+    expect(asked).toEqual(['en', 'es']);
+
+    await act(() => setLanguage('en'));
+
+    expect(await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT')).toBeDefined();
+  });
+
+  it('keeps the date it had while asking, and after a failed ask, with no error', async () => {
+    signedIn(membership());
+    let answer: (response: Response) => void = () => {};
+    let spanish = () =>
+      new Promise<Response>((resolve) => {
+        answer = resolve;
+      });
+    answeringIn(() => spanish());
+    open();
+    await screen.findByText('Required from Saturday 31 Oct at 10:44 GMT');
+
+    await act(() => setLanguage('es'));
+
+    expect(screen.getByText('Obligatoria a partir del Saturday 31 Oct at 10:44 GMT')).toBeDefined();
+
+    await act(async () => answer(new Response(null, { status: 500 })));
+
+    expect(screen.getByText('Obligatoria a partir del Saturday 31 Oct at 10:44 GMT')).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    spanish = async () => rulesIn('es');
+    await act(() => setLanguage('fr'));
+    await act(() => setLanguage('es'));
+
+    expect(
+      await screen.findByText('Obligatoria a partir del sábado 31 oct a las 10:44 GMT'),
+    ).toBeDefined();
   });
 });
