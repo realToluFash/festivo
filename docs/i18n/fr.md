@@ -54,6 +54,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
+  `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
+  sc-8735). « Suspendre {{name}} », « Rétablir l’accès ». What is suspended is « l’accès », so
+  nothing agrees with the member: « L’accès est suspendu pour {{name}} », « Un accès suspendu
+  n’occupe pas de place », « Seul un accès actif peut être suspendu ». The organisation is
+  « l’accès à l’organisation {{organisation}} » or « dans {organisation} », never « à » before
+  the slot. A team seat is « place d’équipe » of « le forfait », as `errors:team_seats_in_use`.
+  "An administrator of" in the email is « une personne qui administre l’organisation … »,
+  which also covers owners. The email facts read « Date de suspension » and « Date de
+  rétablissement ». `ownerNoSuspend` and `members.suspend_owner` open on the same sentence.
 - **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
   « expirer », as the web. The subject is « {claimant} ne deviendra pas propriétaire de
   l’organisation {organisation}. La demande a expiré », as the started email: « propriétaire »
