@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\EventStatus;
+use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
 use Doctrine\DBAL\Types\Types;
@@ -132,7 +133,7 @@ class Event
         return $this->currency;
     }
 
-    /** Both in the start's zone. The UTC columns are derived here and written nowhere else. */
+    /** Both in the start's zone. The UTC columns are derived here and in rederiveUtc(), and written nowhere else. */
     public function setTimes(DateTimeImmutable $startsAt, DateTimeImmutable $endsAt): void
     {
         $zone = $startsAt->getTimezone();
@@ -143,6 +144,24 @@ class Event
         $this->endsAt = self::wallClock($endsAt->setTimezone($zone));
         $this->startsAtUtc = $startsAt->setTimezone($utc);
         $this->endsAtUtc = $endsAt->setTimezone($utc);
+    }
+
+    /** @param Closure(DateTimeImmutable, DateTimeZone): DateTimeImmutable $resolve applied to the stored wall-clock times, which it leaves as the host entered them */
+    public function rederiveUtc(Closure $resolve): bool
+    {
+        $zone = new DateTimeZone($this->timeZone);
+        $utc = new DateTimeZone('UTC');
+        $startsAtUtc = $resolve($this->startsAt, $zone)->setTimezone($utc);
+        $endsAtUtc = $resolve($this->endsAt, $zone)->setTimezone($utc);
+
+        if ($startsAtUtc->format('Y-m-d H:i:s') === $this->startsAtUtc->format('Y-m-d H:i:s') && $endsAtUtc->format('Y-m-d H:i:s') === $this->endsAtUtc->format('Y-m-d H:i:s')) {
+            return false;
+        }
+
+        $this->startsAtUtc = $startsAtUtc;
+        $this->endsAtUtc = $endsAtUtc;
+
+        return true;
     }
 
     /** The saved instant while it still reads as the wall-clock time, which keeps a repeated hour's earlier offset; rebuilt once the zone's rules have moved. */
