@@ -988,7 +988,7 @@
       "title": "A aguardar aprovação",
       "note": "Só quem gere os membros vê estes pedidos. Ninguém entra na organização sem que uma destas pessoas aprove o pedido.",
       "asked": "{{channel}} · data do pedido: {{date}}",
-      "removes": "O pedido é removido a {{deadline}} se ninguém responder",
+      "removes": "O pedido é removido se ninguém responder até {{deadline}}",
       "approve": "Aprovar",
       "turnDown": "Recusar",
       "roleFor": "Função de {{name}}",

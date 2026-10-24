@@ -149,10 +149,10 @@
     "joinRequest.turnedDown.subject": "O seu pedido de adesão a {organisation}",
     "joinRequest.turnedDown.body": "O seu pedido de adesão a {organisation} na Soirely foi recusado, por isso não passou a fazer parte da organização.",
     "joinRequest.expired.subject": "O seu pedido de adesão a {organisation} foi removido",
-    "joinRequest.expired.body": "Ninguém de {organisation} respondeu ao seu pedido de adesão, por isso foi removido a {deadline}.",
+    "joinRequest.expired.body": "Ninguém de {organisation} respondeu ao seu pedido de adesão até {deadline}, por isso foi removido.",
     "joinRequest.askAgain": "Pode voltar a pedir para aderir a {organisation} depois de passarem 30 dias. Se achar que se trata de um erro, fale com alguém que conheça na organização.",
     "joinRequest.waiting.subject": "Há alguém à espera para aderir a {organisation}",
-    "joinRequest.waiting.person": "{name} ({email}): o pedido é removido a {deadline} se ninguém responder",
+    "joinRequest.waiting.person": "{name} ({email}): o pedido é removido se ninguém responder até {deadline}",
     "joinRequest.waiting.answer": "Aprove ou recuse os pedidos em Membros: {link}",
     "joinRequest.waiting.footer": "Está a receber esta mensagem porque gere os membros de {organisation}. Enviamo-la, no máximo, uma vez por dia."
 }
