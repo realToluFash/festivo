@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
+import { setLanguage } from '../../../i18n/index.ts';
 import { __setSessionState, type Session } from '../../../session.ts';
 import { OWNER_PERMISSIONS, membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
@@ -1378,5 +1379,101 @@ describe('suspending and restoring a member', () => {
       ),
     ).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();
+  });
+});
+
+describe('the dates the server wrote after a language change (sc-9267)', () => {
+  const WRITTEN: Record<string, { asked: string; suspended: string }> = {
+    en: { asked: 'Wednesday, Nov 11 at 09:40 WAT', suspended: 'Monday, Nov 16 at 14:20 WAT' },
+    es: { asked: 'miércoles, 11 nov a las 09:40 WAT', suspended: 'lunes, 16 nov a las 14:20 WAT' },
+  };
+
+  afterEach(async () => {
+    await act(() => setLanguage(null));
+  });
+
+  function listIn(language: string): Response {
+    const written = WRITTEN[language] ?? { asked: '', suspended: '' };
+
+    return json({
+      ...LIST,
+      members: [
+        LIST.members[0],
+        {
+          ...LIST.members[1],
+          channel: 'domain',
+          suspension: {
+            reason: 'address_gone',
+            domain: 'ire.events',
+            since: { at: '2026-10-17T13:20:00+00:00', written: written.suspended },
+            removesAt: { at: '2026-11-16T13:20:00+00:00', written: written.suspended },
+            onlyOwner: false,
+          },
+        },
+        { ...ADA, removesAt: { at: '2026-11-11T08:40:00+00:00', written: written.asked } },
+      ],
+    });
+  }
+
+  function answeringIn(spanish: () => Promise<Response> = async () => listIn('es')): string[] {
+    const asked: string[] = [];
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const path = new URL(String(input)).pathname;
+      if (path === '/api/orgs/org_1/roles') return json(ROLES);
+      if (path !== '/api/orgs/org_1/members') return new Response(null, { status: 500 });
+
+      const language = new Headers(init?.headers).get('Accept-Language') ?? '';
+      asked.push(language);
+
+      return language === 'es' ? spanish() : listIn(language);
+    });
+
+    return asked;
+  }
+
+  it('asks for the removal lines again in the picked language, without a reload', async () => {
+    signedIn();
+    const asked = answeringIn();
+    open();
+    expect(
+      await screen.findByText('Removed on Wednesday, Nov 11 at 09:40 WAT if nobody answers'),
+    ).toBeDefined();
+
+    await act(() => setLanguage('es'));
+
+    expect(
+      await screen.findByText('Se retirará el miércoles, 11 nov a las 09:40 WAT si nadie responde'),
+    ).toBeDefined();
+    expect(asked).toEqual(['en', 'es']);
+
+    fireEvent.click(screen.getByRole('button', { name: /Bisi Adeyemi/ }));
+
+    expect(
+      screen.getByText(
+        'Si nadie responde antes del lunes, 16 nov a las 14:20 WAT, se quitará a esta persona de la organización.',
+      ),
+    ).toBeDefined();
+  });
+
+  it('keeps the dates it had after a failed ask, with no error', async () => {
+    signedIn();
+    const asked = answeringIn(async () => new Response(null, { status: 500 }));
+    open();
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    expect(
+      screen.getByText('If nobody answers by Monday, Nov 16 at 14:20 WAT, they are removed.'),
+    ).toBeDefined();
+
+    await act(() => setLanguage('es'));
+    await waitFor(() => expect(asked).toEqual(['en', 'es']));
+    await act(async () => {});
+
+    expect(
+      screen.getByText(
+        'Si nadie responde antes del Monday, Nov 16 at 14:20 WAT, se quitará a esta persona de la organización.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
