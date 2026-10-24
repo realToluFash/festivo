@@ -1070,7 +1070,7 @@
     "usesSoirely": "{{organisation}} utilise Soirely",
     "approvesFirst": "Une personne de l’organisation valide votre demande avant que vous n’ayez accès à quoi que ce soit.",
     "ask": "Demander l’accès",
-    "askLabel": "Demander à rejoindre {{organisation}}",
+    "askLabel": "Demander l’accès à {{organisation}}",
     "startOwn": "Créer ma propre organisation",
     "askInstead": "Demander plutôt à rejoindre une organisation du domaine {{domain}}",
     "unavailable": "Vous ne pouvez pas demander à rejoindre cette organisation. Créez la vôtre, ou demandez à une personne de cette organisation de vous inviter.",
