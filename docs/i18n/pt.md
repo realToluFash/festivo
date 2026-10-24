@@ -72,6 +72,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   "não foi adicionado", so nothing agrees with them. The waiting email's count takes `=0`
   (PHP's ICU counts 0 as one in "pt") and `many`, "1 000 000 de pessoas".
 
+- **24 Oct 2026. Who did it, in a history line** (`membersScreen.byYou`, `membersScreen.someone`,
+  sc-7217, from QA). Both fill `{{by}}` after "por": the reader is "si" ("Pedido recusado por si"),
+  never Brazilian "você", and a person who has since left is "alguém que já não é membro".
+
 - **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
   `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads "Em pausa", the admins
   "Acesso suspenso", as the English keeps them apart. Restoring is "repor", as the drafted

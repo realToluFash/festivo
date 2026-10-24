@@ -903,8 +903,8 @@
     "inviteAgain": "Invite again",
     "revokeFailed": "We could not revoke that invitation. Try again.",
     "howTheyGotHere": "How they got here",
-    "someone": "somebody no longer here",
-    "byYou": "you",
+    "someone": "alguien que ya no es miembro",
+    "byYou": "usted",
     "history": {
       "invitedBy": "Invited by {{by}}",
       "joined": {

@@ -90,6 +90,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   given on approval is « avec le rôle {{role}} », so nothing agrees with the person; the
   person refused « ne fait donc pas partie de l’organisation », never « n’a pas été ajouté ».
   The waiting email’s count takes `many`, « 1 000 000 de personnes ».
+- **24 Oct 2026. Who did it, in a history line** (`membersScreen.byYou`, `membersScreen.someone`,
+  sc-7217, from QA). Both fill `{{by}}` after « par » : the reader is « vous » (« Demande refusée par
+  vous »), and a person who has since left is « une personne qui n’est plus membre ».
 - **24 Oct 2026. No « à » or « de » straight before {organisation}** (sc-7217, from QA). A
   name that opens on an article reads « à Les Événements… », where French wants « aux ».
   Take a verb that needs no preposition, with the organisation as its object: « sa demande
