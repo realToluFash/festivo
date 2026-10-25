@@ -34,7 +34,7 @@ type Said =
 type Stage =
   | { kind: 'list'; said: Said | null }
   | { kind: 'proving'; act: Act }
-  | { kind: 'confirming'; act: Act }
+  | { kind: 'confirming'; act: Act; proof: string }
   | { kind: 'working' };
 
 /** Settings > Security, between Password and Two-factor: link or unlink Google and Apple (sc-510). */
@@ -83,20 +83,14 @@ export function WaysCard({
   }, []);
 
   function begin(act: Act): void {
-    if (heldProof() == null) setStage({ kind: 'proving', act });
-    else void proceed(act);
+    const proof = heldProof();
+    if (proof == null) setStage({ kind: 'proving', act });
+    else void proceed(act, proof);
   }
 
-  async function proceed(act: Act): Promise<void> {
+  async function proceed(act: Act, proof: string): Promise<void> {
     if (act.action === 'unlink') {
-      setStage({ kind: 'confirming', act });
-
-      return;
-    }
-
-    const proof = heldProof();
-    if (proof == null) {
-      setStage({ kind: 'proving', act });
+      setStage({ kind: 'confirming', act, proof });
 
       return;
     }
@@ -130,14 +124,7 @@ export function WaysCard({
     }
   }
 
-  async function unlink(provider: Provider): Promise<void> {
-    const proof = heldProof();
-    if (proof == null) {
-      setStage({ kind: 'proving', act: { action: 'unlink', provider } });
-
-      return;
-    }
-
+  async function unlink(provider: Provider, proof: string): Promise<void> {
     setStage({ kind: 'working' });
 
     try {
@@ -166,7 +153,7 @@ export function WaysCard({
           hasPassword={hasPassword}
           providers={providers}
           twoFactorOn={twoFactorOn}
-          onProved={() => void proceed(stage.act)}
+          onProved={(proof) => void proceed(stage.act, proof)}
           onCodeSpent={onCodeSpent}
           onCancel={() => setStage({ kind: 'list', said: null })}
         />
@@ -181,7 +168,7 @@ export function WaysCard({
           act={stage.act}
           hasPassword={hasPassword}
           providers={providers}
-          onUnlink={() => void unlink(stage.act.provider)}
+          onUnlink={() => void unlink(stage.act.provider, stage.proof)}
           onKeep={() => setStage({ kind: 'list', said: null })}
         />
       </View>
@@ -415,7 +402,7 @@ function Proving({
   hasPassword: boolean;
   providers: readonly LinkedProvider[];
   twoFactorOn: boolean;
-  onProved: () => void;
+  onProved: (proof: string) => void;
   onCodeSpent: () => void;
   onCancel: () => void;
 }) {

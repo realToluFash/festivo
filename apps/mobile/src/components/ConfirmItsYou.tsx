@@ -260,7 +260,12 @@ export function ConfirmItsYou({
           testID={`${idPrefix}.continue`}
         />
       </View>
-      <QuietButton label={t('waysCard.cancel')} onPress={onCancel} testID={`${idPrefix}.cancel`} />
+      <QuietButton
+        label={t('waysCard.cancel')}
+        onPress={onCancel}
+        off={checking}
+        testID={`${idPrefix}.cancel`}
+      />
     </>
   );
 }

@@ -449,6 +449,28 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 });
 
+describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
+  const offWhile = (file: string, busy: string) =>
+    selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
+      .filter(({ markup }) => markup.includes(`off={${busy}}`))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+  it('in Password, beside Save new password and Save password, not beside the code check', () => {
+    expect([
+      ...offWhile('PasswordCard.tsx', 'saving'),
+      ...offWhile('PasswordCard.tsx', 'busy'),
+    ]).toEqual(['"password.cancel"', '"password.setCancel"']);
+  });
+
+  it('in Time zone, beside Save time zone', () => {
+    expect(offWhile('TimeZoneCard.tsx', 'saving')).toEqual(['"timeZone.cancel"']);
+  });
+
+  it("in Confirm it's you, beside Continue", () => {
+    expect(offWhile('ConfirmItsYou.tsx', 'checking')).toEqual(['{`${idPrefix}.cancel`}']);
+  });
+});
+
 describe('a screen is a composition of the kit', () => {
   it('takes its fields from the kit, never a bare TextInput', () => {
     const offenders = sources(['app'])
