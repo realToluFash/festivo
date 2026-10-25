@@ -8,6 +8,7 @@ import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
@@ -388,7 +389,7 @@ function SettingUp({
               <button className="button button-primary" type="submit" aria-busy={checking}>
                 {t('twoFactorCard.checkCode')}
               </button>
-              <button className="button" type="button" onClick={onCancel}>
+              <button className="button" type="button" {...offButton(checking)} onClick={onCancel}>
                 {t('twoFactorCard.cancel')}
               </button>
             </div>
@@ -562,7 +563,7 @@ function TurningOff({
           <button className="button button-dark" type="submit" aria-busy={checking}>
             {t('twoFactorCard.turnItOff')}
           </button>
-          <button className="button" type="button" onClick={onKeep}>
+          <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepItOn')}
           </button>
         </div>
@@ -660,7 +661,7 @@ function ConfirmNewCodes({
           <button className="button button-primary" type="submit" aria-busy={checking}>
             {t('twoFactorCard.makeNewCodes')}
           </button>
-          <button className="button" type="button" onClick={onKeep}>
+          <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepCodes')}
           </button>
         </div>

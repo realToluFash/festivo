@@ -408,6 +408,17 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
+describe('a way back in Two-factor authentication is off while its request runs (sc-12537)', () => {
+  it('on Cancel, Keep it on and Keep current codes', () => {
+    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{checking\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual(['"twoFactor.cancel"', '"twoFactor.keepItOn"', '"twoFactor.keepCodes"']);
+  });
+});
+
 describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
@@ -477,6 +488,32 @@ describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", ()
 
     expect(text).toMatch(
       /if \(unlinkProofLapsed\(error\)\) \{\s*setStage\(\{ kind: 'proving', act: \{ action: 'unlink', provider \} \}\);/,
+    );
+  });
+});
+
+describe('a contact confirmation shows its request running, its way back off (sc-12546)', () => {
+  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
+
+  it('on Make it primary and Remove it, busy while they send', () => {
+    const busy = selfClosing('PrimaryButton', text)
+      .filter(({ markup }) => /\bbusy=\{sending\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(busy).toEqual(['{`contacts.${row.id}.confirm`}', '{`contacts.${kind}.send`}']);
+  });
+
+  it('on Keep and on Cancel under an add form, off until the answer', () => {
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual(['{`contacts.${row.id}.keep`}', '{`contacts.${kind}.cancel`}']);
+  });
+
+  it('back on Make this your primary address? when a change fails past the check', () => {
+    expect(text).toMatch(
+      /else if \(proof != null\) setAsking\(\{ id: row\.id, what: 'promote' \}\);/u,
     );
   });
 });

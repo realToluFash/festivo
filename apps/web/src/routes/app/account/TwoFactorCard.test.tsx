@@ -24,7 +24,7 @@ const CODES = [
   'mnpq-rstu',
 ];
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { path: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -433,6 +433,123 @@ describe('closing a step on Two-factor authentication', () => {
           screen.getByRole('heading', { name: 'Two-factor authentication' }),
         ),
       UNDER_LOAD,
+    );
+  });
+});
+
+describe('a way back is off while its request runs (sc-12537)', () => {
+  function held() {
+    let answer: (response: Response) => void = () => undefined;
+    const response = new Promise<Response>((resolve) => {
+      answer = resolve;
+    });
+
+    return { response: () => response, answer: (response: Response) => answer(response) };
+  }
+
+  async function staysOpenThenCloses(
+    send: string,
+    wayBack: string,
+    heading: string,
+    request: ReturnType<typeof held>,
+    wrong: string,
+  ) {
+    const back = screen.getByRole('button', { name: wayBack });
+    expect(back.getAttribute('aria-disabled')).toBe('false');
+
+    fireEvent.click(screen.getByRole('button', { name: send }));
+    await waitFor(() => expect(back.getAttribute('aria-disabled')).toBe('true'), UNDER_LOAD);
+    expect(back.hasAttribute('data-off')).toBe(true);
+    expect(screen.getByRole('button', { name: send }).getAttribute('aria-busy')).toBe('true');
+
+    fireEvent.click(back);
+    expect(screen.getByRole('heading', { name: heading })).toBeDefined();
+
+    request.answer(problem('two_factor_code_invalid', 422));
+    await screen.findByText(wrong, undefined, UNDER_LOAD);
+    expect(back.getAttribute('aria-disabled')).toBe('false');
+    expect(back.hasAttribute('data-off')).toBe(false);
+
+    fireEvent.click(back);
+    await waitFor(
+      () => expect(screen.queryByRole('heading', { name: heading })).toBeNull(),
+      UNDER_LOAD,
+    );
+  }
+
+  it('on Cancel, while Check the code runs', async () => {
+    const request = held();
+    answering({
+      'GET /api/auth/two-factor': () => json({ on: false, recoveryCodesLeft: 0 }),
+      'POST /api/auth/two-factor/enrol': () => json(ENROLMENT),
+      'POST /api/auth/two-factor/activate': request.response,
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on two-factor' }, UNDER_LOAD));
+    await screen.findByRole('heading', { name: 'Turn on two-factor authentication' }, UNDER_LOAD);
+    fireEvent.change(screen.getByLabelText('Enter the 6-digit code the app shows'), {
+      target: { value: '000000' },
+    });
+
+    await staysOpenThenCloses(
+      'Check the code',
+      'Cancel',
+      'Turn on two-factor authentication',
+      request,
+      'That code does not match. Check the app was set up with the key above, then enter the code it shows now.',
+    );
+  });
+
+  it('on Keep it on, while Turn it off runs', async () => {
+    const request = held();
+    answering({
+      'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 10 }),
+      'POST /api/auth/two-factor/disable': request.response,
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD));
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '000000' } });
+
+    await staysOpenThenCloses(
+      'Turn it off',
+      'Keep it on',
+      'Turn off two-factor authentication',
+      request,
+      'That code did not work. Enter the code your app shows now, or an unused recovery code.',
+    );
+  });
+
+  it('on Keep current codes, while Make new codes runs', async () => {
+    const request = held();
+    answering({
+      'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 3 }),
+      'POST /api/auth/two-factor/recovery-codes': request.response,
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make new codes' }, UNDER_LOAD));
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '000000' } });
+
+    await staysOpenThenCloses(
+      'Make new codes',
+      'Keep current codes',
+      'Make new recovery codes?',
+      request,
+      'That code did not work. Enter the code your app shows now, or an unused recovery code.',
+    );
+  });
+
+  it('leaves the way back live after a tap that sends nothing', async () => {
+    answering({ 'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 10 }) });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD));
+    fireEvent.click(screen.getByRole('button', { name: 'Turn it off' }));
+    expect(screen.getByText('Enter a code from your app, or a recovery code.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Keep it on' }).getAttribute('aria-disabled')).toBe(
+      'false',
     );
   });
 });
