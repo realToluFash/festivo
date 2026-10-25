@@ -1,5 +1,5 @@
 {
-    "members.seats_in_use": "{count, plural, one {The only team seat on this organisation's plan is in use, so nothing has changed.} other {All # team seats on this organisation's plan are in use, so nothing has changed.}}",
+    "members.seats_in_use": "{count, plural, one {La seule place d’équipe du forfait de cette organisation est occupée, rien n’a donc changé.} other {Les # places d’équipe du forfait de cette organisation sont toutes occupées, rien n’a donc changé.}}",
     "limits.tries": "Trop de tentatives. Réessayez {hour, plural, other {à {time}}}.",
     "limits.wrong_codes": "Trop de codes incorrects. Réessayez {hour, plural, other {à {time}}}.",
     "limits.sign_in": "Trop de tentatives de connexion. Réessayez {hour, plural, other {à {time}}}.",
