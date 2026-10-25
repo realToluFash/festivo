@@ -7,6 +7,7 @@ namespace App\Domain\Organisation\RequestLink;
 use App\Audit\Auditor;
 use App\Domain\Organisation\DomainJoining\JoinOfferFinder;
 use App\Domain\Organisation\Members\MembershipMachine;
+use App\Domain\User\Mail\UserMailer;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
 use App\Entity\Organisation;
@@ -50,6 +51,7 @@ final readonly class LinkRequester
         private Auditor $auditor,
         private TranslatorInterface $translator,
         private ClockInterface $clock,
+        private UserMailer $userMailer,
     ) {
     }
 
@@ -105,7 +107,11 @@ final readonly class LinkRequester
                 // Whose limit it is goes unsaid (#605): the person learns only when they may try again.
                 $until = Iter\reduce($spent, static fn (?DateTimeImmutable $at, RateLimit $peek): DateTimeImmutable => null === $at || $peek->getRetryAfter() > $at ? $peek->getRetryAfter() : $at, null);
 
-                return ApiException::tooManyAttempts('limits.join_requests', $until ?? $this->clock->now());
+                return ApiException::tooManyAttemptsOn(
+                    'limits.join_requests',
+                    $until ?? $this->clock->now(),
+                    fn (DateTimeImmutable $at): string => $this->userMailer->deadlineInUtc($at, $this->userMailer->answeredLocale()),
+                );
             }
 
             $membership = $this->membershipMachine->ask($organisation, $user, MembershipChannel::Request);

@@ -96,6 +96,18 @@ final readonly class UserMailer
     public function deadline(DateTimeImmutable $at, User $user, string $locale): string
     {
         [$local, $label] = self::local($at, $user);
+
+        return $this->dateAt($local, $label, $locale);
+    }
+
+    /** The same words in UTC, for a `detail` read raw from anywhere (sc-12379): "Monday 26 Oct at 16:32 UTC". */
+    public function deadlineInUtc(DateTimeImmutable $at, string $locale): string
+    {
+        return $this->dateAt($at->setTimezone(new DateTimeZone('UTC')), 'UTC', $locale);
+    }
+
+    private function dateAt(DateTimeImmutable $local, string $label, string $locale): string
+    {
         $dates = SupportedLocales::dates($locale);
         $pattern = new IntlDatePatternGenerator($dates)->getBestPattern('EEEEMMMd') ?: 'EEEE d MMM';
         $formatter = IntlDateFormatter::create($dates, IntlDateFormatter::NONE, IntlDateFormatter::NONE, $local->getTimezone()->getName(), null, $pattern);

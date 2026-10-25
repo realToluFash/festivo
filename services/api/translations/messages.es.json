@@ -194,6 +194,7 @@
     "assistant.too_many": "Demasiadas peticiones al asistente. Espere un momento.",
     "assistant.too_large": "La petición supera el tamaño que admite el asistente.",
     "limits.recoveries_per_day": "Puede pedirlo 3 veces al día. Vuelva a intentarlo a partir del {when}.",
+    "limits.join_requests": "Demasiadas solicitudes por ahora. Inténtelo de nuevo a partir del {when}.",
     "access.permission_required": "Esto requiere el permiso {permission}.",
     "assistant.system_prompt_forbidden": "El servidor resuelve el system prompt y un cliente no puede fijarlo. Quite \"{field}\" y envíe un \"context\" en su lugar.",
     "assistant.context_unknown": "Contexto del asistente desconocido: \"{context}\". Contextos conocidos: {known}.",

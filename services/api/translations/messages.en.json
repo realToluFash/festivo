@@ -194,6 +194,7 @@
     "assistant.too_many": "Too many assistant requests. Please wait a moment.",
     "assistant.too_large": "The request is larger than the assistant accepts.",
     "limits.recoveries_per_day": "You can ask 3 times a day. Try again {when}.",
+    "limits.join_requests": "Too many requests for now. Try again {when}.",
     "access.permission_required": "This needs the {permission} permission.",
     "assistant.system_prompt_forbidden": "The system prompt is resolved by the server and cannot be set by a client. Remove \"{field}\" and send a \"context\" instead.",
     "assistant.context_unknown": "Unknown assistant context \"{context}\". Known contexts: {known}.",

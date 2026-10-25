@@ -4,7 +4,6 @@
     "limits.wrong_codes": "Trop de codes incorrects. Réessayez {hour, plural, other {à {time}}}.",
     "limits.sign_in": "Trop de tentatives de connexion. Réessayez {hour, plural, other {à {time}}}.",
     "limits.reset_requests": "Trop de demandes de réinitialisation. Réessayez {hour, plural, other {à {time}}}.",
-    "limits.join_requests": "Trop de demandes pour le moment. Réessayez {hour, plural, other {à {time}}}.",
     "limits.organisations": "Trop de nouvelles organisations pour le moment. Réessayez {hour, plural, other {à {time}}}.",
     "limits.sign_ups": "Trop d’inscriptions depuis ce réseau. Réessayez {hour, plural, other {à {time}}}."
 }

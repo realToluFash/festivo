@@ -78,13 +78,29 @@ class ApiException extends RuntimeException
     {
         $when = $written(self::statedMinute($windowEnd));
 
+        return self::until($refusal, $windowEnd, $when, ['retryAt' => $when]);
+    }
+
+    /**
+     * The same 429 with its day and minute in the key's {when} slot only, for a limit no screen quotes (sc-12379).
+     *
+     * @param callable(DateTimeImmutable): string $written
+     */
+    public static function tooManyAttemptsOn(string $refusal, DateTimeImmutable $windowEnd, callable $written): self
+    {
+        return self::until($refusal, $windowEnd, $written(self::statedMinute($windowEnd)), []);
+    }
+
+    /** @param array<string, string> $members */
+    private static function until(string $refusal, DateTimeImmutable $windowEnd, string $when, array $members): self
+    {
         return new self(
             ErrorCode::TooManyAttempts,
             $refusal,
             [],
             null,
             ['Retry-After' => (string) self::secondsUntil($windowEnd)],
-            ['retryAt' => $when],
+            $members,
             ['{when}' => $when],
         );
     }
