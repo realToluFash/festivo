@@ -1,17 +1,19 @@
 import { skippedTime } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 
+import { dateLocale } from '../../../i18n/index.ts';
+
 export function skippedLine(
   date: string,
   time: string,
   timeZone: string,
-  locale: string,
   t: TFunction,
 ): string | null {
   const skipped = skippedTime(date, time, timeZone);
 
   if (skipped == null) return null;
 
+  const locale = dateLocale();
   const clock = new Intl.DateTimeFormat(locale, {
     hour: '2-digit',
     minute: '2-digit',

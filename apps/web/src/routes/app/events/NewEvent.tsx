@@ -122,7 +122,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   }
 
   const nameLength = eventNameLength(draft.name);
-  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, locale, t);
+  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, t);
 
   return (
     <div className="event-form-page">
@@ -192,7 +192,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
-            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, locale, t)}
+            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
             time={draft.endTime}

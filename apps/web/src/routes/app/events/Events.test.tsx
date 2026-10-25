@@ -538,6 +538,19 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     );
   });
 
+  it("writes the night in the browser's regional order, as the event's page does", async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    answering({});
+    await form();
+
+    fill('event-start-date', '2027-03-28');
+    fill('event-start-time', '02:30');
+
+    expect(gapLine('event-start-gap')).toBe(
+      'There is no 02:30 on Sun 28 Mar in Europe/Paris: the clocks go forward that night. It will be saved as 03:30.',
+    );
+  });
+
   it('names a gap that is not an hour long', async () => {
     answering({});
     await form('Australia/Lord_Howe');

@@ -290,7 +290,7 @@ function DetailsForm({
 
   const nameLength = eventNameLength(draft.name);
   const typedStart = new Date(`${draft.startDate}T${draft.startTime}Z`);
-  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, locale, t);
+  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, t);
   const zoneHint =
     Number.isNaN(typedStart.getTime()) || startSkipped != null
       ? t('eventEdit.zoneHintPlain')
@@ -357,7 +357,7 @@ function DetailsForm({
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
-            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, locale, t)}
+            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
             time={draft.endTime}
