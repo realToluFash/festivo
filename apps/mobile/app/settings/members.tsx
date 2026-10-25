@@ -2,7 +2,7 @@ import type { MembersList as Members, OrganisationRole } from '@soirely/api-clie
 import { grantableRoles, roleHolds } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
@@ -205,7 +205,7 @@ export default function MembersScreen() {
               <ScrollColumn style={styles.listColumn} contentContainerStyle={styles.columnContent}>
                 {waiting ?? list}
               </ScrollColumn>
-              <ScrollView style={styles.fill} contentContainerStyle={styles.columnContent}>
+              <ScrollColumn style={styles.fill} contentContainerStyle={styles.columnContent}>
                 {page ??
                   (load.kind === 'loaded' && (
                     <Notice
@@ -214,7 +214,7 @@ export default function MembersScreen() {
                       body={t('membersScreen.pickSomebody')}
                     />
                   ))}
-              </ScrollView>
+              </ScrollColumn>
             </View>
           </Screen>
         ) : (

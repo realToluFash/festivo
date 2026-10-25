@@ -132,7 +132,7 @@ function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => 
 }
 
 /** Answers a tap that may sit far below it, so it comes wholly into view and takes screen reader focus (sc-10639). */
-function AnswerNotice({
+function NoticeInView({
   tone,
   mark,
   body,
@@ -446,7 +446,7 @@ export function MemberPage({
       </View>
 
       {conflict && (
-        <AnswerNotice
+        <NoticeInView
           tone="quiet"
           mark={tokens.marks.info.glyph}
           body={t('membersScreen.accessConflict', { name: member.user.name })}
@@ -831,7 +831,7 @@ function RolePicker({
 
   return (
     <>
-      {done != null && <AnswerNotice tone="done" mark={tokens.marks.done.glyph} body={done} />}
+      {done != null && <NoticeInView tone="done" mark={tokens.marks.done.glyph} body={done} />}
       <View
         style={styles.choices}
         accessibilityRole="radiogroup"
