@@ -251,7 +251,11 @@ function Start({
       <View style={styles.steps}>
         {steps.map((step, index) => (
           <View key={step} style={styles.step}>
-            <View style={styles.stepMark}>
+            <View
+              style={styles.stepMark}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
               <Text size={tokens.typePill.size} weight="bold" style={styles.secondary}>
                 {String(index + 1)}
               </Text>

@@ -19,7 +19,11 @@ export function PasswordRule({ met, testID }: { met: boolean; testID: string }) 
         style={styles.rule}
         testID={lengthMet ? `${{ testID }}.ruleMet` : `${{ testID }}.ruleNotYet`}
       >
-        <View style={[styles.ruleMark, lengthMet && styles.ruleMarkMet]}>
+        <View
+          style={[styles.ruleMark, lengthMet && styles.ruleMarkMet]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           {lengthMet && (
             <Text size={tokens.typeMeta.size} weight="bold" style={styles.onAccent}>
               ✓

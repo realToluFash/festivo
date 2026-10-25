@@ -11,7 +11,11 @@ export function StatusMark({ tone, word }: { tone: StatusTone; word: string }) {
 
   return (
     <View style={styles.row}>
-      <View style={[styles.mark, { backgroundColor: mark.fill, borderColor: mark.ring }]}>
+      <View
+        style={[styles.mark, { backgroundColor: mark.fill, borderColor: mark.ring }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         <Text size={tokens.typePill.size} weight="bold" style={{ color: mark.ink }}>
           {mark.glyph}
         </Text>

@@ -88,7 +88,11 @@ export function FieldError({
 }) {
   return (
     <View style={styles.fieldError} accessibilityLiveRegion="polite">
-      <View style={styles.mark}>
+      <View
+        style={styles.mark}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         <Text size={tokens.typePill.size} weight="bold" style={styles.broken}>
           {tokens.marks.broken.glyph}
         </Text>
