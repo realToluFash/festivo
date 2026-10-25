@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { useDialogKeys } from '../dialogFocus.ts';
 import { useShownLanguage } from '../i18n/index.ts';
-import { useStepFocus } from '../stepFocus.ts';
+import { useFocusOnceShown, useStepFocus } from '../stepFocus.ts';
 import { offButton } from '../offButton.ts';
 
 const MARKS = { attention: '!', waiting: '…', done: '✓', info: 'i' } as const;
@@ -22,9 +22,12 @@ type Load = { kind: 'loading' } | { kind: 'loaded'; banner: Banner | null } | { 
 export function OwnerClaimBanner({
   organisationId,
   organisation,
+  pageHeading,
 }: {
   organisationId: string;
   organisation: string;
+  /** Where Load Members again leaves focus when no banner comes back. */
+  pageHeading: RefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -34,6 +37,8 @@ export function OwnerClaimBanner({
   const loadedFor = useRef<string | null>(null);
   const [cardTitle, arriveAtCard] = useStepFocus();
   const overtaken = useRef(false);
+  const loadingAgain = useRef(false);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     let current = true;
@@ -45,11 +50,15 @@ export function OwnerClaimBanner({
         loadedFor.current = organisationId;
         setLoad({ kind: 'loaded', banner });
         if (overtaken.current) arriveAtCard();
+        if (loadingAgain.current) land(() => cardTitle.current ?? pageHeading.current);
         overtaken.current = false;
+        loadingAgain.current = false;
       },
       () => {
         if (!current) return;
+        if (loadingAgain.current) land(() => pageHeading.current);
         overtaken.current = false;
+        loadingAgain.current = false;
         setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' }));
       },
     );
@@ -57,7 +66,7 @@ export function OwnerClaimBanner({
     return () => {
       current = false;
     };
-  }, [organisationId, attempt, language, arriveAtCard]);
+  }, [organisationId, attempt, language, arriveAtCard, land, cardTitle, pageHeading]);
 
   function reload(): void {
     setWithdrew(null);
@@ -96,6 +105,10 @@ export function OwnerClaimBanner({
           setLoad({ kind: 'loaded', banner });
         }}
         onReload={reload}
+        onLoadAgain={() => {
+          loadingAgain.current = true;
+          reload();
+        }}
         onOvertaken={() => {
           overtaken.current = true;
           reload();
@@ -130,6 +143,7 @@ function OwnerClaimCard({
   onBanner,
   onWithdrawn,
   onReload,
+  onLoadAgain,
   onOvertaken,
 }: {
   organisationId: string;
@@ -139,6 +153,7 @@ function OwnerClaimCard({
   onBanner: (banner: Banner | null) => void;
   onWithdrawn: (banner: Banner | null, told: boolean) => void;
   onReload: () => void;
+  onLoadAgain: () => void;
   /** Another Administrator's claim started first: the banner that loads takes focus. */
   onOvertaken: () => void;
 }) {
@@ -153,6 +168,9 @@ function OwnerClaimCard({
   const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
   const withdrawButton = useRef<HTMLButtonElement>(null);
   const [stopTitle, arriveAtStop] = useStepFocus<HTMLParagraphElement>();
+  const stopButton = useRef<HTMLButtonElement>(null);
+  const [refusedLine, arriveAtRefused] = useStepFocus<HTMLParagraphElement>();
+  const land = useFocusOnceShown();
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
 
   async function start(): Promise<void> {
@@ -215,6 +233,7 @@ function OwnerClaimCard({
         setStopEnded(true);
         setConfirming(false);
         setBusy(false);
+        arriveAtRefused();
 
         return;
       }
@@ -235,8 +254,10 @@ function OwnerClaimCard({
 
       if (error instanceof ApiError && error.is('owner_claim_ended')) {
         setWithdrawRefused(t('ownerClaim.withdrawEnded'));
+        arriveAtRefused();
       } else if (error instanceof ApiError && error.is('forbidden')) {
         setWithdrawRefused(t('ownerClaim.withdrawNotClaimant'));
+        arriveAtRefused();
       } else {
         setRefusal(t('ownerClaim.failed'));
         withdrawButton.current?.focus();
@@ -313,14 +334,16 @@ function OwnerClaimCard({
       )}
 
       {withdrawRefused != null && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{withdrawRefused}</p>
+            <p ref={refusedLine} tabIndex={-1}>
+              {withdrawRefused}
+            </p>
             <p className="notice-action">
-              <button type="button" className="link-button" onClick={onReload}>
+              <button type="button" className="link-button" onClick={onLoadAgain}>
                 {t('ownerClaim.reload')}
               </button>
             </p>
@@ -344,6 +367,7 @@ function OwnerClaimCard({
       {view.stop && !confirming && !stopEnded && (
         <div className="actions">
           <button
+            ref={stopButton}
             type="button"
             className="button"
             onClick={() => {
@@ -376,7 +400,14 @@ function OwnerClaimCard({
               >
                 {t('ownerClaim.stopYes')}
               </button>
-              <button type="button" className="button" onClick={() => setConfirming(false)}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setConfirming(false);
+                  land(() => stopButton.current);
+                }}
+              >
                 {t('ownerClaim.stopNo')}
               </button>
             </div>
@@ -385,14 +416,16 @@ function OwnerClaimCard({
       )}
 
       {stopEnded && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{t('ownerClaim.stopEnded')}</p>
+            <p ref={refusedLine} tabIndex={-1}>
+              {t('ownerClaim.stopEnded')}
+            </p>
             <p className="notice-action">
-              <button type="button" className="link-button" onClick={onReload}>
+              <button type="button" className="link-button" onClick={onLoadAgain}>
                 {t('ownerClaim.reload')}
               </button>
             </p>
@@ -543,6 +576,10 @@ export function PausedOwnerClaim({
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<'stopped' | 'ended' | 'failed' | null>(null);
   const [stopTitle, arriveAtStop] = useStepFocus<HTMLParagraphElement>();
+  const stopButton = useRef<HTMLButtonElement>(null);
+  const answered = useRef<HTMLDivElement>(null);
+  const failedLine = useRef<HTMLParagraphElement>(null);
+  const land = useFocusOnceShown();
   const claimant = claim.claimant.name;
 
   async function stop(): Promise<void> {
@@ -557,13 +594,15 @@ export function PausedOwnerClaim({
 
     setConfirming(false);
     setBusy(false);
+    land(() => answered.current ?? failedLine.current);
   }
 
   if (outcome === 'stopped' || outcome === 'ended') {
     return (
       <div
+        ref={answered}
         className={`notice ${outcome === 'stopped' ? 'notice-done' : 'notice-quiet'}`}
-        role="status"
+        tabIndex={-1}
       >
         <span
           className={`mark ${outcome === 'stopped' ? 'mark-done' : 'mark-info'}`}
@@ -614,7 +653,14 @@ export function PausedOwnerClaim({
               >
                 {t('ownerClaim.stopYes')}
               </button>
-              <button type="button" className="button" onClick={() => setConfirming(false)}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setConfirming(false);
+                  land(() => stopButton.current);
+                }}
+              >
                 {t('ownerClaim.stopNo')}
               </button>
             </div>
@@ -623,6 +669,7 @@ export function PausedOwnerClaim({
       ) : (
         <div className="actions">
           <button
+            ref={stopButton}
             type="button"
             className="button"
             onClick={() => {
@@ -635,11 +682,13 @@ export function PausedOwnerClaim({
         </div>
       )}
       {outcome === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
-          <p>{t('ownerClaim.failed')}</p>
+          <p ref={failedLine} tabIndex={-1}>
+            {t('ownerClaim.failed')}
+          </p>
         </div>
       )}
     </section>
