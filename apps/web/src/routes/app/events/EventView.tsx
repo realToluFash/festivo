@@ -1,11 +1,13 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { formatEventRange } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
+import { Arriving } from '../../../pageArrival.ts';
 import { can, useSession } from '../../../session.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 
@@ -101,7 +103,7 @@ function EventOf({
       )}
 
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <ArrivalNotice className="notice notice-broken" role="alert">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -118,7 +120,7 @@ function EventOf({
               {t('events.retry')}
             </button>
           </div>
-        </div>
+        </ArrivalNotice>
       )}
 
       {load.kind === 'notFound' && (
@@ -139,7 +141,6 @@ function EventPage({ event }: { event: OrganisationEvent }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [outcome] = useState(() => editOutcome(location.state));
-  const [announced, setAnnounced] = useState('');
 
   useEffect(() => {
     if (editOutcome(location.state) == null) return;
@@ -149,19 +150,6 @@ function EventPage({ event }: { event: OrganisationEvent }) {
       { replace: true, state: null },
     );
   }, [location, navigate]);
-
-  useEffect(() => {
-    if (outcome == null) return;
-
-    // Set after the region is in the page, so a screen reader hears the change rather than missing a region born full.
-    const id = window.setTimeout(
-      () =>
-        setAnnounced(outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')),
-      0,
-    );
-
-    return () => window.clearTimeout(id);
-  }, [outcome, t]);
 
   return (
     <section className="card event-page-card" aria-labelledby="event-title">
@@ -175,9 +163,11 @@ function EventPage({ event }: { event: OrganisationEvent }) {
           timeZone: event.timeZone,
         })}
       </p>
-      <p className={announced === '' ? 'visually-hidden' : 'event-page-outcome'} role="status">
-        {announced}
-      </p>
+      {outcome != null && (
+        <OutcomeLine
+          words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
+        />
+      )}
       <div className="event-page-actions">
         {can(session, 'events.manage') && (
           <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
@@ -189,6 +179,32 @@ function EventPage({ event }: { event: OrganisationEvent }) {
         </Link>
       </div>
     </section>
+  );
+}
+
+/** Where the page begins after Save changes; once the person has moved focus, it is announced instead (sc-11370). */
+function OutcomeLine({ words }: { words: string }) {
+  const arriving = useContext(Arriving);
+  const [taking] = useState(arriving);
+  const [announced, setAnnounced] = useState('');
+
+  useEffect(() => {
+    if (taking) return;
+
+    // Set after the region is in the page, so a screen reader hears the change rather than missing a region born full.
+    const id = window.setTimeout(() => setAnnounced(words), 0);
+
+    return () => window.clearTimeout(id);
+  }, [taking, words]);
+
+  return taking ? (
+    <p className="event-page-outcome" tabIndex={-1} data-page-focus="">
+      {words}
+    </p>
+  ) : (
+    <p className={announced === '' ? 'visually-hidden' : 'event-page-outcome'} role="status">
+      {announced}
+    </p>
   );
 }
 

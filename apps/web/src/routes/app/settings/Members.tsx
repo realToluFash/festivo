@@ -47,6 +47,7 @@ import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -118,7 +119,7 @@ export function Members() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <ArrivalNotice className="notice notice-broken" role="alert">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -135,7 +136,7 @@ export function Members() {
               {t('rolesScreen.retry')}
             </button>
           </div>
-        </div>
+        </ArrivalNotice>
       )}
       {load.kind === 'loaded' && (
         <MembersLoaded

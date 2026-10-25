@@ -47,6 +47,7 @@ import { offButton } from '../../../offButton.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
 type Saved = 'updated' | 'created';
 
@@ -112,7 +113,7 @@ export function Roles() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <ArrivalNotice className="notice notice-broken" role="alert">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -129,7 +130,7 @@ export function Roles() {
               {t('rolesScreen.retry')}
             </button>
           </div>
-        </div>
+        </ArrivalNotice>
       )}
       {load.kind === 'loaded' && (
         <RolesLoaded

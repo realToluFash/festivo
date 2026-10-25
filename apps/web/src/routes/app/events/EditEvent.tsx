@@ -19,6 +19,7 @@ import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { skippedLine } from './skippedLine.ts';
@@ -91,7 +92,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
       )}
 
       {'kind' in load && load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <ArrivalNotice className="notice notice-broken" role="alert">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -108,7 +109,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
               {t('events.retry')}
             </button>
           </div>
-        </div>
+        </ArrivalNotice>
       )}
 
       {'kind' in load && load.kind === 'notFound' && (
