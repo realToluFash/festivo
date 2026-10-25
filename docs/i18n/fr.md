@@ -54,6 +54,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675). « Le {{day}}, l’heure {{time}} n’existe pas dans le fuseau {{zone}} : c’est la
+  nuit du passage à l’heure d’été. Elle sera remplacée par {{savedAs}}. » The next-day line ends
+  « remplacée par le {{savedDay}} à {{savedAs}}. », so the short date never closes the sentence
+  (the 19 Oct rule). « Passage à l’heure d’été » is what a French reader calls that night, in
+  either hemisphere; rejected « les horloges avancent », a calque. « Elle » is « l’heure », so
+  nothing agrees with the person or the field.
 - **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
   « Modifier les informations », never « détails »; "Save changes" « Enregistrer les
   modifications ». A refused save starts « Non enregistré. »; the colleague is « quelqu’un
