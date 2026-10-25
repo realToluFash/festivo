@@ -825,9 +825,9 @@
     "removeMove_one": "{{count}} pessoa tem esta função. Passá-la para:",
     "removeMove_other": "{{count}} pessoas têm esta função. Passá-las para:",
     "removeMove_many": "{{count}} de pessoas têm esta função. Passá-las para:",
-    "removeNoReplacement": "Escolha a função para onde estas pessoas passam.",
+    "removeNoReplacement": "Escolha a função de substituição.",
     "removeAfter": "Passam a ser {{role}} no próximo pedido. Ninguém termina a sessão.",
-    "removeConfirm": "Passá-las e remover {{role}}",
+    "removeConfirm": "Reatribuir e remover {{role}}",
     "removeConfirmEmpty": "Remover {{role}}",
     "keep": "Manter {{role}}",
     "failedRemove": "Não foi possível remover. Nada foi alterado. Tente novamente daqui a pouco."
