@@ -3,6 +3,7 @@ import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
+import { pageTitle, usePageTitle } from '../pageTitle.ts';
 import { PausedOwnerClaim } from './OwnerClaimBanner.tsx';
 
 /** In place of every page of an organisation the account's access to is paused in (sc-564). */
@@ -22,6 +23,8 @@ export function AccessPaused({
   const named = { organisation: paused.name, domain: suspension.domain ?? '' };
   const addressGone = suspension.reason === 'address_gone';
   const switchTo = pausedSwitch(others);
+
+  usePageTitle(pageTitle(t, [t('accessPaused.badge'), paused.name]));
 
   return (
     <section className="card settings-card access-paused" aria-labelledby="paused-title">

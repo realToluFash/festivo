@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -899,6 +899,9 @@ describe("Editing an event's details (sc-3587)", () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
     expect(await screen.findByText('Nothing changed, so nothing was sent.')).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe('Nothing changed, so nothing was sent.'),
+    );
     expect(sent.filter(({ line }) => line.startsWith('PATCH'))).toEqual([]);
   });
 
@@ -917,7 +920,34 @@ describe("Editing an event's details (sc-3587)", () => {
       body: { name: 'Adé at 40', timeZone: 'Europe/London' },
       ifMatch: '"1"',
     });
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('Saved'));
+  });
+
+  it('announces Saved when the person moved focus while the event reloaded', async () => {
+    signedIn();
+    let release = () => {};
+    const reloaded = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { sent, held } = serving({
+      'GET /api/events/ev_1': async () => {
+        if (sent.some(({ line }) => line.startsWith('PATCH'))) await reloaded;
+
+        return tagged({ event: held.event }, `"${held.version}"`);
+      },
+    });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Adé at 40' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByText('Loading the event…');
+    const [nav] = screen.getAllByRole('link', { name: 'Events' });
+    act(() => nav!.focus());
+    release();
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Adé at 40' })).toBeDefined();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Saved'));
+    expect(document.activeElement).toBe(nav);
   });
 
   it('shows every problem at once with focus on the first, and sends nothing', async () => {

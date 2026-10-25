@@ -28,6 +28,8 @@ import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
+import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
 import { skippedLine } from './skippedLine.ts';
@@ -103,27 +105,18 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
       )}
 
       {'kind' in load && load.kind === 'failed' && (
-        <div className="notice notice-broken" role={attempt > 0 ? undefined : 'alert'}>
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p ref={failedLine} tabIndex={-1}>
-              {t('eventPage.failed')}
-            </p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-                land(() => heading.current ?? failedLine.current);
-              }}
-            >
-              {t('events.retry')}
-            </button>
-          </div>
-        </div>
+        <ArrivalNotice
+          role={attempt > 0 ? undefined : 'alert'}
+          line={t('eventPage.failed')}
+          lineRef={failedLine}
+          focusable
+          retry={t('events.retry')}
+          onRetry={() => {
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+            land(() => heading.current ?? failedLine.current);
+          }}
+        />
       )}
 
       {'kind' in load && load.kind === 'notFound' && (
@@ -185,6 +178,8 @@ function DetailsForm({
   const [saveButton, arriveAtSave] = useStepFocus<HTMLButtonElement>();
   const { draft, timeZone, currency } = typed;
   const changes = useMemo(() => eventChanges(saved, typed), [saved, typed]);
+
+  usePageTitle(pageTitle(t, [t('eventEdit.title'), saved.name]));
   const dirty = Object.keys(changes).length > 0;
   const busy = status === 'saving';
   const currencies = useMemo(

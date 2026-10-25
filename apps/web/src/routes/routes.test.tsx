@@ -225,7 +225,7 @@ describe('the application tree', () => {
       [
         {
           path: '/app',
-          element: routes.find((route) => route.path === '/app')!.element,
+          element: routes[0]!.children.find((route) => route.path === '/app')!.element,
           children: [{ index: true, element: <Boom /> }],
         },
       ],
