@@ -29,7 +29,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
-import { Text } from './Text.tsx';
+import { type TextHandle, Text } from './Text.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
@@ -79,11 +79,14 @@ export function AppFrame({
   current,
   title,
   back,
+  titleRef,
   aboutTheAccount = false,
   children,
 }: {
   current: Destination;
   title: string;
+  /** The title on a phone, where it stands for the page's own heading. */
+  titleRef?: Ref<TextHandle> | undefined;
   /** Security and Account stay open past an organisation's two-factor deadline, to set it up (sc-609). */
   aboutTheAccount?: boolean;
   /** On a phone, the page this one was opened from, as Security's "Settings". */
@@ -138,6 +141,7 @@ export function AppFrame({
           kind={kind}
           current={current}
           title={title}
+          titleRef={titleRef}
           back={back}
           backHidden={backHidden}
           email={email}
@@ -206,6 +210,7 @@ function FrameHeader({
   kind,
   current,
   title,
+  titleRef,
   back,
   backHidden,
   email,
@@ -217,6 +222,7 @@ function FrameHeader({
   kind: LayoutKind;
   current: Destination;
   title: string;
+  titleRef: Ref<TextHandle> | undefined;
   back: { label: string; onPress: () => void } | undefined;
   backHidden: boolean;
   email: string;
@@ -305,6 +311,7 @@ function FrameHeader({
         size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
         weight="bold"
         accessibilityRole="header"
+        ref={titleRef}
       >
         {title}
       </Text>

@@ -17,9 +17,10 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
-import { useComeForward } from './comeForward.ts';
+import { useComeForward, useOpenerInSight } from './comeForward.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
+import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useBroughtIntoView } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
@@ -166,6 +167,7 @@ function OwnerClaimCard({
   const [stopEnded, setStopEnded] = useState(false);
   const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
   const withdrawButton = useRef<View>(null);
+  const withdrawOpener = useOpenerInSight(withdrawButton);
   const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
   const comeForward = useComeForward();
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
@@ -306,7 +308,7 @@ function OwnerClaimCard({
       <WithdrawConfirm
         open={withdrawing != null}
         phone={kind === 'phone'}
-        opener={withdrawButton}
+        opener={withdrawOpener}
         organisation={organisation}
         pending={withdrawing === 'pending'}
         onWithdraw={() => void withdraw()}
@@ -411,7 +413,7 @@ function WithdrawConfirm({
 }: {
   open: boolean;
   phone: boolean;
-  opener: RefObject<View | null>;
+  opener: RefObject<ScreenReaderTarget | null>;
   organisation: string;
   pending: boolean;
   onWithdraw: () => void;
