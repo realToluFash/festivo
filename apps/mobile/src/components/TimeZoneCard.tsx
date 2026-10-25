@@ -22,7 +22,15 @@ import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
-import { useAboveKeyboard, useRoomAboveKeyboard, useScrolledToTop } from './Screen.tsx';
+import {
+  type StepClosed,
+  stepClosed,
+  useAboveKeyboard,
+  useFocusBack,
+  useFocusOnAnswer,
+  useRoomAboveKeyboard,
+  useScrolledToTop,
+} from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 /** How many rows the list shows at once; the search narrows the rest. */
@@ -50,6 +58,8 @@ export function TimeZoneCard({
   const [zones, setZones] = useState<TimeZoneOption[]>([]);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
+  const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
+  const opener = useFocusBack(editing ? undefined : closed);
   const frame = cardFrame(kind);
 
   useEffect(() => {
@@ -89,7 +99,10 @@ export function TimeZoneCard({
             setEditing(false);
             setSaved(zoneLabel(zone));
           }}
-          onCancel={() => setEditing(false)}
+          onCancel={() => {
+            setClosed(stepClosed('change'));
+            setEditing(false);
+          }}
         />
       ) : (
         <>
@@ -109,12 +122,15 @@ export function TimeZoneCard({
               mark={tokens.marks.done.glyph}
               body={t('timeZone.saved', { zone: saved })}
               answer={saved}
+              takesFocus
             />
           )}
           <SecondaryButton
+            ref={opener('change')}
             label={t('timeZone.change')}
             onPress={() => {
               setSaved(null);
+              setClosed(undefined);
               setEditing(true);
             }}
             testID="timeZone.change"
@@ -145,6 +161,8 @@ function Choosing({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const input = useRef<TextInput>(null);
+  // A zone picked from the list takes the list's place, so focus goes to the field now holding it.
+  useFocusOnAnswer(picked ?? undefined, input);
   const aboveKeyboard = useAboveKeyboard();
   const room = useRoomAboveKeyboard();
   // With no on-screen keyboard (a hardware one), nothing lifts, so the card is brought up on opening.
