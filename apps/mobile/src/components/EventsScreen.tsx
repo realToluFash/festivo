@@ -1,4 +1,4 @@
-import { ApiError, type OrganisationEvent } from '@soirely/api-client';
+import type { OrganisationEvent } from '@soirely/api-client';
 import { roleHolds } from '@soirely/domain';
 import { Redirect, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { type Opened, type Selection, openedOf, selectionIn } from '../kit/eventsOpen.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -21,13 +22,6 @@ type Load =
   | { kind: 'loading' }
   | { kind: 'failed' }
   | { kind: 'loaded'; events: OrganisationEvent[]; refreshing: boolean };
-
-/** An event opened by a link is read on its own, since the list may not hold it. */
-type Opened =
-  | { kind: 'loading' }
-  | { kind: 'failed' }
-  | { kind: 'notFound' }
-  | { kind: 'loaded'; event: OrganisationEvent };
 
 const LOADING: Load = { kind: 'loading' };
 
@@ -48,12 +42,10 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
   const load = held.in === organisationId ? held.load : LOADING;
   const [attempt, setAttempt] = useState(0);
 
-  // Opened in one organisation, closed by switching to another: no event of the one left stays on screen.
-  const [selected, setSelected] = useState<{ in: string | undefined; id: string | null }>({
-    in: organisationId,
-    id: linked,
-  });
-  const open = selected.in === organisationId ? selected.id : null;
+  const [selected, setSelected] = useState<Selection>({ in: organisationId, id: linked });
+  const current = selectionIn(selected, organisationId);
+  if (current !== selected) setSelected(current);
+  const open = current.id;
   const select = (id: string | null) => setSelected({ in: organisationId, id });
 
   // The rows stay in place while they reload; a failed load gives way to loading.
@@ -101,7 +93,7 @@ export function EventsScreen({ linked = null }: { linked?: string | null }) {
     reads,
   );
 
-  if (organisation != null && !reads && linked == null) {
+  if (organisation != null && !reads && open == null) {
     return <Redirect href={DESTINATION_HREF.home} />;
   }
 
@@ -202,7 +194,7 @@ function Waiting({ words }: { words: string }) {
   );
 }
 
-/** A role that cannot read events is shown not found, as the API would answer, without asking it. */
+/** An event opened by a link is read on its own, since the list may not hold it. A role that cannot read events is shown not found, as the API would answer, without asking it. */
 function useOpened(
   eventId: string | null,
   organisationId: string | undefined,
@@ -224,24 +216,9 @@ function useOpened(
     let live = true;
 
     api.event(eventId).then(
-      (event) =>
-        live &&
-        setHeld({
-          for: key,
-          opened:
-            event.organisationId === organisationId
-              ? { kind: 'loaded', event }
-              : { kind: 'notFound' },
-        }),
+      (event) => live && setHeld({ for: key, opened: openedOf({ event }, organisationId) }),
       (error: unknown) =>
-        live &&
-        setHeld({
-          for: key,
-          opened:
-            error instanceof ApiError && (error.status === 404 || error.status === 403)
-              ? { kind: 'notFound' }
-              : { kind: 'failed' },
-        }),
+        live && setHeld({ for: key, opened: openedOf({ error }, organisationId) }),
     );
 
     return () => {

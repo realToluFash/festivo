@@ -21,10 +21,6 @@ export function destinations(
   ];
 }
 
-export function eventHref(eventId: string): string {
-  return `${DESTINATION_HREF.events}/${encodeURIComponent(eventId)}`;
-}
-
 export type SettingsSection =
   'account' | 'security' | 'organisation' | 'members' | 'roles' | 'signInRules';
 

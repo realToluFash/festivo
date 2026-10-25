@@ -10,7 +10,6 @@ import {
   SECTION_HREF,
   destinationOf,
   destinations,
-  eventHref,
   settingsGroups,
 } from './appNav.ts';
 
@@ -48,8 +47,7 @@ describe('the frame shows only what is built', () => {
     expect(destinationOf('/settings/security')).toBe('settings');
     expect(destinationOf('/settingsx')).toBe('home');
     expect(destinationOf('/events')).toBe('events');
-    expect(destinationOf(eventHref('a b'))).toBe('events');
-    expect(eventHref('a b')).toBe('/events/a%20b');
+    expect(destinationOf('/events/evt_gala')).toBe('events');
   });
 
   it('opens a route that exists for each destination and section', () => {
