@@ -1,10 +1,14 @@
 import { type Account } from '@soirely/api-client';
+import { LOCALE_CODES } from '@soirely/domain';
 
 import { api } from './api.ts';
 import { setLanguage, storedLanguage } from './i18n/index.ts';
 
 /** A choice made signed out, which the next sign-in saves to the account (sc-852). */
 const CHOSEN_SIGNED_OUT = 'soirely:language:chosen-signed-out';
+
+/** The signed-in account's language, as last read or saved; null when it has none of the four. */
+let saved: string | null = null;
 
 /** The switcher: signed in, the account keeps it for every device and email; signed out, this device does. */
 export async function chooseLanguage(locale: string | null, signedIn: boolean): Promise<void> {
@@ -13,7 +17,12 @@ export async function chooseLanguage(locale: string | null, signedIn: boolean): 
   if (locale == null) return;
 
   if (signedIn) {
-    await api.setLocale(locale).catch(() => {});
+    await api.setLocale(locale).then(
+      () => {
+        saved = locale;
+      },
+      () => {},
+    );
     return;
   }
 
@@ -36,11 +45,22 @@ export async function followAccount(account: Account): Promise<void> {
   }
 
   const device = storedLanguage();
+  saved = account.locale != null && LOCALE_CODES.includes(account.locale) ? account.locale : null;
 
   if (chosen && device != null) {
-    await api.setLocale(device).catch(() => {});
+    await api.setLocale(device).then(
+      () => {
+        saved = device;
+      },
+      () => {},
+    );
     return;
   }
 
-  if (account.locale != null && account.locale !== device) await setLanguage(account.locale);
+  if (saved != null && saved !== device) await setLanguage(saved);
+}
+
+/** Entering the signed-in app: Automatic, or a failed save, picked elsewhere gives way to the account's language (sc-9797). */
+export async function followSavedLanguage(): Promise<void> {
+  if (saved != null && saved !== storedLanguage()) await setLanguage(saved);
 }

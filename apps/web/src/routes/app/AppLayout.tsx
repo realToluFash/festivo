@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
+import { followSavedLanguage } from '../../accountLanguage.ts';
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
@@ -98,6 +99,10 @@ function Shell() {
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
   const switchTo = switchOf(location.state);
 
+  useEffect(() => {
+    void followSavedLanguage();
+  }, []);
+
   function switchInto(next: { id: string; name: string }): void {
     setSwitched({ id: next.id, name: next.name, at: pathname });
     void navigate(
@@ -157,7 +162,7 @@ function Shell() {
         <div className="shell-account">
           <span>{session.name}</span>
           <span className="muted">{session.email}</span>
-          <LanguagePicker />
+          <LanguagePicker automatic={false} />
         </div>
       </aside>
 

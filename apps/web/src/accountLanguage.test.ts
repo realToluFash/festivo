@@ -2,8 +2,8 @@ import { type Account } from '@soirely/api-client';
 import i18next from 'i18next';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { chooseLanguage, followAccount } from './accountLanguage.ts';
-import { setLanguage } from './i18n/index.ts';
+import { chooseLanguage, followAccount, followSavedLanguage } from './accountLanguage.ts';
+import { setLanguage, storedLanguage } from './i18n/index.ts';
 
 const ACCOUNT: Account = {
   id: 'acc_1',
@@ -75,6 +75,52 @@ describe('the account remembers its language', () => {
     await followAccount({ ...ACCOUNT, locale: 'es' });
 
     expect(i18next.language).toBe('es');
+    expect(sent).toEqual([]);
+  });
+});
+
+describe('the signed-in app shows the account language (sc-9797)', () => {
+  it('goes back to the account language after Automatic was picked outside the app', async () => {
+    const sent = saved();
+    await followAccount({ ...ACCOUNT, locale: 'es' });
+
+    await chooseLanguage(null, true);
+    expect(storedLanguage()).toBeNull();
+
+    await followSavedLanguage();
+
+    expect(i18next.language).toBe('es');
+    expect(sent).toEqual([]);
+  });
+
+  it('keeps a language whose save went through', async () => {
+    saved();
+    await followAccount({ ...ACCOUNT, locale: 'es' });
+    await chooseLanguage('fr', true);
+
+    await followSavedLanguage();
+
+    expect(i18next.language).toBe('fr');
+  });
+
+  it('goes back to the account language when the save failed', async () => {
+    await followAccount({ ...ACCOUNT, locale: 'es' });
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('offline'));
+    await chooseLanguage('fr', true);
+    expect(i18next.language).toBe('fr');
+
+    await followSavedLanguage();
+
+    expect(i18next.language).toBe('es');
+  });
+
+  it('follows the browser, and saves nothing, for an account with none of the four', async () => {
+    const sent = saved();
+
+    await followAccount({ ...ACCOUNT, locale: 'de' });
+    await followSavedLanguage();
+
+    expect(storedLanguage()).toBeNull();
     expect(sent).toEqual([]);
   });
 });
