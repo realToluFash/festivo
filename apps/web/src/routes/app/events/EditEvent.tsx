@@ -495,6 +495,7 @@ function DetailsForm({
           body={t('eventEdit.leaveBody')}
           go={t('eventEdit.leave')}
           pending={false}
+          opensPage
           onGo={() => blocker.proceed()}
           onKeep={() => blocker.reset()}
         />
@@ -503,13 +504,14 @@ function DetailsForm({
   );
 }
 
-/** Keep editing is the safe answer, so focus starts there; Escape keeps editing too, and focus goes back where it was. */
+/** Keep editing is the safe answer, so focus starts there; Escape keeps editing too, and focus goes back where it was unless going on opened another page. */
 function Confirm({
   id,
   title,
   body,
   go,
   pending,
+  opensPage = false,
   onGo,
   onKeep,
 }: {
@@ -518,12 +520,14 @@ function Confirm({
   body: string;
   go: string;
   pending: boolean;
+  opensPage?: boolean;
   onGo: () => void;
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
   const dialog = useRef<HTMLDivElement>(null);
   const keep = useRef<HTMLButtonElement>(null);
+  const left = useRef(false);
 
   useEffect(() => {
     const opener = document.activeElement;
@@ -531,6 +535,7 @@ function Confirm({
     keep.current?.focus();
 
     return () => {
+      if (left.current) return;
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
   }, []);
@@ -567,7 +572,10 @@ function Confirm({
             className="button"
             {...offButton(pending, { dim: false })}
             aria-busy={pending}
-            onClick={onGo}
+            onClick={() => {
+              left.current = opensPage;
+              onGo();
+            }}
           >
             {go}
           </button>

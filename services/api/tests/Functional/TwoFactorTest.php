@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\SignInMethods\RecentProof;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
 use App\Domain\User\TwoFactor\SecretBox;
@@ -14,6 +15,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
+use App\Locale\SupportedLocales;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorFactorRepository;
 use App\Tests\ApiTestCase;
@@ -459,9 +461,11 @@ final class TwoFactorTest extends ApiTestCase
     /** @return list<Email> */
     private function turnedOnEmails(): array
     {
+        $subjects = Vec\map(SupportedLocales::ALL, static fn (string $locale): string => self::service(UserMailer::class)->line('twoFactor.on.subject', $locale));
+
         return Vec\filter(
             Vec\map(self::getMailerMessages(), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message)),
-            static fn (Email $email): bool => 'Two-factor authentication was turned on' === $email->getSubject(),
+            static fn (Email $email): bool => Iter\contains($subjects, $email->getSubject()),
         );
     }
 

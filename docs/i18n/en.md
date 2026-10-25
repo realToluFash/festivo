@@ -62,6 +62,33 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email
+  (sc-67, sc-68, sc-11160, sc-2922, `web:membersScreen.*`, `web:join.*`, `invitations.*` web and
+  app, `emails:invitation.*`, `messages:invitations.*`).** Settled as sc-67 wrote them. The web
+  twins of the app's Members keys say what the app says: `onlyOwner` now reads "so their role
+  cannot change and they cannot be removed …", as sc-4259 settled. `ownRole` keeps "You can't"
+  and "General" (the web's section; the app says "Organisation"), because `Members.test.tsx`
+  matches "You can't change your own role"; it should read "You cannot change your own role."
+  and waits on [dev]. `beyondGrant` stays as written, also pinned; on the suspension card the
+  action it leaves out is restoring, so "you cannot change their role or their access" would
+  read truer there, asked of [dev3]. es, fr and pt write the web twins as the app's, word for
+  word, and write `ownRole` without the contraction. An invitation is "withdrawn" in prose and
+  "Revoke" stays the manager's button; the invitee reads "Withdrawn". "Works until" is the
+  invitation's life, never "valid until".
+- **25 Oct 2026. Deleting an organisation (sc-68, sc-3215, `errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`).**
+  Settled as sc-68 wrote it; `OrganisationDeletionTest` and `OwnershipCard.test.tsx` pin the
+  refusals, the subject and the restore line. `delete_name_mismatch` is the same sentence as
+  `ownership.deleteMismatch`, the check made twice, and `organisationDeleted.restore` repeats
+  `ownership.deleteWindow`, the sentence the owner read before deleting. `errors:owner_required`
+  is the code's own, any act; `organisation.owner_required` names the act. The footer says "you
+  were a member": the organisation no longer exists when it is read.
+- **25 Oct 2026. The sign-in rules refusals (sc-10594, sc-10716, `messages:sign_in_rules.*`).**
+  `inactivity_choice` stays: "Choose 7 days, 30 days or no limit." The other two are the
+  Owner's own state, as the page's `needsOwn*` says it, and should read "Turn on two-factor for
+  yourself before requiring it." and "Link Google or Apple for yourself before requiring it.",
+  but `SignInRulesTest::eachRefusalReadsInEnglishAsItDidBefore` pins the English, so that waits on
+  `[dev]`. es, fr and pt already say it the page's way, after the `errors:` title.
 - **25 Oct 2026. The API's refusals in the request's language (sc-10700, sc-10809, `messages:*`).**
   Settled as sc-10700 wrote them, with three changes. `event.currency_in_use` says "against this
   event", as its screen twin `eventEdit.currencyInUse`. `access.two_factor_required` says "requires

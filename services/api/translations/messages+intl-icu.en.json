@@ -4,7 +4,6 @@
     "limits.wrong_codes": "Too many wrong codes. Try again {hour, plural, other {at {time}}}.",
     "limits.sign_in": "Too many sign-in attempts. Try again {hour, plural, other {at {time}}}.",
     "limits.reset_requests": "Too many reset requests. Try again {hour, plural, other {at {time}}}.",
-    "limits.join_requests": "Too many requests for now. Try again {hour, plural, other {at {time}}}.",
     "limits.organisations": "Too many new organisations for now. Try again {hour, plural, other {at {time}}}.",
     "limits.sign_ups": "Too many sign-ups from this network. Try again {hour, plural, other {at {time}}}."
 }

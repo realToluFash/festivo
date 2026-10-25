@@ -388,7 +388,12 @@ function SettingUp({
           testID="twoFactor.checkCode"
         />
       </View>
-      <QuietButton label={t('twoFactorCard.cancel')} onPress={onCancel} testID="twoFactor.cancel" />
+      <QuietButton
+        label={t('twoFactorCard.cancel')}
+        onPress={onCancel}
+        off={checking}
+        testID="twoFactor.cancel"
+      />
     </>
   );
 }
@@ -564,6 +569,7 @@ function TurningOff({
       <QuietButton
         label={t('twoFactorCard.keepItOn')}
         onPress={onDone}
+        off={checking}
         testID="twoFactor.keepItOn"
       />
     </>
@@ -640,6 +646,7 @@ function NewCodes({
       <QuietButton
         label={t('twoFactorCard.keepCodes')}
         onPress={onKeep}
+        off={checking}
         testID="twoFactor.keepCodes"
       />
     </>

@@ -611,3 +611,105 @@ describe('Transfer ownership keeps focus where the answer puts it (sc-11588)', (
     expect(document.activeElement).toBe(code);
   });
 });
+
+describe('The way back is off while its request runs (sc-12511)', () => {
+  const DID_NOT_GO_THROUGH = 'That did not go through. Nothing was changed. Try again in a moment.';
+
+  function held(): { answer: () => Promise<Response>; fail: () => void } {
+    let fail: () => void = () => {};
+    const pending = new Promise<Response>((_, reject) => {
+      fail = () => reject(new TypeError('Failed to fetch'));
+    });
+
+    return { answer: () => pending, fail };
+  }
+
+  function expectOff(button: HTMLElement, off: boolean): void {
+    expect(button.getAttribute('aria-disabled')).toBe(String(off));
+    expect(button.hasAttribute('data-off')).toBe(off);
+  }
+
+  it('keeps the transfer open on Keep ownership until the password is answered', async () => {
+    signedIn();
+    const proof = held();
+    answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': proof.answer,
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Transfer ownership' }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Bisi Adeyemi/ }));
+    const keep = screen.getByRole('button', { name: 'Keep ownership' });
+    fireEvent.click(screen.getByRole('button', { name: 'Make Bisi Adeyemi the owner' }));
+    expectOff(keep, false);
+
+    fireEvent.change(screen.getByLabelText('Your password'), { target: { value: 'a passphrase' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Make Bisi Adeyemi the owner' }));
+    await waitFor(() => expectOff(keep, true));
+    fireEvent.click(keep);
+    expect(screen.getByLabelText('Your password')).toBeDefined();
+
+    act(() => proof.fail());
+    expect(await screen.findByText(DID_NOT_GO_THROUGH)).toBeDefined();
+    expectOff(keep, false);
+    fireEvent.click(keep);
+    expect(screen.queryByLabelText('Your password')).toBeNull();
+  });
+
+  it('keeps the leave open on Stay until it is answered', async () => {
+    signedIn(
+      membership({
+        id: 'org_1',
+        name: 'Ìrè Events',
+        role: { id: 'role_4', seededAs: 'coordinator', name: null },
+        permissions: ['events.read'],
+      }),
+    );
+    const leave = held();
+    answering({ 'POST /api/orgs/org_1/leave': leave.answer });
+    settings();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    const stay = screen.getByRole('button', { name: 'Stay' });
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+    await waitFor(() => expectOff(stay, true));
+    fireEvent.click(stay);
+    expect(screen.getByRole('heading', { name: 'Leave Ìrè Events?' })).toBeDefined();
+
+    act(() => leave.fail());
+    expect(await screen.findByText(DID_NOT_GO_THROUGH)).toBeDefined();
+    expectOff(stay, false);
+    fireEvent.click(stay);
+    expect(screen.queryByRole('heading', { name: 'Leave Ìrè Events?' })).toBeNull();
+  });
+
+  it('keeps the delete open on Keep ‹organisation› until it is answered', async () => {
+    signedIn();
+    const deletion = held();
+    answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'GET /api/orgs/org_1/deletion': () => json(DELETION),
+      'DELETE /api/orgs/org_1': deletion.answer,
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    const keep = screen.getByRole('button', { name: 'Keep Ìrè Events' });
+    const name = screen.getByLabelText('Type Ìrè Events to confirm');
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Ìrè Events' }));
+    expectOff(keep, false);
+
+    fireEvent.change(name, { target: { value: 'Ìrè Events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Ìrè Events' }));
+    await waitFor(() => expectOff(keep, true));
+    fireEvent.click(keep);
+    expect(screen.getByLabelText('Type Ìrè Events to confirm')).toBeDefined();
+
+    act(() => deletion.fail());
+    expect(await screen.findByText(DID_NOT_GO_THROUGH)).toBeDefined();
+    expectOff(keep, false);
+    fireEvent.click(keep);
+    expect(screen.queryByLabelText('Type Ìrè Events to confirm')).toBeNull();
+  });
+});

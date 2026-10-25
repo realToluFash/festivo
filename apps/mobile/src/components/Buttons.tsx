@@ -93,15 +93,28 @@ export function SecondaryButton({
 export function QuietButton({
   label,
   onPress,
+  off = false,
   testID,
 }: {
   label: string;
   onPress: () => void;
+  off?: boolean;
   testID: string;
 }) {
   return (
-    <Pressable style={styles.quiet} onPress={onPress} accessibilityRole="button" testID={testID}>
-      <Text size={tokens.typeButton.size} weight="semibold" style={styles.accent}>
+    <Pressable
+      style={styles.quiet}
+      onPress={onPress}
+      disabled={off}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: off }}
+      testID={testID}
+    >
+      <Text
+        size={tokens.typeButton.size}
+        weight="semibold"
+        style={off ? styles.secondaryInk : styles.accent}
+      >
         {label}
       </Text>
     </Pressable>

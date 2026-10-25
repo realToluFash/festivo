@@ -1118,6 +1118,51 @@ describe("Editing an event's details (sc-3587)", () => {
     ).toBeDefined();
   });
 
+  it('takes focus to the heading of the page left for, not back to the link that asked (sc-11370)', async () => {
+    signedIn();
+    serving();
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
+    const sidebarEvents = screen.getByRole('link', { name: 'Events' });
+    sidebarEvents.focus();
+    fireEvent.click(sidebarEvents);
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Leave without saving',
+      }),
+    );
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Events' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
+  it('puts focus back on the link that asked when editing goes on (sc-11370)', async () => {
+    signedIn();
+    serving();
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'Unsaved' } });
+    const sidebarEvents = screen.getByRole('link', { name: 'Events' });
+    sidebarEvents.focus();
+    fireEvent.click(sidebarEvents);
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {
+        name: 'Keep editing',
+      }),
+    );
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(document.activeElement).toBe(sidebarEvents);
+
+    fireEvent.click(sidebarEvents);
+    await screen.findByRole('alertdialog');
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(document.activeElement).toBe(sidebarEvents);
+  });
+
   it('leaves at once when nothing was changed', async () => {
     signedIn();
     serving();

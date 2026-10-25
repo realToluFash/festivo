@@ -408,6 +408,17 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
+describe('a way back in Two-factor authentication is off while its request runs (sc-12537)', () => {
+  it('on Cancel, Keep it on and Keep current codes', () => {
+    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{checking\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual(['"twoFactor.cancel"', '"twoFactor.keepItOn"', '"twoFactor.keepCodes"']);
+  });
+});
+
 describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
@@ -449,6 +460,64 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 });
 
+describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
+  const offWhile = (file: string, busy: string) =>
+    selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
+      .filter(({ markup }) => markup.includes(`off={${busy}}`))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+  it('in Password, beside Save new password and Save password, not beside the code check', () => {
+    expect([
+      ...offWhile('PasswordCard.tsx', 'saving'),
+      ...offWhile('PasswordCard.tsx', 'busy'),
+    ]).toEqual(['"password.cancel"', '"password.setCancel"']);
+  });
+
+  it('in Time zone, beside Save time zone', () => {
+    expect(offWhile('TimeZoneCard.tsx', 'saving')).toEqual(['"timeZone.cancel"']);
+  });
+
+  it("in Confirm it's you, beside Continue", () => {
+    expect(offWhile('ConfirmItsYou.tsx', 'checking')).toEqual(['{`${idPrefix}.cancel`}']);
+  });
+});
+
+describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", () => {
+  it('in the ways card, before the refusal reaches the list', () => {
+    const text = readFileSync(join('src', 'components', 'WaysCard.tsx'), 'utf8');
+
+    expect(text).toMatch(
+      /if \(unlinkProofLapsed\(error\)\) \{\s*setStage\(\{ kind: 'proving', act: \{ action: 'unlink', provider \} \}\);/,
+    );
+  });
+});
+
+describe('a contact confirmation shows its request running, its way back off (sc-12546)', () => {
+  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
+
+  it('on Make it primary and Remove it, busy while they send', () => {
+    const busy = selfClosing('PrimaryButton', text)
+      .filter(({ markup }) => /\bbusy=\{sending\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(busy).toEqual(['{`contacts.${row.id}.confirm`}', '{`contacts.${kind}.send`}']);
+  });
+
+  it('on Keep and on Cancel under an add form, off until the answer', () => {
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual(['{`contacts.${row.id}.keep`}', '{`contacts.${kind}.cancel`}']);
+  });
+
+  it('back on Make this your primary address? when a change fails past the check', () => {
+    expect(text).toMatch(
+      /else if \(proof != null\) setAsking\(\{ id: row\.id, what: 'promote' \}\);/u,
+    );
+  });
+});
+
 describe('a screen is a composition of the kit', () => {
   it('takes its fields from the kit, never a bare TextInput', () => {
     const offenders = sources(['app'])
@@ -468,6 +537,31 @@ describe('a screen is a composition of the kit', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('a way back that names an outcome is off while its request runs (sc-12511)', () => {
+  it('in Ownership and leaving, on Keep ownership, Stay and Keep ‹organisation›', () => {
+    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{busy\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual([
+      '"ownership.transfer.keep"',
+      '"ownership.leave.stay"',
+      '"ownership.delete.keep"',
+    ]);
+  });
+
+  it('where QuietButton taken off cannot be pressed, and is read as off', () => {
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function QuietButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+
+    expect(propValue(pressable, 'disabled')).toBe('{off}');
+    expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: off }}');
   });
 });
 
