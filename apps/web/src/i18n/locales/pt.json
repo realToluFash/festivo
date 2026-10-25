@@ -355,8 +355,8 @@
     "unreachableTitle": "Não é possível contactar a Soirely",
     "unreachableBody": "A sua sessão continua iniciada. A Soirely não está a responder, por isso ainda não é possível carregar nada. Verifique a ligação e tente novamente.",
     "retrying": "A tentar novamente…",
-    "stillSignedInTitle": "You are still signed in",
-    "stillSignedInBody": "Soirely could not be reached, so this device was not signed out. Check your connection, then try again."
+    "stillSignedInTitle": "A sua sessão continua iniciada",
+    "stillSignedInBody": "Não foi possível contactar a Soirely, por isso a sessão deste dispositivo não foi encerrada. Verifique a ligação e tente novamente."
   },
   "switcher": {
     "yourRole": "A sua função · {{role}}",
