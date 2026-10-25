@@ -54,6 +54,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is « la
+  requête », kept apart from « la demande », which is a request to join or a recovery request;
+  an API path is « cette URL ». An id is « cet identifiant »: « Aucune session ne porte cet
+  identifiant. » Field names an integrator sends (`idToken`, `code`, `recoveryCode`,
+  `If-Match`, `context`, the assistant's roles) stay as written, in straight quotes where the
+  English quotes them, since they are code; "system prompt" stays English. Where a screen says
+  the same sentence (`lostTwoFactor.*`, `signIn.timedOutBody_*`, the lock-outs' « Réessayez à
+  {time} »), the refusal says it too.
 - **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
   sc-10675). « Le {{day}}, l’heure {{time}} n’existe pas dans le fuseau {{zone}} : c’est la
   nuit du passage à l’heure d’été. Elle sera remplacée par {{savedAs}}. » The next-day line ends
