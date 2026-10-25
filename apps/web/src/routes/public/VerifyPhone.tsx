@@ -20,6 +20,7 @@ import {
 import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { offButton } from '../../offButton.ts';
 
 /** "Check your messages": the code texted to the primary phone, under email's rules and with its parts. */
 export function VerifyPhone() {
@@ -32,6 +33,7 @@ export function VerifyPhone() {
   const [account, setAccount] = useState<Account | 'none' | null>(null);
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
+  const [countdownSaid, setCountdownSaid] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
@@ -132,9 +134,14 @@ export function VerifyPhone() {
     }
   }
 
+  function countDown(seconds: number): void {
+    setCooldown(seconds);
+    setCountdownSaid(t('verifyPhone.resendIn', { time: formatCountdown(seconds) }));
+  }
+
   async function resend(): Promise<void> {
     try {
-      setCooldown(await api.resendPhoneCode(alternative));
+      countDown(await api.resendPhoneCode(alternative));
       setStatus({ kind: 'entering' });
       setRoute((await api.phoneOpening(alternative)).route);
     } catch (error) {
@@ -142,7 +149,7 @@ export function VerifyPhone() {
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
 
       if (Number.isFinite(seconds) && seconds > 0) {
-        setCooldown(seconds);
+        countDown(seconds);
         setStatus({ kind: 'entering' });
         return;
       }
@@ -307,7 +314,7 @@ export function VerifyPhone() {
                 <button
                   className="button"
                   type="button"
-                  disabled={cooldown > 0}
+                  {...offButton(cooldown > 0)}
                   onClick={() => void resend()}
                 >
                   {cooldown > 0
@@ -315,6 +322,9 @@ export function VerifyPhone() {
                     : t('verifyPhone.resend')}
                 </button>
                 <p>{t('verifyPhone.resendNote')}</p>
+                <span className="visually-hidden" role="status">
+                  {cooldown > 0 ? countdownSaid : ''}
+                </span>
               </div>
 
               {wording.offerText && (

@@ -208,14 +208,30 @@ describe('verifying an email address', () => {
     answering({ 'POST /api/auth/verify/resend': () => json({ cooldownSeconds: 42 }) });
 
     open();
-    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    const resend = screen.getByRole('button', { name: 'Send a new code' });
+    resend.focus();
+    fireEvent.click(resend);
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Send a new code in 0:42' })).toBeDefined(),
     );
-    expect(
-      screen.getByRole('button', { name: 'Send a new code in 0:42' }).hasAttribute('disabled'),
-    ).toBe(true);
+    expect(resend.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(resend);
+    expect(screen.getAllByRole('status').map(({ textContent }) => textContent)).toContain(
+      'Send a new code in 0:42',
+    );
+  });
+
+  it('sends nothing while it counts down, and keeps the button in reach', async () => {
+    const seen = answering({ 'POST /api/auth/verify/resend': () => json({ cooldownSeconds: 42 }) });
+
+    open();
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    const counting = await screen.findByRole('button', { name: 'Send a new code in 0:42' });
+    fireEvent.click(counting);
+
+    expect(seen.filter((call) => call === 'POST /api/auth/verify/resend')).toHaveLength(1);
+    expect(counting.hasAttribute('disabled')).toBe(false);
   });
 
   it('counts down from the time left when the resend was too soon', async () => {
@@ -252,9 +268,12 @@ describe('verifying an email address', () => {
       expect(screen.getByRole('button', { name: 'Send a new code in 0:57' })).toBeDefined(),
     );
     expect(
-      screen.getByRole('button', { name: 'Send a new code in 0:57' }).hasAttribute('disabled'),
-    ).toBe(true);
+      screen.getByRole('button', { name: 'Send a new code in 0:57' }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(seen).not.toContain('POST /api/auth/verify/resend');
+    expect(screen.queryAllByRole('status').map(({ textContent }) => textContent)).not.toContain(
+      'Send a new code in 0:57',
+    );
   });
 
   it('shows a verified account that it is verified, not a code to enter', () => {

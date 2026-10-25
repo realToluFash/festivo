@@ -15,6 +15,7 @@ import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale, dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
+import { offButton } from '../../../offButton.ts';
 import { markRulesSeen } from '../../../signInRulesSeen.ts';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; page: SignInRulesPage };
@@ -515,8 +516,8 @@ function Editable({
             <button
               className="button button-primary"
               type="button"
-              disabled={!dirty}
               aria-busy={status === 'saving'}
+              {...offButton(!dirty)}
               onClick={() => void save()}
             >
               {status === 'saving'

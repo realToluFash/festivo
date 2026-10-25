@@ -476,8 +476,8 @@ describe('getting back in without the authenticator', () => {
       screen.getByText('You can ask 3 times a day. Try again Sunday, Oct 18 at 17:09 WAT.'),
     ).toBeDefined();
     expect(
-      (screen.getByRole('button', { name: 'Send the codes' }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+      screen.getByRole('button', { name: 'Send the codes' }).getAttribute('aria-disabled'),
+    ).toBe('true');
   });
 });
 

@@ -9,6 +9,7 @@ import { AuthPage } from '../../components/AuthPage.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
+import { offButton } from '../../offButton.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { holdRegistration } from '../../pendingRegistration.ts';
@@ -185,7 +186,12 @@ export function Register() {
 
         <PasswordRule met={lengthMet} id="password-rule" />
 
-        <button className="button button-primary" type="submit" disabled={locked} aria-busy={busy}>
+        <button
+          className="button button-primary"
+          type="submit"
+          aria-busy={busy}
+          {...offButton(locked)}
+        >
           {busy ? t('register.submitting') : t('register.submit')}
         </button>
       </form>

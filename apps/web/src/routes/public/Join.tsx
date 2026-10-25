@@ -22,6 +22,7 @@ import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { offButton } from '../../offButton.ts';
 import {
   adoptAccount,
   forgetSession,
@@ -508,8 +509,8 @@ function Answer({
       <button
         className="button button-primary"
         type="button"
-        disabled={busy != null}
         aria-busy={busy === 'accept'}
+        {...offButton(busy != null)}
         onClick={() => void answer('accept')}
       >
         {t('join.accept')}
@@ -517,8 +518,8 @@ function Answer({
       <button
         className="button"
         type="button"
-        disabled={busy != null}
         aria-busy={busy === 'decline'}
+        {...offButton(busy != null)}
         onClick={() => void answer('decline')}
       >
         {t('join.decline')}

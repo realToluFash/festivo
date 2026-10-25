@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
+import { offButton } from '../offButton.ts';
 
 /** What follows "You joined": a button into it, or, on `/complete-profile`, a line saying where finishing goes. */
 export type AfterJoining =
@@ -95,9 +96,9 @@ function InvitationRow({
             <button
               className="button button-primary"
               type="button"
-              disabled={busy != null}
               aria-busy={busy === 'accept'}
               aria-label={t('invitations.acceptLabel', { organisation })}
+              {...offButton(busy != null)}
               onClick={() => void waiting.answer(invitation, 'accept')}
             >
               {t('invitations.accept')}
@@ -105,9 +106,9 @@ function InvitationRow({
             <button
               className="button"
               type="button"
-              disabled={busy != null}
               aria-busy={busy === 'decline'}
               aria-label={t('invitations.declineLabel', { organisation })}
+              {...offButton(busy != null)}
               onClick={() => void waiting.answer(invitation, 'decline')}
             >
               {t('invitations.decline')}

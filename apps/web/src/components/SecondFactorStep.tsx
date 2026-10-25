@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { dateLocale } from '../i18n/index.ts';
+import { offButton } from '../offButton.ts';
 import { FieldError } from './FieldError.tsx';
 
 type Mode = 'app' | 'recovery';
@@ -178,8 +179,8 @@ export function SecondFactorStep({
         <button
           className="button button-primary"
           type="submit"
-          disabled={status.kind === 'paused'}
           aria-busy={checking}
+          {...offButton(status.kind === 'paused')}
         >
           {status.kind === 'paused'
             ? t('twoFactor.tryAgainAt', { time: status.time })

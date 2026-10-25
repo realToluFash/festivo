@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { offButton } from '../../../offButton.ts';
 
 type Flash = 'on' | 'off' | 'replaced' | 'copied' | null;
 
@@ -79,7 +80,7 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
           aria-checked={link.on}
           aria-label={t('requestLink.switchLabel')}
           aria-busy={busy && !confirming}
-          disabled={busy}
+          {...offButton(busy)}
           onClick={() =>
             void (link.on
               ? change(() => api.turnOffRequestLink(organisation.id), 'off')

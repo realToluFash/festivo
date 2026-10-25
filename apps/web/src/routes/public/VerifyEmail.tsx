@@ -31,6 +31,7 @@ import {
   useSessionState,
 } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { offButton } from '../../offButton.ts';
 import { useFormChecks } from '../../formChecks.ts';
 
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
@@ -192,6 +193,7 @@ function CodeScreen({
   const { t } = useTranslation();
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
   const [cooldown, setCooldown] = useState(0);
+  const [countdownSaid, setCountdownSaid] = useState('');
   const checks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -263,9 +265,14 @@ function CodeScreen({
     }
   }
 
+  function countDown(seconds: number): void {
+    setCooldown(seconds);
+    setCountdownSaid(t('verifyEmail.resendIn', { time: formatCountdown(seconds) }));
+  }
+
   async function resend(): Promise<void> {
     try {
-      setCooldown(await sendAgain());
+      countDown(await sendAgain());
       setStatus({ kind: 'entering' });
     } catch (error) {
       const seconds =
@@ -277,7 +284,7 @@ function CodeScreen({
       }
 
       if (Number.isFinite(seconds) && seconds > 0) {
-        setCooldown(seconds);
+        countDown(seconds);
         setStatus({ kind: 'entering' });
 
         return;
@@ -400,7 +407,7 @@ function CodeScreen({
               <button
                 className="button button-primary"
                 type="submit"
-                disabled={status.kind === 'verifying'}
+                {...offButton(status.kind === 'verifying')}
               >
                 {status.kind === 'verifying'
                   ? t('verifyEmail.submitting')
@@ -411,7 +418,7 @@ function CodeScreen({
                 <button
                   className="button"
                   type="button"
-                  disabled={cooldown > 0}
+                  {...offButton(cooldown > 0)}
                   onClick={() => void resend()}
                 >
                   {cooldown > 0
@@ -419,6 +426,9 @@ function CodeScreen({
                     : t('verifyEmail.resend')}
                 </button>
                 <p>{t('verifyEmail.resendNote')}</p>
+                <span className="visually-hidden" role="status">
+                  {cooldown > 0 ? countdownSaid : ''}
+                </span>
               </div>
             </form>
           )}

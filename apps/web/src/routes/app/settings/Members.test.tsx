@@ -691,7 +691,7 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
     const save = screen.getByRole('button', { name: 'Pick a different role' });
-    expect(save.hasAttribute('disabled')).toBe(true);
+    expect(save.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(screen.getByRole('radio', { name: /Read-only/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Change their role to Read-only' }));
 

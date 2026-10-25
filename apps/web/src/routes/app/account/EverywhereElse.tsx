@@ -15,6 +15,7 @@ import { PasswordField } from '../../../components/PasswordField.tsx';
 import { AppleMark, GoogleMark } from '../../../components/ProviderSignIn.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { dateLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
 import {
   PROVIDER_NAMES,
   type ProviderReturn,
@@ -299,7 +300,7 @@ export function EverywhereElse({
               className="button button-dark"
               type="submit"
               aria-busy={working}
-              disabled={refusal?.kind === 'limited'}
+              {...offButton(refusal?.kind === 'limited')}
             >
               {refusal?.kind === 'limited'
                 ? until == null

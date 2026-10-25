@@ -549,7 +549,7 @@ describe('signing out everywhere else', () => {
       /Try again at .+\. Nothing was signed out\./,
     );
     const paused = screen.getByRole('button', { name: /^Try again at / });
-    expect((paused as HTMLButtonElement).disabled).toBe(true);
+    expect(paused.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('asks for the code as well when two-factor is on', async () => {

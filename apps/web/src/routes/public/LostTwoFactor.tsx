@@ -20,6 +20,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { offButton } from '../../offButton.ts';
 import { Pending } from '../../components/Pending.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../../heldRecovery.ts';
 import { currentLocale } from '../../i18n/index.ts';
@@ -308,7 +309,7 @@ function Start({
         className="button button-primary"
         type="button"
         aria-busy={sending}
-        disabled={limitedUntil != null}
+        {...offButton(limitedUntil != null)}
         onClick={onSend}
       >
         {sending ? t('lostTwoFactor.sending') : t('lostTwoFactor.send')}
@@ -547,6 +548,7 @@ function Codes({
   const [failed, setFailed] = useState(false);
   const [textingFailed, setTextingFailed] = useState(false);
   const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
+  const [countdownSaid, setCountdownSaid] = useState('');
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -665,12 +667,17 @@ function Codes({
     }
   }
 
+  function countDown(seconds: number): void {
+    setCooldown(seconds);
+    setCountdownSaid(t('lostTwoFactor.resendIn', { time: formatCountdown(seconds) }));
+  }
+
   async function resend(): Promise<void> {
     try {
       const next = await api.resendRecoveryCodes(recovery);
       setTyped({ emailCode: '', phoneCode: '' });
       setErrors({});
-      setCooldown(next.codes?.cooldownSeconds ?? 0);
+      countDown(next.codes?.cooldownSeconds ?? 0);
       onState(next);
     } catch (refusal) {
       if (replacedElsewhere(refusal)) {
@@ -687,7 +694,7 @@ function Codes({
       const seconds =
         refusal instanceof ApiError ? Number(refusal.response?.headers.get('Retry-After')) : NaN;
 
-      if (Number.isFinite(seconds) && seconds > 0) setCooldown(seconds);
+      if (Number.isFinite(seconds) && seconds > 0) countDown(seconds);
       else setFailed(true);
     }
   }
@@ -821,7 +828,7 @@ function Codes({
             <button
               className="button"
               type="button"
-              disabled={cooldown > 0}
+              {...offButton(cooldown > 0)}
               onClick={() => void resend()}
             >
               {cooldown > 0
@@ -829,6 +836,9 @@ function Codes({
                 : t('lostTwoFactor.resend')}
             </button>
             <p>{t('lostTwoFactor.resendNote')}</p>
+            <span className="visually-hidden" role="status">
+              {cooldown > 0 ? countdownSaid : ''}
+            </span>
           </div>
 
           {hasPhone && wording.offerText && (
