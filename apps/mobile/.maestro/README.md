@@ -38,3 +38,7 @@ Maestro needs a Java runtime. `java -version` failing means
   the package is `host.exp.exponent`, in lower case. Write iOS's: `qa-env.mjs maestro --android`
   runs from a copy of this whole directory with Android's, so a `runFlow` or `runScript` path
   still resolves.
+- **Scroll to what can sit below the fold.** Maestro on Android sees only what is on
+  screen, so an `extendedWaitUntil` or `assertVisible` on a line under a phone's fold passes
+  on the iPhone and times out there. Use `scrollUntilVisible`, which does not scroll when the
+  line is already in view.
