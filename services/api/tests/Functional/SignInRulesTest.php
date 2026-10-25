@@ -39,6 +39,7 @@ use stdClass;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 use Symfony\Component\Mime\Email;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class SignInRulesTest extends ApiTestCase
 {
@@ -498,6 +499,63 @@ final class SignInRulesTest extends ApiTestCase
         self::assertSame('Choose 7 days, 30 days or no limit.', $asFloat['violations'][0]['message'] ?? null);
     }
 
+    /** @return iterable<string, array{string, string, string}> */
+    public static function requestLanguages(): iterable
+    {
+        yield 'en' => ['', 'en', 'en'];
+        yield 'es' => ['', 'es', 'es'];
+        yield 'fr' => ['', 'fr', 'fr'];
+        yield 'pt' => ['', 'pt', 'pt'];
+        yield 'pt-BR reads as pt' => ['', 'pt-BR', 'pt'];
+        yield 'an unknown language reads as English' => ['', 'xx', 'en'];
+        yield 'the parameter outranks the header' => ['?locale=fr', 'en', 'fr'];
+    }
+
+    /** One response, one language: each refusal's sentences come from the catalogue its title does (sc-10594). */
+    #[Test]
+    #[DataProvider('requestLanguages')]
+    public function eachRefusalIsWrittenInTheLanguageTheRequestAsks(string $query, string $header, string $locale): void
+    {
+        $translator = self::service(TranslatorInterface::class);
+        $catalogued = static fn (string $key, string $domain = 'messages'): string => $translator->trans($key, [], $domain, $locale);
+
+        $choice = $this->setIn($query, $header, ['inactivityTimeoutDays' => 14]);
+        self::assertSame(422, $this->statusCode());
+        self::assertSame($catalogued('validation_failed', ErrorCode::DOMAIN), $choice['title'] ?? null);
+        self::assertSame($catalogued('sign_in_rules.inactivity_choice'), $choice['detail'] ?? null);
+        self::assertSame([['propertyPath' => 'inactivityTimeoutDays', 'message' => $catalogued('sign_in_rules.inactivity_choice'), 'code' => 'choice']], $choice['violations'] ?? null);
+
+        foreach ([['administratorsNeedTwoFactor' => true], ['everyoneNeedsTwoFactor' => true]] as $rules) {
+            $twoFactor = $this->setIn($query, $header, $rules);
+            self::assertSame(409, $this->statusCode());
+            self::assertSame($catalogued('two_factor_off', ErrorCode::DOMAIN), $twoFactor['title'] ?? null);
+            self::assertSame($catalogued('sign_in_rules.two_factor_off'), $twoFactor['detail'] ?? null);
+        }
+
+        $this->unlink($this->owner);
+        $unlinked = $this->setIn($query, $header, ['providerOnly' => true]);
+        self::assertSame(403, $this->statusCode());
+        self::assertSame($catalogued('oauth_only_unlinked', ErrorCode::DOMAIN), $unlinked['title'] ?? null);
+        self::assertSame($catalogued('sign_in_rules.provider_unlinked'), $unlinked['detail'] ?? null);
+
+        $rules = $this->as($this->owner, 'GET', $this->path());
+        self::assertSame([false, null, false, false, null, []], [$rules['providerOnly'] ?? null, $rules['inactivityTimeoutDays'] ?? null, $rules['administratorsNeedTwoFactor'] ?? null, $rules['everyoneNeedsTwoFactor'] ?? null, $rules['changedAt'] ?? null, $rules['changes'] ?? null]);
+    }
+
+    #[Test]
+    public function eachRefusalReadsInEnglishAsItDidBefore(): void
+    {
+        $this->set(['inactivityTimeoutDays' => 14]);
+        self::assertSame(['Choose 7 days, 30 days or no limit.', 'Choose 7 days, 30 days or no limit.'], [$this->last()['detail'] ?? null, $this->last()['violations'][0]['message'] ?? null]);
+
+        $this->set(['everyoneNeedsTwoFactor' => true]);
+        self::assertSame('Two-factor is not on.', $this->last()['detail'] ?? null);
+
+        $this->unlink($this->owner);
+        $this->set(['providerOnly' => true]);
+        self::assertSame('Link Google or Apple before requiring it.', $this->last()['detail'] ?? null);
+    }
+
     /** @param array<string, mixed> $rules */
     #[Test]
     #[DataProvider('rulesOfAnotherJsonType')]
@@ -663,6 +721,22 @@ final class SignInRulesTest extends ApiTestCase
             'CONTENT_TYPE' => 'application/json',
             'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->fresh($this->owner)),
         ], content: $json);
+
+        return $this->last();
+    }
+
+    /**
+     * @param array<string, mixed> $rules
+     *
+     * @return array<string, mixed>
+     */
+    private function setIn(string $query, string $language, array $rules): array
+    {
+        $this->client->request('PATCH', $this->path() . $query, server: [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT_LANGUAGE' => $language,
+            'HTTP_AUTHORIZATION' => 'Bearer ' . self::service(JWTTokenManagerInterface::class)->create($this->fresh($this->owner)),
+        ], content: Json\encode($rules));
 
         return $this->last();
     }
