@@ -49,6 +49,18 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
+  (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
+  `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
+  words. An invitation is feminine and its states agree with it: «Pendiente», «Caducada»,
+  «Retirada» (revoked and withdrawn alike), «Rechazada», «Aceptada», «Eliminada»; "Revoke" is
+  «Retirar». "Works until" is «Funciona hasta el {{date}}», never «válida hasta». An invited
+  person is «con invitación» in the subtitle and the chip, so no count agrees with anyone. The
+  history lines name what was acted on, as «Solicitud rechazada por {{by}}»: «Invitación
+  enviada por», «Solicitud aprobada por», «Acceso suspendido / restablecido / retirado por»;
+  the joins are past simple, «Aceptó la invitación», «Se unió con …», as «Creó». A role given
+  is «con el rol {{role}}». "Declining tells … you said no" is «Si la rechaza, {{inviter}} sabrá
+  que ha dicho que no». The invitee is «le» (cortesía), «quien le invitó».
 - **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
   `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
   sc-3215). The refusals name the role, «Solo alguien con el rol Propietario…», as
