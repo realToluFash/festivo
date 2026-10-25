@@ -503,6 +503,7 @@ describe('an invitation whose link did not load (sc-11488)', () => {
 
     const heading = await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' });
     await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('status')).toBeNull();
     expect(sent.map((one) => one.line)).toEqual([LINK, LINK]);
   });
 
@@ -543,6 +544,34 @@ describe('an invitation whose link did not load (sc-11488)', () => {
       name: 'We could not find that invitation',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('puts focus on the heading alone when Try again finds the invitation expired', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    let reachable = false;
+    answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json({ ...PREVIEW, refusal: 'invitation_expired' });
+      },
+    });
+    open();
+
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'This invitation has expired',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(
+      screen.getByText('This invitation has expired. Ask Bisi Adeyemi to send a new one.'),
+    ).toBeDefined();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('shows the words true for everybody when the account did not load, and reads it then the link', async () => {

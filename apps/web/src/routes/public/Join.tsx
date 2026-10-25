@@ -81,8 +81,12 @@ function Invited({ token }: { token: string }) {
   const settled = session.status === 'signedIn' || session.status === 'signedOut';
 
   const [attempt, setAttempt] = useState(0);
-  const retry = useLinkRetry(view);
   const reloadArrives = useRef(false);
+  const reload = () => {
+    reloadArrives.current = true;
+    setAttempt((n) => n + 1);
+  };
+  const retry = useLinkRetry(view, reload);
 
   useEffect(() => {
     dropHeldInvitation();
@@ -118,7 +122,7 @@ function Invited({ token }: { token: string }) {
     return () => {
       current = false;
     };
-  }, [settled, token, attempt, retry.attempt, arriveAtStep]);
+  }, [settled, token, attempt, arriveAtStep]);
 
   if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
   if (view.kind === 'unreachable') {
@@ -161,10 +165,7 @@ function Invited({ token }: { token: string }) {
         setBrought(true);
         arriveAtStep();
       }}
-      onReload={() => {
-        reloadArrives.current = true;
-        setAttempt((n) => n + 1);
-      }}
+      onReload={reload}
     />
   );
 }

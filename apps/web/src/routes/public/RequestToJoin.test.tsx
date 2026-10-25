@@ -291,6 +291,7 @@ describe('a request link that did not load (sc-11488)', () => {
       name: 'Ask to join Ìrè Events',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('status')).toBeNull();
     expect(sent.map((one) => one.line)).toEqual([LINK, LINK, LINK]);
   });
 
@@ -315,6 +316,32 @@ describe('a request link that did not load (sc-11488)', () => {
       name: "This link doesn't work",
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('puts focus on the heading alone when Try again finds somebody who belongs', async () => {
+    signedIn();
+    let reachable = false;
+    answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json({ ...PREVIEW, standing: 'member' });
+      },
+    });
+    open();
+
+    expect(await screen.findByText(`${SIGNED_IN} ${NOT_ANSWERING}`)).toBeDefined();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'Ask to join Ìrè Events',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.getByText('You already belong to Ìrè Events.')).toBeDefined();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('keeps the full words signed in', async () => {
