@@ -1162,7 +1162,7 @@
     "onlyOwner": "{{name}} is the only owner. An organisation always has one, so their role cannot change and they cannot be removed until somebody else is an owner too.",
     "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
     "ownerOnly": "Only an owner can change an owner's role or remove them.",
-    "beyondGrant": "Their role holds a permission yours does not, so you cannot change their role or remove them.",
+    "beyondGrant": "Their role holds a permission yours does not, so you cannot change their role or their access.",
     "removeTitle": "Remove {{name}}",
     "removeBody": "They lose access on their next request. Their events stay with {{organisation}}.",
     "removeButton": "Remove from {{organisation}}",
