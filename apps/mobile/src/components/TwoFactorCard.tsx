@@ -16,6 +16,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -360,6 +361,8 @@ function SavingCodes({
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copiedAll = t('twoFactorCard.copiedAll', { count: codes.length });
+  const copiedLive = useReadOut(copied ? copiedAll : null);
   const top = useScrolledToTop();
 
   useEffect(() => Keyboard.dismiss(), []);
@@ -391,13 +394,8 @@ function SavingCodes({
         testID="twoFactor.copyAll"
       />
       {copied && (
-        <Text
-          size={tokens.typeSmall.size}
-          weight="semibold"
-          style={styles.on}
-          accessibilityLiveRegion="polite"
-        >
-          {t('twoFactorCard.copiedAll', { count: codes.length })}
+        <Text size={tokens.typeSmall.size} weight="semibold" style={styles.on} {...copiedLive}>
+          {copiedAll}
         </Text>
       )}
 

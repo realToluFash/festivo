@@ -21,6 +21,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, focusChecked, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { useAboveKeyboard, useRoomAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -168,6 +169,9 @@ function Choosing({
   };
   const help = t('timeZone.help', { now: now ?? t('timeZone.nowUnset') });
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
+  const nothing = t('timeZone.noneMatch', { typed: typed.trim() });
+  // Its words change with every key, and saying them each time would talk over the typing (sc-10955).
+  const nothingLive = useReadOut(noneMatch && error == null ? nothing : null, { once: true });
   const listMost =
     room == null
       ? LIST_HEIGHT
@@ -277,8 +281,9 @@ function Choosing({
               size={tokens.typeBodyPhone.size}
               style={styles.secondary}
               accessibilityRole="alert"
+              {...nothingLive}
             >
-              {t('timeZone.noneMatch', { typed: typed.trim() })}
+              {nothing}
             </Text>
           )}
 

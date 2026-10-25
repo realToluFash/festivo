@@ -39,6 +39,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { AboveKeys, type DockInset, SETTLED_MS, useAboveKeyboard } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
@@ -251,6 +252,7 @@ export function RolePage({
       <SecondaryButton label={t('rolesScreen.remove')} onPress={onRemove} testID="roles.remove" />
     </View>
   );
+  const savedLine = t('rolesScreen.saved');
 
   return (
     <View style={styles.stack}>
@@ -303,9 +305,9 @@ export function RolePage({
         />
       )}
       {saved && (
-        <View accessibilityLiveRegion="polite">
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={t('rolesScreen.saved')} />
-        </View>
+        <ReadOut words={savedLine}>
+          <Notice tone="done" mark={tokens.marks.done.glyph} body={savedLine} />
+        </ReadOut>
       )}
       {lockedLabels.length > 0 && (
         <Notice

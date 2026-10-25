@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -18,6 +18,7 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
+import { readOut } from './ReadOut.tsx';
 import { useBroughtIntoView } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
@@ -462,7 +463,7 @@ function RecordPanel({ record }: { record: NonNullable<OwnerClaim['record']> }) 
     try {
       await setStringAsync(text);
       setCopied(field);
-      AccessibilityInfo.announceForAccessibility(t(`ownerClaim.${field}Copied`));
+      readOut(t(`ownerClaim.${field}Copied`));
     } catch {
       setCopied(null);
     }

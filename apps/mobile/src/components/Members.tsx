@@ -39,6 +39,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
 import { useBroughtIntoView, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -118,9 +119,10 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
 /** Scrolled into view when it appears, since the answer was given further down the list. */
 function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => void }) {
   const top = useScrolledToTop();
+  const live = useReadOut(answered.text);
 
   return (
-    <View ref={top} accessibilityLiveRegion="polite">
+    <View ref={top} {...live}>
       <Notice
         tone="done"
         mark={tokens.marks.done.glyph}
@@ -178,6 +180,7 @@ export function MemberList({
   const [filter, setFilter] = useState<MemberFilter>('all');
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
+  const removedNext = t('membersScreen.removedNext');
   const count = (one: MemberFilter) =>
     list.members.filter((member) => memberIsShown(member.status, one)).length;
 
@@ -192,15 +195,15 @@ export function MemberList({
       )}
 
       {flash != null && (
-        <View accessibilityLiveRegion="polite">
+        <ReadOut words={`${flash}\n${removedNext}`}>
           <Notice
             tone="done"
             mark={tokens.marks.done.glyph}
             title={flash}
             accentTitle
-            body={t('membersScreen.removedNext')}
+            body={removedNext}
           />
-        </View>
+        </ReadOut>
       )}
 
       {answered != null && (
