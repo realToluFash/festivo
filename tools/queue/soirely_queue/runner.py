@@ -6,14 +6,15 @@ Everything a run decides is printed, one line each, for the journal."""
 import datetime
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
 import threading
 import time
 
-from . import (checkout, drawing, local, machine, permissions, roles, runlog, shared, store,
-               sync, update)
+from . import (checkout, drawing, local, machine, permissions, review, roles, runlog, shared,
+               store, sync, update)
 
 VERSION_EVERY_SECONDS = 10 * 60
 # `claude -p` stays up while a background shell it started still runs, so a run whose item
@@ -414,8 +415,13 @@ def own_result(lines):
     return own[-1] if own else None
 
 
+def run_dir(home, name, item_id):
+    """The run's own scratch folder, named so `worker_ended` finds it after a timeout."""
+    return home / "scratch" / f"{name}-{item_id}"
+
+
 def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=machine.load,
-           prepare=checkout.prepare, now=None):
+           prepare=checkout.prepare, make_review=review.make, now=None):
     """Runs inside the worker's unit: prepares the checkout, runs the model, records the
     run. `name` is the role, or `pm-2` and on for a further worker of it."""
     role = machine.worker_role(name)
@@ -431,6 +437,14 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     path = machine.checkout(config, role, name)
     try:
         main, note = prepare(path, role, story)
+        cwd = path
+        if role in review.ROLES:
+            pr = row["pr"] if row else None
+            head = (store.pr(db, pr) or {}).get("head_sha") if pr else None
+            base = machine.checkout(config, role)
+            cwd = make_review(path, base, head or main, pr if head else None, rules=main)
+            note = "\n".join(filter(None, [note, review.note(cwd, head or main,
+                                                              pr if head else None, base)]))
     except checkout.Unprepared as error:
         entry["report"] = f"the worker could not prepare its checkout: {error}"
         runlog.append(home, role, entry)
@@ -441,9 +455,17 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     entry["account"] = machine.account(folder)
     argv, env = command(values, folder, permissions.for_role(permissions.applied(), role),
                         permissions.denied(home / "sq" / "sq", folder))
-    code, stdout, stderr, ended = run_claude(
-        argv, prompt(row, role, main, note), path, env,
-        lambda: (store.item(db, item_id) or {"status": None})["status"] == "done")
+    scratch = run_dir(home, name, item_id)
+    scratch.mkdir(parents=True, exist_ok=True)
+    env["SQ_RUN_DIR"] = str(scratch)
+    try:
+        code, stdout, stderr, ended = run_claude(
+            argv, prompt(row, role, main, note), cwd, env,
+            lambda: (store.item(db, item_id) or {"status": None})["status"] == "done")
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+        if cwd != path:
+            review.remove(path)
     every = results(stdout)
     own = own_result([stdout])
     if own:
@@ -464,10 +486,16 @@ def worker(db, home, platform, name, item_id, run_claude=run_until_done, load=ma
     return entry
 
 
-def worker_ended(home, platform, name, item_id, now=None):
+def worker_ended(home, platform, name, item_id, now=None, load=machine.load):
     """`ExecStopPost`: a run stopped by its memory or time limit, or a crash, writes no
-    report of its own, so this leaves the record."""
+    report of its own, so this leaves the record, and takes its review worktree away."""
     role = machine.worker_role(name)
+    shutil.rmtree(run_dir(home, name, item_id), ignore_errors=True)
+    if role in review.ROLES:
+        try:
+            review.remove(machine.checkout(load(), role, name))
+        except (machine.ConfigError, OSError) as error:
+            platform.notify(f"Soirely: {name}'s review worktree is still there", str(error))
     if any(e.get("item") == item_id for e in runlog.entries(home, role)[-20:]):
         return None
     reason = os.environ.get("SERVICE_RESULT", "unknown")

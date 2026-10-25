@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Domain\Event\Controller;
 
 use App\Domain\Event\EventCreator;
+use App\Domain\Event\EventEditor;
 use App\Domain\Event\Http\EventSerialiser;
+use App\Entity\Event;
 use App\Entity\Organisation;
 use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\Permission;
 use App\Http\Access\Policy\InEvent;
 use App\Http\Access\Policy\InOrganisation;
+use App\Http\EntityTag;
 use App\Http\Exception\ApiException;
 use App\Http\Input;
 use App\Repository\EventRepository;
@@ -31,6 +34,7 @@ final readonly class EventsController
         private OrganisationRepository $organisationRepository,
         private EventRepository $eventRepository,
         private EventCreator $eventCreator,
+        private EventEditor $eventEditor,
     ) {
     }
 
@@ -71,20 +75,45 @@ final readonly class EventsController
     #[InEvent(Permission::EventsRead)]
     public function show(string $eventId): JsonResponse
     {
-        $event = $this->eventRepository->find($eventId) ?? throw ApiException::notFound('Not found.');
+        return self::tagged($this->event($eventId));
+    }
 
-        return new JsonResponse(['event' => EventSerialiser::event($event)]);
+    /** Any of the five fields; those left out keep their value. Needs If-Match with the ETag it read (sc-3587). */
+    #[Route('/api/events/{eventId}', name: 'events_update', methods: ['PATCH'])]
+    #[InEvent(Permission::EventsManage)]
+    public function update(Request $request, string $eventId): JsonResponse
+    {
+        $event = $this->event($eventId);
+        $body = Input::body($request, Type\shape([
+            'name' => Type\optional(Type\string()),
+            'startsAt' => Type\optional(Type\string()),
+            'endsAt' => Type\optional(Type\string()),
+            'timeZone' => Type\optional(Type\string()),
+            'currency' => Type\optional(Type\string()),
+        ]));
+
+        return self::tagged($this->eventEditor->edit($event, $request->headers->get('If-Match'), $this->user(), $body));
+    }
+
+    private static function tagged(Event $event): JsonResponse
+    {
+        return new JsonResponse(['event' => EventSerialiser::event($event)], Response::HTTP_OK, ['ETag' => EntityTag::of($event->getVersion())]);
+    }
+
+    private function event(string $id): Event
+    {
+        return $this->eventRepository->find($id) ?? throw ApiException::notFound('access.not_found');
     }
 
     private function organisation(string $id): Organisation
     {
-        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('Not found.');
+        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('access.not_found');
     }
 
     private function user(): User
     {
         $user = $this->security->getUser();
 
-        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
     }
 }

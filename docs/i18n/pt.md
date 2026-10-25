@@ -41,6 +41,55 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
+  (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
+  `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
+  words. An invitation is "convite", masculine, and its states agree with it: "Pendente",
+  "Expirado", "Retirado" (revoked and withdrawn alike), "Recusado", "Aceite"; the deleted
+  organisation is "Eliminada". "Revoke" is "Retirar". Joining is "aderir a {{organisation}}".
+  The invitee is never the object of "convidar", which agrees with a gender: "enviou-lhe um
+  convite", "quem lhe enviou o convite", and the email subject "Convite de {inviter} para
+  aderir a {organisation} na Soirely". `formatDay` dates take "no dia" ("Enviado no dia
+  {{sent}} · expira no dia {{ended}}") or "até", and never close a sentence: "Até {{date}},
+  pode usar este convite." The email's `{date}` has a full month, so "válido até {date}."
+  ends it. The subtitle names its counts after a colon, "com acesso: {{active}} · convites:
+  {{invited}}". History lines name what was acted on, "Convite enviado por", "Pedido aprovado
+  por", "Acesso suspenso / reposto / retirado por".
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, "Só alguém com a função Proprietário…", as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word, and `restore` the second sentence of `ownership.deleteWindow`, "restaurá-la" included.
+  The subject is "A organização {organisation} foi eliminada", so the participle agrees with
+  "organização", never with a name. The date is "a {when}", as `password.changed.body`. The
+  footer says "era membro".
+- **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is "o pedido
+  HTTP" where a recovery or join "pedido" could be meant (the body refusals), and "o pedido" in
+  the assistant's lines; an API path is "este URL", masculine. An id is "esse identificador",
+  and a postal address is "morada". Field names an integrator sends (`idToken`, `code`,
+  `recoveryCode`, `If-Match`, `context`, the assistant's roles) stay as written, in straight
+  quotes where the English quotes them; "system prompt" stays English. Where a screen says the
+  same sentence (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`,
+  the lock-outs' "Tente novamente às {time}"), the refusal says it too.
+- **25 Oct 2026. The article before an API time** (sc-11332). The 01 hour is "a uma", so the
+  lock-outs (`messages+intl-icu:limits.*`) and `emails+intl-icu:time.dateAt` choose the
+  contraction from `{hour}` (0–23): `{hour, plural, =1 {à {time}} other {às {time}}}`, "à 01:05",
+  "às 00:05" (zero horas), "às 13:05". Any new string that puts "à/às" before a clock time takes
+  the same form, or "a hora {time}" where no `{hour}` reaches it.
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675, reworded in sc-11163). "Em {{zone}}, a hora {{time}} do dia {{day}} não existe:
+  nessa noite, os relógios são adiantados. Será guardada como {{savedAs}}." The next-day line
+  ends "guardada no dia {{savedDay}}, às {{savedAs}}.", so the date never stands before the
+  colon ("mar.:") or closes the sentence. "Do dia" and "no dia"
+  agree with "dia", not with the weekday, which is how a weekday date takes a preposition
+  inside a sentence (the 19 Oct rule forbids "a" and "na/no" alone). "Guardada" agrees with
+  "a hora". Rejected "hora de verão", which names the rule rather than the missing hour.
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
+  "Editar detalhes", "Save changes" "Guardar alterações", and changes are always "alterações",
+  never "mudanças". A refused save starts "Não foi guardado."; the colleague is "outra pessoa",
+  as `errors:precondition_failed`. What was typed is "o que escreveu". After a save the live
+  region says "Alterações guardadas". The currency refusal is one sentence in `web` and
+  `errors`, "… neste evento".
 - **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
   `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
   sc-8735). "Suspender {{name}}", "Repor o acesso". What is suspended is "o acesso", so nothing

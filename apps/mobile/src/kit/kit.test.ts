@@ -6,23 +6,27 @@ import {
   FIELD_DEFAULTS,
   type FieldText,
   fieldText,
+  nextPin,
   passwordProps,
-  pinnedText,
 } from './fields.ts';
 import {
   barFits,
   coveredBy,
+  fieldKeptInSight,
   groupInWindow,
   keyboardInWindow,
   keyboardLift,
   keysOver,
+  liftNeeded,
   listRoom,
   offsetAboveKeyboard,
   offsetIntoView,
   offsetToFocus,
   scrollInsets,
+  searchBesideTitle,
   shortWhileTyping,
   shownEnd,
+  titleScrollsWhileTyping,
 } from './keyboard.ts';
 
 describe('the keyboard lifts the card once', () => {
@@ -80,6 +84,43 @@ describe('the focused field stays in a sheet body too short for its notices (sc-
     const tiny = { ...group, keyboardTop: 60 };
 
     expect(offsetToFocus(tiny, field)).toBe(field.contentY - body.margin);
+  });
+});
+
+describe('the field typed in stays in sight above a group lifted under it (sc-11978)', () => {
+  // Current password, 110 tall at 400, then the New password group, 420 tall at 526.
+  const card = { contentY: 526, height: 420, scrollTop: 100, keyboardTop: 600, margin: 16 };
+  const current = 400;
+
+  it('stops the lift with the focused field at the top of the scroll view', () => {
+    const offset = offsetAboveKeyboard({ ...card, focusY: current });
+
+    expect(offset).toBe(current - card.margin);
+    expect(offset).toBeLessThan(offsetAboveKeyboard(card));
+  });
+
+  it('lifts the whole group when it fits under the focused field', () => {
+    const tall = { ...card, keyboardTop: 900 };
+
+    expect(offsetAboveKeyboard({ ...tall, focusY: current })).toBe(offsetAboveKeyboard(tall));
+  });
+
+  it('keeps the group top when the focused field sits inside the group', () => {
+    expect(offsetAboveKeyboard({ ...card, focusY: card.contentY })).toBe(offsetAboveKeyboard(card));
+  });
+
+  it('lifts a group already above the keys when the focused field sits under the header', () => {
+    const check = { shown: 600, group: { y: 150, height: 300 }, scrollTop: 100, margin: 16 };
+
+    expect(liftNeeded(check)).toBe(false);
+    expect(liftNeeded({ ...check, focusTop: 60 })).toBe(true);
+    expect(liftNeeded({ ...check, focusTop: 120 })).toBe(false);
+  });
+
+  it('lifts a group the keys cover wherever the focused field sits', () => {
+    const check = { shown: 400, group: { y: 150, height: 300 }, scrollTop: 100, margin: 16 };
+
+    expect(liftNeeded({ ...check, focusTop: 120 })).toBe(true);
   });
 });
 
@@ -224,6 +265,26 @@ describe('a list between a field and its button shrinks to fit above the keyboar
   });
 });
 
+describe("a list's search moves beside its title on an iPhone on its side (sc-10118)", () => {
+  const onItsSide = { os: 'ios', phone: true, width: 667, height: 375 };
+
+  it('on its side', () => {
+    expect(searchBesideTitle(onItsSide)).toBe(true);
+  });
+
+  it('not upright', () => {
+    expect(searchBesideTitle({ ...onItsSide, width: 375, height: 667 })).toBe(false);
+  });
+
+  it('not on an Android phone', () => {
+    expect(searchBesideTitle({ ...onItsSide, os: 'android' })).toBe(false);
+  });
+
+  it('not on an iPad', () => {
+    expect(searchBesideTitle({ ...onItsSide, phone: false, width: 1194, height: 834 })).toBe(false);
+  });
+});
+
 describe('a short Android phone gives up the help line and back row while typing', () => {
   const smallAndroid = { os: 'android', phone: true, height: 640, keysUp: true };
 
@@ -246,6 +307,79 @@ describe('a short Android phone gives up the help line and back row while typing
 
   it('never on iOS', () => {
     expect(shortWhileTyping({ ...smallAndroid, os: 'ios', height: 667 })).toBe(false);
+  });
+});
+
+describe('an iPhone on its side scrolls the sheet title with its body while typing', () => {
+  const sideways = { os: 'ios', phone: true, width: 844, height: 390, keysUp: true };
+
+  it('on its side with the keys up', () => {
+    expect(titleScrollsWhileTyping(sideways)).toBe(true);
+  });
+
+  it('never in portrait', () => {
+    expect(titleScrollsWhileTyping({ ...sideways, width: 390, height: 844 })).toBe(false);
+  });
+
+  it('never with the keys down', () => {
+    expect(titleScrollsWhileTyping({ ...sideways, keysUp: false })).toBe(false);
+  });
+
+  it('never on a tablet', () => {
+    expect(titleScrollsWhileTyping({ ...sideways, phone: false })).toBe(false);
+  });
+
+  it('never on an Android phone', () => {
+    expect(titleScrollsWhileTyping({ ...sideways, os: 'android' })).toBe(false);
+  });
+});
+
+describe('a sheet keeps its field in sight while typing, and on an iPhone on its side with the keys down (sc-9442)', () => {
+  const sideways = { os: 'ios', phone: true, width: 667, height: 375, keysUp: true };
+
+  it('with the keys up', () => {
+    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667 })).toBe(true);
+    expect(fieldKeptInSight({ ...sideways, os: 'android', width: 360, height: 640 })).toBe(true);
+  });
+
+  it('on an iPhone on its side with the keys down', () => {
+    expect(fieldKeptInSight({ ...sideways, keysUp: false })).toBe(true);
+  });
+
+  it('not with the keys down upright', () => {
+    expect(fieldKeptInSight({ ...sideways, width: 375, height: 667, keysUp: false })).toBe(false);
+  });
+
+  it('not with the keys down on an iPad', () => {
+    expect(
+      fieldKeptInSight({ ...sideways, phone: false, width: 1180, height: 820, keysUp: false }),
+    ).toBe(false);
+  });
+
+  it('not with the keys down on an Android phone on its side', () => {
+    expect(fieldKeptInSight({ ...sideways, os: 'android', keysUp: false })).toBe(false);
+  });
+});
+
+describe('an iPhone on its side rests the sheet body at its top once the keys go down (sc-9442)', () => {
+  // An SE on its side, keys down: a 170 body under the fixed title; the 40 intro, the 16 gap, then the 76 name field, or a 40 notice and a 16 gap before it.
+  const body = { scrollTop: 0, keyboardTop: 170, margin: 16 };
+  const field = { contentY: 56, height: 76 };
+
+  it('with the intro whole above the field while the field fits', () => {
+    expect(offsetToFocus({ ...body, ...field }, field)).toBe(0);
+  });
+
+  it('with the notice and the field whole when a notice above it leaves no room for the intro', () => {
+    const group = { ...body, contentY: 56, height: 132 };
+    const noticed = { contentY: 112, height: 76 };
+    const offset = offsetToFocus(group, noticed);
+
+    expect(offset).toBe(34);
+    expect(group.contentY - offset).toBeGreaterThanOrEqual(0);
+    expect(noticed.contentY + noticed.height - offset + body.margin).toBeLessThanOrEqual(
+      body.keyboardTop,
+    );
   });
 });
 
@@ -301,7 +435,7 @@ describe('a field held through a submit', () => {
   const step = (field: FieldText, held: boolean): FieldText => {
     const next = { ...field, held };
 
-    return { ...next, pinned: pinnedText(next) };
+    return { ...next, pinned: nextPin(next, 1, 1).pinned };
   };
   const typed: FieldText = {
     held: false,
@@ -338,5 +472,52 @@ describe('a field held through a submit', () => {
     expect(fieldText({ ...typed, defaultValue: 'ada@example.com' })).toEqual({
       defaultValue: 'ada@example.com',
     });
+  });
+});
+
+describe('a field through a text-size change', () => {
+  const rescale = (field: FieldText): FieldText => ({
+    ...field,
+    pinned: nextPin(field, 1.3, 1).pinned,
+  });
+  const given: FieldText = {
+    held: false,
+    value: undefined,
+    defaultValue: 'ada@example.com',
+    typed: 'ada@example.com',
+    pinned: undefined,
+  };
+
+  it('is given what was typed after the text it was given', () => {
+    expect(fieldText(rescale({ ...given, typed: 'grace@example.com' }))).toEqual({
+      defaultValue: 'grace@example.com',
+    });
+  });
+
+  it('is given what was typed after the text it was submitted with', () => {
+    const released = { ...given, pinned: 'hunter22', typed: 'hunter223' };
+
+    expect(fieldText(rescale(released))).toEqual({ defaultValue: 'hunter223' });
+  });
+
+  it('stays empty once emptied by hand', () => {
+    expect(fieldText(rescale({ ...given, typed: '' }))).toEqual({ defaultValue: '' });
+  });
+
+  it('keeps the text it was given when nothing was typed', () => {
+    expect(fieldText(rescale(given))).toEqual({ defaultValue: 'ada@example.com' });
+  });
+
+  it('shows its value, when controlled', () => {
+    const controlled = { ...given, value: 'Acme', typed: 'Acme' };
+
+    expect(fieldText(rescale(controlled))).toEqual({ value: 'Acme' });
+  });
+
+  it('takes the new scale, so the next render is not a change', () => {
+    const typedAfter = { ...given, typed: 'grace@example.com' };
+
+    expect(nextPin(typedAfter, 1.3, 1)).toEqual({ pinned: 'grace@example.com', scale: 1.3 });
+    expect(nextPin(typedAfter, 1.3, 1.3)).toEqual({ pinned: undefined, scale: 1.3 });
   });
 });

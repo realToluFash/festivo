@@ -3,6 +3,7 @@ import { type ReactNode, type RefObject, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { currentLocale } from '../i18n/index.ts';
+import { offField } from '../offField.ts';
 import { FieldError } from './FieldError.tsx';
 
 /** The code and the number side by side, as Verify phone draws them; only countries that can be dialled. */
@@ -14,6 +15,7 @@ export function PhoneEntry({
   disabled,
   help,
   inputRef,
+  countryRef,
   onCountry,
   onNumber,
 }: {
@@ -24,6 +26,7 @@ export function PhoneEntry({
   disabled: boolean;
   help: string;
   inputRef?: RefObject<HTMLInputElement | null>;
+  countryRef?: RefObject<HTMLSelectElement | null>;
   onCountry: (code: string) => void;
   onNumber: (typed: string) => void;
 }) {
@@ -40,6 +43,7 @@ export function PhoneEntry({
         <div className="field phone-country">
           <label htmlFor="phone-country">{t('verifyPhone.countryLabel')}</label>
           <select
+            ref={countryRef}
             className="input"
             id="phone-country"
             value={country}
@@ -64,7 +68,7 @@ export function PhoneEntry({
             type="tel"
             autoComplete="tel-national"
             value={number}
-            disabled={disabled}
+            {...offField(disabled)}
             aria-invalid={error != null}
             aria-describedby={error == null ? 'phone-help' : 'phone-error phone-help'}
             onChange={(event) => onNumber(event.target.value)}

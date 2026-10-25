@@ -49,6 +49,50 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
+  (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
+  `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
+  words. An invitation is feminine and its states agree with it: «Pendiente», «Caducada»,
+  «Retirada» (revoked and withdrawn alike), «Rechazada», «Aceptada», «Eliminada»; "Revoke" is
+  «Retirar». "Works until" is «Funciona hasta el {{date}}», never «válida hasta». An invited
+  person is «con invitación» in the subtitle and the chip, so no count agrees with anyone. The
+  history lines name what was acted on, as «Solicitud rechazada por {{by}}»: «Invitación
+  enviada por», «Solicitud aprobada por», «Acceso suspendido / restablecido / retirado por»;
+  the joins are past simple, «Aceptó la invitación», «Se unió con …», as «Creó». A role given
+  is «con el rol {{role}}». "Declining tells … you said no" is «Si la rechaza, {{inviter}} sabrá
+  que ha dicho que no». The invitee is «le» (cortesía), «quien le invitó».
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, «Solo alguien con el rol Propietario…», as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word, and `restore` is the second sentence of `ownership.deleteWindow`. The subject opens on
+  the verb, «Se ha eliminado {organisation}», so nothing agrees with the name. The footer says
+  «era miembro», as the organisation is gone when it is read.
+- **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is «la
+  petición», never «la solicitud», which is a request to join or a recovery request; an API
+  path is «esta URL», since «dirección» is a postal or email address here. An id is «ese
+  identificador». Field names an integrator sends (`idToken`, `code`, `recoveryCode`,
+  `If-Match`, `context`, the assistant's roles) stay as written, in straight quotes where the
+  English quotes them; "system prompt" stays English. Where a screen says the same sentence
+  (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`, the
+  lock-outs' «Inténtelo de nuevo a las {time}»), the refusal says it too.
+- **25 Oct 2026. The article before an API time** (sc-11332). The 01 hour is «la una», so the
+  lock-outs (`messages+intl-icu:limits.*`) and `emails+intl-icu:time.dateAt` choose the article
+  from `{hour}` (0–23): `{hour, plural, =1 {a la {time}} other {a las {time}}}`, «a la 01:05», «a las
+  00:05», «a las 13:05». Any new string that puts an article before a clock time takes the same
+  form, or «la hora {time}» where no `{hour}` reaches it.
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675, reworded in sc-11163). «En {{zone}}, la hora {{time}} del {{day}} no existe: esa noche
+  se adelantan los relojes. Se guardará como {{savedAs}}.»; the next-day line ends «Se guardará
+  el {{savedDay}}, como {{savedAs}}.». The short date («sáb, 27 mar») sits inside the clause,
+  never before the colon or at the full stop, where it read heavily (qa3, at 320 px). «La hora {{time}}», never «las {{time}}», which would need «la» at 01:30. «Se
+  adelantan los relojes» says what the reader sees happen, half-hour gap included; rejected
+  «cambio al horario de verano», which names the rule rather than the missing hour.
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** «Editar detalles» opens
+  and heads the form, «Guardar cambios» saves it. A refused save starts «No se ha guardado.»; the
+  colleague is «otra persona», as `errors:precondition_failed`. "Show the latest" is «Ver la
+  última versión», a whole noun, as the dialog asks. «Cambios guardados» is announced after a
+  save. The currency refusal is one sentence in `web` and `errors`, «… en este evento».
 - **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
   `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
   sc-8735). Suspending is «suspender a {{name}}», restoring «restablecer el acceso». What is

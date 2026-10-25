@@ -10,6 +10,7 @@ use App\Http\Exception\ShapeRefusal;
 use BackedEnum;
 use JsonException;
 use Psl\Iter;
+use Psl\Math;
 use Psl\Str;
 use Psl\Type\Exception\CoercionException;
 use Psl\Type\TypeInterface;
@@ -32,14 +33,19 @@ final readonly class Input
         $raw = $request->getContent();
 
         if ('' === \trim($raw)) {
-            throw new ApiException(ErrorCode::BadRequest, 'A JSON body is required.');
+            throw new ApiException(ErrorCode::BadRequest, 'request.body_required');
         }
 
         // Not Json\decode: it reads an integer past PHP_INT_MAX as a string, which a string field would then take.
         try {
             $decoded = \json_decode($raw, true, 512, \JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
-            throw new ApiException(ErrorCode::BadRequest, 'The request body is not valid JSON.', [], $e);
+            throw new ApiException(ErrorCode::BadRequest, 'request.body_not_json', [], $e);
+        }
+
+        // `[]` and `{}` decode to the same array, so only the text tells a list from an object.
+        if (!Str\starts_with(\ltrim($raw), '{')) {
+            throw new ShapeRefusal('');
         }
 
         $body = self::coerce($decoded, $shape, $refusals);
@@ -68,7 +74,7 @@ final readonly class Input
     }
 
     /**
-     * JSON has one number type, so a whole number read as a float is not a change.
+     * JSON has one number type, so a whole number read as a float, or written as 30.0 and read as an int, is not a change.
      *
      * @return list<string>|null the path of the first value coercion changed
      */
@@ -101,10 +107,17 @@ final readonly class Input
         $same = match (true) {
             $coerced instanceof BackedEnum => $coerced->value === $sent,
             \is_float($coerced) && \is_int($sent) => true,
+            \is_int($coerced) && \is_float($sent) => self::isWhole($sent) && (float) $coerced === $sent,
             default => $coerced === $sent,
         };
 
         return $same ? null : [];
+    }
+
+    // -PHP_INT_MIN is 2^63, a double but not an int: a cast from it or past it wraps rather than fails.
+    private static function isWhole(float $number): bool
+    {
+        return $number >= (float) \PHP_INT_MIN && $number < -(float) \PHP_INT_MIN && Math\floor($number) === $number;
     }
 
     /**

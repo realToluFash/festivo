@@ -1,18 +1,20 @@
-import { type ReactNode, type Ref, type RefObject, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
-  AccessibilityInfo,
-  findNodeHandle,
   Keyboard,
   Pressable,
   StyleSheet,
   TextInput,
   type TextInputProps,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
-import { codeProps, FIELD_DEFAULTS, fieldText, pinnedText } from '../kit/fields.ts';
+import { codeProps, FIELD_DEFAULTS, fieldText, nextPin } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { fieldFocused, fieldLeft } from './focusedField.ts';
+import { ReadOut } from './ReadOut.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
 
 /** 16 is the smallest size iOS Safari will not zoom into on focus. */
@@ -36,8 +38,21 @@ export function Field({
   help?: string | readonly string[] | undefined;
   children: ReactNode;
 }) {
+  const field = useRef<View>(null);
+  useEffect(() => {
+    const mounted = field.current;
+
+    return () => fieldLeft(mounted);
+  }, []);
+
+  // A control's focus and blur bubble up to here.
   return (
-    <View style={styles.field}>
+    <View
+      ref={field}
+      onFocus={() => fieldFocused(field.current)}
+      onBlur={() => fieldLeft(field.current)}
+      style={styles.field}
+    >
       <View style={styles.labelRow}>
         <Text size={tokens.typeButton.size} weight="semibold">
           {label}
@@ -88,9 +103,13 @@ export function FieldError({
   actions?: readonly FieldAction[] | undefined;
 }) {
   return (
-    <View style={styles.fieldError} accessibilityLiveRegion="polite">
-      <View style={styles.mark}>
-        <Text size={tokens.typePill.size} weight="bold" style={styles.broken}>
+    <ReadOut style={styles.fieldError} words={message}>
+      <View
+        style={styles.mark}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Text size={tokens.typePill.size} weight="bold" style={styles.broken} accessible={false}>
           {tokens.marks.broken.glyph}
         </Text>
       </View>
@@ -116,7 +135,7 @@ export function FieldError({
           </View>
         )}
       </View>
-    </View>
+    </ReadOut>
   );
 }
 
@@ -135,10 +154,13 @@ export function useHeld(
 ): Pick<TextInputProps, 'value' | 'defaultValue' | 'onChangeText'> {
   const [typed, setTyped] = useState(value ?? defaultValue ?? '');
   const [pinned, setPinned] = useState<string>();
+  const { fontScale } = useWindowDimensions();
+  const [scale, setScale] = useState(fontScale);
   const field = { held, value, defaultValue, typed, pinned };
-  const pinNow = pinnedText(field);
+  const next = nextPin(field, fontScale, scale);
 
-  if (pinNow !== pinned) setPinned(pinNow);
+  if (next.scale !== scale) setScale(next.scale);
+  if (next.pinned !== pinned) setPinned(next.pinned);
 
   if (held) return { ...fieldText(field), onChangeText: undefined };
 
@@ -158,8 +180,7 @@ export function focusRefused(field: RefObject<TextInput | null>): void {
     return;
   }
 
-  const node = findNodeHandle(field.current);
-  if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+  moveScreenReaderFocus(field.current);
 }
 
 /** To the field a client check names, with the keyboard up on it. */

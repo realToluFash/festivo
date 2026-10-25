@@ -11,6 +11,7 @@ export function SettingsSections() {
   return (
     <SectionNav
       label={t('settings.sections')}
+      group={t('nav.settings')}
       sections={[
         { to: '/app/settings', label: t('settings.sectionGeneral'), end: true },
         ...(can(session, 'members.read')

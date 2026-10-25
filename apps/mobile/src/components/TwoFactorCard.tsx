@@ -12,16 +12,24 @@ import { dateLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
+/** Said once, as the tap it answers lands; `AtRest` mounts again after every reload. */
+interface Refusal {
+  organisation: string;
+  said: boolean;
+}
+
 type Stage =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; tapped: boolean }
   | { kind: 'atRest'; status: TwoFactorStatus }
   | { kind: 'settingUp'; enrolment: TwoFactorEnrolment }
   | { kind: 'savingCodes'; codes: string[] }
@@ -50,7 +58,7 @@ export function TwoFactorCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [refusedBy, setRefusedBy] = useState<string | null>(null);
+  const [refusedBy, setRefusedBy] = useState<Refusal | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -61,7 +69,7 @@ export function TwoFactorCard({
         if (live) setStage({ kind: 'atRest', status });
       })
       .catch(() => {
-        if (live) setStage({ kind: 'failed' });
+        if (live) setStage({ kind: 'failed', tapped: false });
       });
 
     return () => {
@@ -85,6 +93,11 @@ export function TwoFactorCard({
     };
   }, [recount]);
 
+  function leaveAtRest(next?: Stage): void {
+    setRefusedBy((now) => now && { ...now, said: true });
+    if (next != null) setStage(next);
+  }
+
   function reload(): void {
     setStage({ kind: 'loading' });
     setAttempt((n) => n + 1);
@@ -94,7 +107,7 @@ export function TwoFactorCard({
     try {
       setStage({ kind: 'settingUp', enrolment: await api.enrolTwoFactor() });
     } catch {
-      setStage({ kind: 'failed' });
+      setStage({ kind: 'failed', tapped: true });
     }
   }
 
@@ -114,20 +127,31 @@ export function TwoFactorCard({
             mark={tokens.marks.broken.glyph}
             title={t('twoFactorCard.failedTitle')}
             body={t('twoFactorCard.failedBody')}
+            answer={stage}
+            takesFocus={stage.tapped}
           />
-          <SecondaryButton label={t('error.retry')} onPress={reload} testID="twoFactor.retry" />
+          <SecondaryButton
+            label={t('twoFactorCard.retry')}
+            onPress={reload}
+            testID="twoFactor.retry"
+          />
         </>
       )}
 
       {stage.kind === 'atRest' && (
         <AtRest
           status={stage.status}
-          onTurnOn={() => void turnOn()}
+          onTurnOn={() => {
+            leaveAtRest();
+            void turnOn();
+          }}
           refusedBy={refusedBy}
           onTurnOff={() =>
-            keptBy == null ? setStage({ kind: 'turningOff' }) : setRefusedBy(keptBy)
+            keptBy == null
+              ? leaveAtRest({ kind: 'turningOff' })
+              : setRefusedBy({ organisation: keptBy, said: false })
           }
-          onNewCodes={() => setStage({ kind: 'newCodes' })}
+          onNewCodes={() => leaveAtRest({ kind: 'newCodes' })}
         />
       )}
 
@@ -135,6 +159,7 @@ export function TwoFactorCard({
         <SettingUp
           enrolment={stage.enrolment}
           phone={phone}
+          answer={stage}
           onActivated={(codes) => {
             setStage({ kind: 'savingCodes', codes });
             onTurnedOn?.();
@@ -144,32 +169,37 @@ export function TwoFactorCard({
       )}
 
       {stage.kind === 'savingCodes' && (
-        <SavingCodes codes={stage.codes} phone={phone} onFinish={reload} />
+        <SavingCodes codes={stage.codes} phone={phone} answer={stage} onFinish={reload} />
       )}
 
       {stage.kind === 'turningOff' && (
         <TurningOff
           email={email}
+          answer={stage}
           onDone={reload}
           onKept={(organisation) => {
-            setRefusedBy(organisation);
+            setRefusedBy({ organisation, said: false });
             reload();
           }}
         />
       )}
 
       {stage.kind === 'newCodes' && (
-        <NewCodes onMade={(codes) => setStage({ kind: 'savingCodes', codes })} onKeep={reload} />
+        <NewCodes
+          answer={stage}
+          onMade={(codes) => setStage({ kind: 'savingCodes', codes })}
+          onKeep={reload}
+        />
       )}
     </View>
   );
 }
 
-function Title({ text }: { text: string }) {
+function Title({ text, answer }: { text: string; answer?: unknown }) {
   return (
-    <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+    <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={answer}>
       {text}
-    </Text>
+    </AnswerHeading>
   );
 }
 
@@ -181,7 +211,7 @@ function AtRest({
   onNewCodes,
 }: {
   status: TwoFactorStatus;
-  refusedBy: string | null;
+  refusedBy: Refusal | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
   onNewCodes: () => void;
@@ -196,9 +226,18 @@ function AtRest({
         </View>
         {/* A mark and the word, never the colour alone. */}
         <View style={styles.state}>
-          <View style={[styles.mark, status.on ? styles.markOn : styles.markOff]}>
+          <View
+            style={[styles.mark, status.on ? styles.markOn : styles.markOff]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
             {status.on && (
-              <Text size={tokens.typePill.size} weight="bold" style={styles.markOnInk}>
+              <Text
+                size={tokens.typePill.size}
+                weight="bold"
+                style={styles.markOnInk}
+                accessible={false}
+              >
                 ✓
               </Text>
             )}
@@ -240,7 +279,8 @@ function AtRest({
             <Notice
               tone="attention"
               mark="!"
-              body={t('twoFactorCard.keptByRule', { organisation: refusedBy })}
+              body={t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}
+              answer={refusedBy.said ? undefined : refusedBy}
             />
           )}
         </>
@@ -263,11 +303,13 @@ function AtRest({
 function SettingUp({
   enrolment,
   phone,
+  answer,
   onActivated,
   onCancel,
 }: {
   enrolment: TwoFactorEnrolment;
   phone: boolean;
+  answer: unknown;
   onActivated: (codes: string[]) => void;
   onCancel: () => void;
 }) {
@@ -300,7 +342,10 @@ function SettingUp({
 
   return (
     <>
-      <Title text={phone ? t('twoFactorCard.phoneSetupTitle') : t('twoFactorCard.setupTitle')} />
+      <Title
+        text={phone ? t('twoFactorCard.phoneSetupTitle') : t('twoFactorCard.setupTitle')}
+        answer={answer}
+      />
 
       <Text size={tokens.typeBodyPhone.size} weight="semibold">
         {t('twoFactorCard.scan')}
@@ -343,7 +388,12 @@ function SettingUp({
           testID="twoFactor.checkCode"
         />
       </View>
-      <QuietButton label={t('twoFactorCard.cancel')} onPress={onCancel} testID="twoFactor.cancel" />
+      <QuietButton
+        label={t('twoFactorCard.cancel')}
+        onPress={onCancel}
+        off={checking}
+        testID="twoFactor.cancel"
+      />
     </>
   );
 }
@@ -351,15 +401,19 @@ function SettingUp({
 function SavingCodes({
   codes,
   phone,
+  answer,
   onFinish,
 }: {
   codes: string[];
   phone: boolean;
+  answer: unknown;
   onFinish: () => void;
 }) {
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copiedAll = t('twoFactorCard.copiedAll', { count: codes.length });
+  useReadOut(copied ? copiedAll : null);
   const top = useScrolledToTop();
 
   useEffect(() => Keyboard.dismiss(), []);
@@ -367,7 +421,7 @@ function SavingCodes({
   return (
     <>
       <View ref={top} collapsable={false}>
-        <Title text={t('twoFactorCard.saveTitle')} />
+        <Title text={t('twoFactorCard.saveTitle')} answer={answer} />
       </View>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {phone
@@ -375,7 +429,7 @@ function SavingCodes({
           : t('twoFactorCard.saveIntro')}
       </Text>
 
-      <View style={styles.codes} accessibilityLabel={t('twoFactorCard.recoveryCodes')}>
+      <View style={styles.codes}>
         {codes.map((code) => (
           <Text key={code} size={tokens.typeBodyPhone.size} selectable style={styles.code}>
             {code}
@@ -391,13 +445,8 @@ function SavingCodes({
         testID="twoFactor.copyAll"
       />
       {copied && (
-        <Text
-          size={tokens.typeSmall.size}
-          weight="semibold"
-          style={styles.on}
-          accessibilityLiveRegion="polite"
-        >
-          {t('twoFactorCard.copiedAll', { count: codes.length })}
+        <Text size={tokens.typeSmall.size} weight="semibold" style={styles.on}>
+          {copiedAll}
         </Text>
       )}
 
@@ -408,9 +457,18 @@ function SavingCodes({
         accessibilityState={{ checked: saved }}
         testID="twoFactor.saved"
       >
-        <View style={[styles.box, saved && styles.boxOn]}>
+        <View
+          style={[styles.box, saved && styles.boxOn]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           {saved && (
-            <Text size={tokens.typePill.size} weight="bold" style={styles.markOnInk}>
+            <Text
+              size={tokens.typePill.size}
+              weight="bold"
+              style={styles.markOnInk}
+              accessible={false}
+            >
               ✓
             </Text>
           )}
@@ -433,10 +491,12 @@ function SavingCodes({
 
 function TurningOff({
   email,
+  answer,
   onDone,
   onKept,
 }: {
   email: string;
+  answer: unknown;
   onDone: () => void;
   onKept: (organisation: string) => void;
 }) {
@@ -473,7 +533,7 @@ function TurningOff({
 
   return (
     <>
-      <Title text={t('twoFactorCard.offTitle')} />
+      <Title text={t('twoFactorCard.offTitle')} answer={answer} />
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('twoFactorCard.offBody')}
       </Text>
@@ -509,6 +569,7 @@ function TurningOff({
       <QuietButton
         label={t('twoFactorCard.keepItOn')}
         onPress={onDone}
+        off={checking}
         testID="twoFactor.keepItOn"
       />
     </>
@@ -516,7 +577,15 @@ function TurningOff({
 }
 
 /** Changing a factor takes the current one, or a stolen session could mint codes past it. */
-function NewCodes({ onMade, onKeep }: { onMade: (codes: string[]) => void; onKeep: () => void }) {
+function NewCodes({
+  answer,
+  onMade,
+  onKeep,
+}: {
+  answer: unknown;
+  onMade: (codes: string[]) => void;
+  onKeep: () => void;
+}) {
   const { t } = useTranslation();
   const typed = useRef('');
   const input = useRef<TextInput>(null);
@@ -544,7 +613,7 @@ function NewCodes({ onMade, onKeep }: { onMade: (codes: string[]) => void; onKee
 
   return (
     <>
-      <Title text={t('twoFactorCard.newTitle')} />
+      <Title text={t('twoFactorCard.newTitle')} answer={answer} />
       <Notice
         tone="attention"
         mark="!"
@@ -577,6 +646,7 @@ function NewCodes({ onMade, onKeep }: { onMade: (codes: string[]) => void; onKee
       <QuietButton
         label={t('twoFactorCard.keepCodes')}
         onPress={onKeep}
+        off={checking}
         testID="twoFactor.keepCodes"
       />
     </>

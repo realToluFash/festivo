@@ -41,7 +41,7 @@ final readonly class SignInAttempts
                     return ErrorCode::InvalidCredentials === $e->errorCode ? new WrongSecret($e) : throw $e;
                 }
             },
-            'Too many sign-in attempts.',
+            'limits.sign_in',
         );
     }
 

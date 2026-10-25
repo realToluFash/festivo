@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
@@ -11,6 +12,7 @@ export function PrimaryButton({
   busy = false,
   off = false,
   accessibilityLabel,
+  ref,
   testID,
 }: {
   label: string;
@@ -18,16 +20,19 @@ export function PrimaryButton({
   busy?: boolean;
   off?: boolean;
   accessibilityLabel?: string;
+  ref?: Ref<View>;
   testID: string;
 }) {
   const inactive = busy || off;
 
   return (
     <Pressable
+      ref={ref}
       style={[styles.primary, busy && styles.primaryBusy, off && styles.primaryOff]}
       onPress={onPress}
       disabled={inactive}
-      accessibilityLabel={accessibilityLabel}
+      // Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle.
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
       testID={testID}
@@ -35,7 +40,7 @@ export function PrimaryButton({
       <Text
         size={CONTROL_TEXT_SIZE}
         weight="semibold"
-        style={off ? styles.secondaryInk : styles.onAccent}
+        style={[styles.label, off ? styles.secondaryInk : styles.onAccent]}
       >
         {label}
       </Text>
@@ -49,6 +54,7 @@ export function SecondaryButton({
   off = false,
   stacked = false,
   accessibilityLabel,
+  ref,
   testID,
 }: {
   label: string;
@@ -58,10 +64,12 @@ export function SecondaryButton({
   stacked?: boolean;
   /** When the visible label leans on its row, as "Unlink" does beside "Google". */
   accessibilityLabel?: string;
+  ref?: Ref<View>;
   testID: string;
 }) {
   return (
     <Pressable
+      ref={ref}
       style={[styles.secondary, stacked && styles.secondaryStacked, off && styles.secondaryOff]}
       onPress={onPress}
       disabled={off}
@@ -73,7 +81,7 @@ export function SecondaryButton({
       <Text
         size={tokens.typeButton.size}
         weight="semibold"
-        style={off ? styles.secondaryInk : styles.ink}
+        style={[styles.label, off ? styles.secondaryInk : styles.ink]}
       >
         {label}
       </Text>
@@ -85,15 +93,28 @@ export function SecondaryButton({
 export function QuietButton({
   label,
   onPress,
+  off = false,
   testID,
 }: {
   label: string;
   onPress: () => void;
+  off?: boolean;
   testID: string;
 }) {
   return (
-    <Pressable style={styles.quiet} onPress={onPress} accessibilityRole="button" testID={testID}>
-      <Text size={tokens.typeButton.size} weight="semibold" style={styles.accent}>
+    <Pressable
+      style={styles.quiet}
+      onPress={onPress}
+      disabled={off}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: off }}
+      testID={testID}
+    >
+      <Text
+        size={tokens.typeButton.size}
+        weight="semibold"
+        style={off ? styles.secondaryInk : styles.accent}
+      >
         {label}
       </Text>
     </Pressable>
@@ -144,10 +165,11 @@ export function Footnote({
 
 const styles = StyleSheet.create({
   primary: {
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceXxl,
+    paddingVertical: tokens.spaceXs,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
     backgroundColor: tokens.colorAccent,
   },
@@ -155,9 +177,10 @@ const styles = StyleSheet.create({
   primaryOff: { backgroundColor: tokens.colorBorder },
   secondary: {
     alignSelf: 'flex-start',
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     justifyContent: 'center',
     paddingHorizontal: tokens.spaceXl,
+    paddingVertical: tokens.spaceXs,
     borderRadius: tokens.sizeHit / 2,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
@@ -166,7 +189,7 @@ const styles = StyleSheet.create({
   secondaryStacked: {
     alignSelf: 'stretch',
     alignItems: 'center',
-    height: tokens.sizeHitPhonePrimary,
+    minHeight: tokens.sizeHitPhonePrimary,
     borderRadius: tokens.sizeHitPhonePrimary / 2,
   },
   secondaryOff: { backgroundColor: tokens.colorInset, borderColor: tokens.colorBorder },
@@ -181,6 +204,7 @@ const styles = StyleSheet.create({
     borderTopColor: tokens.colorInsetBorder,
   },
   footnoteAction: { minHeight: tokens.sizeHit, justifyContent: 'center' },
+  label: { textAlign: 'center' },
   onAccent: { color: tokens.colorInkOnDark },
   ink: { color: tokens.colorInk },
   secondaryInk: { color: tokens.colorInkSecondary },

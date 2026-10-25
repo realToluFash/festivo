@@ -242,7 +242,7 @@ final class PasswordRecoveryTest extends ApiTestCase
             } catch (ApiException $e) {
                 self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode);
                 self::assertArrayHasKey('Retry-After', $e->headers);
-                self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', $e->getMessage());
+                self::assertMatchesRegularExpression('/Try again at \d\d:\d\d UTC\./', self::worded($e));
             }
         }
     }

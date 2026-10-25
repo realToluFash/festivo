@@ -1,3 +1,4 @@
+import datetime
 import unittest
 
 from soirely_queue import roles, work
@@ -145,7 +146,20 @@ class SidePullRequests(unittest.TestCase):
 
     def test_no_developer_is_told_to_move_the_ticket_to_review(self):
         for branch in ("fix/sc-9/test-wording", "l10n/sc-9"):
-            self.assertEqual(work.developer_items([self.ticket()], [self.side(branch)]), [])
+            items = work.developer_items([self.ticket()], [self.side(branch)])
+            self.assertEqual([i for i in items if set(i["roles"]) & set(roles.DEVS)], [])
+
+    def test_the_linguists_own_pr_wakes_the_linguist_when_its_checks_finish(self):
+        for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
+            for checks, kind in (("green", "merge"), ("red", "checks-red")):
+                items = work.developer_items([self.ticket(state)],
+                                             [self.side("l10n/sc-9", checks=checks)])
+                self.assertEqual([(i["kind"], i["roles"]) for i in items], [(kind, ["l10n"])],
+                                 (state, checks))
+
+    def test_the_linguists_pr_with_checks_running_wakes_nobody(self):
+        self.assertEqual(work.developer_items([self.ticket()],
+                                              [self.side("l10n/sc-9", checks="pending")]), [])
 
     def test_a_merged_pr_on_the_ticket_hands_nothing_to_qa(self):
         for branch in ("fix/sc-9/test-wording", "l10n/sc-9"):
@@ -348,8 +362,9 @@ class Queue(unittest.TestCase):
         self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
 
     def test_a_translation_ticket_is_only_the_linguists(self):
-        items = work.queue_items([story(state="To Do", labels=["translation"])])
-        self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"])
+        for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
+            items = work.queue_items([story(state=state, labels=["translation"])])
+            self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"], state)
 
     def test_a_role_s_own_move_is_no_wake_for_it(self):
         moved = story(state="To Do", moved_at="t1")
@@ -400,6 +415,26 @@ class Queue(unittest.TestCase):
         moved_again = story(state="To Do", moved_at="t2")
         items = work.queue_items([moved_again], {(1, "To Do", "t1"): "pm"})
         self.assertIn("pm", [r for i in items for r in i["roles"]])
+
+
+class Held(unittest.TestCase):
+    def test_a_story_left_in_qa_is_its_tester_s_before_anything_new(self):
+        held = story(id_=1, state="In QA", comments=[comment(1, "QA claim: qa2")])
+        ready = story(id_=2, state="Ready For QA")
+        items = work.queue_items([held, ready]) + work.held_items([held, ready])
+        mine = sorted((i for i in items if "qa2" in i["roles"]), key=lambda i: i["priority"])
+        self.assertEqual([(i["kind"], i["story_id"]) for i in mine], [("held", 1), ("story", 2)])
+        self.assertEqual([i["roles"] for i in work.held_items([held])], [["qa2"]])
+
+    def test_a_story_given_back_is_held_by_nobody_and_open_to_every_tester(self):
+        given = story(state="In QA", labels=["qa failed"],
+                      comments=[comment(1, "QA claim: qa2"),
+                                comment(2, "QA claim released: qa2, Docker is down")])
+        self.assertEqual(work.held_items([given]), [])
+        self.assertIsNone(roles.last_tester(given))
+        now = datetime.datetime.now(datetime.timezone.utc)
+        back = dict(given, state="Ready For QA", moved_at=now.isoformat())
+        self.assertIsNone(work.retester(back, now.timestamp()))
 
 
 class EveryWakeStillHappens(unittest.TestCase):
@@ -469,6 +504,26 @@ class Heartbeat(unittest.TestCase):
         self.assertIn("qa", [r for i in due if i["kind"] == "pick" for r in i["roles"]])
         quiet = work.heartbeat_items(stories, {"qa": now - 5 * 60}, set(), now)
         self.assertNotIn("qa", [r for i in quiet for r in i["roles"]])
+
+    def test_the_linguist_picks_from_its_queue_between_sweeps(self):
+        now = 10_000_000
+        tickets = [story(state="In Progress", labels=["translation"])]
+        quiet = {"l10n": now - 31 * 60}
+
+        def l10n(stories, swept):
+            return [i["kind"] for i in work.heartbeat_items(stories, quiet, set(), now,
+                                                            last_sweeps={"l10n": swept})
+                    if i["roles"] == ["l10n"]]
+        self.assertEqual(l10n(tickets, now - 40 * 60), ["pick"])
+        self.assertEqual(l10n(tickets, now - 121 * 60), ["sweep"])
+        self.assertEqual(l10n(tickets, None), ["sweep"])
+        self.assertEqual(l10n([], now - 40 * 60), [])
+
+    def test_other_sweeping_roles_sweep_whatever_their_last_sweep(self):
+        now = 10_000_000
+        items = work.heartbeat_items([story(state="To Do")], {"pm": now - 121 * 60}, set(), now,
+                                     last_sweeps={"pm": now - 60})
+        self.assertEqual([i["kind"] for i in items if i["roles"] == ["pm"]], ["sweep"])
 
     def test_a_role_with_no_queue_and_no_sweep_stays_asleep(self):
         items = work.heartbeat_items([], {}, set(), 10_000_000)
@@ -585,6 +640,10 @@ class Unblocked(unittest.TestCase):
         for state in ("To Do", "In Progress"):
             self.assertEqual(self.wakes([self.ticket(state)], [self.merged()]),
                              [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+
+    def test_a_ready_for_dev_ticket_is_woken_when_a_feature_it_covers_merges(self):
+        self.assertEqual(self.wakes([self.ticket("Ready For Dev")], [self.merged()]),
+                         [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
 
     def test_a_story_linking_to_the_ticket_is_not_one_it_covers(self):
         ticket = dict(story(9, "To Do", labels=["translation"]),

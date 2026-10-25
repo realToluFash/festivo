@@ -5,8 +5,8 @@ import {
   type PendingRegistration,
   awaiting,
 } from '@soirely/api-client';
-import { cleanCode, codeProblem, formatCountdown } from '@soirely/domain';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { cleanCode, codeProblem } from '@soirely/domain';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
@@ -19,19 +19,24 @@ import {
   RemoveInAccount,
 } from '../../components/BackToAccount.tsx';
 import { Pending } from '../../components/Pending.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { dropRegistration, heldRegistration } from '../../pendingRegistration.ts';
 import { heldInvitation } from '../../heldInvitation.ts';
 import {
   adoptAccount,
-  forgetSession,
   landingFor,
   refreshAccount,
   restoreSession,
   useSessionState,
 } from '../../session.ts';
+import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { offButton } from '../../offButton.ts';
+import { focusWhereSent } from '../../offField.ts';
+import { useResendCountdown } from '../../resendCountdown.ts';
 import { useFormChecks } from '../../formChecks.ts';
+import { useSignOut } from '../../signOut.ts';
 
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export function VerifyEmail() {
@@ -128,13 +133,14 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
 function ForSession() {
   const navigate = useNavigate();
   const state = useSessionState();
+  const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
 
   useEffect(() => {
     void restoreSession();
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable />;
+  if (state.status === 'unreachable') return <Unreachable signedIn />;
   if (state.status !== 'signedIn') return <Pending />;
 
   return (
@@ -152,11 +158,8 @@ function ForSession() {
         await refreshAccount();
         navigate('/app');
       }}
-      wrongAddress={async () => {
-        await api.signOut();
-        forgetSession();
-        navigate('/sign-in');
-      }}
+      wrongAddress={signOut}
+      stillSignedIn={unreached}
     />
   );
 }
@@ -172,6 +175,7 @@ function CodeScreen({
   carryOn,
   wrongAddress,
   registersAgain = false,
+  stillSignedIn = false,
   fromAccount,
 }: {
   address: string;
@@ -186,12 +190,21 @@ function CodeScreen({
   wrongAddress?: () => void | Promise<void>;
   /** A sign-up has no session to sign out of: it starts again at Register. */
   registersAgain?: boolean;
+  stillSignedIn?: boolean;
   /** The id of an address added in Account: Account's way back replaces the steps and the way on. */
   fromAccount?: string;
 }) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
-  const [cooldown, setCooldown] = useState(0);
+  const resending = useResendCountdown({
+    resend: 'verifyEmail.resend',
+    resendIn: 'verifyEmail.resendIn',
+  });
+  const { begin } = resending;
+  const [doneHeading, arriveAtDone] = useStepFocus();
+  const [answerNotice, arriveAtAnswer] = useStepFocus<HTMLDivElement>();
+  const [answered, setAnswered] = useState(false);
+  const land = useFocusOnceShown();
   const checks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -218,7 +231,7 @@ function CodeScreen({
       .current()
       .then(({ cooldownSeconds, codeState }) => {
         if (!live) return;
-        setCooldown(cooldownSeconds);
+        begin(cooldownSeconds);
         setStatus((now) => openingStatus(now, codeState));
       })
       .catch((error: unknown) => {
@@ -228,15 +241,7 @@ function CodeScreen({
     return () => {
       live = false;
     };
-  }, [alreadyVerified]);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
+  }, [alreadyVerified, begin]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -249,24 +254,40 @@ function CodeScreen({
     const code = cleanCode(typed);
 
     setStatus({ kind: 'verifying' });
+    setAnswered(false);
+    const landWhereSent = focusWhereSent();
 
     try {
       await verify(code);
       setStatus({ kind: 'verified' });
+      arriveAtDone();
     } catch (error) {
       if (error instanceof ApiError && error.is('registration_expired')) {
         onExpired();
         return;
       }
 
-      setStatus(codeRefusal(error));
+      const refusal = codeRefusal(error);
+      setStatus(refusal);
+      if (refusal.kind === 'expired' || refusal.kind === 'exhausted') answer();
+      if (refusal.kind === 'wrong') landWhereSent('code');
     }
   }
 
-  async function resend(): Promise<void> {
+  function answer(): void {
+    setAnswered(true);
+    arriveAtAnswer();
+  }
+
+  const resend = (): Promise<void> => resending.once(() => sendOnce(false));
+  const resendInPlace = (): Promise<void> => resending.once(() => sendOnce(true));
+
+  async function sendOnce(inPlace: boolean): Promise<void> {
     try {
-      setCooldown(await sendAgain());
+      resending.countDown(await sendAgain());
       setStatus({ kind: 'entering' });
+      setAnswered(false);
+      if (inPlace) land(() => document.getElementById('code'));
     } catch (error) {
       const seconds =
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
@@ -277,13 +298,17 @@ function CodeScreen({
       }
 
       if (Number.isFinite(seconds) && seconds > 0) {
-        setCooldown(seconds);
+        resending.countDown(seconds);
         setStatus({ kind: 'entering' });
+        setAnswered(false);
+        if (inPlace) land(() => document.getElementById('code'));
 
         return;
       }
 
       setStatus({ kind: 'failed' });
+      setAnswered(inPlace);
+      if (inPlace) arriveAtAnswer();
     }
   }
 
@@ -319,7 +344,9 @@ function CodeScreen({
             ✓
           </span>
           <div>
-            <h1>{t('verifyEmail.doneTitle')}</h1>
+            <h1 ref={doneHeading} tabIndex={-1}>
+              {t('verifyEmail.doneTitle')}
+            </h1>
             <p className="muted">
               {fromAccount == null
                 ? t('verifyEmail.doneBody', { address })
@@ -350,7 +377,9 @@ function CodeScreen({
               title={t('verifyEmail.expiredTitle')}
               body={t('verifyEmail.expiredBody')}
               action={t('verifyEmail.resend')}
-              onAction={() => void resend()}
+              answered={answered}
+              bodyRef={answerNotice}
+              onAction={() => void resendInPlace()}
             />
           )}
 
@@ -359,16 +388,18 @@ function CodeScreen({
               title={t('verifyEmail.exhaustedTitle')}
               body={t('verifyEmail.exhaustedBody')}
               action={t('verifyEmail.resend')}
-              onAction={() => void resend()}
+              answered={answered}
+              bodyRef={answerNotice}
+              onAction={() => void resendInPlace()}
             />
           )}
 
           {status.kind === 'failed' && (
-            <div className="notice notice-broken" role="alert">
+            <div className="notice notice-broken" role={answered ? undefined : 'alert'}>
               <span className="mark mark-broken" aria-hidden="true">
                 ✕
               </span>
-              <div className="notice-body">
+              <div className="notice-body" ref={answerNotice} tabIndex={answered ? -1 : undefined}>
                 <p className="notice-title">{t('verifyEmail.failedTitle')}</p>
                 <p>{t('verifyEmail.failedBody')}</p>
               </div>
@@ -400,7 +431,7 @@ function CodeScreen({
               <button
                 className="button button-primary"
                 type="submit"
-                disabled={status.kind === 'verifying'}
+                {...offButton(status.kind === 'verifying')}
               >
                 {status.kind === 'verifying'
                   ? t('verifyEmail.submitting')
@@ -411,19 +442,22 @@ function CodeScreen({
                 <button
                   className="button"
                   type="button"
-                  disabled={cooldown > 0}
+                  {...resending.button}
                   onClick={() => void resend()}
                 >
-                  {cooldown > 0
-                    ? t('verifyEmail.resendIn', { time: formatCountdown(cooldown) })
-                    : t('verifyEmail.resend')}
+                  {resending.label}
                 </button>
                 <p>{t('verifyEmail.resendNote')}</p>
+                <span className="visually-hidden" role="status">
+                  {resending.status}
+                </span>
               </div>
             </form>
           )}
 
           {fromAccount != null && <RemoveInAccount kind="email" />}
+
+          {stillSignedIn && <StillSignedIn />}
 
           {wrongAddress != null && (
             <div className="auth-footnote">
@@ -444,20 +478,24 @@ function Banner({
   title,
   body,
   action,
+  answered,
+  bodyRef,
   onAction,
 }: {
   title: string;
   body: string;
   action: string;
+  answered: boolean;
+  bodyRef: RefObject<HTMLDivElement | null>;
   onAction: () => void;
 }) {
   return (
     <>
-      <div className="notice notice-attention" role="alert">
+      <div className="notice notice-attention" role={answered ? undefined : 'alert'}>
         <span className="mark mark-attention" aria-hidden="true">
           !
         </span>
-        <div className="notice-body">
+        <div className="notice-body" ref={bodyRef} tabIndex={answered ? -1 : undefined}>
           <p className="notice-title">{title}</p>
           <p>{body}</p>
         </div>

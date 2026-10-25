@@ -2,9 +2,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { LanguagePicker } from '../../components/LanguagePicker.tsx';
+import { usePageTitle } from '../../pageTitle.ts';
 
 export function Home() {
   const { t } = useTranslation();
+
+  // The heading is the tagline, so the tab names Soirely alone.
+  usePageTitle(t('app.name'));
 
   return (
     <div className="public">

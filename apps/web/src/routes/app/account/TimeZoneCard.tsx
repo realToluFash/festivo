@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 
 /** How many rows the list shows at once; the search narrows the rest. */
 const SHOWN = 50;
@@ -25,6 +27,7 @@ export function TimeZoneCard({
   const [saved, setSaved] = useState<TimeZoneOption | null>(null);
   const [refocus, setRefocus] = useState(false);
   const changeButton = useRef<HTMLButtonElement>(null);
+  const [savedLine, arriveAtSaved] = useStepFocus<HTMLDivElement>();
 
   // Change is back in the page only once the edit has ended (WCAG 2.4.3).
   useEffect(() => {
@@ -64,7 +67,7 @@ export function TimeZoneCard({
             await onSaved();
             setEditing(false);
             setSaved(zone);
-            setRefocus(true);
+            arriveAtSaved();
           }}
           onCancel={() => {
             setEditing(false);
@@ -94,7 +97,7 @@ export function TimeZoneCard({
           </div>
 
           {savedZone != null && (
-            <div className="status-done" role="status">
+            <div className="status-done" tabIndex={-1} ref={savedLine}>
               <span className="mark mark-done" aria-hidden="true">
                 ✓
               </span>
@@ -154,6 +157,8 @@ function Choosing({
   }
 
   function onKey(event: KeyboardEvent<HTMLInputElement>): void {
+    if (saving) return;
+
     if (event.key === 'ArrowDown' && matches.length > 0) {
       event.preventDefault();
       setActive((index) => Math.min(index + 1, matches.length - 1));
@@ -185,6 +190,7 @@ function Choosing({
     }
 
     setSaving(true);
+    const land = focusWhereSent();
 
     try {
       await api.setTimezone(zone.id);
@@ -196,6 +202,7 @@ function Choosing({
           ? t('timeZone.refused')
           : t('timeZone.failed'),
       );
+      land('tz-input');
     }
   }
 
@@ -225,7 +232,7 @@ function Choosing({
           spellCheck={false}
           placeholder={t('timeZone.placeholder')}
           value={shown}
-          disabled={saving}
+          {...offField(saving)}
           onChange={(event) => {
             setTyped(event.target.value);
             setPickedId(null);

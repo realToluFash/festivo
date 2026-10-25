@@ -302,6 +302,15 @@ export interface NewEvent {
   currency: string;
 }
 
+/** What an edit sends: any of the fields, those left out keep their value (sc-3587). */
+export type EventChanges = Partial<NewEvent>;
+
+/** An event with its `ETag`, which an edit sends back as `If-Match`. */
+export interface TaggedEvent {
+  event: OrganisationEvent;
+  tag: string;
+}
+
 export interface Membership extends Organisation {
   role: MemberRole;
   /** What this role holds here, every registered one for Owner (sc-66): what a client may show. */
@@ -578,6 +587,13 @@ export class ApiClient {
   constructor(private readonly options: ClientOptions) {}
 
   async request<T>(path: string, init: RequestOptions = {}): Promise<T> {
+    return (await this.exchange<T>(path, init)).body;
+  }
+
+  private async exchange<T>(
+    path: string,
+    init: RequestOptions,
+  ): Promise<{ body: T; response: Response }> {
     let response = await this.send(path, init);
 
     // One retry, and only after a refresh that actually succeeded. Retrying a
@@ -603,9 +619,9 @@ export class ApiClient {
       throw error;
     }
 
-    if (response.status === 204) return undefined as T;
+    if (response.status === 204) return { body: undefined as T, response };
 
-    return (await response.json()) as T;
+    return { body: (await response.json()) as T, response };
   }
 
   get<T>(path: string, init?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
@@ -1354,6 +1370,44 @@ export class ApiClient {
     );
   }
 
+  /** The event as an edit form opens it, with the tag the save sends back. */
+  async taggedEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: 'GET',
+      }),
+    );
+  }
+
+  /** Refused 412 when somebody saved since `tag`, 409 `event_currency_in_use`, and as createEvent. */
+  async updateEvent(eventId: string, changes: EventChanges, tag: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: 'PATCH',
+        body: changes,
+        headers: { 'If-Match': tag },
+      }),
+    );
+  }
+
+  private tagged({
+    body,
+    response,
+  }: {
+    body: { event?: unknown } | null | undefined;
+    response: Response;
+  }): TaggedEvent {
+    const tag = response.headers.get('ETag');
+
+    if (tag == null || tag === '') {
+      throw new Error(
+        'The API answered an event with no ETag. Check that the events controller tags it and that CORS exposes ETag.',
+      );
+    }
+
+    return { event: this.organisationEvent(body), tag };
+  }
+
   private organisationEvent(body: { event?: unknown } | null | undefined): OrganisationEvent {
     const event = asOrganisationEvent(body?.event);
 
@@ -1844,7 +1898,13 @@ export class ApiClient {
       if (token != null && token !== '') body.refreshToken = token;
     }
 
-    await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+    const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+
+    // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
+    if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
+      throw new ApiUnreachableError();
+    }
+
     await this.options.tokens?.clear();
   }
 

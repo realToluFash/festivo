@@ -9,13 +9,14 @@ import {
   thisDeviceFirst,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { AccountSections } from '../../../components/AccountSections.tsx';
 import { Pending } from '../../../components/Pending.tsx';
+import { StillSignedIn } from '../../../components/StillSignedIn.tsx';
 import { EverywhereElse } from './EverywhereElse.tsx';
 import { PasswordCard } from './PasswordCard.tsx';
 import { TwoFactorCard } from './TwoFactorCard.tsx';
@@ -27,7 +28,9 @@ import {
   heldProviderReturn,
 } from '../../../providerSignIn.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
+import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
+import { useSignOut } from '../../../signOut.ts';
 
 type Devices =
   { kind: 'loading' } | { kind: 'failed' } | { kind: 'ready'; sessions: DeviceSession[] };
@@ -40,17 +43,32 @@ export function Security() {
   const [devices, setDevices] = useState<Devices>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [checking, setChecking] = useState<DeviceSession | null>(null);
+  const [checkHeading, arriveAtCheck] = useStepFocus();
   const [ended, setEnded] = useState<string | null>(null);
   const [endFailed, setEndFailed] = useState(false);
+  const [retried, setRetried] = useState(false);
+  const devicesHeading = useRef<HTMLHeadingElement>(null);
+  const said = useRef<HTMLDivElement>(null);
+  const signOutButtons = useRef(new Map<string, HTMLButtonElement | null>());
+  const everywhereButton = useRef<HTMLButtonElement>(null);
+  const failedNotice = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+  const loaded = () => list.current != null || failedNotice.current != null;
+  const passwordOpener = useRef<(() => HTMLElement | null) | null>(null);
+  const land = useFocusOnceShown();
   const [settingUp, setSettingUp] = useState(false);
   const [settingPassword, setSettingPassword] = useState(false);
   const [returned] = useState<ProviderReturn | null>(() => heldProviderReturn(['signOutOthers']));
   const [everywhere, setEverywhere] = useState(
     returned != null && !('failed' in returned && returned.failed === 'cancelled'),
   );
-  const [everywhereDone, setEverywhereDone] = useState<number | null>(null);
+  const [everywhereDone, setEverywhereDone] = useState<{
+    count: number;
+    arrived: boolean;
+  } | null>(null);
   const [codesSpent, setCodesSpent] = useState(0);
   const codeSpent = () => setCodesSpent((n) => n + 1);
+  const here = useSignOut(() => navigate('/sign-in'));
 
   // Removed only once committed: React may abandon a render and run the initializer again.
   useEffect(() => {
@@ -77,6 +95,7 @@ export function Security() {
 
   async function end(device: DeviceSession): Promise<void> {
     setEndFailed(false);
+    here.dismiss();
     setEverywhereDone(null);
 
     try {
@@ -84,12 +103,14 @@ export function Security() {
     } catch {
       setChecking(null);
       setEndFailed(true);
+      land(() => said.current);
 
       return;
     }
 
     setChecking(null);
     setEnded(nameOf(device, t));
+    land(() => said.current);
     setDevices((current) =>
       current.kind === 'ready'
         ? { kind: 'ready', sessions: current.sessions.filter((s) => s.id !== device.id) }
@@ -97,7 +118,10 @@ export function Security() {
     );
   }
 
-  function endedElsewhere(result: { signedOut: number; thisDevice: boolean }): void {
+  function endedElsewhere(
+    result: { signedOut: number; thisDevice: boolean },
+    arrived: boolean,
+  ): void {
     if (result.thisDevice) {
       forgetSession();
       navigate('/sign-in');
@@ -108,7 +132,8 @@ export function Security() {
     setEverywhere(false);
     setEnded(null);
     setEndFailed(false);
-    setEverywhereDone(result.signedOut);
+    setEverywhereDone({ count: result.signedOut, arrived });
+    if (!arrived) land(() => said.current);
     setDevices((current) =>
       current.kind === 'ready'
         ? {
@@ -120,9 +145,10 @@ export function Security() {
   }
 
   async function endHere(): Promise<void> {
-    await api.signOut();
-    forgetSession();
-    navigate('/sign-in');
+    setEndFailed(false);
+    setEnded(null);
+    setEverywhereDone(null);
+    await here.signOut();
   }
 
   return (
@@ -140,12 +166,14 @@ export function Security() {
         providers={session.providers}
         onChanged={() => {
           setEnded(null);
+          setRetried(false);
           setDevices({ kind: 'loading' });
           setAttempt((n) => n + 1);
         }}
         onAdded={() => refreshAccount()}
         setting={settingPassword}
         onSetting={setSettingPassword}
+        returnTo={() => passwordOpener.current?.() ?? null}
       />
 
       <WaysCard
@@ -154,7 +182,8 @@ export function Security() {
         providers={session.providers}
         onChanged={() => refreshAccount()}
         onRefused={rereadCredentials}
-        onSetPassword={() => {
+        onSetPassword={(opener) => {
+          passwordOpener.current = opener;
           setSettingPassword(true);
           document.getElementById('password-title')?.scrollIntoView({ block: 'start' });
         }}
@@ -177,13 +206,18 @@ export function Security() {
               providers={session.providers}
               returned={returned}
               onDone={endedElsewhere}
-              onKeep={() => setEverywhere(false)}
+              onKeep={() => {
+                setEverywhere(false);
+                land(() => everywhereButton.current ?? (loaded() ? devicesHeading.current : null));
+              }}
               onCodeSpent={codeSpent}
             />
           ) : checking == null ? (
             <>
               <div className="card-heading">
-                <h2 id="devices-title">{t('devices.title')}</h2>
+                <h2 id="devices-title" ref={devicesHeading} tabIndex={-1}>
+                  {t('devices.title')}
+                </h2>
                 {devices.kind === 'ready' && (
                   <span className="card-count">
                     {t('devices.count', { count: devices.sessions.length })}
@@ -194,7 +228,7 @@ export function Security() {
               <p>{t('devices.intro')}</p>
 
               {ended != null && (
-                <div className="status-done" role="status">
+                <div className="status-done" ref={said} tabIndex={-1}>
                   <span className="mark mark-done" aria-hidden="true">
                     ✓
                   </span>
@@ -203,38 +237,47 @@ export function Security() {
               )}
 
               {everywhereDone != null && (
-                <div className="status-done" role="status">
+                <div
+                  className="status-done"
+                  {...(everywhereDone.arrived ? { role: 'status' } : { ref: said, tabIndex: -1 })}
+                >
                   <span className="mark mark-done" aria-hidden="true">
                     ✓
                   </span>
                   <p>
-                    {everywhereDone === 0
+                    {everywhereDone.count === 0
                       ? t('devices.everywhereNone')
-                      : t('devices.everywhereDone', { count: everywhereDone })}
+                      : t('devices.everywhereDone', { count: everywhereDone.count })}
                   </p>
                 </div>
               )}
 
               {endFailed && (
-                <div className="notice notice-broken" role="alert">
+                <div className="notice notice-broken">
                   <span className="mark mark-broken" aria-hidden="true">
                     ✕
                   </span>
-                  <div className="notice-body">
+                  <div className="notice-body" ref={said} tabIndex={-1}>
                     <p className="notice-title">{t('devices.endFailedTitle')}</p>
                     <p>{t('devices.endFailedBody')}</p>
                   </div>
                 </div>
               )}
 
+              {here.unreached && <StillSignedIn />}
+
               {devices.kind === 'loading' && <Pending />}
 
               {devices.kind === 'failed' && (
-                <div className="notice notice-broken" role="alert">
+                <div className="notice notice-broken" role={retried ? undefined : 'alert'}>
                   <span className="mark mark-broken" aria-hidden="true">
                     ✕
                   </span>
-                  <div className="notice-body">
+                  <div
+                    className="notice-body"
+                    ref={failedNotice}
+                    tabIndex={retried ? -1 : undefined}
+                  >
                     <p className="notice-title">{t('devices.failedTitle')}</p>
                     <p>{t('devices.failedBody')}</p>
                   </div>
@@ -242,8 +285,14 @@ export function Security() {
                     className="button"
                     type="button"
                     onClick={() => {
+                      setRetried(true);
                       setDevices({ kind: 'loading' });
                       setAttempt((n) => n + 1);
+                      land(
+                        () =>
+                          failedNotice.current ??
+                          (list.current == null ? null : devicesHeading.current),
+                      );
                     }}
                   >
                     {t('error.retry')}
@@ -252,14 +301,20 @@ export function Security() {
               )}
 
               {devices.kind === 'ready' && (
-                <ul className="device-list" aria-label={t('devices.listLabel')}>
+                <ul className="device-list" ref={list} aria-label={t('devices.listLabel')}>
                   {thisDeviceFirst(devices.sessions, currentSessionId()).map((device) => (
                     <Row
                       key={device.id}
                       device={device}
                       here={device.id === currentSessionId()}
+                      button={(element) => {
+                        signOutButtons.current.set(device.id, element);
+                      }}
                       onEndHere={() => void endHere()}
-                      onCheck={() => setChecking(device)}
+                      onCheck={() => {
+                        setChecking(device);
+                        arriveAtCheck();
+                      }}
                     />
                   ))}
                 </ul>
@@ -271,6 +326,7 @@ export function Security() {
                     <button
                       className="button"
                       type="button"
+                      ref={everywhereButton}
                       onClick={() => {
                         setEverywhereDone(null);
                         setEnded(null);
@@ -286,8 +342,16 @@ export function Security() {
           ) : (
             <Check
               device={checking}
+              heading={checkHeading}
               onEnd={() => void end(checking)}
-              onKeep={() => setChecking(null)}
+              onKeep={() => {
+                setChecking(null);
+                land(
+                  () =>
+                    signOutButtons.current.get(checking.id) ??
+                    (loaded() ? devicesHeading.current : null),
+                );
+              }}
             />
           )}
         </section>
@@ -299,11 +363,13 @@ export function Security() {
 function Row({
   device,
   here,
+  button,
   onCheck,
   onEndHere,
 }: {
   device: DeviceSession;
   here: boolean;
+  button: (element: HTMLButtonElement | null) => void;
   onCheck: () => void;
   onEndHere: () => void;
 }) {
@@ -342,7 +408,7 @@ function Row({
       {/* Your own signs out at once and lands on sign-in. Another device opens
           a check first: you cannot see it, the row is only what it claimed,
           and it may be mid-event. */}
-      <button className="button" type="button" onClick={here ? onEndHere : onCheck}>
+      <button className="button" type="button" ref={button} onClick={here ? onEndHere : onCheck}>
         {t('devices.signOut')}
       </button>
     </li>
@@ -351,19 +417,22 @@ function Row({
 
 function Check({
   device,
+  heading,
   onEnd,
   onKeep,
 }: {
   device: DeviceSession;
+  heading: RefObject<HTMLHeadingElement | null>;
   onEnd: () => void;
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
-
   return (
     <>
-      <h2 id="devices-title">{t('devices.checkTitle', { name: nameOf(device, t) })}</h2>
+      <h2 id="devices-title" ref={heading} tabIndex={-1}>
+        {t('devices.checkTitle', { name: nameOf(device, t) })}
+      </h2>
       <p>
         {t('devices.checkBody', {
           started: moment(device.startedAt, locale, t),

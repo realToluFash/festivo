@@ -45,6 +45,13 @@ class Claims(unittest.TestCase):
         store.claim(self.db, "pm", NOW, worker="pm", workers=2)
         self.assertEqual(store.claim(self.db, "pm", NOW, worker="pm-2", workers=2)["story_id"], 8)
 
+    def test_two_lead_workers_never_hold_the_same_pull_request(self):
+        store.record(self.db, [dict(item("review", ["lead"]), story_id=None, pr=40),
+                               dict(item("threads", ["lead"]), story_id=None, pr=40),
+                               dict(item("other", ["lead"]), story_id=None, pr=41)], NOW)
+        self.assertEqual(store.claim(self.db, "lead", NOW, worker="lead", workers=2)["pr"], 40)
+        self.assertEqual(store.claim(self.db, "lead", NOW, worker="lead-2", workers=2)["pr"], 41)
+
     def test_a_claim_made_by_hand_counts_as_the_first_worker_s(self):
         store.record(self.db, [item("a", ["pm"]), item("b", ["pm"])], NOW)
         store.claim(self.db, "pm", NOW)

@@ -9,6 +9,7 @@ export function AccountSections() {
   return (
     <SectionNav
       label={t('account.sections')}
+      group={t('nav.account')}
       sections={[
         { to: '/app/account', label: t('account.sectionAccount'), end: true },
         { to: '/app/account/security', label: t('account.sectionSecurity') },

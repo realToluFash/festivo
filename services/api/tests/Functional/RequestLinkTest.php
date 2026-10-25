@@ -26,6 +26,7 @@ use App\Tests\Traits\OnboardsAccounts;
 use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
 use Psl\SecureRandom;
@@ -304,7 +305,7 @@ final class RequestLinkTest extends ApiTestCase
             self::fail('A sixth request was let through.');
         } catch (ApiException $refusal) {
             self::assertSame(ErrorCode::TooManyAttempts, $refusal->errorCode);
-            self::assertStringStartsWith('Too many requests for now. Try again at ', $refusal->getMessage());
+            self::assertMatchesRegularExpression('/^Too many requests for now\. Try again \w+day \d+ \w+ at \d\d:\d\d UTC\.$/', self::worded($refusal));
             self::assertArrayHasKey('Retry-After', $refusal->headers);
         }
 
@@ -323,9 +324,53 @@ final class RequestLinkTest extends ApiTestCase
         $body = $this->send('POST', '/api/request-links/ask', ['token' => $token]);
 
         self::assertResponseStatusCodeSame(429);
-        self::assertStringStartsWith('Too many requests for now. Try again at ', Type\string()->coerce($body['detail']));
+        self::assertMatchesRegularExpression('/^Too many requests for now\. Try again \w+day \d+ \w+ at \d\d:\d\d UTC\.$/', Type\string()->coerce($body['detail']));
+        self::assertArrayNotHasKey('retryAt', $body);
         self::assertGreaterThan(7000, (int) $this->client->getResponse()->headers->get('Retry-After'));
         self::assertNull(self::service(MembershipRepository::class)->findOneBy(['user' => $ada, 'organisation' => $organisation]));
+    }
+
+    /** sc-12379: a day away, so the day is named with the minute, in UTC, in the request's language, and no screen is given a `retryAt` to quote. */
+    #[Test]
+    #[DataProvider('dailyLimitsInEachLanguage')]
+    public function theDailyLimitNamesTheDayInUtc(string $windowEnd, array $server, ?string $zone, ?string $saved, string $expected): void
+    {
+        [, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $token = $this->turnOn($organisation);
+        $ada = $this->outsider('ada@gmail.com');
+        $ada->setTimezone($zone);
+        if (null !== $saved) {
+            $ada->setLocale($saved);
+        }
+        self::getContainer()->set('limiter.join_request_account', new RefusingRateLimiterFactory(new DateTimeImmutable($windowEnd)));
+        $this->signIn($ada);
+
+        $this->client->request('POST', '/api/request-links/ask', server: ['CONTENT_TYPE' => 'application/json', ...$server], content: Json\encode(['token' => $token]));
+        $body = Type\dict(Type\string(), Type\mixed())->coerce(Json\decode((string) $this->client->getResponse()->getContent()));
+
+        self::assertResponseStatusCodeSame(429);
+        self::assertSame(ErrorCode::TooManyAttempts->type(), $body['type']);
+        self::assertSame($expected, $body['detail']);
+        self::assertArrayNotHasKey('retryAt', $body);
+    }
+
+    /** @return iterable<string, array{0: string, 1: array<string, string>, 2: ?string, 3: ?string, 4: string}> */
+    public static function dailyLimitsInEachLanguage(): iterable
+    {
+        $monday = '2026-10-26 16:31:20 UTC';
+        $en = ['HTTP_ACCEPT_LANGUAGE' => 'en'];
+
+        yield 'en' => [$monday, $en, null, null, 'Too many requests for now. Try again Monday 26 Oct at 16:32 UTC.'];
+        yield 'the minute past midnight is the next day\'s' => ['2026-10-26 23:59:30 UTC', $en, null, null, 'Too many requests for now. Try again Tuesday 27 Oct at 00:00 UTC.'];
+        yield 'an account in Lagos' => [$monday, $en, 'Africa/Lagos', null, 'Too many requests for now. Try again Monday 26 Oct at 16:32 UTC.'];
+        yield 'a request from Tokyo' => [$monday, [...$en, 'HTTP_X_TIMEZONE' => 'Asia/Tokyo'], 'Africa/Lagos', null, 'Too many requests for now. Try again Monday 26 Oct at 16:32 UTC.'];
+        yield 'es' => [$monday, ['HTTP_ACCEPT_LANGUAGE' => 'es'], null, null, 'Demasiadas solicitudes por ahora. Inténtelo de nuevo a partir del lunes, 26 oct a las 16:32 UTC.'];
+        yield 'fr' => [$monday, ['HTTP_ACCEPT_LANGUAGE' => 'fr'], null, null, 'Trop de demandes pour le moment. Réessayez à partir du lundi 26 oct. à 16:32 UTC.'];
+        yield 'pt' => [$monday, ['HTTP_ACCEPT_LANGUAGE' => 'pt'], null, null, 'Demasiados pedidos por agora. Tente novamente a partir de segunda-feira, 26 de out. às 16:32 UTC.'];
+        yield 'es at one' => ['2026-10-27 01:04:20 UTC', ['HTTP_ACCEPT_LANGUAGE' => 'es'], null, null, 'Demasiadas solicitudes por ahora. Inténtelo de nuevo a partir del martes, 27 oct a la 01:05 UTC.'];
+        yield 'pt at one' => ['2026-10-27 01:04:20 UTC', ['HTTP_ACCEPT_LANGUAGE' => 'pt'], null, null, 'Demasiados pedidos por agora. Tente novamente a partir de terça-feira, 27 de out. à 01:05 UTC.'];
+        yield 'no language, on a French account' => [$monday, [], null, 'fr', 'Too many requests for now. Try again Monday 26 Oct at 16:32 UTC.'];
+        yield 'German, on a French account' => [$monday, ['HTTP_ACCEPT_LANGUAGE' => 'de'], null, 'fr', 'Too many requests for now. Try again Monday 26 Oct at 16:32 UTC.'];
     }
 
     /** @return array{User, Organisation} */

@@ -9,7 +9,9 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
 type Flash = 'on' | 'off' | 'replaced' | 'copied' | null;
@@ -75,6 +77,8 @@ export function RequestLinkCard({
     void (link.on
       ? change(() => api.turnOffRequestLink(organisation.id), 'off')
       : change(() => api.turnOnRequestLink(organisation.id), 'on'));
+  const changed = flash == null ? null : t(`requestLink.flash.${flash}`);
+  const notChanged = t('requestLink.failed');
 
   return (
     <View style={cardFrame(kind)}>
@@ -111,20 +115,16 @@ export function RequestLinkCard({
         {t('requestLink.intro', { organisation: organisation.name })}
       </Text>
 
-      {flash != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={t(`requestLink.flash.${flash}`)}
-          />
-        </View>
+      {changed != null && (
+        <ReadOut words={changed}>
+          <Notice tone="done" mark={tokens.marks.done.glyph} body={changed} />
+        </ReadOut>
       )}
 
       {failed && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={t('requestLink.failed')} />
-        </View>
+        <ReadOut words={notChanged} interrupts accessibilityRole="alert">
+          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notChanged} />
+        </ReadOut>
       )}
 
       {link.on && link.url != null && (
@@ -142,9 +142,9 @@ export function RequestLinkCard({
           </Text>
           {confirming ? (
             <View style={styles.confirm}>
-              <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+              <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
                 {t('requestLink.replaceTitle')}
-              </Text>
+              </AnswerHeading>
               <Text size={tokens.typeBodyPhone.size}>{t('requestLink.replaceBody')}</Text>
               <View style={styles.buttons}>
                 <PrimaryButton

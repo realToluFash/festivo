@@ -31,8 +31,8 @@ import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PhoneEntry } from './PhoneEntry.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { useAboveKeyboard, useFocusOnAnswer } from './Screen.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 type Kind = 'email' | 'phone';
 
@@ -126,13 +126,14 @@ function ContactsCard({
   const [asking, setAsking] = useState<Asking>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [adding, setAdding] = useState(false);
-  const [said, setSaid] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [said, setSaid] = useState<{ line: string } | null>(null);
   const [arrived, setArrived] = useState(verified);
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
   const arrival = justVerified(rows, arrived);
   const done =
-    said ??
+    said?.line ??
     (arrival == null
       ? null
       : email
@@ -143,7 +144,7 @@ function ContactsCard({
 
   function setDone(line: string | null): void {
     setArrived(null);
-    setSaid(line);
+    setSaid(line == null ? null : { line });
   }
 
   /** True for a refusal that said the list had changed, once the list has been read again. */
@@ -156,6 +157,8 @@ function ContactsCard({
   }
 
   async function act(row: Row, what: 'promote' | 'remove', proof?: string): Promise<void> {
+    if (sending) return;
+
     setRowError(null);
     const standing = proof ?? heldProof();
 
@@ -164,6 +167,8 @@ function ContactsCard({
       setAsking({ id: row.id, what: 'prove' });
       return;
     }
+
+    setSending(true);
 
     try {
       if (what === 'promote') {
@@ -184,7 +189,11 @@ function ContactsCard({
       await onChanged();
     } catch (refusal) {
       if (await rereadFor(refusal)) setAsking(null);
+      // The check has passed and is held, so a retry from the confirmation needs no second one.
+      else if (proof != null) setAsking({ id: row.id, what: 'promote' });
       setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
+    } finally {
+      setSending(false);
     }
   }
 
@@ -202,7 +211,9 @@ function ContactsCard({
         {email ? t('contacts.emailsIntro') : t('contacts.phonesIntro')}
       </Text>
 
-      {done != null && <Notice tone="done" mark={tokens.marks.done.glyph} body={done} />}
+      {done != null && (
+        <Notice tone="done" mark={tokens.marks.done.glyph} body={done} answer={said ?? undefined} />
+      )}
 
       <View>
         {rows.map((row) => {
@@ -216,9 +227,18 @@ function ContactsCard({
                   {row.shown}
                 </Text>
                 <View style={styles.state}>
-                  <View style={row.verified ? styles.markOn : styles.markOff}>
+                  <View
+                    style={row.verified ? styles.markOn : styles.markOff}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                  >
                     {row.verified && (
-                      <Text size={tokens.typePill.size} weight="bold" style={styles.markInk}>
+                      <Text
+                        size={tokens.typePill.size}
+                        weight="bold"
+                        style={styles.markInk}
+                        accessible={false}
+                      >
                         {tokens.marks.done.glyph}
                       </Text>
                     )}
@@ -279,6 +299,7 @@ function ContactsCard({
                 <View style={styles.asking}>
                   <ConfirmItsYou
                     idPrefix={`contacts.${row.id}.prove`}
+                    answer={asking}
                     intro={t('contacts.proveIntro')}
                     via={confirming.via}
                     twoFactorOn={confirming.twoFactorOn}
@@ -290,13 +311,13 @@ function ContactsCard({
 
               {(here === 'promote' || here === 'remove') && (
                 <View style={styles.asking}>
-                  <Text size={tokens.typeBodyPhone.size} weight="semibold">
+                  <AskingTitle answer={asking}>
                     {here === 'promote'
                       ? t('contacts.promoteTitle')
                       : email
                         ? t('contacts.removeTitle')
                         : t('contacts.removeTitlePhone')}
-                  </Text>
+                  </AskingTitle>
                   <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
                     {here === 'promote'
                       ? t('contacts.promoteBody', { old: primary?.shown ?? '' })
@@ -309,6 +330,7 @@ function ContactsCard({
                         : t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')
                     }
                     onPress={() => void act(row, here)}
+                    busy={sending}
                     testID={`contacts.${row.id}.confirm`}
                   />
                   <QuietButton
@@ -318,6 +340,7 @@ function ContactsCard({
                         : t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')
                     }
                     onPress={() => setAsking(null)}
+                    off={sending}
                     testID={`contacts.${row.id}.keep`}
                   />
                 </View>
@@ -367,6 +390,16 @@ function ContactsCard({
           : t(email ? 'contacts.capFullEmails' : 'contacts.capFullPhones', { most: CONTACTS_MOST })}
       </Text>
     </View>
+  );
+}
+
+function AskingTitle({ answer, children }: { answer: Asking; children: string }) {
+  const { read } = useFocusOnAnswer<TextHandle>(answer);
+
+  return (
+    <Text ref={read} size={tokens.typeBodyPhone.size} weight="semibold">
+      {children}
+    </Text>
   );
 }
 
@@ -474,6 +507,7 @@ function Adding({
       <QuietButton
         label={t('contacts.cancel')}
         onPress={onCancel}
+        off={sending}
         testID={`contacts.${kind}.cancel`}
       />
     </View>

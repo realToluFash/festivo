@@ -3,6 +3,9 @@
     "name": "Soirely",
     "skipToContent": "Aller au contenu"
   },
+  "pageTitle": {
+    "part": "{{page}} – {{rest}}"
+  },
   "nav": {
     "dashboard": "Tableau de bord",
     "events": "Événements",
@@ -41,6 +44,8 @@
     "date": "Date",
     "time": "Heure",
     "endsHint": "Un événement peut se poursuivre après minuit. Choisissez le jour où il se termine.",
+    "clocksSkip": "Le {{day}}, l’heure {{time}} n’existe pas dans le fuseau {{zone}} : c’est la nuit du passage à l’heure d’été. Elle sera remplacée par {{savedAs}}.",
+    "clocksSkipNextDay": "Le {{day}}, l’heure {{time}} n’existe pas dans le fuseau {{zone}} : c’est la nuit du passage à l’heure d’été. Elle sera remplacée par le {{savedDay}} à {{savedAs}}.",
     "timeZone": "Fuseau horaire",
     "currency": "Devise",
     "defaultsHint": "Valeurs reprises des paramètres de l’organisation {{name}}.",
@@ -63,6 +68,27 @@
     "notFound": "Cet événement n’est pas disponible",
     "guestsComing": "La liste des invités de cet événement arrive bientôt.",
     "backToEvent": "Événement"
+  },
+  "eventEdit": {
+    "open": "Modifier les informations",
+    "title": "Modifier les informations",
+    "save": "Enregistrer les modifications",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "zoneHint": "Si vous changez de fuseau horaire, les heures restent telles que saisies : {{day}} {{time}} reste {{time}} dans le nouveau fuseau.",
+    "zoneHintPlain": "Si vous changez de fuseau horaire, les heures restent telles que saisies.",
+    "currencyInUse": "La devise ne peut plus changer une fois que des montants sont enregistrés pour cet événement.",
+    "notSaved": "Non enregistré. Vos modifications sont toujours là. Réessayez.",
+    "changedElsewhere": "Non enregistré. Quelqu’un d’autre a modifié cet événement depuis que vous l’avez ouvert. Ce que vous avez saisi est toujours là.",
+    "showLatest": "Afficher la dernière version",
+    "showLatestTitle": "Afficher la dernière version ?",
+    "showLatestBody": "Ce que vous avez saisi sera remplacé par la version que quelqu’un d’autre a enregistrée.",
+    "keepEditing": "Continuer à modifier",
+    "leaveTitle": "Quitter sans enregistrer ?",
+    "leaveBody": "Les modifications apportées à cet événement seront perdues.",
+    "leave": "Quitter sans enregistrer",
+    "saved": "Modifications enregistrées",
+    "nothingChanged": "Rien n’a changé, donc rien n’a été envoyé."
   },
   "language": {
     "label": "Langue",
@@ -331,7 +357,10 @@
   "session": {
     "unreachableTitle": "Impossible de joindre Soirely",
     "unreachableBody": "Votre session est toujours ouverte. Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
-    "retrying": "Nouvelle tentative…"
+    "unreachableBodySignedOut": "Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
+    "retrying": "Nouvelle tentative…",
+    "stillSignedInTitle": "Votre session est toujours ouverte",
+    "stillSignedInBody": "Soirely est injoignable, cet appareil n’a donc pas été déconnecté. Vérifiez votre connexion, puis réessayez."
   },
   "switcher": {
     "yourRole": "Votre rôle · {{role}}",
@@ -340,8 +369,8 @@
     "remembered": "Soirely retient votre choix sur cet appareil.",
     "switched": "Vous travaillez maintenant dans {{name}}.",
     "labelSwitch": "Organisation : {{name}}, votre rôle {{role}}. Changer d’organisation",
-    "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
-    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
+    "labelSwitchWaiting_one": "Organisation : {{name}}, votre rôle {{role}}. Changer d’organisation. {{count}} invitation en attente",
+    "labelSwitchWaiting_other": "Organisation : {{name}}, votre rôle {{role}}. Changer d’organisation. {{count}} invitations en attente"
   },
   "createOrganisation": {
     "row": "Créer une organisation",
@@ -683,7 +712,7 @@
     "save": "Enregistrer le fuseau",
     "saving": "Enregistrement…",
     "cancel": "Annuler",
-    "saved": "Fuseau horaire changé pour {{zone}}. Les heures de vos e-mails l'utilisent désormais.",
+    "saved": "Fuseau horaire changé pour {{zone}}. Les heures de vos e-mails l’utilisent désormais.",
     "was": "anciennement {{name}}",
     "countryWas": "{{country}} · anciennement {{name}}"
   },
@@ -813,54 +842,54 @@
   "settings": {
     "sections": "Paramètres de l’organisation",
     "sectionGeneral": "Général",
-    "sectionMembers": "Members",
+    "sectionMembers": "Membres",
     "sectionRoles": "Rôles",
     "sectionSignInRules": "Règles de connexion"
   },
   "membersScreen": {
-    "title": "Members",
-    "loading": "Loading members…",
-    "failedLoad": "We could not load the members. Check your connection and try again.",
-    "subtitle": "{{organisation}} · {{active}} active · {{invited}} invited",
-    "invite": "Invite somebody",
-    "show": "Show",
-    "shown": "Members shown",
-    "showEveryone": "Show everyone",
+    "title": "Membres",
+    "loading": "Chargement des membres…",
+    "failedLoad": "Impossible de charger les membres. Vérifiez votre connexion et réessayez.",
+    "subtitle": "{{organisation}} · avec accès : {{active}} · invitations : {{invited}}",
+    "invite": "Inviter quelqu’un",
+    "show": "Afficher",
+    "shown": "Membres affichés",
+    "showEveryone": "Afficher tout le monde",
     "filter": {
-      "all": "All",
-      "active": "Active",
-      "invited": "Invited",
-      "waiting": "Awaiting approval",
-      "suspended": "Suspended",
-      "former": "Former"
+      "all": "Tous",
+      "active": "Avec accès",
+      "invited": "Invitations",
+      "waiting": "En attente d’approbation",
+      "suspended": "Suspendus",
+      "former": "Anciens"
     },
     "empty": {
       "all": {
-        "title": "Nobody here"
+        "title": "Personne ici"
       },
       "active": {
-        "title": "Nobody is active",
-        "body": "Invite somebody to start."
+        "title": "Personne n’a accès",
+        "body": "Invitez quelqu’un pour commencer."
       },
       "waiting": {
-        "title": "Nobody is waiting",
-        "body": "Requests to join show here until somebody answers them."
+        "title": "Aucune demande en attente",
+        "body": "Les demandes d’adhésion s’affichent ici jusqu’à ce que quelqu’un y réponde."
       },
       "suspended": {
-        "title": "Nobody is suspended",
-        "body": "Everyone in {{organisation}} can use it right now."
+        "title": "Aucun accès suspendu",
+        "body": "Toutes les personnes de l’organisation {{organisation}} peuvent utiliser Soirely en ce moment."
       },
       "former": {
-        "title": "Nobody has left",
-        "body": "People who leave or are removed are listed here, with what they did kept."
+        "title": "Personne n’est parti",
+        "body": "Les personnes qui quittent l’organisation ou en sont retirées figurent ici, avec tout ce qu’elles ont fait."
       }
     },
     "state": {
-      "active": "Active",
-      "pending_approval": "Awaiting approval",
-      "suspended": "Suspended",
-      "left": "Left",
-      "removed": "Removed",
+      "active": "Avec accès",
+      "pending_approval": "En attente d’approbation",
+      "suspended": "Accès suspendu",
+      "left": "A quitté l’organisation",
+      "removed": "Accès retiré",
       "domainSuspended": "Accès suspendu : domaine d’entreprise"
     },
     "how": {
@@ -873,93 +902,94 @@
       "directory": "Annuaire de l’entreprise"
     },
     "when": {
-      "since": "since {{date}}",
-      "asked": "asked {{date}}",
-      "suspended": "suspended {{date}}",
-      "left": "left {{date}}",
-      "removed": "removed {{date}}"
+      "since": "depuis le {{date}}",
+      "asked": "demande du {{date}}",
+      "suspended": "accès suspendu le {{date}}",
+      "left": "départ le {{date}}",
+      "removed": "accès retiré le {{date}}"
     },
-    "you": "you",
-    "youAs": "You · {{role}}",
+    "you": "vous",
+    "youAs": "Vous · {{role}}",
     "invitations": "Invitations",
-    "invitationsNote": "Nobody has an account here until they accept.",
-    "noInvitations": "No invitations have been sent.",
-    "invitedAs": "{{role}} · invited by {{inviter}}",
+    "invitationsNote": "Personne ne rejoint l’organisation avant d’avoir accepté l’invitation.",
+    "noInvitations": "Aucune invitation n’a été envoyée.",
+    "invitedAs": "{{role}} · invitation de {{inviter}}",
     "dates": {
-      "pending": "Sent {{sent}} · expires {{ended}}",
-      "expired": "Sent {{sent}} · expired {{ended}}",
-      "revoked": "Sent {{sent}} · revoked {{ended}}",
-      "declined": "Sent {{sent}} · declined {{ended}}",
-      "accepted": "Sent {{sent}}"
+      "pending": "Envoyée le {{sent}} · expire le {{ended}}",
+      "expired": "Envoyée le {{sent}} · expirée le {{ended}}",
+      "revoked": "Envoyée le {{sent}} · retirée le {{ended}}",
+      "declined": "Envoyée le {{sent}} · refusée le {{ended}}",
+      "accepted": "Envoyée le {{sent}}"
     },
     "invitationState": {
-      "pending": "Pending",
-      "expired": "Expired",
-      "revoked": "Revoked",
-      "declined": "Declined",
-      "accepted": "Accepted"
+      "pending": "En attente",
+      "expired": "Expirée",
+      "revoked": "Retirée",
+      "declined": "Refusée",
+      "accepted": "Acceptée"
     },
-    "revoke": "Revoke",
-    "inviteAgain": "Invite again",
-    "revokeFailed": "We could not revoke that invitation. Try again.",
-    "howTheyGotHere": "How they got here",
+    "revoke": "Retirer",
+    "inviteAgain": "Inviter de nouveau",
+    "revokeFailed": "Impossible de retirer cette invitation. Réessayez.",
+    "howTheyGotHere": "Comment cette personne est arrivée",
     "someone": "une personne qui n’est plus membre",
     "byYou": "vous",
     "history": {
-      "invitedBy": "Invited by {{by}}",
+      "invitedBy": "Invitation envoyée par {{by}}",
       "joined": {
-        "invitation": "Accepted the invitation",
-        "self_created": "Created {{organisation}}",
-        "join_code": "Joined with a join code",
-        "domain": "Joined with a company email address",
-        "request": "Joined after asking",
-        "directory": "Joined from the company directory"
+        "invitation": "A accepté l’invitation",
+        "self_created": "A créé {{organisation}}",
+        "join_code": "A rejoint l’organisation avec un code",
+        "domain": "A rejoint l’organisation avec une adresse e-mail professionnelle",
+        "request": "A rejoint l’organisation après en avoir fait la demande",
+        "directory": "A rejoint l’organisation via l’annuaire de l’entreprise"
       },
       "asked": {
-        "invitation": "Asked to join",
-        "self_created": "Asked to join",
-        "join_code": "Asked to join with a join code",
-        "domain": "Asked to join with a company email address",
-        "request": "Asked to join",
-        "directory": "Asked to join from the company directory"
+        "invitation": "A demandé à rejoindre",
+        "self_created": "A demandé à rejoindre",
+        "join_code": "A demandé à rejoindre l’organisation avec un code",
+        "domain": "A demandé à rejoindre l’organisation avec une adresse e-mail professionnelle",
+        "request": "A demandé à rejoindre",
+        "directory": "A demandé à rejoindre l’organisation via l’annuaire de l’entreprise"
       },
-      "approved": "Approved by {{by}}",
-      "suspended": "Suspended by {{by}}",
+      "approved": "Demande approuvée par {{by}}",
+      "suspended": "Accès suspendu par {{by}}",
       "suspendedAddressGone": "Accès suspendu : domaine d’entreprise",
-      "restored": "Restored by {{by}}",
-      "left": "Left {{organisation}}",
-      "removed": "Removed by {{by}}",
+      "restored": "Accès rétabli par {{by}}",
+      "left": "A quitté {{organisation}}",
+      "removed": "Accès retiré par {{by}}",
       "turnedDown": "Demande refusée par {{by}}",
       "requestExpired": "Demande retirée, faute de réponse sous 30 jours"
     },
-    "whoToInvite": "Who to invite",
-    "role": "Role",
-    "emailBlank": "Enter their email address.",
-    "emailShape": "That does not look like an email address. Check it has an @ and a domain, like amara.o@gmail.com.",
+    "whoToInvite": "Qui inviter",
+    "role": "Rôle",
+    "emailBlank": "Saisissez son adresse e-mail.",
+    "emailShape": "Cette adresse e-mail ne semble pas valide. Vérifiez qu’elle contient un @ et un domaine, comme amara.o@gmail.com.",
     "roleMeans": {
-      "owner": "Everything, including billing and deleting the organisation.",
-      "administrator": "Everything in events, plus members and roles. Not billing.",
-      "event_manager": "Everything inside events, and manages the budget. Never the margin.",
-      "coordinator": "Runs events. Reads the budget, never the margin.",
-      "read_only": "Sees events. Changes nothing."
+      "owner": "Tout, y compris la facturation et la suppression de l’organisation.",
+      "administrator": "Tout dans les événements, plus les membres et les rôles. Pas la facturation.",
+      "event_manager": "Tout dans les événements, et gère le budget. Jamais la marge.",
+      "coordinator": "Organise les événements. Consulte le budget, jamais la marge.",
+      "read_only": "Voit les événements. Ne modifie rien."
     },
-    "inviteNote": "They get an email in their language with a link to join {{organisation}} as {{role}}. The email says when the link stops working.",
-    "send": "Send invitation",
-    "cancel": "Cancel",
-    "sent": "Invitation sent to {{email}}.",
-    "sendFailed": "We could not send the invitation. Check your connection and try again.",
-    "roleTitle": "Role",
-    "roleFor": "Role for {{name}}",
-    "seeRoles": "See exactly what each role can do ›",
-    "roleTakesEffect": "Takes effect on their next request; nobody is signed out.",
-    "rolePick": "Pick a different role",
-    "roleSave": "Change their role to {{role}}",
-    "roleChanged": "{{name}} is now {{role}}. Takes effect on their next request; nobody is signed out.",
-    "ownRole": "You can’t change your own role. Another owner can, or you can hand ownership to somebody in General.",
-    "goToGeneral": "Go to General ›",
-    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so this role can’t change and they can’t be removed until somebody else is an owner too.",
-    "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
-    "ownerOnly": "Only an owner can change an owner’s role or remove them.",
+    "inviteNote": "Cette personne recevra un e-mail dans sa langue, avec un lien pour rejoindre {{organisation}} avec le rôle {{role}}. L’e-mail indique jusqu’à quand le lien fonctionne.",
+    "send": "Envoyer l’invitation",
+    "cancel": "Annuler",
+    "sent": "Invitation envoyée à {{email}}.",
+    "sendFailed": "Impossible d’envoyer l’invitation. Vérifiez votre connexion et réessayez.",
+    "roleTitle": "Rôle",
+    "roleFor": "Rôle de {{name}}",
+    "seeRoles": "Voir ce que permet chaque rôle ›",
+    "roleTakesEffect": "S’applique dès que cette personne utilise de nouveau Soirely ; aucune session n’est fermée.",
+    "rolePick": "Choisissez un autre rôle",
+    "roleSave": "Lui attribuer le rôle {{role}}",
+    "roleChanged": "{{name}} a maintenant le rôle {{role}}. Cela s’applique dès sa prochaine utilisation de Soirely ; aucune session n’est fermée.",
+    "ownRole": "Vous ne pouvez pas modifier votre propre rôle. Une autre personne ayant le rôle Propriétaire le peut, ou vous pouvez transmettre ce rôle à quelqu’un dans Général.",
+    "goToGeneral": "Aller dans Général ›",
+    "onlyOwner": "{{name}} est la seule personne à avoir le rôle Propriétaire. Une organisation en a toujours une : son rôle ne peut donc pas changer, et cette personne ne peut pas être retirée tant qu’une autre n’a pas aussi le rôle Propriétaire.",
+    "askOwner": "Seule une personne ayant le rôle Propriétaire peut le donner à quelqu’un d’autre. Demandez à {{name}}.",
+    "ownerOnly": "Seule une personne ayant le rôle Propriétaire peut modifier le rôle d’une autre personne qui l’a, ou la retirer de l’organisation.",
+    "beyondGrant": "Le rôle de cette personne comporte une autorisation que le vôtre n’a pas : vous ne pouvez donc ni modifier son rôle ni la retirer de l’organisation.",
     "suspendTitle": "Suspendre {{name}}",
     "suspendBody": "Dès sa prochaine utilisation de Soirely, cette personne perd l’accès à l’organisation {{organisation}}, jusqu’à ce que quelqu’un le rétablisse. Son rôle, ses événements et son historique sont conservés.",
     "suspendButton": "Suspendre",
@@ -987,17 +1017,17 @@
     "seatsWayAdmin": "Pour que {{name}} retrouve l’accès, libérez une place en suspendant ou en retirant une personne qui n’en a plus besoin. Seule une personne ayant le rôle Propriétaire peut changer de forfait.",
     "seatsOpenMembers": "Ouvrir Membres ›",
     "seatsSuspendedFree": "Un accès suspendu n’occupe pas de place.",
-    "removeTitle": "Remove {{name}}",
-    "removeBody": "They lose access on their next request. Their events stay with {{organisation}}.",
-    "removeButton": "Remove from {{organisation}}",
-    "removeConfirmTitle": "Remove {{name}}?",
-    "removeConfirmBody": "{{name}} stops having access to {{organisation}} on their next request. Their events stay with {{organisation}}, and everything they did is kept.",
-    "removeConfirm": "Remove {{name}}",
-    "removeKeep": "Keep {{name}}",
-    "removed": "{{name}} was removed. Their events stay with {{organisation}}.",
-    "removedNext": "They are listed under Former in Members, with everything they did kept.",
-    "backToMembers": "Back to Members",
-    "actionFailed": "That did not go through. Nothing was changed. Try again in a moment.",
+    "removeTitle": "Retirer {{name}}",
+    "removeBody": "Cette personne perd l’accès dès qu’elle utilise de nouveau Soirely. Ses événements restent rattachés à l’organisation {{organisation}}.",
+    "removeButton": "Retirer de l’organisation {{organisation}}",
+    "removeConfirmTitle": "Retirer {{name}} ?",
+    "removeConfirmBody": "{{name}} perdra l’accès à l’organisation {{organisation}} dès sa prochaine utilisation de Soirely. Ses événements restent rattachés à l’organisation {{organisation}}, et tout ce que cette personne a fait est conservé.",
+    "removeConfirm": "Retirer {{name}}",
+    "removeKeep": "Garder {{name}}",
+    "removed": "{{name}} ne fait plus partie de l’organisation {{organisation}}. Ses événements y restent rattachés.",
+    "removedNext": "Cette personne figure dans Anciens, sous Membres, avec tout ce qu’elle a fait.",
+    "backToMembers": "Retour à Membres",
+    "actionFailed": "L’opération n’a pas abouti. Rien n’a été modifié. Réessayez dans un instant.",
     "suspendedBecause": {
       "address_gone": "{{name}} n’a plus d’adresse {{domain}} sur son compte.",
       "domain_closed": "{{organisation}} n’accepte plus les adhésions via {{domain}}.",
@@ -1204,72 +1234,72 @@
     "removeInAccountPhone": "Le retirer dans Compte"
   },
   "join": {
-    "registerTitle": "Join {{organisation}}",
-    "answerTitle": "Join {{organisation}}?",
-    "emailTakenTitle": "Sign in to accept",
-    "acceptedTitle": "You are in",
-    "declinedTitle": "Invitation declined",
-    "notFoundTitle": "We could not find that invitation",
-    "notFoundBody": "The link may be mistyped, or a newer invitation replaced it. Check the latest email, or ask whoever invited you to send it again.",
-    "orgLine": "Invitation from {{inviter}} · {{role}}",
-    "orgDeleted": "Deleted",
-    "invited": "{{inviter}} invited {{email}} to join as {{role}}.",
-    "worksUntil": "This invitation works until {{date}}.",
-    "createTitle": "Create an account",
-    "emailLocked": "This is the address the invitation was sent to. It is already confirmed, so there is no code to enter.",
-    "passwordBlank": "Choose a password.",
-    "passwordShort": "Use at least {{count}} characters.",
-    "createAndJoin": "Create account and join",
-    "joining": "Joining…",
-    "failedTitle": "Joining did not work",
-    "haveAccount": "I already have an account",
-    "emailTakenHeading": "You already have an account",
-    "emailTakenBody": "{{email}} already has a Soirely account. Sign in with it, and you can accept the invitation there.",
-    "signInToAccept": "Sign in to accept",
-    "forgotPassword": "Forgot your password?",
-    "invitedYou": "{{inviter}} invited you to join as {{role}}.",
-    "signedInUntil": "Signed in as {{email}} · this invitation works until {{date}}.",
-    "accept": "Accept and join",
-    "decline": "Decline",
-    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
-    "answerFailedTitle": "Your answer did not reach us",
-    "joined": "You joined {{organisation}} as {{role}}.",
-    "open": "Open {{organisation}}",
-    "declinedBody": "You declined. {{inviter}} will see that you said no.",
-    "goToEvents": "Go to your events",
-    "goHome": "Go to Soirely",
-    "signOutAndUse": "Sign out and use {{email}}",
-    "staySignedIn": "Stay signed in as {{email}}",
+    "registerTitle": "Rejoindre {{organisation}}",
+    "answerTitle": "Rejoindre {{organisation}} ?",
+    "emailTakenTitle": "Connectez-vous pour accepter",
+    "acceptedTitle": "C’est fait",
+    "declinedTitle": "Invitation refusée",
+    "notFoundTitle": "Invitation introuvable",
+    "notFoundBody": "Le lien est peut-être mal saisi, ou une invitation plus récente l’a remplacé. Consultez le dernier e-mail reçu, ou demandez à la personne à l’origine de l’invitation de vous la renvoyer.",
+    "orgLine": "Invitation de {{inviter}} · {{role}}",
+    "orgDeleted": "Supprimée",
+    "invited": "{{inviter}} a invité {{email}} à rejoindre l’organisation avec le rôle {{role}}.",
+    "worksUntil": "Jusqu’au {{date}}, cette invitation reste valable.",
+    "createTitle": "Créer un compte",
+    "emailLocked": "C’est l’adresse à laquelle l’invitation a été envoyée. Elle est déjà confirmée : aucun code à saisir.",
+    "passwordBlank": "Choisissez un mot de passe.",
+    "passwordShort": "Utilisez au moins {{count}} caractères.",
+    "createAndJoin": "Créer le compte et rejoindre",
+    "joining": "Adhésion en cours…",
+    "failedTitle": "L’adhésion n’a pas abouti",
+    "haveAccount": "J’ai déjà un compte",
+    "emailTakenHeading": "Vous avez déjà un compte",
+    "emailTakenBody": "{{email}} a déjà un compte Soirely. Connectez-vous avec ce compte pour y accepter l’invitation.",
+    "signInToAccept": "Connectez-vous pour accepter",
+    "forgotPassword": "Mot de passe oublié ?",
+    "invitedYou": "{{inviter}} vous invite à rejoindre l’organisation avec le rôle {{role}}.",
+    "signedInUntil": "Connexion avec {{email}} · jusqu’au {{date}}, cette invitation reste valable.",
+    "accept": "Accepter et rejoindre",
+    "decline": "Refuser",
+    "declineNote": "Si vous refusez, {{inviter}} en sera informé. Rien d’autre ne change.",
+    "answerFailedTitle": "Votre réponse ne nous est pas parvenue",
+    "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
+    "open": "Ouvrir {{organisation}}",
+    "declinedBody": "Vous avez refusé l’invitation. {{inviter}} verra votre refus.",
+    "goToEvents": "Voir vos événements",
+    "goHome": "Aller sur Soirely",
+    "signOutAndUse": "Se déconnecter et utiliser {{email}}",
+    "staySignedIn": "Rester connecté avec {{email}}",
     "refused": {
       "invitation_expired": {
-        "title": "This invitation has expired",
-        "word": "Expired",
-        "body": "This invitation has expired. Ask {{inviter}} to send a new one."
+        "title": "Cette invitation a expiré",
+        "word": "Expirée",
+        "body": "Cette invitation a expiré. Demandez à {{inviter}} de vous en envoyer une nouvelle."
       },
       "invitation_revoked": {
-        "title": "This invitation was withdrawn",
-        "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "title": "Cette invitation a été retirée",
+        "word": "Retirée",
+        "body": "L’organisation {{organisation}} a retiré cette invitation. S’il s’agit selon vous d’une erreur, adressez-vous à la personne à l’origine de l’invitation."
       },
       "invitation_accepted": {
-        "title": "Already accepted",
-        "word": "Already accepted",
-        "body": "You already accepted this invitation."
+        "title": "Déjà acceptée",
+        "word": "Déjà acceptée",
+        "body": "Vous avez déjà accepté cette invitation."
       },
       "invitation_declined": {
-        "title": "Already declined",
-        "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind."
+        "title": "Déjà refusée",
+        "word": "Déjà refusée",
+        "body": "Vous avez refusé cette invitation. Si vous avez changé d’avis, demandez à {{inviter}} de vous inviter de nouveau."
       },
       "invitation_not_yours": {
-        "title": "This invitation is for someone else",
-        "word": "Signed in as someone else",
-        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+        "title": "Cette invitation est destinée à une autre personne",
+        "word": "Connexion avec un autre compte",
+        "body": "Cette invitation est destinée à {{email}}. Vous êtes connecté avec {{signedInAs}}."
       },
       "organisation_deleted": {
-        "title": "This organisation is gone",
-        "word": "Organisation deleted",
-        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+        "title": "Cette organisation n’existe plus",
+        "word": "Organisation supprimée",
+        "body": "L’organisation {{organisation}} n’existe plus : cette invitation ne peut donc pas être acceptée."
       }
     }
   },
@@ -1277,47 +1307,47 @@
     "heading": "Invitations",
     "count_one": "{{count}} invitation",
     "count_other": "{{count}} invitations",
-    "from": "Invitation from {{inviter}} · {{role}}",
+    "from": "Invitation de {{inviter}} · {{role}}",
     "fromNobody": "Invitation · {{role}}",
-    "until": "Works until {{date}}",
-    "untilSentTo": "Works until {{date}} · Sent to {{email}}",
-    "accept": "Accept and join",
-    "acceptLabel": "Accept and join {{organisation}}",
-    "decline": "Decline",
-    "declineLabel": "Decline the invitation to {{organisation}}",
-    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
-    "declineNoteNobody": "Declining changes nothing else.",
-    "joined": "You joined {{organisation}} as {{role}}.",
-    "open": "Open {{organisation}}",
-    "declined": "You declined. {{inviter}} will see that you said no.",
-    "declinedNobody": "You declined.",
-    "failed": "Your answer did not reach us. Check your connection and try again.",
+    "until": "Valable jusqu’au {{date}}",
+    "untilSentTo": "Valable jusqu’au {{date}} · Envoyée à {{email}}",
+    "accept": "Accepter et rejoindre",
+    "acceptLabel": "Accepter et rejoindre {{organisation}}",
+    "decline": "Refuser",
+    "declineLabel": "Refuser l’invitation à rejoindre {{organisation}}",
+    "declineNote": "Si vous refusez, {{inviter}} en sera informé. Rien d’autre ne change.",
+    "declineNoteNobody": "Si vous refusez, rien d’autre ne change.",
+    "joined": "Vous avez rejoint {{organisation}} avec le rôle {{role}}.",
+    "open": "Ouvrir {{organisation}}",
+    "declined": "Vous avez refusé l’invitation. {{inviter}} verra votre refus.",
+    "declinedNobody": "Vous avez refusé l’invitation.",
+    "failed": "Votre réponse ne nous est pas parvenue. Vérifiez votre connexion et réessayez.",
     "refused": {
       "invitation_expired": {
-        "word": "Expired",
-        "body": "This invitation has expired. Ask {{inviter}} to send a new one.",
-        "bodyNobody": "This invitation has expired. Ask whoever invited you to send a new one."
+        "word": "Expirée",
+        "body": "Cette invitation a expiré. Demandez à {{inviter}} de vous en envoyer une nouvelle.",
+        "bodyNobody": "Cette invitation a expiré. Demandez à la personne à l’origine de l’invitation de vous en envoyer une nouvelle."
       },
       "invitation_revoked": {
-        "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "word": "Retirée",
+        "body": "L’organisation {{organisation}} a retiré cette invitation. S’il s’agit selon vous d’une erreur, adressez-vous à la personne à l’origine de l’invitation."
       },
       "invitation_accepted": {
-        "word": "Already accepted",
-        "body": "You already accepted this invitation."
+        "word": "Déjà acceptée",
+        "body": "Vous avez déjà accepté cette invitation."
       },
       "invitation_declined": {
-        "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
-        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+        "word": "Déjà refusée",
+        "body": "Vous avez refusé cette invitation. Si vous avez changé d’avis, demandez à {{inviter}} de vous inviter de nouveau.",
+        "bodyNobody": "Vous avez refusé cette invitation. Si vous avez changé d’avis, demandez à la personne à l’origine de l’invitation de vous inviter de nouveau."
       },
       "invitation_not_yours": {
-        "word": "Signed in as someone else",
-        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+        "word": "Connexion avec un autre compte",
+        "body": "Cette invitation est destinée à {{email}}. Vous êtes connecté avec {{signedInAs}}."
       },
       "organisation_deleted": {
-        "word": "Organisation deleted",
-        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+        "word": "Organisation supprimée",
+        "body": "L’organisation {{organisation}} n’existe plus : cette invitation ne peut donc pas être acceptée."
       }
     }
   },

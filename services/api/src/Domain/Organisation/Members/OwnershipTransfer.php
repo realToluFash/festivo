@@ -47,7 +47,7 @@ final readonly class OwnershipTransfer
         $to = $this->candidate($organisation, $membershipId, $by);
         $this->recentProof->require($by, $proof);
 
-        $previous = $this->membershipRepository->findActive($by, $organisation->getId()) ?? throw ApiException::notFound('Not found.');
+        $previous = $this->membershipRepository->findActive($by, $organisation->getId()) ?? throw ApiException::notFound('access.not_found');
         $before = $to->getRole();
         $this->roleAssignment->assign($to, $this->role($organisation, SeededRole::Owner));
         $this->entityManager->flush();

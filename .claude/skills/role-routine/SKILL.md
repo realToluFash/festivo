@@ -44,17 +44,17 @@ names its role first: `sq <role> tick`, `sq l10n next`, `sq dev2 done 41`.
   role with stories in its queue gets a pick, which lists the queue for the skill to choose
   from:
 
-| Role                        | Woken by                                                                                                    | Heartbeat                      |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `/soirely-product-manager`  | `[pm]`, new in To Do                                                                                        | 2 hours                        |
-| `/soirely-designer`         | `[ux]`, new in Needs Design                                                                                 | 2 hours                        |
-| `/soirely-developer` (×N)   | its tag, new in Failed Code Review, Failed QA, In Progress, Ready For Dev; its PR's checks finish, its pass | 30 minutes, if work is waiting |
-| `/soirely-qa-tester` (×3)   | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA                                                     | 30 minutes, if work is waiting |
-| `/soirely-tech-lead`        | `[lead]`, new in In Review, a push after a pass                                                             | 30 minutes, if work is waiting |
-| `/soirely-business-manager` | `[bm]`, new in Backlog                                                                                      | 12 hours                       |
-| `/soirely-ops`              | `[ops]`, `main` red; its `ops` stories and their PRs, as a developer's                                      | 6 hours                        |
-| `/soirely-linguist`         | `[l10n]`, a translation ticket new in To Do, Failed Code Review, In Progress or Failed QA                   | 2 hours                        |
-| `/soirely-creative`         | `[cd]`                                                                                                      | 24 hours                       |
+| Role                        | Woken by                                                                                                                         | Heartbeat                                             |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `/soirely-product-manager`  | `[pm]`, new in To Do                                                                                                             | 2 hours                                               |
+| `/soirely-designer`         | `[ux]`, new in Needs Design                                                                                                      | 2 hours                                               |
+| `/soirely-developer` (×N)   | its tag, new in Failed Code Review, Failed QA, In Progress, Ready For Dev; its PR's checks finish, its pass                      | 30 minutes, if work is waiting                        |
+| `/soirely-qa-tester` (×3)   | its tag (`[qa]`, `[qa2]`, `[qa3]`), new in Ready For QA                                                                          | 30 minutes, if work is waiting                        |
+| `/soirely-tech-lead`        | `[lead]`, new in In Review, a push after a pass                                                                                  | 30 minutes, if work is waiting                        |
+| `/soirely-business-manager` | `[bm]`, new in Backlog                                                                                                           | 12 hours                                              |
+| `/soirely-ops`              | `[ops]`, `main` red; its `ops` stories and their PRs, as a developer's                                                           | 6 hours                                               |
+| `/soirely-linguist`         | `[l10n]`, a translation ticket new in To Do, Ready For Dev, Failed Code Review, In Progress or Failed QA; its PR's checks finish | 30 minutes, if work is waiting; a sweep every 2 hours |
+| `/soirely-creative`         | `[cd]`                                                                                                                           | 24 hours                                              |
 
 The other roles' queues leave out stories labelled `translation`, which are the linguist's,
 and stories labelled `ops`, which are ops' own infra work.

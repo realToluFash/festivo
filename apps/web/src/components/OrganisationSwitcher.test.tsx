@@ -1,14 +1,17 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RouterProvider, createMemoryRouter } from 'react-router';
+import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router';
 
+import type { WaitingInvitations } from '../invitations.ts';
 import { __setSessionState, adoptAccount } from '../session.ts';
 import { membership } from '../test-memberships.ts';
 import { BREAKS_ANYWHERE } from '../test-wrapping.ts';
 import { routes } from '../routes/index.tsx';
+import { OrganisationSwitcher } from './OrganisationSwitcher.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const OKAFOR = membership({
@@ -181,7 +184,7 @@ describe('switching organisation', () => {
 });
 
 describe('switching away from a paused organisation (sc-564)', () => {
-  it('opens the switcher with nothing marked current, then works in the one chosen', () => {
+  function pausedInLagos(organisations: Membership[]): void {
     const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
       id: 'org_3',
       name: 'Lagos Weddings',
@@ -198,7 +201,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
         needsOrganisation: false,
         hasPassword: true,
         organisation: IRE,
-        organisations: [IRE, OKAFOR],
+        organisations,
         organisationCountry: null,
         timezone: null,
         waitingFor: null,
@@ -222,6 +225,10 @@ describe('switching away from a paused organisation (sc-564)', () => {
       },
     });
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+  }
+
+  it('opens the switcher with nothing marked current, then works in the one chosen', () => {
+    pausedInLagos([IRE, OKAFOR]);
     at('/app');
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
@@ -238,6 +245,17 @@ describe('switching away from a paused organisation (sc-564)', () => {
 
     expect(screen.getByRole('status').textContent).toMatch(/Now working in Ìrè Events\./);
     expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
+  });
+
+  it('with one other organisation, works in it and takes focus to the line that says so', () => {
+    pausedInLagos([IRE]);
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+
+    const switched = screen.getByText('Now working in Ìrè Events.');
+    expect(document.activeElement).toBe(switched.closest('.notice'));
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });
 
@@ -456,7 +474,7 @@ describe('creating an organisation', () => {
 
     fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
     pressCreate();
-    expect(screen.getByLabelText('Organisation name').matches(':disabled')).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>('Organisation name').readOnly).toBe(true);
     expect(screen.getByLabelText('Country').matches(':disabled')).toBe(true);
 
     expect(
@@ -467,6 +485,35 @@ describe('creating an organisation', () => {
     const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
     expect(name.value).toBe('Supper');
     await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+
+  it('keeps focus in Organisation name while it creates after Enter, and there once refused (sc-11588)', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    let answer: (response: Response) => void = () => {};
+    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
+    inOne();
+    openCreate();
+
+    const name = screen.getByLabelText<HTMLInputElement>('Organisation name');
+    fireEvent.change(name, { target: { value: 'Supper' } });
+    name.focus();
+    fireEvent.submit(name);
+
+    await screen.findByRole('button', { name: 'Creating…' });
+    expect(document.activeElement).toBe(name);
+    expect(name.readOnly).toBe(true);
+    expect(name.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.keyDown(name, { key: 'Tab' });
+    expect(document.activeElement).toBe(name);
+
+    answer(problem('internal_error', 500));
+    expect(
+      await screen.findByText(
+        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(name);
+    expect(name.readOnly).toBe(false);
   });
 
   it('sends one request for a double press, then one more after a failure (sc-7497)', async () => {
@@ -748,6 +795,186 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     expect(screen.queryByText('Ìrè Events Kitchen uses Soirely')).toBeNull();
     await waitFor(() =>
       expect(sent.some((request) => request.path === '/api/join-offers/org_3/dismiss')).toBe(true),
+    );
+  });
+});
+
+describe('where focus goes as the switcher closes (sc-11369)', () => {
+  function switcherButton(name = 'Ìrè Events'): HTMLElement {
+    return screen.getByRole('button', { name: new RegExp(`^Organisation: ${name}`) });
+  }
+
+  function quiet(): void {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+  }
+
+  it('puts focus back on its button when closed with Escape', () => {
+    quiet();
+    inTwo();
+    at('/app');
+
+    fireEvent.click(switcherButton());
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(document.activeElement).toBe(switcherButton());
+    expect(switcherButton().getAttribute('aria-label')).toBe(
+      'Organisation: Ìrè Events, your role Owner. Switch organisation',
+    );
+  });
+
+  it('puts focus back on its button when the current organisation is picked', () => {
+    quiet();
+    inTwo();
+    at('/app');
+
+    fireEvent.click(switcherButton());
+    fireEvent.click(screen.getByRole('option', { name: /Ìrè Events/ }));
+
+    expect(document.activeElement).toBe(switcherButton());
+  });
+
+  it('leaves focus where a click outside puts it', () => {
+    quiet();
+    inTwo();
+    at('/app');
+
+    fireEvent.click(switcherButton());
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('puts focus on its button, naming the organisation picked, and still says the switch', async () => {
+    quiet();
+    inTwo();
+    at('/app');
+
+    fireEvent.click(switcherButton());
+    fireEvent.click(screen.getByRole('option', { name: /Okafor Family/ }));
+
+    await waitFor(() => expect(document.activeElement).toBe(switcherButton('Okafor Family')));
+    expect(screen.getByRole('status').textContent).toMatch(/Now working in Okafor Family\./);
+  });
+
+  it('forgets the organisation picked once focus goes elsewhere, as on Keep editing', () => {
+    const waiting = {
+      invitations: [],
+      outcomes: {},
+      firstJoined: null,
+      answer: vi.fn(),
+    } as unknown as WaitingInvitations;
+    const switcher = (current: Membership) => (
+      <MemoryRouter>
+        <OrganisationSwitcher
+          current={current}
+          organisations={[IRE, OKAFOR]}
+          waiting={waiting}
+          onSwitch={() => {}}
+          onCreate={() => {}}
+        />
+        <button type="button">Keep editing</button>
+      </MemoryRouter>
+    );
+    const { rerender } = render(switcher(IRE));
+
+    fireEvent.click(switcherButton());
+    fireEvent.click(screen.getByRole('option', { name: /Okafor Family/ }));
+    const keep = screen.getByRole('button', { name: 'Keep editing' });
+    keep.focus();
+    rerender(switcher(OKAFOR));
+
+    expect(document.activeElement).toBe(keep);
+  });
+});
+
+describe('where focus goes on an offer in the switcher (sc-11369)', () => {
+  function offering(invitations: unknown[] = []) {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+
+      if (path === '/api/join-offers') {
+        return json(
+          {
+            domain: 'ire.events',
+            offers: [{ id: 'org_3', name: 'Ìrè Events Kitchen' }],
+            request: null,
+          },
+          200,
+        );
+      }
+
+      if (path === '/api/join-offers/org_3/ask') {
+        return json(
+          {
+            request: {
+              organisation: { id: 'org_3', name: 'Ìrè Events Kitchen' },
+              askedAt: '2026-10-19T10:00:00+00:00',
+            },
+          },
+          201,
+        );
+      }
+
+      if (path === '/api/join-offers/org_3/dismiss') return new Response(null, { status: 204 });
+
+      return json({ invitations }, 200);
+    });
+  }
+
+  it('takes Ask to join to the waiting line, read once', async () => {
+    offering();
+    inTwo();
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }));
+
+    const line = await screen.findByText('we’ll email folake@ire.events when they answer.', {
+      exact: false,
+    });
+    const asked = line.closest('.org-switcher-offer-asked');
+    await waitFor(() => expect(document.activeElement).toBe(asked));
+    expect(asked?.getAttribute('role')).toBeNull();
+  });
+
+  it('takes Not now to the note under the list when no invitation is waiting', async () => {
+    offering();
+    inTwo();
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByText('Soirely remembers your choice on this device.'),
+    );
+  });
+
+  it('takes Not now to Invitations when one is waiting', async () => {
+    offering([
+      {
+        id: 'inv_1',
+        organisation: { id: 'org_7', name: 'Adunni Weddings' },
+        email: 'folake@ire.events',
+        role: { id: 'role_3', seededAs: 'event_manager', name: null },
+        invitedBy: { name: 'Bisi Adeyemi' },
+        expiresAt: '2026-10-23T09:00:00+00:00',
+        refusal: null,
+        forYou: true,
+        signedInAs: 'folake@ire.events',
+      },
+    ]);
+    inTwo();
+    at('/app');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Switch organisation/ }));
+    await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Not now' }));
+
+    expect(document.activeElement).toBe(
+      within(screen.getByRole('region', { name: 'Invitations' })).getByText('Invitations'),
     );
   });
 });

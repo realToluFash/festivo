@@ -440,6 +440,22 @@ describe('somebody awaiting approval (sc-392)', () => {
     ).toBeNull();
   });
 
+  it('puts focus back on their row under Awaiting approval after ‹ Members (sc-11369)', async () => {
+    signedIn();
+    answering(WAITING_READS);
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: /Ada Okeke/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+
+    expect(document.activeElement).toBe(
+      within(screen.getByRole('region', { name: 'Awaiting approval' })).getByRole('button', {
+        name: /Ada Okeke/,
+      }),
+    );
+  });
+
   it('approves as Read-only unless another role is picked, and says what happened', async () => {
     signedIn();
     const sent = answering({
@@ -461,8 +477,10 @@ describe('somebody awaiting approval (sc-392)', () => {
     fireEvent.click(section.getByRole('radio', { name: /Coordinator/ }));
     fireEvent.click(section.getByRole('button', { name: 'Approve as Coordinator' }));
 
-    const done = await screen.findByRole('status');
-    expect(done.textContent).toContain('Ada Okeke is now a member, as Coordinator.');
+    const done = (await screen.findByText('Ada Okeke is now a member, as Coordinator.')).closest(
+      '.notice',
+    );
+    expect(done).not.toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(done));
     expect(screen.getByRole('button', { name: 'See Ada Okeke' })).toBeDefined();
     expect(sent.find((one) => one.line.endsWith('/approve'))?.body).toEqual({ roleId: 'role_4' });
@@ -519,8 +537,10 @@ describe('somebody awaiting approval (sc-392)', () => {
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(false);
     fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
 
-    const done = await screen.findByRole('status');
-    expect(done.textContent).toContain('Ada Okeke’s request is turned down.');
+    const done = (await screen.findByText(/Ada Okeke’s request is turned down\./)).closest(
+      '.notice',
+    );
+    expect(done).not.toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(done));
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
   });
@@ -584,6 +604,9 @@ describe('inviting somebody', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Invite somebody' }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
 
     expect(screen.getByText('Enter their email address.')).toBeDefined();
@@ -691,7 +714,7 @@ describe('inviting somebody', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
     const save = screen.getByRole('button', { name: 'Pick a different role' });
-    expect(save.hasAttribute('disabled')).toBe(true);
+    expect(save.getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(screen.getByRole('radio', { name: /Read-only/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Change their role to Read-only' }));
 
@@ -715,13 +738,45 @@ describe('inviting somebody', () => {
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Bisi Adeyemi' }),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Remove Bisi Adeyemi?' }),
+    );
     expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
 
+    const removed = (
+      await screen.findByText('Bisi Adeyemi was removed. Their events stay with Ìrè Events.')
+    ).closest('.notice') as HTMLElement;
+    await waitFor(() => expect(document.activeElement).toBe(removed));
+    expect(removed.getAttribute('aria-describedby')).toBe('member-removed-next');
+    fireEvent.blur(removed);
+    expect(removed.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('keeps focus on Remove ‹name› while it runs and once it fails with no connection (sc-11487)', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    const remove = screen.getByRole('button', { name: 'Remove Bisi Adeyemi' });
+    remove.focus();
+    fireEvent.click(remove);
+
+    expect(remove.hasAttribute('disabled')).toBe(false);
+    expect(remove.getAttribute('aria-disabled')).toBe('true');
     expect(
-      await screen.findByText('Bisi Adeyemi was removed. Their events stay with Ìrè Events.'),
+      await screen.findByText(
+        'That did not go through. Nothing was changed. Try again in a moment.',
+      ),
     ).toBeDefined();
+    expect(document.activeElement).toBe(remove);
+    expect(remove.getAttribute('aria-disabled')).toBe('false');
   });
 
   it('says why a domain member is suspended, when they go, and refuses Restore in the server words', async () => {
@@ -1107,6 +1162,119 @@ describe('inviting somebody', () => {
     expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
   });
 
+  describe('a member whose role holds a permission the viewer lacks (sc-11160)', () => {
+    const FINANCE = { id: 'role_9', seededAs: null, name: 'Finance' };
+    const BEYOND =
+      'Their role holds a permission yours does not, so you cannot change their role or remove them.';
+    const withFinance = {
+      ...ROLES,
+      roles: [
+        ...ROLES.roles,
+        { ...role('role_9', 'custom', ['billing.manage']), seededAs: null, name: 'Finance' },
+      ],
+    };
+
+    function viewing(bisi: ReturnType<typeof member>, held = FINANCE): void {
+      signedIn(ADMINISTRATOR);
+      answering({
+        'GET /api/orgs/org_1/members': () => json(listWith(member({ ...bisi, role: held }))),
+        'GET /api/orgs/org_1/roles': () => json(withFinance),
+      });
+      open();
+    }
+
+    it("fixes an active member's role, with the line and no actions", async () => {
+      viewing(ACTIVE_BISI);
+
+      fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+      const card = screen.getByRole('region', { name: 'Role' });
+      expect(within(card).getByText('Finance')).toBeDefined();
+      expect(within(card).getByText(BEYOND)).toBeDefined();
+      expect(within(card).queryByRole('radio')).toBeNull();
+      expect(within(card).queryByRole('button')).toBeNull();
+      expect(within(card).queryByRole('link')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Suspend' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+      expect(screen.queryByText(/Only an owner can change/)).toBeNull();
+    });
+
+    it("puts the line in place of a suspended member's buttons, and none under the role", async () => {
+      viewing(SUSPENDED_BISI);
+
+      fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+      expect(screen.getAllByText(BEYOND)).toHaveLength(1);
+      expect(
+        within(
+          screen.getByRole('region', { name: 'Access for Bisi Adeyemi is suspended' }),
+        ).getByText(BEYOND),
+      ).toBeDefined();
+      const card = screen.getByRole('region', { name: 'Role' });
+      expect(within(card).queryByText(BEYOND)).toBeNull();
+      expect(within(card).queryByText(/Their role is kept while/)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Restore access' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Remove Bisi Adeyemi' })).toBeNull();
+      expect(screen.queryByText(/Restore access returns them/)).toBeNull();
+    });
+
+    it('puts the line in place of the buttons for a member suspended through the company domain', async () => {
+      viewing(
+        member({
+          ...ACTIVE_BISI,
+          status: 'suspended',
+          channel: 'domain',
+          suspension: {
+            reason: 'address_gone',
+            domain: 'ire.events',
+            since: { at: '2026-10-17T13:20:00+00:00', written: 'Saturday, Oct 17 at 14:20 WAT' },
+            removesAt: { at: '2026-11-16T13:20:00+00:00', written: 'Monday, Nov 16 at 14:20 WAT' },
+            onlyOwner: false,
+          },
+        }),
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+      const card = screen.getByRole('region', { name: /Suspended: company domain/ });
+      expect(within(card).getByText(BEYOND)).toBeDefined();
+      expect(
+        within(card).getByText(
+          'If nobody answers by Monday, Nov 16 at 14:20 WAT, they are removed.',
+        ),
+      ).toBeDefined();
+      expect(screen.getAllByText(BEYOND)).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Remove from Ìrè Events' })).toBeNull();
+    });
+
+    it('offers the picker for a role the loaded catalogue lacks, and leaves the refusal to the API', async () => {
+      viewing(ACTIVE_BISI, { id: 'role_10', seededAs: null, name: 'Door team' });
+
+      fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+      expect(screen.queryByText(BEYOND)).toBeNull();
+      const radio = screen.getByRole('radio', { name: /Door team/ });
+      expect((radio as HTMLInputElement).checked).toBe(true);
+      expect(screen.getByRole('button', { name: 'Remove from Ìrè Events' })).toBeDefined();
+    });
+
+    it('lets an owner change the same member as today', async () => {
+      signedIn();
+      answering({
+        'GET /api/orgs/org_1/members': () =>
+          json(listWith(member({ ...ACTIVE_BISI, role: FINANCE }))),
+        'GET /api/orgs/org_1/roles': () => json(withFinance),
+      });
+      open();
+
+      fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+      expect(screen.queryByText(BEYOND)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Remove from Ìrè Events' })).toBeDefined();
+    });
+  });
+
   it('shows a suspended member read-only, removal date included, to a viewer who cannot manage members', async () => {
     signedIn(membership({ permissions: ['members.read', 'events.read'] }));
     answering({
@@ -1229,6 +1397,45 @@ describe('suspending and restoring a member', () => {
     expect(screen.getByText(/Their role is kept while they're suspended/)).toBeDefined();
   });
 
+  it('keeps focus on Suspend ‹name› while it runs and once it fails with no connection (sc-11487)', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    const suspend = screen.getByRole('button', { name: 'Suspend Bisi Adeyemi' });
+    suspend.focus();
+    fireEvent.click(suspend);
+
+    expect(suspend.hasAttribute('disabled')).toBe(false);
+    expect(
+      await screen.findByText(
+        'That did not go through. Nothing was changed. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(suspend);
+  });
+
+  it('leaves focus where it went while Suspend ‹name› runs, once it fails (sc-11487)', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend Bisi Adeyemi' }));
+    const keep = screen.getByRole('button', { name: 'Keep Bisi Adeyemi' });
+    keep.focus();
+
+    expect(
+      await screen.findByText(
+        'That did not go through. Nothing was changed. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(keep);
+  });
+
   it('offers no Suspend on your own detail, and says why on an owner', async () => {
     signedIn();
     answering({
@@ -1300,6 +1507,9 @@ describe('suspending and restoring a member', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
 
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Remove Bisi Adeyemi?' }),
+    );
     expect(
       screen.getByText(
         'Removing Bisi Adeyemi ends their membership of Ìrè Events. Their events stay with Ìrè Events.',
@@ -1349,9 +1559,9 @@ describe('suspending and restoring a member', () => {
       expect(screen.getByText("Suspended members don't take a seat.")).toBeDefined();
       expect(screen.getByRole('button', { name: 'Open Members ›' })).toBeDefined();
       expect(screen.queryByRole('link', { name: 'Change the plan ›' })).toBeNull();
-      expect(screen.getByRole('button', { name: 'Restore access' }).hasAttribute('disabled')).toBe(
-        false,
-      );
+      expect(
+        screen.getByRole('button', { name: 'Restore access' }).getAttribute('aria-disabled'),
+      ).toBe('false');
       view.unmount();
       vi.restoreAllMocks();
     }
@@ -1383,6 +1593,66 @@ describe('suspending and restoring a member', () => {
       ),
     ).toBeDefined();
     expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();
+  });
+
+  it('offers no role change on a member suspended through the company domain (sc-9549)', async () => {
+    const suspended = {
+      ...LIST,
+      members: [
+        LIST.members[0],
+        {
+          ...LIST.members[1],
+          status: 'suspended',
+          channel: 'domain',
+          suspension: {
+            reason: 'domain_closed',
+            domain: 'ire.events',
+            since: { at: '2026-10-17T13:20:00+00:00', written: 'Saturday, Oct 17 at 14:20 WAT' },
+            removesAt: { at: '2026-11-16T13:20:00+00:00', written: 'Monday, Nov 16 at 14:20 WAT' },
+            onlyOwner: false,
+          },
+        },
+      ],
+      invitations: [],
+    };
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(suspended) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+
+    expect(screen.getByText(/Their role is kept while they're suspended/)).toBeDefined();
+    expect(screen.queryByRole('radio')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Pick a different role' })).toBeNull();
+  });
+
+  it('reloads and says why when a role change meets a member suspended meanwhile (sc-9549)', async () => {
+    signedIn();
+    let reloaded = false;
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () => json(listWith(reloaded ? SUSPENDED_BISI : ACTIVE_BISI)),
+      'PATCH /api/orgs/org_1/members/m_bisi': () => {
+        reloaded = true;
+        return json(
+          { type: 'https://soirely.com/errors/conflict', title: 'Conflict', status: 409 },
+          409,
+        );
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('radio', { name: /Read-only/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Change their role to Read-only' }));
+
+    expect(
+      await screen.findByText(
+        "Someone else changed the access for Bisi Adeyemi while this page was open, so your change wasn't made. This is how it stands now.",
+      ),
+    ).toBeDefined();
+    expect(await screen.findByRole('button', { name: 'Restore access' })).toBeDefined();
+    expect(screen.queryByRole('radio')).toBeNull();
   });
 });
 
@@ -1479,5 +1749,228 @@ describe('the dates the server wrote after a language change (sc-9267)', () => {
       ),
     ).toBeDefined();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('where focus goes once a click on Members is answered (sc-11369)', () => {
+  it('puts focus back on Invite somebody after Cancel or ‹ Members', async () => {
+    signedIn();
+    answering(READS);
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite somebody' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite somebody' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite somebody' }));
+  });
+
+  it('puts focus back on the Invite again that opened Invite somebody', async () => {
+    signedIn();
+    answering(READS);
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite again' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Invite again' }));
+  });
+
+  it('takes focus to the sent line after Send invitation, read once', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'POST /api/orgs/org_1/members/invite': () =>
+        json(
+          { invitation: { ...LIST.invitations[0], id: 'inv_3', email: 'amara.o@gmail.com' } },
+          201,
+        ),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Invite somebody' }));
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'amara.o@gmail.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send invitation' }));
+
+    const sent = await screen.findByText('Invitation sent to amara.o@gmail.com.');
+    await waitFor(() => expect(document.activeElement).toBe(sent.closest('.notice')));
+    expect(sent.closest('[role="status"]')).toBeNull();
+  });
+
+  it('puts focus on Invite again in the row a Revoke changed', async () => {
+    signedIn();
+    answering({
+      ...READS,
+      'DELETE /api/orgs/org_1/invitations/inv_1': () =>
+        json({
+          invitation: {
+            ...LIST.invitations[0],
+            status: 'revoked',
+            revokedAt: '2026-10-11T09:00:00+00:00',
+          },
+        }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Revoke' }));
+
+    const row = (await screen.findByText('Sent Saturday, Oct 10 · revoked Sunday, Oct 11')).closest(
+      '.members-invitation',
+    ) as HTMLElement;
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(row).getByRole('button', { name: 'Invite again' }),
+      ),
+    );
+  });
+
+  it('puts focus back on Suspend and on Remove from ‹organisation› after Keep ‹name›', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Suspend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep Bisi Adeyemi' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Suspend' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep Bisi Adeyemi' }));
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Remove from Ìrè Events' }),
+    );
+  });
+
+  it('puts focus back on Remove ‹name› after Keep them suspended', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(SUSPENDED_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep them suspended' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }),
+    );
+  });
+
+  it("puts focus on the person's row after ‹ Members, or on Members when their row is not listed", async () => {
+    signedIn();
+    answering(READS);
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Bisi Adeyemi/ }));
+    expect(screen.getByRole('button', { name: /^All/ }).getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Former/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Chidi Okoro/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Members' }));
+  });
+
+  it('takes focus to the removed notice, then Back to Members to Members', async () => {
+    signedIn();
+    let removed = false;
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json(listWith(removed ? { ...ACTIVE_BISI, status: 'left_or_removed' } : ACTIVE_BISI)),
+      'DELETE /api/orgs/org_1/members/m_bisi': () => {
+        removed = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from Ìrè Events' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
+
+    const line = await screen.findByText(
+      'Bisi Adeyemi was removed. Their events stay with Ìrè Events.',
+    );
+    const notice = line.closest('.notice') as HTMLElement;
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice.getAttribute('role')).toBeNull();
+    expect(
+      document.getElementById(notice.getAttribute('aria-describedby') ?? '')?.textContent,
+    ).toBe('They are listed under Former in Members, with everything they did kept.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Members' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Members' }));
+  });
+
+  it('takes focus to the restored line after Restore on a company-domain suspension', async () => {
+    const suspended = {
+      ...LIST.members[1],
+      channel: 'domain',
+      suspension: {
+        reason: 'address_gone',
+        domain: 'ire.events',
+        since: { at: '2026-10-17T13:20:00+00:00', written: 'Saturday, Oct 17 at 14:20 WAT' },
+        removesAt: { at: '2026-11-16T13:20:00+00:00', written: 'Monday, Nov 16 at 14:20 WAT' },
+      },
+    };
+    signedIn();
+    answering({
+      ...READS,
+      'GET /api/orgs/org_1/members': () =>
+        json({ members: [LIST.members[0], suspended], invitations: [] }),
+      'POST /api/orgs/org_1/members/m_bisi/restore': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Bisi Adeyemi/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+
+    const line = await screen.findByText("Bisi Adeyemi's access to Ìrè Events is restored.");
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice')));
+    expect(line.closest('[role="status"]')).toBeNull();
+  });
+
+  it('puts focus on the first person after Show everyone', async () => {
+    signedIn();
+    answering({ ...READS, 'GET /api/orgs/org_1/members': () => json(listWith(ACTIVE_BISI)) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Suspended/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show everyone' }));
+
+    expect(document.activeElement).toBe(
+      screen.getAllByRole('button', { name: /Folake Adeyemi/ })[0],
+    );
+  });
+
+  it('puts focus on Members after Try again, or on the line once it fails again', async () => {
+    signedIn();
+    let reads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const path = new URL(String(input)).pathname;
+      if (path === '/api/orgs/org_1/roles') return json(ROLES);
+      if (path !== '/api/orgs/org_1/members') throw new TypeError('Failed to fetch');
+      reads += 1;
+      if (reads < 3) throw new TypeError('Failed to fetch');
+
+      return json(LIST);
+    });
+    open();
+
+    const failed = 'We could not load the members. Check your connection and try again.';
+    expect(await screen.findByText(failed)).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const again = await screen.findByText(failed);
+    await waitFor(() => expect(document.activeElement).toBe(again));
+    expect(again.closest('[role="alert"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Members' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
   });
 });

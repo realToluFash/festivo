@@ -7,9 +7,8 @@ import {
   ownerClaimView,
 } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
-import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Modal, Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -17,9 +16,14 @@ import { useShownLanguage } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useComeForward, useOpenerInSight } from './comeForward.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
+import { readOut } from './ReadOut.tsx';
+import { type ScreenReaderTarget } from './screenReaderFocus.ts';
 import { useBroughtIntoView } from './Screen.tsx';
+import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
 const TONES: Record<OwnerClaimView['tone'], { tone: NoticeTone; mark: string }> = {
@@ -29,7 +33,10 @@ const TONES: Record<OwnerClaimView['tone'], { tone: NoticeTone; mark: string }> 
   info: { tone: 'quiet', mark: tokens.marks.info.glyph },
 };
 
-type Load = { kind: 'loading' } | { kind: 'loaded'; banner: Banner | null } | { kind: 'failed' };
+type Load =
+  | { kind: 'loading' }
+  | { kind: 'loaded'; banner: Banner | null; tapped?: object }
+  | { kind: 'failed' };
 
 /** The top of Members while the organisation has no active Owner (sc-6640); nothing for anybody it is not shown to. */
 export function OwnerClaimBanner({
@@ -47,6 +54,7 @@ export function OwnerClaimBanner({
   const [withdrew, setWithdrew] = useState<{ told: boolean } | null>(null);
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
+  const reloadAnswers = useRef(false);
 
   useEffect(() => {
     let current = true;
@@ -56,7 +64,9 @@ export function OwnerClaimBanner({
       (banner) => {
         if (!current) return;
         loadedFor.current = organisationId;
-        setLoad({ kind: 'loaded', banner });
+        const tapped = reloadAnswers.current ? {} : undefined;
+        reloadAnswers.current = false;
+        setLoad({ kind: 'loaded', banner, ...(tapped != null && { tapped }) });
       },
       () =>
         current &&
@@ -90,15 +100,17 @@ export function OwnerClaimBanner({
         organisationId={organisationId}
         organisation={organisation}
         banner={load.banner}
+        answer={load.tapped}
         onBanner={(banner) => {
           setWithdrew(null);
-          setLoad({ kind: 'loaded', banner });
+          setLoad({ kind: 'loaded', banner, tapped: {} });
         }}
         onWithdrawn={(banner, told) => {
           setWithdrew({ told });
           setLoad({ kind: 'loaded', banner });
         }}
-        onReload={() => {
+        onReload={(answers = false) => {
+          reloadAnswers.current = answers;
           setWithdrew(null);
           setLoad({ kind: 'loading' });
           setAttempt((n) => n + 1);
@@ -112,25 +124,26 @@ export function OwnerClaimBanner({
 function Withdrew({ told }: { told: boolean }) {
   const { t } = useTranslation();
   const words = t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew');
-  const shown = useBroughtIntoView(words);
+  const { shown, read } = useBroughtIntoView();
 
   return (
-    <View ref={shown} accessible testID="ownerClaim.withdrew">
-      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} />
+    <View ref={shown} testID="ownerClaim.withdrew">
+      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} wordsRef={read} />
     </View>
   );
 }
 
 function WithdrawRefused({ words, onReload }: { words: string; onReload: () => void }) {
   const { t } = useTranslation();
-  const shown = useBroughtIntoView(words);
+  const { shown, read } = useBroughtIntoView();
 
   return (
-    <View ref={shown} accessible testID="ownerClaim.withdrawRefused">
+    <View ref={shown} testID="ownerClaim.withdrawRefused">
       <Notice
         tone="broken"
         mark="✕"
         body={words}
+        wordsRef={read}
         action={{ label: t('ownerClaim.reload'), onPress: onReload, testID: 'ownerClaim.reload' }}
       />
     </View>
@@ -142,6 +155,7 @@ function OwnerClaimCard({
   organisationId,
   organisation,
   banner,
+  answer,
   onBanner,
   onWithdrawn,
   onReload,
@@ -150,9 +164,12 @@ function OwnerClaimCard({
   organisationId: string;
   organisation: string;
   banner: Banner;
+  /** The tap this banner answers: its title takes screen reader focus as it shows. */
+  answer: object | undefined;
   onBanner: (banner: Banner | null) => void;
   onWithdrawn: (banner: Banner | null, told: boolean) => void;
-  onReload: () => void;
+  /** `answers`: the banner it reloads to answers the tap, so its title takes focus. */
+  onReload: (answers?: boolean) => void;
 }) {
   const { t } = useTranslation();
   const view = ownerClaimView(banner, organisation);
@@ -162,7 +179,10 @@ function OwnerClaimCard({
   const [confirming, setConfirming] = useState(false);
   const [stopEnded, setStopEnded] = useState(false);
   const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
+  const withdrawButton = useRef<View>(null);
+  const withdrawOpener = useOpenerInSight(withdrawButton);
   const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
+  const comeForward = useComeForward();
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
   const { tone, mark } = TONES[view.tone];
 
@@ -177,7 +197,7 @@ function OwnerClaimCard({
         error instanceof ApiError &&
         (error.is('owner_claim_open') || error.is('owner_claim_closed'))
       ) {
-        onReload();
+        onReload(true);
 
         return;
       }
@@ -192,6 +212,8 @@ function OwnerClaimCard({
         setRefusal(t(key, { domain: banner.domain }));
       }
       setBusy(false);
+    } finally {
+      comeForward();
     }
   }
 
@@ -211,6 +233,8 @@ function OwnerClaimCard({
       setNotFound(true);
     } catch {
       onReload();
+    } finally {
+      comeForward();
     }
 
     setBusy(false);
@@ -232,6 +256,8 @@ function OwnerClaimCard({
 
       setRefusal(t('ownerClaim.failed'));
       setBusy(false);
+    } finally {
+      comeForward();
     }
   }
 
@@ -251,12 +277,21 @@ function OwnerClaimCard({
       } else {
         setRefusal(t('ownerClaim.failed'));
       }
+    } finally {
+      comeForward();
     }
   }
 
   return (
     <View style={[cardFrame(kind), styles.card]} testID="ownerClaim.banner">
-      <Notice tone={tone} mark={mark} title={words(view.title)} heading />
+      <Notice
+        tone={tone}
+        mark={mark}
+        title={words(view.title)}
+        heading
+        answer={answer}
+        takesFocus
+      />
       {view.lines.map((line) => (
         <Text key={line.key} size={tokens.typeBodyPhone.size}>
           {words(line)}
@@ -285,6 +320,7 @@ function OwnerClaimCard({
         <SecondaryButton
           label={t('ownerClaim.withdraw')}
           onPress={() => setWithdrawing('asking')}
+          ref={withdrawButton}
           testID="ownerClaim.withdraw"
         />
       )}
@@ -292,13 +328,16 @@ function OwnerClaimCard({
       <WithdrawConfirm
         open={withdrawing != null}
         phone={kind === 'phone'}
+        opener={withdrawOpener}
         organisation={organisation}
         pending={withdrawing === 'pending'}
         onWithdraw={() => void withdraw()}
         onKeep={() => setWithdrawing(null)}
       />
 
-      {withdrawRefused != null && <WithdrawRefused words={withdrawRefused} onReload={onReload} />}
+      {withdrawRefused != null && (
+        <WithdrawRefused words={withdrawRefused} onReload={() => onReload()} />
+      )}
 
       {view.become && (
         <PrimaryButton
@@ -332,7 +371,11 @@ function OwnerClaimCard({
           tone="broken"
           mark="✕"
           body={t('ownerClaim.stopEnded')}
-          action={{ label: t('ownerClaim.reload'), onPress: onReload, testID: 'ownerClaim.reload' }}
+          action={{
+            label: t('ownerClaim.reload'),
+            onPress: () => onReload(),
+            testID: 'ownerClaim.reload',
+          }}
           announce
         />
       )}
@@ -363,9 +406,9 @@ function StopConfirm({
 
   return (
     <View style={styles.confirm}>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer="confirming">
         {t('ownerClaim.stopConfirm', { claimant })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size}>{t('ownerClaim.stopBody', { organisation })}</Text>
       <View style={styles.actions}>
         <PrimaryButton
@@ -388,6 +431,7 @@ function StopConfirm({
 function WithdrawConfirm({
   open,
   phone,
+  opener,
   organisation,
   pending,
   onWithdraw,
@@ -395,79 +439,62 @@ function WithdrawConfirm({
 }: {
   open: boolean;
   phone: boolean;
+  opener: RefObject<ScreenReaderTarget | null>;
   organisation: string;
   pending: boolean;
   onWithdraw: () => void;
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const unlessPending = (act: () => void) => () => !pending && act();
 
   return (
-    <Modal
-      visible={open}
-      transparent
-      animationType={phone ? 'slide' : 'fade'}
-      onRequestClose={unlessPending(onKeep)}
+    <Sheet
+      open={open}
+      onClose={unlessPending(onKeep)}
+      opener={opener}
+      testID="ownerClaim.withdrawConfirm"
     >
-      <View
-        style={[
-          styles.scrim,
-          phone ? styles.scrimPhone : styles.scrimTablet,
-          { backgroundColor: phone ? tokens.scrimSheet : tokens.scrimDialog },
-        ]}
-      >
-        <View
-          style={[
-            styles.sheet,
-            phone ? styles.sheetPhone : styles.sheetTablet,
-            phone && { paddingBottom: tokens.space3xl + insets.bottom },
-          ]}
-          accessibilityViewIsModal
-          testID="ownerClaim.withdrawConfirm"
+      <View style={styles.withdraw}>
+        <Pressable
+          style={styles.close}
+          onPress={unlessPending(onKeep)}
+          accessibilityRole="button"
+          accessibilityLabel={t('ownerClaim.close')}
+          accessibilityState={{ disabled: pending }}
+          testID="ownerClaim.withdrawClose"
         >
-          {phone && <View style={styles.grabber} />}
-          <Pressable
-            style={styles.close}
+          <Text size={tokens.typeButton.size} muted>
+            ✕
+          </Text>
+        </Pressable>
+        <Text
+          size={tokens.typeTitleSection.size}
+          weight="bold"
+          accessibilityRole="header"
+          style={styles.clearOfClose}
+        >
+          {t('ownerClaim.withdrawTitle')}
+        </Text>
+        <Text size={tokens.typeBodyPhone.size}>
+          {t('ownerClaim.withdrawBody', { organisation })}
+        </Text>
+        <View style={phone ? styles.stacked : styles.actions}>
+          <PrimaryButton
+            label={pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
+            onPress={onWithdraw}
+            busy={pending}
+            testID="ownerClaim.withdrawYes"
+          />
+          <SecondaryButton
+            label={t('ownerClaim.withdrawNo')}
             onPress={unlessPending(onKeep)}
-            accessibilityRole="button"
-            accessibilityLabel={t('ownerClaim.close')}
-            accessibilityState={{ disabled: pending }}
-            testID="ownerClaim.withdrawClose"
-          >
-            <Text size={tokens.typeButton.size} muted>
-              ✕
-            </Text>
-          </Pressable>
-          <Text
-            size={tokens.typeTitleSection.size}
-            weight="bold"
-            accessibilityRole="header"
-            style={styles.clearOfClose}
-          >
-            {t('ownerClaim.withdrawTitle')}
-          </Text>
-          <Text size={tokens.typeBodyPhone.size}>
-            {t('ownerClaim.withdrawBody', { organisation })}
-          </Text>
-          <View style={phone ? styles.stacked : styles.actions}>
-            <PrimaryButton
-              label={pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
-              onPress={onWithdraw}
-              busy={pending}
-              testID="ownerClaim.withdrawYes"
-            />
-            <SecondaryButton
-              label={t('ownerClaim.withdrawNo')}
-              onPress={unlessPending(onKeep)}
-              off={pending}
-              testID="ownerClaim.withdrawNo"
-            />
-          </View>
+            off={pending}
+            testID="ownerClaim.withdrawNo"
+          />
         </View>
       </View>
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -484,7 +511,7 @@ function RecordPanel({ record }: { record: NonNullable<OwnerClaim['record']> }) 
     try {
       await setStringAsync(text);
       setCopied(field);
-      AccessibilityInfo.announceForAccessibility(t(`ownerClaim.${field}Copied`));
+      readOut(t(`ownerClaim.${field}Copied`));
     } catch {
       setCopied(null);
     }
@@ -614,34 +641,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusInset,
   },
   recordRow: { gap: tokens.spaceXxs },
-  scrim: { flex: 1 },
-  scrimPhone: { justifyContent: 'flex-end' },
-  scrimTablet: { justifyContent: 'center', padding: tokens.spaceXxl },
-  sheet: {
-    gap: tokens.spaceLg,
-    padding: tokens.space3xl,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  sheetPhone: {
-    borderBottomWidth: 0,
-    borderTopLeftRadius: tokens.radiusSheet,
-    borderTopRightRadius: tokens.radiusSheet,
-  },
-  sheetTablet: {
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 480,
-    borderRadius: tokens.radiusCardLarge,
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 36,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: tokens.colorBorder,
-  },
+  withdraw: { gap: tokens.spaceLg, padding: tokens.space3xl },
   close: {
     position: 'absolute',
     zIndex: 1,

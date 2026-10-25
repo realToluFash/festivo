@@ -13,6 +13,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
@@ -117,6 +118,8 @@ export function qaConfig(tester = 1) {
     emulators,
     emulatorPort,
     chromePort: 9221 + tester,
+    // Maestro's iOS driver answers every run on its port; 22087, its default, is left to a run by hand.
+    driverPort: 22087 + tester,
   };
 }
 
@@ -202,6 +205,68 @@ export function androidSdk(env = process.env, platform = process.platform, home 
     env.ANDROID_SDK_ROOT ??
     join(home, platform === 'darwin' ? 'Library/Android/sdk' : 'Android/Sdk')
   );
+}
+
+// The system image and the release APK both read this: an APK for another ABI is refused on install.
+export function emulatorAbi(arch = process.arch) {
+  return arch === 'arm64' ? 'arm64-v8a' : 'x86_64';
+}
+
+export function androidPackage(appConfig) {
+  const id = /android:\s*\{\s*package:\s*'([^']+)'/.exec(appConfig)?.[1];
+  if (!id) throw new Error('no android.package in apps/mobile/app.config.ts');
+  return id;
+}
+
+export function releaseApk(root, sha) {
+  return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
+}
+
+export function staleApks(names, apk) {
+  return names.filter((name) => /^soirely-[0-9a-f]{12}\.apk$/.test(name) && name !== basename(apk));
+}
+
+export function defaultNetwork(dump) {
+  const network = /^Active default network: (\S+)/m.exec(dump)?.[1];
+  if (!network) throw new Error('dumpsys connectivity names no default network');
+  return network === 'none' ? null : network;
+}
+
+// A release build refuses http, and a QA stack serves nothing else.
+export function allowCleartext(manifest) {
+  const decided = /android:usesCleartextTraffic="([^"]*)"/.exec(manifest)?.[1];
+  if (decided === 'true') return manifest;
+  if (decided !== undefined) {
+    throw new Error(`the manifest sets usesCleartextTraffic="${decided}": the QA stack is http`);
+  }
+  if (!manifest.includes('<application ')) throw new Error('no <application> in the manifest');
+  return manifest.replace('<application ', '<application android:usesCleartextTraffic="true" ');
+}
+
+// statSync follows a symlinked image directory, which a Dirent would report as a file.
+const directoriesIn = (path) =>
+  existsSync(path)
+    ? readdirSync(path).filter((name) =>
+        statSync(join(path, name), { throwIfNoEntry: false })?.isDirectory(),
+      )
+    : [];
+
+// Only a Play image carries TalkBack, and a host may have any released version of one.
+export function playImage(sdk, arch = process.arch) {
+  const abi = emulatorAbi(arch);
+  const root = join(sdk, 'system-images');
+  const installed = directoriesIn(root)
+    .map((version) => ({ version, api: Number.parseFloat(version.replace('android-', '')) }))
+    .filter(({ api }) => Number.isFinite(api))
+    .flatMap(({ version, api }) =>
+      directoriesIn(join(root, version))
+        .filter((tag) => tag.startsWith('google_apis_playstore'))
+        .filter((tag) => existsSync(join(root, version, tag, abi)))
+        .map((tag) => ({ version, tag, api })),
+    );
+  installed.sort((a, b) => b.api - a.api || a.tag.length - b.tag.length);
+  const { version, tag } = installed[0] ?? { version: 'android-35', tag: 'google_apis_playstore' };
+  return `system-images;${version};${tag};${abi}`;
 }
 
 export function expoSdkMajor(expoRange) {
@@ -398,7 +463,7 @@ function createEmulators() {
     console.log(`  no Android SDK command-line tools in ${tools.sdk}`);
     return;
   }
-  const image = `system-images;android-35;google_apis_playstore;${process.arch === 'arm64' ? 'arm64-v8a' : 'x86_64'}`;
+  const image = playImage(tools.sdk);
   const existing = (capture(tools.emulator, ['-list-avds'], { env: tools.env }) ?? '').split('\n');
   for (const avd of Object.values(CONFIG.emulators)) {
     if (existing.includes(avd.name)) {
@@ -412,7 +477,7 @@ function createEmulators() {
     );
     console.log(
       created.status === 0
-        ? `  ${avd.name}: created in ${tools.vars.ANDROID_AVD_HOME}`
+        ? `  ${avd.name}: created on ${image} in ${tools.vars.ANDROID_AVD_HOME}`
         : `  ${avd.name}: could not create one. Is the image installed? sdkmanager "${image}"`,
     );
   }
@@ -640,6 +705,8 @@ async function startBundler(root, env = process.env) {
   return metro;
 }
 
+const LAUNCH_RECORDING = '/sdcard/soirely-launch.mp4';
+
 function emulatorSerial() {
   return `emulator-${CONFIG.emulatorPort}`;
 }
@@ -792,6 +859,8 @@ async function android(args) {
 
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
+  removeRelease(tools, root);
+  airplaneMode(tools, false);
   const fresh = await ensureAndroidExpoGo(tools, root);
   for (const port of reversedPorts(CONFIG.ports)) {
     adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
@@ -826,6 +895,140 @@ function link(args) {
   run(tools.adb, ['-s', emulatorSerial(), ...intent], { env: tools.env });
 }
 
+// The bundle and fonts inside, so the app runs without Metro, offline from first launch.
+function buildRelease(tools, root, apk) {
+  const mobile = join(root, 'apps/mobile');
+  const env = { ...tools.env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
+
+  // prebuild rewrites the start scripts in package.json to expo run:*, a change nobody asked for.
+  const pkg = join(mobile, 'package.json');
+  const scripts = readFileSync(pkg, 'utf8');
+  try {
+    run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install', '--clean'], {
+      cwd: mobile,
+      env,
+    });
+  } finally {
+    writeFileSync(pkg, scripts);
+  }
+  const manifest = join(mobile, 'android/app/src/main/AndroidManifest.xml');
+  writeFileSync(manifest, allowCleartext(readFileSync(manifest, 'utf8')));
+
+  const [command, args] = capped('10G', './gradlew', [
+    'assembleRelease',
+    '--no-daemon',
+    '--max-workers=4',
+    `-PreactNativeArchitectures=${emulatorAbi()}`,
+    '-Dorg.gradle.jvmargs=-Xmx4g',
+  ]);
+  run(command, args, { cwd: join(mobile, 'android'), env: { ...env, NODE_ENV: 'production' } });
+
+  mkdirSync(dirname(apk), { recursive: true });
+  copyFileSync(join(mobile, 'android/app/build/outputs/apk/release/app-release.apk'), apk);
+  rmSync(join(mobile, 'android'), { recursive: true, force: true });
+  for (const name of staleApks(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
+}
+
+function airplaneMode(tools, on) {
+  adbOut(tools, ['shell', 'cmd', 'connectivity', 'airplane-mode', on ? 'enable' : 'disable']);
+}
+
+// Airplane mode returns once the setting is written; Wi-Fi and the modem drop afterwards.
+async function waitOffline(tools) {
+  for (let i = 0; i < 20; i++) {
+    const dump = adbOut(tools, ['shell', 'dumpsys', 'connectivity']);
+    if (dump && defaultNetwork(dump) === null) return;
+    await pause(500);
+  }
+  throw new Error('the emulator still has a network ten seconds after airplane mode went on');
+}
+
+function installedRelease(root) {
+  return join(root, '.qa/release/installed');
+}
+
+// It owns soirely://; the package is read from the record, as this harness copy predates the config.
+// The record stays: the build is on one AVD, and an uninstall on another finds nothing.
+function removeRelease(tools, root) {
+  const recorded = installedRelease(root);
+  if (!existsSync(recorded)) return;
+  adbOut(tools, ['uninstall', readFileSync(recorded, 'utf8').trim()]);
+}
+
+function recordLaunch(tools) {
+  const recorder = spawn(
+    tools.adb,
+    ['-s', emulatorSerial(), 'shell', 'screenrecord', '--time-limit', '15', LAUNCH_RECORDING],
+    { stdio: 'ignore', env: tools.env },
+  );
+  return new Promise((done) => {
+    recorder.on('error', () => done());
+    recorder.on('exit', () => done());
+  });
+}
+
+async function release(args) {
+  const tools = androidTools();
+  if (!existsSync(tools.emulator)) {
+    throw new Error(`no Android emulator in ${tools.sdk}: set ANDROID_HOME`);
+  }
+  const root = qaWorktree();
+  assertQaStack(root);
+  if (git(['status', '--porcelain', '--untracked-files=no'], root) !== '') {
+    throw new Error(`${root} has uncommitted changes: a release build names one commit`);
+  }
+  const sha = git(['rev-parse', 'HEAD'], root);
+  const subject = git(['log', '-1', '--format=%s', sha], root);
+  const onMain =
+    spawnSync('git', ['merge-base', '--is-ancestor', sha, 'origin/main'], {
+      cwd: root,
+    }).status === 0;
+  const { open } = emulatorFor(args);
+  const offline = args.includes('--offline');
+
+  step(`A release build of ${sha.slice(0, 12)} (${subject})`);
+  if (!onMain) console.log('  not on origin/main: this is a branch build');
+  const apk = releaseApk(root, sha);
+  if (existsSync(apk) && !args.includes('--rebuild')) {
+    console.log(`  already built: ${apk}`);
+  } else {
+    buildRelease(tools, root, apk);
+  }
+
+  step(`The ${open}`);
+  await bootEmulator(tools, CONFIG.emulators[open].name);
+  // A fresh install every time, so the launch below is the app's first, with no cache.
+  const id = androidPackage(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  removeRelease(tools, root);
+  adbOut(tools, ['uninstall', id]);
+  run(tools.adb, ['-s', emulatorSerial(), 'install', apk], { env: tools.env });
+  writeFileSync(installedRelease(root), id);
+  airplaneMode(tools, offline);
+  if (offline) {
+    adbOut(tools, ['reverse', '--remove-all']);
+    await waitOffline(tools);
+  } else {
+    for (const port of reversedPorts(CONFIG.ports)) {
+      adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
+    }
+  }
+
+  const recording = recordLaunch(tools);
+  await pause(1000);
+  adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
+  await recording;
+  const video = join(root, '.qa/release', `launch-${sha.slice(0, 12)}.mp4`);
+  rmSync(video, { force: true });
+  adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
+  adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
+  console.log(
+    `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
+      ` (${emulatorSerial()}), ${offline ? 'offline: no default network, no stack' : 'online'}.` +
+      `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
+      `\nThe next \`android\` removes it and turns airplane mode off.`,
+  );
+}
+
 function maestroDevice(args) {
   if (args.includes('--android')) {
     if (!emulatorOnline(androidTools())) {
@@ -837,6 +1040,25 @@ function maestroDevice(args) {
   const udid = simulatorId(device.name);
   if (!udid) throw new Error(`no ${device.name} simulator — run setup`);
   return udid;
+}
+
+export function maestroTarget(device, onAndroid, driverPort) {
+  const target = ['--device', device];
+  return onAndroid ? target : [...target, '--driver-host-port', String(driverPort)];
+}
+
+function hierarchy(args) {
+  const onAndroid = args.includes('--android');
+  const ok = run(
+    maestroBin() ?? 'maestro',
+    [...maestroTarget(maestroDevice(args), onAndroid, CONFIG.driverPort), 'hierarchy'],
+    {
+      cwd: qaWorktree(),
+      optional: true,
+      env: onAndroid ? androidTools().env : {},
+    },
+  );
+  if (!ok) process.exitCode = 1;
 }
 
 function maestro(args) {
@@ -861,7 +1083,14 @@ function maestro(args) {
 
   const ok = run(
     maestroBin() ?? 'maestro',
-    ['--device', device, 'test', '--debug-output', out, ...env.flatMap((e) => ['-e', e]), file],
+    [
+      ...maestroTarget(device, onAndroid, CONFIG.driverPort),
+      'test',
+      '--debug-output',
+      out,
+      ...env.flatMap((e) => ['-e', e]),
+      file,
+    ],
     { cwd: root, optional: true, env: onAndroid ? androidTools().env : {} },
   );
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
@@ -890,7 +1119,19 @@ function chrome() {
   ]);
 }
 
-const COMMANDS = { setup, checkout, status, ios, android, link, maestro, account, chrome };
+const COMMANDS = {
+  setup,
+  checkout,
+  status,
+  ios,
+  android,
+  release,
+  link,
+  maestro,
+  hierarchy,
+  account,
+  chrome,
+};
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const argv = process.argv.slice(2);

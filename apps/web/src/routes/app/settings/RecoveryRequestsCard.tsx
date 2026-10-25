@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 
 type Asking = { id: string; answer: 'approve' | 'turnDown' } | null;
 type Done = { name: string; answer: 'approve' | 'turnDown' } | null;
@@ -16,6 +17,8 @@ export function RecoveryRequestsCard() {
   const [problem, setProblem] = useState<string | null>(null);
   const panel = useRef<HTMLHeadingElement>(null);
   const flash = useRef<HTMLDivElement>(null);
+  const [back, setBack] = useState<Asking>(null);
+  const [opener, arriveAtOpener] = useStepFocus<HTMLButtonElement>();
 
   useEffect(() => {
     let live = true;
@@ -34,6 +37,12 @@ export function RecoveryRequestsCard() {
 
   useEffect(() => panel.current?.focus(), [asking]);
   useEffect(() => flash.current?.focus(), [done]);
+
+  function keep(request: RecoveryRequest, kind: 'approve' | 'turnDown'): void {
+    setAsking(null);
+    setBack({ id: request.id, answer: kind });
+    arriveAtOpener();
+  }
 
   async function answer(request: RecoveryRequest, kind: 'approve' | 'turnDown'): Promise<void> {
     setProblem(null);
@@ -57,7 +66,7 @@ export function RecoveryRequestsCard() {
   return (
     <>
       {done != null && (
-        <div className="notice notice-done" role="status" tabIndex={-1} ref={flash}>
+        <div className="notice notice-done" tabIndex={-1} ref={flash}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -91,6 +100,7 @@ export function RecoveryRequestsCard() {
                 ? t('recoveryRequests.provedBoth')
                 : t('recoveryRequests.provedEmail');
             const here = asking?.id === request.id ? asking.answer : null;
+            const backTo = back?.id === request.id ? back.answer : null;
 
             return (
               <article
@@ -132,6 +142,7 @@ export function RecoveryRequestsCard() {
                       <button
                         className="button button-primary"
                         type="button"
+                        ref={backTo === 'approve' ? opener : undefined}
                         onClick={() => setAsking({ id: request.id, answer: 'approve' })}
                       >
                         {t('recoveryRequests.approve')}
@@ -139,6 +150,7 @@ export function RecoveryRequestsCard() {
                       <button
                         className="button button-danger"
                         type="button"
+                        ref={backTo === 'turnDown' ? opener : undefined}
                         onClick={() => setAsking({ id: request.id, answer: 'turnDown' })}
                       >
                         {t('recoveryRequests.turnDown')}
@@ -170,7 +182,11 @@ export function RecoveryRequestsCard() {
                               ? t('recoveryRequests.approveConfirm')
                               : t('recoveryRequests.turnDownConfirm')}
                           </button>
-                          <button className="button" type="button" onClick={() => setAsking(null)}>
+                          <button
+                            className="button"
+                            type="button"
+                            onClick={() => keep(request, here)}
+                          >
                             {here === 'approve'
                               ? t('recoveryRequests.cancel')
                               : t('recoveryRequests.keep')}

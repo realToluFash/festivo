@@ -55,6 +55,12 @@ RFC 7807, `Content-Type: application/problem+json`:
 - **`detail`** is this particular instance of the problem. **Present on a `4xx`, never on a
   `5xx`** — that message is ours and routinely quotes a query, a path or a connection
   string.
+  On a `4xx` it is a catalogue sentence in the same language as the `title`, as is each
+  violation's `message`: a refusal is thrown with a key from `translations/messages.*.json`
+  and its slots (a violation carries its own as `parameters`, which are never sent), and
+  `ProblemRenderer` words it for the request. A sentence that reaches a refusal fails
+  `RefusalsAreKeyedTest`, which names its file and line, whether it is written there,
+  formatted, held in a variable, a constant or a property, or passed down through a helper.
 - **`correlationId`** ties the response to the server logs for the same request.
 - **`violations`** carries per-field validation failures, each with `propertyPath`,
   `message` and `code`, so a form marks the offending input rather than showing one banner.
@@ -68,33 +74,44 @@ screen.
 ## Rate limits a person can hit
 
 Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in seconds
-and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. A client
-shows the time from `Retry-After`, in the reader's timezone, never a figure of its own.
+and a `detail` naming the minute it lifts ("Try again at 14:35 UTC."), rounded up. The
+minute is UTC and says so, whoever asks and from wherever: a limit hit signed out has no
+account to take a zone from, and the clients write their own time from `Retry-After`. The
+sentence and the minute are one catalogue entry with a `{time}` slot, never two joined in
+code; the slot carries the zone after the minute, where `time.dateAt` places one. A
+client shows the time from `Retry-After`, in the reader's timezone, never a figure of its
+own.
 
 Where a budget is spent by a wrong secret (a password or a code), the wrong try that spends
 the last of it is itself answered with the pause, not with that place's wrong-secret error,
 so nobody spends one more try to learn the time. Every try after it, the right secret
 included, gets the pause unchecked until the window ends. A right secret spends nothing.
 
-A limit that can last past the day it was hit also names its instant for the reader, by
-`UserMailer::deadline`: the `detail` reads "Try again Sunday, Oct 18 at 17:09 WAT." (or
-"UTC" with no zone), and the same words come as a `retryAt` member. A client quotes
-`retryAt` as it is, and falls back to `Retry-After` only when it is absent. `Retry-After`
-stays in seconds either way (RFC 9110 §10.2.3). Today only
-`POST /api/auth/two-factor/recovery` carries `retryAt`.
+A limit that can last past the day it was hit names the day as well as the minute, by
+`UserMailer::deadline`'s words, in the language of the `detail`: the request's, else
+English, never the account's saved one. The two-factor recovery's
+(`POST /api/auth/two-factor/recovery`) names it in the account's zone ("Try again Sunday,
+Oct 18 at 17:09 WAT.", or "UTC" with no zone), and the same words come as a `retryAt`
+member, because **Get back in without your authenticator** quotes them. A client quotes
+`retryAt` as it is, and falls back to `Retry-After` only when it is absent. Only the
+recovery carries `retryAt`. Any other such limit names it in UTC ("Try again Monday 26 Oct
+at 16:32 UTC."), in its `detail` only (sc-12379): no screen quotes it, and whoever reads a
+raw `detail` reads it from anywhere. `Retry-After` stays in seconds either way (RFC 9110
+§10.2.3).
 
-| Endpoint                                           | Budget                                                          | Spent by                 |
-| -------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
-| `POST /api/auth/register`                          | 10 per IP per hour, fixed window                                | every attempt            |
-| `POST /api/auth/login`                             | 5 per address and 30 per IP per 15 minutes, fixed windows       | a refused password       |
-| `PATCH /api/auth/password`, `POST /api/auth/proof` | 5 per account per 15 minutes, fixed window, one budget for both | a wrong current password |
-| `POST /api/auth/password/set/code`                 | 5 per account per 15 minutes, fixed window, across resends      | a wrong code             |
-| Two-factor codes, wherever asked                   | 5 per account per 15 minutes, fixed window                      | a wrong code             |
-| `POST /api/auth/verify/resend`                     | one per 60 seconds per address                                  | every code sent          |
-| `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                             | every request started    |
-| `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                      | every proved call        |
-| `POST /api/auth/emails`, `/phones`                 | 10 per account per hour, fixed window, shared                   | every add asked for      |
-| `POST /api/orgs`                                   | 5 per account per hour, fixed window                            | every organisation made  |
+| Endpoint                                           | Budget                                                             | Spent by                 |
+| -------------------------------------------------- | ------------------------------------------------------------------ | ------------------------ |
+| `POST /api/auth/register`                          | 10 per IP per hour, fixed window                                   | every attempt            |
+| `POST /api/auth/login`                             | 5 per address and 30 per IP per 15 minutes, fixed windows          | a refused password       |
+| `PATCH /api/auth/password`, `POST /api/auth/proof` | 5 per account per 15 minutes, fixed window, one budget for both    | a wrong current password |
+| `POST /api/auth/password/set/code`                 | 5 per account per 15 minutes, fixed window, across resends         | a wrong code             |
+| Two-factor codes, wherever asked                   | 5 per account per 15 minutes, fixed window                         | a wrong code             |
+| `POST /api/auth/verify/resend`                     | one per 60 seconds per address                                     | every code sent          |
+| `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                                | every request started    |
+| `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                         | every proved call        |
+| `POST /api/auth/emails`, `/phones`                 | 10 per account per hour, fixed window, shared                      | every add asked for      |
+| `POST /api/orgs`                                   | 5 per account per hour, fixed window                               | every organisation made  |
+| `POST /api/request-links/ask`                      | 5 per account and 100 per organisation per 24 hours, fixed windows | every request made       |
 
 ## Verifying an address
 

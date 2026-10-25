@@ -3,6 +3,9 @@
     "name": "Soirely",
     "skipToContent": "Skip to content"
   },
+  "pageTitle": {
+    "part": "{{page}} – {{rest}}"
+  },
   "nav": {
     "dashboard": "Dashboard",
     "events": "Events",
@@ -41,6 +44,8 @@
     "date": "Date",
     "time": "Time",
     "endsHint": "An event can run past midnight. Choose the day it ends.",
+    "clocksSkip": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}}.",
+    "clocksSkipNextDay": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}} on {{savedDay}}.",
     "timeZone": "Time zone",
     "currency": "Currency",
     "defaultsHint": "Filled in from {{name}}'s settings.",
@@ -63,6 +68,27 @@
     "notFound": "This event is not available",
     "guestsComing": "The guest list for this event is coming.",
     "backToEvent": "Event"
+  },
+  "eventEdit": {
+    "open": "Edit details",
+    "title": "Edit details",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "zoneHint": "Changing the zone keeps the times as typed. {{day}} {{time}} stays {{time}} in the new zone.",
+    "zoneHintPlain": "Changing the zone keeps the times as typed.",
+    "currencyInUse": "The currency cannot change once amounts are recorded against this event.",
+    "notSaved": "Not saved. Your changes are still here. Try again.",
+    "changedElsewhere": "Not saved. Somebody else changed this event since you opened it. What you typed is still here.",
+    "showLatest": "Show the latest",
+    "showLatestTitle": "Show the latest version?",
+    "showLatestBody": "What you typed will be replaced by the version somebody else saved.",
+    "keepEditing": "Keep editing",
+    "leaveTitle": "Leave without saving?",
+    "leaveBody": "Your changes to this event will be lost.",
+    "leave": "Leave without saving",
+    "saved": "Saved",
+    "nothingChanged": "Nothing changed, so nothing was sent."
   },
   "language": {
     "label": "Language",
@@ -331,7 +357,10 @@
   "session": {
     "unreachableTitle": "Cannot reach Soirely",
     "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
-    "retrying": "Trying again…"
+    "unreachableBodySignedOut": "Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
+    "retrying": "Trying again…",
+    "stillSignedInTitle": "You are still signed in",
+    "stillSignedInBody": "Soirely could not be reached, so this device was not signed out. Check your connection, then try again."
   },
   "switcher": {
     "yourRole": "Your role · {{role}}",
@@ -957,9 +986,10 @@
     "roleChanged": "{{name}} is now {{role}}. Takes effect on their next request; nobody is signed out.",
     "ownRole": "You can't change your own role. Another owner can, or you can hand ownership to somebody in General.",
     "goToGeneral": "Go to General ›",
-    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so this role can't change and they can't be removed until somebody else is an owner too.",
+    "onlyOwner": "{{name}} is the only owner. An organisation always has one, so their role cannot change and they cannot be removed until somebody else is an owner too.",
     "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
     "ownerOnly": "Only an owner can change an owner's role or remove them.",
+    "beyondGrant": "Their role holds a permission yours does not, so you cannot change their role or remove them.",
     "suspendTitle": "Suspend {{name}}",
     "suspendBody": "They can't use {{organisation}} from their next request until someone restores their access. Their role, their events and their history are kept.",
     "suspendButton": "Suspend",

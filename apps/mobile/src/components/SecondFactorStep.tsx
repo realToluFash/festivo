@@ -129,7 +129,6 @@ export function SecondFactorStep({
     },
     returnKeyType: 'go' as const,
     onSubmitEditing: () => void submit(),
-    accessibilityLabel: label,
     testID: 'twoFactor.code',
   };
 
@@ -160,6 +159,7 @@ export function SecondFactorStep({
                   ? t('twoFactor.pausedBody', { time: status.time })
                   : `${t('twoFactor.pausedBody', { time: status.time })} ${pausedNote}`
               }
+              answer={status}
             />
             <Footnote
               question={t('twoFactor.notYou')}
@@ -177,15 +177,21 @@ export function SecondFactorStep({
             mark={tokens.marks.broken.glyph}
             title={t('signIn.failedTitle')}
             body={t('signIn.failedBody')}
+            answer={status}
           />
         )}
 
         {/* Keyed by mode, so switching never carries a typed code into the other field. */}
         <Field key={mode} label={label} error={error}>
           {mode === 'app' ? (
-            <CodeField {...sharedInput} />
+            <CodeField {...sharedInput} accessibilityLabel={label} />
           ) : (
-            <TextField {...sharedInput} autoCapitalize="none" autoComplete="off" />
+            <TextField
+              {...sharedInput}
+              accessibilityLabel={label}
+              autoCapitalize="none"
+              autoComplete="off"
+            />
           )}
         </Field>
 

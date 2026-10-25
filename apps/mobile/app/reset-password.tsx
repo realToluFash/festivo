@@ -21,14 +21,14 @@ import { tokens } from '../src/theme/tokens.ts';
 
 type Status =
   | { kind: 'checking' }
-  | { kind: 'ready'; email: string }
+  | { kind: 'ready'; email: string; tapped?: boolean }
   | { kind: 'saving'; email: string }
   | { kind: 'failed'; email: string }
   | { kind: 'done'; email: string; account: Account }
   | { kind: 'code'; email: string }
-  | { kind: 'used' }
-  | { kind: 'expired' }
-  | { kind: 'invalid' };
+  | { kind: 'used'; tapped: boolean }
+  | { kind: 'expired'; tapped: boolean }
+  | { kind: 'invalid'; tapped: boolean };
 
 /** "Set a new password", from the emailed link. */
 export default function ResetPassword() {
@@ -55,7 +55,7 @@ export default function ResetPassword() {
         if (live) setStatus({ kind: twoFactor ? 'code' : 'ready', email });
       })
       .catch((error: unknown) => {
-        if (live) setStatus({ kind: deadFrom(error) ?? 'invalid' });
+        if (live) setStatus({ kind: deadFrom(error) ?? 'invalid', tapped: false });
       });
 
     return () => {
@@ -88,7 +88,7 @@ export default function ResetPassword() {
       if (refusal != null) {
         router.replace(signInRoute(refusal, false));
       } else if (dead != null) {
-        setStatus({ kind: dead });
+        setStatus({ kind: dead, tapped: true });
       } else if (error instanceof ApiError && error.is('validation_failed')) {
         const violation = error.problem.violations?.find((v) => v.propertyPath === 'password');
         setRefusal(
@@ -112,6 +112,7 @@ export default function ResetPassword() {
           <AuthHeading
             title={t(`recovery.${status.kind}Title`)}
             intro={t(`recovery.${status.kind}Body`)}
+            answer={status.tapped ? status : undefined}
           />
         }
       >
@@ -146,12 +147,12 @@ export default function ResetPassword() {
           } catch (error) {
             const dead = deadFrom(error);
             if (dead == null) throw error;
-            setStatus({ kind: dead });
+            setStatus({ kind: dead, tapped: true });
             return;
           }
-          setStatus({ kind: 'ready', email });
+          setStatus({ kind: 'ready', email, tapped: true });
         }}
-        onExpired={() => setStatus({ kind: 'expired' })}
+        onExpired={() => setStatus({ kind: 'expired', tapped: false })}
       />
     );
   }
@@ -165,6 +166,7 @@ export default function ResetPassword() {
             done
             title={t('recovery.doneTitle')}
             intro={t('recovery.doneBody', { email: status.email })}
+            answer={status}
           />
         }
       >
@@ -186,6 +188,7 @@ export default function ResetPassword() {
         <AuthHeading
           title={t('recovery.newTitle')}
           intro={t('recovery.newFor', { email: status.email })}
+          answer={status.kind === 'ready' && status.tapped === true ? status : undefined}
         />
       }
     >
@@ -196,6 +199,7 @@ export default function ResetPassword() {
             mark={tokens.marks.broken.glyph}
             title={t('recovery.failedTitle')}
             body={t('recovery.failedBody')}
+            answer={status}
           />
         )}
 

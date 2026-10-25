@@ -11,7 +11,8 @@ import {
   startingPhoneCountry,
   waitingInvitations,
 } from '@soirely/domain';
-import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
@@ -22,35 +23,51 @@ import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
+import { offButton } from '../../offButton.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import {
   adoptAccount,
-  forgetSession,
   landingFor,
   rememberOrganisation,
   restoreSession,
   useSessionState,
 } from '../../session.ts';
+import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
+import { useSignOut } from '../../signOut.ts';
 
 type Field =
   'name' | 'organisationName' | 'countryCode' | 'timezone' | 'phoneCountryCode' | 'phoneNumber';
 type Errors = Partial<Record<Field, string>>;
 
+/** Each refusable field and the element its line sits under, in the form's order. */
+const FIELD_IDS: readonly (readonly [Field, string])[] = [
+  ['name', 'name'],
+  ['organisationName', 'organisation'],
+  ['countryCode', 'country'],
+  ['phoneCountryCode', 'phone-number'],
+  ['phoneNumber', 'phone-number'],
+];
+
 /** The second gate. Reached when the API says `profile_incomplete`, or straight after verifying. */
 export function CompleteProfile() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
   const state = useSessionState();
+  const [waitingHeading, arriveAtWaiting] = useStepFocus();
+  const [askedHere, setAskedHere] = useState(false);
 
   useEffect(() => {
     void restoreSession();
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable />;
+  if (state.status === 'unreachable') return <Unreachable signedIn />;
   if (state.status !== 'signedIn') return <Pending />;
 
   // Only the gate it is behind: an unverified account verifies first, a complete one is let in.
@@ -58,12 +75,6 @@ export function CompleteProfile() {
   const vouched = (name: string) => state.session.providers.some((p) => p.provider === name);
   const provider = vouched('google') ? 'Google' : vouched('apple') ? 'Apple' : null;
   if (landing !== '/complete-profile') return <Navigate to={landing} replace />;
-
-  async function signOut(): Promise<void> {
-    await api.signOut();
-    forgetSession();
-    navigate('/sign-in');
-  }
 
   return (
     <AuthPage>
@@ -87,11 +98,16 @@ export function CompleteProfile() {
       <LinkedNotice />
 
       {state.session.waitingFor != null ? (
-        <Waiting request={state.session.waitingFor} email={state.session.email} />
+        <Waiting
+          request={state.session.waitingFor}
+          email={state.session.email}
+          pressed={askedHere}
+          headingRef={waitingHeading}
+        />
       ) : (
         <>
           <div className="auth-heading">
-            <h1>{t('completeProfile.title')}</h1>
+            <h1 tabIndex={-1}>{t('completeProfile.title')}</h1>
             <p>{t('completeProfile.intro')}</p>
           </div>
 
@@ -115,14 +131,18 @@ export function CompleteProfile() {
             organisationCountry={
               state.session.organisation?.countryCode ?? state.session.organisationCountry
             }
+            onAsked={() => setAskedHere(true)}
             onSaved={(verificationNeeded, asked) => {
               // A phone to verify comes first; after it, an account that asked lands back here, waiting.
               if (verificationNeeded) navigate('/verify-phone?from=onboarding', { replace: true });
-              else if (!asked) navigate('/app', { replace: true });
+              else if (asked) arriveAtWaiting();
+              else navigate('/app', { replace: true });
             }}
           />
         </>
       )}
+
+      {unreached && <StillSignedIn />}
 
       <div className="auth-footnote">
         <span>{t('completeProfile.signedInAs', { email: state.session.email })}</span>
@@ -135,7 +155,17 @@ export function CompleteProfile() {
 }
 
 /** Asked to join at its domain, with nothing of that organisation's to see until somebody approves. */
-function Waiting({ request, email }: { request: JoinRequest; email: string }) {
+function Waiting({
+  request,
+  email,
+  pressed,
+  headingRef,
+}: {
+  request: JoinRequest;
+  email: string;
+  pressed: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+}) {
   const { t } = useTranslation();
   const [withdrawing, setWithdrawing] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -159,7 +189,9 @@ function Waiting({ request, email }: { request: JoinRequest; email: string }) {
   return (
     <>
       <div className="auth-heading">
-        <h1>{t('domainJoining.waitingTitle', { organisation })}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>
+          {t('domainJoining.waitingTitle', { organisation })}
+        </h1>
         <p>{t('domainJoining.waitingIntro', { email })}</p>
       </div>
 
@@ -175,7 +207,7 @@ function Waiting({ request, email }: { request: JoinRequest; email: string }) {
         </div>
       )}
 
-      <div className="notice notice-attention" role="status">
+      <div className="notice notice-attention" role={pressed ? undefined : 'status'}>
         <span className="mark mark-attention" aria-hidden="true">
           …
         </span>
@@ -195,7 +227,7 @@ function Waiting({ request, email }: { request: JoinRequest; email: string }) {
         className="button"
         type="button"
         aria-busy={withdrawing}
-        disabled={withdrawing}
+        {...offButton(withdrawing)}
         onClick={() => void startOwn()}
       >
         {t('domainJoining.startOwnInstead')}
@@ -208,11 +240,13 @@ function Details({
   name,
   needsOrganisation,
   organisationCountry,
+  onAsked,
   onSaved,
 }: {
   name: string;
   needsOrganisation: boolean;
   organisationCountry: string | null;
+  onAsked: () => void;
   onSaved: (verificationNeeded: boolean, asked: boolean) => void;
 }) {
   const { t } = useTranslation();
@@ -238,6 +272,7 @@ function Details({
   const [phonePicked, setPhonePicked] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
+  const [askingToJoin, setAskingToJoin] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   // Read once, when the page opens asking for an organisation; the rows stay until the person leaves (sc-3353).
   const waiting = useWaitingInvitations(needsOrganisation);
@@ -254,6 +289,9 @@ function Details({
   const [offered, setOffered] = useState<JoinOffers | null>(null);
   const [own, setOwn] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  const [unavailableNotice, arriveAtUnavailable] = useStepFocus<HTMLDivElement>();
+  const startOwnButton = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     if (!needsOrganisation) return;
@@ -304,7 +342,7 @@ function Details({
   async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    if (answering || showOffers) return;
+    if (answering || showOffers || saving) return;
 
     await send(null);
   }
@@ -350,8 +388,10 @@ function Details({
     }
 
     setSaving(true);
+    setAskingToJoin(askToJoin);
     setFailed(false);
     setUnavailable(false);
+    const land = focusWhereSent();
 
     try {
       const saved = await api.completeProfile({
@@ -369,25 +409,34 @@ function Details({
       });
 
       if (firstJoined != null) rememberOrganisation(firstJoined);
+      // Before the session says it is waiting, so the waiting screen knows a click brought it as it mounts.
+      if (askToJoin != null) onAsked();
       await adoptAccount(saved.account);
       onSaved(saved.verificationNeeded, askToJoin != null);
     } catch (error) {
-      setSaving(false);
+      // Country and Code take focus only once they are on again.
+      flushSync(() => setSaving(false));
 
       if (error instanceof ApiError && error.is('join_offer_unavailable')) {
         // Taken off the list since the screen opened: what is offered now, and the fields if nothing is.
         setOffered(await api.joinOffers().catch(() => null));
         setUnavailable(true);
+        arriveAtUnavailable();
         return;
       }
 
       if (error instanceof ApiError && error.is('validation_failed')) {
-        setErrors(error.fieldErrors() as Errors);
+        const refused = error.fieldErrors() as Errors;
+        setErrors(refused);
+
+        const first = FIELD_IDS.find(([field]) => refused[field] != null);
+        if (first != null) land(first[1]);
         return;
       }
 
       if (error instanceof ApiError && error.is('phone_taken')) {
         setErrors({ phoneNumber: t('verifyPhone.taken') });
+        land('phone-number');
         return;
       }
 
@@ -420,7 +469,7 @@ function Details({
           autoCorrect="off"
           spellCheck={false}
           value={values.name}
-          disabled={saving}
+          {...offField(saving)}
           aria-invalid={errors.name != null}
           aria-describedby={errors.name == null ? undefined : 'name-error'}
           onChange={(event) => change('name', event.target.value)}
@@ -465,7 +514,7 @@ function Details({
       )}
 
       {unavailable && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken" ref={unavailableNotice} tabIndex={-1}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -494,15 +543,25 @@ function Details({
               <button
                 className={offers.length === 1 ? 'button button-primary' : 'button'}
                 type="button"
-                disabled={saving}
                 aria-label={t('domainJoining.askLabel', { organisation: offer.name })}
+                disabled={saving && askingToJoin !== offer.id}
+                {...offButton(saving && askingToJoin === offer.id)}
                 onClick={() => void send(offer.id)}
               >
                 {t('domainJoining.ask')}
               </button>
             </div>
           ))}
-          <button className="button" type="button" disabled={saving} onClick={() => setOwn(true)}>
+          <button
+            ref={startOwnButton}
+            className="button"
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              setOwn(true);
+              land(() => organisationInput.current);
+            }}
+          >
             {t('domainJoining.startOwn')}
           </button>
         </div>
@@ -512,7 +571,10 @@ function Details({
         <button
           className="link-button join-offers-back"
           type="button"
-          onClick={() => setOwn(false)}
+          onClick={() => {
+            setOwn(false);
+            land(() => startOwnButton.current);
+          }}
         >
           {t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
         </button>
@@ -532,7 +594,7 @@ function Details({
               spellCheck={false}
               maxLength={100}
               value={values.organisationName}
-              disabled={saving}
+              {...offField(saving)}
               aria-invalid={errors.organisationName != null}
               aria-describedby={
                 errors.organisationName == null

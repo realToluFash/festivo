@@ -8,7 +8,6 @@ import {
   cleanCode,
   codeProblem,
   codeWording,
-  formatCountdown,
   formatPhone,
   recoveryFirstStep,
   recoveryIntroKey,
@@ -20,6 +19,10 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router';
 import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
+import { offButton } from '../../offButton.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
+import { useOneAtATime } from '../../oneAtATime.ts';
+import { useResendCountdown } from '../../resendCountdown.ts';
 import { Pending } from '../../components/Pending.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../../heldRecovery.ts';
 import { currentLocale } from '../../i18n/index.ts';
@@ -37,6 +40,7 @@ type View =
 export function LostTwoFactor() {
   const challenge = (useLocation().state as TwoFactorChallenge | null)?.challenge ?? null;
   const [view, setView] = useState<View>({ kind: 'loading' });
+  const starting = useOneAtATime();
 
   const load = useCallback(async (): Promise<View> => {
     const held = heldRecovery();
@@ -109,7 +113,9 @@ export function LostTwoFactor() {
     }
   }
 
-  async function start(opening: RecoveryOpening): Promise<void> {
+  const start = (opening: RecoveryOpening): Promise<void> => starting(() => startOnce(opening));
+
+  async function startOnce(opening: RecoveryOpening): Promise<void> {
     if (challenge == null) {
       setView({ kind: 'signIn' });
       return;
@@ -308,7 +314,7 @@ function Start({
         className="button button-primary"
         type="button"
         aria-busy={sending}
-        disabled={limitedUntil != null}
+        {...offButton(limitedUntil != null)}
         onClick={onSend}
       >
         {sending ? t('lostTwoFactor.sending') : t('lostTwoFactor.send')}
@@ -546,15 +552,10 @@ function Codes({
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState(false);
   const [textingFailed, setTextingFailed] = useState(false);
-  const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
+  const resending = useResendCountdown(
+    { resend: 'lostTwoFactor.resend', resendIn: 'lostTwoFactor.resendIn' },
+    codes?.cooldownSeconds ?? 0,
+  );
 
   // While the phone's code is on WhatsApp, the server may hand it to SMS: the line follows.
   useEffect(() => {
@@ -614,6 +615,7 @@ function Codes({
 
     setAsking(true);
     setFailed(false);
+    const land = focusWhereSent();
 
     try {
       onState(
@@ -647,7 +649,7 @@ function Codes({
 
         setErrors(marked);
         const wrongFirst = fields.find((field) => marked[field] != null);
-        if (wrongFirst != null) document.getElementById(wrongFirst)?.focus();
+        if (wrongFirst != null) land(wrongFirst);
         return;
       }
 
@@ -665,12 +667,14 @@ function Codes({
     }
   }
 
-  async function resend(): Promise<void> {
+  const resend = (): Promise<void> => resending.once(sendOnce);
+
+  async function sendOnce(): Promise<void> {
     try {
       const next = await api.resendRecoveryCodes(recovery);
       setTyped({ emailCode: '', phoneCode: '' });
       setErrors({});
-      setCooldown(next.codes?.cooldownSeconds ?? 0);
+      resending.countDown(next.codes?.cooldownSeconds ?? 0);
       onState(next);
     } catch (refusal) {
       if (replacedElsewhere(refusal)) {
@@ -687,7 +691,7 @@ function Codes({
       const seconds =
         refusal instanceof ApiError ? Number(refusal.response?.headers.get('Retry-After')) : NaN;
 
-      if (Number.isFinite(seconds) && seconds > 0) setCooldown(seconds);
+      if (Number.isFinite(seconds) && seconds > 0) resending.countDown(seconds);
       else setFailed(true);
     }
   }
@@ -799,7 +803,7 @@ function Codes({
                 spellCheck={false}
                 maxLength={7}
                 value={typed[field]}
-                disabled={asking}
+                {...offField(asking)}
                 aria-invalid={errors[field] != null}
                 aria-describedby={errors[field] == null ? undefined : `${field}-error`}
                 onChange={(event) => {
@@ -821,14 +825,15 @@ function Codes({
             <button
               className="button"
               type="button"
-              disabled={cooldown > 0}
+              {...resending.button}
               onClick={() => void resend()}
             >
-              {cooldown > 0
-                ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
-                : t('lostTwoFactor.resend')}
+              {resending.label}
             </button>
             <p>{t('lostTwoFactor.resendNote')}</p>
+            <span className="visually-hidden" role="status">
+              {resending.status}
+            </span>
           </div>
 
           {hasPhone && wording.offerText && (

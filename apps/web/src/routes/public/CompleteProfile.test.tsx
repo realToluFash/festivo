@@ -88,6 +88,20 @@ describe('a few details', () => {
     expect(screen.getByText('Signed in as folake@ire.events.')).toBeDefined();
   });
 
+  it('stays signed in and says so when signing out cannot reach Soirely', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    answering({});
+    at('/complete-profile');
+
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    button.focus();
+    fireEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
+
   it('starts blank when the browser names no country, and refuses it blank before sending', () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-419']);
     const sent = answering({});
@@ -109,6 +123,45 @@ describe('a few details', () => {
     fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
     expect((screen.getByLabelText('Code') as HTMLSelectElement).value).toBe('GH');
     expect(screen.queryByText('Choose a country.')).toBeNull();
+  });
+
+  it('puts focus in the first field a refusal names, in the form, after Enter in another (sc-11588)', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'PATCH /api/auth/complete-profile': () =>
+        new Promise<Response>((resolve) => (answer = resolve)),
+    });
+    at('/complete-profile');
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), {
+      target: { value: 'Ìrè Events' },
+    });
+    fireEvent.change(screen.getByLabelText(/Mobile number/), { target: { value: '803 555 0142' } });
+    const name = screen.getByLabelText<HTMLInputElement>('Full name');
+    name.focus();
+    fireEvent.submit(name);
+
+    await waitFor(() => expect(name.readOnly).toBe(true));
+    expect(document.activeElement).toBe(name);
+
+    answer(
+      json(
+        {
+          type: 'https://soirely.com/errors/validation_failed',
+          title: 'No.',
+          status: 422,
+          violations: [
+            { propertyPath: 'phoneNumber', message: 'Not a number.', code: 'x' },
+            { propertyPath: 'countryCode', message: 'Not a country.', code: 'x' },
+          ],
+        },
+        422,
+      ),
+    );
+
+    expect(await screen.findByText('Not a country.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Country'));
   });
 
   it('does not ask an invited account for an organisation', () => {
@@ -259,6 +312,18 @@ describe('a few details', () => {
     );
   });
 
+  it('says the account is still signed in when it cannot reach Soirely', () => {
+    __setSessionState({ status: 'unreachable', retrying: false });
+
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, { initialEntries: ['/complete-profile'] })}
+      />,
+    );
+
+    expect(screen.getByRole('status').textContent).toMatch(/You are still signed in\./);
+  });
+
   it('keeps an incomplete account out of the product', async () => {
     at('/app/settings');
 
@@ -379,12 +444,12 @@ describe('an organisation at the domain of the address (sc-561)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' }));
 
-    expect(
-      await screen.findByRole('heading', {
-        level: 1,
-        name: 'Waiting for Ìrè Events to approve you',
-      }),
-    ).toBeDefined();
+    const waiting = await screen.findByRole('heading', {
+      level: 1,
+      name: 'Waiting for Ìrè Events to approve you',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(waiting));
+    expect(screen.getByText(/Waiting for approval/).closest('[role]')).toBeNull();
     expect(sent.find((request) => request.method === 'PATCH')?.body).toEqual({
       name: 'Ada Okeke',
       askToJoin: 'org_ire',
@@ -409,7 +474,13 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     expect(
       screen.getByText('We’ll email ada@ire.events when somebody there answers.'),
     ).toBeDefined();
-    expect(screen.getByText(/Waiting for approval/)).toBeDefined();
+    expect(
+      screen
+        .getByText(/Waiting for approval/)
+        .closest('[role]')
+        ?.getAttribute('role'),
+    ).toBe('status');
+    expect(document.activeElement).toBe(document.body);
     expect(
       screen.getByText(
         'Your details are saved. Until somebody at Ìrè Events approves you, there is nothing of theirs to see.',
@@ -737,5 +808,101 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     expect(sent.find((request) => request.method === 'PATCH')?.body).not.toHaveProperty(
       'askToJoin',
     );
+  });
+});
+
+describe('where focus goes on a few details (sc-11369)', () => {
+  const ADA: Session = { ...FOLAKE, name: 'Ada Okeke', email: 'ada@ire.events' };
+  const OFFERS = {
+    domain: 'ire.events',
+    offers: [{ id: 'org_ire', name: 'Ìrè Events' }],
+    request: null,
+  };
+
+  afterEach(() => sessionStorage.clear());
+
+  it('takes Start my own organisation to Organisation name, and the way back to Start my own', async () => {
+    answering({ 'GET /api/join-offers': () => json(OFFERS) });
+    at('/complete-profile', ADA);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Start my own organisation' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Ask to join an organisation at ire.events instead' }),
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Start my own organisation' }),
+    );
+  });
+
+  it('takes a refused Ask to join to the line that says why, read once', async () => {
+    answering({
+      'GET /api/join-offers': () => json(OFFERS),
+      'PATCH /api/auth/complete-profile': () =>
+        json(
+          { type: 'https://soirely.com/errors/join_offer_unavailable', title: 'No.', status: 409 },
+          409,
+        ),
+    });
+    at('/complete-profile', ADA);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' }));
+
+    const line = await screen.findByText(
+      'You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice')));
+    expect(line.closest('[role]')).toBeNull();
+  });
+
+  it('takes Dismiss under the linked notice to A few details', async () => {
+    sessionStorage.setItem('soirely.provider.linked', 'Google');
+    answering({});
+    at('/complete-profile');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'A few details' }),
+    );
+  });
+
+  it.each([
+    [
+      'Decline',
+      'POST /api/invitations/inv_1/decline',
+      () => new Response(null, { status: 204 }),
+      'You declined. Bisi Adeyemi will see that you said no.',
+    ],
+    [
+      'Accept and join',
+      'POST /api/invitations/inv_1/accept',
+      () => json({ organisation: membership({ ...ADUNNI, role: ROLE }) }),
+      'You joined Adunni Weddings as Event manager.',
+    ],
+    [
+      'Accept and join',
+      'POST /api/invitations/inv_1/accept',
+      () =>
+        json(
+          { type: 'https://soirely.com/errors/invitation_expired', title: 'No.', status: 409 },
+          409,
+        ),
+      'Expired',
+    ],
+  ])('takes %s to what answers it, read once (%#)', async (button, line, answer, said) => {
+    answering({ ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')), [line]: answer });
+    at('/complete-profile');
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: `${button === 'Decline' ? 'Decline the invitation to' : 'Accept and join'} Adunni Weddings`,
+      }),
+    );
+
+    const answered = (await screen.findByText(said)).closest<HTMLElement>('[tabindex="-1"]');
+    await waitFor(() => expect(document.activeElement).toBe(answered));
+    expect(answered?.closest('[role="status"]')).toBeNull();
   });
 });

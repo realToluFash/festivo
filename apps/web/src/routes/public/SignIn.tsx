@@ -12,6 +12,8 @@ import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { type ProviderOnly, type TimedOut, providerOnlyBy } from '../../session.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { offButton } from '../../offButton.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 
 type Status =
@@ -84,11 +86,14 @@ export function SignIn() {
     if (!checks.passes(values)) return;
 
     setStatus({ kind: 'signingIn' });
+    const land = focusWhereSent();
 
     try {
       await landAfterSignIn(await api.signIn(values.email, values.password), navigate);
     } catch (error) {
-      setStatus(refusalFrom(error, values.email));
+      const refusal = refusalFrom(error, values.email);
+      setStatus(refusal);
+      if (refusal.kind === 'refused') land('password');
     }
   }
 
@@ -166,9 +171,11 @@ export function SignIn() {
           <div className="notice-body">
             <p className="notice-title">{t('signIn.lockedTitle')}</p>
             <p>{t('signIn.lockedBody', { time: status.retryAt })}</p>
-            <Link className="link-button" to="/forgot-password">
-              {t('signIn.lockedReset')}
-            </Link>
+            <p className="notice-action">
+              <Link className="link-button" to="/forgot-password">
+                {t('signIn.lockedReset')}
+              </Link>
+            </p>
           </div>
         </div>
       )}
@@ -230,7 +237,7 @@ export function SignIn() {
                 autoCorrect="off"
                 spellCheck={false}
                 defaultValue={status.kind === 'timedOut' ? status.rule.email : undefined}
-                disabled={busy}
+                {...offField(busy)}
                 required
                 aria-invalid={checks.errors.email != null}
                 aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
@@ -288,8 +295,8 @@ export function SignIn() {
             <button
               className="button button-primary"
               type="submit"
-              disabled={locked}
               aria-busy={busy}
+              {...offButton(locked)}
             >
               {locked
                 ? t('signIn.lockedUntil', { time: status.retryAt })

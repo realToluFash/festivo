@@ -35,7 +35,7 @@ appId: host.exp.Exponent
 - inputText: ${PASSWORD}
 # The reveal control, which is the only way to see a typo on a phone keyboard.
 - tapOn:
-    id: 'signIn.reveal'
+    id: 'signIn.password.reveal'
 - assertVisible: ${PASSWORD}
 - takeScreenshot: mobile-sign-in-filled
 - tapOn:
@@ -51,7 +51,12 @@ appId: host.exp.Exponent
 # `.*` because Maestro matches text as a WHOLE regex: 'Signed in as' does not
 # match "Signed in as QA Tester", and the flow reported a screen it was looking
 # straight at as missing.
-- extendedWaitUntil:
-    visible: 'Signed in as.*'
+# Scrolled to rather than waited on: a new account lands on Complete your
+# profile, where the line sits below the button, and Maestro on Android sees only
+# what is on screen.
+- scrollUntilVisible:
+    element:
+      text: 'Signed in as.*'
+    direction: DOWN
     timeout: 30000
 - takeScreenshot: mobile-signed-in

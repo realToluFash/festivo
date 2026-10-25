@@ -11,6 +11,7 @@ import {
   provingRefusal,
   signedInWith,
   tripRefused,
+  unlinkProofLapsed,
 } from './waysProof.ts';
 
 const t = ((key: string, values?: Record<string, string>) =>
@@ -129,5 +130,11 @@ describe('step two after Google or Apple (sc-2197)', () => {
     expect(signedInWith('google', refusal('proof_required', 403), shown)).toBeNull();
     expect(signedInWith('google', refusal('invalid_credentials', 401), shown)).toBeNull();
     expect(signedInWith('password', refusal('two_factor_required', 403), null)).toBeNull();
+  });
+
+  it("sends a lapsed Unlink back to Confirm it's you, and any other refusal to the list", () => {
+    expect(unlinkProofLapsed(refusal('proof_required', 403))).toBe(true);
+    expect(unlinkProofLapsed(refusal('last_sign_in_method', 409))).toBe(false);
+    expect(unlinkProofLapsed(new Error('offline'))).toBe(false);
   });
 });

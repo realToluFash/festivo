@@ -104,11 +104,11 @@ final readonly class RecoveryDecisions
 
         // not_found rather than forbidden for anybody who may not answer it: the difference would confirm it exists.
         if (null === $recovery || !$this->mayAnswer($approver, $recovery)) {
-            throw ApiException::notFound('No request with that id.');
+            throw ApiException::notFound('recovery.unknown');
         }
 
         if ($recovery->getUser()->getId()->equals($approver->getId())) {
-            throw ApiException::forbidden('Somebody else has to answer your own request.');
+            throw ApiException::forbidden('recovery.own_request');
         }
 
         $decided = $this->entityManager->wrapInTransaction(function () use ($recovery, $approver, $answer, $effect): TwoFactorRecovery|ApiException {
@@ -117,7 +117,7 @@ final readonly class RecoveryDecisions
             $status = $recovery->statusAt($now);
 
             if (TwoFactorRecoveryStatus::Waiting !== $status) {
-                return new ApiException(ErrorCode::RecoveryRequestClosed, 'This request has already ended.', [], null, [], ['requestStatus' => $status->value]);
+                return new ApiException(ErrorCode::RecoveryRequestClosed, 'recovery.closed', [], null, [], ['requestStatus' => $status->value]);
             }
 
             $effect($recovery);

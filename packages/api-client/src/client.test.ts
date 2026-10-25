@@ -987,13 +987,57 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.verificationNeeded).toBe(false);
   });
 
-  test('signing out clears the session even when the request fails', async () => {
+  test('a sign-out the API never answered keeps the session where only the API can clear the cookie', async () => {
     const tokens = store('good', null);
 
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',
       tokens,
       refreshTokenIn: 'cookie',
+      fetch: async () => {
+        throw new Error('offline');
+      },
+    });
+
+    await expect(client.signOut()).rejects.toBeInstanceOf(ApiUnreachableError);
+    expect(await tokens.access()).toBe('good');
+  });
+
+  test('an error of the API on a sign-out counts as not reached', async () => {
+    const tokens = store('good', null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => problem(500, 'internal'),
+    });
+
+    await expect(client.signOut()).rejects.toBeInstanceOf(ApiUnreachableError);
+    expect(await tokens.access()).toBe('good');
+  });
+
+  test('any other answer to a sign-out ends the session', async () => {
+    const tokens = store('good', null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => problem(401, 'invalid_refresh_token'),
+    });
+
+    await client.signOut();
+
+    expect(await tokens.access()).toBeNull();
+  });
+
+  test('a sign-out that holds its refresh token clears it even when the request fails', async () => {
+    const tokens = store('good', 'refresh');
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
       fetch: async () => {
         throw new Error('offline');
       },
@@ -2228,6 +2272,34 @@ describe('events (sc-1486)', () => {
     await expect(
       client(() => json({ event: { ...EVENT, dayCount: 0 } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
+  });
+
+  test('an edit opens with the tag it read, and sends it back as If-Match', async () => {
+    const headers: (string | null)[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (_url, init) => {
+        headers.push(new Headers(init?.headers).get('If-Match'));
+
+        return new Response(JSON.stringify({ event: EVENT }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"2"' },
+        });
+      },
+    });
+
+    expect(await api.taggedEvent(EVENT.id)).toEqual({ event: EVENT, tag: '"2"' });
+    expect(await api.updateEvent(EVENT.id, { name: 'Renamed' }, '"2"')).toEqual({
+      event: EVENT,
+      tag: '"2"',
+    });
+    expect(headers).toEqual([null, '"2"']);
+  });
+
+  test('an event answered without its ETag is an error, as an edit could not be saved', async () => {
+    await expect(client(() => json({ event: EVENT })).api.taggedEvent('e1')).rejects.toThrow(
+      /ETag/,
+    );
   });
 
   test('a refused create carries its violations by field', async () => {

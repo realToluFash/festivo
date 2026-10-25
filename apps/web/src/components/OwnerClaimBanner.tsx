@@ -5,12 +5,14 @@ import {
   ownerClaimRefusalKey,
   ownerClaimView,
 } from '@soirely/domain';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useDialogKeys } from '../dialogFocus.ts';
 import { useShownLanguage } from '../i18n/index.ts';
+import { useFocusOnceShown, useStepFocus } from '../stepFocus.ts';
+import { offButton } from '../offButton.ts';
 
 const MARKS = { attention: '!', waiting: '…', done: '✓', info: 'i' } as const;
 
@@ -20,9 +22,12 @@ type Load = { kind: 'loading' } | { kind: 'loaded'; banner: Banner | null } | { 
 export function OwnerClaimBanner({
   organisationId,
   organisation,
+  pageHeading,
 }: {
   organisationId: string;
   organisation: string;
+  /** Where Load Members again leaves focus when no banner comes back. */
+  pageHeading: RefObject<HTMLElement | null>;
 }) {
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
@@ -30,6 +35,10 @@ export function OwnerClaimBanner({
   const [withdrew, setWithdrew] = useState<{ told: boolean } | null>(null);
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
+  const [cardTitle, arriveAtCard] = useStepFocus();
+  const overtaken = useRef(false);
+  const loadingAgain = useRef(false);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     let current = true;
@@ -40,16 +49,30 @@ export function OwnerClaimBanner({
         if (!current) return;
         loadedFor.current = organisationId;
         setLoad({ kind: 'loaded', banner });
+        if (overtaken.current) arriveAtCard();
+        if (loadingAgain.current) land(() => cardTitle.current ?? pageHeading.current);
+        overtaken.current = false;
+        loadingAgain.current = false;
       },
-      () =>
-        current &&
-        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' })),
+      () => {
+        if (!current) return;
+        if (loadingAgain.current) land(() => pageHeading.current);
+        overtaken.current = false;
+        loadingAgain.current = false;
+        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' }));
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt, language]);
+  }, [organisationId, attempt, language, arriveAtCard, land, cardTitle, pageHeading]);
+
+  function reload(): void {
+    setWithdrew(null);
+    setLoad({ kind: 'loading' });
+    setAttempt((n) => n + 1);
+  }
 
   if (load.kind === 'loading') {
     return (
@@ -71,18 +94,24 @@ export function OwnerClaimBanner({
         organisationId={organisationId}
         organisation={organisation}
         banner={load.banner}
+        titleRef={cardTitle}
         onBanner={(banner) => {
           setWithdrew(null);
           setLoad({ kind: 'loaded', banner });
+          arriveAtCard();
         }}
         onWithdrawn={(banner, told) => {
           setWithdrew({ told });
           setLoad({ kind: 'loaded', banner });
         }}
-        onReload={() => {
-          setWithdrew(null);
-          setLoad({ kind: 'loading' });
-          setAttempt((n) => n + 1);
+        onReload={reload}
+        onLoadAgain={() => {
+          loadingAgain.current = true;
+          reload();
+        }}
+        onOvertaken={() => {
+          overtaken.current = true;
+          reload();
         }}
       />
     </>
@@ -97,7 +126,7 @@ function Withdrew({ told }: { told: boolean }) {
   useLayoutEffect(() => line.current?.focus(), []);
 
   return (
-    <div ref={line} className="notice notice-done" role="status" tabIndex={-1}>
+    <div ref={line} className="notice notice-done" tabIndex={-1}>
       <span className="mark mark-done" aria-hidden="true">
         ✓
       </span>
@@ -110,16 +139,23 @@ function OwnerClaimCard({
   organisationId,
   organisation,
   banner,
+  titleRef,
   onBanner,
   onWithdrawn,
   onReload,
+  onLoadAgain,
+  onOvertaken,
 }: {
   organisationId: string;
   organisation: string;
   banner: Banner;
+  titleRef: RefObject<HTMLHeadingElement | null>;
   onBanner: (banner: Banner | null) => void;
   onWithdrawn: (banner: Banner | null, told: boolean) => void;
   onReload: () => void;
+  onLoadAgain: () => void;
+  /** Another Administrator's claim started first: the banner that loads takes focus. */
+  onOvertaken: () => void;
 }) {
   const { t } = useTranslation();
   const view = ownerClaimView(banner, organisation);
@@ -131,6 +167,10 @@ function OwnerClaimCard({
   const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
   const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
   const withdrawButton = useRef<HTMLButtonElement>(null);
+  const [stopTitle, arriveAtStop] = useStepFocus<HTMLParagraphElement>();
+  const stopButton = useRef<HTMLButtonElement>(null);
+  const [refusedLine, arriveAtRefused] = useStepFocus<HTMLParagraphElement>();
+  const land = useFocusOnceShown();
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
 
   async function start(): Promise<void> {
@@ -144,7 +184,7 @@ function OwnerClaimCard({
         error instanceof ApiError &&
         (error.is('owner_claim_open') || error.is('owner_claim_closed'))
       ) {
-        onReload();
+        onOvertaken();
 
         return;
       }
@@ -193,6 +233,7 @@ function OwnerClaimCard({
         setStopEnded(true);
         setConfirming(false);
         setBusy(false);
+        arriveAtRefused();
 
         return;
       }
@@ -213,8 +254,10 @@ function OwnerClaimCard({
 
       if (error instanceof ApiError && error.is('owner_claim_ended')) {
         setWithdrawRefused(t('ownerClaim.withdrawEnded'));
+        arriveAtRefused();
       } else if (error instanceof ApiError && error.is('forbidden')) {
         setWithdrawRefused(t('ownerClaim.withdrawNotClaimant'));
+        arriveAtRefused();
       } else {
         setRefusal(t('ownerClaim.failed'));
         withdrawButton.current?.focus();
@@ -233,7 +276,9 @@ function OwnerClaimCard({
         <span className={`mark mark-${view.tone}`} aria-hidden="true">
           {MARKS[view.tone]}
         </span>
-        <h2 id="owner-claim-title">{words(view.title)}</h2>
+        <h2 id="owner-claim-title" ref={titleRef} tabIndex={-1}>
+          {words(view.title)}
+        </h2>
       </div>
       {view.lines.map((line) => (
         <p key={line.key}>{words(line)}</p>
@@ -289,15 +334,19 @@ function OwnerClaimCard({
       )}
 
       {withdrawRefused != null && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{withdrawRefused}</p>
-            <button type="button" className="link-button" onClick={onReload}>
-              {t('ownerClaim.reload')}
-            </button>
+            <p ref={refusedLine} tabIndex={-1}>
+              {withdrawRefused}
+            </p>
+            <p className="notice-action">
+              <button type="button" className="link-button" onClick={onLoadAgain}>
+                {t('ownerClaim.reload')}
+              </button>
+            </p>
           </div>
         </div>
       )}
@@ -317,7 +366,15 @@ function OwnerClaimCard({
 
       {view.stop && !confirming && !stopEnded && (
         <div className="actions">
-          <button type="button" className="button" onClick={() => setConfirming(true)}>
+          <button
+            ref={stopButton}
+            type="button"
+            className="button"
+            onClick={() => {
+              setConfirming(true);
+              arriveAtStop();
+            }}
+          >
             {t('ownerClaim.stop')}
           </button>
         </div>
@@ -330,7 +387,7 @@ function OwnerClaimCard({
           aria-labelledby="owner-claim-stop"
         >
           <div className="notice-body">
-            <p id="owner-claim-stop" className="notice-title">
+            <p id="owner-claim-stop" className="notice-title" ref={stopTitle} tabIndex={-1}>
               {t('ownerClaim.stopConfirm', { claimant: banner.claim.claimant.name })}
             </p>
             <p>{t('ownerClaim.stopBody', { organisation })}</p>
@@ -343,7 +400,14 @@ function OwnerClaimCard({
               >
                 {t('ownerClaim.stopYes')}
               </button>
-              <button type="button" className="button" onClick={() => setConfirming(false)}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setConfirming(false);
+                  land(() => stopButton.current);
+                }}
+              >
                 {t('ownerClaim.stopNo')}
               </button>
             </div>
@@ -352,15 +416,19 @@ function OwnerClaimCard({
       )}
 
       {stopEnded && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{t('ownerClaim.stopEnded')}</p>
-            <button type="button" className="link-button" onClick={onReload}>
-              {t('ownerClaim.reload')}
-            </button>
+            <p ref={refusedLine} tabIndex={-1}>
+              {t('ownerClaim.stopEnded')}
+            </p>
+            <p className="notice-action">
+              <button type="button" className="link-button" onClick={onLoadAgain}>
+                {t('ownerClaim.reload')}
+              </button>
+            </p>
           </div>
         </div>
       )}
@@ -394,7 +462,6 @@ function WithdrawConfirm({
   const { t } = useTranslation();
   const dialog = useRef<HTMLDivElement>(null);
   const keep = useRef<HTMLButtonElement>(null);
-  const unlessPending = (act: () => void) => () => !pending && act();
 
   useEffect(() => keep.current?.focus(), []);
 
@@ -415,8 +482,8 @@ function WithdrawConfirm({
           type="button"
           className="dialog-close"
           aria-label={t('ownerClaim.close')}
-          aria-disabled={pending}
-          onClick={unlessPending(onKeep)}
+          {...offButton(pending, { dim: false })}
+          onClick={onKeep}
         >
           ✕
         </button>
@@ -428,9 +495,9 @@ function WithdrawConfirm({
           <button
             type="button"
             className="button button-primary"
-            aria-disabled={pending}
+            {...offButton(pending, { dim: false })}
             aria-busy={pending}
-            onClick={unlessPending(onWithdraw)}
+            onClick={onWithdraw}
           >
             {pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
           </button>
@@ -438,8 +505,8 @@ function WithdrawConfirm({
             ref={keep}
             type="button"
             className="button"
-            aria-disabled={pending}
-            onClick={unlessPending(onKeep)}
+            {...offButton(pending, { dim: false })}
+            onClick={onKeep}
           >
             {t('ownerClaim.withdrawNo')}
           </button>
@@ -508,6 +575,11 @@ export function PausedOwnerClaim({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<'stopped' | 'ended' | 'failed' | null>(null);
+  const [stopTitle, arriveAtStop] = useStepFocus<HTMLParagraphElement>();
+  const stopButton = useRef<HTMLButtonElement>(null);
+  const answered = useRef<HTMLDivElement>(null);
+  const failedLine = useRef<HTMLParagraphElement>(null);
+  const land = useFocusOnceShown();
   const claimant = claim.claimant.name;
 
   async function stop(): Promise<void> {
@@ -522,13 +594,15 @@ export function PausedOwnerClaim({
 
     setConfirming(false);
     setBusy(false);
+    land(() => answered.current ?? failedLine.current);
   }
 
   if (outcome === 'stopped' || outcome === 'ended') {
     return (
       <div
+        ref={answered}
         className={`notice ${outcome === 'stopped' ? 'notice-done' : 'notice-quiet'}`}
-        role="status"
+        tabIndex={-1}
       >
         <span
           className={`mark ${outcome === 'stopped' ? 'mark-done' : 'mark-info'}`}
@@ -566,7 +640,7 @@ export function PausedOwnerClaim({
       {confirming ? (
         <div className="notice notice-quiet" role="group" aria-labelledby="paused-owner-claim-stop">
           <div className="notice-body">
-            <p id="paused-owner-claim-stop" className="notice-title">
+            <p id="paused-owner-claim-stop" className="notice-title" ref={stopTitle} tabIndex={-1}>
               {t('ownerClaim.stopConfirm', { claimant })}
             </p>
             <p>{t('ownerClaim.stopBody', { organisation })}</p>
@@ -579,7 +653,14 @@ export function PausedOwnerClaim({
               >
                 {t('ownerClaim.stopYes')}
               </button>
-              <button type="button" className="button" onClick={() => setConfirming(false)}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setConfirming(false);
+                  land(() => stopButton.current);
+                }}
+              >
                 {t('ownerClaim.stopNo')}
               </button>
             </div>
@@ -587,17 +668,27 @@ export function PausedOwnerClaim({
         </div>
       ) : (
         <div className="actions">
-          <button type="button" className="button" onClick={() => setConfirming(true)}>
+          <button
+            ref={stopButton}
+            type="button"
+            className="button"
+            onClick={() => {
+              setConfirming(true);
+              arriveAtStop();
+            }}
+          >
             {t('ownerClaim.stop')}
           </button>
         </div>
       )}
       {outcome === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken">
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
-          <p>{t('ownerClaim.failed')}</p>
+          <p ref={failedLine} tabIndex={-1}>
+            {t('ownerClaim.failed')}
+          </p>
         </div>
       )}
     </section>

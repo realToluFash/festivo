@@ -25,7 +25,7 @@ function at(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { path: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -39,6 +39,10 @@ function answering(answers: Record<string, () => Response>) {
   });
 
   return sent;
+}
+
+async function settled(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve));
 }
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -71,7 +75,7 @@ describe('asking for a reset link', () => {
     );
   });
 
-  it('checks the address before sending, and sends nothing while it fails', () => {
+  it('checks the address before sending, and sends nothing while it fails', async () => {
     const sent = answering({});
     at('/forgot-password');
 
@@ -84,6 +88,7 @@ describe('asking for a reset link', () => {
       screen.getByText('That does not look like an email address. Check it has an @ and a domain.'),
     ).toBeDefined();
 
+    await settled();
     expect(sent).toEqual([]);
   });
 
@@ -95,7 +100,9 @@ describe('asking for a reset link', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
 
     await waitFor(() =>
-      expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeDefined(),
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Check your email' }),
+      ),
     );
     expect(
       screen.getByText(/If that address has an account, we have sent it a link/),
@@ -120,6 +127,134 @@ describe('asking for a reset link', () => {
     expect(
       screen.getByText(/^Try again at \d\d:\d\d\. Any link already sent still works\.$/),
     ).toBeDefined();
+    // The button that was pressed is still there, so focus stays and the notice is read out.
+    expect(screen.getByRole('alert').textContent).toMatch(/Too many requests/);
+  });
+
+  async function sentOnce(again: () => Response) {
+    let sends = 0;
+    answering({
+      'POST /api/auth/password/forgot': () => (++sends === 1 ? json({}, 202) : again()),
+    });
+    at('/forgot-password');
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Send it again' }));
+  }
+
+  it('takes focus back to Check your email once Send it again has sent', async () => {
+    await sentOnce(() => json({}, 202));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Check your email' }),
+      ),
+    );
+  });
+
+  it('takes focus to the notice when Send it again fails, read once rather than announced too', async () => {
+    await sentOnce(() => {
+      throw new TypeError('Failed to fetch');
+    });
+
+    const notice = await screen.findByText('That did not work');
+    await waitFor(() => expect(document.activeElement).toBe(notice.closest('.notice')));
+    expect(document.activeElement?.textContent).toMatch(/Something went wrong on the way/);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('takes focus to the notice when Send it again is refused for too many', async () => {
+    await sentOnce(() => problem('too_many_attempts', 429, { 'Retry-After': '600' }));
+
+    const notice = await screen.findByText('Too many requests');
+    await waitFor(() => expect(document.activeElement).toBe(notice.closest('.notice')));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('sending the link again', () => {
+  function sentOnce(again: () => Response | Promise<Response>) {
+    let answered = 0;
+    const sent = answering({
+      'POST /api/auth/password/forgot': () => (answered++ === 0 ? json({}, 202) : again()),
+    });
+    at('/forgot-password');
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'Folake@ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+
+    return sent;
+  }
+
+  async function sendAgain(): Promise<void> {
+    fireEvent.click(await screen.findByRole('button', { name: 'Send it again' }));
+  }
+
+  it('keeps the address as it was typed when the send fails', async () => {
+    sentOnce(() => {
+      throw new TypeError('Failed to fetch');
+    });
+    await sendAgain();
+
+    await waitFor(() => expect(screen.getByText('That did not work')).toBeDefined());
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('Folake@ire.events');
+  });
+
+  it('keeps the address when the send is refused for too many', async () => {
+    sentOnce(() => problem('too_many_attempts', 429, { 'Retry-After': '600' }));
+    await sendAgain();
+
+    await waitFor(() => expect(screen.getByText('Too many requests')).toBeDefined());
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('Folake@ire.events');
+  });
+
+  it('shows the address while it sends again', async () => {
+    sentOnce(() => new Promise<never>(() => {}));
+    await sendAgain();
+
+    await waitFor(() =>
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('Folake@ire.events'),
+    );
+    expect(screen.getByRole('button', { name: 'Sending…' })).toBeDefined();
+  });
+
+  it('sends to the address the field shows, unchanged, and to a changed one instead of the earlier', async () => {
+    const sent = sentOnce(() => {
+      throw new TypeError('Failed to fetch');
+    });
+    await sendAgain();
+    await waitFor(() => expect(screen.getByText('That did not work')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+    await waitFor(() => expect(sent).toHaveLength(3));
+    await waitFor(() => expect(screen.getByText('That did not work')).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ade@ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+
+    await waitFor(() => expect(sent).toHaveLength(4));
+    expect(sent.map(({ body }) => body)).toEqual([
+      { email: 'Folake@ire.events' },
+      { email: 'Folake@ire.events' },
+      { email: 'Folake@ire.events' },
+      { email: 'ade@ire.events' },
+    ]);
+  });
+
+  it('asks for an address emptied by hand, and sends nothing', async () => {
+    const sent = sentOnce(() => {
+      throw new TypeError('Failed to fetch');
+    });
+    await sendAgain();
+    await waitFor(() => expect(screen.getByText('That did not work')).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+
+    expect(screen.getByText('Enter your email address.')).toBeDefined();
+    await settled();
+    expect(sent).toHaveLength(2);
   });
 });
 
@@ -205,7 +340,9 @@ describe('setting a new password from the link', () => {
 
     await waitFor(
       () =>
-        expect(screen.getByRole('heading', { level: 1, name: 'Password changed' })).toBeDefined(),
+        expect(document.activeElement).toBe(
+          screen.getByRole('heading', { level: 1, name: 'Password changed' }),
+        ),
       { timeout: 3000 },
     );
     expect(
@@ -275,7 +412,12 @@ describe('setting a new password from the link', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
 
-    fireEvent.change(await screen.findByLabelText('New password'), {
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Set a new password' }),
+      ),
+    );
+    fireEvent.change(screen.getByLabelText('New password'), {
       target: { value: 'a brand new passphrase' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Set password and sign in' }));
@@ -307,6 +449,50 @@ describe('setting a new password from the link', () => {
     );
     expect(screen.getByRole('link', { name: 'Send a new link' }).getAttribute('href')).toBe(
       '/forgot-password',
+    );
+    // Shown as the page opens: nobody clicked, so focus is not moved.
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it.each([
+    ['reset_link_used', 410, 'This link has already been used'],
+    ['reset_link_expired', 410, 'This link has expired'],
+  ])(
+    'takes focus to its page for %s once the link dies under a click',
+    async (code, status, title) => {
+      checked({ 'POST /api/auth/password/reset': () => problem(code, status) });
+      at('/reset-password?token=t1');
+
+      fireEvent.change(await screen.findByLabelText('New password'), {
+        target: { value: 'a brand new passphrase' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Set password and sign in' }));
+
+      await waitFor(() =>
+        expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: title })),
+      );
+    },
+  );
+
+  it.each([
+    ['reset_link_used', 410, 'This link has already been used'],
+    ['two_factor_challenge_invalid', 401, 'This link has expired'],
+  ])('takes focus to its page for %s once the code is checked', async (code, status, title) => {
+    answering({
+      'POST /api/auth/password/reset/check': () =>
+        json({ email: 'folake@ire.events', twoFactor: true }),
+      'POST /api/auth/password/reset/code': () => problem(code, status),
+      // A 401 is retried after a refresh; signed out, the refresh is refused.
+      'POST /api/auth/refresh': () => problem('invalid_refresh_token', 401),
+    });
+    at('/reset-password?token=t1');
+
+    await screen.findByRole('heading', { level: 1, name: 'Enter your code' });
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to a new password' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: title })),
     );
   });
 });

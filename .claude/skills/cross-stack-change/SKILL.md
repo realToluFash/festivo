@@ -41,6 +41,9 @@ sent something else. Every test passed and the screen was empty.
 
 - Derive the client's types from the server's serialisation, do not hand-write them twice.
   Where they must be written twice, add a test that fails when they disagree.
+  That test must also run when only the other side changes: a `packages/` test that reads
+  a file under `services/api` needs that path in `SURFACE_PATTERNS.packages`
+  (`scripts/changed-surfaces.mjs`), or CI skips it on the pull request that causes the drift.
 - A fixture in a client test is only trustworthy if something checks it against the server.
   An untested fixture is a guess that typechecks.
 - Casting a wire value to a client type — `as SomeType` — tells the typechecker to stop

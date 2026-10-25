@@ -1,29 +1,25 @@
 import { type Membership } from '@soirely/api-client';
 import { type NewOrganisationField, deviceRegion } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import {
-  Keyboard,
-  KeyboardAvoidingView,
   type LayoutRectangle,
-  Modal,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   type TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
-import { offsetToFocus } from '../kit/keyboard.ts';
+import { fieldKeptInSight, offsetToFocus, titleScrollsWhileTyping } from '../kit/keyboard.ts';
 import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
+  dropsKeysAfter,
   limitMessage,
   newOrganisationMessage,
 } from '../kit/organisationCreate.ts';
@@ -32,104 +28,60 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, focusChecked, focusRefused, TextField } from './Field.tsx';
-import { type SettledLift, keyboardTopNow, settledLift } from './keyboardWatch.ts';
+import { type SettledLift, settledLift } from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
+import { Sheet, useKeysUp } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
 /** `OrgSwitcher-*` states `create` to `create_limited` (sc-390): a dialog on a tablet, a sheet on a phone. */
 export function CreateOrganisation({
   open,
   email,
+  opener,
   onCreated,
   onCancel,
 }: {
   open: boolean;
   email: string;
+  opener: RefObject<View | null>;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const { kind } = useLayout();
-  const insets = useSafeAreaInsets();
+  const { kind, width, height } = useLayout();
   const phone = kind === 'phone';
   // The `create_keyboard` drawing is for Android phones; the iPhone keeps its row (sc-9442).
   const drawn = Platform.OS === 'android' && phone;
   const keysUp = useKeysUp();
   const typing = phone && keysUp;
+  const turned = { os: Platform.OS, phone, width, height, keysUp };
 
   return (
-    <Modal
-      visible={open}
-      transparent
-      animationType={phone ? 'slide' : 'fade'}
-      onRequestClose={onCancel}
+    <Sheet
+      open={open}
+      onClose={onCancel}
+      scrimLabel={t('createOrganisation.cancel')}
+      opener={opener}
     >
-      {/* Padding on both platforms: a modal is its own window, so neither resizes for the keyboard. */}
-      <KeyboardAvoidingView style={styles.fill} behavior="padding">
-        <View
-          style={[
-            styles.scrim,
-            phone ? styles.scrimPhone : styles.scrimTablet,
-            { paddingTop: phone ? insets.top : Math.max(tokens.spaceXxl, insets.top) },
-          ]}
-        >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={onCancel}
-            accessibilityRole="button"
-            accessibilityLabel={t('createOrganisation.cancel')}
-          />
-          <View
-            style={[
-              styles.frame,
-              phone ? styles.framePhone : styles.frameTablet,
-              phone && { paddingBottom: typing ? 0 : insets.bottom },
-            ]}
-            accessibilityViewIsModal
-          >
-            {drawn && <View style={styles.grabber} />}
-            {open && (
-              <Form
-                email={email}
-                drawn={drawn}
-                keysUp={keysUp}
-                typing={typing}
-                onCreated={onCreated}
-                onCancel={onCancel}
-              />
-            )}
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      {open && (
+        <Form
+          email={email}
+          drawn={drawn}
+          keysUp={keysUp}
+          typing={typing}
+          inSight={fieldKeptInSight(turned)}
+          titleScrolls={titleScrollsWhileTyping(turned)}
+          onCreated={onCreated}
+          onCancel={onCancel}
+        />
+      )}
+    </Sheet>
   );
 }
 
-/** Whether the keyboard is up, changing when the avoiding view starts to move. */
-function useKeysUp(): boolean {
-  const [up, setUp] = useState(() => keyboardTopNow(0) != null);
-
-  useEffect(() => {
-    // iOS's avoiding view pads on the Will events and Android's on the Did ones.
-    const ios = Platform.OS === 'ios';
-    const shown = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', () =>
-      setUp(true),
-    );
-    const hidden = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () =>
-      setUp(false),
-    );
-
-    return () => {
-      shown.remove();
-      hidden.remove();
-    };
-  }, []);
-
-  return up;
-}
-
-/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow. */
-function useFocusInSight(keysUp: boolean) {
+/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow, again each time the keys move. */
+function useFocusInSight(keysUp: boolean, inSight: boolean) {
   const body = useRef<ScrollView>(null);
   const bodyHeight = useRef<number | null>(null);
   const group = useRef<LayoutRectangle | null>(null);
@@ -138,7 +90,7 @@ function useFocusInSight(keysUp: boolean) {
 
   useEffect(() => {
     const settled = settledLift(() => {
-      if (!keysUp || bodyHeight.current == null) return;
+      if (!inSight || bodyHeight.current == null) return;
       if (group.current == null || field.current == null) return;
       body.current?.scrollTo({
         y: offsetToFocus(
@@ -161,7 +113,7 @@ function useFocusInSight(keysUp: boolean) {
       settled.cancel();
       lift.current = null;
     };
-  }, [keysUp]);
+  }, [keysUp, inSight]);
 
   return {
     body,
@@ -185,6 +137,8 @@ function Form({
   drawn,
   keysUp,
   typing,
+  inSight,
+  titleScrolls,
   onCreated,
   onCancel,
 }: {
@@ -193,6 +147,9 @@ function Form({
   drawn: boolean;
   keysUp: boolean;
   typing: boolean;
+  inSight: boolean;
+  /** An iPhone on its side has no room above the keys for a fixed title as well as the field. */
+  titleScrolls: boolean;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -220,7 +177,7 @@ function Form({
     (field) => (field === 'name' ? focusChecked(nameInput) : focusPicker(countryPicker)),
   );
   const errors = { ...refused, ...checks.errors };
-  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp);
+  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp, inSight);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -250,6 +207,7 @@ function Form({
     }
 
     setSaving(false);
+    if (dropsKeysAfter(outcome.kind, Platform.OS)) nameInput.current?.blur();
     if (outcome.kind === 'limited') setLimited(limitMessage(outcome.until, locale, t));
     if (outcome.kind === 'failed') setFailed(true);
     if (outcome.kind === 'refused') {
@@ -286,22 +244,19 @@ function Form({
       {t('createOrganisation.intro')}
     </Text>
   );
+  const notCreated = t('createOrganisation.failed');
   const fields = (
     <>
       <View style={styles.group} onLayout={(event) => onGroupLayout(event.nativeEvent.layout)}>
         {limited != null && (
-          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+          <ReadOut words={limited} interrupts accessibilityRole="alert">
             <Notice tone="attention" mark="!" body={limited} />
-          </View>
+          </ReadOut>
         )}
         {failed && (
-          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('createOrganisation.failed')}
-            />
-          </View>
+          <ReadOut words={notCreated} interrupts accessibilityRole="alert">
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notCreated} />
+          </ReadOut>
         )}
 
         <View onLayout={(event) => onFieldLayout(event.nativeEvent.layout)}>
@@ -331,17 +286,16 @@ function Form({
           </Field>
         </View>
       </View>
-      <View ref={countryPicker}>
-        <Field label={t('createOrganisation.country')} error={errors.countryCode}>
-          <CountryPicker
-            label={t('createOrganisation.country')}
-            value={values.countryCode}
-            onChange={(code) => change('countryCode', code)}
-            disabled={saving}
-            testID="createOrganisation.country"
-          />
-        </Field>
-      </View>
+      <Field label={t('createOrganisation.country')} error={errors.countryCode}>
+        <CountryPicker
+          label={t('createOrganisation.country')}
+          value={values.countryCode}
+          onChange={(code) => change('countryCode', code)}
+          disabled={saving}
+          pickerRef={countryPicker}
+          testID="createOrganisation.country"
+        />
+      </Field>
 
       <Notice
         tone="quiet"
@@ -364,15 +318,18 @@ function Form({
 
   return (
     <>
-      <View style={[styles.heading, typing && styles.headingTyping]}>{title}</View>
+      {!titleScrolls && (
+        <View style={[styles.heading, typing && styles.headingTyping]}>{title}</View>
+      )}
       <ScrollView
         ref={body}
         style={styles.body}
-        contentContainerStyle={styles.form}
+        contentContainerStyle={[styles.form, titleScrolls && styles.formTitled]}
         keyboardShouldPersistTaps="handled"
         onLayout={(event) => onBodyLayout(event.nativeEvent.layout.height)}
         testID="createOrganisation"
       >
+        {titleScrolls && title}
         {intro}
         {fields}
       </ScrollView>
@@ -382,35 +339,6 @@ function Form({
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
-  scrim: { flex: 1, backgroundColor: tokens.scrimDialog },
-  scrimPhone: { justifyContent: 'flex-end' },
-  scrimTablet: { justifyContent: 'center', padding: tokens.spaceXxl },
-  frame: {
-    flexShrink: 1,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  framePhone: {
-    borderBottomWidth: 0,
-    borderTopLeftRadius: tokens.radiusCardPhone,
-    borderTopRightRadius: tokens.radiusCardPhone,
-  },
-  frameTablet: {
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 480,
-    borderRadius: tokens.radiusCardPhone,
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 36,
-    height: 5,
-    marginTop: tokens.spaceSm,
-    borderRadius: 3,
-    backgroundColor: tokens.colorBorder,
-  },
   heading: { paddingHorizontal: tokens.space3xl, paddingTop: tokens.space3xl },
   headingTyping: { paddingTop: tokens.spaceLg },
   body: { flexShrink: 1 },
@@ -420,6 +348,7 @@ const styles = StyleSheet.create({
     paddingTop: tokens.spaceXs,
     paddingBottom: tokens.spaceXl,
   },
+  formTitled: { paddingTop: tokens.spaceLg },
   group: { gap: tokens.spaceXl },
   footer: { paddingHorizontal: tokens.space3xl, paddingBottom: tokens.space3xl },
   footerTyping: {

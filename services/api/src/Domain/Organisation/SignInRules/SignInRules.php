@@ -62,7 +62,7 @@ final readonly class SignInRules
 
         return new ApiException(
             ErrorCode::OAuthOnly,
-            'This organisation signs in with Google or Apple only.',
+            'sign_in.provider_only',
             [],
             null,
             [],

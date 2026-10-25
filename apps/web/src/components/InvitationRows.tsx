@@ -11,6 +11,8 @@ import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
+import { offButton } from '../offButton.ts';
+import { useStepFocus } from '../stepFocus.ts';
 
 /** What follows "You joined": a button into it, or, on `/complete-profile`, a line saying where finishing goes. */
 export type AfterJoining =
@@ -60,6 +62,13 @@ function InvitationRow({
   const role = invitation.role == null ? '' : roleName(t, invitation.role);
   const answering = isWaiting(outcome);
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
+  const [said, arrive] = useStepFocus<HTMLDivElement>();
+
+  async function reply(choice: 'accept' | 'decline'): Promise<void> {
+    const answered = await waiting.answer(invitation, choice);
+
+    if (answered.kind !== 'failed') arrive();
+  }
 
   return (
     <div className="invitation-row" role="group" aria-labelledby={headingId}>
@@ -95,20 +104,22 @@ function InvitationRow({
             <button
               className="button button-primary"
               type="button"
-              disabled={busy != null}
               aria-busy={busy === 'accept'}
               aria-label={t('invitations.acceptLabel', { organisation })}
-              onClick={() => void waiting.answer(invitation, 'accept')}
+              disabled={busy === 'decline'}
+              {...offButton(busy === 'accept')}
+              onClick={() => void reply('accept')}
             >
               {t('invitations.accept')}
             </button>
             <button
               className="button"
               type="button"
-              disabled={busy != null}
               aria-busy={busy === 'decline'}
               aria-label={t('invitations.declineLabel', { organisation })}
-              onClick={() => void waiting.answer(invitation, 'decline')}
+              disabled={busy === 'accept'}
+              {...offButton(busy === 'decline')}
+              onClick={() => void reply('decline')}
             >
               {t('invitations.decline')}
             </button>
@@ -120,7 +131,7 @@ function InvitationRow({
       {outcome?.kind === 'accepted' &&
         ('open' in after ? (
           <div className="invitation-row-answer">
-            <div className="invitation-row-said invitation-row-joined" role="status">
+            <div className="invitation-row-said invitation-row-joined" ref={said} tabIndex={-1}>
               <span className="mark mark-done" aria-hidden="true">
                 ✓
               </span>
@@ -136,7 +147,7 @@ function InvitationRow({
             </button>
           </div>
         ) : (
-          <div className="invitation-row-said" role="status">
+          <div className="invitation-row-said" ref={said} tabIndex={-1}>
             <span className="mark mark-done" aria-hidden="true">
               ✓
             </span>
@@ -150,7 +161,7 @@ function InvitationRow({
         ))}
 
       {outcome?.kind === 'declined' && (
-        <div className="invitation-row-said" role="status">
+        <div className="invitation-row-said" ref={said} tabIndex={-1}>
           <span className="mark mark-info" aria-hidden="true">
             –
           </span>
@@ -161,7 +172,8 @@ function InvitationRow({
       {outcome?.kind === 'refused' && (
         <div
           className={`notice ${outcome.refusal === 'invitation_expired' ? 'notice-attention' : 'notice-quiet'}`}
-          role="status"
+          ref={said}
+          tabIndex={-1}
         >
           <span
             className={`mark ${outcome.refusal === 'invitation_expired' ? 'mark-attention' : 'mark-info'}`}

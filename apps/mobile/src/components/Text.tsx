@@ -1,4 +1,10 @@
-import { Text as RNText, StyleSheet, type TextProps as RNTextProps } from 'react-native';
+import { type Ref } from 'react';
+import {
+  Text as RNText,
+  StyleSheet,
+  type TextProps as RNTextProps,
+  useWindowDimensions,
+} from 'react-native';
 
 import { WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
@@ -21,7 +27,10 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
   size?: number;
   muted?: boolean;
   mono?: boolean;
+  ref?: Ref<TextHandle> | undefined;
 }
+
+export type TextHandle = RNText;
 
 export function Text({
   weight = 'regular',
@@ -31,8 +40,12 @@ export function Text({
   style,
   ...rest
 }: TextProps) {
+  const { fontScale } = useWindowDimensions();
+
   return (
     <RNText
+      // Native measures text again when the text size changes, but lays out nothing around it: a new text is laid out from the root down.
+      key={fontScale}
       style={faced(
         [
           styles.base,

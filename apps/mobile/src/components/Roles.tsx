@@ -27,26 +27,29 @@ import {
   withoutRole,
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Pressable,
-  StyleSheet,
-  type TextInput,
-  View,
-  findNodeHandle,
-} from 'react-native';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { currentLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
+import { LEVEL_BORDER_ON, LEVEL_PADDING, roomBeside, stacksRows } from '../rowArrangement.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { AboveKeys, type DockInset, useAboveKeyboard } from './Screen.tsx';
+import { ReadOut } from './ReadOut.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
+import {
+  AboveKeys,
+  type DockInset,
+  SETTLED_MS,
+  useAboveKeyboard,
+  useFocusOnAnswer,
+} from './Screen.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
 
 /** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
@@ -128,6 +131,7 @@ export function RoleList({
             muted
             accessibilityElementsHidden
             importantForAccessibility="no"
+            accessible={false}
           >
             ›
           </Text>
@@ -144,18 +148,27 @@ export function RolePage({
   catalogue,
   role,
   saved,
+  answer,
+  savedAnswer,
   onRemove,
   onSaved,
   onEdited,
+  onUsed,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   catalogue: RolesCatalogue;
   role: OrganisationRole | null;
   saved: boolean;
+  /** The tap that opened the page: its name takes screen reader focus. */
+  answer?: unknown;
+  /** The tap that created the role: "Saved." takes screen reader focus. */
+  savedAnswer?: unknown;
   onRemove: () => void;
   onSaved: (role: OrganisationRole) => void;
   onEdited: () => void;
+  /** Anything done on the page, a change or a look, so it stays open through a turn. */
+  onUsed: () => void;
 }) {
   const { t } = useTranslation();
   const phone = kind === 'phone';
@@ -164,13 +177,25 @@ export function RolePage({
   const editable = !(role?.fixed ?? false);
   const naming = creating || (editable && role.seededAs == null);
   const startingGrant = role?.permissions ?? [];
-  const nameInput = useRef<TextInput>(null);
+  const { read: nameInput } = useFocusOnAnswer<TextInput>(naming ? answer : undefined);
   const aboveKeyboard = useAboveKeyboard();
   const [nameHeight, setNameHeight] = useState(0);
   const [grant, setGrant] = useState<string[]>(startingGrant);
   const [typed, setTyped] = useState(role?.name ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
   const [status, setStatus] = useState<'editing' | 'saving' | 'failed'>('editing');
+  const [rooms, setRooms] = useState<ReadonlyMap<string, number>>(new Map());
+  const stacked = phone || stacksRows(rooms.values());
+  const measured = useCallback((row: string, room: number | null) => {
+    setRooms((before) => {
+      if ((before.get(row) ?? null) === room) return before;
+      const after = new Map(before);
+      if (room == null) after.delete(row);
+      else after.set(row, room);
+
+      return after;
+    });
+  }, []);
   const title = role == null ? '' : roleName(t, role);
   // The API refuses a seeded role's label in every language (sc-2301), whatever the caller reads.
   const everyLanguage = LOCALE_CODES.map((locale) => getFixedT(locale));
@@ -203,6 +228,7 @@ export function RolePage({
     setGrant(next);
     setStatus('editing');
     onEdited();
+    onUsed();
   }
 
   function refuseName(message: string): void {
@@ -257,10 +283,11 @@ export function RolePage({
       <SecondaryButton label={t('rolesScreen.remove')} onPress={onRemove} testID="roles.remove" />
     </View>
   );
+  const savedLine = t('rolesScreen.saved');
 
   return (
     <View style={styles.stack}>
-      <View style={[styles.card, styles.padded, !phone && styles.head]}>
+      <View style={[styles.card, styles.padded, !stacked && styles.head]}>
         <View style={[styles.fill, styles.headText]}>
           {naming ? (
             <View
@@ -280,6 +307,7 @@ export function RolePage({
                   autoComplete="off"
                   accessibilityLabel={t('rolesScreen.nameLabel')}
                   style={styles.nameInput}
+                  onFocus={onUsed}
                   onChangeText={(next) => {
                     setTyped(next);
                     setNameError(null);
@@ -290,15 +318,15 @@ export function RolePage({
               </Field>
             </View>
           ) : (
-            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+            <AnswerHeading answer={answer} size={tokens.typeTitleDialog.size} weight="bold">
               {title}
-            </Text>
+            </AnswerHeading>
           )}
           <Text size={tokens.typeBody.size} muted>
             {t(describe(role), { name: organisation.name })}
           </Text>
         </View>
-        {!phone && remove}
+        {!stacked && remove}
       </View>
 
       {role?.fixed === true && (
@@ -308,11 +336,20 @@ export function RolePage({
           body={t('rolesScreen.ownerNote', { name: organisation.name })}
         />
       )}
-      {saved && (
-        <View accessibilityLiveRegion="polite">
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={t('rolesScreen.saved')} />
-        </View>
-      )}
+      {saved &&
+        (savedAnswer !== undefined ? (
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            body={savedLine}
+            answer={savedAnswer}
+            takesFocus
+          />
+        ) : (
+          <ReadOut words={savedLine}>
+            <Notice tone="done" mark={tokens.marks.done.glyph} body={savedLine} />
+          </ReadOut>
+        ))}
       {lockedLabels.length > 0 && (
         <Notice
           tone="quiet"
@@ -339,6 +376,8 @@ export function RolePage({
             <View key={area} style={[styles.area, styles.divided]}>
               <GridRow
                 phone={phone}
+                stacked={stacked}
+                onRoom={measured}
                 name={named}
                 means={t(`rolesScreen.means.${area}`)}
                 fixed={editable && !locked ? null : t(`rolesScreen.level.${level}`)}
@@ -360,6 +399,8 @@ export function RolePage({
                   <View key={permission} style={styles.extra}>
                     <GridRow
                       phone={phone}
+                      stacked={stacked}
+                      onRoom={measured}
                       name={t(words.name)}
                       means={t(words.means, { name: organisation.name })}
                       fixed={
@@ -437,7 +478,7 @@ export function RolePage({
             ? t('rolesScreen.nobody')
             : t('rolesScreen.holders', { count: role?.holders ?? 0 })}
         </Text>
-        {role != null && <Holders holders={role.holderNames} />}
+        {role != null && <Holders holders={role.holderNames} onMore={onUsed} />}
       </View>
 
       <View style={[styles.card, styles.padded]}>
@@ -445,21 +486,25 @@ export function RolePage({
           {t('rolesScreen.seeHeading')}
         </Text>
         <WhatTheySee grant={grant} areas={catalogue.areas.map((entry) => entry.area)} />
-        {phone && remove}
+        {stacked && remove}
       </View>
     </View>
   );
 }
 
-function Holders({ holders }: { holders: readonly RoleHolder[] }) {
+function Holders({ holders, onMore }: { holders: readonly RoleHolder[]; onMore: () => void }) {
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
   const { shown, more } = shownHolders(holders, all);
   const firstRevealed = useRef<View>(null);
 
   useEffect(() => {
-    const node = all ? findNodeHandle(firstRevealed.current) : null;
-    if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+    if (!all) return;
+
+    // TalkBack drops a hover sent before the rows it reveals have reached its tree (sc-9950).
+    const focus = setTimeout(() => moveScreenReaderFocus(firstRevealed.current), SETTLED_MS);
+
+    return () => clearTimeout(focus);
   }, [all]);
 
   if (holders.length === 0) return null;
@@ -484,7 +529,10 @@ function Holders({ holders }: { holders: readonly RoleHolder[] }) {
       {more > 0 && (
         <Pressable
           style={styles.moreHolders}
-          onPress={() => setAll(true)}
+          onPress={() => {
+            setAll(true);
+            onMore();
+          }}
           accessibilityRole="button"
           testID="roles.moreHolders"
         >
@@ -499,6 +547,8 @@ function Holders({ holders }: { holders: readonly RoleHolder[] }) {
 
 function GridRow<T extends string>({
   phone,
+  stacked,
+  onRoom,
   name,
   means,
   fixed,
@@ -508,6 +558,10 @@ function GridRow<T extends string>({
   testID,
 }: {
   phone: boolean;
+  /** Buttons under the name rather than beside it, as on the phone (sc-12226). */
+  stacked: boolean;
+  /** What the name keeps with the buttons beside it, or null where it has none to keep. */
+  onRoom: (row: string, room: number | null) => void;
   name: string;
   means: string;
   /** The level shown as words, where this caller cannot pick one. */
@@ -517,22 +571,44 @@ function GridRow<T extends string>({
   onPick: (value: T) => void;
   testID: string;
 }) {
+  const [row, setRow] = useState(0);
+  const [labels, setLabels] = useState<Partial<Record<T, number>>>({});
+  const widths = options.flatMap((option) => labels[option.value] ?? []);
+  const room =
+    fixed == null && row > 0 && widths.length === options.length ? roomBeside(row, widths) : null;
+
+  useEffect(() => onRoom(testID, room), [onRoom, testID, room]);
+  useEffect(() => () => onRoom(testID, null), [onRoom, testID]);
+
   const picker = fixed == null && (
     <View
-      style={[styles.levels, !phone && styles.levelsBeside]}
+      style={[styles.levels, stacked ? !phone && styles.levelsWrap : styles.levelsBeside]}
       accessibilityRole="radiogroup"
-      accessibilityLabel={name}
     >
       {options.map((option) => (
         <Pressable
           key={option.value}
-          style={[styles.level, phone && styles.fill, option.value === value && styles.levelOn]}
+          style={[
+            styles.level,
+            phone && styles.fill,
+            stacked && !phone && styles.levelGrow,
+            option.value === value && styles.levelOn,
+          ]}
           onPress={() => onPick(option.value)}
           accessibilityRole="radio"
           accessibilityState={{ checked: option.value === value }}
           testID={`${testID}.${option.value}`}
         >
-          <Text size={tokens.typeBody.size} weight="semibold">
+          <Text
+            size={tokens.typeBody.size}
+            weight="semibold"
+            onLayout={(event) => {
+              const width = event.nativeEvent.layout.width;
+              setLabels((before) =>
+                before[option.value] === width ? before : { ...before, [option.value]: width },
+              );
+            }}
+          >
             {option.label}
           </Text>
         </Pressable>
@@ -542,7 +618,7 @@ function GridRow<T extends string>({
 
   return (
     <>
-      <View style={styles.rowHead}>
+      <View style={styles.rowHead} onLayout={(event) => setRow(event.nativeEvent.layout.width)}>
         <View style={[styles.fill, styles.rowText]}>
           <Text size={tokens.typeBodyPhone.size} weight="semibold">
             {name}
@@ -556,9 +632,9 @@ function GridRow<T extends string>({
             {fixed}
           </Text>
         )}
-        {!phone && picker}
+        {!stacked && picker}
       </View>
-      {phone && picker}
+      {stacked && picker}
     </>
   );
 }
@@ -593,12 +669,15 @@ function WhatTheySee({ grant, areas }: { grant: string[]; areas: string[] }) {
 
 /** Removing a role members hold sends nothing until the role they move to is chosen (sc-66). */
 export function RemoveRole({
+  answer,
   organisation,
   role,
   roles,
   onKeep,
   onRemoved,
 }: {
+  /** The tap that asked: the title takes screen reader focus. */
+  answer?: unknown;
   organisation: Membership;
   role: OrganisationRole;
   roles: OrganisationRole[];
@@ -606,7 +685,7 @@ export function RemoveRole({
   onRemoved: (roles: OrganisationRole[]) => void;
 }) {
   const { t } = useTranslation();
-  const choicesRef = useRef<View>(null);
+  const firstChoice = useRef<View>(null);
   const [replacement, setReplacement] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [status, setStatus] = useState<'asking' | 'removing' | 'failed'>('asking');
@@ -618,7 +697,7 @@ export function RemoveRole({
   async function remove(): Promise<void> {
     if (role.holders > 0 && replacement == null) {
       setMissing(true);
-      focusPicker(choicesRef);
+      focusPicker(firstChoice);
       return;
     }
 
@@ -637,9 +716,9 @@ export function RemoveRole({
 
   return (
     <View style={[styles.card, styles.padded, styles.removing]}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading answer={answer} size={tokens.typeTitleDialog.size} weight="bold">
         {t('rolesScreen.removeTitle', { role: title })}
-      </Text>
+      </AnswerHeading>
       {role.holders === 0 ? (
         <Text size={tokens.typeBodyPhone.size}>{t('rolesScreen.removeNobody')}</Text>
       ) : (
@@ -647,16 +726,11 @@ export function RemoveRole({
           <Text size={tokens.typeBodyPhone.size}>
             {t('rolesScreen.removeMove', { count: role.holders })}
           </Text>
-          <View
-            ref={choicesRef}
-            style={styles.choices}
-            accessible
-            accessibilityRole="radiogroup"
-            accessibilityLabel={t('rolesScreen.replacementLegend')}
-          >
-            {choices.map((one) => (
+          <View style={styles.choices}>
+            {choices.map((one, index) => (
               <Pressable
                 key={one.id}
+                ref={index === 0 ? firstChoice : undefined}
                 style={[styles.choice, replacement === one.id && styles.choiceOn]}
                 onPress={() => {
                   setReplacement(one.id);
@@ -797,18 +871,20 @@ const styles = StyleSheet.create({
   rowText: { gap: tokens.spaceHair },
   levels: { flexDirection: 'row', gap: tokens.spaceXs },
   levelsBeside: { flexShrink: 0 },
+  levelsWrap: { flexWrap: 'wrap' },
   level: {
     height: tokens.sizeHit,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: tokens.spaceLg,
+    paddingHorizontal: LEVEL_PADDING,
     borderRadius: tokens.sizeHit / 2,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
     backgroundColor: tokens.colorCard,
   },
+  levelGrow: { flexGrow: 1 },
   levelOn: {
-    borderWidth: 2,
+    borderWidth: LEVEL_BORDER_ON,
     borderColor: tokens.colorAccent,
     backgroundColor: tokens.colorAccentTint,
   },

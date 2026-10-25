@@ -4,14 +4,16 @@ import type { ReactNode } from 'react';
 export function FieldError({
   id,
   message,
+  quiet = false,
   children,
 }: {
   id: string;
   message: string;
+  quiet?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <div className="field-error" id={id} role="alert">
+    <div className="field-error" id={id} role={quiet ? undefined : 'alert'}>
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>

@@ -1,12 +1,17 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { formatEventRange } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { type RefObject, useContext, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
-import { useSession } from '../../../session.ts';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
+import { Arriving } from '../../../pageArrival.ts';
+import { pageTitle, usePageTitle } from '../../../pageTitle.ts';
+import { can, useSession } from '../../../session.ts';
+import { useFocusOnceShown } from '../../../stepFocus.ts';
+import { type EditOutcome } from './EditEvent.tsx';
 
 type Load =
   | { kind: 'loading' }
@@ -53,6 +58,9 @@ function EventOf({
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const failedLine = useRef<HTMLParagraphElement>(null);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     let current = true;
@@ -100,45 +108,66 @@ function EventOf({
       )}
 
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p>{t('eventPage.failed')}</p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            >
-              {t('events.retry')}
-            </button>
-          </div>
-        </div>
+        <ArrivalNotice
+          role={attempt > 0 ? undefined : 'alert'}
+          line={t('eventPage.failed')}
+          lineRef={failedLine}
+          focusable
+          retry={t('events.retry')}
+          onRetry={() => {
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+            land(() => heading.current ?? failedLine.current);
+          }}
+        />
       )}
 
       {load.kind === 'notFound' && (
         <section className="card">
-          <h1>{t('eventPage.notFound')}</h1>
+          <h1 ref={heading} tabIndex={-1}>
+            {t('eventPage.notFound')}
+          </h1>
         </section>
       )}
 
       {load.kind === 'loaded' &&
-        (page === 'event' ? <EventPage event={load.event} /> : <GuestsComing />)}
+        (page === 'event' ? (
+          <EventPage event={load.event} heading={heading} />
+        ) : (
+          <GuestsComing event={load.event} heading={heading} />
+        ))}
     </div>
   );
 }
 
-function EventPage({ event }: { event: OrganisationEvent }) {
+function EventPage({
+  event,
+  heading,
+}: {
+  event: OrganisationEvent;
+  heading: RefObject<HTMLHeadingElement | null>;
+}) {
   const { t } = useTranslation();
+  const session = useSession();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [outcome] = useState(() => editOutcome(location.state));
+
+  useEffect(() => {
+    if (editOutcome(location.state) == null) return;
+
+    void navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: null },
+    );
+  }, [location, navigate]);
 
   return (
     <section className="card event-page-card" aria-labelledby="event-title">
       <div className="event-page-head">
-        <h1 id="event-title">{event.name}</h1>
+        <h1 id="event-title" ref={heading} tabIndex={-1}>
+          {event.name}
+        </h1>
         <span className="pill-quiet">{t('events.draft')}</span>
       </div>
       <p>
@@ -147,7 +176,17 @@ function EventPage({ event }: { event: OrganisationEvent }) {
           timeZone: event.timeZone,
         })}
       </p>
-      <div>
+      {outcome != null && (
+        <OutcomeLine
+          words={outcome === 'saved' ? t('eventEdit.saved') : t('eventEdit.nothingChanged')}
+        />
+      )}
+      <div className="event-page-actions">
+        {can(session, 'events.manage') && (
+          <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/edit`}>
+            {t('eventEdit.open')}
+          </Link>
+        )}
         <Link className="button" to={`/app/events/${encodeURIComponent(event.id)}/guests`}>
           {t('eventPage.guests')}
         </Link>
@@ -156,12 +195,54 @@ function EventPage({ event }: { event: OrganisationEvent }) {
   );
 }
 
-function GuestsComing() {
+/** Where the page begins after Save changes; once the person has moved focus, it is announced instead (sc-11370). */
+function OutcomeLine({ words }: { words: string }) {
+  const arriving = useContext(Arriving);
+  const [taking] = useState(arriving);
+  const [announced, setAnnounced] = useState('');
+
+  useEffect(() => {
+    if (taking) return;
+
+    // Set after the region is in the page, so a screen reader hears the change rather than missing a region born full.
+    const id = window.setTimeout(() => setAnnounced(words), 0);
+
+    return () => window.clearTimeout(id);
+  }, [taking, words]);
+
+  return taking ? (
+    <p className="event-page-outcome" tabIndex={-1} data-page-focus="">
+      {words}
+    </p>
+  ) : (
+    <p className={announced === '' ? 'visually-hidden' : 'event-page-outcome'} role="status">
+      {announced}
+    </p>
+  );
+}
+
+function editOutcome(state: unknown): EditOutcome | null {
+  const edit = typeof state === 'object' && state != null && 'edit' in state ? state.edit : null;
+
+  return edit === 'saved' || edit === 'unchanged' ? edit : null;
+}
+
+function GuestsComing({
+  event,
+  heading,
+}: {
+  event: OrganisationEvent;
+  heading: RefObject<HTMLHeadingElement | null>;
+}) {
   const { t } = useTranslation();
+
+  usePageTitle(pageTitle(t, [t('eventPage.guests'), event.name]));
 
   return (
     <section className="card">
-      <h1>{t('eventPage.guests')}</h1>
+      <h1 ref={heading} tabIndex={-1}>
+        {t('eventPage.guests')}
+      </h1>
       <p>{t('eventPage.guestsComing')}</p>
     </section>
   );

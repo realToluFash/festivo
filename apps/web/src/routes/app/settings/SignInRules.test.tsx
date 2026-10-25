@@ -178,10 +178,9 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
         }),
       ).getByText('Not required'),
     ).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Rules are saved' }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
   });
 
@@ -262,10 +261,9 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
     expect(sent.filter(({ method }) => method === 'PATCH')).toEqual([]);
     expect((screen.getByLabelText(/Any method/) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByText('Link Google or Apple for yourself first')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Rules are saved' })).toHaveProperty(
-      'disabled',
-      true,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Rules are saved' }).getAttribute('aria-disabled'),
+    ).toBe('true');
   });
 
   it('keeps the other unsaved choices when the provider choice is refused, and saves them on a second press', async () => {
@@ -377,7 +375,7 @@ describe('Settings > Sign-in rules, for someone who manages the organisation', (
 
     const save = await screen.findByRole('button', { name: 'Rules are saved' });
 
-    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(save.getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByText('Nothing changes. These are the rules in force.')).toBeDefined();
   });
 });
@@ -646,6 +644,36 @@ describe('what the rules ask of a member, on every page', () => {
 
     await waitFor(() => expect(screen.queryByText('Turn on two-factor to carry on')).toBeNull());
   });
+
+  it('past the deadline, stays signed in and says so when signing out cannot reach Soirely', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    signedIn(
+      membership({
+        twoFactorDue: {
+          at: '2026-10-24T13:20:00+00:00',
+          written: 'Saturday, Oct 24 at 14:20 WAT',
+          overdue: true,
+        },
+      }),
+    );
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (new URL(String(input)).pathname === '/api/auth/logout') {
+        throw new TypeError('Failed to fetch');
+      }
+
+      return new Response(JSON.stringify(PAGE), { status: 200 });
+    });
+    open('/app/settings/sign-in-rules');
+
+    await screen.findByText('Turn on two-factor to carry on');
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    button.focus();
+    fireEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
 });
 
 describe('the two-factor deadline after a language change (sc-9267)', () => {
@@ -735,5 +763,53 @@ describe('the two-factor deadline after a language change (sc-9267)', () => {
     expect(
       await screen.findByText('Obligatoria a partir del sábado 31 oct a las 10:44 GMT'),
     ).toBeDefined();
+  });
+});
+
+describe('Try again under "The sign-in rules did not load." (sc-11369)', () => {
+  function failingTwice(): void {
+    let reads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (!new URL(String(input)).pathname.endsWith('/sign-in-rules')) {
+        throw new TypeError('Failed to fetch');
+      }
+      reads += 1;
+      if (reads < 3) throw new TypeError('Failed to fetch');
+
+      return new Response(JSON.stringify(PAGE), { status: 200 });
+    });
+  }
+
+  async function retryTwice(heading: string): Promise<void> {
+    const failed = 'The sign-in rules did not load.';
+    expect(await screen.findByText(failed)).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const again = await screen.findByText(failed);
+    await waitFor(() => expect(document.activeElement).toBe(again));
+    expect(again.closest('[role="alert"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: heading })),
+    );
+    expect(screen.queryByText(failed)).toBeNull();
+  }
+
+  it('puts focus on Sign-in rules once they load, or on the line once it fails again', async () => {
+    signedIn(membership({}));
+    failingTwice();
+    open();
+
+    await retryTwice('Sign-in rules');
+  });
+
+  it('puts focus on the organisation’s sign-in rules for a member who cannot change them', async () => {
+    signedIn(membership({ role: COORDINATOR, permissions: ['events.read', 'events.manage'] }));
+    failingTwice();
+    open();
+
+    await retryTwice('Ìrè Events’s sign-in rules');
   });
 });

@@ -1,11 +1,16 @@
 import { type Ref, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { currentLocale } from '../i18n/index.ts';
+import { searchBesideTitle } from '../kit/keyboard.ts';
+import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
+import { useLayout } from '../layout/useLayout.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { LIFT } from './keyboardWatch.ts';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -43,6 +48,8 @@ export function ListPicker({
   const locale = currentLocale();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const { kind, width, height } = useLayout();
+  const beside = searchBesideTitle({ os: Platform.OS, phone: kind === 'phone', width, height });
 
   const chosen = choices.find((choice) => choice.code === value)?.name ?? value;
   const blank = chosen === '';
@@ -51,6 +58,22 @@ export function ListPicker({
     needle === ''
       ? choices
       : choices.filter((choice) => choice.name.toLocaleLowerCase(locale).includes(needle));
+
+  const searchField = (
+    <TextInput
+      style={faced(beside ? [styles.search, styles.searchBeside] : styles.search)}
+      value={search}
+      onChangeText={setSearch}
+      placeholder={searchLabel}
+      placeholderTextColor={tokens.colorInkTertiary}
+      cursorColor={tokens.colorInk}
+      selectionColor={tokens.colorInk}
+      autoCorrect={false}
+      spellCheck={false}
+      accessibilityLabel={searchLabel}
+      testID={`${testID}.search`}
+    />
+  );
 
   return (
     <>
@@ -69,64 +92,79 @@ export function ListPicker({
         <Chevron />
       </Pressable>
 
-      <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
-        <Screen style={styles.page} contentStyle={styles.sheet} scroll={false}>
-          <View style={styles.sheetHeading}>
-            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-              {label}
-            </Text>
-            <Pressable
-              style={styles.close}
-              onPress={() => setOpen(false)}
-              accessibilityRole="button"
-              testID={`${testID}.close`}
-            >
-              <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
-                {t('countryPicker.close')}
-              </Text>
-            </Pressable>
-          </View>
-          <TextInput
-            style={faced(styles.search)}
-            value={search}
-            onChangeText={setSearch}
-            placeholder={searchLabel}
-            placeholderTextColor={tokens.colorInkTertiary}
-            cursorColor={tokens.colorInk}
-            selectionColor={tokens.colorInk}
-            autoCorrect={false}
-            spellCheck={false}
-            accessibilityLabel={searchLabel}
-            testID={`${testID}.search`}
-          />
-          <FlatList
-            data={shown}
-            keyExtractor={(choice) => choice.code}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <Pressable
-                style={[styles.option, item.code === value && styles.optionChosen]}
-                onPress={() => {
-                  onChange(item.code);
-                  setSearch('');
-                  setOpen(false);
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: item.code === value }}
-                testID={`${testID}.${item.code}`}
+      <Modal
+        visible={open}
+        animationType="slide"
+        supportedOrientations={TURNS_WITH_THE_APP}
+        onRequestClose={() => setOpen(false)}
+      >
+        {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
+        <SafeAreaProvider>
+          <Screen
+            style={styles.page}
+            contentStyle={beside ? { ...styles.sheet, ...styles.sheetBeside } : styles.sheet}
+            scroll={false}
+          >
+            <View style={styles.sheetHeading}>
+              <Text
+                size={tokens.typeTitleDialog.size}
+                weight="bold"
+                accessibilityRole="header"
+                style={beside ? styles.titleBeside : undefined}
               >
-                <Text size={CONTROL_TEXT_SIZE} style={styles.optionName}>
-                  {item.name}
+                {label}
+              </Text>
+              {beside && searchField}
+              <Pressable
+                style={styles.close}
+                onPress={() => setOpen(false)}
+                accessibilityRole="button"
+                testID={`${testID}.close`}
+              >
+                <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
+                  {t('countryPicker.close')}
                 </Text>
-                {item.code === value && (
-                  <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
-                    ✓
-                  </Text>
-                )}
               </Pressable>
-            )}
-          />
-        </Screen>
+            </View>
+            {!beside && searchField}
+            <FlatList
+              data={shown}
+              keyExtractor={(choice) => choice.code}
+              keyboardShouldPersistTaps="handled"
+              // The modal is its own window, so on iOS only the list's own inset lifts its last row above the keys.
+              automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={[styles.option, item.code === value && styles.optionChosen]}
+                  onPress={() => {
+                    onChange(item.code);
+                    setSearch('');
+                    setOpen(false);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: item.code === value }}
+                  testID={`${testID}.${item.code}`}
+                >
+                  <Text size={CONTROL_TEXT_SIZE} style={styles.optionName}>
+                    {item.name}
+                  </Text>
+                  {item.code === value && (
+                    <Text
+                      size={tokens.typeButton.size}
+                      weight="semibold"
+                      style={styles.accentText}
+                      accessible={false}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      ✓
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+            />
+          </Screen>
+        </SafeAreaProvider>
       </Modal>
     </>
   );
@@ -162,7 +200,9 @@ const styles = StyleSheet.create({
   placeholder: { flex: 1, color: tokens.colorInkTertiary },
   page: { backgroundColor: tokens.colorPage },
   sheet: { flex: 1, gap: tokens.spaceLg, padding: tokens.space3xl },
+  sheetBeside: { paddingVertical: tokens.spaceLg, gap: tokens.spaceSm },
   sheetHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  titleBeside: { flexShrink: 1 },
   close: { minHeight: tokens.sizeHit, justifyContent: 'center', paddingHorizontal: tokens.spaceSm },
   accentText: { color: tokens.colorAccentText },
   search: {
@@ -175,6 +215,7 @@ const styles = StyleSheet.create({
     color: tokens.colorInk,
     fontSize: CONTROL_TEXT_SIZE,
   },
+  searchBeside: { flex: 1, marginHorizontal: tokens.spaceLg },
   option: {
     minHeight: tokens.sizeHitPhonePrimary,
     flexDirection: 'row',

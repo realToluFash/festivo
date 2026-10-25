@@ -11,6 +11,7 @@ import i18next from 'i18next';
 import { useEffect, useSyncExternalStore } from 'react';
 
 import { api } from './api.ts';
+import { currentLocale } from './i18n/index.ts';
 import { tokens } from './tokens.ts';
 
 const REMEMBERED = 'soirely.organisation';
@@ -115,6 +116,7 @@ export function launchSignedIn(): Promise<boolean> {
 let loading: Promise<boolean> | null = null;
 
 function load(): Promise<boolean> {
+  const askedIn = currentLocale();
   loading ??= Promise.all([
     api.me(),
     api.organisationsWithPaused(),
@@ -130,6 +132,8 @@ function load(): Promise<boolean> {
         pausedIn: choosePaused(paused, id, organisations.length),
         invitations,
       });
+      // The account's language, followed at launch while this read was on its way (sc-9267).
+      if (currentLocale() !== askedIn) void rereadOrganisations();
 
       return true;
     })
@@ -148,12 +152,14 @@ export function rememberOrganisation(id: string): Promise<void> {
   return AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
 }
 
-export function switchOrganisation(id: string): void {
+export function switchOrganisation(id: string): boolean {
   const organisation = state.organisations.find((membership) => membership.id === id);
-  if (organisation == null) return;
+  if (organisation == null) return false;
 
   set({ ...state, organisation, pausedIn: null });
   void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+
+  return true;
 }
 
 /** An invitation accepted in the app: the organisation joins the list, and nobody is moved into it. */

@@ -62,6 +62,54 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email
+  (sc-67, sc-68, sc-11160, sc-2922, `web:membersScreen.*`, `web:join.*`, `invitations.*` web and
+  app, `emails:invitation.*`, `messages:invitations.*`).** Settled as sc-67 wrote them. The web
+  twins of the app's Members keys say what the app says: `onlyOwner` now reads "so their role
+  cannot change and they cannot be removed …", as sc-4259 settled. `ownRole` keeps "You can't"
+  and "General" (the web's section; the app says "Organisation"), because `Members.test.tsx`
+  matches "You can't change your own role"; it should read "You cannot change your own role."
+  and waits on [dev]. `beyondGrant` stays as written, also pinned; on the suspension card the
+  action it leaves out is restoring, so "you cannot change their role or their access" would
+  read truer there, asked of [dev3]. es, fr and pt write the web twins as the app's, word for
+  word, and write `ownRole` without the contraction. An invitation is "withdrawn" in prose and
+  "Revoke" stays the manager's button; the invitee reads "Withdrawn". "Works until" is the
+  invitation's life, never "valid until".
+- **25 Oct 2026. Deleting an organisation (sc-68, sc-3215, `errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`).**
+  Settled as sc-68 wrote it; `OrganisationDeletionTest` and `OwnershipCard.test.tsx` pin the
+  refusals, the subject and the restore line. `delete_name_mismatch` is the same sentence as
+  `ownership.deleteMismatch`, the check made twice, and `organisationDeleted.restore` repeats
+  `ownership.deleteWindow`, the sentence the owner read before deleting. `errors:owner_required`
+  is the code's own, any act; `organisation.owner_required` names the act. The footer says "you
+  were a member": the organisation no longer exists when it is read.
+- **25 Oct 2026. The sign-in rules refusals (sc-10594, sc-10716, `messages:sign_in_rules.*`).**
+  `inactivity_choice` stays: "Choose 7 days, 30 days or no limit." The other two are the
+  Owner's own state, as the page's `needsOwn*` says it, and should read "Turn on two-factor for
+  yourself before requiring it." and "Link Google or Apple for yourself before requiring it.",
+  but `SignInRulesTest::eachRefusalReadsInEnglishAsItDidBefore` pins the English, so that waits on
+  `[dev]`. es, fr and pt already say it the page's way, after the `errors:` title.
+- **25 Oct 2026. The API's refusals in the request's language (sc-10700, sc-10809, `messages:*`).**
+  Settled as sc-10700 wrote them, with three changes. `event.currency_in_use` says "against this
+  event", as its screen twin `eventEdit.currencyInUse`. `access.two_factor_required` says "requires
+  two-factor for this", the verb `two_factor_overdue` uses, over "asks for two-factor before this".
+  `provider.unlink_first` says "the account that is linked now". Field and header names an
+  integrator sends (`idToken`, `recoveryCode`, `If-Match`, `context`, the assistant's roles) stay as
+  written in every locale. Where a refusal's screen already words the same sentence (the lock-outs,
+  `lostTwoFactor.*`, `signIn.timedOutBody_*`), es, fr and pt say what the screen says.
+- **25 Oct 2026. A time the clocks skip (sc-10638, sc-10675, `eventForm.clocksSkip`,
+  `clocksSkipNextDay`).** Settled as sc-10638 wrote it; `Events.test.tsx` pins it. "There is no
+  {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as
+  {{savedAs}}." The next-day line adds "on {{savedDay}}". "The clocks go forward" also covers
+  Lord Howe's half hour; rejected "daylight saving time", which reads American and is a term
+  es, fr and pt each say differently.
+- **25 Oct 2026. Editing an event's details (sc-9704, sc-3587, `eventEdit.*`,
+  `errors:precondition_failed`, `precondition_required`, `event_currency_in_use`).** Settled as
+  sc-3587 wrote it; `Events.test.tsx` pins most of it. "Edit details" opens and heads the form,
+  "Save changes" saves it. A refused save starts "Not saved." and says what is kept. A
+  colleague is "somebody else", in the notice and the dialog alike. The currency refusal is
+  checked on screen and by the server, so `errors:event_currency_in_use` now says "against this
+  event", as `eventEdit.currencyInUse` does.
 - **24 Oct 2026. Suspending a member by hand and restoring them (sc-3575, sc-8735,
   `membersScreen.suspend*`, `restore*`, `seats*`, `ownerNoSuspend`, `accessConflict`,
   `emails:memberSuspended.*`, `memberRestored.*`, `memberAccess.footer`, `messages:members.*`).**

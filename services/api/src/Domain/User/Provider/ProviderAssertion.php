@@ -50,7 +50,7 @@ final readonly class ProviderAssertion
             ),
             isset($sent['code'], $sent['codeVerifier'], $sent['redirectUri']) => $this->codeRedeemer->redeem($provider, $sent['code'], $sent['codeVerifier'], $sent['redirectUri']),
             isset($sent['idToken']) => $sent['idToken'],
-            default => throw new ApiException(ErrorCode::BadRequest, 'Send an idToken, a code with its codeVerifier and redirectUri, or a handle.'),
+            default => throw new ApiException(ErrorCode::BadRequest, 'provider.token_code_or_handle'),
         };
 
         return $this->idTokenVerifier->verify($provider, $idToken, $sent['nonce'] ?? null);

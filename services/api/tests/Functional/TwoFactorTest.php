@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\Mail\UserMailer;
+use App\Domain\User\SignInMethods\RecentProof;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
@@ -13,6 +15,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\IdentityProvider;
 use App\Http\Exception\ApiException;
+use App\Locale\SupportedLocales;
 use App\Repository\ProviderIdentityRepository;
 use App\Repository\TwoFactorFactorRepository;
 use App\Tests\ApiTestCase;
@@ -191,7 +194,7 @@ final class TwoFactorTest extends ApiTestCase
             ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'recoveryCode' => 12345], 'recoveryCode', 'Enter one of your recovery codes.', false],
             ['/api/auth/two-factor/disable', ['code' => 123456], 'code', 'Enter a code from your app, or a recovery code.', true],
             ['/api/auth/two-factor/recovery-codes', ['code' => null], 'code', 'Enter a code from your app, or a recovery code.', true],
-            ['/api/auth/two-factor/disable', [], 'code', 'Enter a code from your app, or a recovery code.', true],
+            ['/api/auth/two-factor/disable', null, 'code', 'Enter a code from your app, or a recovery code.', true],
             ['/api/auth/two-factor/verify', ['challenge' => $challenge], 'code', 'Enter the 6-digit code from your app.', false],
             ['/api/auth/two-factor/verify', ['challenge' => $challenge, 'code' => null, 'recoveryCode' => null], 'code', 'Enter the 6-digit code from your app.', false],
         ];
@@ -296,12 +299,28 @@ final class TwoFactorTest extends ApiTestCase
 
         $paused = $this->refusal(static fn () => $check->passCode($factor, '000000'));
         self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
-        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', $paused->getMessage());
+        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d UTC\./', self::worded($paused));
         self::assertArrayHasKey('Retry-After', $paused->headers);
 
         self::mockTime('+30 seconds');
         $code = $this->codeNow($secret);
         self::assertSame(ErrorCode::TooManyAttempts, $this->refusal(static fn () => $check->passCode($factor, $code))->errorCode, 'a right code waits out the pause too');
+    }
+
+    #[Test]
+    public function theProofStepsPauseSaysUntilWhenToo(): void
+    {
+        $this->turnedOn();
+        $proof = self::service(RecentProof::class);
+
+        foreach (Vec\range(1, 4) as $_) {
+            self::assertSame(ErrorCode::TwoFactorCodeInvalid, $this->refusal(fn () => $proof->prove($this->fresh(), self::PASSWORD, null, '000000'))->errorCode);
+        }
+
+        $paused = $this->refusal(fn () => $proof->prove($this->fresh(), self::PASSWORD, null, '000000'));
+        self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
+        self::assertMatchesRegularExpression('/^Too many wrong codes\. Try again at \d\d:\d\d UTC\.$/', self::worded($paused));
+        self::assertArrayHasKey('pendingProof', $paused->members);
     }
 
     #[Test]
@@ -442,9 +461,11 @@ final class TwoFactorTest extends ApiTestCase
     /** @return list<Email> */
     private function turnedOnEmails(): array
     {
+        $subjects = Vec\map(SupportedLocales::ALL, static fn (string $locale): string => self::service(UserMailer::class)->line('twoFactor.on.subject', $locale));
+
         return Vec\filter(
             Vec\map(self::getMailerMessages(), static fn (object $message): Email => Type\instance_of(Email::class)->coerce($message)),
-            static fn (Email $email): bool => 'Two-factor authentication was turned on' === $email->getSubject(),
+            static fn (Email $email): bool => Iter\contains($subjects, $email->getSubject()),
         );
     }
 

@@ -11,7 +11,7 @@ import time
 import unittest
 from unittest import mock
 
-from soirely_queue import checkout, github, runlog, runner, shared, store
+from soirely_queue import checkout, github, review, runlog, runner, shared, store
 
 from .fakes import FakeRefs
 
@@ -138,6 +138,17 @@ class Run(unittest.TestCase):
         self.run_once(ON_ZERO + 60)
         self.assertIn("pm-2: item 2 given back, its worker ended without finishing it",
                       self.said)
+
+    def test_the_lead_may_run_two_workers_on_two_pull_requests(self):
+        self.config["roles"]["lead"] = {"workers": 2, "wakeEvery": "1m"}
+        store.record(self.db, [dict(work("lead", f"lead:{n}"), pr=n, kind="review")
+                               for n in (40, 41)], ON_ZERO)
+        with mock.patch("soirely_queue.checkout.ensure"):
+            self.run_once()
+        self.assertFalse([line for line in self.said if line.startswith("error: lead")])
+        self.assertEqual([r for r, _, _ in self.platform.launched], ["lead", "lead-2"])
+        self.assertEqual({row["pr"] for row in self.db.execute(
+            "select pr from work where status = 'claimed'")}, {40, 41})
 
     def test_only_a_role_without_a_stack_may_run_several_workers(self):
         self.config["roles"]["dev2"] = {"workers": 2}
@@ -449,7 +460,8 @@ class Worker(unittest.TestCase):
         self.answers = []
 
         def claude(argv, input, cwd, env, finished):
-            calls.append((argv, {"input": input, "cwd": cwd, "env": env}))
+            calls.append((argv, {"input": input, "cwd": cwd, "env": env,
+                                 "run_dir_there": pathlib.Path(env["SQ_RUN_DIR"]).is_dir()}))
             self.answers.append(finished())
             store.finish(self.db, 1, "done")
             self.answers.append(finished())
@@ -494,6 +506,36 @@ class Worker(unittest.TestCase):
         self.assertEqual(store.get_meta(self.db, "owner:ops")["lines"],
                          ["Waiting on the owner to merge #280."])
 
+    def test_the_run_gets_a_private_folder_that_is_removed_afterwards(self):
+        _, calls = self.work_with({"result": "Done."})
+        folder = pathlib.Path(calls[0][1]["env"]["SQ_RUN_DIR"])
+        self.assertEqual(folder, runner.run_dir(self.home, "ops", 1))
+        self.assertTrue(calls[0][1]["run_dir_there"])
+        self.assertFalse(folder.exists())
+
+    def test_a_further_worker_gets_a_folder_of_its_own(self):
+        self.assertNotEqual(runner.run_dir(self.home, "dev", 1),
+                            runner.run_dir(self.home, "dev-2", 1))
+
+    def test_the_folder_is_removed_when_the_model_crashes(self):
+        def claude(argv, input, cwd, env, finished):
+            (pathlib.Path(env["SQ_RUN_DIR"]) / "check.out").write_text("partial")
+            raise OSError("claude is not installed")
+
+        with self.assertRaises(OSError):
+            runner.worker(self.db, self.home, self.platform, "ops", 1, run_claude=claude,
+                          load=lambda: config(self.root),
+                          prepare=lambda *_: ("c" * 40, None), now=ON_ZERO)
+        self.assertFalse(runner.run_dir(self.home, "ops", 1).exists())
+
+    def test_a_worker_stopped_by_its_limit_has_its_folder_removed(self):
+        folder = runner.run_dir(self.home, "ops", 1)
+        folder.mkdir(parents=True)
+        (folder / "check.out").write_text("half a log")
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}):
+            runner.worker_ended(self.home, self.platform, "ops", 1, now=ON_ZERO)
+        self.assertFalse(folder.exists())
+
     def test_a_checkout_that_cannot_fetch_is_reported_and_runs_no_model(self):
         def unprepared(*_):
             raise checkout.Unprepared("git fetch failed 3 times: cannot lock ref")
@@ -506,6 +548,62 @@ class Worker(unittest.TestCase):
         self.assertEqual(self.platform.notes[0], ("Soirely: ops's worker stopped",
                                                   entry["report"]))
         self.assertIsNone(runner.worker_ended(self.home, self.platform, "ops", 1))
+
+    def lead_review(self, claude, pr=None):
+        (self.root / "soirely-lead").mkdir()
+        made = []
+
+        def make(path, base, head, number, rules):
+            made.append((path.name, base.name, head, number))
+            self.rules = rules
+            return review.place(path)
+
+        if pr:
+            store.put_pr(self.db, {"number": pr, "story_id": 1, "head_sha": "e" * 40})
+        store.record(self.db, [dict(work("lead"), pr=pr)], ON_ZERO)
+        item_id = store.waiting(self.db, "lead")[0]["id"]
+        with mock.patch("soirely_queue.review.remove") as removed:
+            try:
+                runner.worker(self.db, self.home, self.platform, "lead-2", item_id,
+                              run_claude=claude, load=lambda: config(self.root),
+                              prepare=lambda *_: ("c" * 40, None), make_review=make,
+                              now=ON_ZERO)
+            finally:
+                self.removed = [call.args[0].name for call in removed.call_args_list]
+        return made
+
+    def test_a_lead_review_runs_in_a_worktree_at_the_pull_requests_head(self):
+        calls = []
+
+        def claude(argv, input, cwd, env, finished):
+            calls.append((input, cwd))
+            return 0, json.dumps({"type": "result", "result": "Passed."}), "", None
+
+        made = self.lead_review(claude, pr=40)
+        self.assertEqual(made, [("soirely-lead-2", "soirely-lead", "e" * 40, 40)])
+        self.assertEqual(self.rules, "c" * 40)
+        self.assertEqual(calls[0][1], self.root / "soirely-lead-2-review")
+        self.assertIn("#40's head eeeeeee", calls[0][0])
+        self.assertEqual(self.removed, ["soirely-lead-2"])
+
+    def test_a_lead_item_with_no_pull_request_reviews_at_main(self):
+        made = self.lead_review(lambda *_: (0, "", "", None))
+        self.assertEqual(made, [("soirely-lead-2", "soirely-lead", "c" * 40, None)])
+
+    def test_the_review_worktree_goes_even_when_the_run_fails(self):
+        def claude(*_):
+            raise OSError("claude is not installed")
+
+        with self.assertRaises(OSError):
+            self.lead_review(claude, pr=40)
+        self.assertEqual(self.removed, ["soirely-lead-2"])
+
+    def test_a_lead_run_stopped_at_its_limit_takes_its_worktree_away(self):
+        with mock.patch.dict("os.environ", {"SERVICE_RESULT": "timeout"}), \
+                mock.patch("soirely_queue.review.remove") as removed:
+            runner.worker_ended(self.home, self.platform, "lead-2", 1, now=ON_ZERO,
+                                load=lambda: config(self.root))
+        removed.assert_called_once_with(self.root / "soirely-lead-2")
 
     def test_a_worker_that_exits_with_an_error_says_its_status(self):
         with mock.patch.dict("os.environ", {"SERVICE_RESULT": "exit-code", "EXIT_STATUS": "1"}):

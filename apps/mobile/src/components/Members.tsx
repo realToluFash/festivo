@@ -11,7 +11,6 @@ import {
   type MemberStanding,
   approvalRoles,
   formatDay,
-  initials,
   memberHeldNoRole,
   memberIsShown,
   memberRowLine,
@@ -19,7 +18,7 @@ import {
   memberStatusWord,
   roleName,
 } from '@soirely/domain';
-import { useState } from 'react';
+import { type Ref, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -29,6 +28,7 @@ import {
   membersAfterWrite,
   withApproved,
   withRemoved,
+  withRestored,
   withRole,
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
@@ -37,11 +37,15 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
-import { useScrolledToTop } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
+import { useBroughtIntoView, useScrolledToTop } from './Screen.tsx';
+import { type TextHandle, Text } from './Text.tsx';
 
 const AVATAR = 40;
 const AVATAR_LARGE = 48;
@@ -88,6 +92,7 @@ function MemberState({ member }: { member: OrganisationMember }) {
           style={{ color: mark.ink }}
           accessibilityElementsHidden
           importantForAccessibility="no"
+          accessible={false}
         >
           {mark.glyph}
         </Text>
@@ -106,11 +111,14 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
     <View
       style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
       accessibilityElementsHidden
-      importantForAccessibility="no"
+      importantForAccessibility="no-hide-descendants"
     >
-      <Text size={large ? tokens.typeBodyPhone.size : tokens.typeSmall.size} weight="bold" muted>
-        {initials(name)}
-      </Text>
+      <Initials
+        name={name}
+        size={large ? tokens.typeBodyPhone.size : tokens.typeSmall.size}
+        weight="bold"
+        muted
+      />
     </View>
   );
 }
@@ -118,14 +126,42 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
 /** Scrolled into view when it appears, since the answer was given further down the list. */
 function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => void }) {
   const top = useScrolledToTop();
+  useReadOut(answered.text);
 
   return (
-    <View ref={top} accessibilityLiveRegion="polite">
+    <View ref={top}>
       <Notice
         tone="done"
         mark={tokens.marks.done.glyph}
         body={answered.text}
         action={{ label: answered.next.label, onPress: onNext, testID: 'members.answered.next' }}
+      />
+    </View>
+  );
+}
+
+/** Answers a tap that may sit far below it, so it comes wholly into view and takes screen reader focus (sc-10639). */
+function NoticeInView({
+  tone,
+  mark,
+  title,
+  body,
+}: {
+  tone: 'quiet' | 'done';
+  mark: string;
+  title?: string;
+  body: string;
+}) {
+  const { shown, read } = useBroughtIntoView();
+
+  return (
+    <View ref={shown}>
+      <Notice
+        tone={tone}
+        mark={mark}
+        {...(title != null && { title })}
+        body={body}
+        wordsRef={read}
       />
     </View>
   );
@@ -159,6 +195,7 @@ export function MemberList({
   const [filter, setFilter] = useState<MemberFilter>('all');
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
+  const removedNext = t('membersScreen.removedNext');
   const count = (one: MemberFilter) =>
     list.members.filter((member) => memberIsShown(member.status, one)).length;
 
@@ -173,15 +210,15 @@ export function MemberList({
       )}
 
       {flash != null && (
-        <View accessibilityLiveRegion="polite">
+        <ReadOut words={`${flash}\n${removedNext}`}>
           <Notice
             tone="done"
             mark={tokens.marks.done.glyph}
             title={flash}
             accentTitle
-            body={t('membersScreen.removedNext')}
+            body={removedNext}
           />
-        </View>
+        </ReadOut>
       )}
 
       {answered != null && (
@@ -235,7 +272,7 @@ export function MemberList({
         </View>
       )}
 
-      <View style={styles.chips} accessibilityLabel={t('membersScreen.show')}>
+      <View style={styles.chips}>
         {APP_FILTERS.map((one) => (
           <Pressable
             key={one}
@@ -272,7 +309,7 @@ export function MemberList({
           />
         </View>
       ) : (
-        <View style={styles.rows} accessibilityLabel={t('membersScreen.shown')}>
+        <View style={styles.rows}>
           {shown.map((member, index) => (
             <MemberRow
               key={member.id}
@@ -344,12 +381,18 @@ function MemberRow({
         muted
         accessibilityElementsHidden
         importantForAccessibility="no"
+        accessible={false}
       >
         ›
       </Text>
     </Pressable>
   );
 }
+
+/** What the last restore or stale answer came to; `seen` keys each answer so its notice mounts afresh. */
+type AccessOutcome = { seen: number } & (
+  { kind: 'conflict' } | { kind: 'restored'; byHand: boolean; role: string }
+);
 
 type Removal = 'resting' | 'confirming' | 'removing';
 
@@ -360,29 +403,48 @@ export function MemberPage({
   member,
   list,
   roles,
+  withheld,
   manages,
   onChanged,
   onRemoved,
   onAnswered,
   onGoToOrganisation,
+  nameRef,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
+  withheld: OrganisationRole[];
   manages: boolean;
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList) => void;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onGoToOrganisation: () => void;
+  nameRef?: Ref<TextHandle> | undefined;
 }) {
   const { t } = useTranslation();
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const standing = memberStanding(member, list.members, {
+    owns: callerOwns,
+    manages,
+    withholds: withheld,
+  });
   const waiting = member.status === 'pending_approval';
   const role = memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role);
   const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
+  const [outcome, setOutcome] = useState<AccessOutcome | null>(null);
+  const restored = outcome?.kind === 'restored' ? outcome : null;
+
+  function changedElsewhere(): Promise<void> {
+    // Shown once the member is reloaded, so the role card has settled under it before it is brought into view.
+    return api
+      .members(organisation.id)
+      .then(onChanged)
+      .catch(() => undefined)
+      .finally(() => setOutcome((last) => ({ seen: (last?.seen ?? 0) + 1, kind: 'conflict' })));
+  }
 
   return (
     <View style={styles.stack}>
@@ -390,7 +452,12 @@ export function MemberPage({
         <Avatar name={member.user.name} large />
         <View style={styles.rowText}>
           {kind !== 'phone' && (
-            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+            <Text
+              size={tokens.typeTitleDialog.size}
+              weight="bold"
+              accessibilityRole="header"
+              ref={nameRef}
+            >
               {member.user.name}
             </Text>
           )}
@@ -403,6 +470,7 @@ export function MemberPage({
               muted
               accessibilityElementsHidden
               importantForAccessibility="no"
+              accessible={false}
             >
               ·
             </Text>
@@ -415,6 +483,25 @@ export function MemberPage({
           )}
         </View>
       </View>
+
+      {outcome?.kind === 'conflict' ? (
+        <NoticeInView
+          key={outcome.seen}
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('membersScreen.accessConflict', { name: member.user.name })}
+        />
+      ) : (
+        restored?.byHand === true && (
+          <NoticeInView
+            key={restored.seen}
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            title={t('membersScreen.restoredNow', { name: member.user.name, role: restored.role })}
+            body={t('membersScreen.restoredNowNext', { organisation: organisation.name })}
+          />
+        )
+      )}
 
       <View style={cardFrame(kind)}>
         <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
@@ -436,6 +523,15 @@ export function MemberPage({
               />
             )}
           </>
+        ) : standing === 'manageable' && member.status === 'suspended' ? (
+          <>
+            <Text size={tokens.typeTitleSection.size} weight="semibold">
+              {role}
+            </Text>
+            <Text size={tokens.typeBodyPhone.size} muted>
+              {t('membersScreen.roleKeptWhileSuspended')}
+            </Text>
+          </>
         ) : standing === 'manageable' ? (
           <RolePicker
             organisation={organisation}
@@ -443,6 +539,7 @@ export function MemberPage({
             list={list}
             roles={roles}
             onChanged={onChanged}
+            onChangedElsewhere={changedElsewhere}
           />
         ) : (
           <FixedRole
@@ -455,16 +552,38 @@ export function MemberPage({
         )}
       </View>
 
-      {member.suspension != null && (
-        <Suspension
-          kind={kind}
-          organisation={organisation}
-          member={member}
-          suspension={member.suspension}
-          standing={standing}
-          acts={acts}
-          onChanged={onChanged}
+      {restored?.byHand === false ? (
+        <NoticeInView
+          key={restored.seen}
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          body={t('membersScreen.restored', {
+            name: member.user.name,
+            organisation: organisation.name,
+          })}
         />
+      ) : (
+        member.suspension != null && (
+          <Suspension
+            kind={kind}
+            organisation={organisation}
+            member={member}
+            list={list}
+            suspension={member.suspension}
+            standing={standing}
+            acts={acts}
+            onRestored={(list) => {
+              onChanged(list);
+              setOutcome((last) => ({
+                seen: (last?.seen ?? 0) + 1,
+                kind: 'restored',
+                byHand: member.suspension?.reason === 'manual',
+                role,
+              }));
+            }}
+            onChangedElsewhere={changedElsewhere}
+          />
+        )
       )}
 
       {acts && !waiting && (
@@ -532,6 +651,7 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const comeForward = useComeForward();
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
   const read = () => api.members(organisation.id);
@@ -549,6 +669,7 @@ function JoinRequestAnswer({
     } catch (error) {
       setFailed(refusalFor(error, 'roleId', t('membersScreen.actionFailed')));
       setBusy(false);
+      comeForward();
       return;
     }
 
@@ -596,9 +717,9 @@ function JoinRequestAnswer({
   if (answering === 'turningDown') {
     return (
       <View style={styles.actions}>
-        <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+        <AnswerHeading size={tokens.typeRowTitle.size} weight="bold" answer={answering}>
           {t('membersScreen.awaiting.turnDownTitle', { name })}
-        </Text>
+        </AnswerHeading>
         <Text size={tokens.typeBodyPhone.size}>
           {t('membersScreen.awaiting.turnDownBody', { name, organisation: organisation.name })}
         </Text>
@@ -621,11 +742,7 @@ function JoinRequestAnswer({
 
   return (
     <View style={styles.actions}>
-      <View
-        style={styles.choices}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={t('membersScreen.awaiting.roleFor', { name })}
-      >
+      <View style={styles.choices} accessibilityRole="radiogroup">
         {offered.map((one) => (
           <Pressable
             key={one.id}
@@ -721,28 +838,39 @@ function FixedRole({
           )}
         </>
       )}
-      {standing === 'ownerOnly' && member.suspension == null && (
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('membersScreen.ownerOnly')}
-        </Text>
-      )}
+      {member.suspension == null && <FixedLine standing={standing} />}
     </>
   );
 }
 
-/** Every role is offered, Owner too: the API answers a grant the caller may not make, under the button. */
+/** Why a manager can't change this member: an owner's role, or one holding what the viewer lacks (sc-11160). */
+function FixedLine({ standing }: { standing: MemberStanding }) {
+  const { t } = useTranslation();
+
+  if (standing !== 'ownerOnly' && standing !== 'beyondGrant') return null;
+
+  return (
+    <Text size={tokens.typeBodyPhone.size} muted>
+      {t(`membersScreen.${standing}`)}
+    </Text>
+  );
+}
+
+/** Only the roles the caller may give are offered (sc-392); a page opened before a change still meets the API's refusal, under the button. */
 function RolePicker({
   organisation,
   member,
   list,
   roles,
   onChanged,
+  onChangedElsewhere,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
   onChanged: (list: MembersList) => void;
+  onChangedElsewhere: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(member.role.id);
@@ -764,7 +892,11 @@ function RolePicker({
     try {
       await api.changeMemberRole(organisation.id, member.id, picked);
     } catch (error) {
-      setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      if (error instanceof ApiError && error.status === 409) {
+        await onChangedElsewhere();
+      } else {
+        setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
+      }
       setBusy(false);
       return;
     }
@@ -778,16 +910,8 @@ function RolePicker({
 
   return (
     <>
-      {done != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={done} />
-        </View>
-      )}
-      <View
-        style={styles.choices}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={t('membersScreen.roleFor', { name: member.user.name })}
-      >
+      {done != null && <NoticeInView tone="done" mark={tokens.marks.done.glyph} body={done} />}
+      <View style={styles.choices} accessibilityRole="radiogroup">
         {offered.map((one) => (
           <Pressable
             key={one.id}
@@ -847,17 +971,21 @@ function Suspension({
   organisation,
   member,
   suspension,
+  list,
   standing,
   acts,
-  onChanged,
+  onRestored,
+  onChangedElsewhere,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
+  list: MembersList;
   suspension: Suspension;
   standing: MemberStanding;
   acts: boolean;
-  onChanged: (list: MembersList) => void;
+  onRestored: (list: MembersList) => void;
+  onChangedElsewhere: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -875,18 +1003,25 @@ function Suspension({
 
     try {
       await api.restoreMember(organisation.id, member.id);
-      onChanged(await api.members(organisation.id));
     } catch (error) {
-      setFailed(
-        error instanceof ApiError && error.is('restore_needs_address')
-          ? t('membersScreen.restoreNeedsAddress', named)
-          : error instanceof ApiError && error.is('team_seats_in_use')
-            ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
-            : refusalTitle(error, t('membersScreen.actionFailed')),
-      );
-    } finally {
+      if (error instanceof ApiError && error.is('conflict')) {
+        await onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError && error.is('restore_needs_address')
+            ? t('membersScreen.restoreNeedsAddress', named)
+            : error instanceof ApiError && error.is('team_seats_in_use')
+              ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
+              : refusalTitle(error, t('membersScreen.actionFailed')),
+        );
+      }
       setBusy(false);
+      return;
     }
+
+    onRestored(
+      await membersAfterWrite(() => api.members(organisation.id), list, withRestored(member.id)),
+    );
   }
 
   return (
@@ -932,11 +1067,7 @@ function Suspension({
           testID="members.restore"
         />
       ) : (
-        standing === 'ownerOnly' && (
-          <Text size={tokens.typeBodyPhone.size} muted>
-            {t('membersScreen.ownerOnly')}
-          </Text>
-        )
+        <FixedLine standing={standing} />
       )}
     </View>
   );
@@ -1017,9 +1148,9 @@ function Remove({
 
   return (
     <View style={cardFrame(kind)}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer="confirming">
         {t('membersScreen.removeConfirmTitle', { name })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size}>
         {t('membersScreen.removeConfirmBody', { name, organisation: organisationName })}
       </Text>

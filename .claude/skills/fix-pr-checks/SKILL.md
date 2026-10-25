@@ -23,7 +23,7 @@ that each commit passes its own tests — a branch with a "fix CI" commit at the
 that promise for every commit before it.
 
 That means the loop is: diagnose, fix, `--fixup` the right commit, autosquash,
-force-with-lease, wait again.
+force-with-lease, wait again with `sq dev checks <pr> --wait --head <sha>`.
 
 ## Step 1: Look
 
@@ -31,19 +31,28 @@ force-with-lease, wait again.
 sq dev checks <pr>
 ```
 
-It reads the checks live: how many there are, how many failed and how many are still
-pending, and the last 40 lines of each failed log (`--tail N` for more). While any are
-pending, run it again later rather than guessing. `sq dev pr <pr>` gives the branch and
+It reads the checks live: the head it judged, how many checks there are, how many failed,
+were cancelled or are still pending, and the last 40 lines of each failed log (`--tail N`
+for more). While any are pending, wait with `sq dev checks <pr> --wait --head <sha>` as a
+background command, `<sha>` being the commit you just pushed: it waits for the pull request
+to reach that head, returns once nothing is pending, and exits non-zero unless every check
+passed. Never write a polling loop of your own. `sq dev pr <pr>` gives the branch and
 status.
 
-If no checks appear at all, the PR is probably a draft and the workflow skips drafts. Say
-so rather than waiting indefinitely.
+If no checks appear at all, the head conflicts with `main` and GitHub runs no workflow on
+it; drafts are checked too. `--wait` stops after a couple of minutes and says so with the
+pull request's mergeable state. Merge `origin/main`, push, and wait again.
 
 ## Step 2: Diagnose before touching anything
 
 Get the actual failure, not the summary — the failed log's lines that `sq dev checks`
 printed. Then establish **which commit introduced it**. `git log main..HEAD` plus the failing file
 usually settles it; `git log -S'<symbol>' main..HEAD` when it does not.
+
+To reproduce a failure locally, run only the check that failed, with its output in your
+run's own folder: `npm run <check> >"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}/<check>.out" 2>&1; echo "exit=$?"`. Never
+pipe it into `tail` or `grep`, which reports the pipe's status rather than the check's, and
+never write to a fixed name in `/tmp`. The full suite is CI's to run, on the pushed head.
 
 Three failures worth recognising on sight:
 
@@ -71,7 +80,7 @@ branch never touched — a new commit is correct. Say why in its message.
 
 ## Step 4: Repeat
 
-Back to Step 1. Each pass should reduce the failure count; if it does not, say what you
+Back to Step 1, waiting on the new head with `--wait --head <sha>`. Each pass should reduce the failure count; if it does not, say what you
 have tried and what you now think is happening rather than looping on the same fix.
 
 **Stop and ask after three passes on the same check.** Three rounds that have not moved it

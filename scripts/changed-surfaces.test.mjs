@@ -48,6 +48,12 @@ describe('a single-surface change runs that surface and no other', () => {
   it.each([
     ['the agent gateway', 'tools/agent-gateway/src/gateway.ts'],
     ['a pair the gateway replays', 'services/api/tests/Fixtures/AgentGateway/text.json'],
+    [
+      'a saved wall clock the form names',
+      'services/api/tests/Fixtures/LocalTime/wall-clock-times.json',
+    ],
+    ['the regions the domain reads', 'services/api/src/Domain/Organisation/Regions.php'],
+    ['the domain refusals the cards read', 'services/api/src/Enum/DomainRefusal.php'],
   ])('%s runs the packages', (_name, path) => {
     expect(changedSurfaces([path]).packages).toBe(true);
   });
@@ -59,6 +65,13 @@ describe('a catalogue runs localisation wherever it lives', () => {
     ['a server catalogue', 'services/api/translations/errors.fr.json'],
   ])('%s', (_name, path) => {
     expect(changedSurfaces([path]).locales).toBe(true);
+  });
+});
+
+/** The Packages job only typechecks the lint; its tests run in Localisation. */
+describe('the lint itself runs localisation', () => {
+  it('a change to the lint alone', () => {
+    expect(changedSurfaces(['packages/i18n-lint/src/keys.ts']).locales).toBe(true);
   });
 });
 

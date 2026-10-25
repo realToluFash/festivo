@@ -54,6 +54,55 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
+  (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
+  `messages:invitations.*`, sc-2922). The web twins of the app’s Members keys are the app’s
+  words, except where they put « à » or « de » straight before {{organisation}}: the web’s
+  `removeBody`, `removeConfirmBody`, `removed`, `removeButton` and `empty.suspended.body` say
+  « l’organisation {{organisation}} », keeping every slot English has (the parity guard counts
+  them, so « y » cannot stand in for a second {{organisation}}), and the app’s are swept when
+  next touched. An invitation is feminine and its states agree with it: « En attente »,
+  « Expirée », « Retirée » (revoked and withdrawn alike), « Refusée », « Acceptée »,
+  « Supprimée »; "Revoke" is « Retirer ». "Works until" is « Valable jusqu’au {{date}} ».
+  Joining is « rejoindre {{organisation}} », or « rejoindre l’organisation » where no name
+  follows; the progress is « Adhésion en cours… ». "Whoever invited you" is « la personne à
+  l’origine de l’invitation », so nothing agrees with the reader. The subtitle names its
+  counts after a colon, « avec accès : {{active}} · invitations : {{invited}} », so nothing
+  agrees with a count. History lines name what was acted on, « Invitation envoyée par »,
+  « Demande approuvée par », « Accès suspendu / rétabli / retiré par ». « Invitation »,
+  « Invitations » and « {{count}} invitation(s) » are the French words, in
+  `same-as-english.json`.
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, « Seule une personne ayant le rôle Propriétaire… », as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word. The subject is « L’organisation {organisation} a été supprimée », so the participle
+  agrees with « organisation », never with a name of unknown gender. Support is « l’assistance
+  Soirely », as decided on 24 Oct; `ownership.deleteWindow` still says « Le support Soirely » and
+  follows on the next ticket that touches it. Restoring a deleted organisation is
+  « restaurer », as on that screen; « rétablir » stays for access. The footer says « vous étiez
+  membre ».
+- **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is « la
+  requête », kept apart from « la demande », which is a request to join or a recovery request;
+  an API path is « cette URL ». An id is « cet identifiant »: « Aucune session ne porte cet
+  identifiant. » Field names an integrator sends (`idToken`, `code`, `recoveryCode`,
+  `If-Match`, `context`, the assistant's roles) stay as written, in straight quotes where the
+  English quotes them, since they are code; "system prompt" stays English. Where a screen says
+  the same sentence (`lostTwoFactor.*`, `signIn.timedOutBody_*`, the lock-outs' « Réessayez à
+  {time} »), the refusal says it too.
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675). « Le {{day}}, l’heure {{time}} n’existe pas dans le fuseau {{zone}} : c’est la
+  nuit du passage à l’heure d’été. Elle sera remplacée par {{savedAs}}. » The next-day line ends
+  « remplacée par le {{savedDay}} à {{savedAs}}. », so the short date never closes the sentence
+  (the 19 Oct rule). « Passage à l’heure d’été » is what a French reader calls that night, in
+  either hemisphere; rejected « les horloges avancent », a calque. « Elle » is « l’heure », so
+  nothing agrees with the person or the field.
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
+  « Modifier les informations », never « détails »; "Save changes" « Enregistrer les
+  modifications ». A refused save starts « Non enregistré. »; the colleague is « quelqu’un
+  d’autre », as `errors:precondition_failed`. What was typed is « ce que vous avez saisi ».
+  After a save the live region says « Modifications enregistrées », not a bare « Enregistré ».
+  The currency refusal is one sentence in `web` and `errors`, « … pour cet événement ».
 - **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
   `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
   sc-8735). « Suspendre {{name}} », « Rétablir l’accès ». What is suspended is « l’accès », so

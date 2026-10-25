@@ -87,8 +87,7 @@ def tester(p, db, stories):
     if stuck:
         p.add("", "In QA:")
         for story in stuck:
-            claim = next((c for c in reversed(story["comments"])
-                          if c["text"].startswith("QA claim:")), None)
+            claim = R.last_claim(story)
             p.add(line(story, claim["text"] + " at " + claim["at"][11:16] if claim else "no claim"))
     if ready:
         number = R.number(p.role)
@@ -181,10 +180,16 @@ def creative(p, db, stories):
                   + "; ".join(T.first_line(i, 90) for i in items[:3]))
 
 
-def linguist(p, db, stories):
-    tickets = ordered([s for s in stories if "translation" in s["labels"]])
+def linguist(p, db, stories, pick=False):
     merged = {pr["story_id"] for pr in store.prs(db) if pr["state"] == "merged"}
-    p.add(f"Translation tickets ({len(tickets)}):")
+    if pick:
+        # The skill's order: Failed QA first, then the rest of the queue oldest first.
+        tickets = sorted(W.queued(p.role, stories, store.get_meta(db, "epics")),
+                         key=lambda s: (s["state"] != "Failed QA", s["moved_at"] or ""))
+        p.add(f"Your queue ({len(tickets)}), in the order the skill picks:")
+    else:
+        tickets = ordered([s for s in stories if "translation" in s["labels"]])
+        p.add(f"Translation tickets ({len(tickets)}):")
     for story in tickets:
         tasks = ", ".join(f"{'✓' if t['done'] else '·'} {t['text']}" for t in story["tasks"])
         waiting = [f"sc-{c}" for c in W.covered(story) if c not in merged]
@@ -211,6 +216,12 @@ DIGESTS = {"pm": product_manager, "ux": designer, "bm": business_manager, "cd": 
 
 def render(p, db, row=None):
     stories = open_stories(db)
-    DIGESTS.get(p.role, lambda *_: p.add("Nothing to sweep for this role."))(p, db, stories)
+    if row and row["kind"] == "pick" and p.role in R.LINGUISTS:
+        linguist(p, db, stories, pick=True)
+        p.add("", "This is a pick, not a sweep: take the first ticket above that waits on "
+                  "nothing and do it (your skill's section 4), or hand one whose work is done "
+                  "to QA (section 5). One ticket this run; file nothing new.")
+    else:
+        DIGESTS.get(p.role, lambda *_: p.add("Nothing to sweep for this role."))(p, db, stories)
     if row:
         p.add("", f"Finish with `{SQ} {p.role} done {row['id']} --note \"<one line>\"`.")

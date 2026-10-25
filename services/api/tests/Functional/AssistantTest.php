@@ -17,6 +17,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Vec;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
@@ -201,6 +202,8 @@ final class AssistantTest extends ApiTestCase
             self::assertResponseStatusCodeSame(422, "{$field} should be refused");
             self::assertSame($field, $body['violations'][0]['propertyPath']);
             self::assertSame('too_large', $body['violations'][0]['code']);
+            self::assertSame(['propertyPath', 'message', 'code'], Vec\keys($body['violations'][0]), 'its slots are worded in, not sent');
+            self::assertStringNotContainsString('{', $body['violations'][0]['message']);
             // Refused, not truncated. A truncated conversation answers a
             // question nobody asked.
             self::assertSame(0, $this->interactionCount(), "{$field} should not have reached the provider");

@@ -23,6 +23,7 @@ const KIT_STYLES = [
   'portraitContent',
   'landscapeContent',
 ];
+const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
 describe('every field carries the caret colour', () => {
   it('in every TextInput in the app', () => {
@@ -61,6 +62,296 @@ describe('the account cards share one frame', () => {
       .map(({ path }) => path);
 
     expect(offenders, 'Use cardFrame(kind) from src/components/cardFrame.ts.').toEqual([]);
+  });
+});
+
+describe('screen reader focus moves on both platforms', () => {
+  it('is moved only in screenReaderFocus.ts', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/screenReaderFocus.ts'))
+      .filter(({ text }) => movesFocus(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use moveScreenReaderFocus(view) from src/components/screenReaderFocus.ts.',
+    ).toEqual([]);
+  });
+
+  it('notices a screen that moves focus itself', () => {
+    expect(movesFocus('if (node != null) AccessibilityInfo.setAccessibilityFocus(node);')).toBe(
+      true,
+    );
+    expect(movesFocus("AccessibilityInfo.sendAccessibilityEvent(view, 'focus');")).toBe(true);
+    expect(movesFocus('moveScreenReaderFocus(ref.current);')).toBe(false);
+  });
+});
+
+describe('a message is read out on both platforms', () => {
+  // VoiceOver has no live region, and Fabric flattens away a layout-only View along with its live region, so a message marked with one can be silent (sc-10955).
+  it('is marked only in ReadOut.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/ReadOut.tsx'))
+      .filter(({ text }) => readsOut(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use ReadOut, useReadOut or readOut from src/components/ReadOut.tsx.',
+    ).toEqual([]);
+  });
+
+  it('notices a screen that marks a message itself', () => {
+    expect(readsOut('<View accessibilityLiveRegion="polite">')).toBe(true);
+    expect(readsOut('<Text style={styles.error} aria-live="polite">')).toBe(true);
+    expect(readsOut('AccessibilityInfo.announceForAccessibility(words);')).toBe(true);
+    expect(readsOut('<ReadOut words={saved}>')).toBe(false);
+  });
+});
+
+describe('a screen reader skips the initials beside a name', () => {
+  it('on both platforms, in every tile in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      [...text.matchAll(/<Initials\b/gu)]
+        .filter(
+          (match) => !hiddenTile(text.slice(text.lastIndexOf('<View', match.index), match.index)),
+        )
+        .map((match) => `${path}:${text.slice(0, match.index).split('\n').length}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('draws them only through Initials.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/Initials.tsx'))
+      .filter(({ text }) => /\{initials\(/u.test(text))
+      .map(({ path }) => path);
+
+    expect(offenders, 'Use <Initials name={…} /> from src/components/Initials.tsx.').toEqual([]);
+  });
+
+  it('whose text iOS cannot report', () => {
+    const tags = sources(['src'])
+      .filter(({ path }) => path.endsWith('/Initials.tsx'))
+      .flatMap(({ text }) => textTags(text).map(({ markup }) => markup));
+
+    expect(tags).toHaveLength(1);
+    expect(tags.filter((markup) => !unreportable(markup) || !hidesItself(markup))).toEqual([]);
+  });
+
+  it('notices a tile Text that leaves its hiding to the View around it', () => {
+    expect(
+      hidesItself(
+        '<Text {...rest} accessible={false} accessibilityElementsHidden importantForAccessibility="no">',
+      ),
+    ).toBe(true);
+    expect(hidesItself('<Text {...rest} accessible={false} importantForAccessibility="no">')).toBe(
+      false,
+    );
+    expect(hidesItself('<Text {...rest} accessible={false} accessibilityElementsHidden>')).toBe(
+      false,
+    );
+    expect(
+      hidesItself(
+        '<Text accessibilityElementsHidden importantForAccessibility="no" {...rest} accessible={false}>',
+      ),
+    ).toBe(false);
+  });
+
+  it('notices a tile Android still reads', () => {
+    expect(
+      hiddenTile('<View accessibilityElementsHidden importantForAccessibility="no"><Text>'),
+    ).toBe(false);
+    expect(hiddenTile('<View style={styles.tile}><Text>')).toBe(false);
+    expect(
+      hiddenTile(
+        '<View accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text>',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('a Text hidden from screen readers stays hidden on iOS', () => {
+  // iOS asks a Text for its items by `accessible` alone, so hiding it some other way fails on some opens (sc-10712).
+  it('in every Text marked hidden in the app, or inside a View marked hidden', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      hiddenTexts(text)
+        .filter((tag) => !unreportable(tag.markup))
+        .map((tag) => `${path}:${tag.line}`),
+    );
+
+    expect(offenders, 'Give it accessible={false}, after any spread.').toEqual([]);
+  });
+
+  it('notices a Text hidden by the View around it, and only while that View is open', () => {
+    expect(
+      hiddenTexts(
+        '<View accessibilityElementsHidden>\n  <View style={s}>\n    <Text>✓</Text>\n  </View>\n</View>',
+      ).map((tag) => tag.line),
+    ).toEqual([3]);
+    expect(
+      hiddenTexts(
+        '<View accessibilityElementsHidden>\n  <View style={s} />\n  <Text accessible={false}>✓</Text>\n</View>\n<Text>Saved</Text>',
+      ).map((tag) => tag.line),
+    ).toEqual([3]);
+    expect(
+      hiddenTexts('<Text accessibilityElementsHidden>✓</Text>').map((tag) => tag.line),
+    ).toEqual([1]);
+  });
+
+  it('notices a Text that iOS can still report', () => {
+    expect(unreportable('<Text {...rest} accessible={false}>')).toBe(true);
+    expect(unreportable('<Text accessible={false} {...rest}>')).toBe(false);
+    expect(unreportable('<Text accessibilityElementsHidden importantForAccessibility="no">')).toBe(
+      false,
+    );
+  });
+});
+
+describe('a screen reader reaches what is inside a button', () => {
+  // iOS reads a Pressable as one item, so a button inside another is out of VoiceOver's reach (sc-10712).
+  it('in every Pressable in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      nestedPressables(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Make the outer press a sibling, not a parent.').toEqual([]);
+  });
+
+  it('notices a Pressable inside another', () => {
+    expect(
+      nestedPressables(
+        '<Pressable onPress={() => close()}>\n  <Pressable onPress={x} />\n</Pressable>',
+      ),
+    ).toEqual([2]);
+    expect(
+      nestedPressables(
+        '<Pressable onPress={x} />\n<Pressable style={a > b ? s : t}>\n</Pressable>',
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('a label goes only where a screen reader lands', () => {
+  // VoiceOver never reads a label on a plain View, and TalkBack makes it a stop of its own (sc-11419, sc-11564).
+  it('in every View and ScrollView in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      labelsNobodyLandsOn(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(
+      offenders,
+      'Drop the label, or make the View accessible when it is one item to read.',
+    ).toEqual([]);
+  });
+
+  it('notices a label on a View no screen reader lands on', () => {
+    expect(labelsNobodyLandsOn("<View style={s} accessibilityLabel={t('a')}>")).toEqual([1]);
+    expect(
+      labelsNobodyLandsOn(
+        "<View>\n  <ScrollView\n    nestedScrollEnabled\n    accessibilityLabel={t('a')}\n  >",
+      ),
+    ).toEqual([2]);
+    expect(labelsNobodyLandsOn('<Animated.View aria-label={name} />')).toEqual([1]);
+    expect(labelsNobodyLandsOn("<View accessible={false} accessibilityLabel={t('a')}>")).toEqual([
+      1,
+    ]);
+    expect(labelsNobodyLandsOn("<View style={s} accessible accessibilityLabel={t('a')}>")).toEqual(
+      [],
+    );
+    expect(
+      labelsNobodyLandsOn(
+        "<ScrollView\n  onLayout={(e) => f(e)}\n  accessibilityLabel={t('a')}\n>",
+      ),
+    ).toEqual([1]);
+  });
+});
+
+describe('a screen reader reaches each button in a group', () => {
+  // iOS reads an accessible View as one item, as it reads a Pressable, so the buttons inside it are out of reach (sc-11563).
+  it('in every accessible View in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      pressablesInAccessibleViews(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Take `accessible` off the group, so each button is its own item.').toEqual(
+      [],
+    );
+  });
+
+  it('notices a Pressable inside an accessible View', () => {
+    expect(
+      pressablesInAccessibleViews(
+        '<View accessible accessibilityRole="radiogroup">\n  <Pressable onPress={x} />\n</View>',
+      ),
+    ).toEqual([2]);
+    expect(
+      pressablesInAccessibleViews(
+        '<View accessible={shown}>\n  <Text>{words}</Text>\n  <Pressable onPress={x} />\n</View>',
+      ),
+    ).toEqual([3]);
+    expect(
+      pressablesInAccessibleViews(
+        '<View accessible />\n<View style={a > b ? s : t}>\n  <Pressable onPress={x} />\n</View>',
+      ),
+    ).toEqual([]);
+    expect(
+      pressablesInAccessibleViews(
+        '<View accessible={false}>\n  <View>\n  </View>\n  <Pressable onPress={x} />\n</View>',
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('a field is read by the name it shows', () => {
+  // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
+  // sc-11297: three fields in Ownership and leaving had no name, and TalkBack read each as "Edit box".
+  it('in every TextField, PasswordField and CodeField in the app, which has a name', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      KIT_FIELDS.flatMap((name) =>
+        selfClosing(name, text)
+          .filter((tag) => !named(tag.markup))
+          .map((tag) => `${path}:${tag.line}`),
+      ),
+    );
+
+    expect(offenders, 'Give the field accessibilityLabel, its shown label.').toEqual([]);
+  });
+
+  it('notices a field with no name', () => {
+    expect(named('<TextField\n  value={name}\n  testID="delete.name"\n')).toBe(false);
+    expect(named('<CodeField {...sharedInput} ')).toBe(false);
+    expect(named("<PasswordField\n  accessibilityLabel={t('leave.password')}\n")).toBe(true);
+  });
+
+  it('in every Field in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      fieldsReadByAnotherName(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Give the control the accessibilityLabel its Field shows.').toEqual([]);
+  });
+
+  it('notices a field read by another name', () => {
+    expect(
+      fieldsReadByAnotherName(
+        "<Field label={t('a')}>\n  <CodeField accessibilityLabel={t('b')} />\n</Field>",
+      ),
+    ).toEqual([1]);
+    expect(
+      fieldsReadByAnotherName(
+        "<Field label={t(x ? 'a' : 'b')} error={e}>\n  <CodeField accessibilityLabel={t(x ? 'a' : 'b')} />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsReadByAnotherName(
+        "<Field\n  label={t(\n    x ? 'a' : 'b',\n  )}\n>\n  <CodeField\n    accessibilityLabel={t(\n      x ? 'a' : 'b',\n    )}\n  />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsReadByAnotherName("<Field label={t('a')}>\n  <TextField value={v} />\n</Field>"),
+    ).toEqual([]);
   });
 });
 
@@ -117,14 +408,24 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
-describe('a refused submit leaves the keyboard as it was', () => {
+describe('a way back in Two-factor authentication is off while its request runs (sc-12537)', () => {
+  it('on Cancel, Keep it on and Keep current codes', () => {
+    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{checking\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual(['"twoFactor.cancel"', '"twoFactor.keepItOn"', '"twoFactor.keepCodes"']);
+  });
+});
+
+describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
-  const FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
     const form = sources(['src/components']).find(({ path }) => path.endsWith(`/${file}`));
-    const fields = FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
+    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
 
     expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
     expect(
@@ -147,6 +448,73 @@ describe('a refused submit leaves the keyboard as it was', () => {
         .map(({ at }) => at),
       'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.',
     ).toEqual([]);
+    expect(
+      (form?.text ?? '')
+        .split('\n')
+        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
+        .filter(({ line }) => /Keyboard\.dismiss\(|\.current\?\.blur\(\)/u.test(line))
+        .filter(({ line }) => !line.includes('dropsKeysAfter('))
+        .map(({ at }) => at),
+      'Drop the keys only through dropsKeysAfter: sc-9442 is the one exception to sc-9471.',
+    ).toEqual([]);
+  });
+});
+
+describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
+  const offWhile = (file: string, busy: string) =>
+    selfClosing('QuietButton', readFileSync(join('src', 'components', file), 'utf8'))
+      .filter(({ markup }) => markup.includes(`off={${busy}}`))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+  it('in Password, beside Save new password and Save password, not beside the code check', () => {
+    expect([
+      ...offWhile('PasswordCard.tsx', 'saving'),
+      ...offWhile('PasswordCard.tsx', 'busy'),
+    ]).toEqual(['"password.cancel"', '"password.setCancel"']);
+  });
+
+  it('in Time zone, beside Save time zone', () => {
+    expect(offWhile('TimeZoneCard.tsx', 'saving')).toEqual(['"timeZone.cancel"']);
+  });
+
+  it("in Confirm it's you, beside Continue", () => {
+    expect(offWhile('ConfirmItsYou.tsx', 'checking')).toEqual(['{`${idPrefix}.cancel`}']);
+  });
+});
+
+describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", () => {
+  it('in the ways card, before the refusal reaches the list', () => {
+    const text = readFileSync(join('src', 'components', 'WaysCard.tsx'), 'utf8');
+
+    expect(text).toMatch(
+      /if \(unlinkProofLapsed\(error\)\) \{\s*setStage\(\{ kind: 'proving', act: \{ action: 'unlink', provider \} \}\);/,
+    );
+  });
+});
+
+describe('a contact confirmation shows its request running, its way back off (sc-12546)', () => {
+  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
+
+  it('on Make it primary and Remove it, busy while they send', () => {
+    const busy = selfClosing('PrimaryButton', text)
+      .filter(({ markup }) => /\bbusy=\{sending\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(busy).toEqual(['{`contacts.${row.id}.confirm`}', '{`contacts.${kind}.send`}']);
+  });
+
+  it('on Keep and on Cancel under an add form, off until the answer', () => {
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual(['{`contacts.${row.id}.keep`}', '{`contacts.${kind}.cancel`}']);
+  });
+
+  it('back on Make this your primary address? when a change fails past the check', () => {
+    expect(text).toMatch(
+      /else if \(proof != null\) setAsking\(\{ id: row\.id, what: 'promote' \}\);/u,
+    );
   });
 });
 
@@ -169,6 +537,31 @@ describe('a screen is a composition of the kit', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('a way back that names an outcome is off while its request runs (sc-12511)', () => {
+  it('in Ownership and leaving, on Keep ownership, Stay and Keep ‹organisation›', () => {
+    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{busy\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual([
+      '"ownership.transfer.keep"',
+      '"ownership.leave.stay"',
+      '"ownership.delete.keep"',
+    ]);
+  });
+
+  it('where QuietButton taken off cannot be pressed, and is read as off', () => {
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function QuietButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+
+    expect(propValue(pressable, 'disabled')).toBe('{off}');
+    expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: off }}');
   });
 });
 
@@ -213,4 +606,175 @@ function caretSet(markup: string): boolean {
 
 function takesRecoveryCode(markup: string): boolean {
   return /\btakesRecoveryCode(?!=\{false\})\b/u.test(markup);
+}
+
+function named(markup: string): boolean {
+  return /\baccessibilityLabel=/u.test(markup);
+}
+
+function movesFocus(text: string): boolean {
+  return /\b(setAccessibilityFocus|sendAccessibilityEvent)\(/u.test(text);
+}
+
+function readsOut(text: string): boolean {
+  return /\baccessibilityLiveRegion\b|\baria-live\b|\bannounceForAccessibility(WithOptions)?\(/u.test(
+    text,
+  );
+}
+
+/** importantForAccessibility="no" leaves an Android tile's letters to be read; only its descendants hidden skips them. */
+function hiddenTile(markup: string): boolean {
+  return (
+    /\baccessibilityElementsHidden\b/u.test(markup) &&
+    /\bimportantForAccessibility="no-hide-descendants"/u.test(markup)
+  );
+}
+
+/** The line of every Pressable that opens inside another one, read tag by tag. */
+function nestedPressables(text: string): number[] {
+  const nested: number[] = [];
+  let depth = 0;
+
+  for (const match of text.matchAll(/(?<![\w.])<(\/?)Pressable\b/gu)) {
+    if (match[1] === '/') {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (depth > 0) nested.push(text.slice(0, match.index).split('\n').length);
+    if (!selfCloses(text, match.index)) depth += 1;
+  }
+
+  return nested;
+}
+
+/** The line of every View or ScrollView that carries a label without being accessible. */
+function labelsNobodyLandsOn(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<(?:Animated\.)?(?:View|ScrollView)\b/gu)].flatMap(
+    (match) => {
+      const markup = text.slice(match.index, tagEnd(text, match.index));
+      const labelled = /\b(accessibilityLabel|aria-label)=/u.test(markup);
+      const accessible = /\baccessible(?!=\{false\})\b/u.test(markup);
+
+      return labelled && !accessible ? [text.slice(0, match.index).split('\n').length] : [];
+    },
+  );
+}
+
+/** The line of every Pressable inside a View that iOS reads as one item. */
+function pressablesInAccessibleViews(text: string): number[] {
+  const inside: number[] = [];
+  const views: boolean[] = [];
+
+  for (const match of text.matchAll(/(?<![\w.])<(\/?)(View|Pressable)\b/gu)) {
+    if (match[2] === 'Pressable') {
+      if (match[1] === '' && views.includes(true)) {
+        inside.push(text.slice(0, match.index).split('\n').length);
+      }
+      continue;
+    }
+    if (match[1] === '/') {
+      views.pop();
+      continue;
+    }
+    if (selfCloses(text, match.index)) continue;
+
+    const markup = text.slice(match.index, tagEnd(text, match.index));
+    views.push(
+      /\baccessible(?=[\s>])/u.test(markup) ||
+        ![null, '{false}'].includes(propValue(markup, 'accessible')),
+    );
+  }
+
+  return inside;
+}
+
+/** The line of every Field whose control carries an accessibilityLabel other than the Field's label. */
+function fieldsReadByAnotherName(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<Field\b/gu)].flatMap((match) => {
+    const body = text.slice(match.index, text.indexOf('</Field>', match.index));
+    const label = propValue(body.slice(0, tagEnd(body, 0)), 'label');
+    const read = propValue(body.slice(tagEnd(body, 0)), 'accessibilityLabel');
+
+    return read == null || read.replace(/\s+/gu, '') === label?.replace(/\s+/gu, '')
+      ? []
+      : [text.slice(0, match.index).split('\n').length];
+  });
+}
+
+/** A prop's value as written, its braces balanced, or null when the markup does not set it. */
+function propValue(markup: string, name: string): string | null {
+  const start = markup.search(new RegExp(`\\b${name}=`, 'u'));
+  if (start === -1) return null;
+
+  const from = start + name.length + 1;
+  if (markup[from] !== '{') return markup.slice(from).split(/[\s>]/u)[0] ?? '';
+
+  let braces = 0;
+  for (let at = from; at < markup.length; at += 1) {
+    if (markup[at] === '{') braces += 1;
+    else if (markup[at] === '}' && --braces === 0) return markup.slice(from, at + 1);
+  }
+
+  return markup.slice(from);
+}
+
+/** Where the tag opening at `start` ends, skipping any `>` inside a prop's braces. */
+function tagEnd(text: string, start: number): number {
+  let braces = 0;
+
+  for (let at = start + 1; at < text.length; at += 1) {
+    if (text[at] === '{') braces += 1;
+    else if (text[at] === '}') braces -= 1;
+    else if (text[at] === '>' && braces === 0) return at + 1;
+  }
+
+  return text.length;
+}
+
+/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
+function selfCloses(text: string, start: number): boolean {
+  return text.slice(start, tagEnd(text, start)).endsWith('/>');
+}
+
+function textTags(text: string): { line: number; markup: string }[] {
+  return [...text.matchAll(/(?<![\w.])<Text\b/gu)].map((match) => ({
+    line: text.slice(0, match.index).split('\n').length,
+    markup: text.slice(match.index, tagEnd(text, match.index)),
+  }));
+}
+
+/** Every Text marked hidden itself, or opening inside a View marked hidden, read tag by tag. */
+function hiddenTexts(text: string): { line: number; markup: string }[] {
+  const hidden: { line: number; markup: string }[] = [];
+  const openViews: boolean[] = [];
+
+  for (const match of text.matchAll(/(?<![\w.])<(\/?)(View|Text)\b/gu)) {
+    const markup = text.slice(match.index, tagEnd(text, match.index));
+    const hiddenHere = /\baccessibilityElementsHidden\b/u.test(markup);
+
+    if (match[2] === 'View') {
+      if (match[1] === '/') openViews.pop();
+      else if (!selfCloses(text, match.index)) openViews.push(hiddenHere);
+    } else if (match[1] === '' && (hiddenHere || openViews.includes(true))) {
+      hidden.push({ line: text.slice(0, match.index).split('\n').length, markup });
+    }
+  }
+
+  return hidden;
+}
+
+/** Both hiding props, after any spread, so the Text stays hidden wherever its View's hiding misses it. */
+function hidesItself(markup: string): boolean {
+  const after = markup.slice(markup.lastIndexOf('{...') + 1);
+
+  return (
+    /\baccessibilityElementsHidden\b/u.test(after) && /importantForAccessibility="no"/u.test(after)
+  );
+}
+
+/** A spread after `accessible={false}` can carry `accessible: true` and turn it back off. */
+function unreportable(markup: string): boolean {
+  const at = markup.lastIndexOf('accessible={false}');
+
+  return at !== -1 && !markup.slice(at).includes('{...');
 }

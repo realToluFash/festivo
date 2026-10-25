@@ -12,6 +12,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
 import { api } from '../../api.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
+import { focusWhereSent } from '../../offField.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
@@ -97,6 +98,7 @@ function NumberForm({
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (sending) return;
 
     const found = phoneLengthProblem(number, country);
     const problem = phoneProblemMessage(found, country, t);
@@ -110,12 +112,14 @@ function NumberForm({
     }
 
     setSending(true);
+    const land = focusWhereSent();
 
     try {
       await api.setPhone(country, number);
       onTexted();
     } catch (refusal) {
       setSending(false);
+      land('phone-number');
 
       if (refusal instanceof ApiError && refusal.is('phone_taken')) {
         setError(t('verifyPhone.taken'));

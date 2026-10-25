@@ -5,8 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
-import { Screen } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { Screen, useFocusOnAnswer } from './Screen.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 const CARD_WIDTH = 520;
 const FORM_COLUMN_WIDTH = 600;
@@ -18,6 +19,7 @@ export function AuthHeading({
   introBeside = false,
   introLive = false,
   done = false,
+  answer,
 }: {
   title: string;
   intro?: string | undefined;
@@ -25,30 +27,39 @@ export function AuthHeading({
   /** The intro is a status that changes in place, announced politely (WCAG 2.2 SC 4.1.3). */
   introLive?: boolean;
   done?: boolean;
+  /** The tap this step answers: the title takes screen reader focus as it shows, and again with each new answer. */
+  answer?: unknown;
 }) {
   const { kind } = useLayout();
+  const { shown, read } = useFocusOnAnswer<TextHandle>(answer);
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
   const showIntro = intro != null && (!introBeside || kind === 'tabletLandscape');
+  useReadOut(introLive && showIntro ? intro : null, { quietAtMount: true });
 
   return (
     <>
       {done && (
-        <View style={styles.doneMark}>
-          <Text size={tokens.typeTitlePage.size} weight="bold" style={styles.onAccent}>
+        <View
+          style={styles.doneMark}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Text
+            size={tokens.typeTitlePage.size}
+            weight="bold"
+            style={styles.onAccent}
+            accessible={false}
+          >
             ✓
           </Text>
         </View>
       )}
-      <View style={styles.heading}>
-        <Text size={size} weight="bold" style={styles.title} accessibilityRole="header">
+      <View ref={shown} style={styles.heading}>
+        <Text ref={read} size={size} weight="bold" style={styles.title} accessibilityRole="header">
           {title}
         </Text>
         {showIntro && (
-          <Text
-            size={tokens.typeBodyPhone.size}
-            style={styles.secondary}
-            accessibilityLiveRegion={introLive ? 'polite' : 'none'}
-          >
+          <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {intro}
           </Text>
         )}

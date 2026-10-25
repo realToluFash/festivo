@@ -22,8 +22,18 @@ import {
   memberStanding,
   memberStatusWord,
   roleName,
+  withheldRoles,
 } from '@soirely/domain';
-import { type FormEvent, type Ref, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type Ref,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -32,13 +42,17 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
+import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
+import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; retried: boolean }
   | { kind: 'loaded'; list: MembersList; roles: OrganisationRole[] };
 
 /** What answering a request to join leaves on the list (sc-392): the done line and its next step. */
@@ -50,7 +64,7 @@ interface Answered {
 type View =
   | { kind: 'list'; flash: string | null; answered?: Answered }
   | { kind: 'member'; id: string }
-  | { kind: 'invite'; email: string; roleId: string | null };
+  | { kind: 'invite'; email: string; roleId: string | null; again: string | null };
 
 const FILTERS: readonly MemberFilter[] = [
   'all',
@@ -72,6 +86,9 @@ export function Members() {
   const [attempt, setAttempt] = useState(0);
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
+  const retrying = useRef(false);
+  const [heading, arriveAtHeading] = useStepFocus();
+  const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -83,16 +100,24 @@ export function Members() {
         if (!current) return;
         loadedFor.current = organisationId;
         setLoad({ kind: 'loaded', list, roles: catalogue.roles });
+        if (retrying.current) arriveAtHeading();
+        retrying.current = false;
       },
-      () =>
-        current &&
-        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' })),
+      () => {
+        if (!current) return;
+        const retried = retrying.current;
+        retrying.current = false;
+        setLoad((before) =>
+          askedAgain && before.kind === 'loaded' ? before : { kind: 'failed', retried },
+        );
+        if (retried) arriveAtFailed();
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt, language]);
+  }, [organisationId, attempt, language, arriveAtHeading, arriveAtFailed]);
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -106,24 +131,18 @@ export function Members() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p>{t('membersScreen.failedLoad')}</p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            >
-              {t('rolesScreen.retry')}
-            </button>
-          </div>
-        </div>
+        <ArrivalNotice
+          role={load.retried ? undefined : 'alert'}
+          line={t('membersScreen.failedLoad')}
+          lineRef={failedLine}
+          focusable={load.retried}
+          retry={t('rolesScreen.retry')}
+          onRetry={() => {
+            retrying.current = true;
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+        />
       )}
       {load.kind === 'loaded' && (
         <MembersLoaded
@@ -132,6 +151,7 @@ export function Members() {
           list={load.list}
           roles={load.roles}
           manages={manages}
+          headingRef={heading}
           onChange={(list) => setLoad({ ...load, list })}
         />
       )}
@@ -144,25 +164,43 @@ function MembersLoaded({
   list,
   roles,
   manages,
+  headingRef,
   onChange,
 }: {
   organisation: Membership;
   list: MembersList;
   roles: OrganisationRole[];
   manages: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (list: MembersList) => void;
 }) {
   const [view, setView] = useState<View>({ kind: 'list', flash: null });
   const member = view.kind === 'member' ? list.members.find((one) => one.id === view.id) : null;
+  const land = useFocusOnceShown();
+  const inviteButton = useRef<HTMLButtonElement>(null);
+  const flashNotice = useRef<HTMLDivElement>(null);
+
+  function backToList(find: () => HTMLElement | null | undefined): void {
+    setView({ kind: 'list', flash: null });
+    land(() => find() ?? headingRef.current);
+  }
 
   if (view.kind === 'invite') {
+    const again = view.again;
+
     return (
       <Invite
         organisation={organisation}
         roles={grantableRoles(roles, organisation)}
         email={view.email}
         roleId={view.roleId}
-        onCancel={() => setView({ kind: 'list', flash: null })}
+        onCancel={() =>
+          backToList(() =>
+            again == null
+              ? inviteButton.current
+              : document.querySelector<HTMLElement>(`[data-invite-again="${again}"]`),
+          )
+        }
         onSent={(invitation, flash) => {
           onChange({
             ...list,
@@ -172,6 +210,7 @@ function MembersLoaded({
             ],
           });
           setView({ kind: 'list', flash });
+          land(() => flashNotice.current);
         }}
       />
     );
@@ -185,6 +224,7 @@ function MembersLoaded({
         member={member}
         list={list}
         roles={grantableRoles(roles, organisation)}
+        withheld={withheldRoles(roles, organisation)}
         manages={manages}
         caller={list.members.find((one) => one.self)?.user.id ?? null}
         onChanged={onChange}
@@ -192,7 +232,10 @@ function MembersLoaded({
           onChange(changed);
           setView({ kind: 'list', flash: null, answered });
         }}
-        onBack={() => setView({ kind: 'list', flash: null })}
+        onBack={() =>
+          backToList(() => document.querySelector<HTMLElement>(`[data-member="${member.id}"]`))
+        }
+        onBackToMembers={() => backToList(() => headingRef.current)}
       />
     );
   }
@@ -203,6 +246,9 @@ function MembersLoaded({
       list={list}
       roles={grantableRoles(roles, organisation)}
       manages={manages}
+      headingRef={headingRef}
+      inviteRef={inviteButton}
+      flashRef={flashNotice}
       flash={view.kind === 'list' ? view.flash : null}
       answered={view.kind === 'list' ? (view.answered ?? null) : null}
       onAnswered={(changed, answered) => {
@@ -210,7 +256,7 @@ function MembersLoaded({
         setView({ kind: 'list', flash: null, answered });
       }}
       onOpen={(id) => setView({ kind: 'member', id })}
-      onInvite={(email, roleId) => setView({ kind: 'invite', email, roleId })}
+      onInvite={(email, roleId, again) => setView({ kind: 'invite', email, roleId, again })}
       onRevoked={(invitation) =>
         onChange({
           ...list,
@@ -226,6 +272,9 @@ function MembersOverview({
   list,
   roles,
   manages,
+  headingRef,
+  inviteRef,
+  flashRef,
   flash,
   answered,
   onAnswered,
@@ -237,11 +286,14 @@ function MembersOverview({
   list: MembersList;
   roles: OrganisationRole[];
   manages: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  inviteRef: RefObject<HTMLButtonElement | null>;
+  flashRef: RefObject<HTMLDivElement | null>;
   flash: string | null;
   answered: Answered | null;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onOpen: (id: string) => void;
-  onInvite: (email: string, roleId: string | null) => void;
+  onInvite: (email: string, roleId: string | null, again: string | null) => void;
   onRevoked: (invitation: SentInvitation) => void;
 }) {
   const { t } = useTranslation();
@@ -252,6 +304,8 @@ function MembersOverview({
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
   const filters = FILTERS.filter((one) => manages || one !== 'waiting');
   const done = useRef<HTMLDivElement>(null);
+  const listed = useRef<HTMLElement>(null);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     if (answered != null) done.current?.focus();
@@ -265,7 +319,9 @@ function MembersOverview({
   return (
     <div className="members">
       <div className="members-head">
-        <h1>{t('membersScreen.title')}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>
+          {t('membersScreen.title')}
+        </h1>
         <p className="muted">
           {t('membersScreen.subtitle', {
             organisation: organisation.name,
@@ -275,9 +331,10 @@ function MembersOverview({
         </p>
         {manages && (
           <button
+            ref={inviteRef}
             type="button"
             className="button button-primary"
-            onClick={() => onInvite('', null)}
+            onClick={() => onInvite('', null, null)}
           >
             {t('membersScreen.invite')}
           </button>
@@ -285,11 +342,15 @@ function MembersOverview({
       </div>
 
       {organisation.role.seededAs === 'administrator' && (
-        <OwnerClaimBanner organisationId={organisation.id} organisation={organisation.name} />
+        <OwnerClaimBanner
+          organisationId={organisation.id}
+          organisation={organisation.name}
+          pageHeading={headingRef}
+        />
       )}
 
       {flash != null && (
-        <div className="notice notice-done" role="status">
+        <div ref={flashRef} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -298,23 +359,25 @@ function MembersOverview({
       )}
 
       {answered != null && (
-        <div ref={done} className="notice notice-done" role="status" tabIndex={-1}>
+        <div ref={done} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
           <div className="notice-body">
             <p>{answered.text}</p>
-            <button
-              type="button"
-              className="link-button"
-              onClick={() => {
-                const next = answered.next;
-                if ('member' in next) onOpen(next.member);
-                else setFilter(next.filter);
-              }}
-            >
-              {answered.next.label}
-            </button>
+            <p className="notice-action">
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  const next = answered.next;
+                  if ('member' in next) onOpen(next.member);
+                  else setFilter(next.filter);
+                }}
+              >
+                {answered.next.label}
+              </button>
+            </p>
           </div>
         </div>
       )}
@@ -325,7 +388,12 @@ function MembersOverview({
           <p className="muted">{t('membersScreen.awaiting.note')}</p>
           {waiting.map((member) => (
             <div key={member.id} className="members-request">
-              <button type="button" className="members-row" onClick={() => onOpen(member.id)}>
+              <button
+                type="button"
+                className="members-row"
+                data-member={member.id}
+                onClick={() => onOpen(member.id)}
+              >
                 <span className="org-tile" aria-hidden="true">
                   {initials(member.user.name)}
                 </span>
@@ -363,7 +431,7 @@ function MembersOverview({
       </div>
 
       {filter !== 'invited' && (
-        <section className="card members-list" aria-label={t('membersScreen.shown')}>
+        <section ref={listed} className="card members-list" aria-label={t('membersScreen.shown')}>
           {shown.map((member) => (
             <MemberRow
               key={member.id}
@@ -380,7 +448,18 @@ function MembersOverview({
                   {t(`membersScreen.empty.${filter}.body`, { organisation: organisation.name })}
                 </p>
               )}
-              <button type="button" className="link-button" onClick={() => setFilter('all')}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setFilter('all');
+                  land(
+                    () =>
+                      listed.current?.querySelector<HTMLElement>('.members-row') ??
+                      headingRef.current,
+                  );
+                }}
+              >
                 {t('membersScreen.showEveryone')}
               </button>
             </div>
@@ -400,7 +479,7 @@ function MembersOverview({
               invitation={invitation}
               caller={list.members.find((one) => one.self)?.user.id ?? null}
               manages={manages}
-              onAgain={() => onInvite(invitation.email, invitation.role?.id ?? null)}
+              onAgain={() => onInvite(invitation.email, invitation.role?.id ?? null, invitation.id)}
               onRevoked={onRevoked}
             />
           ))}
@@ -437,7 +516,7 @@ function MemberRow({
   );
 
   return (
-    <button type="button" className="members-row" onClick={onOpen}>
+    <button type="button" className="members-row" data-member={member.id} onClick={onOpen}>
       {content}
       <span aria-hidden="true">›</span>
     </button>
@@ -462,6 +541,8 @@ function InvitationRow({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const again = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
   const day = (at: string | null) => (at == null ? '' : formatDay(at, dateLocale()));
   const ended: Record<string, string | null> = {
     pending: invitation.expiresAt,
@@ -475,7 +556,9 @@ function InvitationRow({
     setFailed(false);
 
     try {
-      onRevoked(await api.revokeInvitation(organisation.id, invitation.id));
+      const revoked = await api.revokeInvitation(organisation.id, invitation.id);
+      land(() => again.current);
+      onRevoked(revoked);
     } catch {
       setFailed(true);
     } finally {
@@ -506,12 +589,23 @@ function InvitationRow({
           {t(`membersScreen.invitationState.${invitation.status}`)}
         </span>
         {manages && invitation.status === 'pending' && (
-          <button type="button" className="button" disabled={busy} onClick={() => void revoke()}>
+          <button
+            type="button"
+            className="button"
+            {...offButton(busy)}
+            onClick={() => void revoke()}
+          >
             {t('membersScreen.revoke')}
           </button>
         )}
         {manages && invitation.status !== 'pending' && (
-          <button type="button" className="button" onClick={onAgain}>
+          <button
+            ref={again}
+            type="button"
+            className="button"
+            data-invite-again={invitation.id}
+            onClick={onAgain}
+          >
             {t('membersScreen.inviteAgain')}
           </button>
         )}
@@ -536,21 +630,25 @@ function MemberDetail({
   member,
   list,
   roles,
+  withheld,
   manages,
   caller,
   onChanged,
   onAnswered,
   onBack,
+  onBackToMembers,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
+  withheld: OrganisationRole[];
   manages: boolean;
   caller: string | null;
   onChanged: (list: MembersList) => void;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onBack: () => void;
+  onBackToMembers: () => void;
 }) {
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
@@ -561,8 +659,21 @@ function MemberDetail({
   const [outcome, setOutcome] = useState<AccessOutcome | null>(null);
   const said = useRef<HTMLDivElement>(null);
   const asking = useRef<HTMLHeadingElement>(null);
+  const name = useRef<HTMLHeadingElement>(null);
+  const [removeTitle, arriveAtRemove] = useStepFocus();
+  const land = useFocusOnceShown();
+  const suspendButton = useRef<HTMLButtonElement>(null);
+  const removeButton = useRef<HTMLButtonElement>(null);
+  const removeSuspended = useRef<HTMLButtonElement>(null);
+  const removedNotice = useRef<HTMLDivElement>(null);
+  const [removedRead, setRemovedRead] = useState(false);
+  const restoredNotice = useRef<HTMLDivElement>(null);
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const standing = memberStanding(member, list.members, {
+    owns: callerOwns,
+    manages,
+    withholds: withheld,
+  });
   const waiting = member.status === 'pending_approval';
   const noRole = memberHeldNoRole(member);
   const onlyOwner = standing === 'suspendedOnlyOwner';
@@ -572,16 +683,28 @@ function MemberDetail({
   const active = member.status === 'active';
   const byHand = member.status === 'suspended' && member.suspension?.reason === 'manual';
 
+  useLayoutEffect(() => focusStep(name.current), []);
+
   useEffect(() => {
     if (onlyOwner && failed != null) refusal.current?.focus();
   }, [onlyOwner, failed]);
+
+  function confirmRemoving(): void {
+    setRemoval('confirming');
+    arriveAtRemove();
+  }
 
   useEffect(() => {
     if (outcome != null) said.current?.focus();
   }, [outcome]);
 
+  const askOpened = useRef(false);
+
   useEffect(() => {
-    if (suspending === 'confirming') asking.current?.focus();
+    if (!askOpened.current) return;
+
+    askOpened.current = false;
+    asking.current?.focus();
   }, [suspending]);
 
   async function reload(): Promise<void> {
@@ -622,6 +745,7 @@ function MemberDetail({
     try {
       await api.removeMember(organisation.id, member.id);
       setRemoval('removed');
+      land(() => removedNotice.current);
       onChanged(await api.members(organisation.id));
     } catch (error) {
       setRemoval(onlyOwner ? 'resting' : 'confirming');
@@ -632,7 +756,13 @@ function MemberDetail({
   if (removal === 'removed') {
     return (
       <div className="members">
-        <div className="notice notice-done" role="status">
+        <div
+          ref={removedNotice}
+          className="notice notice-done"
+          tabIndex={-1}
+          aria-describedby={removedRead ? undefined : 'member-removed-next'}
+          onBlur={() => setRemovedRead(true)}
+        >
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -643,8 +773,10 @@ function MemberDetail({
             })}
           </p>
         </div>
-        <p className="muted">{t('membersScreen.removedNext')}</p>
-        <button type="button" className="link-button" onClick={onBack}>
+        <p id="member-removed-next" className="muted">
+          {t('membersScreen.removedNext')}
+        </p>
+        <button type="button" className="link-button" onClick={onBackToMembers}>
           {t('membersScreen.backToMembers')}
         </button>
       </div>
@@ -689,7 +821,9 @@ function MemberDetail({
           {initials(member.user.name)}
         </span>
         <div className="org-naming">
-          <h1>{member.user.name}</h1>
+          <h1 ref={name} tabIndex={-1}>
+            {member.user.name}
+          </h1>
           <p className="muted">
             {member.self
               ? t('membersScreen.youAs', { role: roleName(t, member.role) })
@@ -744,7 +878,7 @@ function MemberDetail({
               <p className="muted">{t('membersScreen.askOwner', { name: member.user.name })}</p>
             )}
           </>
-        ) : byHand && standing === 'manageable' ? (
+        ) : member.status === 'suspended' && standing === 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
             <p className="muted">{t('membersScreen.roleKeptWhileSuspended')}</p>
@@ -752,9 +886,7 @@ function MemberDetail({
         ) : standing !== 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            {standing === 'ownerOnly' && member.suspension == null && (
-              <p className="muted">{t('membersScreen.ownerOnly')}</p>
-            )}
+            {member.suspension == null && <FixedLine standing={standing} />}
           </>
         ) : (
           <RolePicker
@@ -762,6 +894,7 @@ function MemberDetail({
             member={member}
             roles={roles}
             onChanged={onChanged}
+            onChangedElsewhere={changedElsewhere}
           />
         )}
       </section>
@@ -779,7 +912,7 @@ function MemberDetail({
       </section>
 
       {restored ? (
-        <div className="notice notice-done" role="status">
+        <div ref={restoredNotice} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -799,13 +932,17 @@ function MemberDetail({
             suspension={member.suspension}
             standing={standing}
             acts={acts}
-            onRestored={() =>
-              byHand
-                ? setOutcome({ kind: 'restored', role: roleName(t, member.role) })
-                : setRestored(true)
-            }
+            removeRef={removeSuspended}
+            onRestored={() => {
+              if (byHand) {
+                setOutcome({ kind: 'restored', role: roleName(t, member.role) });
+              } else {
+                setRestored(true);
+                land(() => restoredNotice.current);
+              }
+            }}
             onChangedElsewhere={changedElsewhere}
-            onRemove={() => setRemoval('confirming')}
+            onRemove={confirmRemoving}
             onMembers={onBack}
             onChanged={onChanged}
           />
@@ -831,7 +968,15 @@ function MemberDetail({
               <p className="muted">
                 {t('membersScreen.suspendBody', { organisation: organisation.name })}
               </p>
-              <button type="button" className="button" onClick={() => setSuspending('confirming')}>
+              <button
+                ref={suspendButton}
+                type="button"
+                className="button"
+                onClick={() => {
+                  askOpened.current = true;
+                  setSuspending('confirming');
+                }}
+              >
                 {t('membersScreen.suspendButton')}
               </button>
             </>
@@ -853,7 +998,7 @@ function MemberDetail({
                   type="button"
                   className="button button-dark"
                   aria-busy={suspending === 'suspending'}
-                  disabled={suspending === 'suspending'}
+                  {...offButton(suspending === 'suspending')}
                   onClick={() => void suspend()}
                 >
                   {t('membersScreen.suspendConfirm', { name: member.user.name })}
@@ -864,6 +1009,7 @@ function MemberDetail({
                   onClick={() => {
                     setSuspendFailed(null);
                     setSuspending('resting');
+                    land(() => suspendButton.current);
                   }}
                 >
                   {t('membersScreen.suspendKeep', { name: member.user.name })}
@@ -901,18 +1047,19 @@ function MemberDetail({
                 </div>
               )}
               <button
+                ref={removeButton}
                 type="button"
                 className="button button-danger"
                 aria-busy={removal === 'removing'}
-                disabled={removal === 'removing'}
-                onClick={() => (onlyOwner ? void remove() : setRemoval('confirming'))}
+                {...offButton(removal === 'removing')}
+                onClick={() => (onlyOwner ? void remove() : confirmRemoving())}
               >
                 {t('membersScreen.removeButton', { organisation: organisation.name })}
               </button>
             </>
           ) : (
             <>
-              <h2 id="remove-title">
+              <h2 id="remove-title" ref={removeTitle} tabIndex={-1}>
                 {t('membersScreen.removeConfirmTitle', { name: member.user.name })}
               </h2>
               <p>
@@ -930,7 +1077,7 @@ function MemberDetail({
                   type="button"
                   className="button button-danger"
                   aria-busy={removal === 'removing'}
-                  disabled={removal === 'removing'}
+                  {...offButton(removal === 'removing')}
                   onClick={() => void remove()}
                 >
                   {t('membersScreen.removeConfirm', { name: member.user.name })}
@@ -941,6 +1088,7 @@ function MemberDetail({
                   onClick={() => {
                     setFailed(null);
                     setRemoval('resting');
+                    land(() => (byHand ? removeSuspended.current : removeButton.current));
                   }}
                 >
                   {byHand
@@ -963,6 +1111,7 @@ function Suspension({
   suspension,
   standing,
   acts,
+  removeRef,
   onRestored,
   onChangedElsewhere,
   onRemove,
@@ -974,6 +1123,7 @@ function Suspension({
   suspension: MemberSuspension;
   standing: MemberStanding;
   acts: boolean;
+  removeRef: RefObject<HTMLButtonElement | null>;
   onRestored: () => void;
   onChangedElsewhere: () => void;
   onRemove: () => void;
@@ -1065,22 +1215,37 @@ function Suspension({
             type="button"
             className="button button-primary"
             aria-busy={restoring}
-            disabled={restoring}
+            {...offButton(restoring)}
             onClick={() => void restore()}
           >
             {t(byHand ? 'membersScreen.restoreAccess' : 'membersScreen.restore', named)}
           </button>
           {byHand && (
-            <button type="button" className="button button-danger" onClick={onRemove}>
+            <button
+              ref={removeRef}
+              type="button"
+              className="button button-danger"
+              onClick={onRemove}
+            >
               {t('membersScreen.removeTitle', named)}
             </button>
           )}
         </div>
       ) : (
-        standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>
+        <FixedLine standing={standing} />
       )}
     </section>
   );
+}
+
+/** Why a manager can't change this member: an owner's role, or one holding what the viewer lacks (sc-11160). */
+function FixedLine({ standing }: { standing: MemberStanding }) {
+  const { t } = useTranslation();
+
+  if (standing === 'ownerOnly') return <p className="muted">{t('membersScreen.ownerOnly')}</p>;
+  if (standing === 'beyondGrant') return <p className="muted">{t('membersScreen.beyondGrant')}</p>;
+
+  return null;
 }
 
 /** Restore refused at the seat limit (sc-3575): the reason, the way through, and why suspending frees a seat. */
@@ -1136,7 +1301,7 @@ function AccessNotice({
 
   if (outcome.kind === 'conflict') {
     return (
-      <div ref={ref} tabIndex={-1} className="notice notice-quiet" role="status">
+      <div ref={ref} tabIndex={-1} className="notice notice-quiet">
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>
@@ -1146,7 +1311,7 @@ function AccessNotice({
   }
 
   return (
-    <div ref={ref} tabIndex={-1} className="notice notice-done" role="status">
+    <div ref={ref} tabIndex={-1} className="notice notice-done">
       <span className="mark mark-done" aria-hidden="true">
         ✓
       </span>
@@ -1296,7 +1461,7 @@ function JoinRequestAnswer({
             type="button"
             className="button button-danger"
             aria-busy={busy}
-            disabled={busy}
+            {...offButton(busy)}
             onClick={() => void answer()}
           >
             {t('membersScreen.awaiting.turnDownConfirm', { name })}
@@ -1339,7 +1504,8 @@ function JoinRequestAnswer({
           type="button"
           className="button button-primary"
           aria-busy={busy}
-          disabled={busy || role == null}
+          disabled={role == null}
+          {...offButton(busy)}
           onClick={() => void answer()}
         >
           {t('membersScreen.awaiting.approveAs', { role: role == null ? '' : roleName(t, role) })}
@@ -1357,11 +1523,13 @@ function RolePicker({
   member,
   roles,
   onChanged,
+  onChangedElsewhere,
 }: {
   organisation: Membership;
   member: OrganisationMember;
   roles: OrganisationRole[];
   onChanged: (list: MembersList) => void;
+  onChangedElsewhere: () => void;
 }) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(member.role.id);
@@ -1395,7 +1563,13 @@ function RolePicker({
       setDone(t('membersScreen.roleChanged', { name: member.user.name, role: roleName(t, role) }));
       onChanged(await api.members(organisation.id));
     } catch (error) {
-      setFailed(error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'));
+      if (error instanceof ApiError && error.status === 409) {
+        onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -1444,8 +1618,8 @@ function RolePicker({
         <button
           type="button"
           className="button button-primary"
-          disabled={!changed || busy}
           aria-busy={busy}
+          {...offButton(!changed || busy)}
           onClick={() => void save()}
         >
           {changed
@@ -1495,9 +1669,13 @@ function Invite({
     document.getElementById('invite-email')?.focus(),
   );
   const emailError = checks.errors.email ?? refused;
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (busy) return;
 
     const typed = String(new FormData(event.currentTarget).get('email') ?? '');
 
@@ -1506,6 +1684,7 @@ function Invite({
     setBusy(true);
     setRefused(null);
     setFailed(null);
+    const land = focusWhereSent();
 
     try {
       const invitation = await api.inviteMember(organisation.id, typed.trim(), role.id);
@@ -1519,7 +1698,7 @@ function Invite({
       ) {
         const violation = error.problem.violations?.find((one) => one.propertyPath === 'email');
         setRefused(violation?.message ?? error.problem.title);
-        document.getElementById('invite-email')?.focus();
+        land('invite-email');
       } else if (error instanceof ApiError && error.is('grant_not_held')) {
         setFailed(error.problem.title);
       } else {
@@ -1534,7 +1713,9 @@ function Invite({
         <span aria-hidden="true">‹ </span>
         {t('membersScreen.title')}
       </button>
-      <h1>{t('membersScreen.invite')}</h1>
+      <h1 ref={heading} tabIndex={-1}>
+        {t('membersScreen.invite')}
+      </h1>
       <p className="muted">{organisation.name}</p>
 
       {failed != null && (
@@ -1561,7 +1742,7 @@ function Invite({
             autoCapitalize="none"
             spellCheck={false}
             defaultValue={email}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={emailError != null}
             aria-describedby={emailError != null ? 'invite-email-error' : undefined}
             onBlur={(event) => checks.left('email', event.target.value)}

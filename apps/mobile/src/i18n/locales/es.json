@@ -136,7 +136,6 @@
     "continue": "Continuar",
     "failedTitle": "No ha funcionado",
     "failedBody": "Algo ha fallado en el camino. Inténtelo de nuevo en un momento.",
-    "stepsLabel": "Antes de empezar",
     "codeBlank": "Introduzca el código de 6 dígitos del correo.",
     "codeShort": "El código tiene 6 dígitos.",
     "step1Google": "Correo confirmado por {{provider}} · hecho"
@@ -347,6 +346,7 @@
     "keepItOn": "Mantenerla activada",
     "failedTitle": "No se pudo cargar la verificación en dos pasos",
     "failedBody": "Algo ha fallado por nuestra parte. Vuelva a intentarlo en un momento.",
+    "retry": "Inténtelo de nuevo",
     "phoneSetupTitle": "Añada Soirely a su aplicación de autenticación",
     "phoneCantScan": "Escanee el código desde otra pantalla o introduzca esta clave en la aplicación.",
     "phoneKeepElsewhere": "Guárdelos en otro lugar que no sea este teléfono.",
@@ -471,7 +471,6 @@
     "help": "Escriba una ciudad, un país o un desfase y elija de la lista. Ahora: {{now}}.",
     "nowUnset": "sin configurar, así que las horas le llegan en UTC",
     "placeholder": "Lagos, Ghana o UTC+01",
-    "listLabel": "Zonas horarias",
     "noneMatch": "Ninguna zona horaria coincide con «{{typed}}». Pruebe con una ciudad, un país o un desfase como UTC+01.",
     "choose": "Elija una zona horaria de la lista.",
     "chooseNoMatch": "Elija una zona horaria de la lista. Nada coincide con «{{typed}}».",
@@ -579,7 +578,6 @@
     "count_one": "{{count}} dispositivo",
     "count_other": "{{count}} dispositivos",
     "intro": "Cada dispositivo aparece tal como se describió al iniciar sesión, con la dirección de red que utilizó. Soirely no puede comprobar ninguna de las dos cosas, ni saber dónde está un dispositivo. Cierre la sesión de cualquiera que no reconozca.",
-    "listLabel": "Dispositivos con sesión abierta en esta cuenta",
     "here": "Este dispositivo",
     "signedInFrom": "Sesión iniciada {{started}} · desde {{ip}}",
     "inUseNow": "En uso ahora",
@@ -656,7 +654,6 @@
   },
   "settings": {
     "title": "Configuración",
-    "sections": "Secciones de Configuración",
     "yourAccount": "Su cuenta",
     "account": "Cuenta",
     "accountLine": "Su nombre, direcciones de correo electrónico y números de teléfono",
@@ -687,8 +684,8 @@
     "label": "Organización: {{name}}, su función {{role}}",
     "labelSwitch": "Organización: {{name}}, su función {{role}}. Cambiar de organización",
     "close": "Cerrar",
-    "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
-    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
+    "labelSwitchWaiting_one": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count}} invitación pendiente",
+    "labelSwitchWaiting_other": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count}} invitaciones pendientes"
   },
   "createOrganisation": {
     "row": "Crear una organización",
@@ -808,7 +805,6 @@
     "removeNobody": "Nadie tiene este rol.",
     "removeMove_one": "{{count}} persona tiene este rol. Pásela a:",
     "removeMove_other": "{{count}} personas tienen este rol. Páselas a:",
-    "replacementLegend": "Rol de sustitución",
     "removeNoReplacement": "Elija el rol al que pasan estas personas.",
     "removeAfter": "Pasan a ser {{role}} en su próxima solicitud. No se cierra ninguna sesión.",
     "removeConfirm": "Pasarlas y eliminar {{role}}",
@@ -913,50 +909,50 @@
     "searchLanguage": "Buscar idiomas"
   },
   "invitations": {
-    "heading": "Invitations",
-    "count_one": "{{count}} invitation",
-    "count_other": "{{count}} invitations",
-    "from": "Invitation from {{inviter}} · {{role}}",
-    "fromNobody": "Invitation · {{role}}",
-    "until": "Works until {{date}}",
-    "untilSentTo": "Works until {{date}} · Sent to {{email}}",
-    "accept": "Accept and join",
-    "acceptLabel": "Accept and join {{organisation}}",
-    "decline": "Decline",
-    "declineLabel": "Decline the invitation to {{organisation}}",
-    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
-    "declineNoteNobody": "Declining changes nothing else.",
-    "joined": "You joined {{organisation}} as {{role}}.",
-    "open": "Open {{organisation}}",
-    "declined": "You declined. {{inviter}} will see that you said no.",
-    "declinedNobody": "You declined.",
-    "failed": "Your answer did not reach us. Check your connection and try again.",
+    "heading": "Invitaciones",
+    "count_one": "{{count}} invitación",
+    "count_other": "{{count}} invitaciones",
+    "from": "Invitación de {{inviter}} · {{role}}",
+    "fromNobody": "Invitación · {{role}}",
+    "until": "Funciona hasta el {{date}}",
+    "untilSentTo": "Funciona hasta el {{date}} · Enviada a {{email}}",
+    "accept": "Aceptar y unirse",
+    "acceptLabel": "Aceptar y unirse a {{organisation}}",
+    "decline": "Rechazar",
+    "declineLabel": "Rechazar la invitación a {{organisation}}",
+    "declineNote": "Si la rechaza, {{inviter}} sabrá que ha dicho que no. No cambia nada más.",
+    "declineNoteNobody": "Si la rechaza, no cambia nada más.",
+    "joined": "Se ha unido a {{organisation}} con el rol {{role}}.",
+    "open": "Abrir {{organisation}}",
+    "declined": "Ha rechazado la invitación. {{inviter}} verá que ha dicho que no.",
+    "declinedNobody": "Ha rechazado la invitación.",
+    "failed": "No hemos recibido su respuesta. Compruebe la conexión y vuelva a intentarlo.",
     "refused": {
       "invitation_expired": {
-        "word": "Expired",
-        "body": "This invitation has expired. Ask {{inviter}} to send a new one.",
-        "bodyNobody": "This invitation has expired. Ask whoever invited you to send a new one."
+        "word": "Caducada",
+        "body": "Esta invitación ha caducado. Pida a {{inviter}} que le envíe una nueva.",
+        "bodyNobody": "Esta invitación ha caducado. Pida a quien le invitó que le envíe una nueva."
       },
       "invitation_revoked": {
-        "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "word": "Retirada",
+        "body": "{{organisation}} ha retirado esta invitación. Si cree que es un error, consúltelo con quien le invitó."
       },
       "invitation_accepted": {
-        "word": "Already accepted",
-        "body": "You already accepted this invitation."
+        "word": "Ya aceptada",
+        "body": "Ya ha aceptado esta invitación."
       },
       "invitation_declined": {
-        "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
-        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+        "word": "Ya rechazada",
+        "body": "Ha rechazado esta invitación. Si ha cambiado de idea, pida a {{inviter}} que le vuelva a invitar.",
+        "bodyNobody": "Ha rechazado esta invitación. Si ha cambiado de idea, pida a quien le invitó que le vuelva a invitar."
       },
       "invitation_not_yours": {
-        "word": "Signed in as someone else",
-        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+        "word": "Sesión iniciada con otra cuenta",
+        "body": "Esta invitación es para {{email}}. Ha iniciado sesión como {{signedInAs}}."
       },
       "organisation_deleted": {
-        "word": "Organisation deleted",
-        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+        "word": "Organización eliminada",
+        "body": "{{organisation}} ya no existe, así que no se puede aceptar esta invitación."
       }
     }
   },
@@ -1122,8 +1118,6 @@
     "title": "Miembros",
     "loading": "Cargando miembros…",
     "failedLoad": "No se han podido cargar los miembros. Compruebe la conexión y vuelva a intentarlo.",
-    "show": "Mostrar",
-    "shown": "Miembros mostrados",
     "showEveryone": "Mostrar a todos",
     "state": {
       "active": "Con acceso",
@@ -1152,8 +1146,9 @@
     "you": "usted",
     "youAs": "Usted · {{role}}",
     "roleTitle": "Rol",
-    "roleFor": "Rol de {{name}}",
     "roleTakesEffect": "Se aplica en cuanto esa persona vuelva a usar Soirely; no se cierra ninguna sesión.",
+    "roleKeptWhileSuspended": "El rol se conserva mientras el acceso esté suspendido. Podrá cambiarlo cuando se restablezca.",
+    "accessConflict": "Otra persona ha cambiado el acceso de {{name}} mientras esta página estaba abierta, así que su cambio no se ha aplicado. Este es el estado actual.",
     "rolePick": "Elija otro rol",
     "roleSave": "Cambiar su rol a {{role}}",
     "roleChanged": "{{name}} tiene ahora el rol {{role}}. Se aplica en cuanto vuelva a usar Soirely; no se cierra ninguna sesión.",
@@ -1167,6 +1162,7 @@
     "onlyOwner": "{{name}} es la única persona con el rol Propietario. Una organización siempre necesita una, así que su rol no puede cambiar y nadie puede quitar a esta persona de la organización hasta que otra tenga también el rol Propietario.",
     "askOwner": "Solo alguien con el rol Propietario puede dar ese rol a otra persona. Pídaselo a {{name}}.",
     "ownerOnly": "Solo alguien con el rol Propietario puede cambiar el rol de otro Propietario o quitar a esa persona de la organización.",
+    "beyondGrant": "Su rol tiene un permiso que el de usted no tiene, así que no puede cambiar el rol de esta persona ni quitarla de la organización.",
     "removeTitle": "Quitar a {{name}}",
     "removeBody": "Pierde el acceso en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}}.",
     "removeButton": "Quitar de {{organisation}}",
@@ -1223,6 +1219,8 @@
     "onlyOwnerRestoreNeedsAddress": "El acceso se podrá restablecer cuando la dirección principal de esta persona vuelva a ser una dirección de {{domain}} verificada.",
     "restore": "Restablecer",
     "restored": "Se ha restablecido el acceso de {{name}} a {{organisation}}.",
+    "restoredNow": "{{name}} vuelve a tener acceso, con el rol {{role}}.",
+    "restoredNowNext": "Esta persona recupera el acceso a {{organisation}} en cuanto vuelva a usar Soirely y se le avisa por correo electrónico en su idioma.",
     "restoreNeedsAddress": "{{name}} necesita primero una dirección de {{domain}} verificada.",
     "noRoleYet": "Aún sin rol",
     "awaiting": {
@@ -1232,7 +1230,6 @@
       "removes": "Se retirará el {{deadline}} si nadie responde",
       "approve": "Aprobar",
       "turnDown": "Rechazar",
-      "roleFor": "Rol de {{name}}",
       "approveAs": "Aprobar con el rol {{role}}",
       "cancel": "Cancelar",
       "turnDownTitle": "¿Rechazar la solicitud de {{name}}?",

@@ -161,9 +161,24 @@ describe("the account's time zone", () => {
     expect(sent.find((s) => s.call === 'PUT /api/auth/timezone')?.body).toEqual({
       timezone: 'Europe/London',
     });
-    await waitFor(() =>
-      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change' })),
-    );
+    const line = screen
+      .getByText('Time zone changed to London (UTC+01:00). Times in your emails now use it.')
+      .closest('.status-done');
+    await waitFor(() => expect(document.activeElement).toBe(line));
+    expect(line?.getAttribute('role')).toBeNull();
+  });
+
+  it('goes back to Change after Cancel, and after Escape in the search', async () => {
+    answering();
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Change' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+    fireEvent.keyDown(screen.getByLabelText('Find your time zone'), { key: 'Escape' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change' }));
   });
 
   it('sends nothing until a listed zone is picked', async () => {
@@ -353,7 +368,7 @@ describe('the time zone list after a language change', () => {
 
     expect(
       await screen.findByText(
-        "Fuseau horaire changé pour Calcutta (UTC+05:30). Les heures de vos e-mails l'utilisent désormais.",
+        /^Fuseau horaire changé pour Calcutta \(UTC\+05:30\)\. Les heures de vos e-mails l.utilisent désormais\.$/,
       ),
     ).toBeDefined();
 
@@ -377,13 +392,13 @@ describe('the time zone list after a language change', () => {
     await act(() => setLanguage('fr'));
 
     const kept =
-      "Fuseau horaire changé pour Kolkata (UTC+05:30). Les heures de vos e-mails l'utilisent désormais.";
+      /^Fuseau horaire changé pour Kolkata \(UTC\+05:30\)\. Les heures de vos e-mails l.utilisent désormais\.$/;
     expect(screen.getByText(kept)).toBeDefined();
 
     await act(async () => release(json({ type: 'x', title: 'x', status: 500 }, 500)));
 
     expect(screen.getByText(kept)).toBeDefined();
-    expect(screen.getByRole('status').textContent).not.toContain('Asia/');
+    expect(screen.getByText(kept).closest('.status-done')?.textContent).not.toContain('Asia/');
   });
 
   it('reads a picked zone in the new language', async () => {

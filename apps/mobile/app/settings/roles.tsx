@@ -2,21 +2,21 @@ import type { OrganisationRole, RolesCatalogue } from '@soirely/api-client';
 import { roleHolds, roleName } from '@soirely/domain';
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
-import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { PrimaryButton, QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
+import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
+import { type ListAndPageSpacing, ListAndPage } from '../../src/components/ListAndPage.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
-import { Screen } from '../../src/components/Screen.tsx';
+import { useFocusOnAnswer } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
-import { Text } from '../../src/components/Text.tsx';
+import { Text, type TextHandle } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { DESTINATION_HREF } from '../../src/kit/appNav.ts';
-import { type LayoutKind, useLayout } from '../../src/layout/useLayout.ts';
+import { useLayout } from '../../src/layout/useLayout.ts';
 import { useSignedIn } from '../../src/signedIn.ts';
 import { tokens } from '../../src/theme/tokens.ts';
 
@@ -25,8 +25,6 @@ type Load =
 
 /** What the detail shows: a role, a role being made, or a role being removed. */
 type Pane = { kind: 'role'; id: string } | { kind: 'new' } | { kind: 'removing'; id: string };
-
-const LIST_COLUMN = 236;
 
 const LOADING: Load = { kind: 'loading' };
 
@@ -49,6 +47,8 @@ export default function RolesScreen() {
     pane: null,
   });
   const [saved, setSaved] = useState(false);
+  // The pane a tap opened, and where on it screen reader focus goes (sc-11032).
+  const [arrival, setArrival] = useState<{ pane: Pane; at: 'name' | 'saved' } | null>(null);
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
 
@@ -66,12 +66,18 @@ export default function RolesScreen() {
     };
   }, [organisationId, attempt]);
 
+  const opened = shown.in === organisationId ? shown.pane : null;
+  const arrived = arrival != null && arrival.pane === opened ? arrival : null;
+  const atName = arrived?.at === 'name' ? arrived : undefined;
+  const { read: pageTitleRef } = useFocusOnAnswer<TextHandle>(
+    phone && atName?.pane.kind !== 'removing' ? atName : undefined,
+  );
+
   if (organisation != null && !roleHolds(organisation, 'members.manage')) {
     return <Redirect href={DESTINATION_HREF.settings} />;
   }
 
   const catalogue = load.kind === 'loaded' ? load.catalogue : null;
-  const opened = shown.in === organisationId ? shown.pane : null;
   const pane: Pane | null =
     opened ??
     (landscape && catalogue != null ? { kind: 'role', id: firstEditable(catalogue) } : null);
@@ -79,12 +85,20 @@ export default function RolesScreen() {
     pane == null || pane.kind === 'new' || catalogue == null
       ? null
       : (catalogue.roles.find((role) => role.id === pane.id) ?? null);
-  const open = (next: Pane | null) => {
+  const open = (next: Pane | null, arrives = false) => {
     setShown({ in: organisationId, pane: next });
     setSaved(false);
+    setArrival(arrives && next != null ? { pane: next, at: 'name' } : null);
   };
-  const inDetail = pane != null && (pane.kind === 'new' || selected != null);
+  const paneResolves = pane != null && (pane.kind === 'new' || selected != null);
   const toList = () => open(null);
+  // The role landscape opens by itself gives way to the list on a turn until it is used.
+  const used = (id: string) =>
+    setShown((before) =>
+      before.in === organisationId && before.pane != null
+        ? before
+        : { in: organisationId, pane: { kind: 'role', id } },
+    );
 
   const heading = (
     <View style={styles.heading}>
@@ -108,7 +122,12 @@ export default function RolesScreen() {
       </View>
     ) : load.kind === 'failed' ? (
       <View style={styles.stack} accessibilityRole="alert">
-        <Notice tone="broken" mark={tokens.marks.broken.glyph} body={t('rolesScreen.failedLoad')} />
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('rolesScreen.failedLoad')}
+          announce
+        />
         <SecondaryButton
           label={t('rolesScreen.retry')}
           onPress={() => {
@@ -125,13 +144,13 @@ export default function RolesScreen() {
       {phone ? (
         <SecondaryButton
           label={t('rolesScreen.newRole')}
-          onPress={() => open({ kind: 'new' })}
+          onPress={() => open({ kind: 'new' }, true)}
           testID="roles.new"
         />
       ) : (
         <PrimaryButton
           label={t('rolesScreen.newRole')}
-          onPress={() => open({ kind: 'new' })}
+          onPress={() => open({ kind: 'new' }, true)}
           testID="roles.new"
         />
       )}
@@ -145,7 +164,7 @@ export default function RolesScreen() {
         organisation={organisation}
         roles={catalogue.roles}
         open={pane?.kind === 'new' ? null : (pane?.id ?? null)}
-        onOpen={(id) => open({ kind: 'role', id })}
+        onOpen={(id) => open({ kind: 'role', id }, true)}
       />
     ) : null;
 
@@ -155,10 +174,11 @@ export default function RolesScreen() {
       : { ...next, roles: [...next.roles, role] };
 
   const page =
-    organisation == null || catalogue == null || !inDetail ? null : pane.kind === 'removing' &&
+    organisation == null || catalogue == null || !paneResolves ? null : pane.kind === 'removing' &&
       selected != null ? (
       <RemoveRole
         key={`removing-${selected.id}`}
+        answer={atName}
         organisation={organisation}
         role={selected}
         roles={catalogue.roles}
@@ -166,7 +186,7 @@ export default function RolesScreen() {
         onRemoved={(roles) => {
           const next = { ...catalogue, roles };
           setLoad({ kind: 'loaded', catalogue: next });
-          open(landscape ? { kind: 'role', id: firstEditable(next) } : null);
+          open(null);
           setAttempt((n) => n + 1);
         }}
       />
@@ -178,15 +198,21 @@ export default function RolesScreen() {
         catalogue={catalogue}
         role={selected}
         saved={saved}
-        onRemove={() => selected != null && open({ kind: 'removing', id: selected.id })}
+        answer={kind === 'tabletPortrait' ? atName : undefined}
+        savedAnswer={arrived?.at === 'saved' ? arrived : undefined}
+        onRemove={() => selected != null && open({ kind: 'removing', id: selected.id }, true)}
         onSaved={(role) => {
+          const next: Pane = { kind: 'role', id: role.id };
           setLoad({ kind: 'loaded', catalogue: replace(catalogue, role) });
-          setShown({ in: organisationId, pane: { kind: 'role', id: role.id } });
+          setShown({ in: organisationId, pane: next });
           setSaved(true);
+          setArrival(pane.kind === 'new' ? { pane: next, at: 'saved' } : null);
         }}
         onEdited={() => setSaved(false)}
+        onUsed={() => selected != null && used(selected.id)}
       />
     );
+  const inDetail = page != null;
 
   const pageTitle =
     pane?.kind === 'new' ? t('rolesScreen.newRole') : selected != null ? roleName(t, selected) : '';
@@ -195,6 +221,7 @@ export default function RolesScreen() {
     <AppFrame
       current="settings"
       title={phone ? (inDetail ? pageTitle : t('rolesScreen.title')) : t('settings.title')}
+      titleRef={phone && inDetail ? pageTitleRef : undefined}
       back={
         phone
           ? inDetail
@@ -204,37 +231,20 @@ export default function RolesScreen() {
       }
     >
       <SettingsSplit open="roles">
-        {landscape ? (
-          <Screen edges={bodyEdges(kind)} scroll={false} contentStyle={styles.landscape}>
-            <View style={styles.landscapeHead}>
-              <View style={styles.fill}>{heading}</View>
-              {catalogue != null && newRole}
-            </View>
-            <View style={styles.split}>
-              <ScrollView style={styles.listColumn} contentContainerStyle={styles.columnContent}>
-                {waiting ?? list}
-              </ScrollView>
-              <ScrollView style={styles.fill} contentContainerStyle={styles.columnContent}>
-                {page}
-              </ScrollView>
-            </View>
-          </Screen>
-        ) : (
-          <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-            {page == null && heading}
-            {page != null && !phone && (
-              <View style={styles.start}>
-                <QuietButton label={t('settings.rolesBack')} onPress={toList} testID="roles.back" />
-              </View>
-            )}
-            {waiting ?? page ?? (
-              <>
-                {list}
-                {newRole}
-              </>
-            )}
-          </Screen>
-        )}
+        <ListAndPage
+          heading={heading}
+          besideHeading={catalogue != null && newRole}
+          list={
+            <>
+              {waiting ?? list}
+              {!landscape && waiting == null && newRole}
+            </>
+          }
+          page={page}
+          pageInFront={inDetail}
+          back={{ label: t('settings.rolesBack'), onPress: toList, testID: 'roles.back' }}
+          spacing={SPACING}
+        />
       </SettingsSplit>
     </AppFrame>
   );
@@ -246,7 +256,6 @@ function firstEditable(catalogue: RolesCatalogue): string {
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1, minWidth: 0 },
   start: { alignSelf: 'flex-start' },
   stack: { gap: tokens.spaceMd },
   heading: { gap: tokens.spaceXxs },
@@ -267,13 +276,14 @@ const styles = StyleSheet.create({
     paddingTop: tokens.space3xl,
     paddingHorizontal: tokens.space5xl,
   },
-  landscapeHead: { flexDirection: 'row', alignItems: 'flex-end', gap: tokens.spaceLg },
-  split: { flex: 1, minHeight: 0, flexDirection: 'row', gap: tokens.spaceXl },
-  listColumn: { width: LIST_COLUMN, flexGrow: 0 },
-  columnContent: { gap: tokens.spaceLg, paddingBottom: tokens.space6xl },
+  column: { gap: tokens.spaceLg, paddingBottom: tokens.space6xl },
 });
 
-const CONTENT: Record<Exclude<LayoutKind, 'tabletLandscape'>, object> = {
+const SPACING: ListAndPageSpacing = {
   phone: styles.phone,
   tabletPortrait: styles.portrait,
+  landscape: styles.landscape,
+  column: styles.column,
+  listWidth: 236,
+  between: tokens.spaceXl,
 };
