@@ -16,6 +16,7 @@ import {
   forAndroid,
   linkIntent,
   parseTarget,
+  playImage,
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
@@ -207,6 +208,32 @@ describe('the Android SDK', () => {
   it('is where Android Studio puts it, without either', () => {
     expect(androidSdk({}, 'linux', '/h')).toBe('/h/Android/Sdk');
     expect(androidSdk({}, 'darwin', '/h')).toBe('/h/Library/Android/sdk');
+  });
+});
+
+describe('the image an emulator is made on', () => {
+  const sdkWith = (...paths) => {
+    const sdk = mkdtempSync(join(tmpdir(), 'sdk-'));
+    for (const path of paths) mkdirSync(join(sdk, 'system-images', path), { recursive: true });
+    return sdk;
+  };
+
+  it('is the newest Play image installed for this machine', () => {
+    const sdk = sdkWith(
+      'android-35/google_apis_playstore/arm64-v8a',
+      'android-37.0/google_apis_playstore_ps16k/arm64-v8a',
+      'android-37.0/google_apis/arm64-v8a',
+      'android-38/google_apis_playstore/x86_64',
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('is never a Google APIs image, which has no TalkBack', () => {
+    expect(playImage(sdkWith('android-37/google_apis/x86_64'), 'x64')).toBe(
+      'system-images;android-35;google_apis_playstore;x86_64',
+    );
   });
 });
 

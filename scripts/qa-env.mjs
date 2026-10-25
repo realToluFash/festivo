@@ -204,6 +204,21 @@ export function androidSdk(env = process.env, platform = process.platform, home 
   );
 }
 
+// Only a Play image carries TalkBack, and a host may have any version of one.
+export function playImage(sdk, arch = process.arch) {
+  const abi = arch === 'arm64' ? 'arm64-v8a' : 'x86_64';
+  const root = join(sdk, 'system-images');
+  const installed = (existsSync(root) ? readdirSync(root) : []).flatMap((version) =>
+    (existsSync(join(root, version)) ? readdirSync(join(root, version)) : [])
+      .filter((tag) => tag.startsWith('google_apis_playstore'))
+      .filter((tag) => existsSync(join(root, version, tag, abi)))
+      .map((tag) => ({ version, tag, api: Number.parseFloat(version.replace('android-', '')) })),
+  );
+  installed.sort((a, b) => b.api - a.api || a.tag.length - b.tag.length);
+  const { version, tag } = installed[0] ?? { version: 'android-35', tag: 'google_apis_playstore' };
+  return `system-images;${version};${tag};${abi}`;
+}
+
 export function expoSdkMajor(expoRange) {
   return /(\d+)\./.exec(expoRange)?.[1];
 }
@@ -398,7 +413,7 @@ function createEmulators() {
     console.log(`  no Android SDK command-line tools in ${tools.sdk}`);
     return;
   }
-  const image = `system-images;android-35;google_apis_playstore;${process.arch === 'arm64' ? 'arm64-v8a' : 'x86_64'}`;
+  const image = playImage(tools.sdk);
   const existing = (capture(tools.emulator, ['-list-avds'], { env: tools.env }) ?? '').split('\n');
   for (const avd of Object.values(CONFIG.emulators)) {
     if (existing.includes(avd.name)) {
