@@ -1,4 +1,5 @@
 import pathlib
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -94,6 +95,13 @@ class Prepare(unittest.TestCase):
         self.assertEqual(git(second, "rev-parse", "HEAD"), git(self.role, "rev-parse", "HEAD"))
         main, _ = checkout.prepare(second, "pm")
         self.assertEqual(git(second, "rev-parse", "HEAD"), main)
+
+    def test_a_further_worker_s_checkout_deleted_by_hand_is_made_again(self):
+        second = self.role.with_name("role-2")
+        checkout.ensure(self.role, second)
+        shutil.rmtree(second)
+        checkout.ensure(self.role, second)
+        self.assertEqual(git(second, "rev-parse", "HEAD"), git(self.role, "rev-parse", "HEAD"))
 
     def test_uncommitted_work_stays_and_the_worker_is_told(self):
         before = git(self.role, "rev-parse", "HEAD")
