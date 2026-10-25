@@ -174,10 +174,18 @@ def comment(c, a):
     unknown = [t for t in to if t not in R.ROLES and t != "dev" and t not in R.LOCALES]
     if unknown:
         raise Refused(f"no role {', '.join(unknown)}")
+    if to and story.get("archived"):
+        raise Refused(f"sc-{story['id']} is archived, so a comment there wakes nobody: ask on "
+                      "the story that replaced it, or an open one")
     posted = post(c, story, to, a.text, parent)
     if a.reply_to:
         store.mark_handled(c.db, c.role, [a.reply_to])
     c.refresh(story["id"])
+    if to and story["done"]:
+        woken = ", ".join(sorted({R.developer_of(story["labels"]) if t == "dev"
+                                  else R.FORMER.get(t, t) for t in to}))
+        return (f"posted #{posted['id']} on sc-{story['id']}, which is Done: it wakes "
+                f"{woken}. New work goes on an open story or a new one")
     return f"posted #{posted['id']} on sc-{story['id']}"
 
 
@@ -637,15 +645,19 @@ def review(c, a):
     # Only a story in review moves: a linguist's ticket, say, keeps its own state.
     if story and story["state"] in W.REVIEWED and not W.side_pr(story, pr):
         set_state(c, story, "Passed Code Review" if a.verdict == "pass" else "Failed Code Review")
+    # A Done story stays Done: QA has nothing to take, and a push alone wakes the lead.
+    done = story and W.finished(story)
     if story and a.verdict == "pass":
         # A developer's change on a linguist's ticket is not the ticket ready for QA.
-        if not W.side_pr(story, pr):
+        if not W.side_pr(story, pr) and not done:
             post(c, story, ["qa"], f"PR #{a.pr} passed review at {head[:7]}: {pr['url']}\n\n"
                                    f"{a.qa or 'Nothing beyond the AC to look at hard.'}")
     elif story:
         post(c, story, [R.developer_of(story["labels"])],
              f"Review of PR #{a.pr} at {head[:7]}: {blocking} blocking. {url}\n"
-             "Answer each finding in its thread, fix, push, and hand it back to In Review.")
+             + ("Answer each finding in its thread, fix and push; the lead is woken by the push."
+                if done else
+                "Answer each finding in its thread, fix, push, and hand it back to In Review."))
     stale = resync(c)
     if story:
         c.refresh(story["id"])
@@ -793,11 +805,17 @@ def merge(c, a):
         github.merge(a.pr, head, delete_branch=True)
         return f"merged PR #{a.pr}"
     story = c.story(pr["story_id"]) if pr["story_id"] else None
-    side = bool(story) and W.side_pr(story, pr)
-    follow_up = bool(story) and not side and story["state"] in R.FOLLOWING_UP
-    if not story or story["state"] not in R.MERGING and not side and not follow_up:
-        raise Refused(f"its story is {story['state'] if story else 'unknown'}, not "
-                      "Passed Code Review")
+    if not story:
+        raise Refused(f"PR #{a.pr} names no story (sc-N in its branch or title), so nothing "
+                      "says whose it is: ask [ops] to give it one or close it")
+    if story.get("archived"):
+        raise Refused(f"sc-{story['id']} is archived, so its PR merges nowhere: close it with "
+                      f"`sq {c.role} pr-close {a.pr} --text \"<why>\"`")
+    side = W.side_pr(story, pr)
+    follow_up = not side and (story["state"] in R.FOLLOWING_UP or W.finished(story))
+    if story["state"] not in R.MERGING and not side and not follow_up:
+        raise Refused(f"its story is {story['state']}, not Passed Code Review: move it to "
+                      "In Review for the lead once its checks are green")
     if R.builder_of(story["labels"]) != c.role and not (
             c.role in R.DEVS and R.builder_of(story["labels"]) in R.DEVS):
         raise Refused(f"sc-{story['id']} is {R.builder_of(story['labels'])}'s to merge")

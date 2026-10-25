@@ -2,6 +2,7 @@ import unittest
 from unittest import mock
 
 from soirely_queue import payloads
+from soirely_queue import text as T
 
 
 class Lines:
@@ -73,3 +74,43 @@ class Conflict(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FollowUp(unittest.TestCase):
+    def test_a_done_storys_pr_merges_and_leaves_the_story_done(self):
+        said = Merge.render(Merge(), "dev", dict(ticket(labels=()), done=True, state="Done"),
+                            pr("feature/sc-9/x"))
+        self.assertIn("sc-9 stays Done", said)
+        self.assertNotIn("Ready For QA", said)
+
+
+    def test_a_done_storys_inbox_says_it_is_done(self):
+        p = Lines("dev")
+        story = dict(ticket(labels=()), done=True, state="Done", description="")
+        with mock.patch.object(payloads, "V"), \
+                mock.patch.object(payloads.store, "prs_for_story", return_value=[]):
+            payloads.inbox(p, None, {"id": 5}, story)
+        said = " ".join(p.lines)
+        self.assertIn("sc-9 is Done and stays Done", said)
+        story.update(done=False, state="In Progress")
+        p = Lines("dev")
+        with mock.patch.object(payloads, "V"), \
+                mock.patch.object(payloads.store, "prs_for_story", return_value=[]):
+            payloads.inbox(p, None, {"id": 5}, story)
+        self.assertNotIn("stays Done", " ".join(p.lines))
+
+
+class StrandedList(unittest.TestCase):
+    def test_each_stranded_pr_shows_its_age_story_and_step(self):
+        from soirely_queue import store
+        db = store.connect(":memory:")
+        store.put_prs(db, [{"number": 355, "story_id": None, "state": "open", "draft": False,
+                            "head_sha": "a" * 40, "title": "fix: conflicts surface",
+                            "updated_at": "2026-10-21T10:00:00Z"}])
+        p = Lines("ops")
+        with mock.patch.object(payloads.time, "time", return_value=T.epoch("2026-10-25T12:00:00Z")):
+            payloads.stranded(p, db, {"id": 5})
+        said = "\n".join(p.lines)
+        self.assertIn("#355 98h idle · no story · fix: conflicts surface", said)
+        self.assertIn("waits on: a story (no sc-N in its branch or title)", said)
+        self.assertIn("sq ops pr-close <n>", said)

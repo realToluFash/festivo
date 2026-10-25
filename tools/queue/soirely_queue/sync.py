@@ -5,7 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 
 from . import github, roles, store, work
-from .shortcut import Shortcut, slim
+from .shortcut import Shortcut, ShortcutError, slim
 
 FRESH_SECONDS = 60
 FULL_EVERY_SECONDS = 15 * 60
@@ -17,7 +17,7 @@ LOOKUP_EVERY_SECONDS = 60 * 60
 # on every sync, not with the hourly lookups.
 EPICS_EVERY_SECONDS = 60
 # Bumped when `shortcut.slim` keeps new fields, so stories stored before are fetched again.
-SLIM_VERSION = 2
+SLIM_VERSION = 3
 
 
 def _lookups(db, shortcut, now):
@@ -77,6 +77,31 @@ def refresh_story(db, shortcut, story_id, now=None):
     return story
 
 
+def pr_stories(db, shortcut, now):
+    """The story of every open pull request, however long ago it was last updated, so a
+    pull request on an old Done or archived story is still seen. A story Shortcut does not
+    have is remembered as missing and not asked for again. Search leaves archived stories
+    out, so each is fetched again now and then to see it archived from Shortcut itself."""
+    missing = set(store.get_meta(db, "missing_stories") or [])
+    again = now - store.get_meta(db, "pr_stories_at", 0) >= FULL_EVERY_SECONDS
+    wanted = set()
+    for pr in store.prs(db):
+        if pr["state"] != "open" or not pr["story_id"] or pr["story_id"] in missing:
+            continue
+        known = store.story(db, pr["story_id"])
+        if not known or again and not known.get("archived"):
+            wanted.add(pr["story_id"])
+    for story_id in sorted(wanted):
+        try:
+            refresh_story(db, shortcut, story_id, now)
+        except ShortcutError as error:
+            if " 404 " in str(error):
+                missing.add(story_id)
+    store.set_meta(db, "missing_stories", sorted(missing))
+    if again:
+        store.set_meta(db, "pr_stories_at", now)
+
+
 def refresh_lookups(db, shortcut):
     store.set_meta(db, "lookups_at", 0)
     return _lookups(db, shortcut, time.time())
@@ -114,14 +139,20 @@ def sync(db, now=None, force=False, full=False):
     db.execute("commit")
 
     errors = []
+    shortcut = Shortcut()
     try:
-        sync_shortcut(db, Shortcut(), now, full)
+        sync_shortcut(db, shortcut, now, full)
     except Exception as error:
         errors.append(str(error))
     try:
         sync_github(db)
     except Exception as error:
         errors.append(str(error))
+    if not errors:
+        try:
+            pr_stories(db, shortcut, now)
+        except Exception as error:
+            errors.append(str(error))
     store.set_meta(db, "sync_errors", errors)
     if not errors:
         store.set_meta(db, "synced_ok_at", now)

@@ -763,3 +763,127 @@ class PmQueue(unittest.TestCase):
         ranks = {i["story_id"]: i["rank"] for i in work.queue_items([late, early], epics=epics)
                  if i["roles"] == ["pm"]}
         self.assertLess(ranks[1], ranks[2])
+
+
+class FinishedStories(unittest.TestCase):
+    """A Done story still wakes its roles; an archived one wakes its builder to close."""
+
+    DAY_AFTER = T.epoch("2026-10-19T12:00:00Z")
+
+    def done(self, comments=(), labels=("dev3",), archived=False):
+        return dict(story(state="Done", labels=labels, comments=comments,
+                          moved_at="2026-10-18T10:30:00Z"), done=True, archived=archived)
+
+    def test_a_comment_after_the_story_is_done_wakes_its_role_and_says_so(self):
+        asked = comment(40, "[dev3] (from l10n)\nThe test on #556 needs the new wording.")
+        items = work.inbox_items([self.done([asked])])
+        self.assertEqual([(i["kind"], i["roles"], i["comments"]) for i in items],
+                         [("inbox", ["dev3"], [40])])
+
+    def test_one_left_open_before_it_was_done_wakes_nobody(self):
+        asked = comment(10, "[dev3] (from lead)\nAn old question.")
+        self.assertEqual(work.inbox_items([self.done([asked])]), [])
+
+    def test_an_archived_story_wakes_nobody_by_comment(self):
+        asked = comment(40, "[dev3] (from l10n)\nStill there?")
+        self.assertEqual(work.inbox_items([self.done([asked], archived=True)]), [])
+
+    def test_an_open_pr_on_a_done_story_wakes_the_lead_to_review_it(self):
+        items = work.review_items([self.done()], [pr()])
+        self.assertEqual([(i["kind"], i["pr"]) for i in items], [("review", 7)])
+        reviewed = pr(lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(work.review_items([self.done()], [reviewed]), [])
+        self.assertEqual(work.review_items([self.done()], [dict(pr(), draft=True)]), [])
+        self.assertEqual(work.review_items([self.done()], [pr(checks="pending")]), [])
+        self.assertEqual(work.review_items([self.done()], [pr(checks="red")]), [])
+
+    def test_its_builder_is_woken_by_red_checks_by_the_pass_and_by_a_conflict(self):
+        red = work.developer_items([self.done()], [pr(checks="red")])
+        self.assertEqual([(i["kind"], i["roles"]) for i in red], [("checks-red", ["dev3"])])
+        passed = pr(lead=[verdict("pass", HEAD[:7])])
+        merge = work.developer_items([self.done()], [passed])
+        self.assertEqual([(i["kind"], i["roles"]) for i in merge], [("merge", ["dev3"])])
+        conflict = work.developer_items([self.done()], [dict(passed, mergeable="conflicting")])
+        self.assertEqual([(i["kind"], i["roles"]) for i in conflict], [("conflict", ["dev3"])])
+        self.assertIn("merge origin/main", conflict[0]["reason"])
+        self.assertNotEqual(conflict[0]["fingerprint"], merge[0]["fingerprint"])
+
+    def test_a_merged_pr_on_a_done_story_hands_nothing_on(self):
+        merged = pr(state="merged", lead=[verdict("pass", HEAD[:7])])
+        self.assertEqual(work.developer_items([self.done()], [merged]), [])
+
+    def test_a_pr_on_an_archived_story_wakes_its_builder_once_to_close_it(self):
+        archived = self.done(archived=True)
+        first = work.developer_items([archived], [pr()])
+        pushed = work.developer_items([archived], [pr(head=OLD, checks="red")])
+        self.assertEqual([(i["kind"], i["roles"]) for i in first], [("close", ["dev3"])])
+        self.assertEqual(first[0]["fingerprint"], pushed[0]["fingerprint"])
+        self.assertEqual(work.review_items([archived], [pr()]), [])
+        self.assertEqual(work.developer_items([archived], [pr(state="merged")]), [])
+
+
+class Stranded(unittest.TestCase):
+    NOW = T.epoch("2026-10-25T12:00:00Z")
+
+    def open_pr(self, number, story_id, updated="2026-10-25T11:00:00Z", **kw):
+        return dict(pr(number, story_id, **kw), updated_at=updated, title=f"PR {number}")
+
+    def test_a_pr_with_no_story_or_idle_a_day_is_stranded_with_its_step(self):
+        stories = [story(1, "In Review"), story(2, "In Progress"),
+                   dict(story(3, "Done"), done=True, archived=True)]
+        prs = [self.open_pr(355, None), self.open_pr(400, 9),
+               self.open_pr(401, 1, updated="2026-10-24T10:00:00Z"),
+               self.open_pr(402, 2, updated="2026-10-21T10:00:00Z"),
+               self.open_pr(403, 3, updated="2026-10-23T10:00:00Z"),
+               self.open_pr(404, 1),
+               dict(self.open_pr(405, 1, updated="2026-10-01T10:00:00Z"), state="merged")]
+        found = {f["pr"]["number"]: (f["role"], f["step"], f["hours"])
+                 for f in work.stranded(stories, prs, self.NOW)}
+        self.assertEqual(sorted(found), [355, 400, 401, 402, 403])
+        self.assertEqual(found[355][0], None)
+        self.assertIn("no sc-N", found[355][1])
+        self.assertIn("sc-9 is not in Shortcut", found[400][1])
+        self.assertEqual(found[401][:2], ("lead", "lead to review it"))
+        self.assertEqual(found[401][2], 26)
+        self.assertEqual(found[402][:2], ("dev", "dev to move sc-2 to In Review"))
+        self.assertIn("archived", found[403][1])
+
+    def test_a_passed_pr_waits_on_its_builder_to_merge_or_bring_main_in(self):
+        passed = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z",
+                              lead=[verdict("pass", HEAD[:7])])
+        done = dict(story(1, "Done", labels=["dev2"]), done=True)
+        self.assertEqual(work.waits_on(done, passed), ("dev2", "dev2 to merge it"))
+        self.assertEqual(work.waits_on(done, dict(passed, mergeable="conflicting")),
+                         ("dev2", "dev2 to merge main in"))
+        self.assertEqual(work.waits_on(done, dict(passed, checks="red"))[0], "dev2")
+        unreviewed = dict(self.open_pr(7, 1), mergeable="conflicting")
+        self.assertEqual(work.waits_on(story(1, "In Review", labels=["dev2"]), unreviewed),
+                         ("dev2", "dev2 to merge main in"))
+        self.assertEqual(work.waits_on(story(1, "In Review", labels=["dev2"]),
+                                       dict(unreviewed, checks="pending")),
+                         ("dev2", "dev2 to merge main in"))
+
+    def test_a_pr_sent_back_at_its_head_waits_on_its_builder_until_handed_back_unpushed(self):
+        back = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z",
+                            lead=[verdict("back", HEAD[:7])])
+        done = dict(story(1, "Done", labels=["dev2"]), done=True)
+        self.assertEqual(work.waits_on(done, back),
+                         ("dev2", "dev2 to fix the findings and push"))
+        self.assertEqual(work.waits_on(done, dict(back, head_sha="f" * 40)),
+                         ("lead", "lead to review it"))
+        failed = story(1, "Failed Code Review", labels=["dev2"], moved_at="2026-10-19T10:00:00Z")
+        self.assertEqual(work.waits_on(failed, back),
+                         ("dev2", "dev2 to fix the findings and push"))
+        handed_back = story(1, "In Review", labels=["dev2"], moved_at="2026-10-19T10:00:00Z")
+        self.assertEqual(work.waits_on(handed_back, back), ("lead", "lead to review it"))
+
+    def test_ops_gets_one_stranded_item_a_day_and_none_when_nothing_is(self):
+        prs = [self.open_pr(355, None)]
+        items = work.stranded_items([], prs, self.NOW)
+        later = work.stranded_items([], prs + [self.open_pr(356, None)], self.NOW + 3600)
+        tomorrow = work.stranded_items([], prs, self.NOW + work.DAY)
+        self.assertEqual([(i["kind"], i["roles"]) for i in items], [("stranded", ["ops"])])
+        self.assertEqual(items[0]["fingerprint"], later[0]["fingerprint"])
+        self.assertNotEqual(items[0]["fingerprint"], tomorrow[0]["fingerprint"])
+        self.assertEqual(work.stranded_items([story(1)], [self.open_pr(7, 1)], self.NOW), [])
+        self.assertIn("stranded", kinds(work.derive([], prs, now=self.NOW)))

@@ -64,3 +64,48 @@ class Epics(unittest.TestCase):
         self.assertEqual(shortcut.epic_reads, 2)
         self.assertEqual(store.get_meta(db, "epics")["2"]["state_name"],
                          "Waiting for Owner Approval")
+
+
+class PullRequestStories(unittest.TestCase):
+    """An open pull request's story is fetched however old it is, and a missing one once."""
+
+    def test_the_story_of_an_open_pr_is_fetched_and_a_missing_one_remembered(self):
+        db, asked = store.connect(":memory:"), []
+
+        class Shortcut(FakeShortcut):
+            def story(self, story_id):
+                asked.append(story_id)
+                if story_id == 404:
+                    raise sync.ShortcutError("Shortcut 404 on GET /api/v3/stories/404: gone")
+                return {"id": story_id, "name": "old", "workflow_state_id": 1,
+                        "completed": True, "archived": story_id == 11}
+
+        store.put_prs(db, [{"number": n, "story_id": s, "state": state, "head_sha": "a"}
+                           for n, s, state in ((1, 10, "open"), (2, 11, "open"),
+                                               (3, 404, "open"), (4, 12, "merged"),
+                                               (5, None, "open"))])
+        sync.pr_stories(db, Shortcut(), NOW)
+        sync.pr_stories(db, Shortcut(), NOW + 60)
+        self.assertEqual(sorted(asked), [10, 11, 404])
+        self.assertTrue(store.story(db, 10)["done"])
+        self.assertTrue(store.story(db, 11)["archived"])
+        self.assertEqual(store.get_meta(db, "missing_stories"), [404])
+
+    def test_the_story_of_an_open_pr_is_fetched_again_to_see_it_archived(self):
+        db, asked, archived = store.connect(":memory:"), [], []
+
+        class Shortcut(FakeShortcut):
+            def story(self, story_id):
+                asked.append(story_id)
+                return {"id": story_id, "name": "old", "workflow_state_id": 1,
+                        "completed": False, "archived": bool(archived)}
+
+        store.put_prs(db, [{"number": 1, "story_id": 10, "state": "open", "head_sha": "a"}])
+        sync.pr_stories(db, Shortcut(), NOW)
+        archived.append(True)
+        sync.pr_stories(db, Shortcut(), NOW + 60)
+        self.assertFalse(store.story(db, 10)["archived"])
+        sync.pr_stories(db, Shortcut(), NOW + sync.FULL_EVERY_SECONDS)
+        self.assertTrue(store.story(db, 10)["archived"])
+        sync.pr_stories(db, Shortcut(), NOW + 2 * sync.FULL_EVERY_SECONDS)
+        self.assertEqual(asked, [10, 10])
