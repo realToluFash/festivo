@@ -33,6 +33,7 @@ import {
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
+import { stepOpeners } from '../kit/stepOpeners.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchFocusedField } from './focusedField.ts';
 import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
@@ -375,30 +376,18 @@ export function useFocusBack(
   closed: StepClosed | undefined,
   fallback?: RefObject<ScreenReaderTarget | null>,
 ): (key: string) => RefCallback<View> {
-  const [openers] = useState(() => new Map<string, View>());
-  const [refs] = useState(() => new Map<string, RefCallback<View>>());
+  const [openers] = useState(() => stepOpeners<View>());
   const target = useMemo<RefObject<ScreenReaderTarget | null>>(
     () => ({
       get current() {
-        return (closed == null ? null : openers.get(closed.to)) ?? fallback?.current ?? null;
+        return openers.target(closed?.to ?? null, fallback?.current ?? null);
       },
     }),
     [closed, fallback, openers],
   );
   useFocusOnAnswer(closed, target);
 
-  return (key) => {
-    let ref = refs.get(key);
-    if (ref == null) {
-      ref = (view) => {
-        if (view == null) openers.delete(key);
-        else openers.set(key, view);
-      };
-      refs.set(key, ref);
-    }
-
-    return ref;
-  };
+  return openers.ref;
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
