@@ -523,7 +523,7 @@ function Answer({
         const membership = await api.acceptInvitation(preview.id);
         await refreshAccount();
         switchOrganisation(membership.id);
-        onChange({ kind: 'accepted', preview });
+        onChange({ kind: 'accepted', preview: { ...preview, role: membership.role } });
       } else {
         await api.declineInvitation(preview.id);
         onChange({ kind: 'declined', preview });
