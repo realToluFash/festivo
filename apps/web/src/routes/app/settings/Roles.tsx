@@ -127,27 +127,18 @@ export function Roles() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <ArrivalNotice className="notice notice-broken" role={load.retried ? undefined : 'alert'}>
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p ref={failedLine} tabIndex={load.retried ? -1 : undefined}>
-              {t('rolesScreen.failedLoad')}
-            </p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                retrying.current = true;
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-              }}
-            >
-              {t('rolesScreen.retry')}
-            </button>
-          </div>
-        </ArrivalNotice>
+        <ArrivalNotice
+          role={load.retried ? undefined : 'alert'}
+          line={t('rolesScreen.failedLoad')}
+          lineRef={failedLine}
+          focusable={load.retried}
+          retry={t('rolesScreen.retry')}
+          onRetry={() => {
+            retrying.current = true;
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+          }}
+        />
       )}
       {load.kind === 'loaded' && (
         <RolesLoaded

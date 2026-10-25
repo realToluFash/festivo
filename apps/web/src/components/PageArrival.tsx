@@ -1,4 +1,4 @@
-import { type ReactNode, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type Ref, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigationType } from 'react-router';
 
 import {
@@ -73,26 +73,42 @@ export function PageArrival() {
   );
 }
 
-/** A notice that takes focus as its page opens is read once, as focus lands, not also as it appears. */
+/** Says the page did not load; as the page opens, focus lands on its line and is read once, not also as an alert. */
 export function ArrivalNotice({
-  className,
   role,
-  children,
+  line,
+  lineRef,
+  focusable,
+  retry,
+  onRetry,
 }: {
-  className: string;
-  role: 'alert' | 'status' | undefined;
-  children: ReactNode;
+  role: 'alert' | undefined;
+  line: string;
+  lineRef: Ref<HTMLParagraphElement>;
+  focusable: boolean;
+  retry: string;
+  onRetry: () => void;
 }) {
   const arriving = useContext(Arriving);
   const [taking] = useState(arriving);
 
-  return taking ? (
-    <div className={className} tabIndex={-1} data-page-focus="">
-      {children}
-    </div>
-  ) : (
-    <div className={className} role={role}>
-      {children}
+  return (
+    <div className="notice notice-broken" role={taking ? undefined : role}>
+      <span className="mark mark-broken" aria-hidden="true">
+        ✕
+      </span>
+      <div className="notice-body">
+        <p
+          ref={lineRef}
+          tabIndex={taking || focusable ? -1 : undefined}
+          data-page-focus={taking ? '' : undefined}
+        >
+          {line}
+        </p>
+        <button type="button" className="button" onClick={onRetry}>
+          {retry}
+        </button>
+      </div>
     </div>
   );
 }

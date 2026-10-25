@@ -57,9 +57,14 @@ function Failed() {
   }, []);
 
   return failed ? (
-    <ArrivalNotice className="notice" role="alert">
-      The event did not load.
-    </ArrivalNotice>
+    <ArrivalNotice
+      role="alert"
+      line="The event did not load."
+      lineRef={null}
+      focusable
+      retry="Try again"
+      onRetry={() => {}}
+    />
   ) : (
     <p>Loading the event…</p>
   );
@@ -162,13 +167,13 @@ describe('opening another page (sc-11370)', () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  it('takes focus to a notice that says the page did not load, which is then not also an alert', async () => {
+  it('takes focus to the line that says the page did not load, which is then not also an alert', async () => {
     const router = site();
 
     await clickThen(router, '/failed');
 
     await waitFor(() =>
-      expect(document.activeElement?.textContent).toBe('The event did not load.'),
+      expect(document.activeElement).toBe(screen.getByText('The event did not load.')),
     );
     expect(screen.queryByRole('alert')).toBeNull();
   });
@@ -176,7 +181,7 @@ describe('opening another page (sc-11370)', () => {
   it('keeps the alert of a notice on the page a tab opens on', async () => {
     site('/failed');
 
-    expect((await screen.findByRole('alert')).textContent).toBe('The event did not load.');
+    expect((await screen.findByRole('alert')).textContent).toContain('The event did not load.');
   });
 
   it('titles the tab with what the page names, over its heading', () => {
@@ -362,6 +367,24 @@ describe('the pages Soirely has, signed in', () => {
 
     await waitFor(() =>
       expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Account' })),
+    );
+  });
+
+  it('takes focus to the line, not its Try again, when an event opened after a click does not load', async () => {
+    vi.mocked(fetch).mockImplementation((input) =>
+      new URL(String(input)).pathname === '/api/events/ev_1'
+        ? Promise.reject(new TypeError('Failed to fetch'))
+        : new Promise<Response>(() => {}),
+    );
+    const router = at('/app');
+
+    fireEvent.click(document.body);
+    await act(() => router.navigate('/app/events/ev_1'));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByText('The event did not load. Try again in a moment.'),
+      ),
     );
   });
 

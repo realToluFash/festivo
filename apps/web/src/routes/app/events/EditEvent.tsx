@@ -105,27 +105,18 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
       )}
 
       {'kind' in load && load.kind === 'failed' && (
-        <ArrivalNotice className="notice notice-broken" role={attempt > 0 ? undefined : 'alert'}>
-          <span className="mark mark-broken" aria-hidden="true">
-            ✕
-          </span>
-          <div className="notice-body">
-            <p ref={failedLine} tabIndex={-1}>
-              {t('eventPage.failed')}
-            </p>
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setLoad({ kind: 'loading' });
-                setAttempt((n) => n + 1);
-                land(() => heading.current ?? failedLine.current);
-              }}
-            >
-              {t('events.retry')}
-            </button>
-          </div>
-        </ArrivalNotice>
+        <ArrivalNotice
+          role={attempt > 0 ? undefined : 'alert'}
+          line={t('eventPage.failed')}
+          lineRef={failedLine}
+          focusable
+          retry={t('events.retry')}
+          onRetry={() => {
+            setLoad({ kind: 'loading' });
+            setAttempt((n) => n + 1);
+            land(() => heading.current ?? failedLine.current);
+          }}
+        />
       )}
 
       {'kind' in load && load.kind === 'notFound' && (
