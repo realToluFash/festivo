@@ -86,6 +86,32 @@ describe('screen reader focus moves on both platforms', () => {
   });
 });
 
+describe('a screen reader skips the initials beside a name', () => {
+  it('on both platforms, in every tile in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      [...text.matchAll(/\{initials\(/gu)]
+        .filter(
+          (match) => !hiddenTile(text.slice(text.lastIndexOf('<View', match.index), match.index)),
+        )
+        .map((match) => `${path}:${text.slice(0, match.index).split('\n').length}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('notices a tile Android still reads', () => {
+    expect(
+      hiddenTile('<View accessibilityElementsHidden importantForAccessibility="no"><Text>'),
+    ).toBe(false);
+    expect(hiddenTile('<View style={styles.tile}><Text>')).toBe(false);
+    expect(
+      hiddenTile(
+        '<View accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text>',
+      ),
+    ).toBe(true);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -239,4 +265,12 @@ function takesRecoveryCode(markup: string): boolean {
 
 function movesFocus(text: string): boolean {
   return /\b(setAccessibilityFocus|sendAccessibilityEvent)\(/u.test(text);
+}
+
+/** importantForAccessibility="no" leaves an Android tile's letters to be read; only its descendants hidden skips them. */
+function hiddenTile(markup: string): boolean {
+  return (
+    /\baccessibilityElementsHidden\b/u.test(markup) &&
+    /\bimportantForAccessibility="no-hide-descendants"/u.test(markup)
+  );
 }

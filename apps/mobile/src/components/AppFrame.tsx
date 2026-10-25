@@ -390,7 +390,11 @@ function Rail({
         {item('settings')}
         {account != null && (
           <View style={styles.person}>
-            <View style={styles.avatar}>
+            <View
+              style={styles.avatar}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
               <Text size={tokens.typeMeta.size} weight="semibold">
                 {initials(account.name)}
               </Text>
@@ -479,7 +483,11 @@ function OrgPill({
 
 function Tile({ name }: { name: string }) {
   return (
-    <View style={styles.tile}>
+    <View
+      style={styles.tile}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       <Text size={tokens.typeMeta.size} weight="bold" style={styles.accent}>
         {initials(name)}
       </Text>
