@@ -1,5 +1,5 @@
 import type { PausedOrganisation } from '@soirely/api-client';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -198,4 +198,96 @@ describe('AccessPaused', () => {
     );
     stopped.mockRestore();
   });
+
+  describe('where focus goes once Stop this claim is answered (sc-11369)', () => {
+    function showClaim() {
+      render(
+        <MemoryRouter>
+          <AccessPaused
+            paused={{ ...paused('address_gone'), ownerClaim: CLAIM }}
+            others={[]}
+            onSwitch={vi.fn()}
+            onChoose={vi.fn()}
+          />
+        </MemoryRouter>,
+      );
+    }
+
+    function stopWith(answer: () => Promise<Response>) {
+      const fetched = vi.spyOn(globalThis, 'fetch').mockImplementation(answer);
+      showClaim();
+      fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
+
+      return fetched;
+    }
+
+    it('puts focus back on Stop this claim after Let it continue', () => {
+      showClaim();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Let it continue' }));
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Stop this claim' }));
+    });
+
+    it('takes focus to the notice once the claim is stopped, read once', async () => {
+      const fetched = stopWith(
+        async () =>
+          new Response(JSON.stringify({ ownerClaim: null }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+      );
+
+      const line = await screen.findByText(
+        "You stopped Bisi's claim. Ownership of Ìrè Events now has to be restored by Soirely support.",
+      );
+      await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice')));
+      expect(line.closest('[role="status"]')).toBeNull();
+      fetched.mockRestore();
+    });
+
+    it('takes focus to the notice when the claim had already ended', async () => {
+      const fetched = stopWith(
+        async () =>
+          new Response(
+            JSON.stringify({
+              type: 'https://soirely.com/errors/owner_claim_ended',
+              title: 'Ended.',
+              status: 409,
+            }),
+            { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+          ),
+      );
+
+      const line = await screen.findByText(
+        'This claim has already ended, so there was nothing to stop.',
+      );
+      await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice')));
+      fetched.mockRestore();
+    });
+
+    it('takes focus to the line under Stop this claim with no connection', async () => {
+      const fetched = stopWith(() => Promise.reject(new TypeError('Failed to fetch')));
+
+      const line = await screen.findByText('That did not work. Please try again.');
+      await waitFor(() => expect(document.activeElement).toBe(line));
+      expect(line.closest('[role="alert"]')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Stop this claim' })).toBeDefined();
+      fetched.mockRestore();
+    });
+  });
 });
+
+const CLAIM = {
+  id: 'claim_1',
+  claimant: { id: 'u_bisi', name: 'Bisi', email: 'bisi@ire.events' },
+  mine: false,
+  domain: 'ire.events',
+  record: null,
+  startedAt: { at: '2026-10-24T09:00:00+00:00', written: 'Saturday 24 Oct at 10:00 WAT' },
+  lapsesAt: { at: '2026-10-31T09:00:00+00:00', written: 'Saturday 31 Oct at 10:00 WAT' },
+  foundAt: { at: '2026-10-24T09:00:00+00:00', written: 'Saturday 24 Oct at 10:00 WAT' },
+  passesAt: { at: '2026-10-27T09:00:00+00:00', written: 'Tuesday 27 Oct at 10:00 WAT' },
+};

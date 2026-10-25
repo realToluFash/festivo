@@ -35,6 +35,8 @@ type View =
 export function RequestToJoin({ token }: { token: string }) {
   const session = useSessionState();
   const [view, setView] = useState<View>({ kind: 'loading' });
+  const [answer, arriveAtAnswer] = useStepFocus<HTMLDivElement>();
+  const [answered, setAnswered] = useState(false);
   const settled = session.status === 'signedIn' || session.status === 'signedOut';
   const [heading, arrive] = useStepFocus();
   const [brought, setBrought] = useState(false);
@@ -85,7 +87,12 @@ export function RequestToJoin({ token }: { token: string }) {
     const dead = next.kind === 'dead';
     setView(next);
     setBrought(dead);
-    if (dead) arrive();
+    if (dead) {
+      arrive();
+    } else {
+      setAnswered(true);
+      arriveAtAnswer();
+    }
   }
 
   if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
@@ -103,6 +110,7 @@ export function RequestToJoin({ token }: { token: string }) {
           token={token}
           view={view}
           signedIn={session.status === 'signedIn'}
+          answer={answered ? answer : null}
           brought={brought}
           headingRef={heading}
           onChange={change}
@@ -146,6 +154,7 @@ function Asking({
   token,
   view,
   signedIn,
+  answer,
   brought,
   headingRef,
   onChange,
@@ -153,6 +162,8 @@ function Asking({
   token: string;
   view: Exclude<View, { kind: 'loading' | 'dead' | 'unreachable' }>;
   signedIn: boolean;
+  /** Where focus lands once Ask to join is answered; none when the page opened on its answer. */
+  answer: RefObject<HTMLDivElement | null> | null;
   brought: boolean;
   headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (next: View) => void;
@@ -179,11 +190,11 @@ function Asking({
         </div>
       </div>
 
-      {view.kind === 'sent' && <Sent organisation={organisation} />}
-      {view.kind === 'limited' && <Limited until={view.until} />}
+      {view.kind === 'sent' && <Sent organisation={organisation} answer={answer} />}
+      {view.kind === 'limited' && <Limited until={view.until} answer={answer} />}
       {view.kind === 'open' && !signedIn && <SignedOut token={token} organisation={organisation} />}
       {view.kind === 'open' && signedIn && preview.standing != null && (
-        <Standing preview={preview} brought={brought} />
+        <Standing preview={preview} answer={answer} brought={brought} />
       )}
       {view.kind === 'open' && signedIn && preview.standing == null && (
         <Ask token={token} preview={preview} onChange={onChange} />
@@ -367,13 +378,21 @@ function useLanding(): string {
   return session.status === 'signedIn' ? landingFor(session.session.awaiting) : '/app';
 }
 
-function Sent({ organisation }: { organisation: string }) {
+type Answer = RefObject<HTMLDivElement | null> | null;
+
+/** A notice that answers Ask to join takes focus in place of its button, and so is not also announced. */
+function answering(answer: Answer, brought = false) {
+  if (answer != null) return { ref: answer, tabIndex: -1 };
+  return brought ? {} : { role: 'status' };
+}
+
+function Sent({ organisation, answer }: { organisation: string; answer: Answer }) {
   const { t } = useTranslation();
   const landing = useLanding();
 
   return (
     <>
-      <div className="notice notice-done" role="status">
+      <div className="notice notice-done" {...answering(answer)}>
         <span className="mark mark-done" aria-hidden="true">
           ✓
         </span>
@@ -386,13 +405,13 @@ function Sent({ organisation }: { organisation: string }) {
   );
 }
 
-function Limited({ until }: { until: Date | null }) {
+function Limited({ until, answer }: { until: Date | null; answer: Answer }) {
   const { t } = useTranslation();
   const landing = useLanding();
 
   return (
     <>
-      <div className="notice notice-attention" role="status">
+      <div className="notice notice-attention" {...answering(answer)}>
         <span className="mark mark-attention" aria-hidden="true">
           !
         </span>
@@ -414,7 +433,15 @@ function Limited({ until }: { until: Date | null }) {
   );
 }
 
-function Standing({ preview, brought }: { preview: RequestLinkPreview; brought: boolean }) {
+function Standing({
+  preview,
+  answer,
+  brought,
+}: {
+  preview: RequestLinkPreview;
+  answer: Answer;
+  brought: boolean;
+}) {
   const { t } = useTranslation();
   const landing = useLanding();
   const organisation = preview.organisation.name;
@@ -433,7 +460,7 @@ function Standing({ preview, brought }: { preview: RequestLinkPreview; brought: 
 
   return (
     <>
-      <div className="notice notice-quiet" role={brought ? undefined : 'status'}>
+      <div className="notice notice-quiet" {...answering(answer, brought)}>
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>

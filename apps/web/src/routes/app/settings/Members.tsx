@@ -27,6 +27,7 @@ import {
 import {
   type FormEvent,
   type Ref,
+  type RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -45,12 +46,12 @@ import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
-import { focusStep, useStepFocus } from '../../../stepFocus.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
 
 type Load =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; retried: boolean }
   | { kind: 'loaded'; list: MembersList; roles: OrganisationRole[] };
 
 /** What answering a request to join leaves on the list (sc-392): the done line and its next step. */
@@ -62,7 +63,7 @@ interface Answered {
 type View =
   | { kind: 'list'; flash: string | null; answered?: Answered }
   | { kind: 'member'; id: string }
-  | { kind: 'invite'; email: string; roleId: string | null };
+  | { kind: 'invite'; email: string; roleId: string | null; again: string | null };
 
 const FILTERS: readonly MemberFilter[] = [
   'all',
@@ -84,6 +85,9 @@ export function Members() {
   const [attempt, setAttempt] = useState(0);
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
+  const retrying = useRef(false);
+  const [heading, arriveAtHeading] = useStepFocus();
+  const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -95,16 +99,24 @@ export function Members() {
         if (!current) return;
         loadedFor.current = organisationId;
         setLoad({ kind: 'loaded', list, roles: catalogue.roles });
+        if (retrying.current) arriveAtHeading();
+        retrying.current = false;
       },
-      () =>
-        current &&
-        setLoad((before) => (askedAgain && before.kind === 'loaded' ? before : { kind: 'failed' })),
+      () => {
+        if (!current) return;
+        const retried = retrying.current;
+        retrying.current = false;
+        setLoad((before) =>
+          askedAgain && before.kind === 'loaded' ? before : { kind: 'failed', retried },
+        );
+        if (retried) arriveAtFailed();
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt, language]);
+  }, [organisationId, attempt, language, arriveAtHeading, arriveAtFailed]);
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -118,16 +130,19 @@ export function Members() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken" role={load.retried ? undefined : 'alert'}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{t('membersScreen.failedLoad')}</p>
+            <p ref={failedLine} tabIndex={load.retried ? -1 : undefined}>
+              {t('membersScreen.failedLoad')}
+            </p>
             <button
               type="button"
               className="button"
               onClick={() => {
+                retrying.current = true;
                 setLoad({ kind: 'loading' });
                 setAttempt((n) => n + 1);
               }}
@@ -144,6 +159,7 @@ export function Members() {
           list={load.list}
           roles={load.roles}
           manages={manages}
+          headingRef={heading}
           onChange={(list) => setLoad({ ...load, list })}
         />
       )}
@@ -156,25 +172,43 @@ function MembersLoaded({
   list,
   roles,
   manages,
+  headingRef,
   onChange,
 }: {
   organisation: Membership;
   list: MembersList;
   roles: OrganisationRole[];
   manages: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (list: MembersList) => void;
 }) {
   const [view, setView] = useState<View>({ kind: 'list', flash: null });
   const member = view.kind === 'member' ? list.members.find((one) => one.id === view.id) : null;
+  const land = useFocusOnceShown();
+  const inviteButton = useRef<HTMLButtonElement>(null);
+  const flashNotice = useRef<HTMLDivElement>(null);
+
+  function backToList(find: () => HTMLElement | null | undefined): void {
+    setView({ kind: 'list', flash: null });
+    land(() => find() ?? headingRef.current);
+  }
 
   if (view.kind === 'invite') {
+    const again = view.again;
+
     return (
       <Invite
         organisation={organisation}
         roles={grantableRoles(roles, organisation)}
         email={view.email}
         roleId={view.roleId}
-        onCancel={() => setView({ kind: 'list', flash: null })}
+        onCancel={() =>
+          backToList(() =>
+            again == null
+              ? inviteButton.current
+              : document.querySelector<HTMLElement>(`[data-invite-again="${again}"]`),
+          )
+        }
         onSent={(invitation, flash) => {
           onChange({
             ...list,
@@ -184,6 +218,7 @@ function MembersLoaded({
             ],
           });
           setView({ kind: 'list', flash });
+          land(() => flashNotice.current);
         }}
       />
     );
@@ -205,7 +240,10 @@ function MembersLoaded({
           onChange(changed);
           setView({ kind: 'list', flash: null, answered });
         }}
-        onBack={() => setView({ kind: 'list', flash: null })}
+        onBack={() =>
+          backToList(() => document.querySelector<HTMLElement>(`[data-member="${member.id}"]`))
+        }
+        onBackToMembers={() => backToList(() => headingRef.current)}
       />
     );
   }
@@ -216,6 +254,9 @@ function MembersLoaded({
       list={list}
       roles={grantableRoles(roles, organisation)}
       manages={manages}
+      headingRef={headingRef}
+      inviteRef={inviteButton}
+      flashRef={flashNotice}
       flash={view.kind === 'list' ? view.flash : null}
       answered={view.kind === 'list' ? (view.answered ?? null) : null}
       onAnswered={(changed, answered) => {
@@ -223,7 +264,7 @@ function MembersLoaded({
         setView({ kind: 'list', flash: null, answered });
       }}
       onOpen={(id) => setView({ kind: 'member', id })}
-      onInvite={(email, roleId) => setView({ kind: 'invite', email, roleId })}
+      onInvite={(email, roleId, again) => setView({ kind: 'invite', email, roleId, again })}
       onRevoked={(invitation) =>
         onChange({
           ...list,
@@ -239,6 +280,9 @@ function MembersOverview({
   list,
   roles,
   manages,
+  headingRef,
+  inviteRef,
+  flashRef,
   flash,
   answered,
   onAnswered,
@@ -250,11 +294,14 @@ function MembersOverview({
   list: MembersList;
   roles: OrganisationRole[];
   manages: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  inviteRef: RefObject<HTMLButtonElement | null>;
+  flashRef: RefObject<HTMLDivElement | null>;
   flash: string | null;
   answered: Answered | null;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onOpen: (id: string) => void;
-  onInvite: (email: string, roleId: string | null) => void;
+  onInvite: (email: string, roleId: string | null, again: string | null) => void;
   onRevoked: (invitation: SentInvitation) => void;
 }) {
   const { t } = useTranslation();
@@ -265,6 +312,8 @@ function MembersOverview({
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
   const filters = FILTERS.filter((one) => manages || one !== 'waiting');
   const done = useRef<HTMLDivElement>(null);
+  const listed = useRef<HTMLElement>(null);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     if (answered != null) done.current?.focus();
@@ -278,7 +327,9 @@ function MembersOverview({
   return (
     <div className="members">
       <div className="members-head">
-        <h1>{t('membersScreen.title')}</h1>
+        <h1 ref={headingRef} tabIndex={-1}>
+          {t('membersScreen.title')}
+        </h1>
         <p className="muted">
           {t('membersScreen.subtitle', {
             organisation: organisation.name,
@@ -288,9 +339,10 @@ function MembersOverview({
         </p>
         {manages && (
           <button
+            ref={inviteRef}
             type="button"
             className="button button-primary"
-            onClick={() => onInvite('', null)}
+            onClick={() => onInvite('', null, null)}
           >
             {t('membersScreen.invite')}
           </button>
@@ -298,11 +350,15 @@ function MembersOverview({
       </div>
 
       {organisation.role.seededAs === 'administrator' && (
-        <OwnerClaimBanner organisationId={organisation.id} organisation={organisation.name} />
+        <OwnerClaimBanner
+          organisationId={organisation.id}
+          organisation={organisation.name}
+          pageHeading={headingRef}
+        />
       )}
 
       {flash != null && (
-        <div className="notice notice-done" role="status">
+        <div ref={flashRef} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -311,7 +367,7 @@ function MembersOverview({
       )}
 
       {answered != null && (
-        <div ref={done} className="notice notice-done" role="status" tabIndex={-1}>
+        <div ref={done} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -340,7 +396,12 @@ function MembersOverview({
           <p className="muted">{t('membersScreen.awaiting.note')}</p>
           {waiting.map((member) => (
             <div key={member.id} className="members-request">
-              <button type="button" className="members-row" onClick={() => onOpen(member.id)}>
+              <button
+                type="button"
+                className="members-row"
+                data-member={member.id}
+                onClick={() => onOpen(member.id)}
+              >
                 <span className="org-tile" aria-hidden="true">
                   {initials(member.user.name)}
                 </span>
@@ -378,7 +439,7 @@ function MembersOverview({
       </div>
 
       {filter !== 'invited' && (
-        <section className="card members-list" aria-label={t('membersScreen.shown')}>
+        <section ref={listed} className="card members-list" aria-label={t('membersScreen.shown')}>
           {shown.map((member) => (
             <MemberRow
               key={member.id}
@@ -395,7 +456,18 @@ function MembersOverview({
                   {t(`membersScreen.empty.${filter}.body`, { organisation: organisation.name })}
                 </p>
               )}
-              <button type="button" className="link-button" onClick={() => setFilter('all')}>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setFilter('all');
+                  land(
+                    () =>
+                      listed.current?.querySelector<HTMLElement>('.members-row') ??
+                      headingRef.current,
+                  );
+                }}
+              >
                 {t('membersScreen.showEveryone')}
               </button>
             </div>
@@ -415,7 +487,7 @@ function MembersOverview({
               invitation={invitation}
               caller={list.members.find((one) => one.self)?.user.id ?? null}
               manages={manages}
-              onAgain={() => onInvite(invitation.email, invitation.role?.id ?? null)}
+              onAgain={() => onInvite(invitation.email, invitation.role?.id ?? null, invitation.id)}
               onRevoked={onRevoked}
             />
           ))}
@@ -452,7 +524,7 @@ function MemberRow({
   );
 
   return (
-    <button type="button" className="members-row" onClick={onOpen}>
+    <button type="button" className="members-row" data-member={member.id} onClick={onOpen}>
       {content}
       <span aria-hidden="true">›</span>
     </button>
@@ -477,6 +549,8 @@ function InvitationRow({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const again = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
   const day = (at: string | null) => (at == null ? '' : formatDay(at, dateLocale()));
   const ended: Record<string, string | null> = {
     pending: invitation.expiresAt,
@@ -490,7 +564,9 @@ function InvitationRow({
     setFailed(false);
 
     try {
-      onRevoked(await api.revokeInvitation(organisation.id, invitation.id));
+      const revoked = await api.revokeInvitation(organisation.id, invitation.id);
+      land(() => again.current);
+      onRevoked(revoked);
     } catch {
       setFailed(true);
     } finally {
@@ -531,7 +607,13 @@ function InvitationRow({
           </button>
         )}
         {manages && invitation.status !== 'pending' && (
-          <button type="button" className="button" onClick={onAgain}>
+          <button
+            ref={again}
+            type="button"
+            className="button"
+            data-invite-again={invitation.id}
+            onClick={onAgain}
+          >
             {t('membersScreen.inviteAgain')}
           </button>
         )}
@@ -562,6 +644,7 @@ function MemberDetail({
   onChanged,
   onAnswered,
   onBack,
+  onBackToMembers,
 }: {
   organisation: Membership;
   member: OrganisationMember;
@@ -573,6 +656,7 @@ function MemberDetail({
   onChanged: (list: MembersList) => void;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onBack: () => void;
+  onBackToMembers: () => void;
 }) {
   const { t } = useTranslation();
   const [removal, setRemoval] = useState<Removal>('resting');
@@ -585,6 +669,13 @@ function MemberDetail({
   const asking = useRef<HTMLHeadingElement>(null);
   const name = useRef<HTMLHeadingElement>(null);
   const [removeTitle, arriveAtRemove] = useStepFocus();
+  const land = useFocusOnceShown();
+  const suspendButton = useRef<HTMLButtonElement>(null);
+  const removeButton = useRef<HTMLButtonElement>(null);
+  const removeSuspended = useRef<HTMLButtonElement>(null);
+  const removedNotice = useRef<HTMLDivElement>(null);
+  const [removedRead, setRemovedRead] = useState(false);
+  const restoredNotice = useRef<HTMLDivElement>(null);
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, {
     owns: callerOwns,
@@ -662,6 +753,7 @@ function MemberDetail({
     try {
       await api.removeMember(organisation.id, member.id);
       setRemoval('removed');
+      land(() => removedNotice.current);
       onChanged(await api.members(organisation.id));
     } catch (error) {
       setRemoval(onlyOwner ? 'resting' : 'confirming');
@@ -672,7 +764,13 @@ function MemberDetail({
   if (removal === 'removed') {
     return (
       <div className="members">
-        <div className="notice notice-done" role="status">
+        <div
+          ref={removedNotice}
+          className="notice notice-done"
+          tabIndex={-1}
+          aria-describedby={removedRead ? undefined : 'member-removed-next'}
+          onBlur={() => setRemovedRead(true)}
+        >
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -683,8 +781,10 @@ function MemberDetail({
             })}
           </p>
         </div>
-        <p className="muted">{t('membersScreen.removedNext')}</p>
-        <button type="button" className="link-button" onClick={onBack}>
+        <p id="member-removed-next" className="muted">
+          {t('membersScreen.removedNext')}
+        </p>
+        <button type="button" className="link-button" onClick={onBackToMembers}>
           {t('membersScreen.backToMembers')}
         </button>
       </div>
@@ -820,7 +920,7 @@ function MemberDetail({
       </section>
 
       {restored ? (
-        <div className="notice notice-done" role="status">
+        <div ref={restoredNotice} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -840,11 +940,15 @@ function MemberDetail({
             suspension={member.suspension}
             standing={standing}
             acts={acts}
-            onRestored={() =>
-              byHand
-                ? setOutcome({ kind: 'restored', role: roleName(t, member.role) })
-                : setRestored(true)
-            }
+            removeRef={removeSuspended}
+            onRestored={() => {
+              if (byHand) {
+                setOutcome({ kind: 'restored', role: roleName(t, member.role) });
+              } else {
+                setRestored(true);
+                land(() => restoredNotice.current);
+              }
+            }}
             onChangedElsewhere={changedElsewhere}
             onRemove={confirmRemoving}
             onMembers={onBack}
@@ -873,6 +977,7 @@ function MemberDetail({
                 {t('membersScreen.suspendBody', { organisation: organisation.name })}
               </p>
               <button
+                ref={suspendButton}
                 type="button"
                 className="button"
                 onClick={() => {
@@ -912,6 +1017,7 @@ function MemberDetail({
                   onClick={() => {
                     setSuspendFailed(null);
                     setSuspending('resting');
+                    land(() => suspendButton.current);
                   }}
                 >
                   {t('membersScreen.suspendKeep', { name: member.user.name })}
@@ -949,6 +1055,7 @@ function MemberDetail({
                 </div>
               )}
               <button
+                ref={removeButton}
                 type="button"
                 className="button button-danger"
                 aria-busy={removal === 'removing'}
@@ -989,6 +1096,7 @@ function MemberDetail({
                   onClick={() => {
                     setFailed(null);
                     setRemoval('resting');
+                    land(() => (byHand ? removeSuspended.current : removeButton.current));
                   }}
                 >
                   {byHand
@@ -1011,6 +1119,7 @@ function Suspension({
   suspension,
   standing,
   acts,
+  removeRef,
   onRestored,
   onChangedElsewhere,
   onRemove,
@@ -1022,6 +1131,7 @@ function Suspension({
   suspension: MemberSuspension;
   standing: MemberStanding;
   acts: boolean;
+  removeRef: RefObject<HTMLButtonElement | null>;
   onRestored: () => void;
   onChangedElsewhere: () => void;
   onRemove: () => void;
@@ -1119,7 +1229,12 @@ function Suspension({
             {t(byHand ? 'membersScreen.restoreAccess' : 'membersScreen.restore', named)}
           </button>
           {byHand && (
-            <button type="button" className="button button-danger" onClick={onRemove}>
+            <button
+              ref={removeRef}
+              type="button"
+              className="button button-danger"
+              onClick={onRemove}
+            >
               {t('membersScreen.removeTitle', named)}
             </button>
           )}
@@ -1194,7 +1309,7 @@ function AccessNotice({
 
   if (outcome.kind === 'conflict') {
     return (
-      <div ref={ref} tabIndex={-1} className="notice notice-quiet" role="status">
+      <div ref={ref} tabIndex={-1} className="notice notice-quiet">
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>
@@ -1204,7 +1319,7 @@ function AccessNotice({
   }
 
   return (
-    <div ref={ref} tabIndex={-1} className="notice notice-done" role="status">
+    <div ref={ref} tabIndex={-1} className="notice notice-done">
       <span className="mark mark-done" aria-hidden="true">
         ✓
       </span>

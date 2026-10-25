@@ -1,12 +1,13 @@
 import { ApiError, type OrganisationEvent } from '@soirely/api-client';
 import { formatEventRange } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
+import { useFocusOnceShown } from '../../../stepFocus.ts';
 import { type EditOutcome } from './EditEvent.tsx';
 
 type Load =
@@ -54,6 +55,9 @@ function EventOf({
   const { t } = useTranslation();
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const failedLine = useRef<HTMLParagraphElement>(null);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     let current = true;
@@ -101,18 +105,21 @@ function EventOf({
       )}
 
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken" role={attempt > 0 ? undefined : 'alert'}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{t('eventPage.failed')}</p>
+            <p ref={failedLine} tabIndex={-1}>
+              {t('eventPage.failed')}
+            </p>
             <button
               type="button"
               className="button"
               onClick={() => {
                 setLoad({ kind: 'loading' });
                 setAttempt((n) => n + 1);
+                land(() => heading.current ?? failedLine.current);
               }}
             >
               {t('events.retry')}
@@ -123,17 +130,29 @@ function EventOf({
 
       {load.kind === 'notFound' && (
         <section className="card">
-          <h1>{t('eventPage.notFound')}</h1>
+          <h1 ref={heading} tabIndex={-1}>
+            {t('eventPage.notFound')}
+          </h1>
         </section>
       )}
 
       {load.kind === 'loaded' &&
-        (page === 'event' ? <EventPage event={load.event} /> : <GuestsComing />)}
+        (page === 'event' ? (
+          <EventPage event={load.event} heading={heading} />
+        ) : (
+          <GuestsComing heading={heading} />
+        ))}
     </div>
   );
 }
 
-function EventPage({ event }: { event: OrganisationEvent }) {
+function EventPage({
+  event,
+  heading,
+}: {
+  event: OrganisationEvent;
+  heading: RefObject<HTMLHeadingElement | null>;
+}) {
   const { t } = useTranslation();
   const session = useSession();
   const location = useLocation();
@@ -166,7 +185,9 @@ function EventPage({ event }: { event: OrganisationEvent }) {
   return (
     <section className="card event-page-card" aria-labelledby="event-title">
       <div className="event-page-head">
-        <h1 id="event-title">{event.name}</h1>
+        <h1 id="event-title" ref={heading} tabIndex={-1}>
+          {event.name}
+        </h1>
         <span className="pill-quiet">{t('events.draft')}</span>
       </div>
       <p>
@@ -198,12 +219,14 @@ function editOutcome(state: unknown): EditOutcome | null {
   return edit === 'saved' || edit === 'unchanged' ? edit : null;
 }
 
-function GuestsComing() {
+function GuestsComing({ heading }: { heading: RefObject<HTMLHeadingElement | null> }) {
   const { t } = useTranslation();
 
   return (
     <section className="card">
-      <h1>{t('eventPage.guests')}</h1>
+      <h1 ref={heading} tabIndex={-1}>
+        {t('eventPage.guests')}
+      </h1>
       <p>{t('eventPage.guestsComing')}</p>
     </section>
   );

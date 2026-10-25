@@ -5,9 +5,10 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
+import { useStepFocus } from '../../../stepFocus.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 
-type Flash = { kind: 'added' | 'removed'; domain: string } | null;
+type Flash = { kind: 'added' | 'removed'; domain: string; answers: boolean } | null;
 
 type Refusal = { message: string; code?: string };
 
@@ -23,7 +24,9 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
   const [flash, setFlash] = useState<Flash>(null);
   const [removeFailed, setRemoveFailed] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-  const removeFailure = useRef<HTMLDivElement>(null);
+  const [kept, setKept] = useState<string | null>(null);
+  const [opener, arriveAtOpener] = useStepFocus<HTMLButtonElement>();
+  const [answer, arriveAtAnswer] = useStepFocus<HTMLDivElement>();
   const confirmHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -42,10 +45,6 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
   useEffect(() => {
     if (confirming != null) confirmHeading.current?.focus();
   }, [confirming]);
-
-  useEffect(() => {
-    if (removeFailed) removeFailure.current?.scrollIntoView({ block: 'nearest' });
-  }, [removeFailed]);
 
   if (list == null) {
     return failed ? (
@@ -84,10 +83,13 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
 
     try {
       const domain = normaliseDomain(typed);
-      setList(await api.addCompanyDomain(organisation.id, domain));
+      const added = await api.addCompanyDomain(organisation.id, domain);
+      const filled = added.domains.length >= added.most;
+      setList(added);
       setTyped('');
       setError(null);
-      setFlash({ kind: 'added', domain });
+      setFlash({ kind: 'added', domain, answers: filled });
+      if (filled) arriveAtAnswer();
     } catch (refusal) {
       const violation =
         refusal instanceof ApiError && refusal.is('validation_failed')
@@ -107,14 +109,21 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
 
     try {
       setList(await api.removeCompanyDomain(organisation.id, domain));
-      setFlash({ kind: 'removed', domain });
+      setFlash({ kind: 'removed', domain, answers: true });
       if (removalAnswers(error?.code, typed, domain)) setError(null);
     } catch {
       setRemoveFailed(true);
     } finally {
       setConfirming(null);
       setBusy(false);
+      arriveAtAnswer();
     }
+  }
+
+  function keep(domain: string): void {
+    setConfirming(null);
+    setKept(domain);
+    arriveAtOpener();
   }
 
   return (
@@ -129,7 +138,12 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
       <p className="muted">{t('companyDomains.intro', { organisation: organisation.name })}</p>
 
       {flash != null && (
-        <div className="notice notice-done" role="status">
+        <div
+          className="notice notice-done"
+          role={flash.answers ? undefined : 'status'}
+          ref={flash.answers ? answer : undefined}
+          tabIndex={flash.answers ? -1 : undefined}
+        >
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -149,7 +163,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
       )}
 
       {removeFailed && (
-        <div ref={removeFailure} className="notice notice-broken" role="alert">
+        <div ref={answer} className="notice notice-broken" tabIndex={-1}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -175,6 +189,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
                     type="button"
                     disabled={busy}
                     aria-label={t('companyDomains.removeLabel', { domain })}
+                    ref={kept === domain ? opener : undefined}
                     onClick={() => setConfirming(domain)}
                   >
                     {t('companyDomains.remove')}
@@ -202,7 +217,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
                       className="button"
                       type="button"
                       disabled={busy}
-                      onClick={() => setConfirming(null)}
+                      onClick={() => keep(domain)}
                     >
                       {t('companyDomains.keep')}
                     </button>

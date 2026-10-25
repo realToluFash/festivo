@@ -217,6 +217,76 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
     await waitFor(() => expect(sent.some((request) => request.method === 'DELETE')).toBe(true));
   });
 
+  it('puts focus back on Remove beside the domain after Keep it (sc-11369)', async () => {
+    answering({
+      'GET /api/orgs/org_1/domains': () =>
+        json(
+          listed([
+            { domain: 'ire.events', stopped: false },
+            { domain: 'ire.ng', stopped: false },
+          ]),
+        ),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove ire.ng' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Remove ire.ng' }));
+  });
+
+  it('takes focus to the line that says a domain was removed (sc-11369)', async () => {
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(listed([{ domain: 'ire.events', stopped: false }])),
+      'DELETE /api/orgs/org_1/domains/ire.events': () => json(listed([])),
+    });
+    settings();
+
+    await removing('ire.events');
+
+    const notice = (await screen.findByText('ire.events removed.')).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.textContent).toContain('People at it can no longer ask to join this way.');
+    expect(notice?.getAttribute('role')).toBeNull();
+  });
+
+  it('takes focus to the line that says a domain was added only when it fills the list (sc-11369)', async () => {
+    const three = [
+      { domain: 'ire.ng', stopped: false },
+      { domain: 'ire.co', stopped: false },
+      { domain: 'ire-catering.com', stopped: false },
+    ];
+    let listedNow = three;
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(listed(listedNow)),
+      'POST /api/orgs/org_1/domains': (body) => {
+        listedNow = [...listedNow, { domain: (body as { domain: string }).domain, stopped: false }];
+        return json(listed(listedNow), 201);
+      },
+    });
+    settings();
+
+    fireEvent.change(await screen.findByLabelText('Add a domain'), {
+      target: { value: 'ire.events' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+    const roomLeft = (await screen.findByText('ire.events added.')).closest('.notice');
+    expect(roomLeft?.getAttribute('role')).toBe('status');
+    expect(document.activeElement).not.toBe(roomLeft);
+
+    fireEvent.change(screen.getByLabelText('Add a domain'), {
+      target: { value: 'ireweddings.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+
+    const filled = (await screen.findByText('ireweddings.com added.')).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(filled));
+    expect(filled?.getAttribute('role')).toBeNull();
+    expect(filled?.textContent).toContain(
+      'People whose main email address is at it can now ask to join.',
+    );
+  });
+
   it('says a domain another organisation proved has stopped, and that the list is full', async () => {
     answering({
       'GET /api/orgs/org_1/domains': () =>
@@ -481,20 +551,22 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       Element.prototype.scrollIntoView = scrolled;
     });
 
-    it('says so above the list when the list is full, and scrolls to it', async () => {
+    it('says so above the list when the list is full, and takes focus there (sc-11369)', async () => {
       answering({ 'GET /api/orgs/org_1/domains': () => json(listed(FIVE)) });
       settings();
 
       await removing('ireweddings.com');
 
       const alert = await screen.findByText('That did not work. Try again in a moment.');
-      const notice = alert.closest('[role="alert"]');
+      const notice = alert.closest('.notice');
       expect(notice?.classList.contains('notice-broken')).toBe(true);
+      expect(notice?.getAttribute('role')).toBeNull();
+      await waitFor(() => expect(document.activeElement).toBe(notice));
       expect(screen.getByRole('list', { name: /domains/i }).previousElementSibling).toBe(notice);
       expect(screen.getByRole('button', { name: 'Remove ireweddings.com' }).textContent).toBe(
         'Remove',
       );
-      expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+      expect(scrolled).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
       expect(scrolled.mock.contexts).toEqual([notice]);
     });
 

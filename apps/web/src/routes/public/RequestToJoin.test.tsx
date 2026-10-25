@@ -306,6 +306,55 @@ describe('a request link (sc-562)', () => {
   });
 });
 
+describe('where focus goes once Ask to join is answered (sc-11369)', () => {
+  it.each([
+    [
+      () =>
+        json({ request: { organisation: { id: 'org_1', name: 'Ìrè Events' }, askedAt: 'x' } }, 201),
+      /^Your request has gone to Ìrè Events./,
+      'Continue',
+    ],
+    [
+      () => problem(409, 'already_a_member'),
+      'You already belong to Ìrè Events.',
+      'Open Ìrè Events',
+    ],
+    [
+      () => problem(429, 'too_many_attempts'),
+      'Too many requests for now. Try again later.',
+      'Continue',
+    ],
+  ])('lands on the answer, read once, with the way on next (%#)', async (answer, said, next) => {
+    signedIn();
+    answering({
+      [LINK]: () => json(PREVIEW),
+      [ASK]: answer,
+      'GET /api/auth/me': () => json(ACCOUNT),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join' }));
+
+    const notice = (await screen.findByText(said)).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
+    expect(notice?.nextElementSibling?.textContent).toBe(next);
+  });
+
+  it('does not move focus to a standing the page opens on', async () => {
+    signedIn();
+    answering({ [LINK]: () => json({ ...PREVIEW, standing: 'member' }) });
+    open();
+
+    const notice = (await screen.findByText('You already belong to Ìrè Events.')).closest(
+      '.notice',
+    );
+    expect(notice?.getAttribute('role')).toBe('status');
+    expect(document.activeElement).toBe(document.body);
+  });
+});
+
 describe('a request link that did not load (sc-11488)', () => {
   const SIGNED_IN = 'You are still signed in.';
   const NOT_ANSWERING =
@@ -389,7 +438,7 @@ describe('a request link that did not load (sc-11488)', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
-  it('reads out the standing an ask after Try again finds', async () => {
+  it('lands on the standing an ask after Try again finds', async () => {
     signedIn();
     let reachable = false;
     answering({
@@ -410,11 +459,13 @@ describe('a request link that did not load (sc-11488)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
 
-    expect(
-      (await screen.findByRole('status')).textContent?.includes(
+    const notice = (
+      await screen.findByText(
         "You have already asked to join Ìrè Events. We'll email you when they answer.",
-      ),
-    ).toBe(true);
+      )
+    ).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
   });
 
   it('keeps the full words signed in', async () => {

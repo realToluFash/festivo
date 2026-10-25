@@ -324,3 +324,103 @@ describe('No organisation', () => {
     );
   });
 });
+
+describe('where focus goes on No organisation (sc-11369)', () => {
+  const PREVIEW = {
+    id: 'inv_1',
+    organisation: { id: 'org_7', name: 'Adunni Weddings' },
+    email: 'chidi@ire.events',
+    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+    invitedBy: { name: 'Bisi Adeyemi' },
+    expiresAt: '2026-10-23T09:00:00+00:00',
+    refusal: null,
+    forYou: true,
+    signedInAs: 'chidi@ire.events',
+  };
+  const ADUNNI = membership({
+    id: 'org_7',
+    name: 'Adunni Weddings',
+    role: { id: 'role_3', seededAs: 'event_manager', name: null },
+  });
+
+  function nowWorkingIn(name: string): HTMLElement | null {
+    return screen.getByText(`Now working in ${name}.`).closest('.notice');
+  }
+
+  it('takes Start organisation to "Now working in", read once, above Dashboard', async () => {
+    inNone();
+    const started = membership({ id: 'org_9', name: 'Okoro Weddings', countryCode: 'GH' });
+    answering({
+      'GET /api/invitations': () => json({ invitations: [] }),
+      'POST /api/orgs': () => json({ organisation: started }, 201),
+    });
+    app();
+
+    fireEvent.change(await screen.findByLabelText('Organisation name'), {
+      target: { value: 'Okoro Weddings' },
+    });
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'GH' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start organisation' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    expect(document.activeElement).toBe(nowWorkingIn('Okoro Weddings'));
+    expect(nowWorkingIn('Okoro Weddings')?.getAttribute('role')).toBeNull();
+  });
+
+  it('takes Decline to the line that answers it, read once', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [PREVIEW] }),
+      'POST /api/invitations/inv_1/decline': () => new Response(null, { status: 204 }),
+    });
+    app();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Decline the invitation to Adunni Weddings' }),
+    );
+
+    const line = await screen.findByText('You declined. Bisi Adeyemi will see that you said no.');
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.invitation-row-said')));
+    expect(line.closest('[role="status"]')).toBeNull();
+  });
+
+  it('takes Accept and join to "You joined", then Open to "Now working in"', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [PREVIEW] }),
+      'POST /api/invitations/inv_1/accept': () => json({ organisation: ADUNNI }),
+    });
+    app();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    const line = await screen.findByText('You joined Adunni Weddings as Event manager.');
+    const said = line.closest('.invitation-row-said');
+    await waitFor(() => expect(document.activeElement).toBe(said));
+    expect(said?.nextElementSibling?.textContent).toBe('Open Adunni Weddings');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Adunni Weddings' }));
+
+    await screen.findByRole('heading', { level: 1, name: 'Dashboard' });
+    expect(document.activeElement).toBe(nowWorkingIn('Adunni Weddings'));
+  });
+
+  it('takes a refused Accept and join to its word and sentence', async () => {
+    inNone();
+    answering({
+      'GET /api/invitations': () => json({ invitations: [PREVIEW] }),
+      'POST /api/invitations/inv_1/accept': () =>
+        json(
+          { type: 'https://soirely.com/errors/invitation_revoked', title: 'No.', status: 409 },
+          409,
+        ),
+    });
+    app();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join Adunni Weddings' }));
+
+    const notice = (await screen.findByText('Withdrawn')).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
+  });
+});

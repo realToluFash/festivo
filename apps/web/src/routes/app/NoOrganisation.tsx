@@ -28,7 +28,9 @@ export function NoOrganisation({
 
   return (
     <section className="card no-organisation" aria-labelledby="no-organisation-title">
-      <h1 id="no-organisation-title">{t('noOrganisation.title')}</h1>
+      <h1 id="no-organisation-title" tabIndex={-1}>
+        {t('noOrganisation.title')}
+      </h1>
       <p>{t('noOrganisation.body')}</p>
       {waiting.invitations.length > 0 ? (
         <div className="no-organisation-invitations">

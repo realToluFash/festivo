@@ -396,6 +396,94 @@ describe('email addresses and phone numbers', () => {
   });
 });
 
+describe('focus after a step on the cards closes', () => {
+  const ONE_EACH = { ...ME, emailAddresses: [ME.emailAddresses[0]] };
+
+  it('goes back to Add an email address after Cancel', async () => {
+    answering({ 'GET /api/auth/me': () => json(ONE_EACH) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add an email address' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Email address to add'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Add an email address' }),
+    );
+  });
+
+  it('starts adding a number in Code, holding the country, and goes back to Add a phone number after Cancel', async () => {
+    answering({ 'GET /api/auth/me': () => json(ME) });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a phone number' }));
+    const code = screen.getByLabelText('Code') as HTMLSelectElement;
+    expect(document.activeElement).toBe(code);
+    expect(code.value).toBe('NG');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Add a phone number' }));
+  });
+
+  it('goes back to Make primary after Keep, and after Cancel on Confirm it’s you', async () => {
+    answering({
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep folake@ire.events' }));
+    expect(screen.queryByText('Make this your primary address?')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Make primary' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+    await screen.findByText("Confirm it's you before changing the address you sign in with.");
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Make primary' }));
+  });
+
+  it('goes back to Remove beside the address or number after Keep it', async () => {
+    const twoPhones = {
+      ...ME,
+      phoneNumbers: [
+        ME.phoneNumbers[0],
+        { ...ME.phoneNumbers[0], id: 'p2', number: '+2347015550188', primary: false },
+      ],
+    };
+    answering({ 'GET /api/auth/me': () => json(twoPhones) });
+    open();
+
+    const address = 'Remove folake.adeyemi@gmail.com';
+    fireEvent.click(await screen.findByRole('button', { name: address }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: address }));
+
+    const number = 'Remove +234 701 555 0188';
+    fireEvent.click(screen.getByRole('button', { name: number }));
+    expect(document.activeElement).toBe(screen.getByText('Remove this number?'));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: number }));
+  });
+
+  it('still lands on the line that says what a remove did', async () => {
+    let reads = 0;
+    answering({
+      'GET /api/auth/me': () => json(++reads === 1 ? ME : ONE_EACH),
+      'DELETE /api/auth/emails/e2': () => new Response(null, { status: 204 }),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove it' }));
+
+    const line = await screen.findByText('folake.adeyemi@gmail.com has been removed.');
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice-done')));
+  });
+});
+
 describe('a number in the words of a number', () => {
   const PHONE_WORDS = {
     verifiedPhone: 'Number verified',
@@ -543,8 +631,50 @@ describe('a refusal shows the account as it is now', () => {
       expect(shows(phones)).toBeDefined();
       expect(screen.queryByText('+234 701 555 0188 is verified.')).toBeNull();
       expect(screen.queryByText('Remove this number?')).toBeNull();
+      expect(document.activeElement).toBe(screen.getByText(reason).closest('.way-last'));
+      expect(screen.getByText(reason).closest('.field-error')?.getAttribute('role')).toBeNull();
     },
   );
+
+  it('takes focus to the reason when an address became unverified elsewhere', async () => {
+    holdProof({ proof: 'held', expiresAt: new Date(Date.now() + 300_000).toISOString() });
+    const after = {
+      ...ME,
+      emailAddresses: [ME.emailAddresses[0], { ...ME.emailAddresses[1], verified: false }],
+    };
+    const { release } = refusing(
+      'PATCH /api/auth/emails/e2/primary',
+      'address_not_verified',
+      ME,
+      after,
+    );
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make primary' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Make it primary' }));
+    release();
+
+    const reason = await screen.findByText('Verify this address before making it primary.');
+    expect(screen.queryByText('Make this your primary address?')).toBeNull();
+    expect(document.activeElement).toBe(reason.closest('.way-last'));
+    expect(reason.closest('.field-error')?.getAttribute('role')).toBeNull();
+  });
+
+  it('takes focus to the card’s heading when the refused row is gone', async () => {
+    const { release } = refusing('DELETE /api/auth/emails/e2', 'primary_address', ME, {
+      ...ME,
+      emailAddresses: [ME.emailAddresses[0]],
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove folake.adeyemi@gmail.com' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove it' }));
+    release();
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Email addresses' })),
+    );
+  });
 
   it('keeps the form open after a limit refusal, with the count and line another tab left', async () => {
     const one = { ...ME, emailAddresses: [ME.emailAddresses[0]] };
@@ -578,6 +708,7 @@ describe('a refusal shows the account as it is now', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByLabelText('Email address to add')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Add an email address' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Email addresses' }));
   });
 
   it('does the same for a number', async () => {
@@ -607,6 +738,7 @@ describe('a refusal shows the account as it is now', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('button', { name: 'Add a phone number' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Phone numbers' }));
   });
 
   it('reads the list again for an address already linked, and keeps what was typed', async () => {

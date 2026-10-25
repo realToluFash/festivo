@@ -47,7 +47,8 @@ export function EverywhereElse({
   hasPassword: boolean;
   providers: readonly LinkedProvider[];
   returned: ProviderReturn | null;
-  onDone: (result: { signedOut: number; thisDevice: boolean }) => void;
+  /** `arrived` when it finished on the way back from Google or Apple, with no click on this page. */
+  onDone: (result: { signedOut: number; thisDevice: boolean }, arrived: boolean) => void;
   onKeep: () => void;
   onCodeSpent: () => void;
 }) {
@@ -88,7 +89,7 @@ export function EverywhereElse({
         : document.getElementById('everywhere-code')?.focus(),
   );
 
-  async function signOut(second: string | undefined): Promise<void> {
+  async function signOut(second: string | undefined, arrived = false): Promise<void> {
     setWorking(true);
     const land = focusWhereSent();
 
@@ -98,7 +99,7 @@ export function EverywhereElse({
         second,
       );
       if (second != null) onCodeSpent();
-      onDone(await api.signOutEverywhereElse(proof, sessionId));
+      onDone(await api.signOutEverywhereElse(proof, sessionId), arrived);
     } catch (error) {
       setWorking(false);
 
@@ -134,7 +135,7 @@ export function EverywhereElse({
       .catch(() => ({ on: false, recoveryCodesLeft: 0 }))
       .then((status) => {
         setCodeAsked(status.on);
-        if (signIn != null && !status.on) void signOut(undefined);
+        if (signIn != null && !status.on) void signOut(undefined, true);
       });
     // Once, on arrival: what came back from the provider is taken then and never again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
