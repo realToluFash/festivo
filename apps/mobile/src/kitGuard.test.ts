@@ -211,6 +211,29 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
+describe('a field is read by a name', () => {
+  // sc-11297: three fields in Ownership and leaving had none, and TalkBack read each as "Edit box".
+  const FIELDS = ['TextField', 'PasswordField', 'CodeField'];
+
+  it('in every TextField, PasswordField and CodeField in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      FIELDS.flatMap((name) =>
+        selfClosing(name, text)
+          .filter((tag) => !named(tag.markup))
+          .map((tag) => `${path}:${tag.line}`),
+      ),
+    );
+
+    expect(offenders, 'Give the field accessibilityLabel, its shown label.').toEqual([]);
+  });
+
+  it('notices a field with no name', () => {
+    expect(named('<TextField\n  value={name}\n  testID="delete.name"\n')).toBe(false);
+    expect(named('<CodeField {...sharedInput} ')).toBe(false);
+    expect(named("<PasswordField\n  accessibilityLabel={t('leave.password')}\n")).toBe(true);
+  });
+});
+
 describe('a refused submit leaves the keyboard as it was', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
@@ -307,6 +330,10 @@ function caretSet(markup: string): boolean {
 
 function takesRecoveryCode(markup: string): boolean {
   return /\btakesRecoveryCode(?!=\{false\})\b/u.test(markup);
+}
+
+function named(markup: string): boolean {
+  return /\baccessibilityLabel=/u.test(markup);
 }
 
 function movesFocus(text: string): boolean {
