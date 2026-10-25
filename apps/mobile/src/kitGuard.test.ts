@@ -471,6 +471,21 @@ describe('a screen is a composition of the kit', () => {
   });
 });
 
+describe('a way back that names an outcome is off while its request runs (sc-12511)', () => {
+  it('in Ownership and leaving, on Keep ownership, Stay and Keep ‹organisation›', () => {
+    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{busy\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual([
+      '"ownership.transfer.keep"',
+      '"ownership.leave.stay"',
+      '"ownership.delete.keep"',
+    ]);
+  });
+});
+
 interface Source {
   path: string;
   text: string;
