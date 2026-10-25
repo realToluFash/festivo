@@ -61,7 +61,7 @@ function InvitationRow({
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
 
   return (
-    <View style={styles.row} accessibilityLabel={organisation}>
+    <View style={styles.row}>
       <View style={styles.head}>
         <View
           style={styles.tile}

@@ -247,6 +247,9 @@ a TalkBack or VoiceOver pass:
   `SETTLED_MS` first, as `useBroughtIntoView` does. TalkBack drops a hover on a view not
   yet in its tree, and VoiceOver drops a focus asked for while a sheet slides away
   (sc-9950, sc-9382).
+- A label goes only on what a screen reader lands on: a `Pressable`, a `TextInput`, or a
+  `View` with `accessible`. VoiceOver never reads a label on a plain `View`, and TalkBack
+  makes it a stop of its own, read before the words inside (sc-11419).
 
 **Never verify in a browser unless asked.** Use `tsc --noEmit`, the affected suites, and a
 reading of the branch you did not change. Put the judgement in a **pure function with
