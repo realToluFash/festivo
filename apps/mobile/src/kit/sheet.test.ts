@@ -19,6 +19,10 @@ describe('a phone sheet', () => {
     expect(sheetPadding({ phone: true, keysCover: 291, insets: notched }).frameBottom).toBe(291);
   });
 
+  it('pads nothing at the foot when the avoiding view lifts it above the keys', () => {
+    expect(sheetPadding({ phone: true, keysCover: 0, insets: notched }).frameBottom).toBe(0);
+  });
+
   it('pads nothing for keys that stop short of its window', () => {
     expect(sheetPadding({ phone: true, keysCover: -1, insets: notched }).frameBottom).toBe(0);
   });

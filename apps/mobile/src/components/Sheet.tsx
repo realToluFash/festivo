@@ -32,11 +32,11 @@ export function Sheet({
   /** Given, a tap on the scrim closes the sheet, and a screen reader names it so. */
   scrimLabel?: string;
   /** Where screen reader focus goes back to once the sheet has gone. */
-  opener?: RefObject<View | null>;
+  opener: RefObject<View | null>;
   testID?: string;
   children: ReactNode;
 }) {
-  const { kind } = useLayout();
+  const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
   // On an Android phone the card itself runs under the keys; everywhere else the avoiding view lifts it.
@@ -56,12 +56,12 @@ export function Sheet({
       animationType={phone ? 'slide' : 'fade'}
       // An iOS modal is portrait-only by default, and a rotation under it measures the keys sideways.
       supportedOrientations={['portrait', 'landscape']}
-      // Android's modal window stops at the system bars unless told otherwise, leaving them undimmed.
+      // Load-bearing for the keys too: without them Android fits the modal to the bars and ends it at the keys.
       statusBarTranslucent
       navigationBarTranslucent
       onRequestClose={onClose}
     >
-      {/* A modal is its own window, so neither platform resizes it for the keyboard. */}
+      {/* A modal is its own window: iOS never resizes it for the keyboard, Android not with the props above. */}
       <KeyboardAvoidingView
         style={styles.fill}
         behavior="padding"
@@ -97,6 +97,10 @@ export function Sheet({
             testID={testID}
           >
             {children}
+            {/* The avoiding view's padding can stop short of the keys as they rise, so card shows there, never the screen. */}
+            {phone && !underKeys && (
+              <View style={[styles.skirt, { height }]} pointerEvents="none" />
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -114,13 +118,13 @@ function useKeyboardTop(): number | null {
 }
 
 /** Hands screen reader focus back to `opener` once a sheet that was open has slid away (WCAG 2.4.3). */
-function useFocusBack(open: boolean, opener: RefObject<View | null> | undefined): void {
+function useFocusBack(open: boolean, opener: RefObject<View | null>): void {
   const wasOpen = useRef(open);
 
   useEffect(() => {
     const closed = wasOpen.current && !open;
     wasOpen.current = open;
-    if (!closed || opener == null) return;
+    if (!closed) return;
 
     const focus = setTimeout(() => moveScreenReaderFocus(opener.current), SETTLED_MS);
 
@@ -176,5 +180,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     borderRadius: tokens.radiusCardPhone,
+  },
+  skirt: {
+    position: 'absolute',
+    top: '100%',
+    left: -1,
+    right: -1,
+    backgroundColor: tokens.colorCard,
   },
 });
