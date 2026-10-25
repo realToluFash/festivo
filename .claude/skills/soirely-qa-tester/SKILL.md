@@ -330,6 +330,28 @@ flow is `~/Android/Sdk/platform-tools/adb -s <serial> exec-out screencap -p > .q
 serial is `emulator-5572`, `emulator-5574` or `emulator-5576` for tester 1, 2 or 3. Use the
 SDK's `adb` and never a bare `adb`: another version knocks the emulator offline.
 
+**Run a mobile story's checks as batches**, one signed-in session per device, never one
+Maestro run per check. A cold start (relaunch, bundle, sign-in) costs 30 to 45 seconds; a
+check in a batch costs a reload and its own few seconds.
+
+```sh
+node .qa/bin/qa-env.mjs account --ready                  # profile complete, owning one organisation
+node .qa/bin/qa-env.mjs account --two-factor             # the same, two-factor on; prints TOTP_SECRET
+node .qa/bin/qa-env.mjs batch <name> <check>… EMAIL=… PASSWORD=… [TOTP_SECRET=…] [--lang en,es] [--ipad | --android]
+node .qa/bin/qa-env.mjs batch <name>-<check> <check> --cold EMAIL=… PASSWORD=…   # one check alone, cold
+```
+
+A check is a file in `apps/mobile/.maestro/checks/` (its README says how one is written).
+A batch launches Expo Go once, signs in only when it is not already signed in as that account
+(another one is signed out first), and reloads the bundle before each check, so each starts
+clean with the session kept. A failing check does not stop it: it ends listing every check as
+passed or failed, with every screenshot in `.qa/<name>/`. **Re-run a failure alone with
+`--cold`** before reporting it, to tell a check the batch broke from a product that is broken.
+`--lang en,es` runs every check in each language, switched through the account, with one
+sign-in. A two-factor account is signed in with codes the harness makes as they are typed:
+pass its `TOTP_SECRET` as you pass its password, and compute and type none yourself. Two
+sign-ins inside one 30-second step wait for the next, as the API refuses a code it has used.
+
 Flows live in `~/Projects/soirely-qa<n>/apps/mobile/.maestro`, one per outcome, reach the bundler as `${METRO_URL}`
 and Mailpit as `${MAILPIT_URL}` (the harness passes both), and **target `testID`** rather than
 prose — a flow that taps `"Sign in"` taps whichever one it finds first and breaks in
@@ -346,12 +368,12 @@ drop, and anything about performance. Say so rather than implying it was covered
 **What Maestro will do to you.** Each of these was mistaken for a product failure while
 these flows were being written, and each cost a run:
 
-| It looks like                                                            | It is                                                                                                                                                                      |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "Signed in as" not found, on a screen that says "Signed in as QA Tester" | Text is matched as a WHOLE regex. Write `Signed in as.*`.                                                                                                                  |
-| Two empty fields and a refusal                                           | A flow's own `env:` defaults shadow the values passed with `-e`. Declare no defaults.                                                                                      |
-| Text typed on top of other text                                          | `eraseText` clears 50 characters unless told otherwise, and `openLink` reaches a route without remounting the screen. Erase generously, and relaunch with `stopApp: true`. |
-| Every element on the screen missing at once                              | An iOS dialog is over the app — "Save Password?" after any sign-in. Dismiss it with a conditional `runFlow`.                                                               |
+| It looks like                                                            | It is                                                                                                                                                                 |
+| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Signed in as" not found, on a screen that says "Signed in as QA Tester" | Text is matched as a WHOLE regex. Write `Signed in as.*`.                                                                                                             |
+| Two empty fields and a refusal                                           | A flow's own `env:` defaults shadow the values passed with `-e`. Declare no defaults.                                                                                 |
+| Text typed on top of other text                                          | `eraseText` clears 50 characters unless told otherwise, and `openLink` reaches a route without remounting the screen. Erase generously; a batch's reload remounts it. |
+| Every element on the screen missing at once                              | An iOS dialog is over the app — "Save Password?" after any sign-in. Dismiss it with a conditional `runFlow`.                                                          |
 
 **So: a failing flow is not a failing product until the screenshot says so.** Open the
 failure screenshot before writing anything down. Of the first five failures these flows

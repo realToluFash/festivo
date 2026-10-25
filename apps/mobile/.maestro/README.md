@@ -18,6 +18,27 @@ just qa-mobile sign-in                    # a flow, by file name
 Maestro needs a Java runtime. `java -version` failing means
 `brew install --cask temurin@21` first.
 
+## Checks, run as a batch
+
+`checks/` holds checks: each opens one screen, asserts what it shows and takes its
+screenshots. `qa-env.mjs batch` runs a list of them in one Maestro run on one signed-in
+session (`batch/session.yaml`), reloading the bundle before each (`batch/reset.yaml`), so a
+check never relaunches Expo Go and never signs in. `--cold` runs each alone from a relaunch.
+
+A check is written like a flow, and also:
+
+- **No `launchApp` and no sign-in.** It opens its screen with `openLink`, or by taps from a
+  screen it opened that way. The batch has already signed the account in.
+- **Text in the batch's language, as `{{t:key}}`**: `visible: '{{t:settings.title}}'`, the key
+  from `apps/mobile/src/i18n/locales/en.json`, in single quotes. The harness writes each
+  language's string in. `{{t:any:key}}` matches any of the four, and `{{t:key|email}}` puts the
+  account's address where the string has `{{email}}`.
+- **`takeScreenshot: <name>`, on one line.** The harness prefixes the check and language, so
+  `settings` in a Spanish batch lands in `.qa/<batch>/settings.es-settings.png`.
+
+Two-factor sign-in is `sign-in-two-factor.yaml`. It asks the harness for each code
+(`batch/helper.js`), so it runs inside a batch, which holds the account's `TOTP_SECRET`.
+
 ## Writing one
 
 - **Target `testID`, never prose.** A flow that taps `"Sign in"` taps whichever "Sign in"
