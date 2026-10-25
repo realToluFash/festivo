@@ -27,6 +27,7 @@ import {
   expoSdkMajor,
   forAndroid,
   linkIntent,
+  maestroTarget,
   parseTarget,
   playImage,
   QA_OVERRIDES,
@@ -176,6 +177,22 @@ describe('the simulator ios opens', () => {
     [['--ipad'], { open: 'ipad', shut: 'phone' }],
   ])('%j opens one and shuts the other', (args, expected) => {
     expect(simulatorFor(args)).toEqual(expected);
+  });
+});
+
+describe('the device a maestro run drives', () => {
+  it.each(TESTERS)("is tester %i's own iPhone, through their own driver port", (tester) => {
+    const port = qaConfig(tester).driverPort;
+    expect(maestroTarget('UDID', false, port)).toEqual([
+      '--device',
+      'UDID',
+      '--driver-host-port',
+      String(22087 + tester),
+    ]);
+  });
+
+  it('is only the emulator on android, which has no shared driver', () => {
+    expect(maestroTarget('emulator-5564', true, 22088)).toEqual(['--device', 'emulator-5564']);
   });
 });
 
@@ -459,14 +476,15 @@ describe('the three QA testers', () => {
     expect(configs[0].simulators.phone.name).toBe('Soirely QA iPhone');
   });
 
-  it('each have their own project, simulators, emulators and Chrome', () => {
-    for (const key of ['project', 'chromePort', 'emulatorPort']) {
+  it('each have their own project, simulators, emulators, Chrome and Maestro driver', () => {
+    for (const key of ['project', 'chromePort', 'emulatorPort', 'driverPort']) {
       expect(new Set(configs.map((c) => c[key])).size, key).toBe(TESTERS.length);
     }
     const names = configs.flatMap((c) =>
       [...Object.values(c.simulators), ...Object.values(c.emulators)].map((d) => d.name),
     );
     expect(new Set(names).size).toBe(names.length);
+    expect(configs.map((c) => c.driverPort)).not.toContain(22087);
   });
 
   it('name emulators an AVD can carry, on a console adb finds', () => {

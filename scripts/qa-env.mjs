@@ -118,6 +118,8 @@ export function qaConfig(tester = 1) {
     emulators,
     emulatorPort,
     chromePort: 9221 + tester,
+    // Maestro's iOS driver answers every run on its port; 22087, its default, is left to a run by hand.
+    driverPort: 22087 + tester,
   };
 }
 
@@ -1040,6 +1042,25 @@ function maestroDevice(args) {
   return udid;
 }
 
+export function maestroTarget(device, onAndroid, driverPort) {
+  const target = ['--device', device];
+  return onAndroid ? target : [...target, '--driver-host-port', String(driverPort)];
+}
+
+function hierarchy(args) {
+  const onAndroid = args.includes('--android');
+  const ok = run(
+    maestroBin() ?? 'maestro',
+    [...maestroTarget(maestroDevice(args), onAndroid, CONFIG.driverPort), 'hierarchy'],
+    {
+      cwd: qaWorktree(),
+      optional: true,
+      env: onAndroid ? androidTools().env : {},
+    },
+  );
+  if (!ok) process.exitCode = 1;
+}
+
 function maestro(args) {
   const root = qaWorktree();
   const onAndroid = args.includes('--android');
@@ -1062,7 +1083,14 @@ function maestro(args) {
 
   const ok = run(
     maestroBin() ?? 'maestro',
-    ['--device', device, 'test', '--debug-output', out, ...env.flatMap((e) => ['-e', e]), file],
+    [
+      ...maestroTarget(device, onAndroid, CONFIG.driverPort),
+      'test',
+      '--debug-output',
+      out,
+      ...env.flatMap((e) => ['-e', e]),
+      file,
+    ],
     { cwd: root, optional: true, env: onAndroid ? androidTools().env : {} },
   );
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
@@ -1091,7 +1119,19 @@ function chrome() {
   ]);
 }
 
-const COMMANDS = { setup, checkout, status, ios, android, release, link, maestro, account, chrome };
+const COMMANDS = {
+  setup,
+  checkout,
+  status,
+  ios,
+  android,
+  release,
+  link,
+  maestro,
+  hierarchy,
+  account,
+  chrome,
+};
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const argv = process.argv.slice(2);
