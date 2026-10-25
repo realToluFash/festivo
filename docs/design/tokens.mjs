@@ -119,7 +119,7 @@ export const tokens = {
   // which is tested.
   typePill: { size: 12, weight: 600, lineHeight: 1, letterSpacing: '0' }, // status pills
   typeButton: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // 44px buttons; 15 on phone primaries; 13 inside dense rows
-  typeMonoTime: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // mono; 12–13 for provider strings, 20–26 for table numbers
+  typeCode: { size: 14, weight: 600, lineHeight: 1, letterSpacing: '0' }, // codes read or copied by character, step numbers; never times, money or counts
   typeRoomNow: { size: 64, weight: 700, lineHeight: 1.05, letterSpacing: '-0.02em' }, // room screen only; 30 for "coming up", 20 for labels
   typeLandingH1: { size: 60, weight: 700, lineHeight: 1.02, letterSpacing: '-0.03em' }, // public pages only
 

@@ -50,7 +50,7 @@ function cssValue(key, value) {
 
 /** `--typeBody: 400 14px/1.5 var(--fontFamily)` plus `--typeBodyTracking`. */
 function typeStyleLines(key, style) {
-  const family = key === 'typeMonoTime' ? 'var(--fontFamilyMono)' : 'var(--fontFamily)';
+  const family = key === 'typeCode' ? 'var(--fontFamilyMono)' : 'var(--fontFamily)';
   return [
     `  --${key}: ${style.weight} ${style.size}px/${style.lineHeight} ${family};`,
     `  --${key}Tracking: ${style.letterSpacing};`,

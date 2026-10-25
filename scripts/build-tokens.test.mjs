@@ -51,7 +51,7 @@ describe('the CSS output', () => {
   });
 
   it('uses the mono family for the one mono style', () => {
-    expect(css).toContain('--typeMonoTime: 600 14px/1 var(--fontFamilyMono);');
+    expect(css).toContain('--typeCode: 600 14px/1 var(--fontFamilyMono);');
   });
 
   it('leaves native elevation out, because a CSS variable for it would be a lie', () => {

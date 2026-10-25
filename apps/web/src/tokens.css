@@ -79,8 +79,8 @@
   --typePillTracking: 0;
   --typeButton: 600 14px/1 var(--fontFamily);
   --typeButtonTracking: 0;
-  --typeMonoTime: 600 14px/1 var(--fontFamilyMono);
-  --typeMonoTimeTracking: 0;
+  --typeCode: 600 14px/1 var(--fontFamilyMono);
+  --typeCodeTracking: 0;
   --typeRoomNow: 700 64px/1.05 var(--fontFamily);
   --typeRoomNowTracking: -0.02em;
   --typeLandingH1: 700 60px/1.02 var(--fontFamily);
