@@ -51,5 +51,25 @@ class Merge(unittest.TestCase):
                       self.render("dev", ticket(labels=()), pr("feature/sc-9/x"), "CONFLICTING"))
 
 
+class Conflict(unittest.TestCase):
+    def test_it_says_to_merge_main_in_and_that_the_push_voids_the_pass(self):
+        p = Lines("dev2")
+        with mock.patch.object(payloads.V, "pr_status"):
+            payloads.conflict(p, pr("feature/sc-9/x"), ticket(labels=()), {"id": 5})
+        said = " ".join(p.lines)
+        self.assertIn("on feature/sc-9/x: `git fetch origin && git merge origin/main`", said)
+        self.assertIn("Never rebase or force-push", said)
+        self.assertIn("A push after a pass voids it, and the lead reviews the new head", said)
+        self.assertIn("sq dev2 done 5", said)
+
+    def test_a_linguist_is_told_the_green_checks_wake_it_and_nothing_of_a_lead(self):
+        p = Lines("l10n")
+        with mock.patch.object(payloads.V, "pr_status"):
+            payloads.conflict(p, pr("l10n/sc-9"), ticket(), {"id": 5})
+        said = " ".join(p.lines)
+        self.assertIn("The green checks on the new head wake you to merge", said)
+        self.assertNotIn("lead", said)
+
+
 if __name__ == "__main__":
     unittest.main()

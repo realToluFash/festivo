@@ -8,9 +8,10 @@ from . import text as T
 
 FINISHING, INBOX, PULL_REQUEST, REVIEW, QUEUE, SWEEP = 5, 10, 20, 30, 40, 90
 # A story one step from Ready For QA, or sent back, goes ahead of everything else its role
-# has waiting, its comments included; so does a pull request waiting on the lead's review.
+# has waiting, its comments included; so does a pull request waiting on the lead's review,
+# one passed and waiting to merge, and one that conflicts with main.
 FINISHING_STATES = ("Passed Code Review", "Failed QA", "Failed Code Review")
-FINISHING_KINDS = ("to-qa", "review", "threads")
+FINISHING_KINDS = ("to-qa", "review", "threads", "merge", "conflict")
 
 
 def threads(story):
@@ -342,14 +343,21 @@ def developer_items(stories, prs):
             continue
         if own:
             # The linguist merges its own once green, with no lead pass to wait for.
-            if pr["state"] == "open" and pr["checks"] == "red":
+            if pr["state"] == "open" and pr["mergeable"] == "conflicting" \
+                    and not pr.get("draft"):
+                add("conflict", f"PR #{number} conflicts with main at {sha}: merge origin/main "
+                                "into the branch, resolve it and push")
+            elif pr["state"] == "open" and pr["checks"] == "red":
                 add("checks-red", f"PR #{number} checks are red at {sha}")
             elif pr["state"] == "open" and pr["checks"] == "green":
                 add("merge", f"PR #{number} is green at {sha}: merge it")
             continue
         if pr["state"] != "open" or not (side or story["state"] in BUILDING_PR):
             continue
-        if pr["checks"] == "red":
+        if pr["mergeable"] == "conflicting" and not pr.get("draft"):
+            add("conflict", f"PR #{number} conflicts with main at {sha}: merge origin/main into "
+                            "the branch, resolve it and push")
+        elif pr["checks"] == "red":
             add("checks-red", f"PR #{number} checks are red at {sha}")
         elif pr["checks"] == "green" and story["state"] in ("In Progress", "Failed Code Review") \
                 and not covered and not linguists(story):
@@ -368,8 +376,7 @@ def developer_items(stories, prs):
                                        "open threads to answer or fix before it can merge",
                                        PULL_REQUEST, story, pr))
                 continue
-            conflict = ", but it conflicts with main" if pr["mergeable"] == "conflicting" else ""
-            add("merge", f"PR #{number} passed at {sha}{conflict}: merge it")
+            add("merge", f"PR #{number} passed at {sha}: merge it")
     return items
 
 
