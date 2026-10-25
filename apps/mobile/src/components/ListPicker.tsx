@@ -149,7 +149,14 @@ export function ListPicker({
                     {item.name}
                   </Text>
                   {item.code === value && (
-                    <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
+                    <Text
+                      size={tokens.typeButton.size}
+                      weight="semibold"
+                      style={styles.accentText}
+                      accessible={false}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
                       ✓
                     </Text>
                   )}

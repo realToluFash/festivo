@@ -245,6 +245,16 @@ controls; focus always visible; **and anything designed around dragging needs a
 click-click path** — pick, then place — because dragging is not an accessible interaction
 on its own.
 
+A mark, or a name's initials in a tile beside the name, next to words that say the same
+thing is hidden from screen readers. On the web that is `aria-hidden="true"`. On the app it
+is `accessibilityElementsHidden` and `importantForAccessibility="no-hide-descendants"` on
+the view holding the mark, never `"no"` on a view with text inside it, because Android
+hides only that view and still reads the text. Its `Text` also carries
+`accessible={false}`, after any spread, because iOS still reports a hidden `Text` on some
+opens without it. A checkbox's or a chosen option's ✓ goes
+too, since its state is already read. A mark that is part of a control's name, such as
+**✓ Copied**, stays. (sc-10365, sc-10664, sc-10712)
+
 Screen-reader focus on mobile, which fails silently — no test and no review sees it, only
 a TalkBack or VoiceOver pass:
 
