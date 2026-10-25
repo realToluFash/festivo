@@ -1,7 +1,7 @@
 import type { MembersList as Members, OrganisationRole } from '@soirely/api-client';
 import { grantableRoles, roleHolds } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -34,7 +34,8 @@ type Load =
   | { kind: 'loaded'; list: Members; roles: OrganisationRole[] };
 
 type Showing =
-  { kind: 'list'; flash: string | null; answered?: Answered } | { kind: 'member'; id: string };
+  | { kind: 'list'; flash: string | null; answered?: Answered }
+  | { kind: 'member'; id: string; behind?: boolean };
 
 const LIST_COLUMN = 300;
 
@@ -63,7 +64,14 @@ export default function MembersScreen() {
   const setShowing = (next: Showing) => setShown({ in: organisationId, showing: next });
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
+  if (landscape && shown.showing.kind === 'member' && shown.showing.behind === true) {
+    setShown({ ...shown, showing: { kind: 'member', id: shown.showing.id } });
+  }
   const columnContent = landscape ? styles.columnContent : CONTENT[kind];
+  const landscapeNow = useRef(landscape);
+  useEffect(() => {
+    landscapeNow.current = landscape;
+  }, [landscape]);
   const language = useShownLanguage();
 
   useEffect(() => {
@@ -96,7 +104,16 @@ export default function MembersScreen() {
     load.kind === 'loaded' && showing.kind === 'member'
       ? (load.list.members.find((one) => one.id === showing.id) ?? null)
       : null;
+  const inFront = showing.kind === 'member' && showing.behind === true ? null : member;
   const toList = () => setShowing(LIST);
+  const listForward = () => {
+    if (landscapeNow.current) return;
+    setShown((before) =>
+      before.in === organisationId && before.showing.kind === 'member'
+        ? { in: organisationId, showing: { ...before.showing, behind: true } }
+        : before,
+    );
+  };
   const answered = (list: Members, done: Answered) => {
     if (load.kind === 'loaded') setLoad({ ...load, list });
     setShowing({ kind: 'list', flash: null, answered: done });
@@ -193,10 +210,10 @@ export default function MembersScreen() {
   return (
     <AppFrame
       current="settings"
-      title={phone ? (member?.user.name ?? t('membersScreen.title')) : t('settings.title')}
+      title={phone ? (inFront?.user.name ?? t('membersScreen.title')) : t('settings.title')}
       back={
         phone
-          ? member != null
+          ? inFront != null
             ? { label: t('membersScreen.title'), onPress: toList }
             : backToSettings(t('settings.title'))
           : undefined
@@ -214,17 +231,17 @@ export default function MembersScreen() {
               <View
                 style={[
                   landscape ? styles.listColumn : styles.fill,
-                  !landscape && page != null && styles.behind,
+                  !landscape && inFront != null && styles.behind,
                 ]}
               >
-                <ComeForward.Provider value={landscape ? noop : toList}>
+                <ComeForward.Provider value={listForward}>
                   <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
                     {!landscape && heading}
                     {waiting ?? list}
                   </ScrollColumn>
                 </ComeForward.Provider>
               </View>
-              <View style={[styles.fill, !landscape && page == null && styles.behind]}>
+              <View style={[styles.fill, !landscape && inFront == null && styles.behind]}>
                 <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
                   {!landscape && !phone && (
                     <View style={styles.start}>
@@ -252,8 +269,6 @@ export default function MembersScreen() {
     </AppFrame>
   );
 }
-
-function noop() {}
 
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
