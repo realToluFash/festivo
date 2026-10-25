@@ -17,6 +17,7 @@ import {
 } from '../kit/passwordChange.ts';
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, focusChecked } from './Field.tsx';
@@ -197,7 +198,7 @@ function Changing({
 
   return (
     <>
-      <Title text={t('passwordCard.formTitle')} />
+      <Title text={t('passwordCard.formTitle')} answer="changing" />
 
       {refusal?.field === 'paused' && (
         <Notice
@@ -419,7 +420,7 @@ function Setting({
 
     return (
       <>
-        <Title text={t('passwordCard.setNewTitle')} />
+        <Title text={t('passwordCard.setNewTitle')} answer="password" />
         <View {...aboveKeyboard} style={styles.group}>
           <Field label={t('passwordCard.setNewLabel')} error={error}>
             <PasswordField
@@ -467,7 +468,7 @@ function Setting({
 
   return (
     <>
-      <Title text={t('passwordCard.setCodeTitle')} />
+      <Title text={t('passwordCard.setCodeTitle')} answer={kept === '' ? 'code' : undefined} />
       {paused != null && (
         <Notice
           tone="attention"
@@ -537,11 +538,11 @@ function Setting({
   );
 }
 
-function Title({ text }: { text: string }) {
+function Title({ text, answer }: { text: string; answer?: unknown }) {
   return (
-    <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+    <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={answer}>
       {text}
-    </Text>
+    </AnswerHeading>
   );
 }
 

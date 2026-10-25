@@ -22,6 +22,7 @@ import { CodeField, Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -113,6 +114,7 @@ export function OwnershipCard({
 
       {step.kind === 'transfer' && (
         <Transfer
+          answer={step}
           organisation={organisation}
           candidates={others}
           onCancel={() => setStep({ kind: 'resting', flash: null })}
@@ -127,6 +129,7 @@ export function OwnershipCard({
 
       {step.kind === 'leave' && (
         <Leave
+          answer={step}
           organisation={organisation}
           onlyOwner={onlyOwner}
           onTransfer={() => setStep({ kind: 'transfer' })}
@@ -136,6 +139,7 @@ export function OwnershipCard({
 
       {step.kind === 'delete' && (
         <Delete
+          answer={step}
           organisation={organisation}
           onKeep={() => setStep({ kind: 'resting', flash: null })}
         />
@@ -173,11 +177,13 @@ function Row({
 type TransferField = 'owner' | 'password' | 'code';
 
 function Transfer({
+  answer,
   organisation,
   candidates,
   onCancel,
   onDone,
 }: {
+  answer: Step;
   organisation: Membership;
   candidates: OrganisationMember[];
   onCancel: () => void;
@@ -252,9 +258,9 @@ function Transfer({
 
   return (
     <View style={styles.form}>
-      <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+      <AnswerHeading answer={answer} size={tokens.typeButton.size} weight="semibold">
         {t('ownership.transfer')}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeSmall.size} style={styles.secondary}>
         {t('ownership.transferBody', { organisation: name })}
       </Text>
@@ -363,11 +369,13 @@ function Transfer({
 }
 
 function Leave({
+  answer,
   organisation,
   onlyOwner,
   onTransfer,
   onStay,
 }: {
+  answer: Step;
   organisation: Membership;
   onlyOwner: boolean;
   onTransfer: () => void;
@@ -397,9 +405,9 @@ function Leave({
 
   return (
     <View style={styles.form}>
-      <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+      <AnswerHeading answer={answer} size={tokens.typeButton.size} weight="semibold">
         {t('ownership.leaveTitle', { organisation: name })}
-      </Text>
+      </AnswerHeading>
       {onlyOwner || refusedLast ? (
         <>
           <ReadOut
@@ -435,7 +443,15 @@ function Leave({
   );
 }
 
-function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: () => void }) {
+function Delete({
+  answer,
+  organisation,
+  onKeep,
+}: {
+  answer: Step;
+  organisation: Membership;
+  onKeep: () => void;
+}) {
   const { t } = useTranslation();
   const [preview, setPreview] = useState<OrganisationDeletion | null>(null);
   const [typed, setTyped] = useState('');
@@ -490,9 +506,9 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
 
   return (
     <View style={styles.form}>
-      <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+      <AnswerHeading answer={answer} size={tokens.typeButton.size} weight="semibold">
         {t('ownership.deleteTitle', { organisation: name })}
-      </Text>
+      </AnswerHeading>
       <Notice
         tone="attention"
         mark="!"

@@ -12,6 +12,7 @@ import { dateLocale } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { typedCodeProblem } from '../kit/twoFactor.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, TextField } from './Field.tsx';
@@ -28,7 +29,7 @@ interface Refusal {
 
 type Stage =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; tapped: boolean }
   | { kind: 'atRest'; status: TwoFactorStatus }
   | { kind: 'settingUp'; enrolment: TwoFactorEnrolment }
   | { kind: 'savingCodes'; codes: string[] }
@@ -68,7 +69,7 @@ export function TwoFactorCard({
         if (live) setStage({ kind: 'atRest', status });
       })
       .catch(() => {
-        if (live) setStage({ kind: 'failed' });
+        if (live) setStage({ kind: 'failed', tapped: false });
       });
 
     return () => {
@@ -106,7 +107,7 @@ export function TwoFactorCard({
     try {
       setStage({ kind: 'settingUp', enrolment: await api.enrolTwoFactor() });
     } catch {
-      setStage({ kind: 'failed' });
+      setStage({ kind: 'failed', tapped: true });
     }
   }
 
@@ -127,6 +128,7 @@ export function TwoFactorCard({
             title={t('twoFactorCard.failedTitle')}
             body={t('twoFactorCard.failedBody')}
             answer={stage}
+            takesFocus={stage.tapped}
           />
           <SecondaryButton
             label={t('twoFactorCard.retry')}
@@ -157,6 +159,7 @@ export function TwoFactorCard({
         <SettingUp
           enrolment={stage.enrolment}
           phone={phone}
+          answer={stage}
           onActivated={(codes) => {
             setStage({ kind: 'savingCodes', codes });
             onTurnedOn?.();
@@ -166,12 +169,13 @@ export function TwoFactorCard({
       )}
 
       {stage.kind === 'savingCodes' && (
-        <SavingCodes codes={stage.codes} phone={phone} onFinish={reload} />
+        <SavingCodes codes={stage.codes} phone={phone} answer={stage} onFinish={reload} />
       )}
 
       {stage.kind === 'turningOff' && (
         <TurningOff
           email={email}
+          answer={stage}
           onDone={reload}
           onKept={(organisation) => {
             setRefusedBy({ organisation, said: false });
@@ -181,17 +185,21 @@ export function TwoFactorCard({
       )}
 
       {stage.kind === 'newCodes' && (
-        <NewCodes onMade={(codes) => setStage({ kind: 'savingCodes', codes })} onKeep={reload} />
+        <NewCodes
+          answer={stage}
+          onMade={(codes) => setStage({ kind: 'savingCodes', codes })}
+          onKeep={reload}
+        />
       )}
     </View>
   );
 }
 
-function Title({ text }: { text: string }) {
+function Title({ text, answer }: { text: string; answer?: unknown }) {
   return (
-    <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+    <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={answer}>
       {text}
-    </Text>
+    </AnswerHeading>
   );
 }
 
@@ -295,11 +303,13 @@ function AtRest({
 function SettingUp({
   enrolment,
   phone,
+  answer,
   onActivated,
   onCancel,
 }: {
   enrolment: TwoFactorEnrolment;
   phone: boolean;
+  answer: unknown;
   onActivated: (codes: string[]) => void;
   onCancel: () => void;
 }) {
@@ -332,7 +342,10 @@ function SettingUp({
 
   return (
     <>
-      <Title text={phone ? t('twoFactorCard.phoneSetupTitle') : t('twoFactorCard.setupTitle')} />
+      <Title
+        text={phone ? t('twoFactorCard.phoneSetupTitle') : t('twoFactorCard.setupTitle')}
+        answer={answer}
+      />
 
       <Text size={tokens.typeBodyPhone.size} weight="semibold">
         {t('twoFactorCard.scan')}
@@ -383,10 +396,12 @@ function SettingUp({
 function SavingCodes({
   codes,
   phone,
+  answer,
   onFinish,
 }: {
   codes: string[];
   phone: boolean;
+  answer: unknown;
   onFinish: () => void;
 }) {
   const { t } = useTranslation();
@@ -401,7 +416,7 @@ function SavingCodes({
   return (
     <>
       <View ref={top} collapsable={false}>
-        <Title text={t('twoFactorCard.saveTitle')} />
+        <Title text={t('twoFactorCard.saveTitle')} answer={answer} />
       </View>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {phone
@@ -471,10 +486,12 @@ function SavingCodes({
 
 function TurningOff({
   email,
+  answer,
   onDone,
   onKept,
 }: {
   email: string;
+  answer: unknown;
   onDone: () => void;
   onKept: (organisation: string) => void;
 }) {
@@ -511,7 +528,7 @@ function TurningOff({
 
   return (
     <>
-      <Title text={t('twoFactorCard.offTitle')} />
+      <Title text={t('twoFactorCard.offTitle')} answer={answer} />
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('twoFactorCard.offBody')}
       </Text>
@@ -554,7 +571,15 @@ function TurningOff({
 }
 
 /** Changing a factor takes the current one, or a stolen session could mint codes past it. */
-function NewCodes({ onMade, onKeep }: { onMade: (codes: string[]) => void; onKeep: () => void }) {
+function NewCodes({
+  answer,
+  onMade,
+  onKeep,
+}: {
+  answer: unknown;
+  onMade: (codes: string[]) => void;
+  onKeep: () => void;
+}) {
   const { t } = useTranslation();
   const typed = useRef('');
   const input = useRef<TextInput>(null);
@@ -582,7 +607,7 @@ function NewCodes({ onMade, onKeep }: { onMade: (codes: string[]) => void; onKee
 
   return (
     <>
-      <Title text={t('twoFactorCard.newTitle')} />
+      <Title text={t('twoFactorCard.newTitle')} answer={answer} />
       <Notice
         tone="attention"
         mark="!"

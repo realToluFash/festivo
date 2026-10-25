@@ -40,7 +40,14 @@ import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
-import { AboveKeys, type DockInset, SETTLED_MS, useAboveKeyboard } from './Screen.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
+import {
+  AboveKeys,
+  type DockInset,
+  SETTLED_MS,
+  useAboveKeyboard,
+  useFocusOnAnswer,
+} from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
 
@@ -140,6 +147,8 @@ export function RolePage({
   catalogue,
   role,
   saved,
+  answer,
+  savedAnswer,
   onRemove,
   onSaved,
   onEdited,
@@ -150,6 +159,10 @@ export function RolePage({
   catalogue: RolesCatalogue;
   role: OrganisationRole | null;
   saved: boolean;
+  /** The tap that opened the page: its name takes screen reader focus. */
+  answer?: unknown;
+  /** The tap that created the role: "Saved." takes screen reader focus. */
+  savedAnswer?: unknown;
   onRemove: () => void;
   onSaved: (role: OrganisationRole) => void;
   onEdited: () => void;
@@ -163,7 +176,7 @@ export function RolePage({
   const editable = !(role?.fixed ?? false);
   const naming = creating || (editable && role.seededAs == null);
   const startingGrant = role?.permissions ?? [];
-  const nameInput = useRef<TextInput>(null);
+  const { read: nameInput } = useFocusOnAnswer<TextInput>(naming ? answer : undefined);
   const aboveKeyboard = useAboveKeyboard();
   const [nameHeight, setNameHeight] = useState(0);
   const [grant, setGrant] = useState<string[]>(startingGrant);
@@ -292,9 +305,9 @@ export function RolePage({
               </Field>
             </View>
           ) : (
-            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+            <AnswerHeading answer={answer} size={tokens.typeTitleDialog.size} weight="bold">
               {title}
-            </Text>
+            </AnswerHeading>
           )}
           <Text size={tokens.typeBody.size} muted>
             {t(describe(role), { name: organisation.name })}
@@ -310,11 +323,20 @@ export function RolePage({
           body={t('rolesScreen.ownerNote', { name: organisation.name })}
         />
       )}
-      {saved && (
-        <ReadOut words={savedLine}>
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={savedLine} />
-        </ReadOut>
-      )}
+      {saved &&
+        (savedAnswer !== undefined ? (
+          <Notice
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            body={savedLine}
+            answer={savedAnswer}
+            takesFocus
+          />
+        ) : (
+          <ReadOut words={savedLine}>
+            <Notice tone="done" mark={tokens.marks.done.glyph} body={savedLine} />
+          </ReadOut>
+        ))}
       {lockedLabels.length > 0 && (
         <Notice
           tone="quiet"
@@ -598,12 +620,15 @@ function WhatTheySee({ grant, areas }: { grant: string[]; areas: string[] }) {
 
 /** Removing a role members hold sends nothing until the role they move to is chosen (sc-66). */
 export function RemoveRole({
+  answer,
   organisation,
   role,
   roles,
   onKeep,
   onRemoved,
 }: {
+  /** The tap that asked: the title takes screen reader focus. */
+  answer?: unknown;
   organisation: Membership;
   role: OrganisationRole;
   roles: OrganisationRole[];
@@ -642,9 +667,9 @@ export function RemoveRole({
 
   return (
     <View style={[styles.card, styles.padded, styles.removing]}>
-      <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading answer={answer} size={tokens.typeTitleDialog.size} weight="bold">
         {t('rolesScreen.removeTitle', { role: title })}
-      </Text>
+      </AnswerHeading>
       {role.holders === 0 ? (
         <Text size={tokens.typeBodyPhone.size}>{t('rolesScreen.removeNobody')}</Text>
       ) : (

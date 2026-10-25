@@ -27,6 +27,7 @@ import {
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { holdProof } from '../recentProof.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, QuietButton } from './Buttons.tsx';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
@@ -41,6 +42,7 @@ export function ConfirmItsYou({
   via,
   twoFactorOn,
   note,
+  answer,
   onProved,
   onCodeSpent,
   onCancel,
@@ -50,6 +52,8 @@ export function ConfirmItsYou({
   via: 'password' | Provider | null;
   twoFactorOn: boolean;
   note?: ReactNode;
+  /** The tap that opened this step: its title takes screen reader focus as it shows. */
+  answer?: unknown;
   onProved: (proof: string) => void;
   /** A two-factor or recovery code was accepted, so a count of unused codes may be stale. */
   onCodeSpent?: () => void;
@@ -146,9 +150,9 @@ export function ConfirmItsYou({
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={answer}>
         {t('waysCard.proveTitle')}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {intro}
       </Text>

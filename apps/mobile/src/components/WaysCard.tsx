@@ -16,6 +16,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { heldProof } from '../recentProof.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
@@ -427,6 +428,7 @@ function Proving({
       intro={proveIntro(t, act.action, name)}
       via={proveWith(hasPassword, providers, act.provider)}
       twoFactorOn={twoFactorOn}
+      answer={act}
       note={
         act.action === 'link' && (
           <Notice tone="quiet" mark="i" body={t('waysCard.linkNote', { provider: name, email })} />
@@ -466,9 +468,9 @@ function Confirming({
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={act}>
         {t('waysCard.confirmTitle', { provider: name })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {[
           address == null

@@ -16,6 +16,7 @@ import { useShownLanguage } from '../i18n/index.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { useComeForward, useOpenerInSight } from './comeForward.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
@@ -32,7 +33,10 @@ const TONES: Record<OwnerClaimView['tone'], { tone: NoticeTone; mark: string }> 
   info: { tone: 'quiet', mark: tokens.marks.info.glyph },
 };
 
-type Load = { kind: 'loading' } | { kind: 'loaded'; banner: Banner | null } | { kind: 'failed' };
+type Load =
+  | { kind: 'loading' }
+  | { kind: 'loaded'; banner: Banner | null; tapped?: object }
+  | { kind: 'failed' };
 
 /** The top of Members while the organisation has no active Owner (sc-6640); nothing for anybody it is not shown to. */
 export function OwnerClaimBanner({
@@ -50,6 +54,7 @@ export function OwnerClaimBanner({
   const [withdrew, setWithdrew] = useState<{ told: boolean } | null>(null);
   const language = useShownLanguage();
   const loadedFor = useRef<string | null>(null);
+  const reloadAnswers = useRef(false);
 
   useEffect(() => {
     let current = true;
@@ -59,7 +64,9 @@ export function OwnerClaimBanner({
       (banner) => {
         if (!current) return;
         loadedFor.current = organisationId;
-        setLoad({ kind: 'loaded', banner });
+        const tapped = reloadAnswers.current ? {} : undefined;
+        reloadAnswers.current = false;
+        setLoad({ kind: 'loaded', banner, ...(tapped != null && { tapped }) });
       },
       () =>
         current &&
@@ -93,15 +100,17 @@ export function OwnerClaimBanner({
         organisationId={organisationId}
         organisation={organisation}
         banner={load.banner}
+        answer={load.tapped}
         onBanner={(banner) => {
           setWithdrew(null);
-          setLoad({ kind: 'loaded', banner });
+          setLoad({ kind: 'loaded', banner, tapped: {} });
         }}
         onWithdrawn={(banner, told) => {
           setWithdrew({ told });
           setLoad({ kind: 'loaded', banner });
         }}
-        onReload={() => {
+        onReload={(answers = false) => {
+          reloadAnswers.current = answers;
           setWithdrew(null);
           setLoad({ kind: 'loading' });
           setAttempt((n) => n + 1);
@@ -146,6 +155,7 @@ function OwnerClaimCard({
   organisationId,
   organisation,
   banner,
+  answer,
   onBanner,
   onWithdrawn,
   onReload,
@@ -154,9 +164,12 @@ function OwnerClaimCard({
   organisationId: string;
   organisation: string;
   banner: Banner;
+  /** The tap this banner answers: its title takes screen reader focus as it shows. */
+  answer: object | undefined;
   onBanner: (banner: Banner | null) => void;
   onWithdrawn: (banner: Banner | null, told: boolean) => void;
-  onReload: () => void;
+  /** `answers`: the banner it reloads to answers the tap, so its title takes focus. */
+  onReload: (answers?: boolean) => void;
 }) {
   const { t } = useTranslation();
   const view = ownerClaimView(banner, organisation);
@@ -184,7 +197,7 @@ function OwnerClaimCard({
         error instanceof ApiError &&
         (error.is('owner_claim_open') || error.is('owner_claim_closed'))
       ) {
-        onReload();
+        onReload(true);
 
         return;
       }
@@ -271,7 +284,14 @@ function OwnerClaimCard({
 
   return (
     <View style={[cardFrame(kind), styles.card]} testID="ownerClaim.banner">
-      <Notice tone={tone} mark={mark} title={words(view.title)} heading />
+      <Notice
+        tone={tone}
+        mark={mark}
+        title={words(view.title)}
+        heading
+        answer={answer}
+        takesFocus
+      />
       {view.lines.map((line) => (
         <Text key={line.key} size={tokens.typeBodyPhone.size}>
           {words(line)}
@@ -315,7 +335,9 @@ function OwnerClaimCard({
         onKeep={() => setWithdrawing(null)}
       />
 
-      {withdrawRefused != null && <WithdrawRefused words={withdrawRefused} onReload={onReload} />}
+      {withdrawRefused != null && (
+        <WithdrawRefused words={withdrawRefused} onReload={() => onReload()} />
+      )}
 
       {view.become && (
         <PrimaryButton
@@ -349,7 +371,11 @@ function OwnerClaimCard({
           tone="broken"
           mark="✕"
           body={t('ownerClaim.stopEnded')}
-          action={{ label: t('ownerClaim.reload'), onPress: onReload, testID: 'ownerClaim.reload' }}
+          action={{
+            label: t('ownerClaim.reload'),
+            onPress: () => onReload(),
+            testID: 'ownerClaim.reload',
+          }}
           announce
         />
       )}
@@ -380,9 +406,9 @@ function StopConfirm({
 
   return (
     <View style={styles.confirm}>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer="confirming">
         {t('ownerClaim.stopConfirm', { claimant })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size}>{t('ownerClaim.stopBody', { organisation })}</Text>
       <View style={styles.actions}>
         <PrimaryButton
