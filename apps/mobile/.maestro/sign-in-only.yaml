@@ -1,0 +1,26 @@
+# Signs in and stops there, for a flow that goes on to an onboarding screen. sc-6887.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 60000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- tapOn:
+    id: 'signIn.submit'
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'

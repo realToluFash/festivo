@@ -1,0 +1,97 @@
+# sc-8508 regression: the Password card, Confirm it's you (linking a provider) and Devices (sign out everywhere) password fields take input, read via Show.
+appId: host.exp.Exponent
+---
+- runFlow: sign-in-only.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+- openLink: ${METRO_URL}/--/settings/security
+- tapOn:
+    text: 'Not Now'
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: 'password.change'
+    timeout: 30000
+- tapOn:
+    id: 'password.change'
+- scrollUntilVisible:
+    element:
+      id: 'password.current'
+    centerElement: true
+    timeout: 30000
+- waitForAnimationToEnd
+- tapOn:
+    id: 'password.current'
+- waitForAnimationToEnd
+- inputText: 'curpass-abc'
+- tapOn:
+    id: 'password.current.reveal'
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'password.current'
+    direction: UP
+    centerElement: true
+- takeScreenshot: ${SHOT}-current-revealed
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: '50%,35%'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'ways.${PROVIDER}.link'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'ways.${PROVIDER}.link'
+- scrollUntilVisible:
+    element:
+      id: 'ways.password'
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: 'ways.password'
+- waitForAnimationToEnd
+- inputText: 'confirm-abc'
+- tapOn:
+    id: 'ways.password.reveal'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-confirm-revealed
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: '50%,35%'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere'
+    centerElement: true
+    timeout: 30000
+- tapOn:
+    id: 'devices.everywhere'
+- scrollUntilVisible:
+    element:
+      id: 'devices.everywhere.password'
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: 'devices.everywhere.password'
+- waitForAnimationToEnd
+- inputText: 'devices-abc'
+- tapOn:
+    id: 'devices.everywhere.password.reveal'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-devices-revealed

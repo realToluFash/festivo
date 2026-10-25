@@ -1,0 +1,126 @@
+# sc-8508: sign in reading the password via Show, then in Transfer ownership type a wrong password, read it via Show, send it and read the refusal, then the right one transfers.
+appId: host.exp.Exponent
+---
+- launchApp:
+    appId: host.exp.Exponent
+    stopApp: true
+- openLink: ${METRO_URL}/--/sign-in
+- extendedWaitUntil:
+    visible:
+      id: 'signIn.email'
+    timeout: 90000
+- tapOn:
+    id: 'signIn.email'
+- eraseText: 120
+- inputText: ${EMAIL}
+- tapOn:
+    id: 'signIn.password'
+- eraseText: 120
+- inputText: ${PASSWORD}
+- takeScreenshot: ${SHOT}-signin-masked
+- tapOn:
+    id: 'signIn.password.reveal'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-signin-revealed
+- tapOn:
+    id: 'signIn.submit'
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- openLink: ${METRO_URL}/--/settings/organisation
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible: 'Save Password?'
+    commands:
+      - tapOn: 'Not Now'
+- runFlow:
+    when:
+      true: ${DIALOG_POINT != undefined && DIALOG_POINT != ''}
+    commands:
+      - tapOn:
+          point: ${DIALOG_POINT}
+      - waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer'
+    timeout: 60000
+- tapOn:
+    id: 'ownership.transfer'
+- scrollUntilVisible:
+    element:
+      id: 'ownership.owner.${MEMBER}'
+    timeout: 15000
+- tapOn:
+    id: 'ownership.owner.${MEMBER}'
+- scrollUntilVisible:
+    element:
+      id: 'ownership.password'
+    centerElement: true
+- waitForAnimationToEnd
+- tapOn:
+    id: 'ownership.password'
+- waitForAnimationToEnd
+- inputText: 'wrong-password-123'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-wrong-masked
+- tapOn:
+    id: 'ownership.password.reveal'
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-wrong-revealed
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: '50%,35%'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer.send'
+    centerElement: true
+- tapOn:
+    id: 'ownership.transfer.send'
+- waitForAnimationToEnd:
+    timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: 'ownership.password'
+    direction: UP
+    centerElement: true
+- takeScreenshot: ${SHOT}-wrong-refused
+- tapOn:
+    id: 'ownership.password'
+- eraseText: 60
+- inputText: ${PASSWORD}
+- waitForAnimationToEnd
+- takeScreenshot: ${SHOT}-right-revealed
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          point: '50%,35%'
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: 'ownership.transfer.send'
+    centerElement: true
+- tapOn:
+    id: 'ownership.transfer.send'
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: ${SHOT}-transferred
