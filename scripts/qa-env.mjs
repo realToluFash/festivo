@@ -1466,7 +1466,6 @@ async function batch(args) {
   }
 }
 
-// The same device and the same language, so a check that passes alone points at the batch.
 export function rerunHints(name, failures, { args, email, secret }) {
   const device = ['--ipad', '--android'].filter((flag) => args.includes(flag));
   return failures.map(({ check, language }) =>
