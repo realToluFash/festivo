@@ -126,7 +126,7 @@ function Withdrew({ told }: { told: boolean }) {
   useLayoutEffect(() => line.current?.focus(), []);
 
   return (
-    <div ref={line} className="notice notice-done" role="status" tabIndex={-1}>
+    <div ref={line} className="notice notice-done" tabIndex={-1}>
       <span className="mark mark-done" aria-hidden="true">
         ✓
       </span>

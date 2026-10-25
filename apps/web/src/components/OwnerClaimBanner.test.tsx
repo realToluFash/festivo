@@ -389,7 +389,8 @@ describe('the claimant withdraws their own claim (sc-8204)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
 
     const line = await screen.findByText('You withdrew your claim.');
-    expect(line.closest('[role="status"]')).toBe(document.activeElement);
+    expect(line.closest('.notice')).toBe(document.activeElement);
+    expect(line.closest('[role="status"]')).toBeNull();
     expect(screen.queryByText(/Everybody who was told is emailed/)).toBeNull();
     expect(screen.getByRole('heading', { name: 'Ìrè Events has no active owner' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Become the owner' })).toBeTruthy();
@@ -410,7 +411,8 @@ describe('the claimant withdraws their own claim (sc-8204)', () => {
     const line = await screen.findByText(
       'You withdrew your claim. Everybody who was told is emailed.',
     );
-    expect(line.closest('[role="status"]')).toBe(document.activeElement);
+    expect(line.closest('.notice')).toBe(document.activeElement);
+    expect(line.closest('[role="status"]')).toBeNull();
   });
 
   it('drops the withdrawn line once the claimant starts a new claim', async () => {
