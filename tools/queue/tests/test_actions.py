@@ -1154,7 +1154,9 @@ class OpsOwnsItsTickets(Base):
         with mock.patch("soirely_queue.github.create_pr") as created:
             for body, missing in (("x", "Description, Risks, References, Evidence of work, "
                                         "Next Steps"),
-                                  (fenced, "no Risks heading")):
+                                  (fenced, "no Risks heading at levels 1-3;"),
+                                  (BODY.replace("## Risks", "#### Risks"),
+                                   "no Risks heading at levels 1-3; Risks is at level 4")):
                 with self.assertRaisesRegex(actions.Refused, missing):
                     actions.pr_create(self.as_("dev"), args(head="b", title="t", text=body,
                                                             draft=False))
