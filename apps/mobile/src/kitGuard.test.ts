@@ -159,6 +159,42 @@ describe('a screen reader reaches what is inside a button', () => {
   });
 });
 
+describe('a screen reader reaches each button in a group', () => {
+  // iOS reads an accessible View as one item, as it reads a Pressable, so the buttons inside it are out of reach (sc-11563).
+  it('in every accessible View in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      pressablesInAccessibleViews(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Take `accessible` off the group, so each button is its own item.').toEqual(
+      [],
+    );
+  });
+
+  it('notices a Pressable inside an accessible View', () => {
+    expect(
+      pressablesInAccessibleViews(
+        '<View accessible accessibilityRole="radiogroup">\n  <Pressable onPress={x} />\n</View>',
+      ),
+    ).toEqual([2]);
+    expect(
+      pressablesInAccessibleViews(
+        '<View accessible={shown}>\n  <Text>{words}</Text>\n  <Pressable onPress={x} />\n</View>',
+      ),
+    ).toEqual([3]);
+    expect(
+      pressablesInAccessibleViews(
+        '<View accessible />\n<View style={a > b ? s : t}>\n  <Pressable onPress={x} />\n</View>',
+      ),
+    ).toEqual([]);
+    expect(
+      pressablesInAccessibleViews(
+        '<View accessible={false}>\n  <View>\n  </View>\n  <Pressable onPress={x} />\n</View>',
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe('a field is read by the name it shows', () => {
   // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
   // sc-11297: three fields in Ownership and leaving had no name, and TalkBack read each as "Edit box".
@@ -406,6 +442,34 @@ function nestedPressables(text: string): number[] {
   }
 
   return nested;
+}
+
+/** The line of every Pressable inside a View that iOS reads as one item. */
+function pressablesInAccessibleViews(text: string): number[] {
+  const inside: number[] = [];
+  const views: boolean[] = [];
+
+  for (const match of text.matchAll(/(?<![\w.])<(\/?)(View|Pressable)\b/gu)) {
+    if (match[2] === 'Pressable') {
+      if (match[1] === '' && views.includes(true)) {
+        inside.push(text.slice(0, match.index).split('\n').length);
+      }
+      continue;
+    }
+    if (match[1] === '/') {
+      views.pop();
+      continue;
+    }
+    if (selfCloses(text, match.index)) continue;
+
+    const markup = text.slice(match.index, tagEnd(text, match.index));
+    views.push(
+      /\baccessible(?=[\s>])/u.test(markup) ||
+        ![null, '{false}'].includes(propValue(markup, 'accessible')),
+    );
+  }
+
+  return inside;
 }
 
 /** The line of every Field whose control carries an accessibilityLabel other than the Field's label. */

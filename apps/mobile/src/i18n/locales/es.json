@@ -809,7 +809,6 @@
     "removeNobody": "Nadie tiene este rol.",
     "removeMove_one": "{{count}} persona tiene este rol. Pásela a:",
     "removeMove_other": "{{count}} personas tienen este rol. Páselas a:",
-    "replacementLegend": "Rol de sustitución",
     "removeNoReplacement": "Elija el rol al que pasan estas personas.",
     "removeAfter": "Pasan a ser {{role}} en su próxima solicitud. No se cierra ninguna sesión.",
     "removeConfirm": "Pasarlas y eliminar {{role}}",

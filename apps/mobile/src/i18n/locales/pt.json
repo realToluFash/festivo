@@ -809,7 +809,6 @@
     "removeNobody": "Ninguém tem esta função.",
     "removeMove_one": "{{count}} pessoa tem esta função. Passá-la para:",
     "removeMove_other": "{{count}} pessoas têm esta função. Passá-las para:",
-    "replacementLegend": "Função de substituição",
     "removeNoReplacement": "Escolha a função para onde estas pessoas passam.",
     "removeAfter": "Passam a ser {{role}} no próximo pedido. Ninguém termina a sessão.",
     "removeConfirm": "Passá-las e remover {{role}}",
