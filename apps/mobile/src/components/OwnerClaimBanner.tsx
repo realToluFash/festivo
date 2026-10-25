@@ -8,8 +8,7 @@ import {
 } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Modal, Pressable, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -20,6 +19,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
 import { useBroughtIntoView } from './Screen.tsx';
+import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
 const TONES: Record<OwnerClaimView['tone'], { tone: NoticeTone; mark: string }> = {
@@ -401,73 +401,50 @@ function WithdrawConfirm({
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const unlessPending = (act: () => void) => () => !pending && act();
 
   return (
-    <Modal
-      visible={open}
-      transparent
-      animationType={phone ? 'slide' : 'fade'}
-      onRequestClose={unlessPending(onKeep)}
-    >
-      <View
-        style={[
-          styles.scrim,
-          phone ? styles.scrimPhone : styles.scrimTablet,
-          { backgroundColor: phone ? tokens.scrimSheet : tokens.scrimDialog },
-        ]}
-      >
-        <View
-          style={[
-            styles.sheet,
-            phone ? styles.sheetPhone : styles.sheetTablet,
-            phone && { paddingBottom: tokens.space3xl + insets.bottom },
-          ]}
-          accessibilityViewIsModal
-          testID="ownerClaim.withdrawConfirm"
+    <Sheet open={open} onClose={unlessPending(onKeep)} testID="ownerClaim.withdrawConfirm">
+      <View style={styles.withdraw}>
+        <Pressable
+          style={styles.close}
+          onPress={unlessPending(onKeep)}
+          accessibilityRole="button"
+          accessibilityLabel={t('ownerClaim.close')}
+          accessibilityState={{ disabled: pending }}
+          testID="ownerClaim.withdrawClose"
         >
-          {phone && <View style={styles.grabber} />}
-          <Pressable
-            style={styles.close}
+          <Text size={tokens.typeButton.size} muted>
+            ✕
+          </Text>
+        </Pressable>
+        <Text
+          size={tokens.typeTitleSection.size}
+          weight="bold"
+          accessibilityRole="header"
+          style={styles.clearOfClose}
+        >
+          {t('ownerClaim.withdrawTitle')}
+        </Text>
+        <Text size={tokens.typeBodyPhone.size}>
+          {t('ownerClaim.withdrawBody', { organisation })}
+        </Text>
+        <View style={phone ? styles.stacked : styles.actions}>
+          <PrimaryButton
+            label={pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
+            onPress={onWithdraw}
+            busy={pending}
+            testID="ownerClaim.withdrawYes"
+          />
+          <SecondaryButton
+            label={t('ownerClaim.withdrawNo')}
             onPress={unlessPending(onKeep)}
-            accessibilityRole="button"
-            accessibilityLabel={t('ownerClaim.close')}
-            accessibilityState={{ disabled: pending }}
-            testID="ownerClaim.withdrawClose"
-          >
-            <Text size={tokens.typeButton.size} muted>
-              ✕
-            </Text>
-          </Pressable>
-          <Text
-            size={tokens.typeTitleSection.size}
-            weight="bold"
-            accessibilityRole="header"
-            style={styles.clearOfClose}
-          >
-            {t('ownerClaim.withdrawTitle')}
-          </Text>
-          <Text size={tokens.typeBodyPhone.size}>
-            {t('ownerClaim.withdrawBody', { organisation })}
-          </Text>
-          <View style={phone ? styles.stacked : styles.actions}>
-            <PrimaryButton
-              label={pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
-              onPress={onWithdraw}
-              busy={pending}
-              testID="ownerClaim.withdrawYes"
-            />
-            <SecondaryButton
-              label={t('ownerClaim.withdrawNo')}
-              onPress={unlessPending(onKeep)}
-              off={pending}
-              testID="ownerClaim.withdrawNo"
-            />
-          </View>
+            off={pending}
+            testID="ownerClaim.withdrawNo"
+          />
         </View>
       </View>
-    </Modal>
+    </Sheet>
   );
 }
 
@@ -614,34 +591,7 @@ const styles = StyleSheet.create({
     borderRadius: tokens.radiusInset,
   },
   recordRow: { gap: tokens.spaceXxs },
-  scrim: { flex: 1 },
-  scrimPhone: { justifyContent: 'flex-end' },
-  scrimTablet: { justifyContent: 'center', padding: tokens.spaceXxl },
-  sheet: {
-    gap: tokens.spaceLg,
-    padding: tokens.space3xl,
-    borderWidth: 1,
-    borderColor: tokens.colorBorder,
-    backgroundColor: tokens.colorCard,
-  },
-  sheetPhone: {
-    borderBottomWidth: 0,
-    borderTopLeftRadius: tokens.radiusSheet,
-    borderTopRightRadius: tokens.radiusSheet,
-  },
-  sheetTablet: {
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 480,
-    borderRadius: tokens.radiusCardLarge,
-  },
-  grabber: {
-    alignSelf: 'center',
-    width: 36,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: tokens.colorBorder,
-  },
+  withdraw: { gap: tokens.spaceLg, padding: tokens.space3xl },
   close: {
     position: 'absolute',
     zIndex: 1,
