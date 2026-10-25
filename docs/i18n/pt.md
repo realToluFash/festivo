@@ -41,6 +41,20 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
+  (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
+  `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
+  words. An invitation is "convite", masculine, and its states agree with it: "Pendente",
+  "Expirado", "Retirado" (revoked and withdrawn alike), "Recusado", "Aceite"; the deleted
+  organisation is "Eliminada". "Revoke" is "Retirar". Joining is "aderir a {{organisation}}".
+  The invitee is never the object of "convidar", which agrees with a gender: "enviou-lhe um
+  convite", "quem lhe enviou o convite", and the email subject "Convite de {inviter} para
+  aderir a {organisation} na Soirely". `formatDay` dates take "no dia" ("Enviado no dia
+  {{sent}} · expira no dia {{ended}}") or "até", and never close a sentence: "Até {{date}},
+  pode usar este convite." The email's `{date}` has a full month, so "válido até {date}."
+  ends it. The subtitle names its counts after a colon, "com acesso: {{active}} · convites:
+  {{invited}}". History lines name what was acted on, "Convite enviado por", "Pedido aprovado
+  por", "Acesso suspenso / reposto / retirado por".
 - **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
   `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
   sc-3215). The refusals name the role, "Só alguém com a função Proprietário…", as

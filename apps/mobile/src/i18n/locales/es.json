@@ -684,8 +684,8 @@
     "label": "Organización: {{name}}, su función {{role}}",
     "labelSwitch": "Organización: {{name}}, su función {{role}}. Cambiar de organización",
     "close": "Cerrar",
-    "labelSwitchWaiting_one": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitation waiting",
-    "labelSwitchWaiting_other": "Organisation: {{name}}, your role {{role}}. Switch organisation. {{count}} invitations waiting"
+    "labelSwitchWaiting_one": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count}} invitación pendiente",
+    "labelSwitchWaiting_other": "Organización: {{name}}, su función {{role}}. Cambiar de organización. {{count}} invitaciones pendientes"
   },
   "createOrganisation": {
     "row": "Crear una organización",
@@ -909,50 +909,50 @@
     "searchLanguage": "Buscar idiomas"
   },
   "invitations": {
-    "heading": "Invitations",
-    "count_one": "{{count}} invitation",
-    "count_other": "{{count}} invitations",
-    "from": "Invitation from {{inviter}} · {{role}}",
-    "fromNobody": "Invitation · {{role}}",
-    "until": "Works until {{date}}",
-    "untilSentTo": "Works until {{date}} · Sent to {{email}}",
-    "accept": "Accept and join",
-    "acceptLabel": "Accept and join {{organisation}}",
-    "decline": "Decline",
-    "declineLabel": "Decline the invitation to {{organisation}}",
-    "declineNote": "Declining tells {{inviter}} you said no. Nothing else changes.",
-    "declineNoteNobody": "Declining changes nothing else.",
-    "joined": "You joined {{organisation}} as {{role}}.",
-    "open": "Open {{organisation}}",
-    "declined": "You declined. {{inviter}} will see that you said no.",
-    "declinedNobody": "You declined.",
-    "failed": "Your answer did not reach us. Check your connection and try again.",
+    "heading": "Invitaciones",
+    "count_one": "{{count}} invitación",
+    "count_other": "{{count}} invitaciones",
+    "from": "Invitación de {{inviter}} · {{role}}",
+    "fromNobody": "Invitación · {{role}}",
+    "until": "Funciona hasta el {{date}}",
+    "untilSentTo": "Funciona hasta el {{date}} · Enviada a {{email}}",
+    "accept": "Aceptar y unirse",
+    "acceptLabel": "Aceptar y unirse a {{organisation}}",
+    "decline": "Rechazar",
+    "declineLabel": "Rechazar la invitación a {{organisation}}",
+    "declineNote": "Si la rechaza, {{inviter}} sabrá que ha dicho que no. No cambia nada más.",
+    "declineNoteNobody": "Si la rechaza, no cambia nada más.",
+    "joined": "Se ha unido a {{organisation}} con el rol {{role}}.",
+    "open": "Abrir {{organisation}}",
+    "declined": "Ha rechazado la invitación. {{inviter}} verá que ha dicho que no.",
+    "declinedNobody": "Ha rechazado la invitación.",
+    "failed": "No hemos recibido su respuesta. Compruebe la conexión y vuelva a intentarlo.",
     "refused": {
       "invitation_expired": {
-        "word": "Expired",
-        "body": "This invitation has expired. Ask {{inviter}} to send a new one.",
-        "bodyNobody": "This invitation has expired. Ask whoever invited you to send a new one."
+        "word": "Caducada",
+        "body": "Esta invitación ha caducado. Pida a {{inviter}} que le envíe una nueva.",
+        "bodyNobody": "Esta invitación ha caducado. Pida a quien le invitó que le envíe una nueva."
       },
       "invitation_revoked": {
-        "word": "Withdrawn",
-        "body": "This invitation was withdrawn by {{organisation}}. If you think that is a mistake, ask whoever invited you."
+        "word": "Retirada",
+        "body": "{{organisation}} ha retirado esta invitación. Si cree que es un error, consúltelo con quien le invitó."
       },
       "invitation_accepted": {
-        "word": "Already accepted",
-        "body": "You already accepted this invitation."
+        "word": "Ya aceptada",
+        "body": "Ya ha aceptado esta invitación."
       },
       "invitation_declined": {
-        "word": "Already declined",
-        "body": "You declined this invitation. Ask {{inviter}} to invite you again if you changed your mind.",
-        "bodyNobody": "You declined this invitation. Ask whoever invited you to invite you again if you changed your mind."
+        "word": "Ya rechazada",
+        "body": "Ha rechazado esta invitación. Si ha cambiado de idea, pida a {{inviter}} que le vuelva a invitar.",
+        "bodyNobody": "Ha rechazado esta invitación. Si ha cambiado de idea, pida a quien le invitó que le vuelva a invitar."
       },
       "invitation_not_yours": {
-        "word": "Signed in as someone else",
-        "body": "This invitation is for {{email}}. You are signed in as {{signedInAs}}."
+        "word": "Sesión iniciada con otra cuenta",
+        "body": "Esta invitación es para {{email}}. Ha iniciado sesión como {{signedInAs}}."
       },
       "organisation_deleted": {
-        "word": "Organisation deleted",
-        "body": "{{organisation}} no longer exists, so this invitation cannot be accepted."
+        "word": "Organización eliminada",
+        "body": "{{organisation}} ya no existe, así que no se puede aceptar esta invitación."
       }
     }
   },
@@ -1162,7 +1162,7 @@
     "onlyOwner": "{{name}} es la única persona con el rol Propietario. Una organización siempre necesita una, así que su rol no puede cambiar y nadie puede quitar a esta persona de la organización hasta que otra tenga también el rol Propietario.",
     "askOwner": "Solo alguien con el rol Propietario puede dar ese rol a otra persona. Pídaselo a {{name}}.",
     "ownerOnly": "Solo alguien con el rol Propietario puede cambiar el rol de otro Propietario o quitar a esa persona de la organización.",
-    "beyondGrant": "Their role holds a permission yours does not, so you cannot change their role or remove them.",
+    "beyondGrant": "Su rol tiene un permiso que el de usted no tiene, así que no puede cambiar el rol de esta persona ni quitarla de la organización.",
     "removeTitle": "Quitar a {{name}}",
     "removeBody": "Pierde el acceso en cuanto vuelva a usar Soirely. Sus eventos se quedan en {{organisation}}.",
     "removeButton": "Quitar de {{organisation}}",
