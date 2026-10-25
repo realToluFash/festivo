@@ -54,6 +54,16 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, « Seule une personne ayant le rôle Propriétaire… », as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word. The subject is « L’organisation {organisation} a été supprimée », so the participle
+  agrees with « organisation », never with a name of unknown gender. Support is « l’assistance
+  Soirely », as decided on 24 Oct; `ownership.deleteWindow` still says « Le support Soirely » and
+  follows on the next ticket that touches it. Restoring a deleted organisation is
+  « restaurer », as on that screen; « rétablir » stays for access. The footer says « vous étiez
+  membre ».
 - **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is « la
   requête », kept apart from « la demande », which is a request to join or a recovery request;
   an API path is « cette URL ». An id is « cet identifiant »: « Aucune session ne porte cet

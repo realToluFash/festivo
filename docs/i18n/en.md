@@ -62,6 +62,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Deleting an organisation (sc-68, sc-3215, `errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`).**
+  Settled as sc-68 wrote it; `OrganisationDeletionTest` and `OwnershipCard.test.tsx` pin the
+  refusals, the subject and the restore line. `delete_name_mismatch` is the same sentence as
+  `ownership.deleteMismatch`, the check made twice, and `organisationDeleted.restore` repeats
+  `ownership.deleteWindow`, the sentence the owner read before deleting. `errors:owner_required`
+  is the code's own, any act; `organisation.owner_required` names the act. The footer says "you
+  were a member": the organisation no longer exists when it is read.
 - **25 Oct 2026. The API's refusals in the request's language (sc-10700, sc-10809, `messages:*`).**
   Settled as sc-10700 wrote them, with three changes. `event.currency_in_use` says "against this
   event", as its screen twin `eventEdit.currencyInUse`. `access.two_factor_required` says "requires

@@ -8,7 +8,7 @@
     "owner_role_fixed": "Propriétaire ne peut être ni modifié ni supprimé.",
     "seeded_role_kept": "Un rôle intégré ne peut pas être supprimé.",
     "last_owner": "Une organisation a toujours au moins un propriétaire.",
-    "owner_required": "Seul un propriétaire de l’organisation peut faire cela.",
+    "owner_required": "Seule une personne ayant le rôle Propriétaire dans l’organisation peut effectuer cette action.",
     "grant_not_held": "Un rôle ne peut recevoir que ce que vous avez vous-même.",
     "already_linked": "C’est déjà lié à un compte Soirely.",
     "address_limit_reached": "Ce compte en a déjà autant qu’il peut en avoir.",
