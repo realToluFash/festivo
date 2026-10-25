@@ -31,7 +31,7 @@ import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFo
 
 type SheetProps = {
   open: boolean;
-  /** System back; the sheet's own buttons close it themselves. */
+  /** System back and VoiceOver's escape; the sheet's own buttons close it themselves. */
   onClose: () => void;
   /** Given, a tap on the scrim closes the sheet, and a screen reader names it so. */
   scrimLabel?: string;
@@ -158,6 +158,7 @@ function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: She
               { paddingBottom: padding.frameBottom },
             ]}
             accessibilityViewIsModal
+            onAccessibilityEscape={onClose}
             testID={testID}
           >
             {children}

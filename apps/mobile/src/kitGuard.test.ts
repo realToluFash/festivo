@@ -233,6 +233,24 @@ describe('a screen reader reaches what is inside a button', () => {
   });
 });
 
+describe("every dialog closes by VoiceOver's escape (sc-11063)", () => {
+  // React Native's Modal leaves the two-finger scrub unanswered, so each dialog answers it itself.
+  it('in every file that opens a Modal', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ text }) => escapesAnswered(text) < modalsOpened(text))
+      .map(({ path }) => path);
+
+    expect(offenders, "Pass onAccessibilityEscape the dialog's own close.").toEqual([]);
+  });
+
+  it('notices a Modal nothing escapes', () => {
+    expect(modalsOpened('<Modal visible={open}>\n  <View />\n</Modal>')).toBe(1);
+    expect(escapesAnswered('<Modal visible={open}>\n  <View />\n</Modal>')).toBe(0);
+    expect(modalsOpened("import { Modal } from 'react-native';")).toBe(0);
+    expect(escapesAnswered('<View onAccessibilityEscape={onClose}>')).toBe(1);
+  });
+});
+
 describe('a label goes only where a screen reader lands', () => {
   // VoiceOver never reads a label on a plain View, and TalkBack makes it a stop of its own (sc-11419, sc-11564).
   it('in every View and ScrollView in the app', () => {
@@ -595,6 +613,14 @@ function selfClosing(name: string, text: string): { line: number; markup: string
 
     return { line: text.slice(0, start).split('\n').length, markup: text.slice(start, end) };
   });
+}
+
+function modalsOpened(text: string): number {
+  return [...text.matchAll(/(?<![\w.])<Modal\b/gu)].length;
+}
+
+function escapesAnswered(text: string): number {
+  return [...text.matchAll(/\bonAccessibilityEscape=\{/gu)].length;
 }
 
 function caretSet(markup: string): boolean {
