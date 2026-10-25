@@ -193,9 +193,11 @@ is held to what both can do:
 - **Type is selected by weight, not by naming a family.** `apps/mobile/src/theme/fonts.ts`
   maps a weight to a file, and a `fontFamily` in a style bypasses it.
 - **An app text field is uncontrolled.** Seed a `TextInput` with `defaultValue` and read
-  `onChangeText` into a ref; a controlled field re-renders between keystrokes and drops
-  characters (seen by QA: nine of twenty-eight, `soirely-qa-tester`, "What Maestro will do
-  to you"). `react-native-best-practices`, `references/js-uncontrolled-components.md`,
+  `onChangeText` into a ref; a `value` prop sends the field's text back into the native
+  field as the user types, and drops characters (seen by QA: a password field holding nine
+  of twenty-eight, `soirely-qa-tester`, "What Maestro will do to you"). A re-render alone
+  does not: a `defaultValue` that stays put is never resent, so a search may redraw its
+  list on every keystroke. `react-native-best-practices`, `references/js-uncontrolled-components.md`,
   says either works on the New Architecture; on this app it does not. A mounted field's
   `defaultValue` may change only to the text the field already shows: native rewrites a
   mounted field when it changes and sends no change event, so the field shows one text
