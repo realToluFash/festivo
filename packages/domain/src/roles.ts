@@ -126,6 +126,18 @@ export function grantableRoles<
   );
 }
 
+/** The roles in the catalogue a granter may not hand out: a member holding one is beyond their grant (sc-11160). */
+export function withheldRoles<
+  R extends { seededAs: string | null; permissions: readonly string[] },
+>(
+  roles: readonly R[],
+  granter: { role: { seededAs: string | null }; permissions: readonly string[] },
+): R[] {
+  const grantable = grantableRoles(roles, granter);
+
+  return roles.filter((role) => !grantable.includes(role));
+}
+
 /** The roles a removed role's members may move to: only one whose every permission the caller holds (sc-66). */
 export function replacementsFor<R extends { id: string; permissions: readonly string[] }>(
   roles: readonly R[],

@@ -396,6 +396,7 @@ export function MemberPage({
   member,
   list,
   roles,
+  withheld,
   manages,
   onChanged,
   onRemoved,
@@ -407,6 +408,7 @@ export function MemberPage({
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
+  withheld: OrganisationRole[];
   manages: boolean;
   onChanged: (list: MembersList) => void;
   onRemoved: (list: MembersList) => void;
@@ -415,7 +417,11 @@ export function MemberPage({
 }) {
   const { t } = useTranslation();
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const standing = memberStanding(member, list.members, {
+    owns: callerOwns,
+    manages,
+    withholds: withheld,
+  });
   const waiting = member.status === 'pending_approval';
   const role = memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role);
   const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
@@ -819,16 +825,25 @@ function FixedRole({
           )}
         </>
       )}
-      {standing === 'ownerOnly' && member.suspension == null && (
-        <Text size={tokens.typeBodyPhone.size} muted>
-          {t('membersScreen.ownerOnly')}
-        </Text>
-      )}
+      {member.suspension == null && <FixedLine standing={standing} />}
     </>
   );
 }
 
-/** Every role is offered, Owner too: the API answers a grant the caller may not make, under the button. */
+/** Why a manager can't change this member: an owner's role, or one holding what the viewer lacks (sc-11160). */
+function FixedLine({ standing }: { standing: MemberStanding }) {
+  const { t } = useTranslation();
+
+  if (standing !== 'ownerOnly' && standing !== 'beyondGrant') return null;
+
+  return (
+    <Text size={tokens.typeBodyPhone.size} muted>
+      {t(`membersScreen.${standing}`)}
+    </Text>
+  );
+}
+
+/** Only the roles the caller may give are offered (sc-392); a page opened before a change still meets the API's refusal, under the button. */
 function RolePicker({
   organisation,
   member,
@@ -1043,11 +1058,7 @@ function Suspension({
           testID="members.restore"
         />
       ) : (
-        standing === 'ownerOnly' && (
-          <Text size={tokens.typeBodyPhone.size} muted>
-            {t('membersScreen.ownerOnly')}
-          </Text>
-        )
+        <FixedLine standing={standing} />
       )}
     </View>
   );
