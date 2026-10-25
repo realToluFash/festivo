@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../src/api.ts';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
+import { ComeForward } from '../../src/components/comeForward.ts';
 import { QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import {
   type Answered,
@@ -18,6 +19,7 @@ import {
 import { Notice } from '../../src/components/Notice.tsx';
 import { Screen, ScrollColumn } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
+import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { useShownLanguage } from '../../src/i18n/index.ts';
@@ -60,6 +62,8 @@ export default function MembersScreen() {
   const showing = shown.in === organisationId ? shown.showing : LIST;
   const setShowing = (next: Showing) => setShown({ in: organisationId, showing: next });
   const phone = kind === 'phone';
+  const landscape = kind === 'tabletLandscape';
+  const columnContent = landscape ? styles.columnContent : CONTENT[kind];
   const language = useShownLanguage();
 
   useEffect(() => {
@@ -199,47 +203,62 @@ export default function MembersScreen() {
       }
     >
       <SettingsSplit open="members">
-        {kind === 'tabletLandscape' ? (
-          <Screen edges={bodyEdges(kind)} scroll={false} contentStyle={styles.landscape}>
-            {heading}
-            <View style={styles.split}>
-              <ScrollColumn style={styles.listColumn} contentContainerStyle={styles.columnContent}>
-                {waiting ?? list}
-              </ScrollColumn>
-              <ScrollColumn style={styles.fill} contentContainerStyle={styles.columnContent}>
-                {page ??
-                  (load.kind === 'loaded' && (
-                    <Notice
-                      tone="quiet"
-                      mark={tokens.marks.info.glyph}
-                      body={t('membersScreen.pickSomebody')}
-                    />
-                  ))}
-              </ScrollColumn>
+        <SheetsAtRoot>
+          <Screen
+            edges={bodyEdges(kind)}
+            scroll={false}
+            contentStyle={landscape ? styles.landscape : styles.bare}
+          >
+            {landscape && heading}
+            <View style={landscape ? styles.split : styles.fill}>
+              <View
+                style={[
+                  landscape ? styles.listColumn : styles.fill,
+                  !landscape && page != null && styles.behind,
+                ]}
+              >
+                <ComeForward.Provider value={landscape ? noop : toList}>
+                  <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
+                    {!landscape && heading}
+                    {waiting ?? list}
+                  </ScrollColumn>
+                </ComeForward.Provider>
+              </View>
+              <View style={[styles.fill, !landscape && page == null && styles.behind]}>
+                <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
+                  {!landscape && !phone && (
+                    <View style={styles.start}>
+                      <QuietButton
+                        label={t('membersScreen.backToList')}
+                        onPress={toList}
+                        testID="members.back"
+                      />
+                    </View>
+                  )}
+                  {page ??
+                    (landscape && load.kind === 'loaded' && (
+                      <Notice
+                        tone="quiet"
+                        mark={tokens.marks.info.glyph}
+                        body={t('membersScreen.pickSomebody')}
+                      />
+                    ))}
+                </ScrollColumn>
+              </View>
             </View>
           </Screen>
-        ) : (
-          <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-            {page == null && heading}
-            {page != null && !phone && (
-              <View style={styles.start}>
-                <QuietButton
-                  label={t('membersScreen.backToList')}
-                  onPress={toList}
-                  testID="members.back"
-                />
-              </View>
-            )}
-            {waiting ?? page ?? list}
-          </Screen>
-        )}
+        </SheetsAtRoot>
       </SettingsSplit>
     </AppFrame>
   );
 }
 
+function noop() {}
+
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
+  bare: { padding: 0, gap: 0 },
+  behind: { display: 'none' },
   start: { alignSelf: 'flex-start' },
   stack: { gap: tokens.spaceMd },
   heading: { gap: tokens.spaceXxs },
@@ -261,7 +280,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: tokens.space3xl,
   },
   split: { flex: 1, minHeight: 0, flexDirection: 'row', gap: tokens.spaceXxl },
-  listColumn: { width: LIST_COLUMN, flexGrow: 0 },
+  listColumn: { width: LIST_COLUMN },
   columnContent: { gap: tokens.spaceLg, paddingBottom: tokens.space5xl },
 });
 
