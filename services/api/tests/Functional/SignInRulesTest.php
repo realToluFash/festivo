@@ -543,17 +543,17 @@ final class SignInRulesTest extends ApiTestCase
     }
 
     #[Test]
-    public function eachRefusalReadsInEnglishAsItDidBefore(): void
+    public function eachRefusalReadsInEnglish(): void
     {
         $this->set(['inactivityTimeoutDays' => 14]);
         self::assertSame(['Choose 7 days, 30 days or no limit.', 'Choose 7 days, 30 days or no limit.'], [$this->last()['detail'] ?? null, $this->last()['violations'][0]['message'] ?? null]);
 
         $this->set(['everyoneNeedsTwoFactor' => true]);
-        self::assertSame('Two-factor is not on.', $this->last()['detail'] ?? null);
+        self::assertSame('Turn on two-factor for yourself before requiring it.', $this->last()['detail'] ?? null);
 
         $this->unlink($this->owner);
         $this->set(['providerOnly' => true]);
-        self::assertSame('Link Google or Apple before requiring it.', $this->last()['detail'] ?? null);
+        self::assertSame('Link Google or Apple for yourself before requiring it.', $this->last()['detail'] ?? null);
     }
 
     /** @param array<string, mixed> $rules */
