@@ -825,9 +825,9 @@
     "removeMove_one": "{{count}} persona tiene este rol. Pásela a:",
     "removeMove_other": "{{count}} personas tienen este rol. Páselas a:",
     "removeMove_many": "{{count}} de personas tienen este rol. Páselas a:",
-    "removeNoReplacement": "Elija el rol al que pasan estas personas.",
+    "removeNoReplacement": "Elija el rol de sustitución.",
     "removeAfter": "Pasan a ser {{role}} en su próxima solicitud. No se cierra ninguna sesión.",
-    "removeConfirm": "Pasarlas y eliminar {{role}}",
+    "removeConfirm": "Reasignar y eliminar {{role}}",
     "removeConfirmEmpty": "Eliminar {{role}}",
     "keep": "Conservar {{role}}",
     "failedRemove": "No se ha podido eliminar. No se ha cambiado nada. Inténtelo de nuevo en un momento."
