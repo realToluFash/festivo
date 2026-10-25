@@ -5,7 +5,7 @@ import {
   type PendingRegistration,
   awaiting,
 } from '@soirely/api-client';
-import { cleanCode, codeProblem, formatCountdown } from '@soirely/domain';
+import { cleanCode, codeProblem } from '@soirely/domain';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
@@ -32,6 +32,7 @@ import {
 } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { offButton } from '../../offButton.ts';
+import { useResendCountdown } from '../../resendCountdown.ts';
 import { useFormChecks } from '../../formChecks.ts';
 
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
@@ -192,8 +193,11 @@ function CodeScreen({
 }) {
   const { t } = useTranslation();
   const [status, setStatus] = useState<CodeStatus>({ kind: 'entering' });
-  const [cooldown, setCooldown] = useState(0);
-  const [countdownSaid, setCountdownSaid] = useState('');
+  const resending = useResendCountdown({
+    resend: 'verifyEmail.resend',
+    resendIn: 'verifyEmail.resendIn',
+  });
+  const { begin } = resending;
   const checks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -220,7 +224,7 @@ function CodeScreen({
       .current()
       .then(({ cooldownSeconds, codeState }) => {
         if (!live) return;
-        setCooldown(cooldownSeconds);
+        begin(cooldownSeconds);
         setStatus((now) => openingStatus(now, codeState));
       })
       .catch((error: unknown) => {
@@ -230,15 +234,7 @@ function CodeScreen({
     return () => {
       live = false;
     };
-  }, [alreadyVerified]);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
+  }, [alreadyVerified, begin]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -265,14 +261,11 @@ function CodeScreen({
     }
   }
 
-  function countDown(seconds: number): void {
-    setCooldown(seconds);
-    setCountdownSaid(t('verifyEmail.resendIn', { time: formatCountdown(seconds) }));
-  }
+  const resend = (): Promise<void> => resending.once(sendOnce);
 
-  async function resend(): Promise<void> {
+  async function sendOnce(): Promise<void> {
     try {
-      countDown(await sendAgain());
+      resending.countDown(await sendAgain());
       setStatus({ kind: 'entering' });
     } catch (error) {
       const seconds =
@@ -284,7 +277,7 @@ function CodeScreen({
       }
 
       if (Number.isFinite(seconds) && seconds > 0) {
-        countDown(seconds);
+        resending.countDown(seconds);
         setStatus({ kind: 'entering' });
 
         return;
@@ -418,16 +411,14 @@ function CodeScreen({
                 <button
                   className="button"
                   type="button"
-                  {...offButton(cooldown > 0)}
+                  {...resending.button}
                   onClick={() => void resend()}
                 >
-                  {cooldown > 0
-                    ? t('verifyEmail.resendIn', { time: formatCountdown(cooldown) })
-                    : t('verifyEmail.resend')}
+                  {resending.label}
                 </button>
                 <p>{t('verifyEmail.resendNote')}</p>
                 <span className="visually-hidden" role="status">
-                  {cooldown > 0 ? countdownSaid : ''}
+                  {resending.status}
                 </span>
               </div>
             </form>

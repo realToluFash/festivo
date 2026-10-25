@@ -510,7 +510,8 @@ function Answer({
         className="button button-primary"
         type="button"
         aria-busy={busy === 'accept'}
-        {...offButton(busy != null)}
+        disabled={busy === 'decline'}
+        {...offButton(busy === 'accept')}
         onClick={() => void answer('accept')}
       >
         {t('join.accept')}
@@ -519,7 +520,8 @@ function Answer({
         className="button"
         type="button"
         aria-busy={busy === 'decline'}
-        {...offButton(busy != null)}
+        disabled={busy === 'accept'}
+        {...offButton(busy === 'decline')}
         onClick={() => void answer('decline')}
       >
         {t('join.decline')}

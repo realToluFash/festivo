@@ -234,6 +234,36 @@ describe('verifying an email address', () => {
     expect(counting.hasAttribute('disabled')).toBe(false);
   });
 
+  it('sends one new code while the first is unanswered, however often it is pressed', async () => {
+    const seen: string[] = [];
+    let answer: (response: Response) => void = () => undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      seen.push(line);
+      if (line !== 'POST /api/auth/verify/resend') throw new TypeError('Failed to fetch');
+
+      return new Promise<Response>((resolve) => {
+        answer = resolve;
+      });
+    });
+
+    open();
+    const resend = screen.getByRole('button', { name: 'Send a new code' });
+    fireEvent.click(resend);
+    await waitFor(() => expect(seen).toContain('POST /api/auth/verify/resend'));
+    fireEvent.click(resend);
+    fireEvent.keyDown(resend, { key: 'Enter' });
+    fireEvent.click(resend);
+
+    expect(seen.filter((call) => call === 'POST /api/auth/verify/resend')).toHaveLength(1);
+    expect(resend.getAttribute('aria-disabled')).toBe('false');
+
+    answer(json({ cooldownSeconds: 60 }));
+
+    expect(await screen.findByRole('button', { name: 'Send a new code in 1:00' })).toBeDefined();
+    expect(seen.filter((call) => call === 'POST /api/auth/verify/resend')).toHaveLength(1);
+  });
+
   it('counts down from the time left when the resend was too soon', async () => {
     answering({
       'POST /api/auth/verify/resend': () =>

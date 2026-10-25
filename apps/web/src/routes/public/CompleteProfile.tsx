@@ -239,6 +239,7 @@ function Details({
   const [phonePicked, setPhonePicked] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
+  const [askingToJoin, setAskingToJoin] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   // Read once, when the page opens asking for an organisation; the rows stay until the person leaves (sc-3353).
   const waiting = useWaitingInvitations(needsOrganisation);
@@ -351,6 +352,7 @@ function Details({
     }
 
     setSaving(true);
+    setAskingToJoin(askToJoin);
     setFailed(false);
     setUnavailable(false);
 
@@ -496,7 +498,8 @@ function Details({
                 className={offers.length === 1 ? 'button button-primary' : 'button'}
                 type="button"
                 aria-label={t('domainJoining.askLabel', { organisation: offer.name })}
-                {...offButton(saving)}
+                disabled={saving && askingToJoin !== offer.id}
+                {...offButton(saving && askingToJoin === offer.id)}
                 onClick={() => void send(offer.id)}
               >
                 {t('domainJoining.ask')}

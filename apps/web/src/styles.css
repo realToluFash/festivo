@@ -1124,6 +1124,14 @@ span {
   cursor: default;
 }
 
+/* The browser paints a :disabled button in GrayText here, and nothing paints an aria-disabled one. */
+@media (forced-colors: active) {
+  [data-off] {
+    color: GrayText;
+    border-color: GrayText;
+  }
+}
+
 /* ── Done ─────────────────────────────────────────────────────────────────── */
 
 .verified-mark {

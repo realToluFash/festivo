@@ -98,7 +98,8 @@ function InvitationRow({
               type="button"
               aria-busy={busy === 'accept'}
               aria-label={t('invitations.acceptLabel', { organisation })}
-              {...offButton(busy != null)}
+              disabled={busy === 'decline'}
+              {...offButton(busy === 'accept')}
               onClick={() => void waiting.answer(invitation, 'accept')}
             >
               {t('invitations.accept')}
@@ -108,7 +109,8 @@ function InvitationRow({
               type="button"
               aria-busy={busy === 'decline'}
               aria-label={t('invitations.declineLabel', { organisation })}
-              {...offButton(busy != null)}
+              disabled={busy === 'accept'}
+              {...offButton(busy === 'decline')}
               onClick={() => void waiting.answer(invitation, 'decline')}
             >
               {t('invitations.decline')}

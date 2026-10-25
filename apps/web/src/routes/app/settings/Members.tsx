@@ -588,8 +588,13 @@ function MemberDetail({
     if (outcome != null) said.current?.focus();
   }, [outcome]);
 
+  const askOpened = useRef(false);
+
   useEffect(() => {
-    if (suspending === 'confirming') asking.current?.focus();
+    if (!askOpened.current) return;
+
+    askOpened.current = false;
+    asking.current?.focus();
   }, [suspending]);
 
   async function reload(): Promise<void> {
@@ -840,7 +845,14 @@ function MemberDetail({
               <p className="muted">
                 {t('membersScreen.suspendBody', { organisation: organisation.name })}
               </p>
-              <button type="button" className="button" onClick={() => setSuspending('confirming')}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  askOpened.current = true;
+                  setSuspending('confirming');
+                }}
+              >
                 {t('membersScreen.suspendButton')}
               </button>
             </>

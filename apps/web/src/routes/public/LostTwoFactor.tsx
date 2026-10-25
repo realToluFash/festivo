@@ -8,7 +8,6 @@ import {
   cleanCode,
   codeProblem,
   codeWording,
-  formatCountdown,
   formatPhone,
   recoveryFirstStep,
   recoveryIntroKey,
@@ -21,6 +20,8 @@ import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
 import { offButton } from '../../offButton.ts';
+import { useOneAtATime } from '../../oneAtATime.ts';
+import { useResendCountdown } from '../../resendCountdown.ts';
 import { Pending } from '../../components/Pending.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../../heldRecovery.ts';
 import { currentLocale } from '../../i18n/index.ts';
@@ -38,6 +39,7 @@ type View =
 export function LostTwoFactor() {
   const challenge = (useLocation().state as TwoFactorChallenge | null)?.challenge ?? null;
   const [view, setView] = useState<View>({ kind: 'loading' });
+  const starting = useOneAtATime();
 
   const load = useCallback(async (): Promise<View> => {
     const held = heldRecovery();
@@ -110,7 +112,9 @@ export function LostTwoFactor() {
     }
   }
 
-  async function start(opening: RecoveryOpening): Promise<void> {
+  const start = (opening: RecoveryOpening): Promise<void> => starting(() => startOnce(opening));
+
+  async function startOnce(opening: RecoveryOpening): Promise<void> {
     if (challenge == null) {
       setView({ kind: 'signIn' });
       return;
@@ -547,16 +551,10 @@ function Codes({
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState(false);
   const [textingFailed, setTextingFailed] = useState(false);
-  const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
-  const [countdownSaid, setCountdownSaid] = useState('');
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
+  const resending = useResendCountdown(
+    { resend: 'lostTwoFactor.resend', resendIn: 'lostTwoFactor.resendIn' },
+    codes?.cooldownSeconds ?? 0,
+  );
 
   // While the phone's code is on WhatsApp, the server may hand it to SMS: the line follows.
   useEffect(() => {
@@ -667,17 +665,14 @@ function Codes({
     }
   }
 
-  function countDown(seconds: number): void {
-    setCooldown(seconds);
-    setCountdownSaid(t('lostTwoFactor.resendIn', { time: formatCountdown(seconds) }));
-  }
+  const resend = (): Promise<void> => resending.once(sendOnce);
 
-  async function resend(): Promise<void> {
+  async function sendOnce(): Promise<void> {
     try {
       const next = await api.resendRecoveryCodes(recovery);
       setTyped({ emailCode: '', phoneCode: '' });
       setErrors({});
-      countDown(next.codes?.cooldownSeconds ?? 0);
+      resending.countDown(next.codes?.cooldownSeconds ?? 0);
       onState(next);
     } catch (refusal) {
       if (replacedElsewhere(refusal)) {
@@ -694,7 +689,7 @@ function Codes({
       const seconds =
         refusal instanceof ApiError ? Number(refusal.response?.headers.get('Retry-After')) : NaN;
 
-      if (Number.isFinite(seconds) && seconds > 0) countDown(seconds);
+      if (Number.isFinite(seconds) && seconds > 0) resending.countDown(seconds);
       else setFailed(true);
     }
   }
@@ -828,16 +823,14 @@ function Codes({
             <button
               className="button"
               type="button"
-              {...offButton(cooldown > 0)}
+              {...resending.button}
               onClick={() => void resend()}
             >
-              {cooldown > 0
-                ? t('lostTwoFactor.resendIn', { time: formatCountdown(cooldown) })
-                : t('lostTwoFactor.resend')}
+              {resending.label}
             </button>
             <p>{t('lostTwoFactor.resendNote')}</p>
             <span className="visually-hidden" role="status">
-              {cooldown > 0 ? countdownSaid : ''}
+              {resending.status}
             </span>
           </div>
 

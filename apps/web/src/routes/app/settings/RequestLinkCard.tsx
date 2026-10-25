@@ -80,7 +80,8 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
           aria-checked={link.on}
           aria-label={t('requestLink.switchLabel')}
           aria-busy={busy && !confirming}
-          {...offButton(busy)}
+          disabled={busy && confirming}
+          {...offButton(busy && !confirming)}
           onClick={() =>
             void (link.on
               ? change(() => api.turnOffRequestLink(organisation.id), 'off')

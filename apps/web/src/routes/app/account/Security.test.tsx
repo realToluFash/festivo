@@ -987,6 +987,33 @@ describe('adding a password to a Google account', () => {
     expect(calls.filter((call) => call.path === '/api/auth/password/set/start')).toHaveLength(1);
   });
 
+  it('reads the countdown once after Send a new code, and not as the code step opens', async () => {
+    let starts = 0;
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/password/set/start': () => json({ cooldownSeconds: ++starts === 1 ? 1 : 60 }),
+    });
+    const said = () => screen.queryAllByRole('status').map(({ textContent }) => textContent);
+
+    openSecurity();
+    fireEvent.click(passwordCard().getByRole('button', { name: 'Set a password' }));
+
+    expect(await screen.findByRole('button', { name: 'Send a new code in 0:01' })).toBeDefined();
+    expect(said()).not.toContain('Send a new code in 0:01');
+
+    const resend = await screen.findByRole(
+      'button',
+      { name: 'Send a new code' },
+      { timeout: 2000 },
+    );
+    resend.focus();
+    fireEvent.click(resend);
+
+    expect(await screen.findByRole('button', { name: 'Send a new code in 1:00' })).toBeDefined();
+    expect(said()).toContain('Send a new code in 1:00');
+    expect(document.activeElement).toBe(resend);
+  });
+
   it('checks the code before sending it, and says a wrong one is wrong', async () => {
     const calls = answering({
       'GET /api/auth/sessions': () => json(SESSIONS),
