@@ -180,6 +180,11 @@ describe('a field is read by the name it shows', () => {
       ),
     ).toEqual([]);
     expect(
+      fieldsReadByAnotherName(
+        "<Field\n  label={t(\n    x ? 'a' : 'b',\n  )}\n>\n  <CodeField\n    accessibilityLabel={t(\n      x ? 'a' : 'b',\n    )}\n  />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
       fieldsReadByAnotherName("<Field label={t('a')}>\n  <TextField value={v} />\n</Field>"),
     ).toEqual([]);
   });
@@ -378,7 +383,9 @@ function fieldsReadByAnotherName(text: string): number[] {
     const label = propValue(body.slice(0, tagEnd(body, 0)), 'label');
     const read = propValue(body.slice(tagEnd(body, 0)), 'accessibilityLabel');
 
-    return read == null || read === label ? [] : [text.slice(0, match.index).split('\n').length];
+    return read == null || read.replace(/\s+/gu, '') === label?.replace(/\s+/gu, '')
+      ? []
+      : [text.slice(0, match.index).split('\n').length];
   });
 }
 
@@ -414,15 +421,5 @@ function tagEnd(text: string, start: number): number {
 
 /** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
 function selfCloses(text: string, start: number): boolean {
-  let braces = 0;
-
-  for (let at = start + 1; at < text.length; at += 1) {
-    const char = text[at];
-
-    if (char === '{') braces += 1;
-    else if (char === '}') braces -= 1;
-    else if (char === '>' && braces === 0) return text[at - 1] === '/';
-  }
-
-  return false;
+  return text.slice(start, tagEnd(text, start)).endsWith('/>');
 }
