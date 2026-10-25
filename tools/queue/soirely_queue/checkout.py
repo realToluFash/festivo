@@ -50,6 +50,8 @@ def ensure(base, path):
     """A further worker's checkout: a worktree of the role's own, made the first time."""
     if path.exists():
         return
+    # A checkout deleted by hand stays registered, and git refuses its path until pruned.
+    git(base, "worktree", "prune", check=False)
     made = git(base, "worktree", "add", "--quiet", "--detach", str(path), "origin/main",
                check=False)
     if made.returncode:
