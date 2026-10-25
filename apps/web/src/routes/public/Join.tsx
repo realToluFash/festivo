@@ -101,9 +101,13 @@ function Invited({ token }: { token: string }) {
       },
       (error: unknown) => {
         if (!current) return;
-        reloadArrives.current = false;
         const missing = error instanceof ApiError && error.is('invitation_not_found');
         setView({ kind: missing ? 'notFound' : 'unreachable' });
+        if (missing && reloadArrives.current) {
+          setBrought(true);
+          arriveAtStep();
+        }
+        reloadArrives.current = false;
       },
     );
 
@@ -119,9 +123,11 @@ function Invited({ token }: { token: string }) {
     return (
       <AuthPage>
         <div className="auth-heading">
-          <h1>{t('join.notFoundTitle')}</h1>
+          <h1 ref={stepHeading} tabIndex={-1}>
+            {t('join.notFoundTitle')}
+          </h1>
         </div>
-        <div className="notice notice-quiet" role="status">
+        <div className="notice notice-quiet" role={brought ? undefined : 'status'}>
           <span className="mark mark-info" aria-hidden="true">
             i
           </span>

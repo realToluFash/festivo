@@ -227,6 +227,8 @@ describe('an invitation, signed out', () => {
     expect(
       await screen.findByRole('heading', { name: 'We could not find that invitation' }),
     ).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
+    expect(screen.getByRole('status')).toBeDefined();
   });
 });
 
@@ -396,6 +398,33 @@ describe('an invitation, signed in', () => {
       name: 'This invitation was withdrawn',
     });
     await waitFor(() => expect(document.activeElement).toBe(refused));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('takes focus to “We could not find that invitation” when the switch finds the link replaced', async () => {
+    signedIn('folake@ire.events');
+    let signedOut = false;
+    answering({
+      [LINK]: () =>
+        signedOut
+          ? problem(404, 'invitation_not_found')
+          : json({ ...PREVIEW, forYou: false, signedInAs: 'folake@ire.events' }),
+      'POST /api/auth/logout': () => {
+        signedOut = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sign out and use kemi.l@gmail.com' }),
+    );
+
+    const missing = await screen.findByRole('heading', {
+      level: 1,
+      name: 'We could not find that invitation',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(missing));
     expect(screen.queryByRole('status')).toBeNull();
   });
 
