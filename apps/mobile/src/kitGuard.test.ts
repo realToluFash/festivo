@@ -158,6 +158,39 @@ describe('a screen reader reaches what is inside a button', () => {
   });
 });
 
+describe('a label goes only where a screen reader lands', () => {
+  // VoiceOver never reads a label on a plain View, and TalkBack makes it a stop of its own (sc-11419, sc-11564).
+  it('in every View and ScrollView in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      labelsNobodyLandsOn(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(
+      offenders,
+      'Drop the label, or make the View accessible when it is one item to read.',
+    ).toEqual([]);
+  });
+
+  it('notices a label on a View no screen reader lands on', () => {
+    expect(labelsNobodyLandsOn("<View style={s} accessibilityLabel={t('a')}>")).toEqual([1]);
+    expect(
+      labelsNobodyLandsOn(
+        "<View>\n  <ScrollView\n    nestedScrollEnabled\n    accessibilityLabel={t('a')}\n  >",
+      ),
+    ).toEqual([2]);
+    expect(labelsNobodyLandsOn('<Animated.View aria-label={name} />')).toEqual([1]);
+    expect(labelsNobodyLandsOn("<View accessible={false} accessibilityLabel={t('a')}>")).toEqual([
+      1,
+    ]);
+    expect(labelsNobodyLandsOn("<View style={s} accessible accessibilityLabel={t('a')}>")).toEqual(
+      [],
+    );
+    expect(
+      labelsNobodyLandsOn('<View style={a > b ? s : t}>\n  <Pressable accessibilityLabel={x}>'),
+    ).toEqual([]);
+  });
+});
+
 describe('a field is read by the name it shows', () => {
   // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
   it('in every Field in the app', () => {
@@ -383,6 +416,19 @@ function nestedPressables(text: string): number[] {
   }
 
   return nested;
+}
+
+/** The line of every View or ScrollView that carries a label without being accessible. */
+function labelsNobodyLandsOn(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<(?:Animated\.)?(?:View|ScrollView)\b/gu)].flatMap(
+    (match) => {
+      const markup = text.slice(match.index, tagEnd(text, match.index));
+      const labelled = /\b(accessibilityLabel|aria-label)=/u.test(markup);
+      const accessible = /\baccessible(?!=\{false\})\b/u.test(markup);
+
+      return labelled && !accessible ? [text.slice(0, match.index).split('\n').length] : [];
+    },
+  );
 }
 
 /** The line of every Field whose control carries an accessibilityLabel other than the Field's label. */
