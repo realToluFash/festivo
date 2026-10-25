@@ -5,7 +5,7 @@ import re
 DEVELOPERS = {"dev": "dev1", "dev2": "dev2", "dev3": "dev3", "dev4": "dev4"}
 DEVS = tuple(DEVELOPERS)
 
-TRANSLATION_QUEUE = ["To Do", "Failed Code Review", "In Progress", "Failed QA"]
+TRANSLATION_QUEUE = ["To Do", "Ready For Dev", "Failed Code Review", "In Progress", "Failed QA"]
 # A developer's queue, rework first: findings, then a failed test, then its own build, then
 # a new story. Passed Code Review is not queued: the pull request's pass wakes the merge.
 BUILD_QUEUE = ["Failed Code Review", "Failed QA", "In Progress", "Ready For Dev"]
@@ -100,8 +100,10 @@ ROLES = {
            "filter": not_translation, "heartbeat": 720, "sweeps": True},
     "ops": {"skill": "soirely-ops", "queue": BUILD_QUEUE + ["To Do"],
             "filter": ops_story, "heartbeat": 360, "sweeps": True, "main": True, "prs": True},
+    # The linguist both files tickets and works them: a quiet half hour picks from its queue,
+    # and a sweep comes once `sweepEvery` minutes have passed without one.
     "l10n": {"skill": "soirely-linguist", "queue": TRANSLATION_QUEUE, "filter": translation,
-             "heartbeat": 120, "sweeps": True},
+             "heartbeat": 30, "sweeps": True, "sweepEvery": 120},
     "cd": {"skill": "soirely-creative", "queue": [], "filter": everything, "heartbeat": 1440,
            "sweeps": True},
 }
@@ -189,7 +191,7 @@ MAY = {
     "pr-close": BUILDERS,
     "pr-edit": BUILDERS,
     "to-qa": DEVS + ("ops",),
-    "rerun": DEVS + ("ops",),
+    "rerun": DEVS + LINGUISTS + ("ops",),
 }
 
 # The states each role may move a story into, and from. The product manager moves any
@@ -210,7 +212,7 @@ MOVES = {
     "ux": {"Ready For Dev": ("Needs Design",), WAITING: ("Needs Design",)},
     "qa": {"In QA": ("Ready For QA", "In QA"), "Passsed QA": ("In QA",),
            "Failed QA": ("In QA",)},
-    "l10n": {"In Progress": ("To Do", "Failed QA", "Failed Code Review"),
+    "l10n": {"In Progress": ("To Do", "Ready For Dev", "Failed QA", "Failed Code Review"),
              "Ready For QA": ("In Progress",)},
     # Only on a story labelled ops. Ready For QA and Done come with the merge.
     "ops": {"In Progress": ("Backlog", "To Do", "Ready For Dev", "Failed QA",

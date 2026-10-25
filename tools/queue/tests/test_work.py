@@ -146,7 +146,20 @@ class SidePullRequests(unittest.TestCase):
 
     def test_no_developer_is_told_to_move_the_ticket_to_review(self):
         for branch in ("fix/sc-9/test-wording", "l10n/sc-9"):
-            self.assertEqual(work.developer_items([self.ticket()], [self.side(branch)]), [])
+            items = work.developer_items([self.ticket()], [self.side(branch)])
+            self.assertEqual([i for i in items if set(i["roles"]) & set(roles.DEVS)], [])
+
+    def test_the_linguists_own_pr_wakes_the_linguist_when_its_checks_finish(self):
+        for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
+            for checks, kind in (("green", "merge"), ("red", "checks-red")):
+                items = work.developer_items([self.ticket(state)],
+                                             [self.side("l10n/sc-9", checks=checks)])
+                self.assertEqual([(i["kind"], i["roles"]) for i in items], [(kind, ["l10n"])],
+                                 (state, checks))
+
+    def test_the_linguists_pr_with_checks_running_wakes_nobody(self):
+        self.assertEqual(work.developer_items([self.ticket()],
+                                              [self.side("l10n/sc-9", checks="pending")]), [])
 
     def test_a_merged_pr_on_the_ticket_hands_nothing_to_qa(self):
         for branch in ("fix/sc-9/test-wording", "l10n/sc-9"):
@@ -349,8 +362,9 @@ class Queue(unittest.TestCase):
         self.assertEqual([sorted(i["roles"]) for i in items], [["qa", "qa2", "qa3"]])
 
     def test_a_translation_ticket_is_only_the_linguists(self):
-        items = work.queue_items([story(state="To Do", labels=["translation"])])
-        self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"])
+        for state in ("To Do", "Ready For Dev", "In Progress", "Failed QA"):
+            items = work.queue_items([story(state=state, labels=["translation"])])
+            self.assertEqual(sorted(r for i in items for r in i["roles"]), ["l10n"], state)
 
     def test_a_role_s_own_move_is_no_wake_for_it(self):
         moved = story(state="To Do", moved_at="t1")
@@ -490,6 +504,26 @@ class Heartbeat(unittest.TestCase):
         self.assertIn("qa", [r for i in due if i["kind"] == "pick" for r in i["roles"]])
         quiet = work.heartbeat_items(stories, {"qa": now - 5 * 60}, set(), now)
         self.assertNotIn("qa", [r for i in quiet for r in i["roles"]])
+
+    def test_the_linguist_picks_from_its_queue_between_sweeps(self):
+        now = 10_000_000
+        tickets = [story(state="In Progress", labels=["translation"])]
+        quiet = {"l10n": now - 31 * 60}
+
+        def l10n(stories, swept):
+            return [i["kind"] for i in work.heartbeat_items(stories, quiet, set(), now,
+                                                            last_sweeps={"l10n": swept})
+                    if i["roles"] == ["l10n"]]
+        self.assertEqual(l10n(tickets, now - 40 * 60), ["pick"])
+        self.assertEqual(l10n(tickets, now - 121 * 60), ["sweep"])
+        self.assertEqual(l10n(tickets, None), ["sweep"])
+        self.assertEqual(l10n([], now - 40 * 60), [])
+
+    def test_other_sweeping_roles_sweep_whatever_their_last_sweep(self):
+        now = 10_000_000
+        items = work.heartbeat_items([story(state="To Do")], {"pm": now - 121 * 60}, set(), now,
+                                     last_sweeps={"pm": now - 60})
+        self.assertEqual([i["kind"] for i in items if i["roles"] == ["pm"]], ["sweep"])
 
     def test_a_role_with_no_queue_and_no_sweep_stays_asleep(self):
         items = work.heartbeat_items([], {}, set(), 10_000_000)

@@ -211,5 +211,9 @@ DIGESTS = {"pm": product_manager, "ux": designer, "bm": business_manager, "cd": 
 def render(p, db, row=None):
     stories = open_stories(db)
     DIGESTS.get(p.role, lambda *_: p.add("Nothing to sweep for this role."))(p, db, stories)
+    if row and row["kind"] == "pick" and p.role in R.LINGUISTS:
+        p.add("", "This is a pick, not a sweep: take the first ticket above that waits on "
+                  "nothing and do it (your skill's section 4), or hand one whose work is done "
+                  "to QA (section 5). One ticket this run; file nothing new.")
     if row:
         p.add("", f"Finish with `{SQ} {p.role} done {row['id']} --note \"<one line>\"`.")

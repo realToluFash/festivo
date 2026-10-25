@@ -39,3 +39,15 @@ class Developers(unittest.TestCase):
         self.assertEqual(self.pick("dev4", [ready(n) for n in range(1, 6)] + [own]),
                          "sc-9")
 
+
+class LinguistPick(unittest.TestCase):
+    def render(self, kind):
+        p = Digest("l10n")
+        with mock.patch.object(digests, "open_stories", return_value=[]), \
+                mock.patch.object(digests.store, "prs", return_value=[]):
+            digests.render(p, None, {"id": 5, "kind": kind})
+        return " ".join(p.lines)
+
+    def test_a_pick_tells_the_linguist_to_work_a_ticket_and_a_sweep_does_not(self):
+        self.assertIn("This is a pick, not a sweep", self.render("pick"))
+        self.assertNotIn("This is a pick", self.render("sweep"))

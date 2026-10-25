@@ -159,8 +159,16 @@ def merge(p, pr, story, row):
                   "the branch and push. The push voids the pass, and the lead reviews the new "
                   "head, wherever the story is.")
         return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"brought main in\"")
-    next_lines(p, f"{SQ} {p.role} merge {pr['number']}   (checks every condition, merges at the "
-                  "passed sha, moves the story to Ready For QA and tells QA)",
+    if p.role in R.LINGUISTS:
+        merges = ("merges it once it changes only locale files; then move the ticket to Ready "
+                  "For QA if everything it covers is merged, as your skill's section 5 says")
+    elif W.side_pr(story, pr):
+        merges = (f"merges at the passed sha; sc-{story['id']} is a translation ticket and "
+                  "stays where the linguist put it, so the merge is still yours")
+    else:
+        merges = ("checks every condition, merges at the passed sha, moves the story to Ready "
+                  "For QA and tells QA")
+    next_lines(p, f"{SQ} {p.role} merge {pr['number']}   ({merges})",
                f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
 
 

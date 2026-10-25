@@ -333,6 +333,16 @@ class PmMoves(Base):
             actions.move(self.as_("dev"), args(story="sc-1", state="Backlog"))
 
 
+class LinguistMoves(Base):
+    def test_the_linguist_starts_a_ticket_from_ready_for_dev(self):
+        self.fake.add(1, "Ready For Dev", ["translation"])
+        actions.move(self.as_("l10n"), args(story="sc-1", state="In Progress"))
+        self.assertEqual(self.state(1), "In Progress")
+
+    def test_the_linguist_may_rerun_its_checks(self):
+        self.assertTrue(roles.may("l10n", "rerun"))
+
+
 def line_edit(targets, old, new, dry=False):
     return args(targets=targets, replace=old, with_=new, dry=dry, section=None, dated=None,
                 text=None)

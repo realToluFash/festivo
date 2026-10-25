@@ -157,8 +157,8 @@ feature merges.
 
 **One ticket is one branch and one pull request, with all four languages in it.**
 
-1. **Move the ticket to `In Progress`**: `sq l10n move sc-N "In Progress"` (from `To Do` or
-   `Failed QA`).
+1. **Move the ticket to `In Progress`**: `sq l10n move sc-N "In Progress"` (from `To Do`,
+   `Ready For Dev` or `Failed QA`).
 2. **Work in your own worktree**, `~/Projects/soirely-l10n`, never in `~/Projects/soirely` or
    `~/Projects/soirely-devN`, which are the developers'. It has a stack of its own; if it is
    not there, `just dev-env setup --role l10n` from the main checkout makes it. Branch there:
@@ -194,7 +194,8 @@ feature merges.
 8. **Merge it yourself** once its checks are green on the head commit: `sq l10n merge N`.
    Wait for them with `sq l10n checks N --wait --head <sha>` as a background command, `<sha>`
    the commit you pushed, never a polling loop you write; it ends by itself, non-zero unless
-   every check passed. It
+   every check passed. If the run ends first, finished checks wake you again: green to
+   merge, red to fix (`sq l10n checks N`, or `sq l10n rerun N` for a flaky job). It
    makes a merge commit, deletes the branch, and refuses, with the reason, when a check is not
    green, the branch conflicts with `main`, or the pull request changes anything outside the
    locale files. A branch merely behind `main` merges as it is; on a conflict, merge

@@ -51,11 +51,15 @@ def refresh_work(db, now):
         "and kind not in ('pick', 'sweep')")}
     busy_roles = {role for roles_ in busy for role in roles_.split(",")}
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
+    last_sweeps = {row["pool"]: row["at"] for row in db.execute(
+        "select pool, max(done_at) as at from work where kind = 'sweep' and status = 'done' "
+        "group by pool")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
                         last_runs, busy_roles, now, store.handled(db), store.moves(db),
                         store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"),
                         store.worked_on(db, "l10n"),
-                        [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"])
+                        [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"],
+                        last_sweeps)
     store.record(db, items, now)
     return items
 
