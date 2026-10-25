@@ -17,6 +17,7 @@ import {
   keyboardInWindow,
   keyboardLift,
   keysOver,
+  liftNeeded,
   listRoom,
   offsetAboveKeyboard,
   offsetIntoView,
@@ -83,6 +84,43 @@ describe('the focused field stays in a sheet body too short for its notices (sc-
     const tiny = { ...group, keyboardTop: 60 };
 
     expect(offsetToFocus(tiny, field)).toBe(field.contentY - body.margin);
+  });
+});
+
+describe('the field typed in stays in sight above a group lifted under it (sc-11978)', () => {
+  // Current password, 110 tall at 400, then the New password group, 420 tall at 526.
+  const card = { contentY: 526, height: 420, scrollTop: 100, keyboardTop: 600, margin: 16 };
+  const current = 400;
+
+  it('stops the lift with the focused field at the top of the scroll view', () => {
+    const offset = offsetAboveKeyboard({ ...card, focusY: current });
+
+    expect(offset).toBe(current - card.margin);
+    expect(offset).toBeLessThan(offsetAboveKeyboard(card));
+  });
+
+  it('lifts the whole group when it fits under the focused field', () => {
+    const tall = { ...card, keyboardTop: 900 };
+
+    expect(offsetAboveKeyboard({ ...tall, focusY: current })).toBe(offsetAboveKeyboard(tall));
+  });
+
+  it('keeps the group top when the focused field sits inside the group', () => {
+    expect(offsetAboveKeyboard({ ...card, focusY: card.contentY })).toBe(offsetAboveKeyboard(card));
+  });
+
+  it('lifts a group already above the keys when the focused field sits under the header', () => {
+    const check = { shown: 600, group: { y: 150, height: 300 }, scrollTop: 100, margin: 16 };
+
+    expect(liftNeeded(check)).toBe(false);
+    expect(liftNeeded({ ...check, focusTop: 60 })).toBe(true);
+    expect(liftNeeded({ ...check, focusTop: 120 })).toBe(false);
+  });
+
+  it('lifts a group the keys cover wherever the focused field sits', () => {
+    const check = { shown: 400, group: { y: 150, height: 300 }, scrollTop: 100, margin: 16 };
+
+    expect(liftNeeded({ ...check, focusTop: 120 })).toBe(true);
   });
 });
 

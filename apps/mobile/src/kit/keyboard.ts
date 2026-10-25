@@ -58,6 +58,23 @@ export function coveredBy(keyboardTop: number, group: Rect, margin: number): boo
   return group.y + group.height + margin > keyboardTop;
 }
 
+export interface LiftCheck {
+  /** Where the scroll view's visible area ends, in the window. */
+  shown: number;
+  /** The group in the window. */
+  group: Rect;
+  /** The focused field's top in the window. */
+  focusTop?: number | undefined;
+  /** The scroll view's top in the window. */
+  scrollTop: number;
+  margin: number;
+}
+
+/** Whether a group must lift: the keys cover it, or the focused field has gone under the scroll view's top (sc-11978). */
+export function liftNeeded({ shown, group, focusTop, scrollTop, margin }: LiftCheck): boolean {
+  return coveredBy(shown, group, margin) || (focusTop != null && focusTop < scrollTop);
+}
+
 export interface GroupInScroll {
   /** The scroll view's top in the window. */
   scrollTop: number;
@@ -91,19 +108,22 @@ export interface Lift {
   /** The keyboard's top in the window. */
   keyboardTop: number;
   margin: number;
+  /** The focused field's top inside the scroll content; it caps the lift only when it sits above the group. */
+  focusY?: number | undefined;
 }
 
-/** The scroll offset that rests a group's bottom `margin` above the keyboard, its top never above the scroll view's. */
+/** The scroll offset that rests a group's bottom `margin` above the keyboard, its top and the focused field's never above the scroll view's. */
 export function offsetAboveKeyboard({
   contentY,
   height,
   scrollTop,
   keyboardTop,
   margin,
+  focusY = contentY,
 }: Lift): number {
   const bottomAboveKeys = contentY + height + margin - (keyboardTop - scrollTop);
 
-  return Math.max(0, Math.min(bottomAboveKeys, contentY - margin));
+  return Math.max(0, Math.min(bottomAboveKeys, Math.min(contentY, focusY) - margin));
 }
 
 export interface InScroll {

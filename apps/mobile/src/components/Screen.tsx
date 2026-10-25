@@ -23,15 +23,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   barFits,
-  coveredBy,
   groupInWindow,
   keysOver,
+  liftNeeded,
   offsetAboveKeyboard,
   offsetIntoView,
   scrollInsets,
   shownEnd,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
+import { focusedField, watchFocusedField } from './focusedField.ts';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
 
@@ -112,20 +113,36 @@ function liftAboveKeyboard(
 
   group.measureLayout(content, (_x, contentY, _w, height) => {
     scrollHost.measureInWindow((_sx, scrollTop, _sw, scrollHeight) => {
-      const groupY = groupInWindow({ scrollTop, contentY, offset: scroll.offset.current });
-      const shown = shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight });
-      if (!coveredBy(shown, { y: groupY, height }, tokens.spaceLg)) return;
+      const lift = (focusY?: number) => {
+        const offset = scroll.offset.current;
+        const groupY = groupInWindow({ scrollTop, contentY, offset });
+        const shown = shownEnd(keyboardTop, { y: scrollTop, height: scrollHeight });
+        const focusTop =
+          focusY == null ? undefined : groupInWindow({ scrollTop, contentY: focusY, offset });
+        const group = { y: groupY, height };
+        if (!liftNeeded({ shown, group, focusTop, scrollTop, margin: tokens.spaceLg })) return;
 
-      view.scrollTo({
-        y: offsetAboveKeyboard({
-          contentY,
-          height,
-          scrollTop,
-          keyboardTop: shown,
-          margin: tokens.spaceLg,
-        }),
-        animated: true,
-      });
+        view.scrollTo({
+          y: offsetAboveKeyboard({
+            contentY,
+            height,
+            scrollTop,
+            keyboardTop: shown,
+            margin: tokens.spaceLg,
+            focusY,
+          }),
+          animated: true,
+        });
+      };
+      // The field typed in comes first: a group under it lifts only as far as keeps it in sight (sc-11978).
+      const field = focusedField();
+      if (field == null) lift();
+      else
+        field.measureLayout(
+          content,
+          (_fx, focusY) => lift(focusY),
+          () => lift(),
+        );
     });
   });
 }
@@ -150,10 +167,13 @@ export function useAboveKeyboard(): AboveKeyboard {
     // On Android the avoiding view shrinks the scroll view after keyboardDidShow, and a scroll
     // asked for before that is clamped short.
     scroll?.resized.add(lift);
+    // Next on the keys moves focus without the keys going up again.
+    const unwatchFocus = watchFocusedField(lift);
 
     return () => {
       cancel();
       unwatch();
+      unwatchFocus();
       scroll?.resized.delete(lift);
     };
   }, [scroll]);
