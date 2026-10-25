@@ -2,7 +2,7 @@ import type { OrganisationRole, RolesCatalogue } from '@soirely/api-client';
 import { roleHolds, roleName } from '@soirely/domain';
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../src/api.ts';
@@ -11,7 +11,7 @@ import { bodyEdges } from '../../src/components/bodyEdges.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
 import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
-import { Screen } from '../../src/components/Screen.tsx';
+import { Screen, ScrollColumn } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
@@ -51,6 +51,7 @@ export default function RolesScreen() {
   const [saved, setSaved] = useState(false);
   const phone = kind === 'phone';
   const landscape = kind === 'tabletLandscape';
+  const columnContent = landscape ? styles.columnContent : CONTENT[kind];
 
   useEffect(() => {
     if (organisationId == null) return;
@@ -83,8 +84,15 @@ export default function RolesScreen() {
     setShown({ in: organisationId, pane: next });
     setSaved(false);
   };
-  const inDetail = pane != null && (pane.kind === 'new' || selected != null);
+  const paneResolves = pane != null && (pane.kind === 'new' || selected != null);
   const toList = () => open(null);
+  // The role landscape opens by itself gives way to the list on a turn until it is used.
+  const used = (id: string) =>
+    setShown((before) =>
+      before.in === organisationId && before.pane != null
+        ? before
+        : { in: organisationId, pane: { kind: 'role', id } },
+    );
 
   const heading = (
     <View style={styles.heading}>
@@ -160,7 +168,7 @@ export default function RolesScreen() {
       : { ...next, roles: [...next.roles, role] };
 
   const page =
-    organisation == null || catalogue == null || !inDetail ? null : pane.kind === 'removing' &&
+    organisation == null || catalogue == null || !paneResolves ? null : pane.kind === 'removing' &&
       selected != null ? (
       <RemoveRole
         key={`removing-${selected.id}`}
@@ -171,7 +179,7 @@ export default function RolesScreen() {
         onRemoved={(roles) => {
           const next = { ...catalogue, roles };
           setLoad({ kind: 'loaded', catalogue: next });
-          open(landscape ? { kind: 'role', id: firstEditable(next) } : null);
+          open(null);
           setAttempt((n) => n + 1);
         }}
       />
@@ -190,8 +198,10 @@ export default function RolesScreen() {
           setSaved(true);
         }}
         onEdited={() => setSaved(false)}
+        onUsed={() => selected != null && used(selected.id)}
       />
     );
+  const inDetail = page != null;
 
   const pageTitle =
     pane?.kind === 'new' ? t('rolesScreen.newRole') : selected != null ? roleName(t, selected) : '';
@@ -209,37 +219,46 @@ export default function RolesScreen() {
       }
     >
       <SettingsSplit open="roles">
-        {landscape ? (
-          <Screen edges={bodyEdges(kind)} scroll={false} contentStyle={styles.landscape}>
+        <Screen
+          edges={bodyEdges(kind)}
+          scroll={false}
+          contentStyle={landscape ? styles.landscape : styles.bare}
+        >
+          {landscape && (
             <View style={styles.landscapeHead}>
               <View style={styles.fill}>{heading}</View>
               {catalogue != null && newRole}
             </View>
-            <View style={styles.split}>
-              <ScrollView style={styles.listColumn} contentContainerStyle={styles.columnContent}>
+          )}
+          <View style={landscape ? styles.split : styles.fill}>
+            <View
+              style={[
+                landscape ? styles.listColumn : styles.fill,
+                !landscape && inDetail && styles.behind,
+              ]}
+            >
+              <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
+                {!landscape && heading}
                 {waiting ?? list}
-              </ScrollView>
-              <ScrollView style={styles.fill} contentContainerStyle={styles.columnContent}>
-                {page}
-              </ScrollView>
+                {!landscape && waiting == null && newRole}
+              </ScrollColumn>
             </View>
-          </Screen>
-        ) : (
-          <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
-            {page == null && heading}
-            {page != null && !phone && (
-              <View style={styles.start}>
-                <QuietButton label={t('settings.rolesBack')} onPress={toList} testID="roles.back" />
-              </View>
-            )}
-            {waiting ?? page ?? (
-              <>
-                {list}
-                {newRole}
-              </>
-            )}
-          </Screen>
-        )}
+            <View style={[styles.fill, !landscape && !inDetail && styles.behind]}>
+              <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
+                {!landscape && !phone && (
+                  <View style={styles.start}>
+                    <QuietButton
+                      label={t('settings.rolesBack')}
+                      onPress={toList}
+                      testID="roles.back"
+                    />
+                  </View>
+                )}
+                {page}
+              </ScrollColumn>
+            </View>
+          </View>
+        </Screen>
       </SettingsSplit>
     </AppFrame>
   );
@@ -252,6 +271,8 @@ function firstEditable(catalogue: RolesCatalogue): string {
 
 const styles = StyleSheet.create({
   fill: { flex: 1, minWidth: 0 },
+  bare: { padding: 0, gap: 0 },
+  behind: { display: 'none' },
   start: { alignSelf: 'flex-start' },
   stack: { gap: tokens.spaceMd },
   heading: { gap: tokens.spaceXxs },
@@ -274,7 +295,7 @@ const styles = StyleSheet.create({
   },
   landscapeHead: { flexDirection: 'row', alignItems: 'flex-end', gap: tokens.spaceLg },
   split: { flex: 1, minHeight: 0, flexDirection: 'row', gap: tokens.spaceXl },
-  listColumn: { width: LIST_COLUMN, flexGrow: 0 },
+  listColumn: { width: LIST_COLUMN },
   columnContent: { gap: tokens.spaceLg, paddingBottom: tokens.space6xl },
 });
 

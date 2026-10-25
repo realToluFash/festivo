@@ -54,6 +54,8 @@ interface ScreenDock {
   room: number | null;
   /** Whether the keys cover the screen's end, the only time a bar needs resting on them. */
   covered: boolean;
+  /** Whether a bar rests on the keys now. */
+  docked: boolean;
   show(docked: Docked | null): void;
 }
 
@@ -318,10 +320,17 @@ export function ScrollColumn({
   contentContainerStyle?: StyleProp<ViewStyle>;
 }) {
   const { screenScroll, scrollProps } = useScreenScrollView();
+  const docked = useContext(Dock)?.docked ?? false;
 
   return (
     <ScreenScroll.Provider value={screenScroll}>
-      <ScrollView {...scrollProps} style={style} contentContainerStyle={contentContainerStyle}>
+      <ScrollView
+        {...scrollProps}
+        style={style}
+        contentContainerStyle={contentContainerStyle}
+        keyboardShouldPersistTaps="handled"
+        {...scrollInsets(LIFT, docked)}
+      >
         {children}
       </ScrollView>
     </ScreenScroll.Provider>
@@ -370,9 +379,10 @@ export function Screen({
   const [keysCover, setKeysCover] = useState(0);
   const [room, setRoom] = useState<number | null>(null);
   const [docked, setDocked] = useState<Docked | null>(null);
+  const barDocked = docked != null;
   const dock = useMemo<ScreenDock>(
-    () => ({ room, covered: keysCover > 0, show: setDocked }),
-    [room, keysCover],
+    () => ({ room, covered: keysCover > 0, docked: barDocked, show: setDocked }),
+    [room, keysCover, barDocked],
   );
   // Not KeyboardAvoidingView: it takes the screen's top as a prop and does not re-read it when the
   // frame's header shrinks under the keys, so the freed height ends up as padding above them.
@@ -429,7 +439,7 @@ export function Screen({
 
   return (
     <ScreenScroll.Provider value={scroll ? screenScroll : null}>
-      <Dock.Provider value={scroll ? dock : null}>
+      <Dock.Provider value={dock}>
         <View style={[styles.root, padding, style]}>
           <View
             ref={avoider}
