@@ -69,7 +69,9 @@ def slim(raw):
             "labels": sorted(label["name"] for label in raw["labels"]),
             "comments": [{"id": c["id"], "parent": c["parent_id"], "at": c["created_at"],
                           "text": c["text"]} for c in raw["comments"]],
-            "description": raw["description"], "tasks": [], "links": [], "done": False,
+            "description": raw["description"], "tasks": [], "links": [],
+            "done": STATES[str(raw["workflow_state_id"])] == "Done" or bool(raw.get("archived")),
+            "archived": bool(raw.get("archived")),
             "position": 1, "updated_at": raw["moved_at"], "type": "feature"}
 
 
@@ -932,6 +934,45 @@ class Merging(Base):
                 actions.merge(self.as_("dev2"), args(pr=9, text=None))
             merge.assert_not_called()
 
+    def test_a_follow_up_pr_on_a_done_story_merges_and_leaves_it_done(self):
+        self.fake.add(1, "Done", ["dev2"])
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            said = actions.merge(self.as_("dev2"), args(pr=9, text=None))
+        merge.assert_called_once_with(9, HEAD)
+        self.assertEqual(self.state(1), "Done")
+        self.assertIn("stays Done", said)
+        self.assertEqual(self.fake.comments, [])
+
+    def test_a_done_storys_pr_still_needs_the_pass(self):
+        self.fake.add(1, "Done", ["dev2"])
+        store.put_pr(self.db, pr())
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "wait for the lead's review"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_an_archived_storys_pr_is_closed_not_merged(self):
+        self.fake.add(1, "Done", ["dev2"])
+        self.fake.raw[1]["archived"] = True
+        store.put_pr(self.db, pr("pass"))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "archived.*pr-close 9"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
+    def test_a_pr_with_no_story_says_whose_it_is(self):
+        store.put_pr(self.db, dict(pr("pass"), story_id=None))
+        with mock.patch("soirely_queue.github.live", return_value=self.live()), \
+                mock.patch("soirely_queue.github.merge") as merge:
+            with self.assertRaisesRegex(actions.Refused, "names no story.*\\[ops\\]"):
+                actions.merge(self.as_("dev2"), args(pr=9, text=None))
+            merge.assert_not_called()
+
     def test_merging_a_merged_pr_whose_story_moved_on_is_refused(self):
         self.fake.add(1, "Ready For QA", ["dev2"])
         store.put_pr(self.db, {**pr("pass"), "state": "merged", "merge_sha": "m" * 40})
@@ -1270,3 +1311,31 @@ class PermissionAsks(Base):
             actions.merge(self.as_("ops"), args(pr=9, text=None))
         merged.assert_not_called()
 
+
+
+class FinishedStories(Base):
+    def test_a_comment_on_a_done_story_says_who_it_wakes(self):
+        self.fake.add(1, "Done", ["dev3"])
+        said = actions.comment(self.as_("l10n"), args(story="sc-1", to="dev", untagged=False,
+                                                     reply_to=None, text="Fix the test."))
+        self.assertIn("which is Done: it wakes dev3", said)
+        self.assertIn("new one", said)
+
+    def test_a_tagged_comment_on_an_archived_story_is_refused(self):
+        self.fake.add(1, "Done", ["dev3"])
+        self.fake.raw[1]["archived"] = True
+        with self.assertRaisesRegex(actions.Refused, "archived, so a comment there wakes nobody"):
+            actions.comment(self.as_("l10n"), args(story="sc-1", to="dev3", untagged=False,
+                                                  reply_to=None, text="Still there?"))
+        actions.comment(self.as_("ops"), args(story="sc-1", to=None, untagged=True,
+                                             reply_to=None, text="Closed PR #498."))
+        self.assertEqual(len(self.fake.comments), 1)
+
+    def test_a_pr_on_an_archived_story_is_its_builders_to_close(self):
+        self.fake.add(1, "Done", ["dev2"])
+        self.fake.raw[1]["archived"] = True
+        store.put_pr(self.db, pr())
+        with mock.patch("soirely_queue.github.close") as close, \
+                mock.patch("soirely_queue.sync.sync_github"):
+            actions.pr_close(self.as_("dev2"), args(pr=9, text="sc-1 is archived"))
+        close.assert_called_once_with(9, "sc-1 is archived (from dev2)")
