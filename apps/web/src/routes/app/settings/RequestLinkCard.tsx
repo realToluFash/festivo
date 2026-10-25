@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { offButton } from '../../../offButton.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 
 type Flash = 'on' | 'off' | 'replaced' | 'copied' | null;
 
@@ -13,10 +14,12 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
   const [link, setLink] = useState<RequestLink | null>(null);
   const [unreadable, setUnreadable] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<'replacing' | 'other' | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [flash, setFlash] = useState<Flash>(null);
   const confirmHeading = useRef<HTMLHeadingElement>(null);
+  const [replaceButton, arriveAtReplace] = useStepFocus<HTMLButtonElement>();
+  const [answer, arriveAtAnswer] = useStepFocus<HTMLDivElement>();
 
   useEffect(() => {
     let current = true;
@@ -45,18 +48,20 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
   }
 
   async function change(next: () => Promise<RequestLink>, done: Flash): Promise<void> {
+    const replacing = done === 'replaced';
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
     setFlash(null);
 
     try {
       setLink(await next());
       setFlash(done);
     } catch {
-      setFailed(true);
+      setFailed(replacing ? 'replacing' : 'other');
     } finally {
       setConfirming(false);
       setBusy(false);
+      if (replacing) arriveAtAnswer();
     }
   }
 
@@ -65,7 +70,7 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
       await navigator.clipboard.writeText(url);
       setFlash('copied');
     } catch {
-      setFailed(true);
+      setFailed('other');
     }
   }
 
@@ -95,7 +100,12 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
       <p className="muted">{t('requestLink.intro', { organisation: organisation.name })}</p>
 
       {flash != null && (
-        <div className="notice notice-done" role="status">
+        <div
+          className="notice notice-done"
+          role={flash === 'replaced' ? undefined : 'status'}
+          ref={flash === 'replaced' ? answer : undefined}
+          tabIndex={flash === 'replaced' ? -1 : undefined}
+        >
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -103,8 +113,13 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
         </div>
       )}
 
-      {failed && (
-        <div className="notice notice-broken" role="alert">
+      {failed != null && (
+        <div
+          className="notice notice-broken"
+          role={failed === 'replacing' ? undefined : 'alert'}
+          ref={failed === 'replacing' ? answer : undefined}
+          tabIndex={failed === 'replacing' ? -1 : undefined}
+        >
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -159,7 +174,10 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
                   className="button"
                   type="button"
                   disabled={busy}
-                  onClick={() => setConfirming(false)}
+                  onClick={() => {
+                    setConfirming(false);
+                    arriveAtReplace();
+                  }}
                 >
                   {t('requestLink.keep')}
                 </button>
@@ -168,6 +186,7 @@ export function RequestLinkCard({ organisation }: { organisation: Membership }) 
           ) : (
             <div>
               <button
+                ref={replaceButton}
                 className="button"
                 type="button"
                 disabled={busy}

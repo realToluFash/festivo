@@ -155,6 +155,107 @@ describe('Settings > General, ownership and leaving', () => {
     });
   });
 
+  it('takes focus to the line that says who is now the owner (sc-11369)', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () => json({ proof: 'p_1', expiresAt: '2026-10-17T13:25:00+00:00' }),
+      'POST /api/orgs/org_1/ownership': () => new Response(null, { status: 204 }),
+      'GET /api/auth/me': () => json(ME),
+      'GET /api/orgs': () =>
+        json({ organisations: [{ ...IRE, role: ADMINISTRATOR, permissions: [] }] }),
+      'GET /api/invitations/mine': () => json({ invitations: [] }),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Transfer ownership' }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Bisi Adeyemi/ }));
+    fireEvent.change(screen.getByLabelText('Your password'), { target: { value: 'a passphrase' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Make Bisi Adeyemi the owner' }));
+
+    const notice = (
+      await screen.findByText(
+        'Bisi Adeyemi is now the owner of Ìrè Events. You are an Administrator. You both have an email saying so.',
+      )
+    ).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
+  });
+
+  it.each([
+    ['Transfer ownership', 'Keep ownership'],
+    ['Leave Ìrè Events', 'Stay'],
+    ['Delete organisation', 'Keep Ìrè Events'],
+  ])('puts focus back on %s after %s (sc-11369)', async (opener, closer) => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: opener }));
+    fireEvent.click(await screen.findByRole('button', { name: closer }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: opener }));
+  });
+
+  it('puts focus on Leave after Keep ownership on a transfer opened under "You are the only owner" (sc-11369)', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    await screen.findByText('You are the only owner');
+    fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep ownership' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+  });
+
+  it('puts focus back on Leave after Stay under "You are the only owner" (sc-11369)', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/members': () => json(MEMBERS) });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    await screen.findByText('You are the only owner');
+    fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+  });
+
+  it('takes focus to "You are the only owner" when leaving is refused for it (sc-11369)', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/members': () =>
+        json({
+          ...MEMBERS,
+          members: [...MEMBERS.members, member('m_tope', 'Tope Bello', OWNER)],
+        }),
+      'POST /api/orgs/org_1/leave': () =>
+        json(
+          {
+            type: 'https://soirely.com/errors/last_owner',
+            title: 'You are the only owner.',
+            status: 409,
+          },
+          409,
+        ),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave Ìrè Events' }));
+    expect(screen.queryByText('You are the only owner')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Ìrè Events' }));
+
+    const title = await screen.findByText('You are the only owner');
+    const body = title.closest('.notice-body');
+    await waitFor(() => expect(document.activeElement).toBe(body));
+    expect(body?.textContent).toContain('Make somebody else an owner, then you can leave.');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(body?.closest('.settings-form')?.querySelector('.actions button')?.textContent).toBe(
+      'Transfer ownership',
+    );
+  });
+
   it('says a wrong password changed nothing', async () => {
     signedIn();
     answering({

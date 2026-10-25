@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -154,9 +154,13 @@ describe('Settings > General', () => {
     fireEvent.change(languageField(), { target: { value: 'pt' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'Nothing was saved. Your role does not include the permission this needs.',
-    );
+    const refused = (
+      await screen.findByText(
+        'Nothing was saved. Your role does not include the permission this needs.',
+      )
+    ).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(refused));
+    expect(refused?.getAttribute('role')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
     expect(readOnlyLanguage().textContent).toBe('English');
     await waitFor(() =>
@@ -382,6 +386,28 @@ describe('Settings > General, a request to get back in', () => {
       body: null,
     });
     expect(screen.queryByText('Proved with a code to their email (no verified phone)')).toBeNull();
+  });
+
+  it.each([
+    ['Approve', 'Cancel'],
+    ['Turn down', 'Keep the request'],
+  ])('puts focus back on %s for that request after %s (sc-11369)', async (opener, closer) => {
+    answering(
+      () =>
+        new Response(
+          JSON.stringify({
+            requests: [{ ...REQUEST, id: 'rq_0', name: 'Ada Obi' }, REQUEST],
+          }),
+          { status: 200 },
+        ),
+    );
+    settings();
+
+    const request = (await screen.findByText('Tope Bello')).closest('article')!;
+    fireEvent.click(within(request).getByRole('button', { name: opener }));
+    fireEvent.click(within(request).getByRole('button', { name: closer }));
+
+    expect(document.activeElement).toBe(within(request).getByRole('button', { name: opener }));
   });
 
   it('never offers an answer to your own request', async () => {

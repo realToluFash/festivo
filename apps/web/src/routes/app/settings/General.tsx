@@ -23,6 +23,7 @@ import { RequestLinkCard } from './RequestLinkCard.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 
 type Field = OrganisationField;
@@ -39,6 +40,7 @@ export function General() {
   const session = useSession();
   const organisation = session.organisation;
   const [refusedIn, setRefusedIn] = useState<string | null>(null);
+  const [refusal, arriveAtRefusal] = useStepFocus<HTMLDivElement>();
 
   if (organisation == null) return null;
 
@@ -55,7 +57,7 @@ export function General() {
       <RecoveryRequestsCard />
 
       {refused && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken" ref={refusal} tabIndex={-1}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -69,7 +71,10 @@ export function General() {
           <Editable
             key={organisation.id}
             organisation={organisation}
-            onRefused={() => setRefusedIn(organisation.id)}
+            onRefused={() => {
+              setRefusedIn(organisation.id);
+              arriveAtRefusal();
+            }}
           />
         ) : (
           <ReadOnly organisation={organisation} />
