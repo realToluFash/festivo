@@ -158,6 +158,11 @@ export function slotParity(surface: Surface, reference = 'en'): SlotMismatch[] {
   return mismatches;
 }
 
+const PAIRED_FORM = new Map([
+  ['one', 'other'],
+  ['other', 'one'],
+]);
+
 export interface IncompletePlural {
   locale: string;
   present: string;
@@ -178,16 +183,15 @@ export function pluralFamilies(surface: Surface): IncompletePlural[] {
     const keys = keysOf(load(surface, locale));
 
     for (const key of keys) {
-      for (const [suffix, counterpart] of [
-        ['_one', '_other'],
-        ['_other', '_one'],
-      ] as const) {
-        if (!key.endsWith(suffix)) continue;
+      const form = pluralForm(key);
+      if (form == null) continue;
 
-        const expected = key.slice(0, -suffix.length) + counterpart;
-        if (!keys.includes(expected)) {
-          incomplete.push({ locale, present: key, missing: expected });
-        }
+      const counterpart = PAIRED_FORM.get(form.category);
+      if (counterpart == null) continue;
+
+      const expected = `${form.base}_${counterpart}`;
+      if (!keys.includes(expected)) {
+        incomplete.push({ locale, present: key, missing: expected });
       }
     }
   }
