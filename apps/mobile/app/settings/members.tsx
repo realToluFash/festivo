@@ -195,7 +195,6 @@ export default function MembersScreen() {
   const page =
     organisation != null && load.kind === 'loaded' && member != null ? (
       <MemberPage
-        key={member.id}
         kind={kind}
         organisation={organisation}
         member={member}
