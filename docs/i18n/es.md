@@ -58,9 +58,10 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`, the
   lock-outs' «Inténtelo de nuevo a las {time}»), the refusal says it too.
 - **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
-  sc-10675). «En {{zone}}, la hora {{time}} no existe el {{day}}: esa noche se adelantan los
-  relojes. Se guardará como {{savedAs}}.»; the next-day line ends «como {{savedAs}} del
-  {{savedDay}}». «La hora {{time}}», never «las {{time}}», which would need «la» at 01:30. «Se
+  sc-10675, reworded in sc-11163). «En {{zone}}, la hora {{time}} del {{day}} no existe: esa noche
+  se adelantan los relojes. Se guardará como {{savedAs}}.»; the next-day line ends «Se guardará
+  el {{savedDay}}, como {{savedAs}}.». The short date («sáb, 27 mar») sits inside the clause,
+  never before the colon or at the full stop, where it read heavily (qa3, at 320 px). «La hora {{time}}», never «las {{time}}», which would need «la» at 01:30. «Se
   adelantan los relojes» says what the reader sees happen, half-hour gap included; rejected
   «cambio al horario de verano», which names the rule rather than the missing hour.
 - **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** «Editar detalles» opens
