@@ -480,6 +480,16 @@ function Editable({
               <p>{t('signInRules.everyoneRequiredFrom', { deadline })}</p>
             )}
             {rules.everyoneNeedsTwoFactor &&
+              page.everyoneNeedsTwoFactor &&
+              withoutTwoFactor.length > 0 && (
+                <p className="muted">
+                  {t('signInRules.everyoneStillWithout', {
+                    count: withoutTwoFactor.length,
+                    organisation: name,
+                  })}
+                </p>
+              )}
+            {rules.everyoneNeedsTwoFactor &&
               !page.everyoneNeedsTwoFactor &&
               withoutTwoFactor.length > 0 && (
                 <div className="notice notice-attention">
@@ -510,12 +520,16 @@ function Editable({
                   </div>
                 </div>
               )}
-            <p className="muted">
-              {t(
-                rules.everyoneNeedsTwoFactor ? 'signInRules.everyoneOn' : 'signInRules.everyoneOff',
-                { organisation: name },
-              )}
-            </p>
+            {!(rules.everyoneNeedsTwoFactor && page.everyoneNeedsTwoFactor) && (
+              <p className="muted">
+                {t(
+                  rules.everyoneNeedsTwoFactor
+                    ? 'signInRules.everyoneOn'
+                    : 'signInRules.everyoneOff',
+                  { organisation: name },
+                )}
+              </p>
+            )}
           </section>
         </div>
 
