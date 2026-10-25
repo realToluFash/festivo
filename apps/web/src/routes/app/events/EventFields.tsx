@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { offField } from '../../../offField.ts';
 import { describedBy } from './eventFieldOrder.ts';
 
 export function Moment({
@@ -44,7 +45,7 @@ export function Moment({
             className={className}
             type="date"
             value={date}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={error != null}
             aria-describedby={described}
             onChange={(event) => onDate(event.target.value)}
@@ -57,7 +58,7 @@ export function Moment({
             className={className}
             type="time"
             value={time}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={error != null}
             aria-describedby={described}
             onChange={(event) => onTime(event.target.value)}

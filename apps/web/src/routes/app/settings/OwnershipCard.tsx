@@ -6,6 +6,7 @@ import {
 } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
 import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
@@ -14,6 +15,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount } from '../../../session.ts';
 import { focusStep } from '../../../stepFocus.ts';
 
@@ -196,6 +198,7 @@ function Transfer({
 
     setBusy(true);
     setRefused(null);
+    const land = focusWhereSent();
 
     try {
       const first = pending != null ? { pendingProof: pending } : { password };
@@ -214,12 +217,15 @@ function Transfer({
       setPending(error.problem.pendingProof ?? pending);
 
       if (error.is('two_factor_required')) {
-        setCodeAsked(true);
+        // The field the answer asks for, once it is there to take focus.
+        flushSync(() => setCodeAsked(true));
+        land('transfer-code');
       } else if (error.is('invalid_credentials')) {
         setRefused({ field: 'password', message: t('ownership.passwordWrong') });
-        passwordInput.current?.focus();
+        land('transfer-password');
       } else if (error.is('two_factor_code_invalid') || error.is('recovery_code_used')) {
         setRefused({ field: 'code', message: error.problem.title });
+        land('transfer-code');
       } else {
         setRefused({ field: null, message: error.problem.title });
       }
@@ -317,7 +323,7 @@ function Transfer({
             inputMode="numeric"
             autoComplete="one-time-code"
             value={code}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={codeError != null}
             aria-describedby={codeError != null ? 'transfer-code-error' : undefined}
             onChange={(event) => {
@@ -479,6 +485,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
 
     setBusy(true);
     setFailed(null);
+    const land = focusWhereSent();
 
     try {
       await api.deleteOrganisation(organisation.id, typed);
@@ -491,11 +498,14 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
           ? error.problem.violations?.find((one) => one.propertyPath === 'name')
           : undefined;
 
-      if (violation != null) setMismatch(violation.message);
-      else
+      if (violation != null) {
+        setMismatch(violation.message);
+        land('delete-confirm');
+      } else {
         setFailed(
           error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
         );
+      }
     }
   }
 
@@ -550,7 +560,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
           autoCapitalize="none"
           spellCheck={false}
           value={typed}
-          disabled={busy}
+          {...offField(busy)}
           aria-invalid={mismatch != null}
           aria-describedby={mismatch != null ? 'delete-confirm-error' : 'delete-confirm-note'}
           onChange={(event) => {

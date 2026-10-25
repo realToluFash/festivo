@@ -29,6 +29,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../../formChecks.ts';
 import { PhoneEntry } from '../../../components/PhoneEntry.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
 
@@ -471,6 +472,7 @@ function AddEmail({
     if (sending || !checks.passes({ address })) return;
 
     setSending(true);
+    const land = focusWhereSent();
 
     try {
       await api.addEmailAddress(address.trim());
@@ -479,7 +481,7 @@ function AddEmail({
       await onRefused(refusal);
       setSending(false);
       setRefused(addRefusal(refusal, 'email', t));
-      field.current?.focus();
+      land('contacts-email');
     }
   }
 
@@ -496,7 +498,7 @@ function AddEmail({
           autoCorrect="off"
           spellCheck={false}
           value={address}
-          disabled={sending}
+          {...offField(sending)}
           aria-invalid={error != null}
           aria-describedby={
             error == null ? 'contacts-email-help' : 'contacts-email-error contacts-email-help'
@@ -544,6 +546,8 @@ function AddPhone({
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (sending) return;
+
     const found = phoneLengthProblem(number, country);
     const problem = phoneProblemMessage(found, country, t);
 
@@ -556,6 +560,7 @@ function AddPhone({
     }
 
     setSending(true);
+    const land = focusWhereSent();
 
     try {
       await api.addPhoneNumber(country, number);
@@ -564,6 +569,7 @@ function AddPhone({
       await onRefused(refusal);
       setSending(false);
       setError(addRefusal(refusal, 'phone', t));
+      land('phone-number');
     }
   }
 

@@ -428,3 +428,85 @@ describe('Settings > General, ownership and leaving', () => {
     );
   });
 });
+
+describe('Transfer ownership keeps focus where the answer puts it (sc-11588)', () => {
+  function proofAnswers(): (response: Response) => void {
+    const waiting: ((response: Response) => void)[] = [];
+    const held: Response[] = [];
+    answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'POST /api/auth/proof': () =>
+        new Promise<Response>((resolve) => {
+          const ready = held.shift();
+          if (ready != null) resolve(ready);
+          else waiting.push(resolve);
+        }),
+    });
+
+    return (response) => {
+      const next = waiting.shift();
+      if (next != null) next(response);
+      else held.push(response);
+    };
+  }
+
+  function refusal(code: string, status: number, extra: object = {}): Response {
+    return json(
+      {
+        type: `https://soirely.com/errors/${code}`,
+        title: 'That code did not work.',
+        status,
+        ...extra,
+      },
+      status,
+    );
+  }
+
+  async function passwordTyped(): Promise<HTMLInputElement> {
+    signedIn();
+    settings();
+    fireEvent.click(await screen.findByRole('button', { name: 'Transfer ownership' }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Bisi Adeyemi/ }));
+    const password = screen.getByLabelText<HTMLInputElement>('Your password');
+    fireEvent.change(password, { target: { value: 'a passphrase' } });
+
+    return password;
+  }
+
+  const CODE = 'Code from your authenticator app, or a recovery code';
+
+  it('keeps focus in Your password while it sends after Enter, then moves it to the code field asked for', async () => {
+    const answer = proofAnswers();
+    const password = await passwordTyped();
+    password.focus();
+
+    fireEvent.submit(password);
+    await waitFor(() => expect(password.readOnly).toBe(true));
+    expect(document.activeElement).toBe(password);
+
+    act(() => answer(refusal('two_factor_required', 403, { pendingProof: 'pending_1' })));
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(CODE)));
+  });
+
+  it('moves focus from Make ‹name› the owner to the code field asked for, then to it again once a code is refused', async () => {
+    const answer = proofAnswers();
+    await passwordTyped();
+    const make = screen.getByRole('button', { name: 'Make Bisi Adeyemi the owner' });
+    make.focus();
+
+    fireEvent.click(make);
+    act(() => answer(refusal('two_factor_required', 403, { pendingProof: 'pending_1' })));
+    const code = await screen.findByLabelText<HTMLInputElement>(CODE);
+    await waitFor(() => expect(document.activeElement).toBe(code));
+
+    fireEvent.change(code, { target: { value: '000000' } });
+    make.focus();
+    fireEvent.click(make);
+    await waitFor(() => expect(code.readOnly).toBe(true));
+    act(() => answer(refusal('two_factor_code_invalid', 422)));
+
+    expect(await screen.findByText('That code did not work.')).toBeDefined();
+    expect(document.activeElement).toBe(code);
+  });
+});

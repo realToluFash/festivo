@@ -12,6 +12,7 @@ import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { SecondFactorStep } from '../../components/SecondFactorStep.tsx';
 import { useFormChecks } from '../../formChecks.ts';
+import { focusWhereSent } from '../../offField.ts';
 import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
 import { useStepFocus } from '../../stepFocus.ts';
 
@@ -77,6 +78,7 @@ export function ResetPassword() {
 
     const email = status.email;
     setStatus({ kind: 'saving', email });
+    const land = focusWhereSent();
 
     try {
       const { account } = await api.resetPassword(token, password);
@@ -95,12 +97,13 @@ export function ResetPassword() {
         arriveAtStep();
       } else if (error instanceof ApiError && error.is('validation_failed')) {
         const violation = error.problem.violations?.find((v) => v.propertyPath === 'password');
-        setRefusal(
+        const refusal =
           violation?.code === 'password_breached'
             ? t('register.breached')
-            : (violation?.message ?? null),
-        );
+            : (violation?.message ?? null);
+        setRefusal(refusal);
         setStatus({ kind: 'ready', email });
+        if (refusal != null) land('password');
       } else {
         setStatus({ kind: 'failed', email });
       }

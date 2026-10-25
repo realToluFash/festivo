@@ -125,6 +125,45 @@ describe('a few details', () => {
     expect(screen.queryByText('Choose a country.')).toBeNull();
   });
 
+  it('puts focus in the first field a refusal names, in the form, after Enter in another (sc-11588)', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'PATCH /api/auth/complete-profile': () =>
+        new Promise<Response>((resolve) => (answer = resolve)),
+    });
+    at('/complete-profile');
+
+    fireEvent.change(screen.getByLabelText('Organisation name'), {
+      target: { value: 'Ìrè Events' },
+    });
+    fireEvent.change(screen.getByLabelText(/Mobile number/), { target: { value: '803 555 0142' } });
+    const name = screen.getByLabelText<HTMLInputElement>('Full name');
+    name.focus();
+    fireEvent.submit(name);
+
+    await waitFor(() => expect(name.readOnly).toBe(true));
+    expect(document.activeElement).toBe(name);
+
+    answer(
+      json(
+        {
+          type: 'https://soirely.com/errors/validation_failed',
+          title: 'No.',
+          status: 422,
+          violations: [
+            { propertyPath: 'phoneNumber', message: 'Not a number.', code: 'x' },
+            { propertyPath: 'countryCode', message: 'Not a country.', code: 'x' },
+          ],
+        },
+        422,
+      ),
+    );
+
+    expect(await screen.findByText('Not a country.')).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Country'));
+  });
+
   it('does not ask an invited account for an organisation', () => {
     at('/complete-profile', { ...FOLAKE, needsOrganisation: false });
 

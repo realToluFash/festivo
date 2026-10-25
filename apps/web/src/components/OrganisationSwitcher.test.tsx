@@ -472,7 +472,7 @@ describe('creating an organisation', () => {
 
     fireEvent.change(screen.getByLabelText('Organisation name'), { target: { value: 'Supper' } });
     pressCreate();
-    expect(screen.getByLabelText('Organisation name').matches(':disabled')).toBe(true);
+    expect(screen.getByLabelText<HTMLInputElement>('Organisation name').readOnly).toBe(true);
     expect(screen.getByLabelText('Country').matches(':disabled')).toBe(true);
 
     expect(
@@ -483,6 +483,35 @@ describe('creating an organisation', () => {
     const name = screen.getByLabelText('Organisation name') as HTMLInputElement;
     expect(name.value).toBe('Supper');
     await waitFor(() => expect(document.activeElement).toBe(name));
+  });
+
+  it('keeps focus in Organisation name while it creates after Enter, and there once refused (sc-11588)', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-NG']);
+    let answer: (response: Response) => void = () => {};
+    creating(() => new Promise<Response>((resolve) => (answer = resolve)));
+    inOne();
+    openCreate();
+
+    const name = screen.getByLabelText<HTMLInputElement>('Organisation name');
+    fireEvent.change(name, { target: { value: 'Supper' } });
+    name.focus();
+    fireEvent.submit(name);
+
+    await screen.findByRole('button', { name: 'Creating…' });
+    expect(document.activeElement).toBe(name);
+    expect(name.readOnly).toBe(true);
+    expect(name.getAttribute('aria-disabled')).toBe('true');
+    fireEvent.keyDown(name, { key: 'Tab' });
+    expect(document.activeElement).toBe(name);
+
+    answer(problem('internal_error', 500));
+    expect(
+      await screen.findByText(
+        'Creating the organisation did not work. Nothing was created. Try again in a moment.',
+      ),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(name);
+    expect(name.readOnly).toBe(false);
   });
 
   it('sends one request for a double press, then one more after a failure (sc-7497)', async () => {

@@ -33,6 +33,7 @@ import {
 import { useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { offButton } from '../../offButton.ts';
+import { focusWhereSent } from '../../offField.ts';
 import { useResendCountdown } from '../../resendCountdown.ts';
 import { useFormChecks } from '../../formChecks.ts';
 import { useSignOut } from '../../signOut.ts';
@@ -250,6 +251,7 @@ function CodeScreen({
     const code = cleanCode(typed);
 
     setStatus({ kind: 'verifying' });
+    const land = focusWhereSent();
 
     try {
       await verify(code);
@@ -261,7 +263,9 @@ function CodeScreen({
         return;
       }
 
-      setStatus(codeRefusal(error));
+      const refused = codeRefusal(error);
+      setStatus(refused);
+      if (refused.kind === 'wrong') land('code');
     }
   }
 
