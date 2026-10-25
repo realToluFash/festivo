@@ -112,6 +112,30 @@ describe('a screen reader skips the initials beside a name', () => {
   });
 });
 
+describe('a screen reader reaches what is inside a button', () => {
+  // iOS reads a Pressable as one item, so a button inside another is out of VoiceOver's reach (sc-10712).
+  it('in every Pressable in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      nestedPressables(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Make the outer press a sibling, not a parent.').toEqual([]);
+  });
+
+  it('notices a Pressable inside another', () => {
+    expect(
+      nestedPressables(
+        '<Pressable onPress={() => close()}>\n  <Pressable onPress={x} />\n</Pressable>',
+      ),
+    ).toEqual([2]);
+    expect(
+      nestedPressables(
+        '<Pressable onPress={x} />\n<Pressable style={a > b ? s : t}>\n</Pressable>',
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -273,4 +297,36 @@ function hiddenTile(markup: string): boolean {
     /\baccessibilityElementsHidden\b/u.test(markup) &&
     /\bimportantForAccessibility="no-hide-descendants"/u.test(markup)
   );
+}
+
+/** The line of every Pressable that opens inside another one, read tag by tag. */
+function nestedPressables(text: string): number[] {
+  const nested: number[] = [];
+  let depth = 0;
+
+  for (const match of text.matchAll(/(?<![\w.])<(\/?)Pressable\b/gu)) {
+    if (match[1] === '/') {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (depth > 0) nested.push(text.slice(0, match.index).split('\n').length);
+    if (!selfCloses(text, match.index)) depth += 1;
+  }
+
+  return nested;
+}
+
+/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
+function selfCloses(text: string, start: number): boolean {
+  let braces = 0;
+
+  for (let at = start + 1; at < text.length; at += 1) {
+    const char = text[at];
+
+    if (char === '{') braces += 1;
+    else if (char === '}') braces -= 1;
+    else if (char === '>' && braces === 0) return text[at - 1] === '/';
+  }
+
+  return false;
 }
