@@ -153,11 +153,12 @@ def held_epic(story, epics):
     return epic
 
 
-def queued(role, stories, epics=None):
+def queued(role, stories, epics=None, ios=None):
     config = R.ROLES[role]
     return [story for story in stories
             if not story["done"] and story["state"] in config["queue"]
             and config["filter"](set(story["labels"]), story["state"])
+            and R.can_test(role, story, ios)
             and not held_epic(story, epics)]
 
 
@@ -182,7 +183,7 @@ def epic_order(epics):
     return key
 
 
-def queue_items(stories, moves=None, now=None, epics=None):
+def queue_items(stories, moves=None, now=None, epics=None, ios=None):
     """A story entering a role's queue is work once, unless the role moved it there itself.
     One sitting there waits for a pick. A failed story back in Ready For QA is offered only
     to the tester who failed it, until its retest window closes."""
@@ -190,7 +191,7 @@ def queue_items(stories, moves=None, now=None, epics=None):
     merged = {}
     build_order = {s["id"]: i for i, s in enumerate(sorted(stories, key=epic_order(epics)))}
     for role, config in R.ROLES.items():
-        for story in queued(role, stories, epics):
+        for story in queued(role, stories, epics, ios):
             if moves.get((story["id"], story["state"], story["moved_at"])) == role:
                 continue
             pool = R.pool(role, story["state"], story["labels"])

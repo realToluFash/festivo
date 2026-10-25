@@ -168,6 +168,17 @@ class Writes(Base):
         self.assertEqual(self.fake.comments, [(1, "QA claim: qa2")])
         self.assertIn("qa2", self.labels(1))
 
+    def test_a_tester_without_xcode_never_claims_a_story_that_needs_ios(self):
+        self.fake.add(1, "Ready For QA", ["needs ios"])
+        with mock.patch("soirely_queue.roles.has_xcode", return_value=False), \
+                self.assertRaisesRegex(actions.Refused, "needs iOS"):
+            actions.claim(self.as_("qa2"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "Ready For QA")
+        self.assertEqual(self.fake.comments, [])
+        with mock.patch("soirely_queue.roles.has_xcode", return_value=True):
+            actions.claim(self.as_("qa"), args(story="sc-1"))
+        self.assertEqual(self.state(1), "In QA")
+
     def test_a_failed_story_back_for_qa_is_its_first_tester_s_to_retest(self):
         import datetime
         self.fake.add(1, "Ready For QA", ["qa failed"])
