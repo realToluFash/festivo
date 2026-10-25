@@ -37,7 +37,6 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { LEVEL_BORDER_ON, LEVEL_PADDING, roomBeside, stacksRows } from '../rowArrangement.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
-import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
@@ -688,6 +687,9 @@ export function RemoveRole({
   const firstChoice = useRef<View>(null);
   const [replacement, setReplacement] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
+  const [refused, setRefused] = useState<object>();
+  // TalkBack ignores the hover that moves its focus onto a role scrolled out of sight (sc-11563).
+  useFocusOnAnswer(refused, firstChoice);
   const [status, setStatus] = useState<'asking' | 'removing' | 'failed'>('asking');
   const held = organisation.permissions;
   const title = roleName(t, role);
@@ -697,7 +699,7 @@ export function RemoveRole({
   async function remove(): Promise<void> {
     if (role.holders > 0 && replacement == null) {
       setMissing(true);
-      focusPicker(firstChoice);
+      setRefused({});
       return;
     }
 
