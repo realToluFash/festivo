@@ -27,6 +27,7 @@ import { Unreachable } from '../../components/Unreachable.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
 import { offButton } from '../../offButton.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import {
   adoptAccount,
@@ -41,6 +42,15 @@ import { useSignOut } from '../../signOut.ts';
 type Field =
   'name' | 'organisationName' | 'countryCode' | 'timezone' | 'phoneCountryCode' | 'phoneNumber';
 type Errors = Partial<Record<Field, string>>;
+
+/** Each refusable field and the element its line sits under, in the form's order. */
+const FIELD_IDS: readonly (readonly [Field, string])[] = [
+  ['name', 'name'],
+  ['organisationName', 'organisation'],
+  ['countryCode', 'country'],
+  ['phoneCountryCode', 'phone-number'],
+  ['phoneNumber', 'phone-number'],
+];
 
 /** The second gate. Reached when the API says `profile_incomplete`, or straight after verifying. */
 export function CompleteProfile() {
@@ -328,7 +338,7 @@ function Details({
   async function save(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    if (answering || showOffers) return;
+    if (answering || showOffers || saving) return;
 
     await send(null);
   }
@@ -377,6 +387,7 @@ function Details({
     setAskingToJoin(askToJoin);
     setFailed(false);
     setUnavailable(false);
+    const land = focusWhereSent();
 
     try {
       const saved = await api.completeProfile({
@@ -409,12 +420,17 @@ function Details({
       }
 
       if (error instanceof ApiError && error.is('validation_failed')) {
-        setErrors(error.fieldErrors() as Errors);
+        const refused = error.fieldErrors() as Errors;
+        setErrors(refused);
+
+        const first = FIELD_IDS.find(([field]) => refused[field] != null);
+        if (first != null) land(first[1]);
         return;
       }
 
       if (error instanceof ApiError && error.is('phone_taken')) {
         setErrors({ phoneNumber: t('verifyPhone.taken') });
+        land('phone-number');
         return;
       }
 
@@ -447,7 +463,7 @@ function Details({
           autoCorrect="off"
           spellCheck={false}
           value={values.name}
-          disabled={saving}
+          {...offField(saving)}
           aria-invalid={errors.name != null}
           aria-describedby={errors.name == null ? undefined : 'name-error'}
           onChange={(event) => change('name', event.target.value)}
@@ -560,7 +576,7 @@ function Details({
               spellCheck={false}
               maxLength={100}
               value={values.organisationName}
-              disabled={saving}
+              {...offField(saving)}
               aria-invalid={errors.organisationName != null}
               aria-describedby={
                 errors.organisationName == null

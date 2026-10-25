@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 
 import { dateLocale } from '../i18n/index.ts';
 import { offButton } from '../offButton.ts';
+import { focusWhereSent, offField } from '../offField.ts';
 import { FieldError } from './FieldError.tsx';
 
 type Mode = 'app' | 'recovery';
@@ -92,6 +93,7 @@ export function SecondFactorStep({
     }
 
     setStatus({ kind: 'checking' });
+    const land = focusWhereSent();
 
     try {
       await onVerify(mode === 'app' ? { code: cleanCode(typed) } : { recoveryCode: typed.trim() });
@@ -102,7 +104,9 @@ export function SecondFactorStep({
         return;
       }
 
-      setStatus(statusFrom(refusal, mode, t));
+      const next = statusFrom(refusal, mode, t);
+      setStatus(next);
+      if (next.kind === 'wrong') land('code');
     }
   }
 
@@ -164,7 +168,7 @@ export function SecondFactorStep({
             autoCorrect="off"
             spellCheck={false}
             value={typed}
-            disabled={checking}
+            {...offField(checking)}
             aria-invalid={error != null}
             aria-describedby={error == null ? undefined : 'code-error'}
             onChange={(event) => {

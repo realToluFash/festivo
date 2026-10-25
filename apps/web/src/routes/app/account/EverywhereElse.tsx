@@ -7,6 +7,7 @@ import {
 import { formatTimeOfDay } from '@soirely/domain';
 import { type TFunction } from 'i18next';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -16,6 +17,7 @@ import { AppleMark, GoogleMark } from '../../../components/ProviderSignIn.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import {
   PROVIDER_NAMES,
   type ProviderReturn,
@@ -88,6 +90,7 @@ export function EverywhereElse({
 
   async function signOut(second: string | undefined): Promise<void> {
     setWorking(true);
+    const land = focusWhereSent();
 
     try {
       const { proof } = await api.prove(
@@ -100,12 +103,22 @@ export function EverywhereElse({
       setWorking(false);
 
       if (error instanceof ApiError && error.is('two_factor_required')) {
-        setCodeAsked(true);
+        if (signIn != null) {
+          setCodeAsked(true);
+
+          return;
+        }
+
+        // The field the answer asks for, once it is there to take focus.
+        flushSync(() => setCodeAsked(true));
+        land('everywhere-code');
 
         return;
       }
 
-      setRefusal(refusalFor(error, signIn != null, t));
+      const refused = refusalFor(error, signIn != null, t);
+      setRefusal(refused);
+      if (refused.kind === 'field') land(`everywhere-${refused.field}`);
     }
   }
 
@@ -243,7 +256,7 @@ export function EverywhereElse({
               autoCorrect="off"
               spellCheck={false}
               value={code}
-              disabled={working}
+              {...offField(working)}
               aria-invalid={codeError != null}
               aria-describedby={
                 codeError == null

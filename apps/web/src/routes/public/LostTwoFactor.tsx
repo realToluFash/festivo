@@ -20,6 +20,7 @@ import { api } from '../../api.ts';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { FieldError } from '../../components/FieldError.tsx';
 import { offButton } from '../../offButton.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
 import { useOneAtATime } from '../../oneAtATime.ts';
 import { useResendCountdown } from '../../resendCountdown.ts';
 import { Pending } from '../../components/Pending.tsx';
@@ -614,6 +615,7 @@ function Codes({
 
     setAsking(true);
     setFailed(false);
+    const land = focusWhereSent();
 
     try {
       onState(
@@ -647,7 +649,7 @@ function Codes({
 
         setErrors(marked);
         const wrongFirst = fields.find((field) => marked[field] != null);
-        if (wrongFirst != null) document.getElementById(wrongFirst)?.focus();
+        if (wrongFirst != null) land(wrongFirst);
         return;
       }
 
@@ -801,7 +803,7 @@ function Codes({
                 spellCheck={false}
                 maxLength={7}
                 value={typed[field]}
-                disabled={asking}
+                {...offField(asking)}
                 aria-invalid={errors[field] != null}
                 aria-describedby={errors[field] == null ? undefined : `${field}-error`}
                 onChange={(event) => {

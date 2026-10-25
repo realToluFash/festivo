@@ -10,6 +10,7 @@ import { FieldError } from '../../components/FieldError.tsx';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { useStepFocus } from '../../stepFocus.ts';
+import { offField } from '../../offField.ts';
 
 type Status =
   | { kind: 'asking' }
@@ -146,7 +147,7 @@ export function ForgotPassword() {
             autoCapitalize="none"
             spellCheck={false}
             value={typed}
-            disabled={status.kind === 'sending'}
+            {...offField(status.kind === 'sending')}
             aria-invalid={checks.errors.email != null}
             aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
             onBlur={(event) => checks.left('email', event.target.value)}

@@ -24,6 +24,7 @@ import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { offButton } from '../../offButton.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
 import {
   adoptAccount,
   landingFor,
@@ -292,6 +293,7 @@ function Register({
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (busy) return;
 
     const name = String(new FormData(event.currentTarget).get('name') ?? '');
 
@@ -299,6 +301,7 @@ function Register({
 
     setBusy(true);
     setFailed(false);
+    const land = focusWhereSent();
 
     try {
       const signedIn = await api.registerFromInvitation(
@@ -312,11 +315,11 @@ function Register({
       onChange({ kind: 'accepted', preview });
     } catch (error) {
       setBusy(false);
-      settle(error);
+      settle(error, land);
     }
   }
 
-  function settle(error: unknown): void {
+  function settle(error: unknown, land: (id: string) => void): void {
     if (!(error instanceof ApiError)) {
       setFailed(true);
       return;
@@ -345,6 +348,9 @@ function Register({
       }
 
       setRefused(found);
+
+      const first = (['name', 'password'] as const).find((field) => found[field] != null);
+      if (first != null) land(`join-${first}`);
       return;
     }
 
@@ -401,7 +407,7 @@ function Register({
             autoComplete="name"
             autoCorrect="off"
             spellCheck={false}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={errors.name != null}
             aria-describedby={errors.name ? 'join-name-error' : undefined}
             onBlur={(event) => checks.left('name', event.target.value)}
