@@ -30,6 +30,10 @@ describe('the key finder', () => {
     expect(scan("t('a.b'); i18n.t('c.d');")).toEqual(['a.b', 'c.d']);
   });
 
+  it('finds both keys a ternary picks between, nested ones too', () => {
+    expect(scan("t(failed ? 'a.b' : (retry ? 'c.d' : 'e.f'));")).toEqual(['a.b', 'c.d', 'e.f']);
+  });
+
   it('passes a key built at run time, which it cannot know', () => {
     expect(scan('t(`roles.${name}`); t(key);')).toEqual([]);
   });
@@ -38,11 +42,11 @@ describe('the key finder', () => {
 describe('a key resolves', () => {
   const catalogue = { error: { network: 'x' }, guests: { count_one: 'x', count_other: 'x' } };
 
-  it.each(['error.network', 'guests.count', 'error'])('%s', (key) => {
+  it.each(['error.network', 'guests.count'])('%s', (key) => {
     expect(resolves(catalogue, key)).toBe(true);
   });
 
-  it.each(['error.retry', 'guests.coun', 'guests.count_', 'err'])('not %s', (key) => {
+  it.each(['error', 'error.retry', 'guests.coun', 'guests.count_', 'err'])('not %s', (key) => {
     expect(resolves(catalogue, key)).toBe(false);
   });
 });

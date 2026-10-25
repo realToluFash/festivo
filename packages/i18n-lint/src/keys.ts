@@ -25,13 +25,10 @@ export function findKeys(fileName: string, source: string): KeyUse[] {
     if (ts.isCallExpression(node) && isTranslator(node.expression)) {
       const [first] = node.arguments;
 
-      if (
-        first != null &&
-        (ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first))
-      ) {
+      for (const literal of first == null ? [] : literalsOf(first)) {
         uses.push({
-          line: file.getLineAndCharacterOfPosition(first.getStart(file)).line + 1,
-          key: first.text,
+          line: file.getLineAndCharacterOfPosition(literal.getStart(file)).line + 1,
+          key: literal.text,
         });
       }
     }
@@ -44,20 +41,27 @@ export function findKeys(fileName: string, source: string): KeyUse[] {
   return uses;
 }
 
+function literalsOf(node: ts.Expression): ts.StringLiteralLike[] {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return [node];
+  if (ts.isParenthesizedExpression(node)) return literalsOf(node.expression);
+  if (ts.isConditionalExpression(node)) {
+    return [...literalsOf(node.whenTrue), ...literalsOf(node.whenFalse)];
+  }
+
+  return [];
+}
+
 function isTranslator(callee: ts.Expression): boolean {
   if (ts.isIdentifier(callee)) return callee.text === 't';
 
   return ts.isPropertyAccessExpression(callee) && callee.name.text === 't';
 }
 
-/** A message, the base of a plural family, or a branch read whole. */
+/** A message or the base of a plural family; a branch renders as an object, not a string. */
 export function resolves(catalogue: Catalogue | readonly string[], key: string): boolean {
   const keys = Array.isArray(catalogue) ? catalogue : keysOf(catalogue);
 
   return keys.some(
-    (each) =>
-      each === key ||
-      each.startsWith(`${key}.`) ||
-      PLURAL_SUFFIXES.some((suffix) => each === `${key}${suffix}`),
+    (each) => each === key || PLURAL_SUFFIXES.some((suffix) => each === `${key}${suffix}`),
   );
 }
