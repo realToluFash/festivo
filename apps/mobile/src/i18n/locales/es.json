@@ -1225,6 +1225,8 @@
     "onlyOwnerRestoreNeedsAddress": "El acceso se podrá restablecer cuando la dirección principal de esta persona vuelva a ser una dirección de {{domain}} verificada.",
     "restore": "Restablecer",
     "restored": "Se ha restablecido el acceso de {{name}} a {{organisation}}.",
+    "restoredNow": "{{name}} vuelve a tener acceso, con el rol {{role}}.",
+    "restoredNowNext": "Esta persona recupera el acceso a {{organisation}} en cuanto vuelva a usar Soirely y se le avisa por correo electrónico en su idioma.",
     "restoreNeedsAddress": "{{name}} necesita primero una dirección de {{domain}} verificada.",
     "noRoleYet": "Aún sin rol",
     "awaiting": {
