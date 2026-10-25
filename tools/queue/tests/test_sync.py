@@ -91,14 +91,14 @@ class PullRequestStories(unittest.TestCase):
         self.assertTrue(store.story(db, 11)["archived"])
         self.assertEqual(store.get_meta(db, "missing_stories"), [404])
 
-    def test_a_done_story_of_an_open_pr_is_fetched_again_to_see_it_archived(self):
+    def test_the_story_of_an_open_pr_is_fetched_again_to_see_it_archived(self):
         db, asked, archived = store.connect(":memory:"), [], []
 
         class Shortcut(FakeShortcut):
             def story(self, story_id):
                 asked.append(story_id)
                 return {"id": story_id, "name": "old", "workflow_state_id": 1,
-                        "completed": True, "archived": bool(archived)}
+                        "completed": False, "archived": bool(archived)}
 
         store.put_prs(db, [{"number": 1, "story_id": 10, "state": "open", "head_sha": "a"}])
         sync.pr_stories(db, Shortcut(), NOW)

@@ -81,7 +81,7 @@ def pr_stories(db, shortcut, now):
     """The story of every open pull request, however long ago it was last updated, so a
     pull request on an old Done or archived story is still seen. A story Shortcut does not
     have is remembered as missing and not asked for again. Search leaves archived stories
-    out, so a Done one is fetched again now and then to see it archived."""
+    out, so each is fetched again now and then to see it archived from Shortcut itself."""
     missing = set(store.get_meta(db, "missing_stories") or [])
     again = now - store.get_meta(db, "pr_stories_at", 0) >= FULL_EVERY_SECONDS
     wanted = set()
@@ -89,7 +89,7 @@ def pr_stories(db, shortcut, now):
         if pr["state"] != "open" or not pr["story_id"] or pr["story_id"] in missing:
             continue
         known = store.story(db, pr["story_id"])
-        if not known or again and work.finished(known):
+        if not known or again and not known.get("archived"):
             wanted.add(pr["story_id"])
     for story_id in sorted(wanted):
         try:

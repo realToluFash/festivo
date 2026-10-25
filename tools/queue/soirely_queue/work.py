@@ -332,7 +332,7 @@ def developer_items(stories, prs):
             continue
         side, follow = side_pr(story, pr), finished(story)
         own = linguists(story) and not side
-        role = "l10n" if own else R.builder_of(story["labels"])
+        role = builder(story, pr)
         sha = pr["head_sha"][:7]
         verdict = latest_verdict(pr)
         covered = covers(verdict, pr["head_sha"], pr.get("carried"))
@@ -508,8 +508,8 @@ def waits_on(story, pr):
         return None, f"a story ({named})"
     role = builder(story, pr)
     verdict = latest_verdict(pr)
-    passed = verdict and verdict["verdict"] == "pass" \
-        and covers(verdict, pr["head_sha"], pr.get("carried"))
+    covered = covers(verdict, pr["head_sha"], pr.get("carried"))
+    passed = covered and verdict["verdict"] == "pass"
     if story.get("archived"):
         return role, f"{role} to close it: sc-{story['id']} is archived"
     if pr["draft"]:
@@ -524,6 +524,8 @@ def waits_on(story, pr):
         if role != "l10n" and open_threads(pr):
             return role, f"{role} to answer its open threads, and lead to resolve them"
         return role, f"{role} to merge it"
+    if covered and verdict["verdict"] == "back":
+        return role, f"{role} to fix the findings and push"
     if story["state"] in ("In Progress", "Failed Code Review"):
         return role, f"{role} to move sc-{story['id']} to In Review"
     return "lead", "lead to review it"

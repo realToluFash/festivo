@@ -826,6 +826,15 @@ class Stranded(unittest.TestCase):
                          ("dev2", "dev2 to merge main in"))
         self.assertEqual(work.waits_on(done, dict(passed, checks="red"))[0], "dev2")
 
+    def test_a_pr_sent_back_at_its_head_waits_on_its_builder_whatever_the_story_state(self):
+        back = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z",
+                            lead=[verdict("back", HEAD[:7])])
+        done = dict(story(1, "Done", labels=["dev2"]), done=True)
+        self.assertEqual(work.waits_on(done, back),
+                         ("dev2", "dev2 to fix the findings and push"))
+        self.assertEqual(work.waits_on(done, dict(back, head_sha="f" * 40)),
+                         ("lead", "lead to review it"))
+
     def test_ops_gets_one_stranded_item_a_day_and_none_when_nothing_is(self):
         prs = [self.open_pr(355, None)]
         items = work.stranded_items([], prs, self.NOW)
