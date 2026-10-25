@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -253,6 +254,19 @@ describe('the image an emulator is made on', () => {
       join(elsewhere, 'system-images', 'android-37.0'),
       join(sdk, 'system-images', 'android-37.0'),
     );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('passes over a link whose image has gone, as on an unmounted disk', () => {
+    const elsewhere = sdkWith('android-36/google_apis_playstore/arm64-v8a');
+    const sdk = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    symlinkSync(
+      join(elsewhere, 'system-images', 'android-36'),
+      join(sdk, 'system-images', 'android-36'),
+    );
+    rmSync(elsewhere, { recursive: true });
     expect(playImage(sdk, 'arm64')).toBe(
       'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
     );

@@ -208,7 +208,9 @@ export function androidSdk(env = process.env, platform = process.platform, home 
 // statSync follows a symlinked image directory, which a Dirent would report as a file.
 const directoriesIn = (path) =>
   existsSync(path)
-    ? readdirSync(path).filter((name) => statSync(join(path, name)).isDirectory())
+    ? readdirSync(path).filter((name) =>
+        statSync(join(path, name), { throwIfNoEntry: false })?.isDirectory(),
+      )
     : [];
 
 // Only a Play image carries TalkBack, and a host may have any released version of one.
