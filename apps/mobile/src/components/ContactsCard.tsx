@@ -35,7 +35,7 @@ import {
   type StepClosed,
   stepClosed,
   useAboveKeyboard,
-  useFocusBack,
+  useFocusBackToOpener,
   useFocusOnAnswer,
 } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -138,7 +138,7 @@ function ContactsCard({
   } | null>(null);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
   const title = useRef<TextHandle>(null);
-  const opener = useFocusBack(closed, title);
+  const opener = useFocusBackToOpener(closed, title);
   const [adding, setAdding] = useState(false);
   const [sending, setSending] = useState(false);
   const [said, setSaid] = useState<{ line: string } | null>(null);

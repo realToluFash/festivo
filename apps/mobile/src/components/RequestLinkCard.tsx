@@ -12,7 +12,7 @@ import { cardFrame } from './cardFrame.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
-import { type StepClosed, stepClosed, useFocusBack } from './Screen.tsx';
+import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Flash = 'on' | 'off' | 'replaced' | 'copied' | null;
@@ -34,7 +34,7 @@ export function RequestLinkCard({
   // Replace link's answer, where its step closed: it takes focus in place of being read out (sc-11173).
   const [replaced, setReplaced] = useState<object | null>(null);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
-  const opener = useFocusBack(closed);
+  const opener = useFocusBackToOpener(closed);
 
   useEffect(() => {
     let current = true;

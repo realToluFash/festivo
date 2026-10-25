@@ -14,7 +14,7 @@ import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { ReadOut } from './ReadOut.tsx';
-import { type StepClosed, stepClosed, useFocusBack } from './Screen.tsx';
+import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 
 /** `takesFocus` where the tap's button went with it: a removal, or the domain that fills the list (sc-11173). */
 type Flash = { kind: 'added' | 'removed'; domain: string; takesFocus: boolean } | null;
@@ -38,7 +38,7 @@ export function CompanyDomainsCard({
   const [flash, setFlash] = useState<Flash>(null);
   const [notRemoved, setNotRemoved] = useState<object | null>(null);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
-  const opener = useFocusBack(closed);
+  const opener = useFocusBackToOpener(closed);
   const input = useRef<TextInput>(null);
 
   useEffect(() => {

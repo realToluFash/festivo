@@ -24,7 +24,7 @@ import { CodeField, Field, focusChecked } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
-import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBack } from './Screen.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 const PROVIDER_NAMES: Record<string, string> = { google: 'Google', apple: 'Apple' };
@@ -65,7 +65,7 @@ export function PasswordCard({
     setStage(next);
     onSetting?.(next.kind === 'setting');
   };
-  const opener = useFocusBack(stage.kind === 'atRest' ? stage.closed : undefined);
+  const opener = useFocusBackToOpener(stage.kind === 'atRest' ? stage.closed : undefined);
   const frame = cardFrame(kind);
   const first = providers[0]?.provider;
   const provider = first == null ? '' : (PROVIDER_NAMES[first] ?? first);

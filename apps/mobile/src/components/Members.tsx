@@ -47,7 +47,7 @@ import {
   type StepClosed,
   stepClosed,
   useBroughtIntoView,
-  useFocusBack,
+  useFocusBackToOpener,
   useScrolledToTop,
 } from './Screen.tsx';
 import { type TextHandle, Text } from './Text.tsx';
@@ -207,7 +207,7 @@ export function MemberList({
   const [filter, setFilter] = useState<MemberFilter>('all');
   const [closedFor, setClosedFor] = useState(closed);
   const [back, setBack] = useState(closed);
-  const opener = useFocusBack(back, title);
+  const opener = useFocusBackToOpener(back, title);
   if (closedFor !== closed) {
     setClosedFor(closed);
     setBack(closed);
@@ -680,7 +680,7 @@ function JoinRequestAnswer({
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
-  const opener = useFocusBack(answering === 'resting' ? closed : undefined);
+  const opener = useFocusBackToOpener(answering === 'resting' ? closed : undefined);
   const comeForward = useComeForward();
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
@@ -1131,7 +1131,7 @@ function Remove({
   const [removal, setRemoval] = useState<Removal>('resting');
   const [failed, setFailed] = useState<string | null>(null);
   const [kept, setKept] = useState<StepClosed | undefined>(undefined);
-  const opener = useFocusBack(removal === 'resting' ? kept : undefined);
+  const opener = useFocusBackToOpener(removal === 'resting' ? kept : undefined);
   const name = member.user.name;
   const organisationName = organisation.name;
 

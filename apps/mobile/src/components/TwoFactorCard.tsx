@@ -22,7 +22,7 @@ import {
   type StepClosed,
   stepClosed,
   useAboveKeyboard,
-  useFocusBack,
+  useFocusBackToOpener,
   useScrolledToTop,
 } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
@@ -69,7 +69,7 @@ export function TwoFactorCard({
   const [refusedBy, setRefusedBy] = useState<Refusal | null>(null);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
   const title = useRef<TextHandle>(null);
-  const opener = useFocusBack(stage.kind === 'atRest' ? closed : undefined, title);
+  const opener = useFocusBackToOpener(stage.kind === 'atRest' ? closed : undefined, title);
 
   useEffect(() => {
     let live = true;

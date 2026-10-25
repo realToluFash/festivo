@@ -32,7 +32,7 @@ import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
-import { type StepClosed, stepClosed, useFocusBack, useFocusOnAnswer } from './Screen.tsx';
+import { type StepClosed, stepClosed, useFocusBackToOpener, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { type TextHandle, Text } from './Text.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
@@ -609,7 +609,7 @@ function Switcher({
     }),
     [],
   );
-  useFocusBack(offerClosed, afterOffer);
+  useFocusBackToOpener(offerClosed, afterOffer);
   // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'

@@ -26,7 +26,7 @@ import {
   type StepClosed,
   stepClosed,
   useBroughtIntoView,
-  useFocusBack,
+  useFocusBackToOpener,
   useFocusOnAnswer,
 } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
@@ -192,7 +192,7 @@ function OwnerClaimCard({
   const [confirming, setConfirming] = useState(false);
   const [stopEnded, setStopEnded] = useState<object | null>(null);
   const [kept, setKept] = useState<StepClosed | undefined>(undefined);
-  const opener = useFocusBack(kept);
+  const opener = useFocusBackToOpener(kept);
   const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
   const withdrawButton = useRef<View>(null);
   const withdrawOpener = useOpenerInSight(withdrawButton);
@@ -576,7 +576,7 @@ export function PausedOwnerClaim({
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<{ kind: 'stopped' | 'ended' | 'failed' } | null>(null);
   const [kept, setKept] = useState<StepClosed | undefined>(undefined);
-  const opener = useFocusBack(confirming ? undefined : kept);
+  const opener = useFocusBackToOpener(confirming ? undefined : kept);
   const claimant = claim.claimant.name;
 
   async function stop(): Promise<void> {

@@ -35,7 +35,7 @@ import { PhoneEntry } from '../src/components/PhoneEntry.tsx';
 import {
   type StepClosed,
   stepClosed,
-  useFocusBack,
+  useFocusBackToOpener,
   useFocusOnAnswer,
 } from '../src/components/Screen.tsx';
 import type { ScreenReaderTarget } from '../src/components/screenReaderFocus.ts';
@@ -78,7 +78,7 @@ export default function CompleteProfile() {
     }),
     [],
   );
-  useFocusBack(linkedClosed, afterLinked);
+  useFocusBackToOpener(linkedClosed, afterLinked);
 
   useEffect(() => {
     let live = true;

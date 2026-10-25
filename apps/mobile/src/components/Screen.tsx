@@ -372,7 +372,7 @@ export function stepClosed(to: string): StepClosed {
 }
 
 /** With a screen reader on, once `closed` is set, moves focus to the opener it names, or to `fallback` when that opener is not there (sc-11173); `opener(key)` is the ref each opener takes. */
-export function useFocusBack(
+export function useFocusBackToOpener(
   closed: StepClosed | undefined,
   fallback?: RefObject<ScreenReaderTarget | null>,
 ): (key: string) => RefCallback<View> {

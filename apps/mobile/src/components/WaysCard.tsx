@@ -21,7 +21,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Notice } from './Notice.tsx';
-import { type StepClosed, stepClosed, useFocusBack } from './Screen.tsx';
+import { type StepClosed, stepClosed, useFocusBackToOpener } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
@@ -71,7 +71,7 @@ export function WaysCard({
   const [twoFactorOn, setTwoFactorOn] = useState(false);
   const [closedFor, setClosedFor] = useState(setPasswordClosed);
   const title = useRef<TextHandle>(null);
-  const opener = useFocusBack(stage.kind === 'list' ? stage.closed : undefined, title);
+  const opener = useFocusBackToOpener(stage.kind === 'list' ? stage.closed : undefined, title);
   const frame = cardFrame(kind);
 
   if (closedFor !== setPasswordClosed) {

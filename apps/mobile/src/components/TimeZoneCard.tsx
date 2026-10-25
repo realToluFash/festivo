@@ -26,7 +26,7 @@ import {
   type StepClosed,
   stepClosed,
   useAboveKeyboard,
-  useFocusBack,
+  useFocusBackToOpener,
   useFocusOnAnswer,
   useRoomAboveKeyboard,
   useScrolledToTop,
@@ -59,7 +59,7 @@ export function TimeZoneCard({
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [closed, setClosed] = useState<StepClosed | undefined>(undefined);
-  const opener = useFocusBack(editing ? undefined : closed);
+  const opener = useFocusBackToOpener(editing ? undefined : closed);
   const frame = cardFrame(kind);
 
   useEffect(() => {

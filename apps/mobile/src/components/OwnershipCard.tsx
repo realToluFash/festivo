@@ -23,7 +23,7 @@ import { Notice } from './Notice.tsx';
 import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { AnswerHeading } from './AnswerHeading.tsx';
-import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBack } from './Screen.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 type Step =
@@ -49,7 +49,7 @@ export function OwnershipCard({
   const owner = organisation.role.seededAs === 'owner';
   const [step, setStep] = useState<Step>({ kind: 'resting', flash: null });
   const [members, setMembers] = useState<OrganisationMember[] | null>(null);
-  const opener = useFocusBack(step.kind === 'resting' ? step.closed : undefined);
+  const opener = useFocusBackToOpener(step.kind === 'resting' ? step.closed : undefined);
   const backTo = (to: string) => setStep({ kind: 'resting', flash: null, closed: stepClosed(to) });
 
   useEffect(() => {

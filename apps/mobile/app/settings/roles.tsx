@@ -21,7 +21,7 @@ import { RoleList, RolePage, RemoveRole } from '../../src/components/Roles.tsx';
 import {
   type StepClosed,
   stepClosed,
-  useFocusBack,
+  useFocusBackToOpener,
   useFocusOnAnswer,
 } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
@@ -316,7 +316,7 @@ function FocusBack({
   fallback: RefObject<TextHandle | null>;
   children: (opener: (key: string) => RefCallback<View>) => ReactNode;
 }) {
-  return children(useFocusBack(closed, fallback));
+  return children(useFocusBackToOpener(closed, fallback));
 }
 
 /** The first role a manager can change opens beside the list, as on the web. */
