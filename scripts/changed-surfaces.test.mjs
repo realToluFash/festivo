@@ -48,6 +48,11 @@ describe('a single-surface change runs that surface and no other', () => {
   it.each([
     ['the agent gateway', 'tools/agent-gateway/src/gateway.ts'],
     ['a pair the gateway replays', 'services/api/tests/Fixtures/AgentGateway/text.json'],
+    [
+      'a saved wall clock the form names',
+      'services/api/tests/Fixtures/LocalTime/wall-clock-times.json',
+    ],
+    ['the regions the domain reads', 'services/api/src/Domain/Organisation/Regions.php'],
   ])('%s runs the packages', (_name, path) => {
     expect(changedSurfaces([path]).packages).toBe(true);
   });
