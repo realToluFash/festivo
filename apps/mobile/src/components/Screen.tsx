@@ -10,17 +10,14 @@ import {
   useState,
 } from 'react';
 import {
-  AccessibilityInfo,
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Platform,
   ScrollView,
   type StyleProp,
   StyleSheet,
   View,
   type ViewStyle,
-  findNodeHandle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,6 +32,7 @@ import {
   shownEnd,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
@@ -230,44 +228,51 @@ export function useScrolledToTop(): RefObject<View | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 const SETTLED_MS = 500;
 
-/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it, or on Android, where TalkBack ignores that focus (sc-9950), reads its words out. */
-export function useBroughtIntoView(words: string): RefObject<View | null> {
+function bringIntoView(scroll: ScreenScrollView | null, line: View | null): void {
+  const view = scroll?.ref.current;
+  const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
+  const scrollHost = view?.getNativeScrollRef();
+  if (scroll == null || view == null || content == null || scrollHost == null || line == null)
+    return;
+
+  line.measureLayout(content, (_x, contentY, _w, height) => {
+    scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
+      const y = offsetIntoView({
+        contentY,
+        height,
+        offset: scroll.offset.current,
+        shown,
+        margin: tokens.spaceLg,
+      });
+      if (y != null) view.scrollTo({ y, animated: true });
+    });
+  });
+}
+
+export interface BroughtIntoView {
+  shown: RefObject<View | null>;
+  read: RefObject<View | null>;
+}
+
+/** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read`. */
+export function useBroughtIntoView(): BroughtIntoView {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
+  const read = useRef<View>(null);
 
   useEffect(() => {
-    const view = scroll?.ref.current;
-    const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
-    const scrollHost = view?.getNativeScrollRef();
-
-    if (scroll != null && view != null && content != null && scrollHost != null) {
-      ref.current?.measureLayout(content, (_x, contentY, _w, height) => {
-        scrollHost.measureInWindow((_sx, _sy, _sw, shown) => {
-          const y = offsetIntoView({
-            contentY,
-            height,
-            offset: scroll.offset.current,
-            shown,
-            margin: tokens.spaceLg,
-          });
-          if (y != null) view.scrollTo({ y, animated: true });
-        });
-      });
-    }
+    bringIntoView(scroll, ref.current);
 
     const focus = setTimeout(() => {
-      if (Platform.OS === 'android') {
-        AccessibilityInfo.announceForAccessibility(words);
-        return;
-      }
-      const node = findNodeHandle(ref.current);
-      if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+      // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
+      bringIntoView(scroll, ref.current);
+      moveScreenReaderFocus(read.current);
     }, SETTLED_MS);
 
     return () => clearTimeout(focus);
-  }, [scroll, words]);
+  }, [scroll]);
 
-  return ref;
+  return { shown: ref, read };
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */

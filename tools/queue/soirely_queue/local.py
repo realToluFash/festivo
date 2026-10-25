@@ -8,12 +8,15 @@ import json
 import re
 import subprocess
 import time
+import urllib.error
+import urllib.request
 
 from . import machine, store
 
 DOCKER_EVERY_SECONDS = 30 * 60
 BUILD_CACHE_GB = 20
 SWEEP_SECONDS = 24 * 60 * 60
+STACK_SECONDS = 30
 SIZE = re.compile(r"([\d.]+)\s*([kMGT]?B)", re.I)
 UNITS = {"b": 1e-9, "kb": 1e-6, "mb": 1e-3, "gb": 1, "tb": 1e3}
 
@@ -37,6 +40,36 @@ def build_cache_gb():
         if row.get("Type") == "Build Cache":
             return gigabytes(row.get("Size"))
     return None
+
+
+def stack_problem(role):
+    """Why the role's own stack cannot be tested against now, or None once its API answers.
+    A role with no checkout on this machine is not checked."""
+    try:
+        place = machine.checkout(machine.load(), role)
+    except machine.ConfigError:
+        return None
+    if not place or not place.exists():
+        return None
+    try:
+        out = subprocess.run(["docker", "compose", "port", "api", "80"], cwd=place,
+                             capture_output=True, text=True, timeout=STACK_SECONDS)
+    except FileNotFoundError:
+        return "docker is not on PATH"
+    except (OSError, subprocess.TimeoutExpired):
+        return f"Docker did not answer within {STACK_SECONDS} seconds"
+    port = out.stdout.strip().rsplit(":", 1)[-1]
+    if out.returncode or not port.isdigit():
+        return f"the api service in {place} is not running"
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/health", timeout=10) as reply:
+            if reply.status == 200:
+                return None
+            return f"the API on port {port} answers {reply.status}"
+    except urllib.error.HTTPError as error:
+        return f"the API on port {port} answers {error.code}"
+    except OSError as error:
+        return f"the API on port {port} does not answer ({error})"
 
 
 def checks(db, config, now=None, cache=None, free=None):

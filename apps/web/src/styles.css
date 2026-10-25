@@ -3220,6 +3220,19 @@ button.members-row {
   flex: 1 1 7rem;
 }
 
+.event-page-outcome {
+  margin: 0;
+  font: var(--typeRowTitle);
+  color: var(--colorAccentText);
+}
+
+.event-form-actions,
+.event-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+}
+
 .event-page-head {
   display: flex;
   flex-wrap: wrap;

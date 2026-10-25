@@ -236,6 +236,32 @@ final class InputTest extends TestCase
         self::assertNull($input['longitude']);
     }
 
+    /** @return iterable<string, array{string, int}> */
+    public static function wholeNumbersWrittenAsFloats(): iterable
+    {
+        yield 'a zero fraction' => ['30.0', 30];
+        yield 'exponent form' => ['3e1', 30];
+        yield 'exponent form with a fraction' => ['3.0E1', 30];
+        yield 'a fraction finer than a double holds' => ['30.0000000000000001', 30];
+        yield 'a negative zero fraction' => ['-7.0', -7];
+        yield 'the lowest integer' => ['-9223372036854775808.0', \PHP_INT_MIN];
+    }
+
+    /** A JSON number is one type, so 30.0 is the number 30 however it is written (sc-10158). */
+    #[Test]
+    #[DataProvider('wholeNumbersWrittenAsFloats')]
+    public function aWholeNumberWrittenAsAFloatSatisfiesADeclaredInt(string $value, int $read): void
+    {
+        $request = Request::create('/x', 'POST', content: '{"days":' . $value . ',"limit":' . $value . '}');
+
+        $input = Input::body($request, Type\shape([
+            'days' => Type\int(),
+            'limit' => Type\nullable(Type\int()),
+        ]));
+
+        self::assertSame([$read, $read], [$input['days'], $input['limit']]);
+    }
+
     /** @return iterable<string, array{string, Type\TypeInterface<mixed>}> */
     public static function valuesOfAnotherJsonType(): iterable
     {
@@ -247,7 +273,15 @@ final class InputTest extends TestCase
         yield 'an object for a string' => ['{"a":"b"}', Type\string()];
         yield 'a numeric string for an int' => ['"30"', Type\int()];
         yield 'a numeric string for a nullable int' => ['"30"', Type\nullable(Type\int())];
-        yield 'a fractional number for an int' => ['30.0', Type\int()];
+        yield 'a fraction for an int' => ['30.5', Type\int()];
+        yield 'a fraction for a nullable int' => ['7.25', Type\nullable(Type\int())];
+        yield 'the finest fraction a double holds near 30 for an int' => ['30.00000000000001', Type\int()];
+        yield 'a whole number past the integer range in exponent form for an int' => ['1e20', Type\int()];
+        yield 'a whole number past the integer range for an int' => ['12345678901234567890', Type\int()];
+        yield 'two to the sixty-third for an int' => ['9223372036854775808', Type\int()];
+        yield 'a whole number below the integer range for an int' => ['-1e19', Type\int()];
+        yield 'a whole number written with a fraction for a string' => ['42.0', Type\string()];
+        yield 'a whole number written with a fraction for a boolean' => ['1.0', Type\bool()];
         yield 'a numeric string for a float' => ['"5"', Type\float()];
         yield '0 for a boolean' => ['0', Type\bool()];
         yield '1 for a boolean' => ['1', Type\bool()];

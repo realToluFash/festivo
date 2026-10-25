@@ -64,6 +64,27 @@
     "guestsComing": "La lista de invitados de este evento llegará pronto.",
     "backToEvent": "Evento"
   },
+  "eventEdit": {
+    "open": "Editar detalles",
+    "title": "Editar detalles",
+    "save": "Guardar cambios",
+    "saving": "Guardando…",
+    "cancel": "Cancelar",
+    "zoneHint": "Al cambiar la zona horaria, las horas se mantienen tal como las escribió: {{day}} {{time}} sigue siendo {{time}} en la nueva zona.",
+    "zoneHintPlain": "Al cambiar la zona horaria, las horas se mantienen tal como las escribió.",
+    "currencyInUse": "La moneda no puede cambiar una vez que hay importes registrados en este evento.",
+    "notSaved": "No se ha guardado. Sus cambios siguen aquí. Vuelva a intentarlo.",
+    "changedElsewhere": "No se ha guardado. Otra persona ha cambiado este evento desde que lo abrió. Lo que escribió sigue aquí.",
+    "showLatest": "Ver la última versión",
+    "showLatestTitle": "¿Ver la última versión?",
+    "showLatestBody": "Lo que escribió se sustituirá por la versión que ha guardado otra persona.",
+    "keepEditing": "Seguir editando",
+    "leaveTitle": "¿Salir sin guardar?",
+    "leaveBody": "Se perderán los cambios que ha hecho en este evento.",
+    "leave": "Salir sin guardar",
+    "saved": "Cambios guardados",
+    "nothingChanged": "No ha cambiado nada, así que no se ha enviado nada."
+  },
   "language": {
     "label": "Idioma",
     "automatic": "Automático",

@@ -213,6 +213,11 @@ when@test:
         # billable or dependent on somebody having an account.
         App\AI\Interfaces\AssistantInterface: '@App\AI\ScriptedAssistant'
 
+        # Nothing records an amount against an event yet (sc-100 will); a test records one here.
+        App\Tests\Double\ScriptedEventAmounts:
+            public: true
+            autoconfigure: true
+
         # No test reaches Have I Been Pwned. The stand-in's list is what makes
         # "this password is in a breach" assertable at all: the real corpus is
         # somebody else's data and could answer differently tomorrow.

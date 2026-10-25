@@ -9,9 +9,10 @@ TRANSLATION_QUEUE = ["To Do", "Failed Code Review", "In Progress", "Failed QA"]
 # A developer's queue, rework first: findings, then a failed test, then its own build, then
 # a new story. Passed Code Review is not queued: the pull request's pass wakes the merge.
 BUILD_QUEUE = ["Failed Code Review", "Failed QA", "In Progress", "Ready For Dev"]
-# The roles that may run more than one worker (`workers` in agents.json): none keeps a
-# stack, so a second worker needs only a checkout of its own.
-PARALLEL = ("pm", "ux", "bm", "cd")
+# The roles that may run more than one worker (`workers` in agents.json): none uses a
+# stack, so a second worker needs only a checkout of its own. The lead reviews each pull
+# request in a worktree of its own (review.py).
+PARALLEL = ("pm", "ux", "bm", "cd", "lead")
 # Taken epic by epic: the build, and the stories the product manager grooms for it.
 EPIC_ORDERED = (*BUILD_QUEUE, "To Do", "Backlog")
 TESTERS_LABELS = {"qa": "qa1", "qa2": "qa2", "qa3": "qa3"}
@@ -179,6 +180,7 @@ MAY = {
     "to-draw": ("ux",),
     "drawn": ("ux",),
     "report": TESTERS,
+    "unclaim": TESTERS,
     "pr-create": BUILDERS,
     "review": ("lead",),
     "pr-reply": DEVS + LINGUISTS + ("lead", "ops"),
@@ -248,13 +250,29 @@ def linguist_files():
     return set().union(*(locale_files(locale) for locale in LOCALES))
 
 
+CLAIMED, RELEASED = "QA claim:", "QA claim released:"
+
+
+def last_claim(story):
+    """The latest `QA claim:` comment, or None once a release came after it."""
+    for comment in reversed(story.get("comments") or []):
+        if comment["text"].startswith(RELEASED):
+            return None
+        if comment["text"].startswith(CLAIMED):
+            return comment
+    return None
+
+
 def last_tester(story):
     """The tester whose claim on the story came last, from its `QA claim:` comments."""
-    for comment in reversed(story.get("comments") or []):
-        if comment["text"].startswith("QA claim:"):
-            who = comment["text"].split(":", 1)[1].split(",")[0].strip()
-            return who if who in TESTERS else None
-    return None
+    claim = last_claim(story)
+    who = claimant(claim) if claim else None
+    return who if who in TESTERS else None
+
+
+def claimant(claim):
+    """The name a `QA claim:` comment gives."""
+    return claim["text"].split(":", 1)[1].split(",")[0].strip()
 
 
 def may(role, command):

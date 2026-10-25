@@ -6,7 +6,7 @@ import re
 import socket
 import time
 
-from . import github, store, sync
+from . import github, local, store, sync
 from . import roles as R
 from . import text as T
 from . import work as W
@@ -287,6 +287,19 @@ def label(c, a):
 STALE_CLAIM_HOURS = 3
 
 
+def stack_up(c, story, held=False):
+    """A tester claims only what its own stack can test, so a dead stack strands nothing."""
+    problem = local.stack_problem(c.role)
+    if not problem:
+        return
+    if held:
+        raise Refused(f"your QA stack cannot be tested against: {problem}. sc-{story['id']} "
+                      "is still In QA under your claim: bring the stack up, or give it back "
+                      f"with `sq {c.role} unclaim sc-{story['id']} --text \"<why>\"`")
+    raise Refused(f"your QA stack cannot be tested against: {problem}. Nothing claimed: "
+                  "bring the stack up, or leave the story for another tester")
+
+
 def claim(c, a):
     guard(c, "claim")
     story = c.story(a.story)
@@ -308,16 +321,18 @@ def claim(c, a):
     else:
         takeover = ""
         if story["state"] == "In QA":
-            last = next((x for x in reversed(story["comments"])
-                         if x["text"].startswith("QA claim:")), None)
+            last = R.last_claim(story)
+            if last and R.last_tester(story) == c.role:
+                stack_up(c, story, held=True)
+                c.refresh(story["id"])
+                return None
             age = time.time() - datetime.datetime.fromisoformat(
                 last["at"].replace("Z", "+00:00")).timestamp() if last else float("inf")
             if age < STALE_CLAIM_HOURS * 3600:
                 raise Refused(f"sc-{story['id']} is In QA under \"{last['text']}\"; "
                               f"a claim goes stale after {STALE_CLAIM_HOURS} hours")
             if last:
-                who = last["text"].split(":", 1)[1].split(",")[0].strip()
-                takeover = f", taking over from {who}'s of {last['at'][11:16]}"
+                takeover = f", taking over from {R.claimant(last)}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
         else:
@@ -325,6 +340,7 @@ def claim(c, a):
             if first and first != c.role:
                 raise Refused(f"sc-{story['id']} came back after {first} failed it, and is "
                               f"{first}'s to retest for {R.RETEST_MINUTES} minutes: pick another")
+        stack_up(c, story)
         holder = store.take_story(c.db, story, c.role)
         if holder != c.role:
             raise Refused(f"{holder} claimed sc-{story['id']} first: pick another")
@@ -333,6 +349,22 @@ def claim(c, a):
         c.shortcut.comment(story["id"], f"QA claim: {c.role}{takeover}")
     c.refresh(story["id"])
     return None
+
+
+def unclaim(c, a):
+    """A tester that cannot test a story it holds gives it back to Ready For QA, so it never
+    sits in In QA under a claim nobody is working on."""
+    guard(c, "unclaim")
+    story = c.story(a.story)
+    if story["state"] != "In QA" or R.last_tester(story) != c.role:
+        raise Refused(f"sc-{story['id']} is {story['state']} and not under your QA claim")
+    if not a.text.strip():
+        raise Refused("say why it was not tested, with --text")
+    set_state(c, story, "Ready For QA", check=False)
+    set_labels(c, story["id"], remove={R.TESTERS_LABELS[c.role]})
+    c.shortcut.comment(story["id"], f"{R.RELEASED} {c.role}, {a.text.strip()}")
+    c.refresh(story["id"])
+    return f"sc-{story['id']} is back in Ready For QA for any tester"
 
 
 def report(c, a):

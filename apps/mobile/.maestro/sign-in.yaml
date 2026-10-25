@@ -35,7 +35,7 @@ appId: host.exp.Exponent
 - inputText: ${PASSWORD}
 # The reveal control, which is the only way to see a typo on a phone keyboard.
 - tapOn:
-    id: 'signIn.reveal'
+    id: 'signIn.password.reveal'
 - assertVisible: ${PASSWORD}
 - takeScreenshot: mobile-sign-in-filled
 - tapOn:

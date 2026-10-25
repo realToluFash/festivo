@@ -191,7 +191,10 @@ feature merges.
    because you merge it, and you skip `create-pr`'s show-and-wait step. Its Evidence of work
    lists each key with its English and the text in each locale. Answer a review comment with
    `sq l10n pr-reply N <comment id>`.
-8. **Merge it yourself** once its checks are green on the head commit: `sq l10n merge N`. It
+8. **Merge it yourself** once its checks are green on the head commit: `sq l10n merge N`.
+   Wait for them with `sq l10n checks N --wait --head <sha>` as a background command, `<sha>`
+   the commit you pushed, never a polling loop you write; it ends by itself, non-zero unless
+   every check passed. It
    makes a merge commit, deletes the branch, and refuses, with the reason, when a check is not
    green, the branch conflicts with `main`, or the pull request changes anything outside the
    locale files. A branch merely behind `main` merges as it is; on a conflict, merge

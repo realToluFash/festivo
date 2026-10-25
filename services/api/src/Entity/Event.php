@@ -70,6 +70,11 @@ class Event
     #[ORM\Column(type: Types::STRING, length: 3)]
     private string $currency;
 
+    /** Moved by Doctrine on every update; the resource's ETag (sc-3587). */
+    #[ORM\Version]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
+    private int $version = 1;
+
     public function __construct(Organisation $organisation, string $name, DateTimeImmutable $startsAt, DateTimeImmutable $endsAt, string $currency)
     {
         $this->id = Uuid::v7();
@@ -131,6 +136,21 @@ class Event
     public function getCurrency(): string
     {
         return $this->currency;
+    }
+
+    public function getVersion(): int
+    {
+        return $this->version;
+    }
+
+    public function setName(string $name): void
+    {
+        $this->name = $name;
+    }
+
+    public function setCurrency(string $currency): void
+    {
+        $this->currency = $currency;
     }
 
     /** Both in the start's zone. The UTC columns are derived here and in rederiveUtc(), and written nowhere else. */

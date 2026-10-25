@@ -162,6 +162,18 @@ export function listRoom({ room, rest, oneRow, most }: ListRoom): number {
   return Math.max(oneRow, Math.min(most, room - rest));
 }
 
+export interface Turned {
+  os: string;
+  phone: boolean;
+  width: number;
+  height: number;
+}
+
+/** Whether a list's search sits beside its title: an iPhone on its side leaves little more than a row above the keys (sc-10118). */
+export function searchBesideTitle({ os, phone, width, height }: Turned): boolean {
+  return os === 'ios' && phone && width > height;
+}
+
 /** On an Android phone this tall or shorter, in dp, the keys leave no room for the help line and back row (sc-3132). */
 export const SHORT_ANDROID_HEIGHT = 700;
 

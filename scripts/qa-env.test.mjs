@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -19,6 +27,7 @@ import {
   forAndroid,
   linkIntent,
   parseTarget,
+  playImage,
   QA_OVERRIDES,
   QA_PORTS,
   qaConfig,
@@ -251,6 +260,76 @@ describe('a release build', () => {
 
   it('is an error when prebuild wrote no application', () => {
     expect(() => allowCleartext('<manifest/>')).toThrow(/no <application>/);
+  });
+});
+
+describe('the image an emulator is made on', () => {
+  const sdkWith = (...paths) => {
+    const sdk = mkdtempSync(join(tmpdir(), 'sdk-'));
+    for (const path of paths) mkdirSync(join(sdk, 'system-images', path), { recursive: true });
+    return sdk;
+  };
+
+  it('is the newest Play image installed for this machine', () => {
+    const sdk = sdkWith(
+      'android-35/google_apis_playstore/arm64-v8a',
+      'android-37.0/google_apis_playstore_ps16k/arm64-v8a',
+      'android-37.0/google_apis/arm64-v8a',
+      'android-38/google_apis_playstore/x86_64',
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('passes over a file beside the images, as Finder leaves', () => {
+    const sdk = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    writeFileSync(join(sdk, 'system-images', '.DS_Store'), '');
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('follows an image directory that is a link', () => {
+    const elsewhere = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    const sdk = sdkWith();
+    mkdirSync(join(sdk, 'system-images'));
+    symlinkSync(
+      join(elsewhere, 'system-images', 'android-37.0'),
+      join(sdk, 'system-images', 'android-37.0'),
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('passes over a link whose image has gone, as on an unmounted disk', () => {
+    const elsewhere = sdkWith('android-36/google_apis_playstore/arm64-v8a');
+    const sdk = sdkWith('android-37.0/google_apis_playstore_ps16k/arm64-v8a');
+    symlinkSync(
+      join(elsewhere, 'system-images', 'android-36'),
+      join(sdk, 'system-images', 'android-36'),
+    );
+    rmSync(elsewhere, { recursive: true });
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('is a released version, never a preview', () => {
+    const sdk = sdkWith(
+      'android-37.0/google_apis_playstore_ps16k/arm64-v8a',
+      'android-CANARY/google_apis_playstore/arm64-v8a',
+    );
+    expect(playImage(sdk, 'arm64')).toBe(
+      'system-images;android-37.0;google_apis_playstore_ps16k;arm64-v8a',
+    );
+  });
+
+  it('is never a Google APIs image, which has no TalkBack', () => {
+    expect(playImage(sdkWith('android-37/google_apis/x86_64'), 'x64')).toBe(
+      'system-images;android-35;google_apis_playstore;x86_64',
+    );
   });
 });
 

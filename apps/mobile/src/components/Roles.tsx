@@ -28,14 +28,7 @@ import {
 } from '@soirely/domain';
 import { type TFunction, getFixedT } from 'i18next';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import {
-  AccessibilityInfo,
-  Pressable,
-  StyleSheet,
-  type TextInput,
-  View,
-  findNodeHandle,
-} from 'react-native';
+import { Pressable, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -47,6 +40,7 @@ import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { AboveKeys, type DockInset, useAboveKeyboard } from './Screen.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
 
 /** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
@@ -458,8 +452,7 @@ function Holders({ holders }: { holders: readonly RoleHolder[] }) {
   const firstRevealed = useRef<View>(null);
 
   useEffect(() => {
-    const node = all ? findNodeHandle(firstRevealed.current) : null;
-    if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+    if (all) moveScreenReaderFocus(firstRevealed.current);
   }, [all]);
 
   if (holders.length === 0) return null;

@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
@@ -17,6 +18,7 @@ export function Notice({
   action,
   heading = false,
   announce = false,
+  wordsRef,
 }: {
   tone: NoticeTone;
   mark: string;
@@ -30,6 +32,8 @@ export function Notice({
   heading?: boolean;
   /** The notice appears in answer to something the person did, so a screen reader reads it out. */
   announce?: boolean;
+  /** Its words as one item, without the action, for screen reader focus to be moved to. */
+  wordsRef?: Ref<View> | undefined;
 }) {
   const surface = {
     quiet: styles.quiet,
@@ -59,37 +63,45 @@ export function Notice({
   const bodyInk = tone === 'done' ? styles.accent : undefined;
 
   return (
-    <View
-      style={[styles.notice, surface]}
-      accessible={announce || undefined}
-      accessibilityLiveRegion={announce ? 'polite' : undefined}
-    >
-      <View style={[styles.mark, ring]}>
+    <View style={[styles.notice, surface]}>
+      {/* The words already say what the mark says (WCAG 2.2 SC 1.1.1). */}
+      <View
+        style={[styles.mark, ring]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]}>
           {mark}
         </Text>
       </View>
       <View style={styles.body}>
-        {title != null && (
-          <Text
-            size={heading ? tokens.typeTitleDialog.size : tokens.typeRowTitle.size}
-            weight="bold"
-            style={titleInk}
-            accessibilityRole={heading ? 'header' : undefined}
-          >
-            {title}
-          </Text>
-        )}
-        {body != null && (
-          <Text size={tokens.typeBodyPhone.size} style={bodyInk}>
-            {body}
-          </Text>
-        )}
-        {detail != null && (
-          <Text size={tokens.typeSmall.size} muted>
-            {detail}
-          </Text>
-        )}
+        <View
+          ref={wordsRef}
+          style={styles.words}
+          accessible={announce || wordsRef != null || undefined}
+          accessibilityLiveRegion={announce ? 'polite' : undefined}
+        >
+          {title != null && (
+            <Text
+              size={heading ? tokens.typeTitleDialog.size : tokens.typeRowTitle.size}
+              weight="bold"
+              style={titleInk}
+              accessibilityRole={heading ? 'header' : undefined}
+            >
+              {title}
+            </Text>
+          )}
+          {body != null && (
+            <Text size={tokens.typeBodyPhone.size} style={bodyInk}>
+              {body}
+            </Text>
+          )}
+          {detail != null && (
+            <Text size={tokens.typeSmall.size} muted>
+              {detail}
+            </Text>
+          )}
+        </View>
         {action != null && (
           <Pressable
             style={styles.action}
@@ -124,6 +136,7 @@ const styles = StyleSheet.create({
   broken: { backgroundColor: tokens.colorBrokenTint, borderColor: tokens.colorBroken },
   done: { backgroundColor: tokens.colorAccentTint, borderColor: tokens.colorAccentTintBorder },
   body: { flex: 1, gap: tokens.spaceHair },
+  words: { gap: tokens.spaceHair },
   action: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   accent: { color: tokens.colorAccentText },
 

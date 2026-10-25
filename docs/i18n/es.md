@@ -49,6 +49,11 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** «Editar detalles» opens
+  and heads the form, «Guardar cambios» saves it. A refused save starts «No se ha guardado.»; the
+  colleague is «otra persona», as `errors:precondition_failed`. "Show the latest" is «Ver la
+  última versión», a whole noun, as the dialog asks. «Cambios guardados» is announced after a
+  save. The currency refusal is one sentence in `web` and `errors`, «… en este evento».
 - **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
   `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
   sc-8735). Suspending is «suspender a {{name}}», restoring «restablecer el acceso». What is

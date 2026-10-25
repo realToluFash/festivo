@@ -10,8 +10,10 @@ const api = vi.hoisted(() => ({
   declineInvitation: vi.fn(),
 }));
 const router = vi.hoisted(() => ({ replace: vi.fn() }));
+const shown = vi.hoisted(() => ({ language: 'en' }));
 
 vi.mock('./api.ts', () => ({ api }));
+vi.mock('./i18n/index.ts', () => ({ currentLocale: () => shown.language }));
 vi.mock('./tokens.ts', () => ({ tokens: { clear: vi.fn() } }));
 vi.mock('expo-router', () => ({ router }));
 vi.mock('@react-native-async-storage/async-storage', () => ({
@@ -316,6 +318,32 @@ describe('the organisations after a language change (sc-9267)', () => {
     await settle();
 
     expect(useSignedIn().organisations.map(({ id }) => id)).toEqual(['org_1', 'org_2']);
+  });
+
+  it('reads them again when the account’s language was followed while the launch read them', async () => {
+    let answer: (read: unknown) => void = () => {};
+    api.organisationsWithPaused.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const launched = launchSignedIn();
+
+    shown.language = 'es';
+    i18next.emit('languageChanged', 'es');
+    api.organisationsWithPaused.mockResolvedValue({
+      organisations: [{ ...organisation, twoFactorDue: due('sábado 31 oct a las 10:44 GMT') }],
+      paused: [],
+    });
+    answer({
+      organisations: [{ ...organisation, twoFactorDue: due('Saturday 31 Oct at 10:44 GMT') }],
+      paused: [],
+    });
+    await launched;
+    await settle();
+    shown.language = 'en';
+
+    expect(useSignedIn().organisation?.twoFactorDue?.written).toBe('sábado 31 oct a las 10:44 GMT');
   });
 
   it('carries the paused organisation’s dates in the new language', async () => {
