@@ -241,6 +241,7 @@ export default function RolesScreen() {
             </>
           }
           page={page}
+          pageKey={pane == null ? '' : pane.kind === 'new' ? 'new' : `${pane.kind}-${pane.id}`}
           pageInFront={inDetail}
           back={{ label: t('settings.rolesBack'), onPress: toList, testID: 'roles.back' }}
           spacing={SPACING}

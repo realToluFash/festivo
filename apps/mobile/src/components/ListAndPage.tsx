@@ -24,6 +24,8 @@ export interface ListAndPageProps {
   besideHeading?: ReactNode;
   list: ReactNode;
   page: ReactNode;
+  /** Changes with the page, so a page opened after a longer one shows from its top. */
+  pageKey: string;
   /** On a phone and a tablet held upright, whether the page shows in place of the list. */
   pageInFront: boolean;
   back: { label: string; onPress: () => void; testID: string };
@@ -36,6 +38,7 @@ export function ListAndPage({
   besideHeading,
   list,
   page,
+  pageKey,
   pageInFront,
   back,
   spacing,
@@ -73,7 +76,7 @@ export function ListAndPage({
           </ScrollColumn>
         </View>
         <View style={[styles.fill, !landscape && !pageInFront && styles.behind]}>
-          <ScrollColumn style={styles.fill} contentContainerStyle={column}>
+          <ScrollColumn key={pageKey} style={styles.fill} contentContainerStyle={column}>
             {kind === 'tabletPortrait' && (
               <View style={styles.start}>
                 <QuietButton label={back.label} onPress={back.onPress} testID={back.testID} />
