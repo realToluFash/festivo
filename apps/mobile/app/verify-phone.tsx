@@ -32,6 +32,7 @@ export default function VerifyPhone() {
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
   // A new one with each failed tap, so the same words are read out again.
   const [textingFailed, setTextingFailed] = useState<object | null>(null);
+  const [textedByTap, setTextedByTap] = useState<object | undefined>(undefined);
   // From the verify answer, never the list read before it: the server decides (sc-2244).
   const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
   const wording = codeWording(route);
@@ -159,11 +160,13 @@ export default function VerifyPhone() {
 
   async function textInstead(): Promise<void> {
     setTextingFailed(null);
+    setTextedByTap({});
 
     try {
       await api.textPhoneCodeInstead(alternative);
       setRoute('sms_chosen');
     } catch {
+      setTextedByTap(undefined);
       setTextingFailed({});
     }
   }
@@ -197,6 +200,7 @@ export default function VerifyPhone() {
                     : t('verifyPhone.doneBodyAlternative', { number })
             }
             introLive={!verified}
+            introAnswer={wording.line === 'chosen' ? textedByTap : undefined}
             answer={status.kind === 'verified' && status.tapped === true ? status : undefined}
           />
         </>

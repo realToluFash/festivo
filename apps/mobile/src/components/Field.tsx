@@ -30,6 +30,7 @@ export function Field({
   errorActions,
   errorAnswer,
   help,
+  helpAnswer,
   children,
 }: {
   label: string;
@@ -40,9 +41,12 @@ export function Field({
   /** What a tap set for the error to answer it, where the tap's button went: the error takes focus in place of being read out (sc-11173). */
   errorAnswer?: unknown;
   help?: string | readonly string[] | undefined;
+  /** What a tap set for the help to answer it, where the tap's button went: its first line takes focus (sc-11173). */
+  helpAnswer?: unknown;
   children: ReactNode;
 }) {
   const field = useRef<View>(null);
+  const { read: helpRead } = useFocusOnAnswer<TextHandle>(helpAnswer);
   useEffect(() => {
     const mounted = field.current;
 
@@ -83,8 +87,13 @@ export function Field({
       </View>
       {children}
       {error != null && <FieldError message={error} actions={errorActions} answer={errorAnswer} />}
-      {(typeof help === 'string' ? [help] : (help ?? [])).map((line) => (
-        <Text key={line} size={tokens.typeSmall.size} style={styles.secondary}>
+      {(typeof help === 'string' ? [help] : (help ?? [])).map((line, index) => (
+        <Text
+          key={line}
+          ref={index === 0 ? helpRead : undefined}
+          size={tokens.typeSmall.size}
+          style={styles.secondary}
+        >
           {line}
         </Text>
       ))}

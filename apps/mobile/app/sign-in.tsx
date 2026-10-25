@@ -10,6 +10,7 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { Footnote, PrimaryButton, QuietButton } from '../src/components/Buttons.tsx';
 import { Field, TextField } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { useFocusOnAnswer } from '../src/components/Screen.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { PasswordField } from '../src/components/PasswordField.tsx';
 import { ProviderButtons, ProviderSignIn } from '../src/components/ProviderSignIn.tsx';
@@ -26,11 +27,13 @@ import {
 import { useLayout } from '../src/layout/useLayout.ts';
 
 type Status =
-  | { kind: 'ready' }
+  /** `another`: Sign in with another account brought the form back in its place. */
+  | { kind: 'ready'; another?: true }
   | { kind: 'signingIn' }
   | { kind: 'refused' }
   | { kind: 'rateLimited'; retryAt: string; liftsAt: number }
-  | { kind: 'providerFailed'; provider: string }
+  /** `ruled`: tapped on the provider buttons a rule left, which give way to the form. */
+  | { kind: 'providerFailed'; provider: string; ruled?: true }
   | { kind: 'failed' }
   | { kind: 'sessionEnded' }
   | { kind: 'ruled'; refusal: RuleRefusal };
@@ -78,8 +81,15 @@ export default function SignIn() {
         status={status}
         onSubmit={signIn}
         onLockLifted={liftLock}
-        onProviderFailed={(provider) => setStatus({ kind: 'providerFailed', provider })}
-        onAnotherAccount={() => setStatus({ kind: 'ready' })}
+        onProviderFailed={(provider) =>
+          setStatus({
+            kind: 'providerFailed',
+            provider,
+            ...(status.kind === 'ruled' &&
+              status.refusal.kind === 'providerOnly' && { ruled: true }),
+          })
+        }
+        onAnotherAccount={() => setStatus({ kind: 'ready', another: true })}
       />
     </AuthFrame>
   );
@@ -130,6 +140,11 @@ function Credentials({
   // A password cannot sign this account in, so the form gives way to the provider buttons.
   const providerOnly = refusal?.kind === 'providerOnly';
   const locked = status.kind === 'rateLimited';
+  // Where the tap's button went, its answer takes focus (sc-11173).
+  useFocusOnAnswer<TextInput>(
+    status.kind === 'ready' && status.another ? status : undefined,
+    email,
+  );
   const liftsAt = status.kind === 'rateLimited' ? status.liftsAt : null;
 
   useEffect(() => {
@@ -182,6 +197,7 @@ function Credentials({
             ),
           })}
           answer={answer}
+          takesFocus={answer !== undefined}
         />
       )}
 
@@ -217,6 +233,7 @@ function Credentials({
           title={t('signIn.providerFailedTitle', { provider: status.provider })}
           body={t('signIn.providerFailedBody', { provider: status.provider })}
           answer={answer}
+          takesFocus={status.ruled === true}
         />
       )}
 

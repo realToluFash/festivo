@@ -126,6 +126,7 @@ function InvitationRow({
               mark="✓"
               body={t('invitations.joined', { organisation, role })}
               answer={answer}
+              takesFocus
             />
             <PrimaryButton
               label={t('invitations.open', { organisation })}
@@ -140,11 +141,18 @@ function InvitationRow({
             title={t('invitations.joined', { organisation, role })}
             body={after.note(invitation.id)}
             answer={answer}
+            takesFocus
           />
         ))}
 
       {outcome?.kind === 'declined' && (
-        <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} answer={answer} />
+        <Notice
+          tone="quiet"
+          mark="–"
+          body={t(keys.declined, { inviter })}
+          answer={answer}
+          takesFocus
+        />
       )}
 
       {outcome?.kind === 'refused' && (
@@ -159,6 +167,7 @@ function InvitationRow({
             signedInAs: invitation.signedInAs ?? '',
           })}
           answer={answer}
+          takesFocus
         />
       )}
     </View>
