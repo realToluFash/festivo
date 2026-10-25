@@ -67,6 +67,13 @@ describe('a catalogue runs localisation wherever it lives', () => {
   });
 });
 
+/** The Packages job only typechecks the lint; its tests run in Localisation. */
+describe('the lint itself runs localisation', () => {
+  it('a change to the lint alone', () => {
+    expect(changedSurfaces(['packages/i18n-lint/src/keys.ts']).locales).toBe(true);
+  });
+});
+
 describe('shared root configuration runs everything', () => {
   it.each([
     ['the lockfile, because a resolution change breaks untouched surfaces', 'package-lock.json'],
