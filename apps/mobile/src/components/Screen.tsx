@@ -228,10 +228,16 @@ export function useScrolledToTop(): RefObject<View | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 const SETTLED_MS = 500;
 
-/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it. */
-export function useBroughtIntoView(): RefObject<View | null> {
+export interface BroughtIntoView {
+  shown: RefObject<View | null>;
+  read: RefObject<View | null>;
+}
+
+/** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read`. */
+export function useBroughtIntoView(): BroughtIntoView {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
+  const read = useRef<View>(null);
 
   useEffect(() => {
     const view = scroll?.ref.current;
@@ -254,13 +260,13 @@ export function useBroughtIntoView(): RefObject<View | null> {
     }
 
     const focus = setTimeout(() => {
-      moveScreenReaderFocus(ref.current);
+      moveScreenReaderFocus(read.current);
     }, SETTLED_MS);
 
     return () => clearTimeout(focus);
   }, [scroll]);
 
-  return ref;
+  return { shown: ref, read };
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */

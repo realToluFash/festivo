@@ -112,25 +112,26 @@ export function OwnerClaimBanner({
 function Withdrew({ told }: { told: boolean }) {
   const { t } = useTranslation();
   const words = t(told ? 'ownerClaim.youWithdrewTold' : 'ownerClaim.youWithdrew');
-  const shown = useBroughtIntoView();
+  const { shown, read } = useBroughtIntoView();
 
   return (
-    <View ref={shown} accessible testID="ownerClaim.withdrew">
-      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} />
+    <View ref={shown} testID="ownerClaim.withdrew">
+      <Notice tone="done" mark={tokens.marks.done.glyph} body={words} words={read} />
     </View>
   );
 }
 
 function WithdrawRefused({ words, onReload }: { words: string; onReload: () => void }) {
   const { t } = useTranslation();
-  const shown = useBroughtIntoView();
+  const { shown, read } = useBroughtIntoView();
 
   return (
-    <View ref={shown} accessible testID="ownerClaim.withdrawRefused">
+    <View ref={shown} testID="ownerClaim.withdrawRefused">
       <Notice
         tone="broken"
         mark="✕"
         body={words}
+        words={read}
         action={{ label: t('ownerClaim.reload'), onPress: onReload, testID: 'ownerClaim.reload' }}
       />
     </View>
