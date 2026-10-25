@@ -606,7 +606,7 @@ export function RemoveRole({
   onRemoved: (roles: OrganisationRole[]) => void;
 }) {
   const { t } = useTranslation();
-  const choicesRef = useRef<View>(null);
+  const firstChoice = useRef<View>(null);
   const [replacement, setReplacement] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [status, setStatus] = useState<'asking' | 'removing' | 'failed'>('asking');
@@ -618,7 +618,7 @@ export function RemoveRole({
   async function remove(): Promise<void> {
     if (role.holders > 0 && replacement == null) {
       setMissing(true);
-      focusPicker(choicesRef);
+      focusPicker(firstChoice);
       return;
     }
 
@@ -647,16 +647,11 @@ export function RemoveRole({
           <Text size={tokens.typeBodyPhone.size}>
             {t('rolesScreen.removeMove', { count: role.holders })}
           </Text>
-          <View
-            ref={choicesRef}
-            style={styles.choices}
-            accessible
-            accessibilityRole="radiogroup"
-            accessibilityLabel={t('rolesScreen.replacementLegend')}
-          >
-            {choices.map((one) => (
+          <View style={styles.choices}>
+            {choices.map((one, index) => (
               <Pressable
                 key={one.id}
+                ref={index === 0 ? firstChoice : undefined}
                 style={[styles.choice, replacement === one.id && styles.choiceOn]}
                 onPress={() => {
                   setReplacement(one.id);

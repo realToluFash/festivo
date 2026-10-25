@@ -809,7 +809,6 @@
     "removeNobody": "Nobody has this role.",
     "removeMove_one": "{{count}} person has this role. Move them to:",
     "removeMove_other": "{{count}} people have this role. Move them to:",
-    "replacementLegend": "Replacement role",
     "removeNoReplacement": "Choose the role these people move to.",
     "removeAfter": "They become {{role}} on their next request. Nobody is signed out.",
     "removeConfirm": "Move them and remove {{role}}",
