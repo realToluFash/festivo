@@ -2,7 +2,7 @@
     "bad_request": "La requête n’a pas pu être interprétée.",
     "validation_failed": "Certaines informations fournies ne sont pas valides.",
     "method_not_allowed": "Cette action n’est pas disponible ici.",
-    "not_found": "Nous n'avons pas trouvé ce que vous avez demandé.",
+    "not_found": "Nous n’avons pas trouvé ce que vous avez demandé.",
     "conflict": "Cela entre en conflit avec un élément existant.",
     "phone_taken": "Ce numéro est déjà vérifié sur un autre compte Soirely.",
     "owner_role_fixed": "Propriétaire ne peut être ni modifié ni supprimé.",
