@@ -47,7 +47,7 @@ const WAITING = {
 // Sign-in, the challenge, then this page: more than waitFor's default second under load.
 const THE_WAY_IN = { timeout: 3000 };
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { path: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -83,7 +83,7 @@ function problem(
   );
 }
 
-async function atTheStart(answers: Record<string, () => Response>) {
+async function atTheStart(answers: Record<string, () => Response | Promise<Response>>) {
   const sent = answering({
     'POST /api/auth/login': () => json(CHALLENGE, 202),
     'POST /api/auth/two-factor/recovery/opening': () => json(OPENING),
@@ -185,6 +185,45 @@ describe('getting back in without the authenticator', () => {
       emailCode: '481920',
       phoneCode: '305117',
     });
+  });
+
+  it('keeps focus in the field Enter was pressed in while it asks, then in the code refused (sc-11588)', async () => {
+    let answer: (response: Response) => void = () => {};
+    await atTheStart({
+      'POST /api/auth/two-factor/recovery': () => json({ recovery: 'handle', state: PROVING }, 201),
+      'POST /api/auth/two-factor/recovery/prove': () =>
+        new Promise<Response>((resolve) => (answer = resolve)),
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the codes' }));
+    await screen.findByRole('heading', { level: 1, name: 'Enter both codes' });
+
+    const email = screen.getByLabelText<HTMLInputElement>('Code from the email');
+    fireEvent.change(email, { target: { value: '481 920' } });
+    fireEvent.change(screen.getByLabelText('Code from the text'), { target: { value: '305117' } });
+    email.focus();
+    fireEvent.submit(email);
+
+    await waitFor(() => expect(email.readOnly).toBe(true));
+    expect(document.activeElement).toBe(email);
+
+    answer(
+      problem('verification_code_invalid', 422, {
+        violations: [
+          {
+            propertyPath: 'phoneCode',
+            message: 'That code does not match.',
+            code: 'verification_code_invalid',
+          },
+        ],
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        'That code does not match. Check the newest text from Soirely and try again.',
+      ),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Code from the text'));
   });
 
   it('waits, signed out, until somebody answers, and cancelling ends it', async () => {
