@@ -217,7 +217,6 @@ export default function MembersScreen() {
   const page =
     organisation != null && load.kind === 'loaded' && member != null ? (
       <MemberPage
-        key={member.id}
         kind={kind}
         organisation={organisation}
         member={member}
@@ -276,6 +275,7 @@ export default function MembersScreen() {
                 />
               ))
             }
+            pageKey={member?.id ?? ''}
             pageInFront={inFront != null}
             back={{ label: t('membersScreen.backToList'), onPress: toList, testID: 'members.back' }}
             spacing={SPACING}

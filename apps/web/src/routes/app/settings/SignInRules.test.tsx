@@ -475,7 +475,7 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
     expect(screen.getByText('1 person doesn’t have two-factor yet')).toBeDefined();
     expect(
       screen.getByText(
-        /^When you save, they get an email\. They have until Saturday, Oct 24 at 14:20 WAT to turn it on/,
+        'When you save, they get an email and see a banner. They have until Saturday, Oct 24 at 14:20 WAT to turn it on. After that they can’t open anything in Ìrè Events until they do. Their other organisations aren’t affected.',
       ),
     ).toBeDefined();
     const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
@@ -487,23 +487,96 @@ describe('Two-factor for everyone (sc-609), for someone who manages the organisa
     expect(sent.at(-1)?.body).toEqual({ everyoneNeedsTwoFactor: true });
   });
 
-  it('counts two or more people without two-factor and says each gets an email', async () => {
+  it('counts three people without two-factor, lists all three, and says each gets an email', async () => {
     signedIn(membership());
     answering({
       ...WITH_OWN,
       withoutTwoFactor: [
         ...WITH_OWN.withoutTwoFactor,
         { userId: 'user_5', name: 'Amaka Eze', role: COORDINATOR },
+        { userId: 'user_6', name: 'Bisi Adeyemi', role: COORDINATOR },
       ],
     });
     open();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
 
-    expect(screen.getByText('2 people don’t have two-factor yet')).toBeDefined();
+    expect(screen.getByText('3 people don’t have two-factor yet')).toBeDefined();
+    const without = within(screen.getByRole('list', { name: 'People without two-factor' }));
+    expect(without.getAllByRole('listitem')).toHaveLength(3);
+    expect(without.getByText('Bisi Adeyemi · Coordinator')).toBeDefined();
     expect(
-      screen.getByText(/^When you save, each gets an email\. They have until Saturday/),
+      screen.getByText(
+        'When you save, each gets an email and sees a banner. They have until Saturday, Oct 24 at 14:20 WAT to turn it on. After that they can’t open anything in Ìrè Events until they do. Their other organisations aren’t affected.',
+      ),
     ).toBeDefined();
+  });
+
+  it('reads that people choose for themselves while the rule is off, saved or switched back before saving', async () => {
+    signedIn(membership());
+    answering({ ...WITH_OWN, everyoneNeedsTwoFactor: true });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Require two-factor for everyone' }));
+
+    expect(
+      screen.getByText('Off. Apart from the rule above, people choose for themselves.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/single sign-on/)).toBeNull();
+  });
+
+  it('switched on and not yet saved, reads that everyone will need it whichever way they sign in', async () => {
+    signedIn(membership());
+    answering(WITH_OWN);
+    open();
+
+    expect(
+      await screen.findByText('Off. Apart from the rule above, people choose for themselves.'),
+    ).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Require two-factor for everyone' }));
+
+    expect(
+      screen.getByText('Everyone in Ìrè Events will need two-factor, whichever way they sign in.'),
+    ).toBeDefined();
+    expect(screen.queryByText(/^Off\./)).toBeNull();
+  });
+
+  it.each([
+    [
+      1,
+      '1 person doesn’t have two-factor yet. They see a banner until their deadline, then can’t open anything in Ìrè Events until they turn it on.',
+    ],
+    [
+      3,
+      '3 people don’t have two-factor yet. Each sees a banner until their deadline, then can’t open anything in Ìrè Events until they turn it on.',
+    ],
+  ])('saved on with %i people left, counts them under the deadline', async (count, line) => {
+    signedIn(membership());
+    answering({
+      ...WITH_OWN,
+      everyoneNeedsTwoFactor: true,
+      withoutTwoFactor: Array.from({ length: count }, (_, i) => ({
+        userId: `user_${i + 3}`,
+        name: `Member ${i + 3}`,
+        role: COORDINATOR,
+      })),
+    });
+    open();
+
+    expect(await screen.findByText('Required from Saturday, Oct 24 at 14:20 WAT')).toBeDefined();
+    expect(screen.getByText(line)).toBeDefined();
+    expect(screen.queryByText(/will need two-factor|^Off\./)).toBeNull();
+    expect(screen.queryByText(/single sign-on/)).toBeNull();
+  });
+
+  it('saved on with nobody left, shows the deadline and no line under it', async () => {
+    signedIn(membership());
+    answering({ ...WITH_OWN, everyoneNeedsTwoFactor: true, withoutTwoFactor: [] });
+    open();
+
+    const required = await screen.findByText('Required from Saturday, Oct 24 at 14:20 WAT');
+
+    expect(required.nextElementSibling).toBeNull();
   });
 
   it('keeps the administrators’ switch, reading that everyone’s rule covers it', async () => {

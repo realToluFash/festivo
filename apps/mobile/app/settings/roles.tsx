@@ -221,7 +221,6 @@ export default function RolesScreen() {
     organisation == null || catalogue == null || !paneResolves ? null : pane.kind === 'removing' &&
       selected != null ? (
       <RemoveRole
-        key={`removing-${selected.id}`}
         answer={atName}
         organisation={organisation}
         role={selected}
@@ -236,7 +235,6 @@ export default function RolesScreen() {
       />
     ) : (
       <RolePage
-        key={pane.kind === 'new' ? 'new' : pane.id}
         kind={kind}
         organisation={organisation}
         catalogue={catalogue}
@@ -297,6 +295,7 @@ export default function RolesScreen() {
             </FocusBack>
           }
           page={page}
+          pageKey={pane == null ? '' : pane.kind === 'new' ? 'new' : `${pane.kind}-${pane.id}`}
           pageInFront={inDetail}
           back={{ label: t('settings.rolesBack'), onPress: toList, testID: 'roles.back' }}
           spacing={SPACING}

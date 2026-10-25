@@ -28,6 +28,7 @@ import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { useFocusBack } from './Sheet.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
@@ -106,6 +107,10 @@ export function AppFrame({
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
   const pill = useRef<View>(null);
+  const ownTitle = useRef<TextHandle>(null);
+  const frameTitle = titleRef ?? ownTitle;
+  // Create an organisation's sheet takes focus from the switcher, and hands it back itself (sc-8606).
+  const [toSheet, setToSheet] = useState(false);
   const [switcherFrom, setSwitcherFrom] = useState<RefObject<View | null> | null>(null);
   const [creatingFrom, setCreatingFrom] = useState<RefObject<View | null> | null>(null);
   const [created, setCreated] = useState<{ name: string; takesFocus: boolean } | null>(null);
@@ -122,10 +127,22 @@ export function AppFrame({
       ? (opener: RefObject<View | null>) => {
           setCreated(null);
           setSwitcherFrom(opener);
+          setToSheet(false);
           setChoosing(true);
         }
       : undefined;
   const switchFromPill = openSwitcher && (() => openSwitcher(pill));
+  // An opener a pick took away, as the paused screen's, falls back to the organisation's name, then the title (sc-11413).
+  const switcherOpener = useMemo<RefObject<ScreenReaderTarget | null>>(
+    () => ({
+      get current() {
+        if (toSheet) return null;
+
+        return switcherFrom?.current ?? pill.current ?? frameTitle.current;
+      },
+    }),
+    [toSheet, switcherFrom, frameTitle],
+  );
   const startOrganisation = (opener: RefObject<View | null>) => {
     setCreated(null);
     setCreatingFrom(opener);
@@ -165,7 +182,7 @@ export function AppFrame({
           kind={kind}
           current={current}
           title={title}
-          titleRef={titleRef}
+          titleRef={frameTitle}
           switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
           back={back}
           backHidden={backHidden}
@@ -199,7 +216,7 @@ export function AppFrame({
                     paused={signedIn.pausedIn}
                     others={signedIn.organisations}
                     onSwitch={(next) => switchByTap(next.id)}
-                    onChoose={() => switchFromPill?.()}
+                    onChoose={(opener) => openSwitcher?.(opener)}
                   />
                 ) : standIn === 'overdue' && signedIn.organisation != null ? (
                   <TwoFactorOverdue
@@ -222,8 +239,10 @@ export function AppFrame({
         waiting={waiting}
         offer={offer}
         email={email}
+        opener={switcherOpener}
         onClose={() => setChoosing(false)}
         onCreate={() => {
+          setToSheet(true);
           setChoosing(false);
           startOrganisation(switcherFrom ?? pill);
         }}
@@ -583,6 +602,7 @@ function Switcher({
   waiting,
   offer,
   email,
+  opener,
   onClose,
   onCreate,
 }: {
@@ -592,6 +612,8 @@ function Switcher({
   waiting: WaitingInvitations;
   offer: DomainOffer;
   email: string;
+  /** Where screen reader focus goes back to once the switcher has gone. */
+  opener: RefObject<ScreenReaderTarget | null>;
   onClose: () => void;
   onCreate: () => void;
 }) {
@@ -610,6 +632,7 @@ function Switcher({
     [],
   );
   useFocusBackToOpener(offerClosed, afterOffer);
+  useFocusBack(open, opener);
   // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
   const fit =
     Platform.OS === 'android'

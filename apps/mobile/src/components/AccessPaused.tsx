@@ -1,6 +1,7 @@
 import type { Membership, PausedOrganisation } from '@soirely/api-client';
 import { pausedReasonKey, pausedSwitch } from '@soirely/domain';
 import { router } from 'expo-router';
+import { type RefObject, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -25,9 +26,10 @@ export function AccessPaused({
   paused: PausedOrganisation;
   others: readonly Membership[];
   onSwitch: (to: Membership) => void;
-  onChoose: () => void;
+  onChoose: (opener: RefObject<View | null>) => void;
 }) {
   const { t } = useTranslation();
+  const switchButton = useRef<View>(null);
   const { kind } = useLayout();
   const { suspension } = paused;
   const named = { organisation: paused.name, domain: suspension.domain ?? '' };
@@ -96,7 +98,10 @@ export function AccessPaused({
           {switchTo != null && (
             <SecondaryButton
               label={t('accessPaused.switch')}
-              onPress={() => (switchTo === 'switcher' ? onChoose() : onSwitch(switchTo))}
+              onPress={() =>
+                switchTo === 'switcher' ? onChoose(switchButton) : onSwitch(switchTo)
+              }
+              ref={switchButton}
               testID="accessPaused.switch"
             />
           )}
