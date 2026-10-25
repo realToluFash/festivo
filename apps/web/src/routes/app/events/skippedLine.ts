@@ -21,15 +21,24 @@ export function skippedLine(
     timeZone: 'UTC',
   });
 
-  return t('eventForm.clocksSkip', {
+  const day = new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+  const savedDate = skipped.savedAs.slice(0, 10);
+  const words = {
     time: clock.format(new Date(`${date}T${time}Z`)),
-    day: new Intl.DateTimeFormat(locale, {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-      timeZone: 'UTC',
-    }).format(new Date(`${date}T00:00Z`)),
+    day: day.format(new Date(`${date}T00:00Z`)),
     zone: timeZone,
     savedAs: clock.format(new Date(`${skipped.savedAs}Z`)),
-  });
+  };
+
+  return savedDate === date
+    ? t('eventForm.clocksSkip', words)
+    : t('eventForm.clocksSkipNextDay', {
+        ...words,
+        savedDay: day.format(new Date(`${savedDate}T00:00Z`)),
+      });
 }

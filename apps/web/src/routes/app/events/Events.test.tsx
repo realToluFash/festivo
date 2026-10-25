@@ -572,6 +572,19 @@ describe('A time the clocks skip, in New event (sc-10638)', () => {
     );
   });
 
+  it('names the day too when the saved time falls on the next one', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    answering({});
+    await form('America/Scoresbysund');
+
+    fill('event-start-date', '2027-03-27');
+    fill('event-start-time', '23:30');
+
+    expect(gapLine('event-start-gap')).toBe(
+      'There is no 23:30 on Sat 27 Mar in America/Scoresbysund: the clocks go forward that night. It will be saved as 00:30 on Sun 28 Mar.',
+    );
+  });
+
   it('says nothing in the hour the clocks repeat, nor without a zone', async () => {
     answering({});
     await form();

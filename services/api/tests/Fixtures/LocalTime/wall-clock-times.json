@@ -58,5 +58,10 @@
         "zone": "Europe/Paris",
         "typed": "2027-10-31T02:30",
         "saved": "2027-10-31T02:30:00+02:00"
+    },
+    "a skipped time saved on the next day": {
+        "zone": "America/Scoresbysund",
+        "typed": "2027-03-27T23:30",
+        "saved": "2027-03-28T00:30:00-01:00"
     }
 }

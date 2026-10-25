@@ -127,6 +127,12 @@ describe('a time the clocks skip (sc-10638)', () => {
     });
   });
 
+  it('names the next day when the gap carries the time past midnight', () => {
+    expect(skippedTime('2027-03-27', '23:30', 'America/Scoresbysund')).toEqual({
+      savedAs: '2027-03-28T00:30',
+    });
+  });
+
   it("names the time the API's LocalTimeResolver saves", () => {
     const table: Record<string, { zone: string; typed: string; saved: string }> = JSON.parse(
       readFileSync(

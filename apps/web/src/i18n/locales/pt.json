@@ -42,6 +42,7 @@
     "time": "Hora",
     "endsHint": "Um evento pode prolongar-se para lá da meia-noite. Escolha o dia em que termina.",
     "clocksSkip": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}}.",
+    "clocksSkipNextDay": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}} on {{savedDay}}.",
     "timeZone": "Fuso horário",
     "currency": "Moeda",
     "defaultsHint": "Valores preenchidos a partir das definições de {{name}}.",

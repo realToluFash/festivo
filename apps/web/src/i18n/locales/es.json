@@ -42,6 +42,7 @@
     "time": "Hora",
     "endsHint": "Un evento puede terminar pasada la medianoche. Elija el día en que termina.",
     "clocksSkip": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}}.",
+    "clocksSkipNextDay": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}} on {{savedDay}}.",
     "timeZone": "Zona horaria",
     "currency": "Moneda",
     "defaultsHint": "Valores tomados de la configuración de {{name}}.",
