@@ -810,3 +810,99 @@ describe('a few details, with invitations waiting (sc-3353)', () => {
     );
   });
 });
+
+describe('where focus goes on a few details (sc-11369)', () => {
+  const ADA: Session = { ...FOLAKE, name: 'Ada Okeke', email: 'ada@ire.events' };
+  const OFFERS = {
+    domain: 'ire.events',
+    offers: [{ id: 'org_ire', name: 'Ìrè Events' }],
+    request: null,
+  };
+
+  afterEach(() => sessionStorage.clear());
+
+  it('takes Start my own organisation to Organisation name, and the way back to Start my own', async () => {
+    answering({ 'GET /api/join-offers': () => json(OFFERS) });
+    at('/complete-profile', ADA);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Start my own organisation' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Organisation name'));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Ask to join an organisation at ire.events instead' }),
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Start my own organisation' }),
+    );
+  });
+
+  it('takes a refused Ask to join to the line that says why, read once', async () => {
+    answering({
+      'GET /api/join-offers': () => json(OFFERS),
+      'PATCH /api/auth/complete-profile': () =>
+        json(
+          { type: 'https://soirely.com/errors/join_offer_unavailable', title: 'No.', status: 409 },
+          409,
+        ),
+    });
+    at('/complete-profile', ADA);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' }));
+
+    const line = await screen.findByText(
+      'You cannot ask to join that organisation. Start your own, or ask somebody there to invite you.',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(line.closest('.notice')));
+    expect(line.closest('[role]')).toBeNull();
+  });
+
+  it('takes Dismiss under the linked notice to A few details', async () => {
+    sessionStorage.setItem('soirely.provider.linked', 'Google');
+    answering({});
+    at('/complete-profile');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss' }));
+
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'A few details' }),
+    );
+  });
+
+  it.each([
+    [
+      'Decline',
+      'POST /api/invitations/inv_1/decline',
+      () => new Response(null, { status: 204 }),
+      'You declined. Bisi Adeyemi will see that you said no.',
+    ],
+    [
+      'Accept and join',
+      'POST /api/invitations/inv_1/accept',
+      () => json({ organisation: membership({ ...ADUNNI, role: ROLE }) }),
+      'You joined Adunni Weddings as Event manager.',
+    ],
+    [
+      'Accept and join',
+      'POST /api/invitations/inv_1/accept',
+      () =>
+        json(
+          { type: 'https://soirely.com/errors/invitation_expired', title: 'No.', status: 409 },
+          409,
+        ),
+      'Expired',
+    ],
+  ])('takes %s to what answers it, read once (%#)', async (button, line, answer, said) => {
+    answering({ ...invited(preview('inv_1', ADUNNI, 'Bisi Adeyemi')), [line]: answer });
+    at('/complete-profile');
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: `${button === 'Decline' ? 'Decline the invitation to' : 'Accept and join'} Adunni Weddings`,
+      }),
+    );
+
+    const answered = (await screen.findByText(said)).closest<HTMLElement>('[tabindex="-1"]');
+    await waitFor(() => expect(document.activeElement).toBe(answered));
+    expect(answered?.closest('[role="status"]')).toBeNull();
+  });
+});

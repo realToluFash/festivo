@@ -765,3 +765,51 @@ describe('the two-factor deadline after a language change (sc-9267)', () => {
     ).toBeDefined();
   });
 });
+
+describe('Try again under "The sign-in rules did not load." (sc-11369)', () => {
+  function failingTwice(): void {
+    let reads = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (!new URL(String(input)).pathname.endsWith('/sign-in-rules')) {
+        throw new TypeError('Failed to fetch');
+      }
+      reads += 1;
+      if (reads < 3) throw new TypeError('Failed to fetch');
+
+      return new Response(JSON.stringify(PAGE), { status: 200 });
+    });
+  }
+
+  async function retryTwice(heading: string): Promise<void> {
+    const failed = 'The sign-in rules did not load.';
+    expect(await screen.findByText(failed)).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const again = await screen.findByText(failed);
+    await waitFor(() => expect(document.activeElement).toBe(again));
+    expect(again.closest('[role="alert"]')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: heading })),
+    );
+    expect(screen.queryByText(failed)).toBeNull();
+  }
+
+  it('puts focus on Sign-in rules once they load, or on the line once it fails again', async () => {
+    signedIn(membership({}));
+    failingTwice();
+    open();
+
+    await retryTwice('Sign-in rules');
+  });
+
+  it('puts focus on the organisation’s sign-in rules for a member who cannot change them', async () => {
+    signedIn(membership({ role: COORDINATOR, permissions: ['events.read', 'events.manage'] }));
+    failingTwice();
+    open();
+
+    await retryTwice('Ìrè Events’s sign-in rules');
+  });
+});

@@ -37,7 +37,7 @@ import {
   restoreSession,
   useSessionState,
 } from '../../session.ts';
-import { useStepFocus } from '../../stepFocus.ts';
+import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { useSignOut } from '../../signOut.ts';
 
 type Field =
@@ -107,7 +107,7 @@ export function CompleteProfile() {
       ) : (
         <>
           <div className="auth-heading">
-            <h1>{t('completeProfile.title')}</h1>
+            <h1 tabIndex={-1}>{t('completeProfile.title')}</h1>
             <p>{t('completeProfile.intro')}</p>
           </div>
 
@@ -289,6 +289,9 @@ function Details({
   const [offered, setOffered] = useState<JoinOffers | null>(null);
   const [own, setOwn] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  const [unavailableNotice, arriveAtUnavailable] = useStepFocus<HTMLDivElement>();
+  const startOwnButton = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     if (!needsOrganisation) return;
@@ -418,6 +421,7 @@ function Details({
         // Taken off the list since the screen opened: what is offered now, and the fields if nothing is.
         setOffered(await api.joinOffers().catch(() => null));
         setUnavailable(true);
+        arriveAtUnavailable();
         return;
       }
 
@@ -510,7 +514,7 @@ function Details({
       )}
 
       {unavailable && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken" ref={unavailableNotice} tabIndex={-1}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
@@ -548,7 +552,16 @@ function Details({
               </button>
             </div>
           ))}
-          <button className="button" type="button" disabled={saving} onClick={() => setOwn(true)}>
+          <button
+            ref={startOwnButton}
+            className="button"
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              setOwn(true);
+              land(() => organisationInput.current);
+            }}
+          >
             {t('domainJoining.startOwn')}
           </button>
         </div>
@@ -558,7 +571,10 @@ function Details({
         <button
           className="link-button join-offers-back"
           type="button"
-          onClick={() => setOwn(false)}
+          onClick={() => {
+            setOwn(false);
+            land(() => startOwnButton.current);
+          }}
         >
           {t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
         </button>

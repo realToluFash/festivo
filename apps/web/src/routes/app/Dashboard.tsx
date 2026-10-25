@@ -26,7 +26,7 @@ export function Dashboard() {
 
   return (
     <>
-      <h1>{t('nav.dashboard')}</h1>
+      <h1 tabIndex={-1}>{t('nav.dashboard')}</h1>
       <p className="muted">{t('nav.signedInAs', { name: session.name })}</p>
       {counted != null && counted.organisationId === organisationId && (
         <p>{t('nav.eventCount', { count: counted.count })}</p>

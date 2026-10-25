@@ -17,11 +17,13 @@ import { useFormChecks } from '../../../formChecks.ts';
 import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount } from '../../../session.ts';
-import { focusStep } from '../../../stepFocus.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
+
+type Opener = 'transfer' | 'leave' | 'delete';
 
 type Step =
   | { kind: 'resting'; flash: string | null }
-  | { kind: 'transfer' }
+  | { kind: 'transfer'; from: Opener }
   | { kind: 'leave' }
   | { kind: 'delete' };
 
@@ -31,6 +33,12 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
   const owner = organisation.role.seededAs === 'owner';
   const [step, setStep] = useState<Step>({ kind: 'resting', flash: null });
   const [members, setMembers] = useState<OrganisationMember[] | null>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const flash = useRef<HTMLDivElement>(null);
+  const transferButton = useRef<HTMLButtonElement>(null);
+  const leaveButton = useRef<HTMLButtonElement>(null);
+  const deleteButton = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
 
   useEffect(() => {
     if (!owner) return;
@@ -46,6 +54,12 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
     };
   }, [organisation.id, owner]);
 
+  function rest(back: Opener): void {
+    setStep({ kind: 'resting', flash: null });
+    const opener = { transfer: transferButton, leave: leaveButton, delete: deleteButton }[back];
+    land(() => opener.current ?? title.current);
+  }
+
   const others = (members ?? []).filter((one) => one.status === 'active' && !one.self);
   const onlyOwner =
     owner &&
@@ -54,12 +68,14 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
 
   return (
     <section className="card settings-card" aria-labelledby="ownership-title">
-      <h2 id="ownership-title">{t('ownership.title')}</h2>
+      <h2 id="ownership-title" ref={title} tabIndex={-1}>
+        {t('ownership.title')}
+      </h2>
 
       {step.kind === 'resting' && (
         <>
           {step.flash != null && (
-            <div className="notice notice-done" role="status">
+            <div className="notice notice-done" ref={flash} tabIndex={-1}>
               <span className="mark mark-done" aria-hidden="true">
                 ✓
               </span>
@@ -77,7 +93,8 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
               <button
                 type="button"
                 className="button"
-                onClick={() => setStep({ kind: 'transfer' })}
+                ref={transferButton}
+                onClick={() => setStep({ kind: 'transfer', from: 'transfer' })}
               >
                 {t('ownership.transfer')}
               </button>
@@ -92,7 +109,12 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
                 {t('ownership.leaveNote', { organisation: organisation.name })}
               </p>
             </div>
-            <button type="button" className="button" onClick={() => setStep({ kind: 'leave' })}>
+            <button
+              type="button"
+              className="button"
+              ref={leaveButton}
+              onClick={() => setStep({ kind: 'leave' })}
+            >
               {t('ownership.leave', { organisation: organisation.name })}
             </button>
           </div>
@@ -105,6 +127,7 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
               <button
                 type="button"
                 className="button button-danger"
+                ref={deleteButton}
                 onClick={() => setStep({ kind: 'delete' })}
               >
                 {t('ownership.delete')}
@@ -118,13 +141,14 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
         <Transfer
           organisation={organisation}
           candidates={others}
-          onCancel={() => setStep({ kind: 'resting', flash: null })}
-          onDone={(name) =>
+          onCancel={() => rest(step.from)}
+          onDone={(name) => {
             setStep({
               kind: 'resting',
               flash: t('ownership.transferred', { name, organisation: organisation.name }),
-            })
-          }
+            });
+            land(() => flash.current);
+          }}
         />
       )}
 
@@ -132,16 +156,13 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
         <Leave
           organisation={organisation}
           onlyOwner={onlyOwner}
-          onTransfer={() => setStep({ kind: 'transfer' })}
-          onStay={() => setStep({ kind: 'resting', flash: null })}
+          onTransfer={() => setStep({ kind: 'transfer', from: 'leave' })}
+          onStay={() => rest('leave')}
         />
       )}
 
       {step.kind === 'delete' && (
-        <Delete
-          organisation={organisation}
-          onKeep={() => setStep({ kind: 'resting', flash: null })}
-        />
+        <Delete organisation={organisation} onKeep={() => rest('delete')} />
       )}
     </section>
   );
@@ -376,6 +397,7 @@ function Leave({
   const [openedOnlyOwner] = useState(onlyOwner);
   const lastOwner = onlyOwner || refusedLast;
   const heading = useRef<HTMLHeadingElement>(null);
+  const [onlyOwnerNotice, arriveAtOnlyOwner] = useStepFocus<HTMLDivElement>();
 
   useLayoutEffect(() => focusStep(heading.current), []);
 
@@ -389,8 +411,10 @@ function Leave({
       void navigate('/app');
     } catch (error) {
       setBusy(false);
-      if (error instanceof ApiError && error.is('last_owner')) setRefusedLast(true);
-      else
+      if (error instanceof ApiError && error.is('last_owner')) {
+        setRefusedLast(true);
+        arriveAtOnlyOwner();
+      } else
         setRefused(
           error instanceof ApiError ? error.problem.title : t('membersScreen.actionFailed'),
         );
@@ -404,11 +428,14 @@ function Leave({
       </h3>
       {lastOwner ? (
         <>
-          <div className="notice notice-attention" role={openedOnlyOwner ? undefined : 'alert'}>
+          <div
+            className="notice notice-attention"
+            role={openedOnlyOwner || refusedLast ? undefined : 'alert'}
+          >
             <span className="mark mark-attention" aria-hidden="true">
               !
             </span>
-            <div className="notice-body">
+            <div className="notice-body" ref={onlyOwnerNotice} tabIndex={-1}>
               <p className="notice-title">{t('ownership.onlyOwnerTitle')}</p>
               <p>{t('ownership.onlyOwnerBody')}</p>
             </div>

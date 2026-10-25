@@ -103,6 +103,55 @@ describe('Settings > General > Requests to join (sc-562)', () => {
     await waitFor(() => expect(sent.some((one) => one.path.endsWith('/replace'))).toBe(true));
   });
 
+  it('puts focus back on Replace link after Keep it (sc-11369)', async () => {
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(DOMAINS),
+      'GET /api/orgs/org_1/request-link': () => json({ on: true, url: URL_ON }),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace link' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Replace link' }));
+  });
+
+  it('takes focus to the line that says the link is replaced (sc-11369)', async () => {
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(DOMAINS),
+      'GET /api/orgs/org_1/request-link': () => json({ on: true, url: URL_ON }),
+      'POST /api/orgs/org_1/request-link/replace': () =>
+        json({ on: true, url: 'https://soirely.test/join/' + 'ef'.repeat(16) }),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace link' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    const notice = (
+      await screen.findByText('The link is replaced. The old one no longer works.')
+    ).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
+  });
+
+  it('takes focus to the line that says replacing did not work, with no connection (sc-11369)', async () => {
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(DOMAINS),
+      'GET /api/orgs/org_1/request-link': () => json({ on: true, url: URL_ON }),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Replace link' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace link' }));
+
+    const notice = (await screen.findByText('That did not work. Try again in a moment.')).closest(
+      '.notice',
+    );
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.getAttribute('role')).toBeNull();
+  });
+
   it('is not shown to a role that cannot manage members', async () => {
     answering({});
     settings(membership({ id: 'org_1', name: 'Ìrè Events', permissions: [] }));

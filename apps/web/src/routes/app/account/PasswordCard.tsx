@@ -20,7 +20,7 @@ import { focusWhereSent } from '../../../offField.ts';
 import { useResendCountdown } from '../../../resendCountdown.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
-import { focusStep, useStepFocus } from '../../../stepFocus.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
 type Stage =
@@ -37,6 +37,7 @@ export function PasswordCard({
   onAdded,
   setting = false,
   onSetting,
+  returnTo,
 }: {
   email: string;
   hasPassword: boolean;
@@ -46,9 +47,15 @@ export function PasswordCard({
   /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
   setting?: boolean;
   onSetting?: (on: boolean) => void;
+  /** Where Cancel on Set a password goes back to when another card opened it. */
+  returnTo?: () => HTMLElement | null;
 }) {
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'at-rest', signedOut: null, added: null });
+  const heading = useRef<HTMLHeadingElement>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  const said = useRef<HTMLParagraphElement>(null);
+  const land = useFocusOnceShown();
   const open = (next: Stage) => {
     setStage(next);
     onSetting?.(next.kind === 'setting');
@@ -65,15 +72,27 @@ export function PasswordCard({
             onAdded={async () => {
               await onAdded();
               open({ kind: 'at-rest', signedOut: null, added: provider });
+              land(() => said.current);
             }}
-            onCancel={() => open({ kind: 'at-rest', signedOut: null, added: null })}
+            onCancel={() => {
+              const back = stage.kind === 'setting' ? null : returnTo;
+              open({ kind: 'at-rest', signedOut: null, added: null });
+              land(() => back?.() ?? opener.current ?? heading.current);
+            }}
           />
         ) : (
           <>
-            <h2 id="password-title">{t('passwordCard.title')}</h2>
+            <h2 id="password-title" ref={heading} tabIndex={-1}>
+              {t('passwordCard.title')}
+            </h2>
             <p>{t('passwordCard.setRest', { provider })}</p>
             <div className="actions">
-              <button className="button" type="button" onClick={() => open({ kind: 'setting' })}>
+              <button
+                className="button"
+                type="button"
+                ref={opener}
+                onClick={() => open({ kind: 'setting' })}
+              >
                 {t('passwordCard.set')}
               </button>
             </div>
@@ -91,14 +110,20 @@ export function PasswordCard({
           onChanged={(signedOut) => {
             setStage({ kind: 'at-rest', signedOut, added: null });
             onChanged();
+            land(() => said.current);
           }}
-          onCancel={() => setStage({ kind: 'at-rest', signedOut: null, added: null })}
+          onCancel={() => {
+            setStage({ kind: 'at-rest', signedOut: null, added: null });
+            land(() => opener.current ?? heading.current);
+          }}
         />
       ) : (
         <>
-          <h2 id="password-title">{t('passwordCard.title')}</h2>
+          <h2 id="password-title" ref={heading} tabIndex={-1}>
+            {t('passwordCard.title')}
+          </h2>
           {stage.kind === 'at-rest' && (stage.signedOut != null || stage.added != null) && (
-            <p className="status-done" role="status">
+            <p className="status-done" ref={said} tabIndex={-1}>
               <span className="mark mark-done" aria-hidden="true">
                 ✓
               </span>
@@ -109,7 +134,12 @@ export function PasswordCard({
           )}
           <p>{t('passwordCard.intro')}</p>
           <div className="actions">
-            <button className="button" type="button" onClick={() => setStage({ kind: 'changing' })}>
+            <button
+              className="button"
+              type="button"
+              ref={opener}
+              onClick={() => setStage({ kind: 'changing' })}
+            >
               {t('passwordCard.change')}
             </button>
           </div>
@@ -120,7 +150,7 @@ export function PasswordCard({
 }
 
 type SetStep =
-  | { kind: 'code'; refusal: string | null; paused: string | null }
+  | { kind: 'code'; refusal: string | null; paused: string | null; expired?: boolean }
   | { kind: 'password'; stepUp: string };
 
 /** The code from the email first, then the password: the provider session alone may not add one. */
@@ -147,6 +177,8 @@ function Setting({
   const codeInput = useRef<HTMLInputElement>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
   const [stepHeading, arriveAtStep] = useStepFocus();
+  const expiredLine = useRef<HTMLDivElement>(null);
+  const land = useFocusOnceShown();
   const codeChecks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -222,7 +254,7 @@ function Setting({
     }
 
     setBusy(true);
-    const land = focusWhereSent();
+    const landWhereSent = focusWhereSent();
 
     try {
       await api.setPassword(password, step.stepUp);
@@ -232,7 +264,13 @@ function Setting({
 
       if (error instanceof ApiError && error.is('verification_code_expired')) {
         setCode('');
-        setStep({ kind: 'code', refusal: t('passwordCard.setCodeExpired'), paused: null });
+        setStep({
+          kind: 'code',
+          refusal: t('passwordCard.setCodeExpired'),
+          paused: null,
+          expired: true,
+        });
+        land(() => expiredLine.current);
         return;
       }
 
@@ -245,7 +283,7 @@ function Setting({
           ? t('register.breached')
           : (violation?.message ?? t('passwordCard.failedBody')),
       );
-      land('set-password');
+      landWhereSent('set-password');
     }
   }
 
@@ -356,7 +394,14 @@ function Setting({
             }}
             onBlur={(event) => codeChecks.left('code', event.target.value)}
           />
-          {codeError != null && <FieldError id="set-code-error" message={codeError} />}
+          {codeError != null &&
+            (step.expired === true && codeChecks.errors.code == null ? (
+              <div ref={expiredLine} tabIndex={-1}>
+                <FieldError id="set-code-error" message={codeError} quiet />
+              </div>
+            ) : (
+              <FieldError id="set-code-error" message={codeError} />
+            ))}
         </div>
 
         <p className="muted">{t('passwordCard.setCodeNote')}</p>

@@ -7,7 +7,15 @@ import {
   eventNameLength,
   eventProblems,
 } from '@soirely/domain';
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useBlocker, useNavigate, useParams } from 'react-router';
 
@@ -17,6 +25,7 @@ import { currentLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
 import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
+import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
@@ -30,7 +39,7 @@ export type EditOutcome = 'saved' | 'unchanged';
 
 type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'notFound' } | TaggedEvent;
 
-type Status = 'editing' | 'saving' | 'failed' | 'changedElsewhere';
+type Status = 'editing' | 'saving' | 'failed' | 'latestFailed' | 'changedElsewhere';
 
 type Typed = { draft: EventDraft; timeZone: string; currency: string };
 
@@ -56,6 +65,9 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [reads, setReads] = useState(0);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const failedLine = useRef<HTMLParagraphElement>(null);
+  const land = useFocusOnceShown();
   const eventPath = `/app/events/${encodeURIComponent(eventId)}`;
 
   useEffect(() => {
@@ -93,18 +105,21 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
       )}
 
       {'kind' in load && load.kind === 'failed' && (
-        <ArrivalNotice className="notice notice-broken" role="alert">
+        <ArrivalNotice className="notice notice-broken" role={attempt > 0 ? undefined : 'alert'}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{t('eventPage.failed')}</p>
+            <p ref={failedLine} tabIndex={-1}>
+              {t('eventPage.failed')}
+            </p>
             <button
               type="button"
               className="button"
               onClick={() => {
                 setLoad({ kind: 'loading' });
                 setAttempt((n) => n + 1);
+                land(() => heading.current ?? failedLine.current);
               }}
             >
               {t('events.retry')}
@@ -115,7 +130,9 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
 
       {'kind' in load && load.kind === 'notFound' && (
         <section className="card">
-          <h1>{t('eventPage.notFound')}</h1>
+          <h1 ref={heading} tabIndex={-1}>
+            {t('eventPage.notFound')}
+          </h1>
         </section>
       )}
 
@@ -125,6 +142,7 @@ function EditOf({ organisationId, eventId }: { organisationId: string; eventId: 
           opened={load}
           reread={reads > 0}
           eventPath={eventPath}
+          heading={heading}
           onLatest={(latest) => {
             setLoad(latest);
             setReads((n) => n + 1);
@@ -143,11 +161,13 @@ function DetailsForm({
   opened,
   reread,
   eventPath,
+  heading,
   onLatest,
 }: {
   opened: TaggedEvent;
   reread: boolean;
   eventPath: string;
+  heading: RefObject<HTMLHeadingElement | null>;
   onLatest: (latest: TaggedEvent) => void;
 }) {
   const { t } = useTranslation();
@@ -163,6 +183,8 @@ function DetailsForm({
   const focusNext = useRef<(() => void) | null>(null);
   const closing = useRef(false);
   const saving = useRef(false);
+  const [notSaved, arriveAtNotSaved] = useStepFocus<HTMLParagraphElement>();
+  const [saveButton, arriveAtSave] = useStepFocus<HTMLButtonElement>();
   const { draft, timeZone, currency } = typed;
   const changes = useMemo(() => eventChanges(saved, typed), [saved, typed]);
 
@@ -292,7 +314,8 @@ function DetailsForm({
     } catch {
       setFetchingLatest(false);
       setConfirming(null);
-      setStatus('failed');
+      setStatus('latestFailed');
+      arriveAtNotSaved();
     }
   }
 
@@ -316,7 +339,9 @@ function DetailsForm({
 
   return (
     <>
-      <h1>{t('eventEdit.title')}</h1>
+      <h1 ref={heading} tabIndex={-1}>
+        {t('eventEdit.title')}
+      </h1>
 
       <form className="event-form" noValidate onSubmit={(event) => void save(event)}>
         <p className="visually-hidden" role="status">
@@ -401,12 +426,21 @@ function DetailsForm({
           </div>
         </section>
 
-        {status === 'failed' && (
-          <div className="notice notice-broken" role="alert">
+        {(status === 'failed' || status === 'latestFailed') && (
+          <div
+            className="notice notice-broken"
+            role={status === 'latestFailed' ? undefined : 'alert'}
+          >
             <span className="mark mark-broken" aria-hidden="true">
               ✕
             </span>
-            <p className="notice-title">{t('eventEdit.notSaved')}</p>
+            <p
+              className="notice-title"
+              ref={status === 'latestFailed' ? notSaved : undefined}
+              tabIndex={status === 'latestFailed' ? -1 : undefined}
+            >
+              {t('eventEdit.notSaved')}
+            </p>
           </div>
         )}
 
@@ -421,7 +455,14 @@ function DetailsForm({
                 <button type="button" className="button" onClick={() => setConfirming('latest')}>
                   {t('eventEdit.showLatest')}
                 </button>
-                <button type="button" className="button" onClick={() => setStatus('editing')}>
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() => {
+                    setStatus('editing');
+                    arriveAtSave();
+                  }}
+                >
                   {t('eventEdit.cancel')}
                 </button>
               </div>
@@ -430,7 +471,7 @@ function DetailsForm({
         )}
 
         <div className="event-form-actions">
-          <button className="button button-primary" type="submit" aria-busy={busy}>
+          <button ref={saveButton} className="button button-primary" type="submit" aria-busy={busy}>
             {busy ? t('eventEdit.saving') : t('eventEdit.save')}
           </button>
           <button

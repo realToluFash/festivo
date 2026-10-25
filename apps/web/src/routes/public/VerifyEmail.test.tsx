@@ -193,7 +193,10 @@ describe('verifying an email address', () => {
     open();
     enter('123456');
 
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/has expired/));
+    const notice = (await screen.findByText('That code has expired')).closest('.notice-body');
+    expect(document.activeElement).toBe(notice);
+    expect(notice?.textContent).toMatch(/Send a new one and use the code in the newest email/);
+    expect(notice?.closest('[role="alert"]')).toBeNull();
     expect(screen.getAllByRole('button', { name: 'Send a new code' })).not.toEqual([]);
   });
 
@@ -203,7 +206,9 @@ describe('verifying an email address', () => {
     open();
     enter('000000');
 
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/Too many wrong/));
+    const notice = (await screen.findByText('Too many wrong tries')).closest('.notice-body');
+    expect(document.activeElement).toBe(notice);
+    expect(notice?.closest('[role="alert"]')).toBeNull();
   });
 
   it('counts down from the seconds the resend answered with', async () => {
@@ -442,7 +447,7 @@ describe('verifying an address added from Settings > Account', () => {
     await screen.findByLabelText('Code from the email');
     enter('000000');
 
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(says));
+    await waitFor(() => expect(document.body.textContent).toMatch(says));
     expect(
       screen
         .getAllByRole('link', { name: 'Back to Account' })
@@ -517,5 +522,64 @@ describe('a held sign-up on a device whose session has ended', () => {
 
     expect(await screen.findByText('You were signed out')).toBeDefined();
     expect(sessionStorage.getItem('soirely.registration')).toBeNull();
+  });
+});
+
+describe('where focus goes once a code is refused or sent again (sc-11369)', () => {
+  const expiredOnOpen = {
+    'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 0, codeState: 'expired' }),
+  };
+
+  it('does not move focus to the banner the screen opens on', async () => {
+    answering(expiredOnOpen);
+
+    open();
+
+    const notice = (await screen.findByText('That code has expired')).closest('.notice');
+    expect(notice?.getAttribute('role')).toBe('alert');
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('takes Send a new code, in place of the code, to Code from the email', async () => {
+    answering({ 'POST /api/auth/verify/email': () => problem('verification_code_expired') });
+
+    open();
+    enter('123456');
+    await screen.findByText('That code has expired');
+    vi.restoreAllMocks();
+    answering({ 'POST /api/auth/verify/resend': () => json({ cooldownSeconds: 42 }) });
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+
+    const field = await screen.findByLabelText('Code from the email');
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(screen.getByRole('button', { name: 'Send a new code in 0:42' })).toBeDefined();
+  });
+
+  it('takes Send a new code to the field when the resend was too soon', async () => {
+    answering({
+      ...expiredOnOpen,
+      'POST /api/auth/verify/resend': () =>
+        problem('too_many_attempts', 429, { 'Retry-After': '30' }),
+    });
+
+    open();
+    await screen.findByText('That code has expired');
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+
+    const field = await screen.findByLabelText('Code from the email');
+    await waitFor(() => expect(document.activeElement).toBe(field));
+  });
+
+  it('takes Send a new code with no connection to "That did not work", read once', async () => {
+    answering(expiredOnOpen);
+
+    open();
+    await screen.findByText('That code has expired');
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+
+    const notice = (await screen.findByText('That did not work')).closest('.notice-body');
+    await waitFor(() => expect(document.activeElement).toBe(notice));
+    expect(notice?.textContent).toMatch(/Something went wrong on the way/);
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

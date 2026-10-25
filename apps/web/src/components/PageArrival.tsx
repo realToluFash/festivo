@@ -80,7 +80,7 @@ export function ArrivalNotice({
   children,
 }: {
   className: string;
-  role: 'alert' | 'status';
+  role: 'alert' | 'status' | undefined;
   children: ReactNode;
 }) {
   const arriving = useContext(Arriving);

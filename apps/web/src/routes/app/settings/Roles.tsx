@@ -45,14 +45,14 @@ import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
 import { can, useSession } from '../../../session.ts';
-import { focusStep, useStepFocus } from '../../../stepFocus.ts';
+import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
 import { ArrivalNotice } from '../../../components/PageArrival.tsx';
 
-type Saved = 'updated' | 'created';
-
 type Load =
-  { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; catalogue: RolesCatalogue };
+  | { kind: 'loading' }
+  | { kind: 'failed'; retried: boolean }
+  | { kind: 'loaded'; catalogue: RolesCatalogue };
 
 /** maxLength counts UTF-16 units, and a letter typed with its accent decomposed is two or more of them. */
 const TYPED_MAXIMUM = ROLE_NAME_MAXIMUM * 4;
@@ -86,20 +86,34 @@ export function Roles() {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const organisationId = organisation?.id;
+  const retrying = useRef(false);
+  const [heading, arriveAtHeading] = useStepFocus();
+  const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
 
     api.roles(organisationId).then(
-      (catalogue) => current && setLoad({ kind: 'loaded', catalogue }),
-      () => current && setLoad({ kind: 'failed' }),
+      (catalogue) => {
+        if (!current) return;
+        setLoad({ kind: 'loaded', catalogue });
+        if (retrying.current) arriveAtHeading();
+        retrying.current = false;
+      },
+      () => {
+        if (!current) return;
+        const retried = retrying.current;
+        retrying.current = false;
+        setLoad({ kind: 'failed', retried });
+        if (retried) arriveAtFailed();
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, arriveAtHeading, arriveAtFailed]);
 
   if (organisation == null) return null;
   if (!can(session, 'members.read')) return <Forbidden />;
@@ -113,16 +127,19 @@ export function Roles() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <ArrivalNotice className="notice notice-broken" role="alert">
+        <ArrivalNotice className="notice notice-broken" role={load.retried ? undefined : 'alert'}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{t('rolesScreen.failedLoad')}</p>
+            <p ref={failedLine} tabIndex={load.retried ? -1 : undefined}>
+              {t('rolesScreen.failedLoad')}
+            </p>
             <button
               type="button"
               className="button"
               onClick={() => {
+                retrying.current = true;
                 setLoad({ kind: 'loading' });
                 setAttempt((n) => n + 1);
               }}
@@ -139,6 +156,7 @@ export function Roles() {
           catalogue={load.catalogue}
           manages={can(session, 'members.manage')}
           held={organisation.permissions}
+          headingRef={heading}
           onChange={(catalogue) => setLoad({ kind: 'loaded', catalogue })}
           onReload={() => setAttempt((n) => n + 1)}
         />
@@ -152,6 +170,7 @@ function RolesLoaded({
   catalogue,
   manages,
   held,
+  headingRef,
   onChange,
   onReload,
 }: {
@@ -159,6 +178,7 @@ function RolesLoaded({
   catalogue: RolesCatalogue;
   manages: boolean;
   held: string[];
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onChange: (catalogue: RolesCatalogue) => void;
   onReload: () => void;
 }) {
@@ -167,7 +187,7 @@ function RolesLoaded({
     kind: 'role',
     id: (catalogue.roles.find((role) => !role.fixed) ?? catalogue.roles[0])?.id ?? '',
   }));
-  const [saved, setSaved] = useState<Saved | null>(null);
+  const [saved, setSaved] = useState(false);
   // At phone and tablet portrait width a role opens on its own page, with ‹ Roles back to the list.
   const [opened, setOpened] = useState(false);
   const [roleStartRef, arriveAtRole] = useStepFocus<HTMLElement>();
@@ -178,14 +198,29 @@ function RolesLoaded({
     [roleStartRef],
   );
   const [savedNotice, arriveAtSaved] = useStepFocus<HTMLDivElement>();
+  const land = useFocusOnceShown();
+  const listed = useRef<HTMLElement>(null);
+  const newRole = useRef<HTMLButtonElement>(null);
+  const removeButton = useRef<HTMLButtonElement>(null);
   const name = (role: OrganisationRole) => roleName(t, role);
   const selected =
     pane.kind === 'new' ? null : (catalogue.roles.find((role) => role.id === pane.id) ?? null);
 
   function open(next: Pane): void {
     setPane(next);
-    setSaved(null);
+    setSaved(false);
     setOpened(true);
+  }
+
+  function backToList(): void {
+    setOpened(false);
+    land(
+      () =>
+        (pane.kind === 'new'
+          ? newRole.current
+          : listed.current?.querySelector<HTMLElement>(`[data-role="${pane.id}"]`)) ??
+        headingRef.current,
+    );
   }
 
   function pick(next: Pane): void {
@@ -195,12 +230,15 @@ function RolesLoaded({
 
   return (
     <div className="roles" data-open={opened}>
-      <section className="card roles-list" aria-labelledby="roles-title">
+      <section ref={listed} className="card roles-list" aria-labelledby="roles-title">
         <div className="roles-list-head">
-          <h1 id="roles-title">{t('rolesScreen.title')}</h1>
+          <h1 id="roles-title" ref={headingRef} tabIndex={-1}>
+            {t('rolesScreen.title')}
+          </h1>
           <p className="muted">{t('rolesScreen.intro', { name: organisation.name })}</p>
           {manages && (
             <button
+              ref={newRole}
               type="button"
               className="button button-primary"
               onClick={() => pick({ kind: 'new' })}
@@ -214,6 +252,7 @@ function RolesLoaded({
             key={role.id}
             type="button"
             className="roles-pick"
+            data-role={role.id}
             title={name(role)}
             aria-pressed={pane.kind !== 'new' && pane.id === role.id}
             onClick={() => pick({ kind: 'role', id: role.id })}
@@ -233,7 +272,7 @@ function RolesLoaded({
       </section>
 
       <section className="card roles-detail" aria-labelledby="role-title">
-        <button type="button" className="link-button roles-back" onClick={() => setOpened(false)}>
+        <button type="button" className="link-button roles-back" onClick={backToList}>
           <span aria-hidden="true">‹ </span>
           {t('rolesScreen.title')}
         </button>
@@ -243,10 +282,15 @@ function RolesLoaded({
             role={selected}
             roles={catalogue.roles}
             held={held}
-            onKeep={() => open({ kind: 'role', id: selected.id })}
+            onKeep={() => {
+              open({ kind: 'role', id: selected.id });
+              land(() => removeButton.current);
+            }}
             onRemoved={(roles) => {
               onChange({ ...catalogue, roles });
               open({ kind: 'role', id: roles.find((role) => !role.fixed)?.id ?? '' });
+              if (window.matchMedia(ONE_PANE).matches) arriveAtRole();
+              else land(() => headingRef.current);
               onReload();
             }}
           />
@@ -261,6 +305,7 @@ function RolesLoaded({
             saved={saved}
             startRef={startsRole}
             savedRef={savedNotice}
+            removeRef={removeButton}
             onRemove={() => selected != null && open({ kind: 'removing', id: selected.id })}
             onSaved={(role) => {
               const exists = catalogue.roles.some((one) => one.id === role.id);
@@ -271,11 +316,11 @@ function RolesLoaded({
                   : [...catalogue.roles, role],
               });
               setPane({ kind: 'role', id: role.id });
-              setSaved(exists ? 'updated' : 'created');
-              // Create role went with the new role's form, so its answer takes focus.
-              if (!exists) arriveAtSaved();
+              setSaved(true);
+              arriveAtSaved();
             }}
-            onEdited={() => setSaved(null)}
+            onEdited={() => setSaved(false)}
+            onDiscarded={arriveAtRole}
           />
         )}
       </section>
@@ -292,22 +337,26 @@ function Editing({
   saved,
   startRef,
   savedRef,
+  removeRef,
   onRemove,
   onSaved,
   onEdited,
+  onDiscarded,
 }: {
   organisation: Membership;
   role: OrganisationRole | null;
   catalogue: RolesCatalogue;
   manages: boolean;
   held: string[];
-  saved: Saved | null;
+  saved: boolean;
   /** The role's name, or the field it is typed in: where its own page begins. */
   startRef: RefCallback<HTMLElement>;
   savedRef: RefObject<HTMLDivElement | null>;
+  removeRef: RefObject<HTMLButtonElement | null>;
   onRemove: () => void;
   onSaved: (role: OrganisationRole) => void;
   onEdited: () => void;
+  onDiscarded: () => void;
 }) {
   const { t } = useTranslation();
   const creating = role == null;
@@ -451,7 +500,7 @@ function Editing({
           </p>
         </div>
         {manages && role?.removable === true && (
-          <button type="button" className="button button-danger" onClick={onRemove}>
+          <button ref={removeRef} type="button" className="button button-danger" onClick={onRemove}>
             {t('rolesScreen.remove')}
           </button>
         )}
@@ -465,13 +514,8 @@ function Editing({
           <p>{t('rolesScreen.ownerNote', { name: organisation.name })}</p>
         </div>
       )}
-      {saved != null && (
-        <div
-          className="notice notice-done"
-          role={saved === 'created' ? undefined : 'status'}
-          ref={savedRef}
-          tabIndex={saved === 'created' ? -1 : undefined}
-        >
+      {saved && (
+        <div className="notice notice-done" ref={savedRef} tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -587,6 +631,7 @@ function Editing({
                   setGrant(startingGrant);
                   setTyped(role.name ?? '');
                   setNameError(null);
+                  onDiscarded();
                 }}
               >
                 {t('rolesScreen.discard')}
