@@ -226,7 +226,7 @@ export function useScrolledToTop(): RefObject<View | null> {
 }
 
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
-const SETTLED_MS = 500;
+export const SETTLED_MS = 500;
 
 function bringIntoView(scroll: ScreenScrollView | null, line: View | null): void {
   const view = scroll?.ref.current;
