@@ -1,12 +1,5 @@
 import type { InvitationPreview } from '@soirely/api-client';
-import {
-  formatDay,
-  initials,
-  invitationWording,
-  isWaiting,
-  refusalBody,
-  roleName,
-} from '@soirely/domain';
+import { formatDay, invitationWording, isWaiting, refusalBody, roleName } from '@soirely/domain';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -14,6 +7,7 @@ import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 
@@ -61,16 +55,14 @@ function InvitationRow({
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
 
   return (
-    <View style={styles.row} accessibilityLabel={organisation}>
+    <View style={styles.row}>
       <View style={styles.head}>
         <View
           style={styles.tile}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
         >
-          <Text size={tokens.typeMeta.size} weight="bold" muted>
-            {initials(organisation)}
-          </Text>
+          <Initials name={organisation} size={tokens.typeMeta.size} weight="bold" muted />
         </View>
         <View style={styles.naming}>
           <Text size={tokens.typeRowTitle.size} weight="semibold">

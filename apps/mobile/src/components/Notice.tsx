@@ -36,9 +36,7 @@ export function Notice({
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
   wordsRef?: Ref<View> | undefined;
 }) {
-  const live = useReadOut(
-    announce ? [title, body, detail].filter((line) => line != null).join('\n') : null,
-  );
+  useReadOut(announce ? [title, body, detail].filter((line) => line != null).join('\n') : null);
   const surface = {
     quiet: styles.quiet,
     attention: styles.attention,
@@ -74,7 +72,7 @@ export function Notice({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]}>
+        <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]} accessible={false}>
           {mark}
         </Text>
       </View>
@@ -83,7 +81,6 @@ export function Notice({
           ref={wordsRef}
           style={styles.words}
           accessible={announce || wordsRef != null || undefined}
-          {...live}
         >
           {title != null && (
             <Text

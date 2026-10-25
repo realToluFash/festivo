@@ -1,7 +1,16 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
-import { initials, roleName, waitingInvitations } from '@soirely/domain';
+import { roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -18,6 +27,7 @@ import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
@@ -26,17 +36,21 @@ import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
 const RAIL_WIDTH = 220;
 
-const OpenSwitcher = createContext<(() => void) | undefined>(undefined);
+type Opening = (opener: RefObject<View | null>) => void;
+
+const OpenSwitcher = createContext<Opening | undefined>(undefined);
 
 /** Opens the frame's organisation switcher; undefined while there is no organisation and no invitation. */
-export function useOpenSwitcher(): (() => void) | undefined {
+export function useOpenSwitcher(): Opening | undefined {
   return useContext(OpenSwitcher);
 }
 
-const StartOrganisation = createContext<(() => void) | undefined>(undefined);
+type OrganisationStart = Opening;
+
+const StartOrganisation = createContext<OrganisationStart | undefined>(undefined);
 
 /** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932). */
-export function useStartOrganisation(): (() => void) | undefined {
+export function useStartOrganisation(): OrganisationStart | undefined {
   return useContext(StartOrganisation);
 }
 
@@ -81,6 +95,9 @@ export function AppFrame({
   const { kind } = useLayout();
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
+  const pill = useRef<View>(null);
+  const [switcherFrom, setSwitcherFrom] = useState<RefObject<View | null> | null>(null);
+  const [creatingFrom, setCreatingFrom] = useState<RefObject<View | null> | null>(null);
   const [created, setCreated] = useState<string | null>(null);
   const switched = created == null ? null : t('switcher.switched', { name: created });
   const [backHidden, setBackHidden] = useState(false);
@@ -91,13 +108,16 @@ export function AppFrame({
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
-      ? () => {
+      ? (opener: RefObject<View | null>) => {
           setCreated(null);
+          setSwitcherFrom(opener);
           setChoosing(true);
         }
       : undefined;
-  const startOrganisation = () => {
+  const switchFromPill = openSwitcher && (() => openSwitcher(pill));
+  const startOrganisation = (opener: RefObject<View | null>) => {
     setCreated(null);
+    setCreatingFrom(opener);
     setCreating(true);
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
@@ -110,7 +130,8 @@ export function AppFrame({
           current={current}
           organisation={signedIn.organisation}
           waiting={count}
-          onSwitch={openSwitcher}
+          onSwitch={switchFromPill}
+          pill={pill}
         />
       )}
       <View style={styles.column}>
@@ -123,7 +144,8 @@ export function AppFrame({
           email={email}
           organisation={signedIn.organisation}
           waiting={count}
-          onSwitch={openSwitcher}
+          onSwitch={switchFromPill}
+          pill={pill}
         />
         <View style={styles.body}>
           {switched != null && (
@@ -139,7 +161,7 @@ export function AppFrame({
                     paused={signedIn.pausedIn}
                     others={signedIn.organisations}
                     onSwitch={(next) => switchOrganisation(next.id)}
-                    onChoose={() => openSwitcher?.()}
+                    onChoose={() => switchFromPill?.()}
                   />
                 ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
                   <TwoFactorOverdue organisation={signedIn.organisation} />
@@ -162,12 +184,13 @@ export function AppFrame({
         onClose={() => setChoosing(false)}
         onCreate={() => {
           setChoosing(false);
-          startOrganisation();
+          startOrganisation(switcherFrom ?? pill);
         }}
       />
       <CreateOrganisation
         open={creating}
         email={email}
+        opener={creatingFrom ?? pill}
         onCancel={() => setCreating(false)}
         onCreated={(organisation) => {
           setCreating(false);
@@ -190,6 +213,7 @@ function FrameHeader({
   organisation,
   waiting,
   onSwitch,
+  pill,
 }: {
   kind: LayoutKind;
   current: Destination;
@@ -200,6 +224,7 @@ function FrameHeader({
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
+  pill: Ref<View>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -223,7 +248,7 @@ function FrameHeader({
     return (
       <View style={[styles.header, styles.portraitHeader, top]}>
         {organisation != null && (
-          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
         )}
         <View style={styles.pills} accessibilityRole="tablist">
           {DESTINATIONS.map((destination) => {
@@ -260,7 +285,7 @@ function FrameHeader({
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
       {current === 'home' && organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {back != null && !backHidden && (
         <Pressable
@@ -330,11 +355,13 @@ function Rail({
   organisation,
   waiting,
   onSwitch,
+  pill,
 }: {
   current: Destination;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
+  pill: Ref<View>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -380,7 +407,13 @@ function Rail({
         </Text>
       </View>
       {organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} railed />
+        <OrgPill
+          organisation={organisation}
+          waiting={waiting}
+          onSwitch={onSwitch}
+          railed
+          ref={pill}
+        />
       )}
       <View style={styles.railGroup}>{DESTINATIONS.filter((d) => d !== 'settings').map(item)}</View>
       <View style={styles.fill} />
@@ -393,9 +426,7 @@ function Rail({
               accessibilityElementsHidden
               importantForAccessibility="no-hide-descendants"
             >
-              <Text size={tokens.typeMeta.size} weight="semibold">
-                {initials(account.name)}
-              </Text>
+              <Initials name={account.name} size={tokens.typeMeta.size} weight="semibold" />
             </View>
             <View style={styles.shrink}>
               <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={1}>
@@ -419,11 +450,13 @@ function OrgPill({
   waiting,
   onSwitch,
   railed = false,
+  ref,
 }: {
   organisation: Membership;
   waiting: number;
   onSwitch: (() => void) | undefined;
   railed?: boolean;
+  ref: Ref<View>;
 }) {
   const { t } = useTranslation();
   const role = roleName(t, organisation.role);
@@ -436,6 +469,7 @@ function OrgPill({
 
   return (
     <Pressable
+      ref={ref}
       style={[
         styles.org,
         railed ? styles.orgRailed : styles.orgPill,
@@ -486,9 +520,7 @@ function Tile({ name }: { name: string }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text size={tokens.typeMeta.size} weight="bold" style={styles.accent}>
-        {initials(name)}
-      </Text>
+      <Initials name={name} size={tokens.typeMeta.size} weight="bold" style={styles.accent} />
     </View>
   );
 }
@@ -640,10 +672,10 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const unavailable = t('domainJoining.unavailable');
-  const unavailableLive = useReadOut(failed ? unavailable : null);
+  useReadOut(failed ? unavailable : null);
   const waiting = t('domainJoining.waiting');
   const asked = t('domainJoining.switcherAsked', { email });
-  const askedLive = useReadOut(offer.asked ? `${waiting}\n${asked}` : null, {
+  useReadOut(offer.asked ? `${waiting}\n${asked}` : null, {
     quietAtMount: true,
   });
 
@@ -669,7 +701,7 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
         {t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}
       </Text>
       {offer.asked ? (
-        <View style={styles.offerAsked} {...askedLive}>
+        <View style={styles.offerAsked}>
           <View style={styles.offerRing} />
           <View style={styles.offerAskedWords}>
             <Text size={tokens.typeBody.size} weight="semibold">
@@ -681,12 +713,7 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
       ) : (
         <>
           {failed && (
-            <Text
-              size={tokens.typeBody.size}
-              style={styles.broken}
-              accessibilityRole="alert"
-              {...unavailableLive}
-            >
+            <Text size={tokens.typeBody.size} style={styles.broken} accessibilityRole="alert">
               {unavailable}
             </Text>
           )}

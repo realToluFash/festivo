@@ -17,6 +17,7 @@ import { FieldError } from '../../components/FieldError.tsx';
 import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { Pending } from '../../components/Pending.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { RequestToJoin } from './RequestToJoin.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
@@ -25,13 +26,13 @@ import { dateLocale } from '../../i18n/index.ts';
 import { useLinkRetry } from '../../linkRetry.ts';
 import {
   adoptAccount,
-  forgetSession,
   landingFor,
   refreshAccount,
   restoreSession,
   switchOrganisation,
   useSessionState,
 } from '../../session.ts';
+import { useSignOut } from '../../signOut.ts';
 
 type Refusal = InvitationRefusal | 'invitation_not_yours';
 
@@ -595,11 +596,7 @@ function Refused({
   const tone = attention ? 'notice-attention' : done ? 'notice-done' : 'notice-quiet';
   const mark = attention ? 'mark-attention' : done ? 'mark-done' : 'mark-info';
 
-  async function switchAccount(): Promise<void> {
-    await api.signOut();
-    forgetSession();
-    onReload();
-  }
+  const { signOut: switchAccount, unreached } = useSignOut(onReload);
 
   return (
     <>
@@ -628,6 +625,7 @@ function Refused({
 
       {refusal === 'invitation_not_yours' && (
         <>
+          {unreached && <StillSignedIn />}
           <button
             className="button button-primary"
             type="button"

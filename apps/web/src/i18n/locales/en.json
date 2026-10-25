@@ -355,7 +355,9 @@
     "unreachableTitle": "Cannot reach Soirely",
     "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
     "unreachableBodySignedOut": "Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
-    "retrying": "Trying again…"
+    "retrying": "Trying again…",
+    "stillSignedInTitle": "You are still signed in",
+    "stillSignedInBody": "Soirely could not be reached, so this device was not signed out. Check your connection, then try again."
   },
   "switcher": {
     "yourRole": "Your role · {{role}}",
@@ -984,6 +986,7 @@
     "onlyOwner": "{{name}} is the only owner. An organisation always has one, so this role can't change and they can't be removed until somebody else is an owner too.",
     "askOwner": "Only an owner can make somebody else an owner. Ask {{name}}.",
     "ownerOnly": "Only an owner can change an owner's role or remove them.",
+    "beyondGrant": "Their role holds a permission yours does not, so you cannot change their role or remove them.",
     "suspendTitle": "Suspend {{name}}",
     "suspendBody": "They can't use {{organisation}} from their next request until someone restores their access. Their role, their events and their history are kept.",
     "suspendButton": "Suspend",
