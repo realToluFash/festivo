@@ -224,7 +224,6 @@ export function staleApks(names, apk) {
   return names.filter((name) => /^soirely-[0-9a-f]{12}\.apk$/.test(name) && name !== basename(apk));
 }
 
-// ConnectivityService prints its default network as a net id, or "none" once nothing is up.
 export function defaultNetwork(dump) {
   const network = /^Active default network: (\S+)/m.exec(dump)?.[1];
   if (!network) throw new Error('dumpsys connectivity names no default network');
@@ -894,8 +893,7 @@ function link(args) {
   run(tools.adb, ['-s', emulatorSerial(), ...intent], { env: tools.env });
 }
 
-// A release build of the worktree's commit, with the bundle and fonts inside, so the app runs
-// without Metro and with the network off from first launch. Expo Go cannot do either.
+// The bundle and fonts inside, so the app runs without Metro, offline from first launch.
 function buildRelease(tools, root, apk) {
   const mobile = join(root, 'apps/mobile');
   const env = { ...tools.env, ...CONFIG.app, EXPO_PUBLIC_ENVIRONMENT: 'qa', CI: '1' };
@@ -925,7 +923,6 @@ function buildRelease(tools, root, apk) {
 
   mkdirSync(dirname(apk), { recursive: true });
   copyFileSync(join(mobile, 'android/app/build/outputs/apk/release/app-release.apk'), apk);
-  // prebuild --clean writes it afresh, so keeping it holds a gigabyte for nothing.
   rmSync(join(mobile, 'android'), { recursive: true, force: true });
   for (const name of staleApks(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
 }
@@ -948,8 +945,7 @@ function installedRelease(root) {
   return join(root, '.qa/release/installed');
 }
 
-// The release app owns soirely:// and keeps redirects from Expo Go. Its package is the one
-// recorded at install: this copy of the harness is frozen at setup and may misread a new config.
+// It owns soirely://; the package is read from the record, as this harness copy predates the config.
 function removeRelease(tools, root) {
   const recorded = installedRelease(root);
   if (!existsSync(recorded)) return;
