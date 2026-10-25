@@ -449,6 +449,26 @@ describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter 
   });
 });
 
+describe('a contact confirmation shows its request running, its way back off (sc-12546)', () => {
+  const text = readFileSync(join('src', 'components', 'ContactsCard.tsx'), 'utf8');
+
+  it('on Make it primary and Remove it, busy while they send', () => {
+    const busy = selfClosing('PrimaryButton', text)
+      .filter(({ markup }) => /\bbusy=\{sending\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(busy).toEqual(['{`contacts.${row.id}.confirm`}', '{`contacts.${kind}.send`}']);
+  });
+
+  it('on Keep and on Cancel under an add form, off until the answer', () => {
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{sending\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual(['{`contacts.${row.id}.keep`}', '{`contacts.${kind}.cancel`}']);
+  });
+});
+
 describe('a screen is a composition of the kit', () => {
   it('takes its fields from the kit, never a bare TextInput', () => {
     const offenders = sources(['app'])
