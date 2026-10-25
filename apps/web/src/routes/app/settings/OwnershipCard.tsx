@@ -370,7 +370,7 @@ function Transfer({
             ? t('ownership.transfer')
             : t('ownership.makeOwner', { name: chosen.user.name })}
         </button>
-        <button className="button" type="button" onClick={onCancel}>
+        <button className="button" type="button" {...offButton(busy)} onClick={onCancel}>
           {t('ownership.keep')}
         </button>
       </div>
@@ -463,7 +463,7 @@ function Leave({
             >
               {t('ownership.leave', { organisation: organisation.name })}
             </button>
-            <button type="button" className="button" onClick={onStay}>
+            <button type="button" className="button" {...offButton(busy)} onClick={onStay}>
               {t('ownership.stay')}
             </button>
           </div>
@@ -605,7 +605,7 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
         <button className="button button-danger" type="submit" aria-busy={busy}>
           {t('ownership.deleteButton', { organisation: organisation.name })}
         </button>
-        <button className="button" type="button" onClick={onKeep}>
+        <button className="button" type="button" {...offButton(busy)} onClick={onKeep}>
           {t('ownership.deleteKeep', { organisation: organisation.name })}
         </button>
       </div>
