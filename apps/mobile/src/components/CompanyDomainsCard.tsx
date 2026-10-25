@@ -14,7 +14,7 @@ import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
 import { ReadOut } from './ReadOut.tsx';
 
-type Flash = { kind: 'added' | 'removed'; domain: string } | null;
+type Flash = { kind: 'added' | 'removed'; domain: string } | { kind: 'notRemoved' } | null;
 
 /** Settings > Organisation's "Company domain joining" (sc-561), for those who can manage members. */
 export function CompanyDomainsCard({
@@ -54,7 +54,9 @@ export function CompanyDomainsCard({
   const flashTitle =
     flash?.kind === 'added'
       ? t('companyDomains.added', { domain: flash.domain })
-      : t('companyDomains.removed', { domain: flash?.domain ?? '' });
+      : flash?.kind === 'removed'
+        ? t('companyDomains.removed', { domain: flash.domain })
+        : t('companyDomains.failed');
   const flashBody =
     flash?.kind === 'added' ? t('companyDomains.addedNext') : t('companyDomains.removedNext');
 
@@ -101,7 +103,7 @@ export function CompanyDomainsCard({
       setList(await api.removeCompanyDomain(organisation.id, domain));
       setFlash({ kind: 'removed', domain });
     } catch {
-      setError(t('companyDomains.failed'));
+      setFlash({ kind: 'notRemoved' });
     } finally {
       setConfirming(null);
       setBusy(false);
@@ -126,8 +128,17 @@ export function CompanyDomainsCard({
       </Text>
 
       {flash != null && (
-        <ReadOut words={`${flashTitle}\n${flashBody}`}>
-          <Notice tone="done" mark={tokens.marks.done.glyph} title={flashTitle} body={flashBody} />
+        <ReadOut words={flash.kind === 'notRemoved' ? flashTitle : `${flashTitle}\n${flashBody}`}>
+          {flash.kind === 'notRemoved' ? (
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} title={flashTitle} />
+          ) : (
+            <Notice
+              tone="done"
+              mark={tokens.marks.done.glyph}
+              title={flashTitle}
+              body={flashBody}
+            />
+          )}
         </ReadOut>
       )}
 
