@@ -96,7 +96,7 @@ export const tokens = {
 
   // ── Type ───────────────────────────────────────────────────────────────────
   fontFamily: "'Instrument Sans', sans-serif", // all reading text, all names
-  fontFamilyMono: "'JetBrains Mono', monospace", // times, codes, table numbers, counts in tickets, references, step numbers
+  fontFamilyMono: "'JetBrains Mono', monospace", // step numbers, keyboard shortcuts, codes read or copied by character; never money, counts or times (Instrument Sans, tabular-nums)
   // Native: choose files by weight (Instrument Sans 400/500/600/700; JetBrains Mono 500/700), never by family name in a style.
   // size · weight · line height · letter spacing. Roles come from where the screens use them.
   typeDisplay: { size: 48, weight: 700, lineHeight: 1, letterSpacing: '-0.03em' }, // one big number per panel (Messaging reach, Import count); 52 once
