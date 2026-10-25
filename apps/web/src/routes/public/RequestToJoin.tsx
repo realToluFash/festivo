@@ -81,6 +81,13 @@ export function RequestToJoin({ token }: { token: string }) {
     };
   }, [settled, token, attempt, arrive]);
 
+  function change(next: View): void {
+    setView(next);
+    if (next.kind !== 'dead') return;
+    setBrought(true);
+    arrive();
+  }
+
   if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
   if (view.kind === 'unreachable') {
     return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} />;
@@ -98,7 +105,7 @@ export function RequestToJoin({ token }: { token: string }) {
           signedIn={session.status === 'signedIn'}
           brought={brought}
           headingRef={heading}
-          onChange={setView}
+          onChange={change}
         />
       )}
     </AuthPage>
@@ -286,7 +293,7 @@ function Ask({
     }
 
     if (problem.is('request_link_dead')) {
-      setFailed(true);
+      onChange({ kind: 'dead' });
       return;
     }
 
