@@ -11,7 +11,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { proveIntro } from '../kit/waysProof.ts';
+import { proveIntro, unlinkProofLapsed } from '../kit/waysProof.ts';
 import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { heldProof } from '../recentProof.ts';
@@ -139,6 +139,12 @@ export function WaysCard({
       await onChanged();
       setStage({ kind: 'list', said: { kind: 'unlinked', provider } });
     } catch (error) {
+      if (unlinkProofLapsed(error)) {
+        setStage({ kind: 'proving', act: { action: 'unlink', provider } });
+
+        return;
+      }
+
       if (error instanceof ApiError) await onRefused().catch(() => {});
       setStage({ kind: 'list', said: refused(error, provider) });
     }

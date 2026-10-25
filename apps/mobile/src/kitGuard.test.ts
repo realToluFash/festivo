@@ -471,6 +471,16 @@ describe('a Cancel is off while the change beside it runs (sc-12545)', () => {
   });
 });
 
+describe("a lapsed proof at Unlink goes back to Confirm it's you (sc-12545)", () => {
+  it('in the ways card, before the refusal reaches the list', () => {
+    const text = readFileSync(join('src', 'components', 'WaysCard.tsx'), 'utf8');
+
+    expect(text).toMatch(
+      /if \(unlinkProofLapsed\(error\)\) \{\s*setStage\(\{ kind: 'proving', act: \{ action: 'unlink', provider \} \}\);/,
+    );
+  });
+});
+
 describe('a screen is a composition of the kit', () => {
   it('takes its fields from the kit, never a bare TextInput', () => {
     const offenders = sources(['app'])
