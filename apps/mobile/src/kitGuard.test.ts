@@ -484,6 +484,16 @@ describe('a way back that names an outcome is off while its request runs (sc-125
       '"ownership.delete.keep"',
     ]);
   });
+
+  it('where QuietButton taken off cannot be pressed, and is read as off', () => {
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function QuietButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+
+    expect(propValue(pressable, 'disabled')).toBe('{off}');
+    expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: off }}');
+  });
 });
 
 interface Source {
