@@ -764,6 +764,7 @@ class FinishedStories(unittest.TestCase):
         self.assertEqual(work.review_items([self.done()], [reviewed]), [])
         self.assertEqual(work.review_items([self.done()], [dict(pr(), draft=True)]), [])
         self.assertEqual(work.review_items([self.done()], [pr(checks="pending")]), [])
+        self.assertEqual(work.review_items([self.done()], [pr(checks="red")]), [])
 
     def test_its_builder_is_woken_by_red_checks_by_the_pass_and_by_a_conflict(self):
         red = work.developer_items([self.done()], [pr(checks="red")])

@@ -252,7 +252,8 @@ def review_items(stories, prs):
                                f"sc-{story['id']} is In Review with no open pull request",
                                REVIEW, story))
         for pr in open_prs:
-            if pr["checks"] == "pending":
+            # On a Done story the lead cannot send red checks back; the builder is woken.
+            if pr["checks"] == "pending" or pr["checks"] == "red" and finished(story):
                 continue
             verdict = latest_verdict(pr)
             sha = pr["head_sha"]
