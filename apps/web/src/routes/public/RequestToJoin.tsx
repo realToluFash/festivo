@@ -239,6 +239,7 @@ function Ask({
   const organisation = preview.organisation.name;
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
+  const asking = useRef(false);
   const [failed, setFailed] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const checks = useFormChecks(
@@ -254,8 +255,9 @@ function Ask({
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
 
-    if (!checks.passes({ message })) return;
+    if (asking.current || !checks.passes({ message })) return;
 
+    asking.current = true;
     setBusy(true);
     setFailed(false);
 
@@ -265,6 +267,7 @@ function Ask({
       // An account with no organisation now waits on this request; the session learns so.
       await refreshAccount().catch(() => {});
     } catch (problem) {
+      asking.current = false;
       setBusy(false);
       settle(problem);
     }

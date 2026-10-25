@@ -141,6 +141,29 @@ describe('a request link (sc-562)', () => {
     ).toBeNull();
   });
 
+  it('asks once when Ask to join is pressed twice', async () => {
+    signedIn();
+    const sent = answering({
+      [LINK]: () => json(PREVIEW),
+      [ASK]: () =>
+        json({ request: { organisation: { id: 'org_1', name: 'Ìrè Events' }, askedAt: 'x' } }, 201),
+      'GET /api/auth/me': () => json(ACCOUNT),
+      'GET /api/orgs': () => json({ organisations: [] }),
+    });
+    open();
+
+    const ask = await screen.findByRole('button', { name: 'Ask to join' });
+    fireEvent.click(ask);
+    fireEvent.click(ask);
+
+    expect(
+      await screen.findByText(
+        "Your request has gone to Ìrè Events. We'll email you when they answer.",
+      ),
+    ).toBeDefined();
+    expect(sent.filter((one) => one.line === ASK)).toHaveLength(1);
+  });
+
   it('refuses a message over 500 characters before it is sent', async () => {
     signedIn();
     const sent = answering({ [LINK]: () => json(PREVIEW) });
@@ -245,7 +268,7 @@ describe('a request link (sc-562)', () => {
 
     expect(
       await screen.findByText(
-        "This link doesn't work any more. Ask the organisation for a new one.",
+        'This link does not work any more. Ask the organisation for a new one.',
       ),
     ).toBeDefined();
     expect(screen.queryByText(/Ìrè Events/)).toBeNull();
@@ -266,11 +289,11 @@ describe('a request link (sc-562)', () => {
 
     const heading = await screen.findByRole('heading', {
       level: 1,
-      name: "This link doesn't work",
+      name: 'This link does not work',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     const body = screen.getByText(
-      "This link doesn't work any more. Ask the organisation for a new one.",
+      'This link does not work any more. Ask the organisation for a new one.',
     );
     expect(body.closest('[role]')).toBeNull();
     expect(screen.getByRole('link', { name: 'Go to Soirely' })).toBeDefined();
@@ -407,7 +430,7 @@ describe('a request link that did not load (sc-11488)', () => {
 
     const heading = await screen.findByRole('heading', {
       level: 1,
-      name: "This link doesn't work",
+      name: 'This link does not work',
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(screen.queryByRole('status')).toBeNull();
