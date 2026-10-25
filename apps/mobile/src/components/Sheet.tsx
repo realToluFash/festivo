@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sheetPadding } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
-import { keyboardTopNow } from './keyboardWatch.ts';
+import { keyboardTopNow, watchKeyboardTop } from './keyboardWatch.ts';
 
 /** The app's one dialog frame (sc-8606): a bottom sheet on a phone, a centred card on a tablet. */
 export function Sheet({
@@ -31,12 +31,17 @@ export function Sheet({
   testID?: string;
   children: ReactNode;
 }) {
-  const { kind, height } = useLayout();
+  const { kind } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
+  // On an Android phone the card itself runs under the keys; everywhere else the avoiding view lifts it.
+  const underKeys = phone && Platform.OS === 'android';
   const keysUp = useKeysUp();
-  const typing = phone && keysUp;
-  const padding = sheetPadding({ phone, typing, insets });
+  const [windowHeight, setWindowHeight] = useState<number | null>(null);
+  const keysTop = useKeyboardTop();
+  const measured = underKeys && windowHeight != null && keysTop != null;
+  const keysCover = !keysUp ? null : measured ? windowHeight - keysTop : 0;
+  const padding = sheetPadding({ phone, keysCover, insets });
 
   return (
     <Modal
@@ -47,8 +52,13 @@ export function Sheet({
       supportedOrientations={['portrait', 'landscape']}
       onRequestClose={onClose}
     >
-      {/* Padding on both platforms: a modal is its own window, so neither resizes for the keyboard. */}
-      <KeyboardAvoidingView style={styles.fill} behavior="padding">
+      {/* A modal is its own window, so neither platform resizes it for the keyboard. */}
+      <KeyboardAvoidingView
+        style={styles.fill}
+        behavior="padding"
+        enabled={!underKeys}
+        onLayout={(event) => setWindowHeight(event.nativeEvent.layout.height)}
+      >
         <View
           style={[
             styles.scrim,
@@ -78,13 +88,20 @@ export function Sheet({
             testID={testID}
           >
             {children}
-            {/* The avoiding view's padding can stop a pixel or two short of where Android draws the keys (sc-9472). */}
-            {phone && <View style={[styles.skirt, { height }]} pointerEvents="none" />}
           </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
+}
+
+/** The keyboard's top edge in the sheet's window, or null while the keys are down. */
+function useKeyboardTop(): number | null {
+  const [top, setTop] = useState(() => keyboardTopNow(0));
+
+  useEffect(() => watchKeyboardTop(() => 0, setTop), []);
+
+  return top;
 }
 
 /** Whether the keyboard is up, changing when the avoiding view starts to move. */
@@ -135,12 +152,5 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 480,
     borderRadius: tokens.radiusCardPhone,
-  },
-  skirt: {
-    position: 'absolute',
-    top: '100%',
-    left: -1,
-    right: -1,
-    backgroundColor: tokens.colorCard,
   },
 });

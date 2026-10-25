@@ -8,19 +8,23 @@ const sideways = { top: 0, bottom: 21, left: 59, right: 59 };
 
 describe('a phone sheet', () => {
   it('stays below the status bar', () => {
-    expect(sheetPadding({ phone: true, typing: false, insets: notched }).scrimTop).toBe(59);
+    expect(sheetPadding({ phone: true, keysCover: null, insets: notched }).scrimTop).toBe(59);
   });
 
   it('pads its content above the home indicator while the keys are down', () => {
-    expect(sheetPadding({ phone: true, typing: false, insets: notched }).frameBottom).toBe(34);
+    expect(sheetPadding({ phone: true, keysCover: null, insets: notched }).frameBottom).toBe(34);
   });
 
-  it('meets the keys with the keys up', () => {
-    expect(sheetPadding({ phone: true, typing: true, insets: notched }).frameBottom).toBe(0);
+  it('pads its content above the keys with the keys up', () => {
+    expect(sheetPadding({ phone: true, keysCover: 291, insets: notched }).frameBottom).toBe(291);
+  });
+
+  it('pads nothing for keys that stop short of its window', () => {
+    expect(sheetPadding({ phone: true, keysCover: -1, insets: notched }).frameBottom).toBe(0);
   });
 
   it('keeps clear of the side insets on its side', () => {
-    expect(sheetPadding({ phone: true, typing: false, insets: sideways })).toMatchObject({
+    expect(sheetPadding({ phone: true, keysCover: null, insets: sideways })).toMatchObject({
       scrimLeft: 59,
       scrimRight: 59,
     });
@@ -29,7 +33,7 @@ describe('a phone sheet', () => {
 
 describe('a tablet card', () => {
   it('keeps the scrim padding where the insets are smaller', () => {
-    expect(sheetPadding({ phone: false, typing: false, insets: notched })).toEqual({
+    expect(sheetPadding({ phone: false, keysCover: null, insets: notched })).toEqual({
       scrimTop: 59,
       scrimLeft: tokens.spaceXxl,
       scrimRight: tokens.spaceXxl,
