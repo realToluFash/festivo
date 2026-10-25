@@ -28,11 +28,14 @@ export function localDateTime(date: string, time: string): string | null {
 }
 
 /** In the order the form shows its fields, so the first is the one focus goes to. */
-export function eventProblems(draft: EventDraft): { field: EventField; problem: EventProblem }[] {
+export function eventProblems(
+  draft: EventDraft,
+  timeZone = '',
+): { field: EventField; problem: EventProblem }[] {
   const problems: { field: EventField; problem: EventProblem }[] = [];
   const length = eventNameLength(draft.name);
-  const startsAt = localDateTime(draft.startDate, draft.startTime);
-  const endsAt = localDateTime(draft.endDate, draft.endTime);
+  const startsAt = savedWallClock(draft.startDate, draft.startTime, timeZone);
+  const endsAt = savedWallClock(draft.endDate, draft.endTime, timeZone);
 
   if (length === 0) problems.push({ field: 'name', problem: 'nameBlank' });
   else if (length > EVENT_NAME_MAXIMUM) problems.push({ field: 'name', problem: 'nameTooLong' });
@@ -44,6 +47,74 @@ export function eventProblems(draft: EventDraft): { field: EventField; problem: 
     problems.push({ field: 'endsAt', problem: 'endBeforeStart' });
 
   return problems;
+}
+
+const MINUTE = 60_000;
+const DAY = 86_400_000;
+
+/** As the API saves it (RFC 5545 §3.3.5): a time the clocks skip moves later by the gap. */
+export function savedWallClock(date: string, time: string, timeZone: string): string | null {
+  const typed = localDateTime(date, time);
+
+  if (typed == null) return null;
+
+  return skippedTime(date, time, timeZone)?.savedAs ?? typed;
+}
+
+export function skippedTime(
+  date: string,
+  time: string,
+  timeZone: string,
+): { savedAs: string } | null {
+  const typed = localDateTime(date, time);
+  const local = typed == null ? Number.NaN : Date.parse(`${typed}Z`);
+
+  if (Number.isNaN(local) || timeZone === '') return null;
+
+  const offsetAt = zoneOffsets(timeZone);
+
+  if (offsetAt == null) return null;
+
+  const before = offsetAt(local - DAY);
+  const after = offsetAt(local + DAY);
+  const held = [before, after].some((offset) => offsetAt(local - offset) === offset);
+
+  if (held || after <= before) return null;
+
+  return { savedAs: new Date(local - before + after).toISOString().slice(0, 16) };
+}
+
+function zoneOffsets(timeZone: string): ((instant: number) => number) | null {
+  let format: Intl.DateTimeFormat;
+
+  try {
+    format = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hourCycle: 'h23',
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    });
+  } catch {
+    return null;
+  }
+
+  return (instant) => {
+    const parts = format.formatToParts(instant);
+    const part = (type: Intl.DateTimeFormatPartTypes): number =>
+      Number(parts.find((one) => one.type === type)?.value);
+    const wall = Date.UTC(
+      part('year'),
+      part('month') - 1,
+      part('day'),
+      part('hour'),
+      part('minute'),
+    );
+
+    return wall - Math.floor(instant / MINUTE) * MINUTE;
+  };
 }
 
 /** The end date follows the start date, typed partial dates included, until the host chooses one. */

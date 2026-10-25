@@ -5,6 +5,7 @@ import { describedBy } from './eventFieldOrder.ts';
 export function Moment({
   id,
   legend,
+  skipped,
   hint,
   date,
   time,
@@ -15,6 +16,7 @@ export function Moment({
 }: {
   id: string;
   legend: string;
+  skipped?: string | null;
   hint?: string;
   date: string;
   time: string;
@@ -26,12 +28,13 @@ export function Moment({
   const { t } = useTranslation();
   const described = describedBy(
     error == null ? null : `${id}-error`,
+    skipped == null ? null : `${id}-gap`,
     hint == null ? null : `${id}-hint`,
   );
   const className = error == null ? 'input' : 'input input-wrong';
 
   return (
-    <fieldset className="event-moment">
+    <fieldset className="event-moment" aria-describedby={described}>
       <legend>{legend}</legend>
       <div className="event-moment-inputs">
         <div className="field event-moment-date">
@@ -60,6 +63,16 @@ export function Moment({
             onChange={(event) => onTime(event.target.value)}
           />
         </div>
+      </div>
+      <div id={`${id}-gap`} aria-live="polite">
+        {skipped != null && (
+          <div className="notice notice-quiet event-moment-gap">
+            <span className="mark mark-info" aria-hidden="true">
+              i
+            </span>
+            <p>{skipped}</p>
+          </div>
+        )}
       </div>
       <FieldError id={`${id}-error`} message={error} />
       {hint != null && (

@@ -7,6 +7,8 @@ import {
   eventNameLength,
   eventProblems,
   filledEndDate,
+  savedWallClock,
+  skippedTime,
 } from './events.ts';
 
 const DRAFT: EventDraft = {
@@ -105,5 +107,52 @@ describe('editing an event (sc-3587)', () => {
         currency: 'EUR',
       }),
     ).toEqual({ name: 'Owambe at night', endsAt: '2026-03-29T23:30', currency: 'EUR' });
+  });
+});
+
+describe('a time the clocks skip (sc-10638)', () => {
+  const PARIS = 'Europe/Paris';
+
+  it('names the time a skipped start is saved as, later by the gap', () => {
+    expect(skippedTime('2027-03-28', '02:00', PARIS)).toEqual({ savedAs: '2027-03-28T03:00' });
+    expect(skippedTime('2027-03-28', '02:30', PARIS)).toEqual({ savedAs: '2027-03-28T03:30' });
+    expect(skippedTime('2027-03-28', '02:59', PARIS)).toEqual({ savedAs: '2027-03-28T03:59' });
+  });
+
+  it('moves by a gap that is not an hour long', () => {
+    expect(skippedTime('2027-10-03', '02:15', 'Australia/Lord_Howe')).toEqual({
+      savedAs: '2027-10-03T02:45',
+    });
+  });
+
+  it('says nothing either side of the gap', () => {
+    expect(skippedTime('2027-03-28', '01:59', PARIS)).toBeNull();
+    expect(skippedTime('2027-03-28', '03:00', PARIS)).toBeNull();
+    expect(skippedTime('2027-03-27', '02:30', PARIS)).toBeNull();
+  });
+
+  it('says nothing in the hour the clocks repeat, which is saved as typed', () => {
+    expect(skippedTime('2027-10-31', '02:30', PARIS)).toBeNull();
+    expect(savedWallClock('2027-10-31', '02:30', PARIS)).toBe('2027-10-31T02:30');
+  });
+
+  it('says nothing without a zone, a date or a time', () => {
+    expect(skippedTime('2027-03-28', '02:30', '')).toBeNull();
+    expect(skippedTime('', '02:30', PARIS)).toBeNull();
+    expect(skippedTime('2027-03-28', '', PARIS)).toBeNull();
+    expect(skippedTime('2027-03-28', '02:30', 'Not/AZone')).toBeNull();
+  });
+
+  it('refuses a start the gap moves past the end', () => {
+    const draft = {
+      ...DRAFT,
+      startDate: '2027-03-28',
+      startTime: '02:30',
+      endDate: '2027-03-28',
+      endTime: '03:15',
+    };
+
+    expect(eventProblems(draft, PARIS)).toEqual([{ field: 'endsAt', problem: 'endBeforeStart' }]);
+    expect(eventProblems(draft, 'Africa/Lagos')).toEqual([]);
   });
 });

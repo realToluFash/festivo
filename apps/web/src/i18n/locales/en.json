@@ -41,6 +41,7 @@
     "date": "Date",
     "time": "Time",
     "endsHint": "An event can run past midnight. Choose the day it ends.",
+    "clocksSkip": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}}.",
     "timeZone": "Time zone",
     "currency": "Currency",
     "defaultsHint": "Filled in from {{name}}'s settings.",

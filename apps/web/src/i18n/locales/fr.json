@@ -41,6 +41,7 @@
     "date": "Date",
     "time": "Heure",
     "endsHint": "Un événement peut se poursuivre après minuit. Choisissez le jour où il se termine.",
+    "clocksSkip": "There is no {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as {{savedAs}}.",
     "timeZone": "Fuseau horaire",
     "currency": "Devise",
     "defaultsHint": "Valeurs reprises des paramètres de l’organisation {{name}}.",

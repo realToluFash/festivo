@@ -3220,6 +3220,16 @@ button.members-row {
   flex: 1 1 7rem;
 }
 
+.event-moment-gap {
+  padding: var(--spaceMd) var(--spaceLg);
+  font: var(--typeSmall);
+  color: var(--colorInk);
+}
+
+.event-moment-gap p {
+  margin: 0;
+}
+
 .event-page-outcome {
   margin: 0;
   font: var(--typeRowTitle);
