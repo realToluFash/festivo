@@ -29,6 +29,7 @@ import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, focusChecked, focusRefused, TextField } from './Field.tsx';
 import { type SettledLift, settledLift } from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { Sheet, useKeysUp } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
@@ -236,22 +237,19 @@ function Form({
       {t('createOrganisation.intro')}
     </Text>
   );
+  const notCreated = t('createOrganisation.failed');
   const fields = (
     <>
       <View style={styles.group} onLayout={(event) => onGroupLayout(event.nativeEvent.layout)}>
         {limited != null && (
-          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+          <ReadOut words={limited} interrupts accessibilityRole="alert">
             <Notice tone="attention" mark="!" body={limited} />
-          </View>
+          </ReadOut>
         )}
         {failed && (
-          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('createOrganisation.failed')}
-            />
-          </View>
+          <ReadOut words={notCreated} interrupts accessibilityRole="alert">
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notCreated} />
+          </ReadOut>
         )}
 
         <View onLayout={(event) => onFieldLayout(event.nativeEvent.layout)}>

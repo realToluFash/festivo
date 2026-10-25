@@ -108,7 +108,12 @@ export default function RolesScreen() {
       </View>
     ) : load.kind === 'failed' ? (
       <View style={styles.stack} accessibilityRole="alert">
-        <Notice tone="broken" mark={tokens.marks.broken.glyph} body={t('rolesScreen.failedLoad')} />
+        <Notice
+          tone="broken"
+          mark={tokens.marks.broken.glyph}
+          body={t('rolesScreen.failedLoad')}
+          announce
+        />
         <SecondaryButton
           label={t('rolesScreen.retry')}
           onPress={() => {

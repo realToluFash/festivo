@@ -12,6 +12,7 @@ import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { ReadOut } from './ReadOut.tsx';
 
 type Flash = { kind: 'added' | 'removed'; domain: string } | null;
 
@@ -50,6 +51,12 @@ export function CompanyDomainsCard({
   const on = list.domains.some((one) => !one.stopped);
   const full = list.domains.length >= list.most;
   const example = domainOf(list.ownAddress) ?? 'example.com';
+  const flashTitle =
+    flash?.kind === 'added'
+      ? t('companyDomains.added', { domain: flash.domain })
+      : t('companyDomains.removed', { domain: flash?.domain ?? '' });
+  const flashBody =
+    flash?.kind === 'added' ? t('companyDomains.addedNext') : t('companyDomains.removedNext');
 
   async function add(): Promise<void> {
     if (busy) return;
@@ -119,22 +126,9 @@ export function CompanyDomainsCard({
       </Text>
 
       {flash != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            title={
-              flash.kind === 'added'
-                ? t('companyDomains.added', { domain: flash.domain })
-                : t('companyDomains.removed', { domain: flash.domain })
-            }
-            body={
-              flash.kind === 'added'
-                ? t('companyDomains.addedNext')
-                : t('companyDomains.removedNext')
-            }
-          />
-        </View>
+        <ReadOut words={`${flashTitle}\n${flashBody}`}>
+          <Notice tone="done" mark={tokens.marks.done.glyph} title={flashTitle} body={flashBody} />
+        </ReadOut>
       )}
 
       {list.domains.map(({ domain, stopped }) => (

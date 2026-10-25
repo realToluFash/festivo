@@ -131,6 +131,7 @@ export default function MembersScreen() {
           tone="broken"
           mark={tokens.marks.broken.glyph}
           body={t('membersScreen.failedLoad')}
+          announce
         />
         <SecondaryButton
           label={t('membersScreen.retry')}

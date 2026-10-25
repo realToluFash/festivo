@@ -86,6 +86,28 @@ describe('screen reader focus moves on both platforms', () => {
   });
 });
 
+describe('a message is read out on both platforms', () => {
+  // A live region means nothing to VoiceOver, so a message marked with one alone is silent on iOS (sc-10955).
+  it('is marked only in ReadOut.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/ReadOut.tsx'))
+      .filter(({ text }) => readsOut(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use ReadOut, useReadOut or readOut from src/components/ReadOut.tsx.',
+    ).toEqual([]);
+  });
+
+  it('notices a screen that marks a message itself', () => {
+    expect(readsOut('<View accessibilityLiveRegion="polite">')).toBe(true);
+    expect(readsOut('<Text style={styles.error} aria-live="polite">')).toBe(true);
+    expect(readsOut('AccessibilityInfo.announceForAccessibility(words);')).toBe(true);
+    expect(readsOut('<ReadOut words={saved}>')).toBe(false);
+  });
+});
+
 describe('a screen reader skips the initials beside a name', () => {
   it('on both platforms, in every tile in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
@@ -265,6 +287,12 @@ function takesRecoveryCode(markup: string): boolean {
 
 function movesFocus(text: string): boolean {
   return /\b(setAccessibilityFocus|sendAccessibilityEvent)\(/u.test(text);
+}
+
+function readsOut(text: string): boolean {
+  return /\baccessibilityLiveRegion\b|\baria-live\b|\bannounceForAccessibility(WithOptions)?\(/u.test(
+    text,
+  );
 }
 
 /** importantForAccessibility="no" leaves an Android tile's letters to be read; only its descendants hidden skips them. */
