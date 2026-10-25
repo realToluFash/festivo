@@ -946,11 +946,11 @@ function installedRelease(root) {
 }
 
 // It owns soirely://; the package is read from the record, as this harness copy predates the config.
+// The record stays: the build is on one AVD, and an uninstall on another finds nothing.
 function removeRelease(tools, root) {
   const recorded = installedRelease(root);
   if (!existsSync(recorded)) return;
   adbOut(tools, ['uninstall', readFileSync(recorded, 'utf8').trim()]);
-  rmSync(recorded);
 }
 
 function recordLaunch(tools) {
@@ -1016,6 +1016,7 @@ async function release(args) {
   adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
   await recording;
   const video = join(root, '.qa/release', `launch-${sha.slice(0, 12)}.mp4`);
+  rmSync(video, { force: true });
   adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
   adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
   console.log(
