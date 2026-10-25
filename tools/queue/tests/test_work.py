@@ -856,6 +856,9 @@ class Stranded(unittest.TestCase):
         self.assertEqual(work.waits_on(done, dict(passed, mergeable="conflicting")),
                          ("dev2", "dev2 to merge main in"))
         self.assertEqual(work.waits_on(done, dict(passed, checks="red"))[0], "dev2")
+        unreviewed = dict(self.open_pr(7, 1), mergeable="conflicting")
+        self.assertEqual(work.waits_on(story(1, "In Review", labels=["dev2"]), unreviewed),
+                         ("dev2", "dev2 to merge main in"))
 
     def test_a_pr_sent_back_at_its_head_waits_on_its_builder_until_handed_back_unpushed(self):
         back = self.open_pr(7, 1, updated="2026-10-20T10:00:00Z",
@@ -865,7 +868,7 @@ class Stranded(unittest.TestCase):
                          ("dev2", "dev2 to fix the findings and push"))
         self.assertEqual(work.waits_on(done, dict(back, head_sha="f" * 40)),
                          ("lead", "lead to review it"))
-        failed = story(1, "Failed Code Review", labels=["dev2"])
+        failed = story(1, "Failed Code Review", labels=["dev2"], moved_at="2026-10-19T10:00:00Z")
         self.assertEqual(work.waits_on(failed, back),
                          ("dev2", "dev2 to fix the findings and push"))
         handed_back = story(1, "In Review", labels=["dev2"], moved_at="2026-10-19T10:00:00Z")

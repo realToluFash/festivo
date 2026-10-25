@@ -521,9 +521,9 @@ def waits_on(story, pr):
         return role, "its checks, or a push to start them"
     if pr["checks"] == "red":
         return role, f"{role} to fix its red checks"
+    if pr.get("mergeable") == "conflicting":
+        return role, f"{role} to merge main in"
     if role == "l10n" or passed:
-        if pr.get("mergeable") == "conflicting":
-            return role, f"{role} to merge main in"
         if role != "l10n" and open_threads(pr):
             return role, f"{role} to answer its open threads, and lead to resolve them"
         return role, f"{role} to merge it"
