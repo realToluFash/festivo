@@ -1,6 +1,7 @@
 import { type Ref, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { currentLocale } from '../i18n/index.ts';
@@ -97,63 +98,66 @@ export function ListPicker({
         supportedOrientations={TURNS_WITH_THE_APP}
         onRequestClose={() => setOpen(false)}
       >
-        <Screen
-          style={styles.page}
-          contentStyle={beside ? { ...styles.sheet, ...styles.sheetBeside } : styles.sheet}
-          scroll={false}
-        >
-          <View style={styles.sheetHeading}>
-            <Text
-              size={tokens.typeTitleDialog.size}
-              weight="bold"
-              accessibilityRole="header"
-              style={beside ? styles.titleBeside : undefined}
-            >
-              {label}
-            </Text>
-            {beside && searchField}
-            <Pressable
-              style={styles.close}
-              onPress={() => setOpen(false)}
-              accessibilityRole="button"
-              testID={`${testID}.close`}
-            >
-              <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
-                {t('countryPicker.close')}
-              </Text>
-            </Pressable>
-          </View>
-          {!beside && searchField}
-          <FlatList
-            data={shown}
-            keyExtractor={(choice) => choice.code}
-            keyboardShouldPersistTaps="handled"
-            // The modal is its own window, so on iOS only the list's own inset lifts its last row above the keys.
-            automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
-            renderItem={({ item }) => (
-              <Pressable
-                style={[styles.option, item.code === value && styles.optionChosen]}
-                onPress={() => {
-                  onChange(item.code);
-                  setSearch('');
-                  setOpen(false);
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: item.code === value }}
-                testID={`${testID}.${item.code}`}
+        {/* A full-screen modal takes the app's view out of the window, so the app's insets stop turning with it. */}
+        <SafeAreaProvider>
+          <Screen
+            style={styles.page}
+            contentStyle={beside ? { ...styles.sheet, ...styles.sheetBeside } : styles.sheet}
+            scroll={false}
+          >
+            <View style={styles.sheetHeading}>
+              <Text
+                size={tokens.typeTitleDialog.size}
+                weight="bold"
+                accessibilityRole="header"
+                style={beside ? styles.titleBeside : undefined}
               >
-                <Text size={CONTROL_TEXT_SIZE} style={styles.optionName}>
-                  {item.name}
+                {label}
+              </Text>
+              {beside && searchField}
+              <Pressable
+                style={styles.close}
+                onPress={() => setOpen(false)}
+                accessibilityRole="button"
+                testID={`${testID}.close`}
+              >
+                <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
+                  {t('countryPicker.close')}
                 </Text>
-                {item.code === value && (
-                  <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
-                    ✓
-                  </Text>
-                )}
               </Pressable>
-            )}
-          />
-        </Screen>
+            </View>
+            {!beside && searchField}
+            <FlatList
+              data={shown}
+              keyExtractor={(choice) => choice.code}
+              keyboardShouldPersistTaps="handled"
+              // The modal is its own window, so on iOS only the list's own inset lifts its last row above the keys.
+              automaticallyAdjustKeyboardInsets={LIFT.adjustScrollInsets}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={[styles.option, item.code === value && styles.optionChosen]}
+                  onPress={() => {
+                    onChange(item.code);
+                    setSearch('');
+                    setOpen(false);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: item.code === value }}
+                  testID={`${testID}.${item.code}`}
+                >
+                  <Text size={CONTROL_TEXT_SIZE} style={styles.optionName}>
+                    {item.name}
+                  </Text>
+                  {item.code === value && (
+                    <Text size={tokens.typeButton.size} weight="semibold" style={styles.accentText}>
+                      ✓
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+            />
+          </Screen>
+        </SafeAreaProvider>
       </Modal>
     </>
   );
