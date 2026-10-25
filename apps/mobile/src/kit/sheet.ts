@@ -1,5 +1,29 @@
 import type { EdgeInsets } from 'react-native-safe-area-context';
 import { tokens } from '../theme/tokens.ts';
+import { keysOver } from './keyboard.ts';
+
+/** On an Android phone the card itself runs on under the keys; everywhere else the avoiding view lifts it. */
+export function sheetUnderKeys(os: string, phone: boolean): boolean {
+  return phone && os === 'android';
+}
+
+/** How far the keys reach up into the sheet's window: null while they are down, 0 where the avoiding view lifts it. */
+export function sheetKeysCover({
+  underKeys,
+  keysUp,
+  windowHeight,
+  keysTop,
+}: {
+  underKeys: boolean;
+  keysUp: boolean;
+  windowHeight: number | null;
+  keysTop: number | null;
+}): number | null {
+  if (!keysUp) return null;
+  if (!underKeys || windowHeight == null) return 0;
+
+  return keysOver({ y: 0, height: windowHeight }, keysTop);
+}
 
 export interface SheetPadding {
   scrimTop: number;
@@ -25,7 +49,7 @@ export function sheetPadding({
       scrimLeft: insets.left,
       scrimRight: insets.right,
       // The card runs on under the keys, so a rounding of where they start shows card, never the screen behind (sc-9472).
-      frameBottom: keysCover == null ? insets.bottom : Math.max(0, keysCover),
+      frameBottom: keysCover ?? insets.bottom,
     };
   }
 

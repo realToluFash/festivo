@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { sheetPadding } from '../kit/sheet.ts';
+import { sheetKeysCover, sheetPadding, sheetUnderKeys } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { keyboardTopNow, watchKeyboardTop } from './keyboardWatch.ts';
@@ -39,13 +39,11 @@ export function Sheet({
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
-  // On an Android phone the card itself runs under the keys; everywhere else the avoiding view lifts it.
-  const underKeys = phone && Platform.OS === 'android';
+  const underKeys = sheetUnderKeys(Platform.OS, phone);
   const keysUp = useKeysUp();
   const [windowHeight, setWindowHeight] = useState<number | null>(null);
   const keysTop = useKeyboardTop();
-  const measured = underKeys && windowHeight != null && keysTop != null;
-  const keysCover = !keysUp ? null : measured ? windowHeight - keysTop : 0;
+  const keysCover = sheetKeysCover({ underKeys, keysUp, windowHeight, keysTop });
   const padding = sheetPadding({ phone, keysCover, insets });
   useFocusBack(open, opener);
 
