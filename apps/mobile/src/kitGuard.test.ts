@@ -158,6 +158,38 @@ describe('a screen reader reaches what is inside a button', () => {
   });
 });
 
+describe('a field is read by the name it shows', () => {
+  // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
+  it('in every Field in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      fieldsReadByAnotherName(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Give the control the accessibilityLabel its Field shows.').toEqual([]);
+  });
+
+  it('notices a field read by another name', () => {
+    expect(
+      fieldsReadByAnotherName(
+        "<Field label={t('a')}>\n  <CodeField accessibilityLabel={t('b')} />\n</Field>",
+      ),
+    ).toEqual([1]);
+    expect(
+      fieldsReadByAnotherName(
+        "<Field label={t(x ? 'a' : 'b')} error={e}>\n  <CodeField accessibilityLabel={t(x ? 'a' : 'b')} />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsReadByAnotherName(
+        "<Field\n  label={t(\n    x ? 'a' : 'b',\n  )}\n>\n  <CodeField\n    accessibilityLabel={t(\n      x ? 'a' : 'b',\n    )}\n  />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsReadByAnotherName("<Field label={t('a')}>\n  <TextField value={v} />\n</Field>"),
+    ).toEqual([]);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -344,17 +376,50 @@ function nestedPressables(text: string): number[] {
   return nested;
 }
 
-/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
-function selfCloses(text: string, start: number): boolean {
+/** The line of every Field whose control carries an accessibilityLabel other than the Field's label. */
+function fieldsReadByAnotherName(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<Field\b/gu)].flatMap((match) => {
+    const body = text.slice(match.index, text.indexOf('</Field>', match.index));
+    const label = propValue(body.slice(0, tagEnd(body, 0)), 'label');
+    const read = propValue(body.slice(tagEnd(body, 0)), 'accessibilityLabel');
+
+    return read == null || read.replace(/\s+/gu, '') === label?.replace(/\s+/gu, '')
+      ? []
+      : [text.slice(0, match.index).split('\n').length];
+  });
+}
+
+/** A prop's value as written, its braces balanced, or null when the markup does not set it. */
+function propValue(markup: string, name: string): string | null {
+  const start = markup.search(new RegExp(`\\b${name}=`, 'u'));
+  if (start === -1) return null;
+
+  const from = start + name.length + 1;
+  if (markup[from] !== '{') return markup.slice(from).split(/[\s>]/u)[0] ?? '';
+
+  let braces = 0;
+  for (let at = from; at < markup.length; at += 1) {
+    if (markup[at] === '{') braces += 1;
+    else if (markup[at] === '}' && --braces === 0) return markup.slice(from, at + 1);
+  }
+
+  return markup.slice(from);
+}
+
+/** Where the tag opening at `start` ends, skipping any `>` inside a prop's braces. */
+function tagEnd(text: string, start: number): number {
   let braces = 0;
 
   for (let at = start + 1; at < text.length; at += 1) {
-    const char = text[at];
-
-    if (char === '{') braces += 1;
-    else if (char === '}') braces -= 1;
-    else if (char === '>' && braces === 0) return text[at - 1] === '/';
+    if (text[at] === '{') braces += 1;
+    else if (text[at] === '}') braces -= 1;
+    else if (text[at] === '>' && braces === 0) return at + 1;
   }
 
-  return false;
+  return text.length;
+}
+
+/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
+function selfCloses(text: string, start: number): boolean {
+  return text.slice(start, tagEnd(text, start)).endsWith('/>');
 }
