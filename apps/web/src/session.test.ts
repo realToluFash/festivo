@@ -5,6 +5,7 @@ import { SIGNED_OUT, api } from './api.ts';
 import { setLanguage } from './i18n/index.ts';
 import {
   __setSessionState,
+  adoptAccount,
   forgetSession,
   joinOrganisation,
   refreshAccount,
@@ -140,12 +141,35 @@ describe('the organisations after a language change (sc-9267)', () => {
     });
   }
 
-  function shownDeadline(): string | undefined {
-    const current = renderHook(() => useSessionState()).result.current;
+  function account(overrides: Partial<Account>): Account {
+    return {
+      id: 'acc_1',
+      name: 'Folake Adeyemi',
+      businessName: null,
+      countryCode: null,
+      organisationCountry: null,
+      locale: null,
+      timezone: null,
+      verified: true,
+      complete: true,
+      needsOrganisation: false,
+      hasPassword: true,
+      twoFactorSetupPrompt: false,
+      waitingFor: null,
+      providers: [],
+      emailAddresses: [],
+      phoneNumbers: [],
+      ...overrides,
+    };
+  }
 
-    return current.status === 'signedIn'
-      ? current.session.organisation?.twoFactorDue?.written
-      : undefined;
+  function watchDeadline(): () => string | undefined {
+    const { result } = renderHook(() => useSessionState());
+
+    return () =>
+      result.current.status === 'signedIn'
+        ? result.current.session.organisation?.twoFactorDue?.written
+        : undefined;
   }
 
   it('reads them again, and the organisation shown carries the date in the new language', async () => {
@@ -157,8 +181,29 @@ describe('the organisations after a language change (sc-9267)', () => {
 
     await act(() => setLanguage('es'));
 
+    const shownDeadline = watchDeadline();
     await waitFor(() => expect(shownDeadline()).toBe('sábado 31 oct a las 10:44 GMT'));
     expect(read).toHaveBeenCalledOnce();
+  });
+
+  it('reads them again when the account’s language is followed after they were read', async () => {
+    __setSessionState({ status: 'checking' });
+    const read = vi
+      .spyOn(api, 'organisationsWithPaused')
+      .mockResolvedValueOnce({
+        organisations: [membership({ twoFactorDue: due('Saturday 31 Oct at 10:44 GMT') })],
+        paused: [],
+      })
+      .mockResolvedValue({
+        organisations: [membership({ twoFactorDue: due('sábado, 31 de out. às 10:44 GMT') })],
+        paused: [],
+      });
+
+    await act(() => adoptAccount(account({ locale: 'pt' })));
+
+    const shownDeadline = watchDeadline();
+    await waitFor(() => expect(shownDeadline()).toBe('sábado, 31 de out. às 10:44 GMT'));
+    expect(read).toHaveBeenCalledTimes(2);
   });
 
   it('leaves them as they were when the read fails', async () => {
@@ -168,6 +213,7 @@ describe('the organisations after a language change (sc-9267)', () => {
     await act(() => setLanguage('es'));
 
     await waitFor(() => expect(read).toHaveBeenCalled());
+    const shownDeadline = watchDeadline();
     expect(shownDeadline()).toBe('Saturday 31 Oct at 10:44 GMT');
   });
   it('keeps an organisation joined while the read was on its way', async () => {

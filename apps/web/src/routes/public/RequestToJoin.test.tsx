@@ -192,6 +192,8 @@ describe('a request link (sc-562)', () => {
   });
 
   it('says only when to try again once a limit is reached', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 21, 18, 58, 30));
     signedIn();
     answering({
       [LINK]: () => json(PREVIEW),
