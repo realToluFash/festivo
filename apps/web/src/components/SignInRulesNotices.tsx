@@ -1,6 +1,6 @@
 import type { Membership } from '@soirely/api-client';
 import { formatDay } from '@soirely/domain';
-import { useId, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -17,7 +17,6 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
   const name = organisation.name;
   const changedAt = organisation.signInRules.changedAt;
   const standing = useTwoFactorStanding(organisation);
-  const id = useId();
   const gate = useRef<HTMLDivElement>(null);
   const changed = useRef<HTMLDivElement>(null);
   const land = useFocusOnceShown();
@@ -59,16 +58,9 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
           <span className="mark mark-attention" aria-hidden="true">
             !
           </span>
-          <div className="notice-body">
-            <p
-              className="notice-title"
-              data-notice-lead
-              tabIndex={-1}
-              aria-describedby={`${id}-unlinked`}
-            >
-              {t('signInRules.unlinkedTitle')}
-            </p>
-            <p id={`${id}-unlinked`}>{t('signInRules.unlinkedBody', { organisation: name })}</p>
+          <div className="notice-body" data-notice-lead tabIndex={-1}>
+            <p className="notice-title">{t('signInRules.unlinkedTitle')}</p>
+            <p>{t('signInRules.unlinkedBody', { organisation: name })}</p>
             <p className="notice-action">
               <Link className="link-button" to="/app/account/security">
                 {t('signInRules.unlinkedLink')}
@@ -83,16 +75,9 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
           <span className="mark mark-info" aria-hidden="true">
             i
           </span>
-          <div className="notice-body">
-            <p
-              className="notice-title"
-              data-notice-lead
-              tabIndex={-1}
-              aria-describedby={`${id}-gate`}
-            >
-              {t('signInRules.gateTitle', { organisation: name })}
-            </p>
-            <p id={`${id}-gate`}>{t('signInRules.gateBody', { organisation: name })}</p>
+          <div className="notice-body" data-notice-lead tabIndex={-1}>
+            <p className="notice-title">{t('signInRules.gateTitle', { organisation: name })}</p>
+            <p>{t('signInRules.gateBody', { organisation: name })}</p>
             <p className="notice-action">
               <Link className="link-button" to="/app/account/security">
                 {t('signInRules.gateTurnOn')}
@@ -116,16 +101,9 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
           <span className="mark mark-info" aria-hidden="true">
             i
           </span>
-          <div className="notice-body">
-            <p
-              className="notice-title"
-              data-notice-lead
-              tabIndex={-1}
-              aria-describedby={`${id}-changed`}
-            >
-              {t('signInRules.changedTitle')}
-            </p>
-            <p id={`${id}-changed`}>
+          <div className="notice-body" data-notice-lead tabIndex={-1}>
+            <p className="notice-title">{t('signInRules.changedTitle')}</p>
+            <p>
               {t('signInRules.changedBody', {
                 organisation: name,
                 day: formatDay(changedAt, dateLocale()),

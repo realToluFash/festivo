@@ -68,10 +68,9 @@ describe('a notice closed with its own button (sc-11369)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
 
     const title = screen.getByText('Sign-in rules changed');
-    expect(document.activeElement).toBe(title);
-    expect(
-      document.getElementById(title.getAttribute('aria-describedby') ?? '')?.textContent,
-    ).toMatch(/Ìrè Events/);
+    expect(document.activeElement).toBe(title.closest('.notice-body'));
+    expect(document.activeElement?.textContent).toMatch(/Ìrè Events/);
+    expect(title.hasAttribute('aria-describedby')).toBe(false);
   });
 
   it('takes Not now to Dashboard when it was the only notice', () => {
@@ -90,7 +89,9 @@ describe('a notice closed with its own button (sc-11369)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
 
-    expect(document.activeElement).toBe(screen.getByText('Sign-in rules changed'));
+    expect(document.activeElement).toBe(
+      screen.getByText('Sign-in rules changed').closest('.notice-body'),
+    );
   });
 
   it('takes Dismiss under the linked notice to Dashboard when no notice is left', () => {

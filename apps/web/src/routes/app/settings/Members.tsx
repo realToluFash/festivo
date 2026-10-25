@@ -366,7 +366,7 @@ function MembersOverview({
       )}
 
       {answered != null && (
-        <div ref={done} className="notice notice-done" role="status" tabIndex={-1}>
+        <div ref={done} className="notice notice-done" tabIndex={-1}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
@@ -673,6 +673,7 @@ function MemberDetail({
   const removeButton = useRef<HTMLButtonElement>(null);
   const removeSuspended = useRef<HTMLButtonElement>(null);
   const removedNotice = useRef<HTMLDivElement>(null);
+  const [removedRead, setRemovedRead] = useState(false);
   const restoredNotice = useRef<HTMLDivElement>(null);
   const callerOwns = organisation.role.seededAs === 'owner';
   const standing = memberStanding(member, list.members, {
@@ -766,7 +767,8 @@ function MemberDetail({
           ref={removedNotice}
           className="notice notice-done"
           tabIndex={-1}
-          aria-describedby="member-removed-next"
+          aria-describedby={removedRead ? undefined : 'member-removed-next'}
+          onBlur={() => setRemovedRead(true)}
         >
           <span className="mark mark-done" aria-hidden="true">
             ✓
@@ -1306,7 +1308,7 @@ function AccessNotice({
 
   if (outcome.kind === 'conflict') {
     return (
-      <div ref={ref} tabIndex={-1} className="notice notice-quiet" role="status">
+      <div ref={ref} tabIndex={-1} className="notice notice-quiet">
         <span className="mark mark-info" aria-hidden="true">
           i
         </span>
@@ -1316,7 +1318,7 @@ function AccessNotice({
   }
 
   return (
-    <div ref={ref} tabIndex={-1} className="notice notice-done" role="status">
+    <div ref={ref} tabIndex={-1} className="notice notice-done">
       <span className="mark mark-done" aria-hidden="true">
         ✓
       </span>

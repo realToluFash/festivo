@@ -440,6 +440,22 @@ describe('somebody awaiting approval (sc-392)', () => {
     ).toBeNull();
   });
 
+  it('puts focus back on their row under Awaiting approval after ‹ Members (sc-11369)', async () => {
+    signedIn();
+    answering(WAITING_READS);
+    open();
+
+    const section = within(await screen.findByRole('region', { name: 'Awaiting approval' }));
+    fireEvent.click(section.getByRole('button', { name: /Ada Okeke/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Members' }));
+
+    expect(document.activeElement).toBe(
+      within(screen.getByRole('region', { name: 'Awaiting approval' })).getByRole('button', {
+        name: /Ada Okeke/,
+      }),
+    );
+  });
+
   it('approves as Read-only unless another role is picked, and says what happened', async () => {
     signedIn();
     const sent = answering({
@@ -461,8 +477,10 @@ describe('somebody awaiting approval (sc-392)', () => {
     fireEvent.click(section.getByRole('radio', { name: /Coordinator/ }));
     fireEvent.click(section.getByRole('button', { name: 'Approve as Coordinator' }));
 
-    const done = await screen.findByRole('status');
-    expect(done.textContent).toContain('Ada Okeke is now a member, as Coordinator.');
+    const done = (await screen.findByText('Ada Okeke is now a member, as Coordinator.')).closest(
+      '.notice',
+    );
+    expect(done).not.toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(done));
     expect(screen.getByRole('button', { name: 'See Ada Okeke' })).toBeDefined();
     expect(sent.find((one) => one.line.endsWith('/approve'))?.body).toEqual({ roleId: 'role_4' });
@@ -519,8 +537,10 @@ describe('somebody awaiting approval (sc-392)', () => {
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(false);
     fireEvent.click(section.getByRole('button', { name: 'Turn down Ada Okeke' }));
 
-    const done = await screen.findByRole('status');
-    expect(done.textContent).toContain('Ada Okeke’s request is turned down.');
+    const done = (await screen.findByText(/Ada Okeke’s request is turned down\./)).closest(
+      '.notice',
+    );
+    expect(done).not.toBeNull();
     await waitFor(() => expect(document.activeElement).toBe(done));
     expect(sent.some((one) => one.line.endsWith('/turn-down'))).toBe(true);
   });
@@ -728,9 +748,13 @@ describe('inviting somebody', () => {
     expect(sent.some((one) => one.line.startsWith('DELETE'))).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Remove Bisi Adeyemi' }));
 
-    expect(
-      await screen.findByText('Bisi Adeyemi was removed. Their events stay with Ìrè Events.'),
-    ).toBeDefined();
+    const removed = (
+      await screen.findByText('Bisi Adeyemi was removed. Their events stay with Ìrè Events.')
+    ).closest('.notice') as HTMLElement;
+    await waitFor(() => expect(document.activeElement).toBe(removed));
+    expect(removed.getAttribute('aria-describedby')).toBe('member-removed-next');
+    fireEvent.blur(removed);
+    expect(removed.hasAttribute('aria-describedby')).toBe(false);
   });
 
   it('keeps focus on Remove ‹name› while it runs and once it fails with no connection (sc-11487)', async () => {

@@ -66,7 +66,7 @@ export function RecoveryRequestsCard() {
   return (
     <>
       {done != null && (
-        <div className="notice notice-done" role="status" tabIndex={-1} ref={flash}>
+        <div className="notice notice-done" tabIndex={-1} ref={flash}>
           <span className="mark mark-done" aria-hidden="true">
             ✓
           </span>
