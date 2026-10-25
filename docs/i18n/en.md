@@ -62,6 +62,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. A time the clocks skip (sc-10638, sc-10675, `eventForm.clocksSkip`,
+  `clocksSkipNextDay`).** Settled as sc-10638 wrote it; `Events.test.tsx` pins it. "There is no
+  {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as
+  {{savedAs}}." The next-day line adds "on {{savedDay}}". "The clocks go forward" also covers
+  Lord Howe's half hour; rejected "daylight saving time", which reads American and is a term
+  es, fr and pt each say differently.
 - **25 Oct 2026. Editing an event's details (sc-9704, sc-3587, `eventEdit.*`,
   `errors:precondition_failed`, `precondition_required`, `event_currency_in_use`).** Settled as
   sc-3587 wrote it; `Events.test.tsx` pins most of it. "Edit details" opens and heads the form,
