@@ -281,17 +281,16 @@ function Form({
           </Field>
         </View>
       </View>
-      <View ref={countryPicker}>
-        <Field label={t('createOrganisation.country')} error={errors.countryCode}>
-          <CountryPicker
-            label={t('createOrganisation.country')}
-            value={values.countryCode}
-            onChange={(code) => change('countryCode', code)}
-            disabled={saving}
-            testID="createOrganisation.country"
-          />
-        </Field>
-      </View>
+      <Field label={t('createOrganisation.country')} error={errors.countryCode}>
+        <CountryPicker
+          label={t('createOrganisation.country')}
+          value={values.countryCode}
+          onChange={(code) => change('countryCode', code)}
+          disabled={saving}
+          pickerRef={countryPicker}
+          testID="createOrganisation.country"
+        />
+      </Field>
 
       <Notice
         tone="quiet"

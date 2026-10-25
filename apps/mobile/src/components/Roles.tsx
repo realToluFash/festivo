@@ -39,7 +39,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { focusPicker } from './CountryPicker.tsx';
 import { Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
-import { AboveKeys, type DockInset, useAboveKeyboard } from './Screen.tsx';
+import { AboveKeys, type DockInset, SETTLED_MS, useAboveKeyboard } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
 
@@ -452,7 +452,12 @@ function Holders({ holders }: { holders: readonly RoleHolder[] }) {
   const firstRevealed = useRef<View>(null);
 
   useEffect(() => {
-    if (all) moveScreenReaderFocus(firstRevealed.current);
+    if (!all) return;
+
+    // TalkBack drops a hover sent before the rows it reveals have reached its tree (sc-9950).
+    const focus = setTimeout(() => moveScreenReaderFocus(firstRevealed.current), SETTLED_MS);
+
+    return () => clearTimeout(focus);
   }, [all]);
 
   if (holders.length === 0) return null;
