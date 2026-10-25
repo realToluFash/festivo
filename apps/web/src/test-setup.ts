@@ -34,6 +34,7 @@ configure({ asyncUtilTimeout: 3000 });
 // jsdom lays nothing out, so it has none of these; a step or a page that takes focus asks them.
 Element.prototype.scrollIntoView = function scrollIntoView() {};
 window.scrollTo = () => {};
+Object.defineProperty(document, 'fonts', { value: { ready: Promise.resolve() } });
 window.matchMedia = (query) =>
   ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as never;
 
