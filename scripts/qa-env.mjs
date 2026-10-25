@@ -1303,9 +1303,11 @@ async function apiSession(email, password, secret) {
   ).accessToken;
 }
 
-function reloadApp() {
+// Node 20 has no global WebSocket; the QA hosts run it, so `ws` stands in there.
+async function reloadApp() {
+  const Socket = globalThis.WebSocket ?? (await import('ws')).WebSocket;
   return new Promise((done, failed) => {
-    const socket = new WebSocket(`ws://127.0.0.1:${CONFIG.ports.METRO_PORT}/message`);
+    const socket = new Socket(`ws://127.0.0.1:${CONFIG.ports.METRO_PORT}/message`);
     socket.onopen = () => {
       socket.send(JSON.stringify({ version: 2, method: 'reload' }));
       socket.close();
