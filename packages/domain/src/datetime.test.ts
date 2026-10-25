@@ -7,6 +7,8 @@ import {
   formatEventDate,
   formatEventRange,
   formatTimeOfDay,
+  formatWallClock,
+  formatWallDay,
   lockLiftsAt,
   secondsUntil,
 } from './datetime.ts';
@@ -168,5 +170,20 @@ describe("an event's start and end", () => {
       'Sat, Nov 14, 2026',
     );
     expect(formatEventDate('not a date', 'Africa/Lagos', 'en')).toBe('');
+  });
+});
+
+describe('a wall-clock day and time, as the event page writes them', () => {
+  it("writes the page's day without its year", () => {
+    expect(formatWallDay('2026-11-14', 'en')).toBe('Sat, Nov 14');
+    expect(formatEventDate('2026-11-14T16:00:00+01:00', 'Africa/Lagos', 'en')).toBe(
+      'Sat, Nov 14, 2026',
+    );
+    expect(formatWallDay('2026-11-14', 'fr')).toMatch(/^sam\. 14 nov\.$/);
+  });
+
+  it("writes the page's clock, from a time or a date and time", () => {
+    expect(formatWallClock('02:30', 'en-US')).toBe('02:30');
+    expect(formatWallClock('2027-03-28T03:30', 'en')).toBe('03:30');
   });
 });

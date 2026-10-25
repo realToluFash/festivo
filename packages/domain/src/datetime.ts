@@ -64,12 +64,35 @@ export function formatCountdown(seconds: number): string {
   return `${minutes}:${String(whole % 60).padStart(2, '0')}`;
 }
 
-const EVENT_DAY: Intl.DateTimeFormatOptions = {
+const EVENT_DAY_IN_YEAR: Intl.DateTimeFormatOptions = {
   weekday: 'short',
   day: 'numeric',
   month: 'short',
-  year: 'numeric',
 };
+
+const EVENT_DAY: Intl.DateTimeFormatOptions = { ...EVENT_DAY_IN_YEAR, year: 'numeric' };
+
+const EVENT_CLOCK: Intl.DateTimeFormatOptions = {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+};
+
+/** A wall-clock day, `2027-03-28`, as the event's page writes it, without the year. */
+export function formatWallDay(date: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { ...EVENT_DAY_IN_YEAR, timeZone: 'UTC' }).format(
+    new Date(`${date}T00:00Z`),
+  );
+}
+
+/** A wall-clock time, `02:30` or `2027-03-28T03:30`, as the event's page writes it. */
+export function formatWallClock(time: string, locale: string): string {
+  const moment = time.includes('T') ? time : `1970-01-01T${time}`;
+
+  return new Intl.DateTimeFormat(locale, { ...EVENT_CLOCK, timeZone: 'UTC' }).format(
+    new Date(`${moment}Z`),
+  );
+}
 
 /** In the event's own zone, never the reader's: 16:00 in Lagos is 16:00 to everyone who reads it. */
 export function formatEventDate(moment: string, timeZone: string, locale: string): string {
@@ -94,9 +117,7 @@ export function formatEventRange(
 
   return new Intl.DateTimeFormat(locale, {
     ...EVENT_DAY,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
+    ...EVENT_CLOCK,
     timeZone,
   }).formatRange(start, end);
 }
