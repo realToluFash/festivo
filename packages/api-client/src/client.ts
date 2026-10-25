@@ -5,6 +5,8 @@
  * are decided once here. Written per client, each would grow its own error path
  * and most of those would never be exercised.
  */
+import { type EventType, isEventType } from '@soirely/domain';
+
 import { ApiError, ApiUnreachableError, type Problem, toProblem } from './problem.ts';
 
 /** See docs/architecture/sessions.md. */
@@ -283,6 +285,7 @@ export interface OrganisationEvent {
   id: string;
   organisationId: string;
   name: string;
+  type: EventType;
   status: EventStatus;
   startsAt: string;
   endsAt: string;
@@ -296,6 +299,7 @@ export interface OrganisationEvent {
 /** `startsAt` and `endsAt` are local to `timeZone`, with no offset: "2026-11-14T16:00". */
 export interface NewEvent {
   name: string;
+  type: EventType;
   startsAt: string;
   endsAt: string;
   timeZone: string;
@@ -1353,7 +1357,7 @@ export class ApiClient {
     return events as OrganisationEvent[];
   }
 
-  /** Refused `validation_failed` with violations on name, startsAt, endsAt, timeZone or currency. */
+  /** Refused `validation_failed` with violations on name, type, startsAt, endsAt, timeZone or currency. */
   async createEvent(organisationId: string, event: NewEvent): Promise<OrganisationEvent> {
     return this.organisationEvent(
       await this.post<{ event?: unknown }>(
@@ -2339,6 +2343,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
 
   const candidate = raw as Record<string, unknown>;
   const status = oneOf(candidate.status, EVENT_STATUSES);
+  const type = isEventType(candidate.type) ? candidate.type : null;
   const fields = [
     'id',
     'organisationId',
@@ -2354,6 +2359,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
 
   if (
     status == null ||
+    type == null ||
     fields.some((field) => typeof candidate[field] !== 'string') ||
     typeof dayCount !== 'number' ||
     !Number.isInteger(dayCount) ||
@@ -2365,6 +2371,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     id: candidate.id as string,
     organisationId: candidate.organisationId as string,
     name: candidate.name as string,
+    type,
     status,
     startsAt: candidate.startsAt as string,
     endsAt: candidate.endsAt as string,

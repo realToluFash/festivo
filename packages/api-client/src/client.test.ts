@@ -2205,6 +2205,7 @@ describe('events (sc-1486)', () => {
     id: '0199f0aa-1111-7000-8000-000000000001',
     organisationId: 'org_1',
     name: 'Adaeze and Tunde',
+    type: 'wedding',
     status: 'draft',
     startsAt: '2026-11-14T16:00:00+01:00',
     endsAt: '2026-11-15T02:00:00+01:00',
@@ -2248,6 +2249,7 @@ describe('events (sc-1486)', () => {
     const { api, sent } = client(() => json({ event: EVENT }, 201));
     const body = {
       name: 'Adaeze and Tunde',
+      type: 'wedding' as const,
       startsAt: '2026-11-14T16:00',
       endsAt: '2026-11-15T02:00',
       timeZone: 'Africa/Lagos',
@@ -2271,6 +2273,12 @@ describe('events (sc-1486)', () => {
     ).rejects.toThrow(/events controller/);
     await expect(
       client(() => json({ event: { ...EVENT, dayCount: 0 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+    await expect(
+      client(() => json({ event: { ...EVENT, type: 'burial' } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+    await expect(
+      client(() => json({ event: { ...EVENT, type: undefined } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
   });
 

@@ -55,6 +55,7 @@
     "validation.event_name_too_long": "Acorte el nombre a {count} caracteres como máximo.",
     "validation.event_start_required": "Elija cuándo empieza el evento.",
     "validation.event_time_invalid": "Indique una fecha y una hora sin zona horaria.",
+    "validation.event_type_required": "Choose what kind of event it is.",
     "validation.locale_invalid": "Elija English, Español, Français o Português.",
     "validation.name_required": "Introduzca su nombre.",
     "validation.organisation_name_required": "Indique el nombre de la organización.",
