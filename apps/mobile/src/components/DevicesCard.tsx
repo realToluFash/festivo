@@ -184,7 +184,7 @@ export function DevicesCard({
           tone="done"
           mark={tokens.marks.done.glyph}
           body={t('devices.ended', { name: said.name })}
-          answers={said}
+          answer={said}
         />
       )}
       {said?.kind === 'everywhere' && (
@@ -196,7 +196,7 @@ export function DevicesCard({
               ? t('devices.everywhereNone')
               : t('devices.everywhereDone', { count: said.signedOut })
           }
-          answers={said}
+          answer={said}
         />
       )}
       {said?.kind === 'endFailed' && (
@@ -205,7 +205,7 @@ export function DevicesCard({
           mark={tokens.marks.broken.glyph}
           title={t('devices.endFailedTitle')}
           body={t('devices.endFailedBody')}
-          answers={said}
+          answer={said}
         />
       )}
 
@@ -222,7 +222,7 @@ export function DevicesCard({
             mark={tokens.marks.broken.glyph}
             title={t('devices.failedTitle')}
             body={t('devices.failedBody')}
-            answers={devices}
+            answer={devices}
           />
           <SecondaryButton label={t('devices.retry')} onPress={retry} testID="devices.retry" />
         </>
@@ -500,7 +500,7 @@ function EverywhereElse({
               ? t('devices.everywhereLimitedSoon')
               : t('devices.everywhereLimitedBody', { time: until })
           }
-          answers={refusal}
+          answer={refusal}
         />
       )}
       {refusal?.kind === 'failed' && (
@@ -509,7 +509,7 @@ function EverywhereElse({
           mark={tokens.marks.broken.glyph}
           title={t('devices.everywhereFailedTitle')}
           body={refusal.message}
-          answers={refusal}
+          answer={refusal}
         />
       )}
 

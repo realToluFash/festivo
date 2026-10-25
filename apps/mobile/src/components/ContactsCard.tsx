@@ -203,12 +203,7 @@ function ContactsCard({
       </Text>
 
       {done != null && (
-        <Notice
-          tone="done"
-          mark={tokens.marks.done.glyph}
-          body={done}
-          answers={said ?? undefined}
-        />
+        <Notice tone="done" mark={tokens.marks.done.glyph} body={done} answer={said ?? undefined} />
       )}
 
       <View>

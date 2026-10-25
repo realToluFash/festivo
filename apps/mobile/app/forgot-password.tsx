@@ -97,7 +97,7 @@ export default function ForgotPassword() {
             mark="!"
             title={t('recovery.limitedTitle')}
             body={t('recovery.limitedBody', { time: status.time })}
-            answers={status}
+            answer={status}
           />
         )}
 
@@ -107,7 +107,7 @@ export default function ForgotPassword() {
             mark={tokens.marks.broken.glyph}
             title={t('recovery.failedTitle')}
             body={t('recovery.failedBody')}
-            answers={status}
+            answer={status}
           />
         )}
 

@@ -181,7 +181,7 @@ function Credentials({
               providerNames(refusal.providers),
             ),
           })}
-          answers={answer}
+          answer={answer}
         />
       )}
 
@@ -191,7 +191,7 @@ function Credentials({
           mark={tokens.marks.broken.glyph}
           title={t('signIn.failedTitle')}
           body={t('signIn.failedBody')}
-          answers={answer}
+          answer={answer}
         />
       )}
 
@@ -206,7 +206,7 @@ function Credentials({
             onPress: () => router.push('/forgot-password'),
             testID: 'signIn.locked.reset',
           }}
-          answers={answer}
+          answer={answer}
         />
       )}
 
@@ -216,7 +216,7 @@ function Credentials({
           mark={tokens.marks.broken.glyph}
           title={t('signIn.providerFailedTitle', { provider: status.provider })}
           body={t('signIn.providerFailedBody', { provider: status.provider })}
-          answers={answer}
+          answer={answer}
         />
       )}
 

@@ -248,7 +248,7 @@ function Start({
               ? t('lostTwoFactor.limitedBodyLater')
               : t('lostTwoFactor.limitedBody', { when: limitedUntil })
           }
-          answers={limitedUntil}
+          answer={limitedUntil}
         />
       )}
       <View style={styles.steps}>
@@ -318,7 +318,7 @@ function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
         mark={tokens.marks.broken.glyph}
         title={t('lostTwoFactor.failedTitle')}
         body={t('lostTwoFactor.failedBody')}
-        answers={failure}
+        answer={failure}
       />
       <SecondaryButton
         label={t('lostTwoFactor.retry')}
@@ -734,7 +734,7 @@ function Codes({
                   })
                 : t('lostTwoFactor.expiredBodyEmailOnly')
           }
-          answers={foundSpent ?? undefined}
+          answer={foundSpent ?? undefined}
         />
       )}
       {failed != null && (
@@ -743,7 +743,7 @@ function Codes({
           mark={tokens.marks.broken.glyph}
           title={t('lostTwoFactor.failedTitle')}
           body={t('lostTwoFactor.failedBody')}
-          answers={failed}
+          answer={failed}
         />
       )}
 

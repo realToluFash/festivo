@@ -53,7 +53,7 @@ export function useReadOut(
 
   useEffect(() => {
     const reading = { os: Platform.OS, afterTyping: typing, interrupts };
-    const before = shownBeforeAnswer(shown.current, !Object.is(answered.current, answer));
+    const before = shownBeforeAnswer(shown.current, answered.current, answer);
     answered.current = answer;
     const { shown: now, handOver, takeBack } = howToReadOut(before, words, reading);
     shown.current = now;

@@ -164,7 +164,7 @@ function Asking({
         <SignedOut token={token} organisation={organisation} />
       )}
       {view.kind === 'open' && view.signedIn && preview.standing != null && (
-        <Standing preview={preview} answers={view === opened ? undefined : view} />
+        <Standing preview={preview} answer={view === opened ? undefined : view} />
       )}
       {view.kind === 'open' && view.signedIn && preview.standing == null && (
         <Ask token={token} preview={preview} onChange={onChange} />
@@ -342,13 +342,7 @@ function Ask({
   );
 }
 
-function Standing({
-  preview,
-  answers,
-}: {
-  preview: RequestLinkPreview;
-  answers: Shown | undefined;
-}) {
+function Standing({ preview, answer }: { preview: RequestLinkPreview; answer: Shown | undefined }) {
   const { t } = useTranslation();
   const organisation = preview.organisation.name;
   const from = preview.askAgainFrom;
@@ -366,7 +360,7 @@ function Standing({
 
   return (
     <>
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={body} answers={answers} />
+      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={body} answer={answer} />
       <CarryOn
         label={
           preview.standing === 'member' ? t('requestToJoin.open', { organisation }) : undefined

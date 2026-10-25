@@ -33,19 +33,29 @@ describe('a message read out', () => {
 
 describe('a message that answers a tap', () => {
   const reading = { os: 'ios', interrupts: false, afterTyping: false };
+  const said = (answered: unknown, answer: unknown) =>
+    howToReadOut(
+      shownBeforeAnswer('That did not work', answered, answer),
+      'That did not work',
+      reading,
+    ).handOver?.words ?? null;
 
   it('is said again for a new tap, in the same words', () => {
-    const before = shownBeforeAnswer('That did not work', true);
+    expect(said({ kind: 'failed' }, { kind: 'failed' })).toBe('That did not work');
+  });
 
-    expect(howToReadOut(before, 'That did not work', reading).handOver?.words).toBe(
-      'That did not work',
-    );
+  it('is said for the first tap it answers', () => {
+    expect(said(undefined, { kind: 'failed' })).toBe('That did not work');
   });
 
   it('is not said again while it answers the same tap', () => {
-    const before = shownBeforeAnswer('That did not work', false);
+    const answer = { kind: 'failed' };
 
-    expect(howToReadOut(before, 'That did not work', reading).handOver).toBeNull();
+    expect(said(answer, answer)).toBeNull();
+  });
+
+  it('is not said again while it answers nothing', () => {
+    expect(said(undefined, undefined)).toBeNull();
   });
 });
 

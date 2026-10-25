@@ -108,7 +108,7 @@ export function PasswordCard({
                   ? t('passwordCard.added', { provider: stage.added })
                   : t('passwordCard.done', { count: stage.signedOut ?? 0 })
               }
-              answers={stage}
+              answer={stage}
             />
           )}
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
@@ -205,7 +205,7 @@ function Changing({
           mark="!"
           title={t('passwordCard.pausedTitle')}
           body={refusal.message}
-          answers={refusal}
+          answer={refusal}
         />
       )}
       {refusal?.field === 'failed' && (
@@ -214,7 +214,7 @@ function Changing({
           mark={tokens.marks.broken.glyph}
           title={t('passwordCard.failedTitle')}
           body={refusal.message}
-          answers={refusal}
+          answer={refusal}
         />
       )}
 
@@ -474,7 +474,7 @@ function Setting({
           mark="!"
           title={t('passwordCard.pausedTitle')}
           body={paused.message}
-          answers={paused}
+          answer={paused}
         />
       )}
       {failed != null && (
@@ -483,7 +483,7 @@ function Setting({
           mark={tokens.marks.broken.glyph}
           title={t('passwordCard.failedTitle')}
           body={t('passwordCard.setSendFailed')}
-          answers={failed}
+          answer={failed}
         />
       )}
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>

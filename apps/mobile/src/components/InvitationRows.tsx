@@ -1,5 +1,13 @@
 import type { InvitationPreview } from '@soirely/api-client';
-import { formatDay, invitationWording, isWaiting, refusalBody, roleName } from '@soirely/domain';
+import {
+  formatDay,
+  type InvitationOutcome,
+  invitationWording,
+  isWaiting,
+  refusalBody,
+  roleName,
+} from '@soirely/domain';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -48,6 +56,8 @@ function InvitationRow({
 }) {
   const { t } = useTranslation();
   const outcome = waiting.outcomes[invitation.id];
+  const [answered, setAnswered] = useState<InvitationOutcome | null>(null);
+  const answer = outcome === answered ? outcome : undefined;
   const keys = invitationWording(invitation);
   const organisation = invitation.organisation.name;
   const inviter = invitation.invitedBy?.name ?? '';
@@ -83,7 +93,7 @@ function InvitationRow({
       {isWaiting(outcome) && (
         <View style={styles.answer}>
           {outcome?.kind === 'failed' && (
-            <Notice tone="broken" mark="✕" body={t('invitations.failed')} answers={outcome} />
+            <Notice tone="broken" mark="✕" body={t('invitations.failed')} answer={answer} />
           )}
           <View style={styles.buttons}>
             <PrimaryButton
@@ -91,14 +101,14 @@ function InvitationRow({
               accessibilityLabel={t('invitations.acceptLabel', { organisation })}
               busy={busy === 'accept'}
               off={busy === 'decline'}
-              onPress={() => void waiting.answer(invitation, 'accept')}
+              onPress={() => void waiting.answer(invitation, 'accept').then(setAnswered)}
               testID={`invitation.${invitation.id}.accept`}
             />
             <SecondaryButton
               label={t('invitations.decline')}
               accessibilityLabel={t('invitations.declineLabel', { organisation })}
               off={busy != null}
-              onPress={() => void waiting.answer(invitation, 'decline')}
+              onPress={() => void waiting.answer(invitation, 'decline').then(setAnswered)}
               testID={`invitation.${invitation.id}.decline`}
             />
           </View>
@@ -115,7 +125,7 @@ function InvitationRow({
               tone="done"
               mark="✓"
               body={t('invitations.joined', { organisation, role })}
-              answers={outcome}
+              answer={answer}
             />
             <PrimaryButton
               label={t('invitations.open', { organisation })}
@@ -129,12 +139,12 @@ function InvitationRow({
             mark="✓"
             title={t('invitations.joined', { organisation, role })}
             body={after.note(invitation.id)}
-            answers={outcome}
+            answer={answer}
           />
         ))}
 
       {outcome?.kind === 'declined' && (
-        <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} answers={outcome} />
+        <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} answer={answer} />
       )}
 
       {outcome?.kind === 'refused' && (
@@ -148,7 +158,7 @@ function InvitationRow({
             email: invitation.email,
             signedInAs: invitation.signedInAs ?? '',
           })}
-          answers={outcome}
+          answer={answer}
         />
       )}
     </View>

@@ -233,7 +233,7 @@ export default function VerifyPhone() {
               tone="broken"
               mark={tokens.marks.broken.glyph}
               body={t('verifyPhone.textInsteadFailed')}
-              answers={textingFailed}
+              answer={textingFailed}
             />
           )}
 

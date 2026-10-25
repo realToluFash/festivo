@@ -158,7 +158,7 @@ export function ConfirmItsYou({
           tone="attention"
           mark="!"
           body={t('waysCard.proofExpired', { provider: PROVIDER_NAMES[via], count: PROOF_MINUTES })}
-          answers={expired}
+          answer={expired}
         />
       )}
 
@@ -180,7 +180,7 @@ export function ConfirmItsYou({
           mark={tokens.marks.broken.glyph}
           title={t('waysCard.failedTitle')}
           body={refusal.message}
-          answers={refusal}
+          answer={refusal}
         />
       )}
 

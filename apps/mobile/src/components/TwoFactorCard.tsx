@@ -20,6 +20,12 @@ import { useReadOut } from './ReadOut.tsx';
 import { useAboveKeyboard, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
+/** Said once, as the tap it answers lands; `AtRest` mounts again after every reload. */
+interface Refusal {
+  organisation: string;
+  said: boolean;
+}
+
 type Stage =
   | { kind: 'loading' }
   | { kind: 'failed' }
@@ -51,7 +57,7 @@ export function TwoFactorCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [refusedBy, setRefusedBy] = useState<{ organisation: string } | null>(null);
+  const [refusedBy, setRefusedBy] = useState<Refusal | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -86,6 +92,11 @@ export function TwoFactorCard({
     };
   }, [recount]);
 
+  function leaveAtRest(next?: Stage): void {
+    setRefusedBy((now) => now && { ...now, said: true });
+    if (next != null) setStage(next);
+  }
+
   function reload(): void {
     setStage({ kind: 'loading' });
     setAttempt((n) => n + 1);
@@ -115,7 +126,7 @@ export function TwoFactorCard({
             mark={tokens.marks.broken.glyph}
             title={t('twoFactorCard.failedTitle')}
             body={t('twoFactorCard.failedBody')}
-            answers={stage}
+            answer={stage}
           />
           <SecondaryButton
             label={t('twoFactorCard.retry')}
@@ -128,14 +139,17 @@ export function TwoFactorCard({
       {stage.kind === 'atRest' && (
         <AtRest
           status={stage.status}
-          onTurnOn={() => void turnOn()}
+          onTurnOn={() => {
+            leaveAtRest();
+            void turnOn();
+          }}
           refusedBy={refusedBy}
           onTurnOff={() =>
             keptBy == null
-              ? setStage({ kind: 'turningOff' })
-              : setRefusedBy({ organisation: keptBy })
+              ? leaveAtRest({ kind: 'turningOff' })
+              : setRefusedBy({ organisation: keptBy, said: false })
           }
-          onNewCodes={() => setStage({ kind: 'newCodes' })}
+          onNewCodes={() => leaveAtRest({ kind: 'newCodes' })}
         />
       )}
 
@@ -160,7 +174,7 @@ export function TwoFactorCard({
           email={email}
           onDone={reload}
           onKept={(organisation) => {
-            setRefusedBy({ organisation });
+            setRefusedBy({ organisation, said: false });
             reload();
           }}
         />
@@ -189,7 +203,7 @@ function AtRest({
   onNewCodes,
 }: {
   status: TwoFactorStatus;
-  refusedBy: { organisation: string } | null;
+  refusedBy: Refusal | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
   onNewCodes: () => void;
@@ -258,7 +272,7 @@ function AtRest({
               tone="attention"
               mark="!"
               body={t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}
-              answers={refusedBy}
+              answer={refusedBy.said ? undefined : refusedBy}
             />
           )}
         </>

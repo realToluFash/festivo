@@ -50,7 +50,7 @@ export function CodeForm({
           mark="!"
           title={t(`${copy}.expiredTitle`)}
           body={t(`${copy}.expiredBody`)}
-          answers={answer}
+          answer={answer}
         />
       )}
 
@@ -60,7 +60,7 @@ export function CodeForm({
           mark="!"
           title={t(`${copy}.exhaustedTitle`)}
           body={t(`${copy}.exhaustedBody`)}
-          answers={answer}
+          answer={answer}
         />
       )}
 
@@ -70,7 +70,7 @@ export function CodeForm({
           mark={tokens.marks.broken.glyph}
           title={t(`${copy}.failedTitle`)}
           body={t(`${copy}.failedBody`)}
-          answers={answer}
+          answer={answer}
         />
       )}
 

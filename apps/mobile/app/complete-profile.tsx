@@ -187,7 +187,7 @@ function Waiting({
           title={t('completeProfile.failedTitle')}
           body={t('completeProfile.failedBody')}
           announce
-          answers={failed}
+          answer={failed}
         />
       )}
       <Notice
@@ -276,7 +276,7 @@ function FoundOrganisation() {
           title={t('completeProfile.failedTitle')}
           body={t('completeProfile.failedBody')}
           announce
-          answers={failed}
+          answer={failed}
         />
       )}
       <Field
@@ -497,7 +497,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
           mark={tokens.marks.broken.glyph}
           title={t('completeProfile.failedTitle')}
           body={t('completeProfile.failedBody')}
-          answers={failed}
+          answer={failed}
         />
       )}
 
