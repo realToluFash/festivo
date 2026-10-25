@@ -41,6 +41,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is "o pedido
+  HTTP" where a recovery or join "pedido" could be meant (the body refusals), and "o pedido" in
+  the assistant's lines; an API path is "este URL", masculine. An id is "esse identificador",
+  and a postal address is "morada". Field names an integrator sends (`idToken`, `code`,
+  `recoveryCode`, `If-Match`, `context`, the assistant's roles) stay as written, in straight
+  quotes where the English quotes them; "system prompt" stays English. Where a screen says the
+  same sentence (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`,
+  the lock-outs' "Tente novamente às {time}"), the refusal says it too.
 - **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
   sc-10675). "Em {{zone}}, a hora {{time}} não existe no dia {{day}}: nessa noite, os relógios
   são adiantados. Será guardada como {{savedAs}}." The next-day line ends "guardada no dia
