@@ -640,10 +640,10 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const unavailable = t('domainJoining.unavailable');
-  const unavailableLive = useReadOut(failed ? unavailable : null);
+  useReadOut(failed ? unavailable : null);
   const waiting = t('domainJoining.waiting');
   const asked = t('domainJoining.switcherAsked', { email });
-  const askedLive = useReadOut(offer.asked ? `${waiting}\n${asked}` : null, {
+  useReadOut(offer.asked ? `${waiting}\n${asked}` : null, {
     quietAtMount: true,
   });
 
@@ -669,7 +669,7 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
         {t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}
       </Text>
       {offer.asked ? (
-        <View style={styles.offerAsked} {...askedLive}>
+        <View style={styles.offerAsked}>
           <View style={styles.offerRing} />
           <View style={styles.offerAskedWords}>
             <Text size={tokens.typeBody.size} weight="semibold">
@@ -681,12 +681,7 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
       ) : (
         <>
           {failed && (
-            <Text
-              size={tokens.typeBody.size}
-              style={styles.broken}
-              accessibilityRole="alert"
-              {...unavailableLive}
-            >
+            <Text size={tokens.typeBody.size} style={styles.broken} accessibilityRole="alert">
               {unavailable}
             </Text>
           )}
