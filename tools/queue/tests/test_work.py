@@ -641,6 +641,10 @@ class Unblocked(unittest.TestCase):
             self.assertEqual(self.wakes([self.ticket(state)], [self.merged()]),
                              [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
 
+    def test_a_ready_for_dev_ticket_is_woken_when_a_feature_it_covers_merges(self):
+        self.assertEqual(self.wakes([self.ticket("Ready For Dev")], [self.merged()]),
+                         [(["l10n"], 9, 40, "PR #40 (sc-4) merged: sc-9 can start")])
+
     def test_a_story_linking_to_the_ticket_is_not_one_it_covers(self):
         ticket = dict(story(9, "To Do", labels=["translation"]),
                       links=[{"verb": "relates to", "subject": 4, "object": 9}])

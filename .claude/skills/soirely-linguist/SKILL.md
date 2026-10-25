@@ -96,7 +96,8 @@ a one-line reference; use `--again` only if you truly need its full text again.
 order is:
 
 1. **A translation ticket in `Failed QA`.** It was nearly done.
-2. **A translation ticket** in `To Do` or `In Progress` (label `translation`), oldest first.
+2. **A translation ticket** in `To Do`, `Ready For Dev` or `In Progress` (label
+   `translation`), oldest first.
 3. **A request**: a comment from the product manager, designer, QA or another role asking for
    wording, a review of a string, or copy for a new channel. Requests become tickets
    (section 3) unless they are a one-word answer.

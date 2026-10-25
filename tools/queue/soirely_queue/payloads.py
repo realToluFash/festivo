@@ -154,6 +154,10 @@ def checks_red(p, pr, story, row):
 def merge(p, pr, story, row):
     V.pr_status(p, pr, compact=True)
     live = github.live(pr["number"])
+    if live["mergeable"] == "CONFLICTING" and p.role in R.LINGUISTS:
+        p.add("", "It conflicts with main. Merge origin/main into the branch and push; the "
+                  "green checks on the new head wake you to merge.")
+        return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"brought main in\"")
     if live["mergeable"] == "CONFLICTING":
         p.add("", "It conflicts with main, so it cannot merge as passed. Merge origin/main into "
                   "the branch and push. The push voids the pass, and the lead reviews the new "

@@ -373,7 +373,7 @@ def developer_items(stories, prs):
     return items
 
 
-TRANSLATING = ("To Do", "In Progress")
+TRANSLATING = ("To Do", "Ready For Dev", "In Progress")
 
 
 def covered(ticket):
