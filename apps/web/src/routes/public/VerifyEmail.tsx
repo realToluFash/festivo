@@ -6,7 +6,7 @@ import {
   awaiting,
 } from '@soirely/api-client';
 import { cleanCode, codeProblem } from '@soirely/domain';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 
@@ -30,7 +30,7 @@ import {
   restoreSession,
   useSessionState,
 } from '../../session.ts';
-import { useStepFocus } from '../../stepFocus.ts';
+import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { offButton } from '../../offButton.ts';
 import { useResendCountdown } from '../../resendCountdown.ts';
@@ -201,6 +201,9 @@ function CodeScreen({
   });
   const { begin } = resending;
   const [doneHeading, arriveAtDone] = useStepFocus();
+  const [answerNotice, arriveAtAnswer] = useStepFocus<HTMLDivElement>();
+  const [answered, setAnswered] = useState(false);
+  const land = useFocusOnceShown();
   const checks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -250,6 +253,7 @@ function CodeScreen({
     const code = cleanCode(typed);
 
     setStatus({ kind: 'verifying' });
+    setAnswered(false);
 
     try {
       await verify(code);
@@ -261,16 +265,26 @@ function CodeScreen({
         return;
       }
 
-      setStatus(codeRefusal(error));
+      const refusal = codeRefusal(error);
+      setStatus(refusal);
+      if (refusal.kind === 'expired' || refusal.kind === 'exhausted') answer();
     }
   }
 
-  const resend = (): Promise<void> => resending.once(sendOnce);
+  function answer(): void {
+    setAnswered(true);
+    arriveAtAnswer();
+  }
 
-  async function sendOnce(): Promise<void> {
+  const resend = (): Promise<void> => resending.once(() => sendOnce(false));
+  const resendInPlace = (): Promise<void> => resending.once(() => sendOnce(true));
+
+  async function sendOnce(inPlace: boolean): Promise<void> {
     try {
       resending.countDown(await sendAgain());
       setStatus({ kind: 'entering' });
+      setAnswered(false);
+      if (inPlace) land(() => document.getElementById('code'));
     } catch (error) {
       const seconds =
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
@@ -283,11 +297,15 @@ function CodeScreen({
       if (Number.isFinite(seconds) && seconds > 0) {
         resending.countDown(seconds);
         setStatus({ kind: 'entering' });
+        setAnswered(false);
+        if (inPlace) land(() => document.getElementById('code'));
 
         return;
       }
 
       setStatus({ kind: 'failed' });
+      setAnswered(inPlace);
+      if (inPlace) arriveAtAnswer();
     }
   }
 
@@ -356,7 +374,9 @@ function CodeScreen({
               title={t('verifyEmail.expiredTitle')}
               body={t('verifyEmail.expiredBody')}
               action={t('verifyEmail.resend')}
-              onAction={() => void resend()}
+              answered={answered}
+              bodyRef={answerNotice}
+              onAction={() => void resendInPlace()}
             />
           )}
 
@@ -365,16 +385,18 @@ function CodeScreen({
               title={t('verifyEmail.exhaustedTitle')}
               body={t('verifyEmail.exhaustedBody')}
               action={t('verifyEmail.resend')}
-              onAction={() => void resend()}
+              answered={answered}
+              bodyRef={answerNotice}
+              onAction={() => void resendInPlace()}
             />
           )}
 
           {status.kind === 'failed' && (
-            <div className="notice notice-broken" role="alert">
+            <div className="notice notice-broken" role={answered ? undefined : 'alert'}>
               <span className="mark mark-broken" aria-hidden="true">
                 ✕
               </span>
-              <div className="notice-body">
+              <div className="notice-body" ref={answerNotice} tabIndex={answered ? -1 : undefined}>
                 <p className="notice-title">{t('verifyEmail.failedTitle')}</p>
                 <p>{t('verifyEmail.failedBody')}</p>
               </div>
@@ -453,20 +475,24 @@ function Banner({
   title,
   body,
   action,
+  answered,
+  bodyRef,
   onAction,
 }: {
   title: string;
   body: string;
   action: string;
+  answered: boolean;
+  bodyRef: RefObject<HTMLDivElement | null>;
   onAction: () => void;
 }) {
   return (
     <>
-      <div className="notice notice-attention" role="alert">
+      <div className="notice notice-attention" role={answered ? undefined : 'alert'}>
         <span className="mark mark-attention" aria-hidden="true">
           !
         </span>
-        <div className="notice-body">
+        <div className="notice-body" ref={bodyRef} tabIndex={answered ? -1 : undefined}>
           <p className="notice-title">{title}</p>
           <p>{body}</p>
         </div>

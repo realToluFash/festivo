@@ -45,3 +45,18 @@ export function useFocusOnceShown(): (find: Find) => void {
     setRequests((count) => count + 1);
   }, []);
 }
+
+/** The next notice's words, or else the page's heading: what a person reads on to once `notice` closes. */
+export function afterNotice(notice: HTMLElement | null): HTMLElement | null {
+  if (notice == null) return null;
+
+  const next = Array.from(document.querySelectorAll<HTMLElement>('[data-notice-lead], h1')).find(
+    (candidate) =>
+      !notice.contains(candidate) &&
+      (notice.compareDocumentPosition(candidate) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+  );
+
+  if (next != null && !next.hasAttribute('tabindex')) next.tabIndex = -1;
+
+  return next ?? null;
+}

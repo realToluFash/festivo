@@ -5,7 +5,7 @@ import {
   phoneAwaitingCode,
 } from '@soirely/api-client';
 import { cleanCode, codeProblem, codeWording, formatPhone } from '@soirely/domain';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 
@@ -19,7 +19,7 @@ import {
 } from '../../components/BackToAccount.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
-import { useStepFocus } from '../../stepFocus.ts';
+import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { useResendCountdown } from '../../resendCountdown.ts';
 
@@ -44,6 +44,12 @@ export function VerifyPhone() {
   // From the verify answer, never the list read before it: the server decides (sc-2244).
   const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
   const [doneHeading, arriveAtDone] = useStepFocus();
+  const [bannerTitle, arriveAtBanner] = useStepFocus<HTMLParagraphElement>();
+  const [failedNotice, arriveAtFailed] = useStepFocus<HTMLDivElement>();
+  const [answered, setAnswered] = useState(false);
+  const [textedLine, arriveAtTexted] = useStepFocus<HTMLParagraphElement>();
+  const [textedHere, setTextedHere] = useState(false);
+  const land = useFocusOnceShown();
   const wording = codeWording(route);
 
   useEffect(() => {
@@ -122,22 +128,31 @@ export function VerifyPhone() {
 
     setCodeError(null);
     setStatus({ kind: 'verifying' });
+    setAnswered(false);
 
     try {
       setMadePrimary((await api.verifyPhone(code, alternative)).primary);
       setStatus({ kind: 'verified' });
       arriveAtDone();
     } catch (error) {
-      setStatus(codeRefusal(error));
+      const refusal = codeRefusal(error);
+      setStatus(refusal);
+      if (refusal.kind === 'expired' || refusal.kind === 'exhausted') {
+        setAnswered(true);
+        arriveAtBanner();
+      }
     }
   }
 
-  const resend = (): Promise<void> => resending.once(sendOnce);
+  const resend = (): Promise<void> => resending.once(() => sendOnce(false));
+  const resendInPlace = (): Promise<void> => resending.once(() => sendOnce(true));
 
-  async function sendOnce(): Promise<void> {
+  async function sendOnce(inPlace: boolean): Promise<void> {
     try {
       resending.countDown(await api.resendPhoneCode(alternative));
       setStatus({ kind: 'entering' });
+      setAnswered(false);
+      if (inPlace) land(() => document.getElementById('code'));
       setRoute((await api.phoneOpening(alternative)).route);
     } catch (error) {
       const seconds =
@@ -146,10 +161,14 @@ export function VerifyPhone() {
       if (Number.isFinite(seconds) && seconds > 0) {
         resending.countDown(seconds);
         setStatus({ kind: 'entering' });
+        setAnswered(false);
+        if (inPlace) land(() => document.getElementById('code'));
         return;
       }
 
       setStatus({ kind: 'failed' });
+      setAnswered(inPlace);
+      if (inPlace) arriveAtFailed();
     }
   }
 
@@ -174,6 +193,8 @@ export function VerifyPhone() {
     try {
       await api.textPhoneCodeInstead(alternative);
       setRoute('sms_chosen');
+      setTextedHere(true);
+      arriveAtTexted();
     } catch {
       setTextingFailed(true);
     }
@@ -240,7 +261,13 @@ export function VerifyPhone() {
           <div className="auth-heading">
             <h1>{t('verifyPhone.title')}</h1>
             {/* One live element whose text changes, so a fallback is announced without moving focus. */}
-            <p aria-live="polite">{line}</p>
+            <p
+              aria-live={textedHere ? 'off' : 'polite'}
+              ref={textedLine}
+              tabIndex={textedHere ? -1 : undefined}
+            >
+              {line}
+            </p>
           </div>
 
           {status.kind === 'expired' && (
@@ -248,7 +275,9 @@ export function VerifyPhone() {
               title={t('verifyPhone.expiredTitle')}
               body={t('verifyPhone.expiredBody')}
               action={t('verifyPhone.resend')}
-              onAction={() => void resend()}
+              answered={answered}
+              titleRef={bannerTitle}
+              onAction={() => void resendInPlace()}
             />
           )}
 
@@ -257,16 +286,18 @@ export function VerifyPhone() {
               title={t('verifyPhone.exhaustedTitle')}
               body={t('verifyPhone.exhaustedBody')}
               action={t('verifyPhone.resend')}
-              onAction={() => void resend()}
+              answered={answered}
+              titleRef={bannerTitle}
+              onAction={() => void resendInPlace()}
             />
           )}
 
           {status.kind === 'failed' && (
-            <div className="notice notice-broken" role="alert">
+            <div className="notice notice-broken" role={answered ? undefined : 'alert'}>
               <span className="mark mark-broken" aria-hidden="true">
                 ✕
               </span>
-              <div className="notice-body">
+              <div className="notice-body" ref={failedNotice} tabIndex={answered ? -1 : undefined}>
                 <p className="notice-title">{t('verifyPhone.failedTitle')}</p>
                 <p>{t('verifyPhone.failedBody')}</p>
               </div>
@@ -366,21 +397,34 @@ function Banner({
   title,
   body,
   action,
+  answered,
+  titleRef,
   onAction,
 }: {
   title: string;
   body: string;
   action: string;
+  answered: boolean;
+  titleRef: RefObject<HTMLParagraphElement | null>;
   onAction: () => void;
 }) {
+  const bodyId = useId();
+
   return (
-    <div className="notice notice-attention" role="alert">
+    <div className="notice notice-attention" role={answered ? undefined : 'alert'}>
       <span className="mark mark-attention" aria-hidden="true">
         !
       </span>
       <div className="notice-body">
-        <p className="notice-title">{title}</p>
-        <p>{body}</p>
+        <p
+          className="notice-title"
+          ref={titleRef}
+          tabIndex={answered ? -1 : undefined}
+          aria-describedby={answered ? bodyId : undefined}
+        >
+          {title}
+        </p>
+        <p id={bodyId}>{body}</p>
         <p className="notice-action">
           <button className="link-button" type="button" onClick={onAction}>
             {action}

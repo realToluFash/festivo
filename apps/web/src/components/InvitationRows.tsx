@@ -7,11 +7,13 @@ import {
   refusalBody,
   roleName,
 } from '@soirely/domain';
+import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { offButton } from '../offButton.ts';
+import { focusStep } from '../stepFocus.ts';
 
 /** What follows "You joined": a button into it, or, on `/complete-profile`, a line saying where finishing goes. */
 export type AfterJoining =
@@ -61,6 +63,18 @@ function InvitationRow({
   const role = invitation.role == null ? '' : roleName(t, invitation.role);
   const answering = isWaiting(outcome);
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
+  const said = useRef<HTMLDivElement>(null);
+  const before = useRef(outcome?.kind);
+
+  useLayoutEffect(() => {
+    const was = before.current;
+    before.current = outcome?.kind;
+
+    if (was !== 'busy' || outcome == null || outcome.kind === 'busy' || outcome.kind === 'failed')
+      return;
+
+    focusStep(said.current);
+  }, [outcome]);
 
   return (
     <div className="invitation-row" role="group" aria-labelledby={headingId}>
@@ -123,7 +137,7 @@ function InvitationRow({
       {outcome?.kind === 'accepted' &&
         ('open' in after ? (
           <div className="invitation-row-answer">
-            <div className="invitation-row-said invitation-row-joined" role="status">
+            <div className="invitation-row-said invitation-row-joined" ref={said} tabIndex={-1}>
               <span className="mark mark-done" aria-hidden="true">
                 ✓
               </span>
@@ -139,7 +153,7 @@ function InvitationRow({
             </button>
           </div>
         ) : (
-          <div className="invitation-row-said" role="status">
+          <div className="invitation-row-said" ref={said} tabIndex={-1}>
             <span className="mark mark-done" aria-hidden="true">
               ✓
             </span>
@@ -153,7 +167,7 @@ function InvitationRow({
         ))}
 
       {outcome?.kind === 'declined' && (
-        <div className="invitation-row-said" role="status">
+        <div className="invitation-row-said" ref={said} tabIndex={-1}>
           <span className="mark mark-info" aria-hidden="true">
             –
           </span>
@@ -164,7 +178,8 @@ function InvitationRow({
       {outcome?.kind === 'refused' && (
         <div
           className={`notice ${outcome.refusal === 'invitation_expired' ? 'notice-attention' : 'notice-quiet'}`}
-          role="status"
+          ref={said}
+          tabIndex={-1}
         >
           <span
             className={`mark ${outcome.refusal === 'invitation_expired' ? 'mark-attention' : 'mark-info'}`}

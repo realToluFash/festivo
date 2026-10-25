@@ -84,7 +84,7 @@ function Shell() {
     id: string;
     name: string;
     at: string;
-    fromPaused?: boolean;
+    takesFocus?: boolean;
   } | null>(null);
   const [switchedNotice, arriveAtSwitched] = useStepFocus<HTMLDivElement>();
   const [creating, setCreating] = useState(false);
@@ -168,14 +168,16 @@ function Shell() {
         {switched != null && switched.at === pathname && switched.id === organisation?.id && (
           <div
             className="notice notice-done"
-            role={switched.fromPaused === true ? undefined : 'status'}
+            role={switched.takesFocus === true ? undefined : 'status'}
             ref={switchedNotice}
-            tabIndex={switched.fromPaused === true ? -1 : undefined}
+            tabIndex={switched.takesFocus === true ? -1 : undefined}
           >
             <span className="mark mark-done" aria-hidden="true">
               ✓
             </span>
-            <p className="notice-title">{t('switcher.switched', { name: switched.name })}</p>
+            <p className="notice-title" data-notice-lead tabIndex={-1}>
+              {t('switcher.switched', { name: switched.name })}
+            </p>
           </div>
         )}
 
@@ -186,7 +188,7 @@ function Shell() {
               others={session.organisations}
               onSwitch={(next) => {
                 switchOrganisation(next.id);
-                setSwitched({ id: next.id, name: next.name, at: pathname, fromPaused: true });
+                setSwitched({ id: next.id, name: next.name, at: pathname, takesFocus: true });
                 arriveAtSwitched();
               }}
               onChoose={() => setChoosing((times) => times + 1)}
@@ -198,11 +200,14 @@ function Shell() {
                 const joined = session.organisations.find((membership) => membership.id === id);
 
                 switchOrganisation(id);
-                if (joined != null) setSwitched({ id, name: joined.name, at: pathname });
+                if (joined == null) return;
+                setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
               }}
               onStarted={(started) => {
                 switchOrganisation(started.id);
-                setSwitched({ id: started.id, name: started.name, at: pathname });
+                setSwitched({ id: started.id, name: started.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
               }}
             />
           ) : organisation != null && overdue && !pathname.startsWith('/app/account') ? (

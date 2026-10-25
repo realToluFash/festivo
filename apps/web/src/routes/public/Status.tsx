@@ -1,9 +1,10 @@
 import { type Health } from '@soirely/api-client';
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../api.ts';
 import { Pending } from '../../components/Pending.tsx';
+import { focusStep } from '../../stepFocus.ts';
 
 /**
  * The health endpoint, read through the shared client.
@@ -19,6 +20,18 @@ export function Status() {
   const { t } = useTranslation();
   const [state, setState] = useState<State>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
+  const retried = attempt > 0;
+  const answer = useRef<HTMLParagraphElement>(null);
+
+  const shown = useRef(state);
+
+  // Each answer is a new state, so a retry that fails again lands on its line again.
+  useLayoutEffect(() => {
+    if (shown.current === state) return;
+
+    shown.current = state;
+    if (retried) focusStep(answer.current);
+  });
 
   useEffect(() => {
     let live = true;
@@ -47,8 +60,10 @@ export function Status() {
       {state.kind === 'loading' && <Pending />}
 
       {state.kind === 'failed' && (
-        <div className="panel panel-error" role="alert">
-          <p>{t('status.unreachable')}</p>
+        <div className="panel panel-error" role={retried ? undefined : 'alert'}>
+          <p ref={answer} tabIndex={retried ? -1 : undefined}>
+            {t('status.unreachable')}
+          </p>
           <button type="button" onClick={() => setAttempt((n) => n + 1)}>
             {t('status.retry')}
           </button>
@@ -57,7 +72,7 @@ export function Status() {
 
       {state.kind === 'ok' && (
         <>
-          <p role="status">
+          <p role={retried ? undefined : 'status'} ref={answer} tabIndex={retried ? -1 : undefined}>
             {state.health.status === 'ok' ? t('status.healthy') : t('status.degraded')}
           </p>
           <table className="table">
