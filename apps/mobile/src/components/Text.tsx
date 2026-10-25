@@ -1,3 +1,4 @@
+import { type Ref } from 'react';
 import { Text as RNText, StyleSheet, type TextProps as RNTextProps } from 'react-native';
 
 import { WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
@@ -20,7 +21,10 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
   size?: number;
   muted?: boolean;
   mono?: boolean;
+  ref?: Ref<TextHandle> | undefined;
 }
+
+export type TextHandle = RNText;
 
 export function Text({
   weight = 'regular',

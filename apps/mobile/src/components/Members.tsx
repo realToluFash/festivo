@@ -18,7 +18,7 @@ import {
   memberStatusWord,
   roleName,
 } from '@soirely/domain';
-import { useState } from 'react';
+import { type Ref, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -44,7 +44,7 @@ import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
 import { useBroughtIntoView, useScrolledToTop } from './Screen.tsx';
-import { Text } from './Text.tsx';
+import { type TextHandle, Text } from './Text.tsx';
 
 const AVATAR = 40;
 const AVATAR_LARGE = 48;
@@ -408,6 +408,7 @@ export function MemberPage({
   onRemoved,
   onAnswered,
   onGoToOrganisation,
+  nameRef,
 }: {
   kind: LayoutKind;
   organisation: Membership;
@@ -420,6 +421,7 @@ export function MemberPage({
   onRemoved: (list: MembersList) => void;
   onAnswered: (list: MembersList, answered: Answered) => void;
   onGoToOrganisation: () => void;
+  nameRef?: Ref<TextHandle> | undefined;
 }) {
   const { t } = useTranslation();
   const callerOwns = organisation.role.seededAs === 'owner';
@@ -449,7 +451,12 @@ export function MemberPage({
         <Avatar name={member.user.name} large />
         <View style={styles.rowText}>
           {kind !== 'phone' && (
-            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+            <Text
+              size={tokens.typeTitleDialog.size}
+              weight="bold"
+              accessibilityRole="header"
+              ref={nameRef}
+            >
               {member.user.name}
             </Text>
           )}
