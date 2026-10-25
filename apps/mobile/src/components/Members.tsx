@@ -11,7 +11,6 @@ import {
   type MemberStanding,
   approvalRoles,
   formatDay,
-  initials,
   memberHeldNoRole,
   memberIsShown,
   memberRowLine,
@@ -40,6 +39,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
@@ -91,6 +91,7 @@ function MemberState({ member }: { member: OrganisationMember }) {
           style={{ color: mark.ink }}
           accessibilityElementsHidden
           importantForAccessibility="no"
+          accessible={false}
         >
           {mark.glyph}
         </Text>
@@ -111,9 +112,12 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text size={large ? tokens.typeBodyPhone.size : tokens.typeSmall.size} weight="bold" muted>
-        {initials(name)}
-      </Text>
+      <Initials
+        name={name}
+        size={large ? tokens.typeBodyPhone.size : tokens.typeSmall.size}
+        weight="bold"
+        muted
+      />
     </View>
   );
 }
@@ -376,6 +380,7 @@ function MemberRow({
         muted
         accessibilityElementsHidden
         importantForAccessibility="no"
+        accessible={false}
       >
         ›
       </Text>
@@ -457,6 +462,7 @@ export function MemberPage({
               muted
               accessibilityElementsHidden
               importantForAccessibility="no"
+              accessible={false}
             >
               ·
             </Text>

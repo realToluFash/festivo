@@ -247,6 +247,11 @@ a TalkBack or VoiceOver pass:
   `SETTLED_MS` first, as `useBroughtIntoView` does. TalkBack drops a hover on a view not
   yet in its tree, and VoiceOver drops a focus asked for while a sheet slides away
   (sc-9950, sc-9382).
+- A `Text` hidden from screen readers also carries `accessible={false}`, after any spread,
+  however it is hidden. React Native's iOS paragraph gives up its items by `accessible`
+  alone (`RCTParagraphComponentView.mm:186`), so `accessibilityElementsHidden` on the
+  `Text`, or on a `View` around it, still lets VoiceOver report it on some opens — the
+  "LG" a tile read out (sc-10712). `kitGuard.test.ts` holds both shapes.
 - A label goes only on what a screen reader lands on: a `Pressable`, a `TextInput`, or a
   `View` with `accessible`. VoiceOver never reads a label on a plain `View`, and TalkBack
   makes it a stop of its own, read before the words inside (sc-11419).

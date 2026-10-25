@@ -33,6 +33,7 @@ export function BackToAccount() {
         style={styles.accent}
         accessibilityElementsHidden
         importantForAccessibility="no"
+        accessible={false}
       >
         ←
       </Text>

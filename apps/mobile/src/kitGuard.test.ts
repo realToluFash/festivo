@@ -112,7 +112,7 @@ describe('a message is read out on both platforms', () => {
 describe('a screen reader skips the initials beside a name', () => {
   it('on both platforms, in every tile in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
-      [...text.matchAll(/\{initials\(/gu)]
+      [...text.matchAll(/<Initials\b/gu)]
         .filter(
           (match) => !hiddenTile(text.slice(text.lastIndexOf('<View', match.index), match.index)),
         )
@@ -120,6 +120,24 @@ describe('a screen reader skips the initials beside a name', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+
+  it('draws them only through Initials.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/Initials.tsx'))
+      .filter(({ text }) => /\{initials\(/u.test(text))
+      .map(({ path }) => path);
+
+    expect(offenders, 'Use <Initials name={…} /> from src/components/Initials.tsx.').toEqual([]);
+  });
+
+  it('whose text iOS cannot report', () => {
+    const tags = sources(['src'])
+      .filter(({ path }) => path.endsWith('/Initials.tsx'))
+      .flatMap(({ text }) => textTags(text).map(({ markup }) => markup));
+
+    expect(tags).toHaveLength(1);
+    expect(tags.filter((markup) => !unreportable(markup))).toEqual([]);
   });
 
   it('notices a tile Android still reads', () => {
@@ -132,6 +150,43 @@ describe('a screen reader skips the initials beside a name', () => {
         '<View accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text>',
       ),
     ).toBe(true);
+  });
+});
+
+describe('a Text hidden from screen readers stays hidden on iOS', () => {
+  // iOS asks a Text for its items by `accessible` alone, so hiding it some other way fails on some opens (sc-10712).
+  it('in every Text marked hidden in the app, or inside a View marked hidden', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      hiddenTexts(text)
+        .filter((tag) => !unreportable(tag.markup))
+        .map((tag) => `${path}:${tag.line}`),
+    );
+
+    expect(offenders, 'Give it accessible={false}, after any spread.').toEqual([]);
+  });
+
+  it('notices a Text hidden by the View around it, and only while that View is open', () => {
+    expect(
+      hiddenTexts(
+        '<View accessibilityElementsHidden>\n  <View style={s}>\n    <Text>✓</Text>\n  </View>\n</View>',
+      ).map((tag) => tag.line),
+    ).toEqual([3]);
+    expect(
+      hiddenTexts(
+        '<View accessibilityElementsHidden>\n  <View style={s} />\n  <Text accessible={false}>✓</Text>\n</View>\n<Text>Saved</Text>',
+      ).map((tag) => tag.line),
+    ).toEqual([3]);
+    expect(
+      hiddenTexts('<Text accessibilityElementsHidden>✓</Text>').map((tag) => tag.line),
+    ).toEqual([1]);
+  });
+
+  it('notices a Text that iOS can still report', () => {
+    expect(unreportable('<Text {...rest} accessible={false}>')).toBe(true);
+    expect(unreportable('<Text accessible={false} {...rest}>')).toBe(false);
+    expect(unreportable('<Text accessibilityElementsHidden importantForAccessibility="no">')).toBe(
+      false,
+    );
   });
 });
 
@@ -518,4 +573,38 @@ function tagEnd(text: string, start: number): number {
 /** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
 function selfCloses(text: string, start: number): boolean {
   return text.slice(start, tagEnd(text, start)).endsWith('/>');
+}
+
+function textTags(text: string): { line: number; markup: string }[] {
+  return [...text.matchAll(/(?<![\w.])<Text\b/gu)].map((match) => ({
+    line: text.slice(0, match.index).split('\n').length,
+    markup: text.slice(match.index, tagEnd(text, match.index)),
+  }));
+}
+
+/** Every Text marked hidden itself, or opening inside a View marked hidden, read tag by tag. */
+function hiddenTexts(text: string): { line: number; markup: string }[] {
+  const hidden: { line: number; markup: string }[] = [];
+  const openViews: boolean[] = [];
+
+  for (const match of text.matchAll(/(?<![\w.])<(\/?)(View|Text)\b/gu)) {
+    const markup = text.slice(match.index, tagEnd(text, match.index));
+    const hiddenHere = /\baccessibilityElementsHidden\b/u.test(markup);
+
+    if (match[2] === 'View') {
+      if (match[1] === '/') openViews.pop();
+      else if (!selfCloses(text, match.index)) openViews.push(hiddenHere);
+    } else if (match[1] === '' && (hiddenHere || openViews.includes(true))) {
+      hidden.push({ line: text.slice(0, match.index).split('\n').length, markup });
+    }
+  }
+
+  return hidden;
+}
+
+/** A spread after `accessible={false}` can carry `accessible: true` and turn it back off. */
+function unreportable(markup: string): boolean {
+  const at = markup.lastIndexOf('accessible={false}');
+
+  return at !== -1 && !markup.slice(at).includes('{...');
 }
