@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -14,12 +14,15 @@ import { sheetPadding } from '../kit/sheet.ts';
 import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { keyboardTopNow, watchKeyboardTop } from './keyboardWatch.ts';
+import { SETTLED_MS } from './Screen.tsx';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 
 /** The app's one dialog frame (sc-8606): a bottom sheet on a phone, a centred card on a tablet. */
 export function Sheet({
   open,
   onClose,
   scrimLabel,
+  opener,
   testID,
   children,
 }: {
@@ -28,6 +31,8 @@ export function Sheet({
   onClose: () => void;
   /** Given, a tap on the scrim closes the sheet, and a screen reader names it so. */
   scrimLabel?: string;
+  /** Where screen reader focus goes back to once the sheet has gone. */
+  opener?: RefObject<View | null>;
   testID?: string;
   children: ReactNode;
 }) {
@@ -42,6 +47,7 @@ export function Sheet({
   const measured = underKeys && windowHeight != null && keysTop != null;
   const keysCover = !keysUp ? null : measured ? windowHeight - keysTop : 0;
   const padding = sheetPadding({ phone, keysCover, insets });
+  useFocusBack(open, opener);
 
   return (
     <Modal
@@ -102,6 +108,21 @@ function useKeyboardTop(): number | null {
   useEffect(() => watchKeyboardTop(() => 0, setTop), []);
 
   return top;
+}
+
+/** Hands screen reader focus back to `opener` once a sheet that was open has slid away (WCAG 2.4.3). */
+function useFocusBack(open: boolean, opener: RefObject<View | null> | undefined): void {
+  const wasOpen = useRef(open);
+
+  useEffect(() => {
+    const closed = wasOpen.current && !open;
+    wasOpen.current = open;
+    if (!closed || opener == null) return;
+
+    const focus = setTimeout(() => moveScreenReaderFocus(opener.current), SETTLED_MS);
+
+    return () => clearTimeout(focus);
+  }, [open, opener]);
 }
 
 /** Whether the keyboard is up, changing when the avoiding view starts to move. */
