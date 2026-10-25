@@ -7,13 +7,12 @@ import {
   refusalBody,
   roleName,
 } from '@soirely/domain';
-import { useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { dateLocale } from '../i18n/index.ts';
 import type { WaitingInvitations } from '../invitations.ts';
 import { offButton } from '../offButton.ts';
-import { focusStep } from '../stepFocus.ts';
+import { useStepFocus } from '../stepFocus.ts';
 
 /** What follows "You joined": a button into it, or, on `/complete-profile`, a line saying where finishing goes. */
 export type AfterJoining =
@@ -63,18 +62,13 @@ function InvitationRow({
   const role = invitation.role == null ? '' : roleName(t, invitation.role);
   const answering = isWaiting(outcome);
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
-  const said = useRef<HTMLDivElement>(null);
-  const before = useRef(outcome?.kind);
+  const [said, arrive] = useStepFocus<HTMLDivElement>();
 
-  useLayoutEffect(() => {
-    const was = before.current;
-    before.current = outcome?.kind;
+  async function reply(choice: 'accept' | 'decline'): Promise<void> {
+    const answered = await waiting.answer(invitation, choice);
 
-    if (was !== 'busy' || outcome == null || outcome.kind === 'busy' || outcome.kind === 'failed')
-      return;
-
-    focusStep(said.current);
-  }, [outcome]);
+    if (answered.kind !== 'failed') arrive();
+  }
 
   return (
     <div className="invitation-row" role="group" aria-labelledby={headingId}>
@@ -114,7 +108,7 @@ function InvitationRow({
               aria-label={t('invitations.acceptLabel', { organisation })}
               disabled={busy === 'decline'}
               {...offButton(busy === 'accept')}
-              onClick={() => void waiting.answer(invitation, 'accept')}
+              onClick={() => void reply('accept')}
             >
               {t('invitations.accept')}
             </button>
@@ -125,7 +119,7 @@ function InvitationRow({
               aria-label={t('invitations.declineLabel', { organisation })}
               disabled={busy === 'accept'}
               {...offButton(busy === 'decline')}
-              onClick={() => void waiting.answer(invitation, 'decline')}
+              onClick={() => void reply('decline')}
             >
               {t('invitations.decline')}
             </button>
