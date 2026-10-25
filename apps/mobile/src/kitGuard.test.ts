@@ -186,8 +186,10 @@ describe('a label goes only where a screen reader lands', () => {
       [],
     );
     expect(
-      labelsNobodyLandsOn('<View style={a > b ? s : t}>\n  <Pressable accessibilityLabel={x}>'),
-    ).toEqual([]);
+      labelsNobodyLandsOn(
+        "<ScrollView\n  onLayout={(e) => f(e)}\n  accessibilityLabel={t('a')}\n>",
+      ),
+    ).toEqual([1]);
   });
 });
 
