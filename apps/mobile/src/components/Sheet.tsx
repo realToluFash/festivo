@@ -56,6 +56,9 @@ export function Sheet({
       animationType={phone ? 'slide' : 'fade'}
       // An iOS modal is portrait-only by default, and a rotation under it measures the keys sideways.
       supportedOrientations={['portrait', 'landscape']}
+      // Android's modal window stops at the system bars unless told otherwise, leaving them undimmed.
+      statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={onClose}
     >
       {/* A modal is its own window, so neither platform resizes it for the keyboard. */}
