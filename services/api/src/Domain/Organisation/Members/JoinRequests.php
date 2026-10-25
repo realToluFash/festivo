@@ -182,7 +182,7 @@ final readonly class JoinRequests
             : null;
 
         if (null === $membership) {
-            throw ApiException::notFound('That person has not asked to join this organisation.');
+            throw ApiException::notFound('members.not_asked');
         }
 
         if ($membership->getUser()->getId()->equals($by->getId())) {

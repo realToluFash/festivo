@@ -365,6 +365,7 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(428, $this->statusCode());
         self::assertSame(ErrorCode::PreconditionRequired->type(), $this->last()['type'] ?? null);
+        self::assertSame('Send the version you are changing, as If-Match.', $this->last()['detail'] ?? null);
         self::assertSame('Owambe', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['name']);
     }
 
@@ -388,6 +389,7 @@ final class EventsTest extends ApiTestCase
 
         self::assertSame(412, $this->statusCode());
         self::assertSame(ErrorCode::PreconditionFailed->type(), $this->last()['type'] ?? null);
+        self::assertSame('Somebody else changed this event since you opened it.', $this->last()['detail'] ?? null);
         self::assertSame('Colleague’s name', $this->event($this->as($this->owner, 'GET', '/api/events/' . $id))['name']);
     }
 

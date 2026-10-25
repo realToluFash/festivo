@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Traits;
 
+use App\Http\Exception\ApiException;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * Typed access to the test container.
@@ -57,5 +59,11 @@ trait ServiceAccessTrait
     protected static function em(): EntityManagerInterface
     {
         return self::service(EntityManagerInterface::class);
+    }
+
+    /** A refusal caught in the process carries its key; this is the English the response would say. */
+    protected static function worded(ApiException $refusal): string
+    {
+        return self::service(TranslatorInterface::class)->trans($refusal->getMessage(), $refusal->parameters, null, 'en');
     }
 }

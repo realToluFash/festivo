@@ -32,6 +32,7 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Authenticated]
 final class AssistantController
 {
+    /** @var list<string> */
     private const FORBIDDEN = ['system', 'systemPrompt', 'system_prompt', 'instructions'];
 
     private const MAX_RESOURCE_CONTEXT = 16384;
@@ -82,7 +83,7 @@ final class AssistantController
                 $ask,
                 $prompt,
                 InteractionRecorder::REFUSED,
-                new ApiException(ErrorCode::AssistantRefused, 'The assistant would not answer that.', [], $e),
+                new ApiException(ErrorCode::AssistantRefused, 'assistant.refused', [], $e),
             );
         } catch (AssistantFailed $e) {
             $this->logger->error('Assistant turn failed', ['exception' => $e]);
@@ -138,10 +139,7 @@ final class AssistantController
 
         foreach (self::FORBIDDEN as $key) {
             if (\array_key_exists($key, $body)) {
-                throw new ApiException(ErrorCode::BadRequest, \sprintf(
-                    'The system prompt is resolved by the server and cannot be set by a client. Remove "%s" and send a "context" instead.',
-                    $key,
-                ));
+                throw new ApiException(ErrorCode::BadRequest, 'assistant.system_prompt_forbidden', parameters: ['{field}' => $key]);
             }
         }
 
@@ -149,11 +147,10 @@ final class AssistantController
 
         $context = AssistantContext::tryFrom($body['context']);
         if (null === $context) {
-            throw new ApiException(ErrorCode::BadRequest, \sprintf(
-                'Unknown assistant context "%s". Known contexts: %s.',
-                $body['context'],
-                Str\join(Vec\map(AssistantContext::cases(), static fn (AssistantContext $c): string => $c->value), ', '),
-            ));
+            throw new ApiException(ErrorCode::BadRequest, 'assistant.context_unknown', parameters: [
+                '{context}' => $body['context'],
+                '{known}' => Str\join(Vec\map(AssistantContext::cases(), static fn (AssistantContext $c): string => $c->value), ', '),
+            ]);
         }
 
         return new Ask(
@@ -179,46 +176,47 @@ final class AssistantController
         $oversized = [];
 
         if (\count($body['messages']) > self::MAX_MESSAGES) {
-            $oversized['messages'] = \sprintf(
-                'A conversation may carry at most %d turns; this one has %d. Compact the history before sending it.',
-                self::MAX_MESSAGES,
-                \count($body['messages']),
-            );
+            $oversized[] = [
+                'propertyPath' => 'messages',
+                'message' => 'assistant.too_many_turns',
+                'code' => 'too_large',
+                'parameters' => [
+                    '{most}' => (string) self::MAX_MESSAGES,
+                    '{count}' => (string) \count($body['messages']),
+                ],
+            ];
         }
 
         if (\count($body['tools'] ?? []) > self::MAX_TOOLS) {
-            $oversized['tools'] = \sprintf(
-                'At most %d tools may be offered; this request offers %d.',
-                self::MAX_TOOLS,
-                \count($body['tools'] ?? []),
-            );
+            $oversized[] = [
+                'propertyPath' => 'tools',
+                'message' => 'assistant.too_many_tools',
+                'code' => 'too_large',
+                'parameters' => [
+                    '{most}' => (string) self::MAX_TOOLS,
+                    '{count}' => (string) \count($body['tools'] ?? []),
+                ],
+            ];
         }
 
         $resourceContext = $body['resourceContext'] ?? null;
         if (null !== $resourceContext && \mb_strlen($resourceContext) > self::MAX_RESOURCE_CONTEXT) {
-            $oversized['resourceContext'] = \sprintf(
-                'The resource context may be at most %d characters; this one is %d. Send what is on the screen, not the whole record.',
-                self::MAX_RESOURCE_CONTEXT,
-                \mb_strlen($resourceContext),
-            );
+            $oversized[] = [
+                'propertyPath' => 'resourceContext',
+                'message' => 'assistant.resource_context_too_long',
+                'code' => 'too_large',
+                'parameters' => [
+                    '{most}' => (string) self::MAX_RESOURCE_CONTEXT,
+                    '{count}' => (string) \mb_strlen($resourceContext),
+                ],
+            ];
         }
 
         if ([] === $oversized) {
             return;
         }
 
-        throw ApiException::validation(
-            \array_map(
-                static fn (string $path, string $message): array => [
-                    'propertyPath' => $path,
-                    'message' => $message,
-                    'code' => 'too_large',
-                ],
-                \array_keys($oversized),
-                \array_values($oversized),
-            ),
-            'The request is larger than the assistant accepts.',
-        );
+        throw ApiException::validation($oversized, 'assistant.too_large');
     }
 
     /** @param array<string, mixed> $message */
@@ -239,10 +237,7 @@ final class AssistantController
                 Type\string()->coerce($message['callId'] ?? ''),
                 $message['result'] ?? null,
             ),
-            default => throw new ApiException(ErrorCode::BadRequest, \sprintf(
-                'Unknown message role "%s". Known roles: user, assistant, tool_call, tool_result.',
-                $role,
-            )),
+            default => throw new ApiException(ErrorCode::BadRequest, 'assistant.role_unknown', parameters: ['{role}' => $role]),
         };
     }
 
@@ -262,7 +257,7 @@ final class AssistantController
         if (!$limiter->consume()->isAccepted()) {
             throw new ApiException(
                 ErrorCode::TooManyRequests,
-                'Too many assistant requests. Please wait a moment.',
+                'assistant.too_many',
             );
         }
     }

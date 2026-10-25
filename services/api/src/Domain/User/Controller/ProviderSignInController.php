@@ -56,7 +56,7 @@ final readonly class ProviderSignInController
                 $body['name'] ?? null,
             ),
             isset($body['idToken']) => $this->providerSignIn->signIn($identityProvider, $body['idToken'], $nonce, $request, $body['name'] ?? null),
-            default => throw new ApiException(ErrorCode::BadRequest, 'Send an idToken, or a code with its codeVerifier and redirectUri.'),
+            default => throw new ApiException(ErrorCode::BadRequest, 'provider.token_or_code'),
         };
 
         return $this->signInResponse->for($result->admission, $result->user, $body['refreshTokenIn'] ?? RefreshTokenDelivery::Body, $request, ['linked' => $result->linked]);

@@ -54,7 +54,7 @@ final readonly class PasswordChange
             fn (): array => [$this->passwordChangeAccountLimiter->create($user->getId()->toRfc4122())],
             function () use ($user, $current, $new, $keepSession): int|WrongSecret {
                 if (!$this->passwordResolver->verify($user, $current)) {
-                    return new WrongSecret(new ApiException(ErrorCode::InvalidCredentials, 'That is not your current password.'));
+                    return new WrongSecret(new ApiException(ErrorCode::InvalidCredentials, 'password.current_wrong'));
                 }
 
                 $this->refuseUnfit($user, $new);
@@ -63,7 +63,7 @@ final readonly class PasswordChange
 
                 return Iter\count($this->tokenIssuer->revokeAllExcept($user, $keepSession));
             },
-            'Too many tries.',
+            'limits.tries',
         );
 
         $at = $this->clock->now();
@@ -81,7 +81,7 @@ final readonly class PasswordChange
         if ($this->passwordResolver->verify($user, $new)) {
             throw ApiException::validation([[
                 'propertyPath' => 'newPassword',
-                'message' => $this->translator->trans('validation.' . PasswordFailure::Unchanged->value),
+                'message' => $this->translator->trans('validation.password_unchanged'),
                 'code' => PasswordFailure::Unchanged->value,
             ]]);
         }

@@ -78,7 +78,7 @@ final readonly class ProviderLinking
             }
 
             if (null !== $this->linkedTo($user, $provider)) {
-                throw new ApiException(ErrorCode::Conflict, 'Unlink the account linked now before linking another.');
+                throw new ApiException(ErrorCode::Conflict, 'provider.unlink_first');
             }
 
             $identity = new ProviderIdentity($user, $provider, $claims->subject, $claims->verifiedEmail());
@@ -127,11 +127,11 @@ final readonly class ProviderLinking
             [$removed, $kept] = Vec\partition($all, static fn (ProviderIdentity $identity): bool => $identity->getProvider() === $provider);
 
             if ([] === $removed) {
-                throw ApiException::notFound('That provider is not linked.');
+                throw ApiException::notFound('provider.not_linked');
             }
 
             if (null === $user->getPassword() && [] === $kept) {
-                throw new ApiException(ErrorCode::LastSignInMethod, 'Set a password or link another account before removing this one.');
+                throw new ApiException(ErrorCode::LastSignInMethod, 'provider.last_method');
             }
 
             $requiring = [] === $kept ? $this->signInRules->requiringProvider($user) : null;
@@ -139,7 +139,7 @@ final readonly class ProviderLinking
             if (null !== $requiring) {
                 throw new ApiException(
                     ErrorCode::ProviderKeptByRule,
-                    'Your organisation signs in with Google or Apple only. Link the other one first.',
+                    'provider.link_other_first',
                     [],
                     null,
                     [],
@@ -202,6 +202,6 @@ final readonly class ProviderLinking
 
     private static function taken(IdentityProvider $provider, ?Throwable $previous = null): ApiException
     {
-        return new ApiException(ErrorCode::ProviderTaken, 'That account is already linked to another Soirely account.', [], $previous, [], ['provider' => $provider->value]);
+        return new ApiException(ErrorCode::ProviderTaken, 'provider.taken', [], $previous, [], ['provider' => $provider->value]);
     }
 }

@@ -105,7 +105,7 @@ final readonly class LinkRequester
                 // Whose limit it is goes unsaid (#605): the person learns only when they may try again.
                 $until = Iter\reduce($spent, static fn (?DateTimeImmutable $at, RateLimit $peek): DateTimeImmutable => null === $at || $peek->getRetryAfter() > $at ? $peek->getRetryAfter() : $at, null);
 
-                return ApiException::tooManyAttempts('Too many requests for now.', $until ?? $this->clock->now());
+                return ApiException::tooManyAttempts('limits.join_requests', $until ?? $this->clock->now());
             }
 
             $membership = $this->membershipMachine->ask($organisation, $user, MembershipChannel::Request);

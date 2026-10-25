@@ -62,7 +62,7 @@ final readonly class RoleManager
         $role = Uuid::isValid($id) ? $this->entityManager->getRepository(Role::class)->find(Uuid::fromString($id)) : null;
 
         if (null === $role || !$role->getOrganisation()->getId()->equals($organisation->getId())) {
-            throw ApiException::notFound('That role is not in this organisation.');
+            throw ApiException::notFound('roles.not_in_organisation');
         }
 
         return $role;

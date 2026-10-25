@@ -116,7 +116,7 @@ final class TokenController
 
         throw new ApiException(
             ErrorCode::SessionTimedOut,
-            Str\format('%s signs people out after %d days without use. Sign in again to carry on.', $limit->organisation->getName(), $limit->days),
+            'sign_in.idle_timeout',
             [],
             null,
             [],
@@ -125,6 +125,7 @@ final class TokenController
                 'days' => $limit->days,
                 'email' => $user->getPrimaryEmailAddress()?->getAddress() ?? '',
             ],
+            ['{organisation}' => $limit->organisation->getName(), '{days}' => (string) $limit->days],
         );
     }
 
@@ -175,6 +176,6 @@ final class TokenController
 
     private function refuse(): ApiException
     {
-        return new ApiException(ErrorCode::InvalidRefreshToken, 'Your session has ended. Please sign in again.');
+        return new ApiException(ErrorCode::InvalidRefreshToken, 'sign_in.session_ended');
     }
 }

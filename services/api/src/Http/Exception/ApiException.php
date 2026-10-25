@@ -13,11 +13,10 @@ use Throwable;
 class ApiException extends RuntimeException
 {
     /**
-     * @param list<array{propertyPath: string, message: string, code: string}> $violations
-     * @param array<string, string>                                            $headers    Retry-After on a 429,
-     *                                                                                     and little else
-     * @param array<string, int|string|list<string>>                           $members    extra problem members,
-     *                                                                                     such as the permission
+     * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations each message a key, its slots in parameters
+     * @param array<string, string>                                                                                $headers    Retry-After on a 429, and little else
+     * @param array<string, int|string|list<string>>                                                               $members    extra problem members, such as the permission
+     * @param array<string, string>                                                                                $parameters the slots in the message's key
      */
     public function __construct(
         public readonly ErrorCode $errorCode,
@@ -26,6 +25,7 @@ class ApiException extends RuntimeException
         ?Throwable $previous = null,
         public readonly array $headers = [],
         public readonly array $members = [],
+        public readonly array $parameters = [],
     ) {
         parent::__construct($message, $errorCode->status(), $previous);
     }
@@ -45,26 +45,29 @@ class ApiException extends RuntimeException
         return new self(ErrorCode::Conflict, $message);
     }
 
-    /** @param list<array{propertyPath: string, message: string, code: string}> $violations */
+    /** @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations */
     public static function validation(array $violations, string $message = ''): self
     {
         return new self(ErrorCode::ValidationFailed, $message, $violations);
     }
 
-    /** A 429 that names the minute the window ends, as every limit a person can hit does. */
+    /** A 429 that names the minute the window ends, as every limit a person can hit does: its key has a {time} slot. */
     public static function tooManyAttempts(string $refusal, DateTimeImmutable $windowEnd): self
     {
         return new self(
             ErrorCode::TooManyAttempts,
-            $refusal . ' Try again at ' . self::statedMinute($windowEnd)->format('H:i') . '.',
+            $refusal,
             [],
             null,
             ['Retry-After' => (string) self::secondsUntil($windowEnd)],
+            [],
+            ['{time}' => self::statedMinute($windowEnd)->format('H:i')],
         );
     }
 
     /**
-     * The same 429, its minute written for the reader ("Sunday, Oct 18 at 17:09 WAT") and carried as `retryAt`.
+     * The same 429, its minute written for the reader ("Sunday, Oct 18 at 17:09 WAT"), carried as `retryAt` and
+     * given to the key's {when} slot.
      *
      * @param callable(DateTimeImmutable): string $written
      */
@@ -74,11 +77,12 @@ class ApiException extends RuntimeException
 
         return new self(
             ErrorCode::TooManyAttempts,
-            $refusal . ' Try again ' . $when . '.',
+            $refusal,
             [],
             null,
             ['Retry-After' => (string) self::secondsUntil($windowEnd)],
             ['retryAt' => $when],
+            ['{when}' => $when],
         );
     }
 
