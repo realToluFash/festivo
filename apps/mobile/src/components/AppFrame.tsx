@@ -3,7 +3,7 @@ import { initials, roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
 import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 
@@ -524,114 +524,90 @@ function Switcher({
       supportedOrientations={TURNS_WITH_THE_APP}
       onRequestClose={onClose}
     >
-      <SafeAreaProvider>
-        <SwitcherScrim onClose={onClose}>
-          <View style={styles.sheetFrame} onStartShouldSetResponder={() => true}>
-            <ScrollView contentContainerStyle={styles.sheet}>
-              <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-                {t('switcher.heading')}
-              </Text>
-              {organisations.map((organisation) => {
-                const isCurrent = organisation.id === current?.id;
+      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('switcher.close')}>
+        <View style={styles.sheetFrame} onStartShouldSetResponder={() => true}>
+          <ScrollView contentContainerStyle={styles.sheet}>
+            <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
+              {t('switcher.heading')}
+            </Text>
+            {organisations.map((organisation) => {
+              const isCurrent = organisation.id === current?.id;
 
-                return (
-                  <Pressable
-                    key={organisation.id}
-                    style={[styles.option, isCurrent && styles.optionOn]}
-                    onPress={() => {
-                      onClose();
-                      if (!isCurrent) switchOrganisation(organisation.id);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isCurrent }}
-                    testID={`switcher.${organisation.id}`}
-                  >
-                    <Tile name={organisation.name} />
-                    <View style={[styles.fill, styles.shrink]}>
-                      <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={1}>
-                        {organisation.name}
-                      </Text>
-                      <Text size={tokens.typeBody.size} muted numberOfLines={1}>
-                        {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
-                      </Text>
-                    </View>
-                    {isCurrent && (
-                      <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
-                        {t('switcher.current')}
-                      </Text>
-                    )}
-                  </Pressable>
-                );
-              })}
-              {offer.organisation != null && <OfferCard offer={offer} email={email} />}
-              {waiting.invitations.length > 0 && (
-                <View style={styles.invitations}>
-                  <Text
-                    size={tokens.typeLabel.size}
-                    weight="semibold"
-                    muted
-                    accessibilityRole="header"
-                  >
-                    {t('invitations.heading')}
-                  </Text>
-                  <InvitationRows
-                    waiting={waiting}
-                    after={{
-                      open: (id) => {
-                        onClose();
-                        switchOrganisation(id);
-                      },
-                    }}
-                  />
-                </View>
-              )}
-              <Text size={tokens.typeBody.size} muted>
-                {t('switcher.remembered')}
-              </Text>
-              {current != null && (
+              return (
                 <Pressable
-                  style={[styles.option, styles.create]}
-                  onPress={onCreate}
+                  key={organisation.id}
+                  style={[styles.option, isCurrent && styles.optionOn]}
+                  onPress={() => {
+                    onClose();
+                    if (!isCurrent) switchOrganisation(organisation.id);
+                  }}
                   accessibilityRole="button"
-                  testID="switcher.create"
+                  accessibilityState={{ selected: isCurrent }}
+                  testID={`switcher.${organisation.id}`}
                 >
-                  <View style={[styles.tile, styles.createTile]}>
-                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-                      <Path d="M12 5v14M5 12h14" {...STROKE} stroke={tokens.colorAccentText} />
-                    </Svg>
+                  <Tile name={organisation.name} />
+                  <View style={[styles.fill, styles.shrink]}>
+                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={1}>
+                      {organisation.name}
+                    </Text>
+                    <Text size={tokens.typeBody.size} muted numberOfLines={1}>
+                      {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
+                    </Text>
                   </View>
-                  <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
-                    {t('createOrganisation.row')}
-                  </Text>
+                  {isCurrent && (
+                    <Text size={tokens.typeBody.size} weight="semibold" style={styles.accent}>
+                      {t('switcher.current')}
+                    </Text>
+                  )}
                 </Pressable>
-              )}
-            </ScrollView>
-          </View>
-        </SwitcherScrim>
-      </SafeAreaProvider>
+              );
+            })}
+            {offer.organisation != null && <OfferCard offer={offer} email={email} />}
+            {waiting.invitations.length > 0 && (
+              <View style={styles.invitations}>
+                <Text
+                  size={tokens.typeLabel.size}
+                  weight="semibold"
+                  muted
+                  accessibilityRole="header"
+                >
+                  {t('invitations.heading')}
+                </Text>
+                <InvitationRows
+                  waiting={waiting}
+                  after={{
+                    open: (id) => {
+                      onClose();
+                      switchOrganisation(id);
+                    },
+                  }}
+                />
+              </View>
+            )}
+            <Text size={tokens.typeBody.size} muted>
+              {t('switcher.remembered')}
+            </Text>
+            {current != null && (
+              <Pressable
+                style={[styles.option, styles.create]}
+                onPress={onCreate}
+                accessibilityRole="button"
+                testID="switcher.create"
+              >
+                <View style={[styles.tile, styles.createTile]}>
+                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 5v14M5 12h14" {...STROKE} stroke={tokens.colorAccentText} />
+                  </Svg>
+                </View>
+                <Text size={tokens.typeBodyPhone.size} weight="semibold" style={styles.accent}>
+                  {t('createOrganisation.row')}
+                </Text>
+              </Pressable>
+            )}
+          </ScrollView>
+        </View>
+      </Pressable>
     </Modal>
-  );
-}
-
-/** Inside the switcher's own provider, so its insets are the modal's as it turns, clear of the island and the home indicator. */
-function SwitcherScrim({ onClose, children }: { onClose: () => void; children: ReactNode }) {
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const clear = {
-    paddingTop: Math.max(tokens.spaceXxl, insets.top),
-    paddingBottom: Math.max(tokens.spaceXxl, insets.bottom),
-    paddingLeft: Math.max(tokens.spaceXxl, insets.left),
-    paddingRight: Math.max(tokens.spaceXxl, insets.right),
-  };
-
-  return (
-    <Pressable
-      style={[styles.scrim, clear]}
-      onPress={onClose}
-      accessibilityLabel={t('switcher.close')}
-    >
-      {children}
-    </Pressable>
   );
 }
 
@@ -890,6 +866,7 @@ const styles = StyleSheet.create({
   scrim: {
     flex: 1,
     justifyContent: 'center',
+    padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,
   },
   sheetFrame: {
