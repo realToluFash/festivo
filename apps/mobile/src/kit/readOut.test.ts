@@ -5,38 +5,162 @@ import {
   newWords,
   settleMs,
   shownAtMount,
+  shownOnceSaid,
   TALKBACK_SETTLE_MS,
+  TYPING_PAUSE_MS,
+  type HandOver,
   type Reading,
 } from './readOut.ts';
 
 describe('a message read out', () => {
   it('is said as it appears', () => {
-    expect(newWords(null, 'Saved.', false)).toBe('Saved.');
+    expect(newWords(null, 'Saved.')).toBe('Saved.');
   });
 
   it('is said again when its words change', () => {
-    expect(newWords('Saved.', 'Not saved.', false)).toBe('Not saved.');
+    expect(newWords('Saved.', 'Not saved.')).toBe('Not saved.');
   });
 
   it('is not said again while its words stay', () => {
-    expect(newWords('Saved.', 'Saved.', false)).toBeNull();
+    expect(newWords('Saved.', 'Saved.')).toBeNull();
   });
 
   it('says nothing as it goes', () => {
-    expect(newWords('Saved.', null, false)).toBeNull();
+    expect(newWords('Saved.', null)).toBeNull();
   });
 });
 
-describe('a message read out once', () => {
+describe('a message read out once the typing stops', () => {
   const nothing = (typed: string) => `No time zone matches “${typed}”.`;
+  const typing = { interrupts: false, afterTyping: true };
 
-  it('is said as it appears', () => {
-    expect(newWords(null, nothing('Atl'), true)).toBe(nothing('Atl'));
+  it('waits for the pause on both, TalkBack’s settle within it', () => {
+    for (const os of ['ios', 'android']) {
+      expect(howToReadOut(null, nothing('Atlantis'), { ...typing, os }).handOver).toEqual({
+        words: nothing('Atlantis'),
+        queue: true,
+        afterMs: TYPING_PAUSE_MS,
+      });
+    }
+    expect(TYPING_PAUSE_MS).toBeGreaterThan(TALKBACK_SETTLE_MS);
   });
 
-  it('is not said again for each key typed while it stays', () => {
-    expect(newWords(nothing('Atl'), nothing('Atla'), true)).toBeNull();
+  it('takes back what is still waiting at a key that brings back the words last said', () => {
+    expect(
+      howToReadOut(nothing('Atlantis'), nothing('Atlantis'), { ...typing, os: 'android' }).takeBack,
+    ).toBe(true);
   });
+
+  it('keeps the words last said as `before` while new words wait', () => {
+    expect(
+      howToReadOut(nothing('Atlantis'), nothing('Atlantisx'), { ...typing, os: 'ios' }).shown,
+    ).toBe(nothing('Atlantis'));
+  });
+
+  it('is said again with new words after the last said', () => {
+    expect(
+      howToReadOut(nothing('Atlantis'), nothing('Atlantisxy'), { ...typing, os: 'ios' }).handOver
+        ?.words,
+    ).toBe(nothing('Atlantisxy'));
+  });
+
+  it('is not said again for a key that leaves its words as they were said', () => {
+    expect(
+      howToReadOut(nothing('Atlantis'), nothing('Atlantis'), { ...typing, os: 'ios' }).handOver,
+    ).toBeNull();
+  });
+});
+
+/** The words said, and when, as a message shows each key's words at its time in ms, as `useReadOut` would. */
+function saidAsTyped(keys: [number, string | null][], reading: Reading) {
+  const said: [number, string][] = [];
+  let shown: string | null = null;
+  let waiting: { at: number; handOver: HandOver } | null = null;
+  const sayWaiting = () => {
+    if (waiting == null) return;
+    said.push([waiting.at, waiting.handOver.words]);
+    shown = shownOnceSaid(shown, waiting.handOver, reading);
+    waiting = null;
+  };
+
+  for (const [at, now] of keys) {
+    if (waiting != null && waiting.at <= at) sayWaiting();
+    const answer = howToReadOut(shown, now, reading);
+    shown = answer.shown;
+    if (answer.takeBack) waiting = null;
+    if (answer.handOver != null) {
+      waiting = { at: at + answer.handOver.afterMs, handOver: answer.handOver };
+    }
+  }
+  sayWaiting();
+
+  return said;
+}
+
+describe('the time zone’s no-match line, typed key by key (sc-11930)', () => {
+  const nothing = (typed: string) => `No time zone matches “${typed}”.`;
+  const keys = (from: number, every: number, lines: (string | null)[]) =>
+    lines.map((line, i): [number, string | null] => [from + i * every, line]);
+
+  for (const os of ['ios', 'android']) {
+    const typing = { os, interrupts: false, afterTyping: true };
+
+    it(`on ${os}, says nothing while keys come every 1.2 s, then the last words 2 s after the last key`, () => {
+      const typed = keys(0, 1200, [
+        nothing('Atlantis'),
+        nothing('Atlantisx'),
+        nothing('Atlantisxy'),
+      ]);
+
+      expect(saidAsTyped(typed, typing)).toEqual([[2400 + TYPING_PAUSE_MS, nothing('Atlantisxy')]]);
+    });
+
+    it(`on ${os}, says it once more with new words typed after it was said`, () => {
+      const typed = [
+        [0, nothing('Atlantis')],
+        ...keys(5000, 1200, [nothing('Atlantisx'), nothing('Atlantisxy')]),
+      ] satisfies [number, string | null][];
+
+      expect(saidAsTyped(typed, typing)).toEqual([
+        [TYPING_PAUSE_MS, nothing('Atlantis')],
+        [6200 + TYPING_PAUSE_MS, nothing('Atlantisxy')],
+      ]);
+    });
+
+    it(`on ${os}, does not say it again for a space after the s`, () => {
+      expect(
+        saidAsTyped(
+          [
+            [0, nothing('Atlantis')],
+            [5000, nothing('Atlantis')],
+          ],
+          typing,
+        ),
+      ).toEqual([[TYPING_PAUSE_MS, nothing('Atlantis')]]);
+    });
+
+    it(`on ${os}, never says a line gone before the typing stops`, () => {
+      expect(
+        saidAsTyped(
+          [
+            [0, nothing('Atlantis')],
+            [300, null],
+          ],
+          typing,
+        ),
+      ).toEqual([]);
+    });
+
+    it(`on ${os}, says nothing for an x typed and deleted again before the pause`, () => {
+      const typed = [
+        [0, nothing('Atlantis')],
+        [5000, nothing('Atlantisx')],
+        [5600, nothing('Atlantis')],
+      ] satisfies [number, string | null][];
+
+      expect(saidAsTyped(typed, typing)).toEqual([[TYPING_PAUSE_MS, nothing('Atlantis')]]);
+    });
+  }
 });
 
 /** The words handed over as a message shows each of `steps` in turn, from what it showed at mount. */
@@ -52,7 +176,7 @@ function handedOver(atMount: string | null, steps: (string | null)[], reading: R
 }
 
 describe('which screen reader gets a message, and how', () => {
-  const plain = { once: false, interrupts: false };
+  const plain = { afterTyping: false, interrupts: false };
 
   it('on iOS, every new message is handed to VoiceOver at once', () => {
     expect(howToReadOut(null, 'Saved.', { ...plain, os: 'ios' })).toEqual({
@@ -70,16 +194,8 @@ describe('which screen reader gets a message, and how', () => {
     });
   });
 
-  it('a message said once is handed over on both', () => {
-    for (const os of ['ios', 'android']) {
-      expect(
-        howToReadOut(null, 'No match.', { os, once: true, interrupts: false }).handOver,
-      ).toEqual(expect.objectContaining({ words: 'No match.', queue: true }));
-    }
-  });
-
   it('a message that interrupts is not queued', () => {
-    const interrupting = { once: false, interrupts: true };
+    const interrupting = { afterTyping: false, interrupts: true };
 
     expect(howToReadOut(null, 'Not saved.', { ...interrupting, os: 'ios' }).handOver).toEqual({
       words: 'Not saved.',
@@ -101,24 +217,22 @@ describe('which screen reader gets a message, and how', () => {
     ]);
   });
 
-  it('says a message read once again once it has gone and come back', () => {
-    const once = { os: 'ios', once: true, interrupts: false };
-
-    expect(handedOver(null, ['No match for “Atl”.', null, 'No match for “Lon”.'], once)).toEqual([
-      { words: 'No match for “Atl”.', queue: true, afterMs: 0 },
+  it('says a message again once it has gone and come back', () => {
+    expect(handedOver(null, ['Saved.', null, 'Saved.'], { ...plain, os: 'ios' })).toEqual([
+      { words: 'Saved.', queue: true, afterMs: 0 },
       null,
-      { words: 'No match for “Lon”.', queue: true, afterMs: 0 },
+      { words: 'Saved.', queue: true, afterMs: 0 },
     ]);
   });
 });
 
 describe('words still waiting to be said', () => {
-  const plain = { os: 'android', once: false, interrupts: false };
+  const plain = { os: 'android', afterTyping: false, interrupts: false };
 
   it('are taken back as the message goes, though the screen stays', () => {
     const nothing = 'No time zone matches “Atlantis”.';
 
-    expect(howToReadOut(nothing, null, { ...plain, once: true }).takeBack).toBe(true);
+    expect(howToReadOut(nothing, null, { ...plain, afterTyping: true }).takeBack).toBe(true);
     expect(howToReadOut('You cannot ask to join that organisation.', null, plain).takeBack).toBe(
       true,
     );
@@ -126,13 +240,6 @@ describe('words still waiting to be said', () => {
 
   it('are taken back when new words replace them', () => {
     expect(howToReadOut('Saved.', 'Not saved.', plain).takeBack).toBe(true);
-  });
-
-  it('are kept while a message read once stays with new words', () => {
-    expect(
-      howToReadOut('No match for “Atl”.', 'No match for “Atla”.', { ...plain, once: true })
-        .takeBack,
-    ).toBe(false);
   });
 
   it('are kept while the words stay', () => {
