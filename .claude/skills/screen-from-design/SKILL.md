@@ -221,6 +221,11 @@ is held to what both can do:
 - `autoCorrect={false}` and `spellCheck={false}` on names, codes, emails and search.
 - A `returnKeyType` and an `onSubmitEditing` — the return key always has a job.
 - Check `autoFocus`: a reference sets it on an input that was conditionally mounted.
+- A field whose text lives in a ref (uncontrolled, since a `value` prop drops characters)
+  is drawn again with that text as its `defaultValue`, from state set while the field is
+  off screen, or its ref is emptied in the handler that removes it. A button sends what
+  its field shows (sc-11175, sc-11253). A `defaultValue` that follows the ref while the
+  field is up gets rewritten into the native field (`kit/fields.ts`).
 
 Accessible as drawn: real `button`, `a`, `input` + `label`; `aria-label` on icon-only
 controls; focus always visible; **and anything designed around dragging needs a
