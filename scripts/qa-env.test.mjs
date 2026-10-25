@@ -459,14 +459,15 @@ describe('the three QA testers', () => {
     expect(configs[0].simulators.phone.name).toBe('Soirely QA iPhone');
   });
 
-  it('each have their own project, simulators, emulators and Chrome', () => {
-    for (const key of ['project', 'chromePort', 'emulatorPort']) {
+  it('each have their own project, simulators, emulators, Chrome and Maestro driver', () => {
+    for (const key of ['project', 'chromePort', 'emulatorPort', 'driverPort']) {
       expect(new Set(configs.map((c) => c[key])).size, key).toBe(TESTERS.length);
     }
     const names = configs.flatMap((c) =>
       [...Object.values(c.simulators), ...Object.values(c.emulators)].map((d) => d.name),
     );
     expect(new Set(names).size).toBe(names.length);
+    expect(configs.map((c) => c.driverPort)).not.toContain(22087);
   });
 
   it('name emulators an AVD can carry, on a console adb finds', () => {
