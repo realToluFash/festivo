@@ -10,6 +10,7 @@ use App\Http\Exception\ShapeRefusal;
 use App\Http\Listener\CorrelationIdListener;
 use App\Http\Listener\JsonExceptionListener;
 use App\Http\ProblemRenderer;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -17,7 +18,9 @@ use RuntimeException;
 use stdClass;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
@@ -109,6 +112,21 @@ final class JsonExceptionListenerTest extends TestCase
     }
 
     #[Test]
+    public function aRefusalsKeyIsWordedWithItsSlots(): void
+    {
+        $translator = $this->createMock(TranslatorInterface::class);
+        $translator->method('trans')->willReturnCallback(
+            static fn (string $id, array $parameters = []): string => $id . \json_encode($parameters, \JSON_THROW_ON_ERROR),
+        );
+        $event = $this->event(ApiException::tooManyAttempts('limits.tries', new DateTimeImmutable('2026-10-25 14:34:10')));
+        new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator))($event);
+
+        $body = \json_decode((string) $event->getResponse()?->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+
+        self::assertSame('limits.tries{"{time}":"14:35"}', $body['detail']);
+    }
+
+    #[Test]
     public function aShapeRefusalIsWordedThroughTheCatalogueNeverByTheParser(): void
     {
         $body = $this->handle(new ShapeRefusal('countryCode', 'validation.country_invalid'));
@@ -144,6 +162,24 @@ final class JsonExceptionListenerTest extends TestCase
 
         self::assertSame('https://soirely.com/errors/not_found', $body['type']);
         self::assertSame(404, $body['status']);
+        self::assertSame('translated:access.not_found', $body['detail']);
+    }
+
+    #[Test]
+    public function aRefusedMethodIsNamedInACatalogueSentenceNeverTheRoutersMessage(): void
+    {
+        $body = $this->handle(new MethodNotAllowedHttpException(['GET', 'POST'], 'No route found for "PUT http://localhost/api/orgs": Method Not Allowed'));
+
+        self::assertSame(405, $body['status']);
+        self::assertSame('translated:request.method_not_accepted', $body['detail']);
+    }
+
+    #[Test]
+    public function anyOtherFrameworkRefusalIsDetailedByItsTitle(): void
+    {
+        $body = $this->handle(new UnsupportedMediaTypeHttpException('Unsupported format "xml".'));
+
+        self::assertSame($body['title'], $body['detail']);
     }
 
     /** Only /api is ours to reshape; anything else keeps Symfony's behaviour. */
@@ -188,6 +224,6 @@ final class JsonExceptionListenerTest extends TestCase
             static fn (string $id): string => 'translated:' . $id,
         );
 
-        return new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator), $translator);
+        return new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator));
     }
 }

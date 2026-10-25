@@ -1,7 +1,7 @@
 import { type Membership } from '@soirely/api-client';
 import { type NewOrganisationField, deviceRegion } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import {
   type LayoutRectangle,
   Platform,
@@ -15,10 +15,11 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api.ts';
 import { dateLocale } from '../i18n/index.ts';
 import { useFormChecks } from '../kit/formChecks.ts';
-import { offsetToFocus, titleScrollsWhileTyping } from '../kit/keyboard.ts';
+import { fieldKeptInSight, offsetToFocus, titleScrollsWhileTyping } from '../kit/keyboard.ts';
 import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
+  dropsKeysAfter,
   limitMessage,
   newOrganisationMessage,
 } from '../kit/organisationCreate.ts';
@@ -29,6 +30,7 @@ import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, focusChecked, focusRefused, TextField } from './Field.tsx';
 import { type SettledLift, settledLift } from './keyboardWatch.ts';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { Sheet, useKeysUp } from './Sheet.tsx';
 import { Text } from './Text.tsx';
 
@@ -36,11 +38,13 @@ import { Text } from './Text.tsx';
 export function CreateOrganisation({
   open,
   email,
+  opener,
   onCreated,
   onCancel,
 }: {
   open: boolean;
   email: string;
+  opener: RefObject<View | null>;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -51,22 +55,23 @@ export function CreateOrganisation({
   const drawn = Platform.OS === 'android' && phone;
   const keysUp = useKeysUp();
   const typing = phone && keysUp;
+  const turned = { os: Platform.OS, phone, width, height, keysUp };
 
   return (
-    <Sheet open={open} onClose={onCancel} scrimLabel={t('createOrganisation.cancel')}>
+    <Sheet
+      open={open}
+      onClose={onCancel}
+      scrimLabel={t('createOrganisation.cancel')}
+      opener={opener}
+    >
       {open && (
         <Form
           email={email}
           drawn={drawn}
           keysUp={keysUp}
           typing={typing}
-          titleScrolls={titleScrollsWhileTyping({
-            os: Platform.OS,
-            phone,
-            width,
-            height,
-            keysUp,
-          })}
+          inSight={fieldKeptInSight(turned)}
+          titleScrolls={titleScrollsWhileTyping(turned)}
           onCreated={onCreated}
           onCancel={onCancel}
         />
@@ -75,8 +80,8 @@ export function CreateOrganisation({
   );
 }
 
-/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow. */
-function useFocusInSight(keysUp: boolean) {
+/** Keeps the name field, and its notices while they fit, in the body's sight as the body shrinks or they grow, again each time the keys move. */
+function useFocusInSight(keysUp: boolean, inSight: boolean) {
   const body = useRef<ScrollView>(null);
   const bodyHeight = useRef<number | null>(null);
   const group = useRef<LayoutRectangle | null>(null);
@@ -85,7 +90,7 @@ function useFocusInSight(keysUp: boolean) {
 
   useEffect(() => {
     const settled = settledLift(() => {
-      if (!keysUp || bodyHeight.current == null) return;
+      if (!inSight || bodyHeight.current == null) return;
       if (group.current == null || field.current == null) return;
       body.current?.scrollTo({
         y: offsetToFocus(
@@ -108,7 +113,7 @@ function useFocusInSight(keysUp: boolean) {
       settled.cancel();
       lift.current = null;
     };
-  }, [keysUp]);
+  }, [keysUp, inSight]);
 
   return {
     body,
@@ -132,6 +137,7 @@ function Form({
   drawn,
   keysUp,
   typing,
+  inSight,
   titleScrolls,
   onCreated,
   onCancel,
@@ -141,6 +147,7 @@ function Form({
   drawn: boolean;
   keysUp: boolean;
   typing: boolean;
+  inSight: boolean;
   /** An iPhone on its side has no room above the keys for a fixed title as well as the field. */
   titleScrolls: boolean;
   onCreated: (created: Membership) => void;
@@ -170,7 +177,7 @@ function Form({
     (field) => (field === 'name' ? focusChecked(nameInput) : focusPicker(countryPicker)),
   );
   const errors = { ...refused, ...checks.errors };
-  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp);
+  const { body, onBodyLayout, onGroupLayout, onFieldLayout } = useFocusInSight(keysUp, inSight);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -200,6 +207,7 @@ function Form({
     }
 
     setSaving(false);
+    if (dropsKeysAfter(outcome.kind, Platform.OS)) nameInput.current?.blur();
     if (outcome.kind === 'limited') setLimited(limitMessage(outcome.until, locale, t));
     if (outcome.kind === 'failed') setFailed(true);
     if (outcome.kind === 'refused') {
@@ -236,22 +244,19 @@ function Form({
       {t('createOrganisation.intro')}
     </Text>
   );
+  const notCreated = t('createOrganisation.failed');
   const fields = (
     <>
       <View style={styles.group} onLayout={(event) => onGroupLayout(event.nativeEvent.layout)}>
         {limited != null && (
-          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+          <ReadOut words={limited} interrupts accessibilityRole="alert">
             <Notice tone="attention" mark="!" body={limited} />
-          </View>
+          </ReadOut>
         )}
         {failed && (
-          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-            <Notice
-              tone="broken"
-              mark={tokens.marks.broken.glyph}
-              body={t('createOrganisation.failed')}
-            />
-          </View>
+          <ReadOut words={notCreated} interrupts accessibilityRole="alert">
+            <Notice tone="broken" mark={tokens.marks.broken.glyph} body={notCreated} />
+          </ReadOut>
         )}
 
         <View onLayout={(event) => onFieldLayout(event.nativeEvent.layout)}>
@@ -281,17 +286,16 @@ function Form({
           </Field>
         </View>
       </View>
-      <View ref={countryPicker}>
-        <Field label={t('createOrganisation.country')} error={errors.countryCode}>
-          <CountryPicker
-            label={t('createOrganisation.country')}
-            value={values.countryCode}
-            onChange={(code) => change('countryCode', code)}
-            disabled={saving}
-            testID="createOrganisation.country"
-          />
-        </Field>
-      </View>
+      <Field label={t('createOrganisation.country')} error={errors.countryCode}>
+        <CountryPicker
+          label={t('createOrganisation.country')}
+          value={values.countryCode}
+          onChange={(code) => change('countryCode', code)}
+          disabled={saving}
+          pickerRef={countryPicker}
+          testID="createOrganisation.country"
+        />
+      </Field>
 
       <Notice
         tone="quiet"

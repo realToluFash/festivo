@@ -26,7 +26,10 @@ type Status =
 export default function ForgotPassword() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
+  // Uncontrolled: a `value` prop re-renders between keystrokes and drops characters.
   const typed = useRef('');
+  // What the field remounts with after Check your email, as it was typed.
+  const [kept, setKept] = useState('');
   const emailInput = useRef<TextInput>(null);
   const checks = useFormChecks(
     ['email'] as const,
@@ -51,6 +54,7 @@ export default function ForgotPassword() {
     const email = typed.current.trim();
     if (!checks.passes({ email })) return;
 
+    setKept(typed.current);
     void send(email);
   }
 
@@ -114,6 +118,7 @@ export default function ForgotPassword() {
             autoComplete="email"
             textContentType="emailAddress"
             autoCapitalize="none"
+            defaultValue={kept}
             onChangeText={(text) => {
               typed.current = text;
               checks.edited('email', text);

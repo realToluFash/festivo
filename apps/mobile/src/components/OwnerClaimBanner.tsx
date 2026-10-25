@@ -7,8 +7,8 @@ import {
   ownerClaimView,
 } from '@soirely/domain';
 import { setStringAsync } from 'expo-clipboard';
-import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, StyleSheet, View } from 'react-native';
+import { type RefObject, useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
@@ -17,7 +17,9 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useComeForward } from './comeForward.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
+import { readOut } from './ReadOut.tsx';
 import { useBroughtIntoView } from './Screen.tsx';
 import { Sheet } from './Sheet.tsx';
 import { Text } from './Text.tsx';
@@ -163,7 +165,9 @@ function OwnerClaimCard({
   const [confirming, setConfirming] = useState(false);
   const [stopEnded, setStopEnded] = useState(false);
   const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
+  const withdrawButton = useRef<View>(null);
   const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
+  const comeForward = useComeForward();
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
   const { tone, mark } = TONES[view.tone];
 
@@ -193,6 +197,8 @@ function OwnerClaimCard({
         setRefusal(t(key, { domain: banner.domain }));
       }
       setBusy(false);
+    } finally {
+      comeForward();
     }
   }
 
@@ -212,6 +218,8 @@ function OwnerClaimCard({
       setNotFound(true);
     } catch {
       onReload();
+    } finally {
+      comeForward();
     }
 
     setBusy(false);
@@ -233,6 +241,8 @@ function OwnerClaimCard({
 
       setRefusal(t('ownerClaim.failed'));
       setBusy(false);
+    } finally {
+      comeForward();
     }
   }
 
@@ -252,6 +262,8 @@ function OwnerClaimCard({
       } else {
         setRefusal(t('ownerClaim.failed'));
       }
+    } finally {
+      comeForward();
     }
   }
 
@@ -286,6 +298,7 @@ function OwnerClaimCard({
         <SecondaryButton
           label={t('ownerClaim.withdraw')}
           onPress={() => setWithdrawing('asking')}
+          ref={withdrawButton}
           testID="ownerClaim.withdraw"
         />
       )}
@@ -293,6 +306,7 @@ function OwnerClaimCard({
       <WithdrawConfirm
         open={withdrawing != null}
         phone={kind === 'phone'}
+        opener={withdrawButton}
         organisation={organisation}
         pending={withdrawing === 'pending'}
         onWithdraw={() => void withdraw()}
@@ -389,6 +403,7 @@ function StopConfirm({
 function WithdrawConfirm({
   open,
   phone,
+  opener,
   organisation,
   pending,
   onWithdraw,
@@ -396,6 +411,7 @@ function WithdrawConfirm({
 }: {
   open: boolean;
   phone: boolean;
+  opener: RefObject<View | null>;
   organisation: string;
   pending: boolean;
   onWithdraw: () => void;
@@ -405,7 +421,12 @@ function WithdrawConfirm({
   const unlessPending = (act: () => void) => () => !pending && act();
 
   return (
-    <Sheet open={open} onClose={unlessPending(onKeep)} testID="ownerClaim.withdrawConfirm">
+    <Sheet
+      open={open}
+      onClose={unlessPending(onKeep)}
+      opener={opener}
+      testID="ownerClaim.withdrawConfirm"
+    >
       <View style={styles.withdraw}>
         <Pressable
           style={styles.close}
@@ -462,7 +483,7 @@ function RecordPanel({ record }: { record: NonNullable<OwnerClaim['record']> }) 
     try {
       await setStringAsync(text);
       setCopied(field);
-      AccessibilityInfo.announceForAccessibility(t(`ownerClaim.${field}Copied`));
+      readOut(t(`ownerClaim.${field}Copied`));
     } catch {
       setCopied(null);
     }

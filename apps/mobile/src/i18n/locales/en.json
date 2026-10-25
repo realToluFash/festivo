@@ -347,6 +347,7 @@
     "keepItOn": "Keep it on",
     "failedTitle": "Two-factor did not load",
     "failedBody": "Something went wrong on our side. Try again in a moment.",
+    "retry": "Try again",
     "phoneSetupTitle": "Add Soirely to your authenticator app",
     "phoneCantScan": "Scan the code from another screen, or enter this key in the app.",
     "phoneKeepElsewhere": "Keep them somewhere other than this phone.",
@@ -1225,6 +1226,8 @@
     "onlyOwnerRestoreNeedsAddress": "Restore works once their main email address is a verified {{domain}} address again.",
     "restore": "Restore",
     "restored": "{{name}}'s access to {{organisation}} is restored.",
+    "restoredNow": "{{name}} has access again, as {{role}}.",
+    "restoredNowNext": "They can use {{organisation}} from their next request, and they're emailed in their language.",
     "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first.",
     "noRoleYet": "No role yet",
     "awaiting": {

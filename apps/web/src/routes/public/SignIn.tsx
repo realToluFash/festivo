@@ -166,9 +166,11 @@ export function SignIn() {
           <div className="notice-body">
             <p className="notice-title">{t('signIn.lockedTitle')}</p>
             <p>{t('signIn.lockedBody', { time: status.retryAt })}</p>
-            <Link className="link-button" to="/forgot-password">
-              {t('signIn.lockedReset')}
-            </Link>
+            <p className="notice-action">
+              <Link className="link-button" to="/forgot-password">
+                {t('signIn.lockedReset')}
+              </Link>
+            </p>
           </div>
         </div>
       )}

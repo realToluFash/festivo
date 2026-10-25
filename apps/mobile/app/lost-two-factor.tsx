@@ -8,7 +8,7 @@ import {
 } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Linking, StyleSheet, type TextInput, View } from 'react-native';
+import { Linking, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -17,6 +17,7 @@ import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import { PrimaryButton, QuietButton, SecondaryButton } from '../src/components/Buttons.tsx';
 import { CodeField, Field, FieldError } from '../src/components/Field.tsx';
 import { Notice } from '../src/components/Notice.tsx';
+import { readOut } from '../src/components/ReadOut.tsx';
 import { StatusMark, type StatusTone } from '../src/components/StatusMark.tsx';
 import { Text } from '../src/components/Text.tsx';
 import { dropRecovery, heldRecovery, holdRecovery } from '../src/heldRecovery.ts';
@@ -26,6 +27,7 @@ import {
   type RecoveryField,
   loadRecovery,
   type RecoveryShown,
+  recoveryCodeLabel,
   recoveryCodeProblems,
   replacedElsewhere,
   startRefusal,
@@ -563,10 +565,10 @@ function Codes({
     texted: t('lostTwoFactor.sentText', { number }),
   }[wording.line];
 
-  // iOS has no live regions, so a fallback is announced by hand, as Android's live region does.
+  // The line is help under the field, not a live region, so the fallback is read out by hand.
   useEffect(() => {
     if (lastRoute.current === 'whatsapp' && codes?.route === 'sms_fallback') {
-      AccessibilityInfo.announceForAccessibility(sent);
+      readOut(sent);
     }
 
     lastRoute.current = codes?.route ?? null;
@@ -743,13 +745,7 @@ function Codes({
           {fields.map((field, index) => (
             <Field
               key={field}
-              label={
-                field === 'emailCode'
-                  ? t('lostTwoFactor.emailLabel')
-                  : wording.fromWhatsApp
-                    ? t('lostTwoFactor.phoneLabelWhatsApp')
-                    : t('lostTwoFactor.phoneLabel')
-              }
+              label={t(recoveryCodeLabel(field, wording.fromWhatsApp))}
               help={
                 field === 'emailCode' ? t('lostTwoFactor.sentTo', { email: state.email }) : sent
               }
@@ -767,11 +763,7 @@ function Codes({
                 onSubmitEditing={() =>
                   index === fields.length - 1 ? void submit() : inputs.phoneCode.current?.focus()
                 }
-                accessibilityLabel={
-                  field === 'emailCode'
-                    ? t('lostTwoFactor.emailLabel')
-                    : t('lostTwoFactor.phoneLabel')
-                }
+                accessibilityLabel={t(recoveryCodeLabel(field, wording.fromWhatsApp))}
                 testID={`lostTwoFactor.${field}`}
               />
             </Field>

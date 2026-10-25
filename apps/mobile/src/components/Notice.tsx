@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import type { FieldAction } from './Field.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
 export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
@@ -35,6 +36,7 @@ export function Notice({
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
   wordsRef?: Ref<View> | undefined;
 }) {
+  useReadOut(announce ? [title, body, detail].filter((line) => line != null).join('\n') : null);
   const surface = {
     quiet: styles.quiet,
     attention: styles.attention,
@@ -79,7 +81,6 @@ export function Notice({
           ref={wordsRef}
           style={styles.words}
           accessible={announce || wordsRef != null || undefined}
-          accessibilityLiveRegion={announce ? 'polite' : undefined}
         >
           {title != null && (
             <Text

@@ -56,6 +56,11 @@ export async function createOrganisation(
   }
 }
 
+/** Whether an answer the name cannot fix drops the keyboard: on iOS only, where sc-9442 makes it sc-9471's one exception. */
+export function dropsKeysAfter(outcome: CreateOutcome['kind'], os: string): boolean {
+  return os === 'ios' && (outcome === 'limited' || outcome === 'failed');
+}
+
 /** The check before sending, in the words both clients use. */
 export function newOrganisationMessage(
   field: NewOrganisationField,

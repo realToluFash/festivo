@@ -347,6 +347,7 @@
     "keepItOn": "Mantenerla activada",
     "failedTitle": "No se pudo cargar la verificación en dos pasos",
     "failedBody": "Algo ha fallado por nuestra parte. Vuelva a intentarlo en un momento.",
+    "retry": "Inténtelo de nuevo",
     "phoneSetupTitle": "Añada Soirely a su aplicación de autenticación",
     "phoneCantScan": "Escanee el código desde otra pantalla o introduzca esta clave en la aplicación.",
     "phoneKeepElsewhere": "Guárdelos en otro lugar que no sea este teléfono.",
@@ -1225,6 +1226,8 @@
     "onlyOwnerRestoreNeedsAddress": "El acceso se podrá restablecer cuando la dirección principal de esta persona vuelva a ser una dirección de {{domain}} verificada.",
     "restore": "Restablecer",
     "restored": "Se ha restablecido el acceso de {{name}} a {{organisation}}.",
+    "restoredNow": "{{name}} vuelve a tener acceso, con el rol {{role}}.",
+    "restoredNowNext": "Esta persona recupera el acceso a {{organisation}} en cuanto vuelva a usar Soirely y se le avisa por correo electrónico en su idioma.",
     "restoreNeedsAddress": "{{name}} necesita primero una dirección de {{domain}} verificada.",
     "noRoleYet": "Aún sin rol",
     "awaiting": {

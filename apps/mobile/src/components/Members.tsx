@@ -29,6 +29,7 @@ import {
   membersAfterWrite,
   withApproved,
   withRemoved,
+  withRestored,
   withRole,
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
@@ -37,10 +38,12 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { OwnerClaimBanner } from './OwnerClaimBanner.tsx';
-import { useScrolledToTop } from './Screen.tsx';
+import { useBroughtIntoView, useScrolledToTop } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 const AVATAR = 40;
@@ -106,7 +109,7 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
     <View
       style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
       accessibilityElementsHidden
-      importantForAccessibility="no"
+      importantForAccessibility="no-hide-descendants"
     >
       <Text size={large ? tokens.typeBodyPhone.size : tokens.typeSmall.size} weight="bold" muted>
         {initials(name)}
@@ -118,14 +121,42 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
 /** Scrolled into view when it appears, since the answer was given further down the list. */
 function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => void }) {
   const top = useScrolledToTop();
+  useReadOut(answered.text);
 
   return (
-    <View ref={top} accessibilityLiveRegion="polite">
+    <View ref={top}>
       <Notice
         tone="done"
         mark={tokens.marks.done.glyph}
         body={answered.text}
         action={{ label: answered.next.label, onPress: onNext, testID: 'members.answered.next' }}
+      />
+    </View>
+  );
+}
+
+/** Answers a tap that may sit far below it, so it comes wholly into view and takes screen reader focus (sc-10639). */
+function NoticeInView({
+  tone,
+  mark,
+  title,
+  body,
+}: {
+  tone: 'quiet' | 'done';
+  mark: string;
+  title?: string;
+  body: string;
+}) {
+  const { shown, read } = useBroughtIntoView();
+
+  return (
+    <View ref={shown}>
+      <Notice
+        tone={tone}
+        mark={mark}
+        {...(title != null && { title })}
+        body={body}
+        wordsRef={read}
       />
     </View>
   );
@@ -159,6 +190,7 @@ export function MemberList({
   const [filter, setFilter] = useState<MemberFilter>('all');
   const shown = list.members.filter((member) => memberIsShown(member.status, filter));
   const waiting = list.members.filter((member) => member.status === 'pending_approval');
+  const removedNext = t('membersScreen.removedNext');
   const count = (one: MemberFilter) =>
     list.members.filter((member) => memberIsShown(member.status, one)).length;
 
@@ -173,15 +205,15 @@ export function MemberList({
       )}
 
       {flash != null && (
-        <View accessibilityLiveRegion="polite">
+        <ReadOut words={`${flash}\n${removedNext}`}>
           <Notice
             tone="done"
             mark={tokens.marks.done.glyph}
             title={flash}
             accentTitle
-            body={t('membersScreen.removedNext')}
+            body={removedNext}
           />
-        </View>
+        </ReadOut>
       )}
 
       {answered != null && (
@@ -351,6 +383,11 @@ function MemberRow({
   );
 }
 
+/** What the last restore or stale answer came to; `seen` keys each answer so its notice mounts afresh. */
+type AccessOutcome = { seen: number } & (
+  { kind: 'conflict' } | { kind: 'restored'; byHand: boolean; role: string }
+);
+
 type Removal = 'resting' | 'confirming' | 'removing';
 
 /** One member, `MembersApp-*` state `member` and on: the web's `MemberDetail` without the history. */
@@ -383,14 +420,16 @@ export function MemberPage({
   const waiting = member.status === 'pending_approval';
   const role = memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role);
   const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
-  const [conflict, setConflict] = useState(false);
+  const [outcome, setOutcome] = useState<AccessOutcome | null>(null);
+  const restored = outcome?.kind === 'restored' ? outcome : null;
 
-  function changedElsewhere(): void {
-    setConflict(true);
-    api
+  function changedElsewhere(): Promise<void> {
+    // Shown once the member is reloaded, so the role card has settled under it before it is brought into view.
+    return api
       .members(organisation.id)
       .then(onChanged)
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => setOutcome((last) => ({ seen: (last?.seen ?? 0) + 1, kind: 'conflict' })));
   }
 
   return (
@@ -425,14 +464,23 @@ export function MemberPage({
         </View>
       </View>
 
-      {conflict && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="quiet"
-            mark={tokens.marks.info.glyph}
-            body={t('membersScreen.accessConflict', { name: member.user.name })}
+      {outcome?.kind === 'conflict' ? (
+        <NoticeInView
+          key={outcome.seen}
+          tone="quiet"
+          mark={tokens.marks.info.glyph}
+          body={t('membersScreen.accessConflict', { name: member.user.name })}
+        />
+      ) : (
+        restored?.byHand === true && (
+          <NoticeInView
+            key={restored.seen}
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            title={t('membersScreen.restoredNow', { name: member.user.name, role: restored.role })}
+            body={t('membersScreen.restoredNowNext', { organisation: organisation.name })}
           />
-        </View>
+        )
       )}
 
       <View style={cardFrame(kind)}>
@@ -484,16 +532,38 @@ export function MemberPage({
         )}
       </View>
 
-      {member.suspension != null && (
-        <Suspension
-          kind={kind}
-          organisation={organisation}
-          member={member}
-          suspension={member.suspension}
-          standing={standing}
-          acts={acts}
-          onChanged={onChanged}
+      {restored?.byHand === false ? (
+        <NoticeInView
+          key={restored.seen}
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          body={t('membersScreen.restored', {
+            name: member.user.name,
+            organisation: organisation.name,
+          })}
         />
+      ) : (
+        member.suspension != null && (
+          <Suspension
+            kind={kind}
+            organisation={organisation}
+            member={member}
+            list={list}
+            suspension={member.suspension}
+            standing={standing}
+            acts={acts}
+            onRestored={(list) => {
+              onChanged(list);
+              setOutcome((last) => ({
+                seen: (last?.seen ?? 0) + 1,
+                kind: 'restored',
+                byHand: member.suspension?.reason === 'manual',
+                role,
+              }));
+            }}
+            onChangedElsewhere={changedElsewhere}
+          />
+        )
       )}
 
       {acts && !waiting && (
@@ -561,6 +631,7 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const comeForward = useComeForward();
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
   const read = () => api.members(organisation.id);
@@ -578,6 +649,7 @@ function JoinRequestAnswer({
     } catch (error) {
       setFailed(refusalFor(error, 'roleId', t('membersScreen.actionFailed')));
       setBusy(false);
+      comeForward();
       return;
     }
 
@@ -773,7 +845,7 @@ function RolePicker({
   list: MembersList;
   roles: OrganisationRole[];
   onChanged: (list: MembersList) => void;
-  onChangedElsewhere: () => void;
+  onChangedElsewhere: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [picked, setPicked] = useState(member.role.id);
@@ -795,12 +867,12 @@ function RolePicker({
     try {
       await api.changeMemberRole(organisation.id, member.id, picked);
     } catch (error) {
-      setBusy(false);
       if (error instanceof ApiError && error.status === 409) {
-        onChangedElsewhere();
+        await onChangedElsewhere();
       } else {
         setFailed(refusalTitle(error, t('membersScreen.actionFailed')));
       }
+      setBusy(false);
       return;
     }
 
@@ -813,11 +885,7 @@ function RolePicker({
 
   return (
     <>
-      {done != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice tone="done" mark={tokens.marks.done.glyph} body={done} />
-        </View>
-      )}
+      {done != null && <NoticeInView tone="done" mark={tokens.marks.done.glyph} body={done} />}
       <View
         style={styles.choices}
         accessibilityRole="radiogroup"
@@ -882,17 +950,21 @@ function Suspension({
   organisation,
   member,
   suspension,
+  list,
   standing,
   acts,
-  onChanged,
+  onRestored,
+  onChangedElsewhere,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
+  list: MembersList;
   suspension: Suspension;
   standing: MemberStanding;
   acts: boolean;
-  onChanged: (list: MembersList) => void;
+  onRestored: (list: MembersList) => void;
+  onChangedElsewhere: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -910,18 +982,25 @@ function Suspension({
 
     try {
       await api.restoreMember(organisation.id, member.id);
-      onChanged(await api.members(organisation.id));
     } catch (error) {
-      setFailed(
-        error instanceof ApiError && error.is('restore_needs_address')
-          ? t('membersScreen.restoreNeedsAddress', named)
-          : error instanceof ApiError && error.is('team_seats_in_use')
-            ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
-            : refusalTitle(error, t('membersScreen.actionFailed')),
-      );
-    } finally {
+      if (error instanceof ApiError && error.is('conflict')) {
+        await onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError && error.is('restore_needs_address')
+            ? t('membersScreen.restoreNeedsAddress', named)
+            : error instanceof ApiError && error.is('team_seats_in_use')
+              ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
+              : refusalTitle(error, t('membersScreen.actionFailed')),
+        );
+      }
       setBusy(false);
+      return;
     }
+
+    onRestored(
+      await membersAfterWrite(() => api.members(organisation.id), list, withRestored(member.id)),
+    );
   }
 
   return (

@@ -48,7 +48,7 @@ final readonly class InThisEventResolver implements ValueResolverInterface
             ? $repository->findOneInEvent($eventId, Uuid::fromString($id))
             : null;
 
-        return [$found ?? throw ApiException::notFound('Not found.')];
+        return [$found ?? throw ApiException::notFound('access.not_found')];
     }
 
     private function repositoryFor(string $class): ?EventScopedRepositoryInterface

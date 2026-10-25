@@ -123,7 +123,7 @@ final readonly class TwoFactorRecoveryController
             : null;
 
         if (null === $recovery) {
-            throw new ApiException(ErrorCode::RecoveryRequestInvalid, 'That link does not work.');
+            throw new ApiException(ErrorCode::RecoveryRequestInvalid, 'recovery.link_invalid');
         }
 
         $this->twoFactorRecoveries->notMe($recovery->getUser());

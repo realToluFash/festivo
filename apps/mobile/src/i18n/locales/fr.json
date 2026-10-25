@@ -347,6 +347,7 @@
     "keepItOn": "La garder activée",
     "failedTitle": "La double authentification n’a pas pu se charger",
     "failedBody": "Un problème est survenu de notre côté. Réessayez dans un instant.",
+    "retry": "Veuillez réessayer",
     "phoneSetupTitle": "Ajoutez Soirely à votre application d’authentification",
     "phoneCantScan": "Scannez le code depuis un autre écran, ou saisissez cette clé dans l’application.",
     "phoneKeepElsewhere": "Conservez-les ailleurs que sur ce téléphone.",
@@ -1225,6 +1226,8 @@
     "onlyOwnerRestoreNeedsAddress": "Son accès pourra être rétabli dès que son adresse e-mail principale sera de nouveau une adresse {{domain}} vérifiée.",
     "restore": "Rétablir",
     "restored": "{{name}} a de nouveau accès à {{organisation}}.",
+    "restoredNow": "{{name}} a de nouveau accès, avec le rôle {{role}}.",
+    "restoredNowNext": "Dès sa prochaine utilisation de Soirely, cette personne retrouve l’accès à l’organisation {{organisation}}, et elle en est prévenue par e-mail dans sa langue.",
     "restoreNeedsAddress": "{{name}} doit d’abord avoir une adresse {{domain}} vérifiée.",
     "noRoleYet": "Pas encore de rôle",
     "awaiting": {

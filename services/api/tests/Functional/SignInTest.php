@@ -172,7 +172,7 @@ final class SignInTest extends ApiTestCase
             } catch (ApiException $e) {
                 self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode);
                 self::assertArrayHasKey('Retry-After', $e->headers);
-                self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', $e->getMessage());
+                self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', self::worded($e));
             }
         }
     }
@@ -200,7 +200,7 @@ final class SignInTest extends ApiTestCase
             } catch (ApiException $e) {
                 self::assertStringEndsWith(
                     'Try again at ' . $stated . '.',
-                    $e->getMessage(),
+                    self::worded($e),
                     'a window ending at ' . $windowEnd . ' must not name a minute the budget is still spent in',
                 );
             }

@@ -63,7 +63,7 @@ final readonly class PasswordController
         $wait = $this->passwordSetting->sendCode($this->user(), $request->getLocale());
 
         if (null !== $wait) {
-            throw new ApiException(ErrorCode::TooManyAttempts, 'Wait before asking for another code.', [], null, ['Retry-After' => (string) $wait]);
+            throw new ApiException(ErrorCode::TooManyAttempts, 'code.wait', [], null, ['Retry-After' => (string) $wait]);
         }
 
         return new JsonResponse(['cooldownSeconds' => VerificationChallenge::RESEND_COOLDOWN_SECONDS]);
@@ -92,7 +92,7 @@ final readonly class PasswordController
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         }
 
         return $user;

@@ -1164,6 +1164,54 @@ span {
   text-decoration: none;
 }
 
+/* Lines at the body leading, so a wrapped label reads as one, with padding making a one-line label's 44px. */
+.notice-action {
+  padding-block: calc((var(--sizeHit) - 1lh) / 2);
+  font: var(--typeButton);
+  line-height: 1.5;
+}
+
+.notice-action:last-child {
+  margin-bottom: calc(var(--spaceLg) * -1);
+}
+
+/* Inline, so a wrapped label takes clicks on its own lines only, its first line's area reaching over the next. An inline box is as tall as the font's ascent and descent, 1.22em in Instrument Sans, so its padding is what tops it up to 44px. */
+.notice-action > a.link-button {
+  display: inline;
+  padding: calc((var(--sizeHit) - 1.22em) / 2) var(--spaceXs);
+  margin-inline: calc(var(--spaceXs) * -1);
+  box-decoration-break: clone;
+}
+
+.notice-action > button.link-button {
+  min-width: var(--sizeHit);
+  min-height: 0;
+  padding: calc((var(--sizeHit) - 1lh) / 2) var(--spaceXs);
+  margin: calc((1lh - var(--sizeHit)) / 2) calc(var(--spaceXs) * -1);
+  line-height: 1.5;
+  text-align: start;
+}
+
+/* The link's ring is drawn on its paragraph, one box however the link wraps, because Firefox outlines each line of an inline element on its own. */
+.notice-action:has(> a.link-button) {
+  width: fit-content;
+  padding-inline: var(--spaceXs);
+  margin-inline: calc(var(--spaceXs) * -1);
+}
+
+.notice-action:has(> a.link-button) > a.link-button:focus-visible {
+  outline: none;
+}
+
+.notice-action:has(> a.link-button:focus-visible) {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: -2px;
+}
+
+.notice-action > button.link-button:focus-visible {
+  outline-offset: -2px;
+}
+
 .auth-back {
   display: inline-flex;
   align-items: center;
@@ -1750,6 +1798,15 @@ span {
 
 .notice-done p {
   margin: 0;
+}
+
+/* Margins on the notices rather than a gap on the column, so the spacing inside a screen and its heading's place with no notice stay as they are. */
+.shell-content > .notice {
+  margin: 0 0 var(--spaceLg);
+}
+
+.shell-content > .notice:has(+ :not(.notice)) {
+  margin-bottom: var(--spaceXl);
 }
 
 /* ── Settings > General ───────────────────────────────────────────────────── */
@@ -3218,6 +3275,20 @@ button.members-row {
 
 .event-moment-time {
   flex: 1 1 7rem;
+}
+
+.event-moment-live:empty {
+  margin-top: calc(-1 * var(--spaceSm));
+}
+
+.event-moment-gap {
+  padding: var(--spaceMd) var(--spaceLg);
+  font: var(--typeSmall);
+  color: var(--colorInk);
+}
+
+.event-moment-gap p {
+  margin: 0;
 }
 
 .event-page-outcome {

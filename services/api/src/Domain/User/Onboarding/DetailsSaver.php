@@ -103,9 +103,9 @@ final readonly class DetailsSaver
     }
 
     /**
-     * @param array{propertyPath: string, message: string, code: string} $violation
+     * @param array{propertyPath: string, message: string, code: string, parameters?: array<string, string>} $violation
      *
-     * @return array{propertyPath: string, message: string, code: string}
+     * @return array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}
      */
     private static function phoneOnThisScreen(array $violation): array
     {
@@ -115,9 +115,9 @@ final readonly class DetailsSaver
     }
 
     /**
-     * @param array{propertyPath: string, message: string, code: string} $violation
+     * @param array{propertyPath: string, message: string, code: string, parameters?: array<string, string>} $violation
      *
-     * @return array{propertyPath: string, message: string, code: string}
+     * @return array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}
      */
     private static function onThisScreen(array $violation): array
     {

@@ -11,6 +11,7 @@ import {
 import { codeProps, FIELD_DEFAULTS, fieldText, pinnedText } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { ReadOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
 
@@ -87,7 +88,7 @@ export function FieldError({
   actions?: readonly FieldAction[] | undefined;
 }) {
   return (
-    <View style={styles.fieldError} accessibilityLiveRegion="polite">
+    <ReadOut style={styles.fieldError} words={message}>
       <View
         style={styles.mark}
         accessibilityElementsHidden
@@ -119,7 +120,7 @@ export function FieldError({
           </View>
         )}
       </View>
-    </View>
+    </ReadOut>
   );
 }
 

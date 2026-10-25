@@ -61,9 +61,13 @@ function InvitationRow({
   const busy = outcome?.kind === 'busy' ? outcome.answer : null;
 
   return (
-    <View style={styles.row} accessibilityLabel={organisation}>
+    <View style={styles.row}>
       <View style={styles.head}>
-        <View style={styles.tile}>
+        <View
+          style={styles.tile}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           <Text size={tokens.typeMeta.size} weight="bold" muted>
             {initials(organisation)}
           </Text>

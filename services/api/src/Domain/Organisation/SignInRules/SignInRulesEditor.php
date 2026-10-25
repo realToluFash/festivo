@@ -19,6 +19,7 @@ use Psl\Iter;
 use Psl\Vec;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Changing an organisation's sign-in rules: recorded with who and when, and every member told (sc-69). */
 final readonly class SignInRulesEditor
@@ -35,6 +36,7 @@ final readonly class SignInRulesEditor
         private EntityManagerInterface $entityManager,
         private ClockInterface $clock,
         private SignInRules $signInRules,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -50,11 +52,11 @@ final readonly class SignInRulesEditor
         $twoFactorAsked = true === ($asked['administratorsNeedTwoFactor'] ?? null) || true === ($asked['everyoneNeedsTwoFactor'] ?? null);
 
         if ($twoFactorAsked && !$this->signInRules->hasTwoFactor($by)) {
-            throw new ApiException(ErrorCode::TwoFactorOff, 'Two-factor is not on.');
+            throw new ApiException(ErrorCode::TwoFactorOff, $this->translator->trans('sign_in_rules.two_factor_off'));
         }
 
         if (true === ($asked['providerOnly'] ?? null) && !$this->signInRules->isLinked($by)) {
-            throw new ApiException(ErrorCode::OAuthOnlyUnlinked, 'Link Google or Apple before requiring it.');
+            throw new ApiException(ErrorCode::OAuthOnlyUnlinked, $this->translator->trans('sign_in_rules.provider_unlinked'));
         }
 
         $before = self::rulesOf($organisation);

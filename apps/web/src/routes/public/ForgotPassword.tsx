@@ -21,6 +21,7 @@ type Status =
 export function ForgotPassword() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<Status>({ kind: 'asking' });
+  const [typed, setTyped] = useState('');
   const checks = useFormChecks(
     ['email'] as const,
     (_field, value) => emailMessage(value, t),
@@ -42,7 +43,7 @@ export function ForgotPassword() {
     event.preventDefault();
     if (status.kind === 'sending') return;
 
-    const email = String(new FormData(event.currentTarget).get('email') ?? '').trim();
+    const email = typed.trim();
     if (!checks.passes({ email })) return;
 
     void send(email);
@@ -60,9 +61,11 @@ export function ForgotPassword() {
           <div className="notice-body">
             <p className="notice-title">{t('recovery.nothingTitle')}</p>
             <p>{t('recovery.nothingBody')}</p>
-            <button className="link-button" type="button" onClick={() => void send(status.email)}>
-              {t('recovery.sendAgain')}
-            </button>
+            <p className="notice-action">
+              <button className="link-button" type="button" onClick={() => void send(status.email)}>
+                {t('recovery.sendAgain')}
+              </button>
+            </p>
           </div>
         </div>
 
@@ -121,11 +124,15 @@ export function ForgotPassword() {
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
+            value={typed}
             disabled={status.kind === 'sending'}
             aria-invalid={checks.errors.email != null}
             aria-describedby={checks.errors.email == null ? undefined : 'email-error'}
             onBlur={(event) => checks.left('email', event.target.value)}
-            onChange={(event) => checks.edited('email', event.target.value)}
+            onChange={(event) => {
+              setTyped(event.target.value);
+              checks.edited('email', event.target.value);
+            }}
           />
           {checks.errors.email != null && (
             <FieldError id="email-error" message={checks.errors.email} />

@@ -12,6 +12,8 @@ import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { ReadOut } from './ReadOut.tsx';
+import { useScrolledToTop } from './Screen.tsx';
 
 type Flash = { kind: 'added' | 'removed'; domain: string } | null;
 
@@ -30,6 +32,7 @@ export function CompanyDomainsCard({
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
+  const [notRemoved, setNotRemoved] = useState(false);
   const input = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -50,6 +53,12 @@ export function CompanyDomainsCard({
   const on = list.domains.some((one) => !one.stopped);
   const full = list.domains.length >= list.most;
   const example = domainOf(list.ownAddress) ?? 'example.com';
+  const flashTitle =
+    flash?.kind === 'added'
+      ? t('companyDomains.added', { domain: flash.domain })
+      : t('companyDomains.removed', { domain: flash?.domain ?? '' });
+  const flashBody =
+    flash?.kind === 'added' ? t('companyDomains.addedNext') : t('companyDomains.removedNext');
 
   async function add(): Promise<void> {
     if (busy) return;
@@ -68,6 +77,7 @@ export function CompanyDomainsCard({
 
     setBusy(true);
     setFlash(null);
+    setNotRemoved(false);
 
     try {
       const domain = normaliseDomain(typed);
@@ -89,12 +99,13 @@ export function CompanyDomainsCard({
   async function remove(domain: string): Promise<void> {
     setBusy(true);
     setFlash(null);
+    setNotRemoved(false);
 
     try {
       setList(await api.removeCompanyDomain(organisation.id, domain));
       setFlash({ kind: 'removed', domain });
     } catch {
-      setError(t('companyDomains.failed'));
+      setNotRemoved(true);
     } finally {
       setConfirming(null);
       setBusy(false);
@@ -119,23 +130,12 @@ export function CompanyDomainsCard({
       </Text>
 
       {flash != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            title={
-              flash.kind === 'added'
-                ? t('companyDomains.added', { domain: flash.domain })
-                : t('companyDomains.removed', { domain: flash.domain })
-            }
-            body={
-              flash.kind === 'added'
-                ? t('companyDomains.addedNext')
-                : t('companyDomains.removedNext')
-            }
-          />
-        </View>
+        <ReadOut words={`${flashTitle}\n${flashBody}`}>
+          <Notice tone="done" mark={tokens.marks.done.glyph} title={flashTitle} body={flashBody} />
+        </ReadOut>
       )}
+
+      {notRemoved && <NotRemovedLine words={t('companyDomains.failed')} />}
 
       {list.domains.map(({ domain, stopped }) => (
         <View key={domain} style={styles.row}>
@@ -234,6 +234,19 @@ export function CompanyDomainsCard({
           />
         </>
       )}
+    </View>
+  );
+}
+
+/** Scrolled into view when it appears, since the removal it answers can sit a screen below it. */
+function NotRemovedLine({ words }: { words: string }) {
+  const top = useScrolledToTop();
+
+  return (
+    <View ref={top}>
+      <ReadOut words={words} interrupts accessibilityRole="alert">
+        <Notice tone="broken" mark={tokens.marks.broken.glyph} body={words} />
+      </ReadOut>
     </View>
   );
 }

@@ -34,7 +34,12 @@ final readonly class NewPasswordRules
         foreach ($failures as $failure) {
             $violations[] = [
                 'propertyPath' => $path,
-                'message' => $this->translator->trans('validation.' . $failure->value, [
+                'message' => $this->translator->trans(match ($failure) {
+                    PasswordFailure::TooShort => 'validation.password_too_short',
+                    PasswordFailure::TooLong => 'validation.password_too_long',
+                    PasswordFailure::Breached => 'validation.password_breached',
+                    PasswordFailure::Unchanged => 'validation.password_unchanged',
+                }, [
                     '{count}' => match ($failure) {
                         PasswordFailure::TooShort => (string) PasswordPolicy::MINIMUM_LENGTH,
                         PasswordFailure::TooLong => (string) PasswordPolicy::MAXIMUM_LENGTH,

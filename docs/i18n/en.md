@@ -62,6 +62,20 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. The API's refusals in the request's language (sc-10700, sc-10809, `messages:*`).**
+  Settled as sc-10700 wrote them, with three changes. `event.currency_in_use` says "against this
+  event", as its screen twin `eventEdit.currencyInUse`. `access.two_factor_required` says "requires
+  two-factor for this", the verb `two_factor_overdue` uses, over "asks for two-factor before this".
+  `provider.unlink_first` says "the account that is linked now". Field and header names an
+  integrator sends (`idToken`, `recoveryCode`, `If-Match`, `context`, the assistant's roles) stay as
+  written in every locale. Where a refusal's screen already words the same sentence (the lock-outs,
+  `lostTwoFactor.*`, `signIn.timedOutBody_*`), es, fr and pt say what the screen says.
+- **25 Oct 2026. A time the clocks skip (sc-10638, sc-10675, `eventForm.clocksSkip`,
+  `clocksSkipNextDay`).** Settled as sc-10638 wrote it; `Events.test.tsx` pins it. "There is no
+  {{time}} on {{day}} in {{zone}}: the clocks go forward that night. It will be saved as
+  {{savedAs}}." The next-day line adds "on {{savedDay}}". "The clocks go forward" also covers
+  Lord Howe's half hour; rejected "daylight saving time", which reads American and is a term
+  es, fr and pt each say differently.
 - **25 Oct 2026. Editing an event's details (sc-9704, sc-3587, `eventEdit.*`,
   `errors:precondition_failed`, `precondition_required`, `event_currency_in_use`).** Settled as
   sc-3587 wrote it; `Events.test.tsx` pins most of it. "Edit details" opens and heads the form,

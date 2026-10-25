@@ -16,6 +16,7 @@ import { AuthFrame, AuthHeading } from '../../src/components/AuthFrame.tsx';
 import { PrimaryButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import { Field, TextField } from '../../src/components/Field.tsx';
 import { Notice } from '../../src/components/Notice.tsx';
+import { ReadOut } from '../../src/components/ReadOut.tsx';
 import { Text } from '../../src/components/Text.tsx';
 import { holdLink } from '../../src/heldLink.ts';
 import { dateLocale } from '../../src/i18n/index.ts';
@@ -279,17 +280,20 @@ function Ask({
     setFailed(true);
   }
 
+  const failedTitle = t('requestToJoin.failedTitle');
+  const failedBody = t('requestToJoin.failedBody');
+
   return (
     <>
       {failed && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+        <ReadOut words={`${failedTitle}\n${failedBody}`} interrupts accessibilityRole="alert">
           <Notice
             tone="broken"
             mark={tokens.marks.broken.glyph}
-            title={t('requestToJoin.failedTitle')}
-            body={t('requestToJoin.failedBody')}
+            title={failedTitle}
+            body={failedBody}
           />
-        </View>
+        </ReadOut>
       )}
       <Field
         label={t('requestToJoin.message')}

@@ -41,6 +41,8 @@
     "date": "Data",
     "time": "Hora",
     "endsHint": "Um evento pode prolongar-se para lá da meia-noite. Escolha o dia em que termina.",
+    "clocksSkip": "Em {{zone}}, a hora {{time}} do dia {{day}} não existe: nessa noite, os relógios são adiantados. Será guardada como {{savedAs}}.",
+    "clocksSkipNextDay": "Em {{zone}}, a hora {{time}} do dia {{day}} não existe: nessa noite, os relógios são adiantados. Será guardada no dia {{savedDay}}, às {{savedAs}}.",
     "timeZone": "Fuso horário",
     "currency": "Moeda",
     "defaultsHint": "Valores preenchidos a partir das definições de {{name}}.",

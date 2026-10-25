@@ -23,6 +23,7 @@ const KIT_STYLES = [
   'portraitContent',
   'landscapeContent',
 ];
+const KIT_FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
 describe('every field carries the caret colour', () => {
   it('in every TextInput in the app', () => {
@@ -86,6 +87,129 @@ describe('screen reader focus moves on both platforms', () => {
   });
 });
 
+describe('a message is read out on both platforms', () => {
+  // VoiceOver has no live region, and Fabric flattens away a layout-only View along with its live region, so a message marked with one can be silent (sc-10955).
+  it('is marked only in ReadOut.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/ReadOut.tsx'))
+      .filter(({ text }) => readsOut(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use ReadOut, useReadOut or readOut from src/components/ReadOut.tsx.',
+    ).toEqual([]);
+  });
+
+  it('notices a screen that marks a message itself', () => {
+    expect(readsOut('<View accessibilityLiveRegion="polite">')).toBe(true);
+    expect(readsOut('<Text style={styles.error} aria-live="polite">')).toBe(true);
+    expect(readsOut('AccessibilityInfo.announceForAccessibility(words);')).toBe(true);
+    expect(readsOut('<ReadOut words={saved}>')).toBe(false);
+  });
+});
+
+describe('a screen reader skips the initials beside a name', () => {
+  it('on both platforms, in every tile in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      [...text.matchAll(/\{initials\(/gu)]
+        .filter(
+          (match) => !hiddenTile(text.slice(text.lastIndexOf('<View', match.index), match.index)),
+        )
+        .map((match) => `${path}:${text.slice(0, match.index).split('\n').length}`),
+    );
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('notices a tile Android still reads', () => {
+    expect(
+      hiddenTile('<View accessibilityElementsHidden importantForAccessibility="no"><Text>'),
+    ).toBe(false);
+    expect(hiddenTile('<View style={styles.tile}><Text>')).toBe(false);
+    expect(
+      hiddenTile(
+        '<View accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text>',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('a screen reader reaches what is inside a button', () => {
+  // iOS reads a Pressable as one item, so a button inside another is out of VoiceOver's reach (sc-10712).
+  it('in every Pressable in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      nestedPressables(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Make the outer press a sibling, not a parent.').toEqual([]);
+  });
+
+  it('notices a Pressable inside another', () => {
+    expect(
+      nestedPressables(
+        '<Pressable onPress={() => close()}>\n  <Pressable onPress={x} />\n</Pressable>',
+      ),
+    ).toEqual([2]);
+    expect(
+      nestedPressables(
+        '<Pressable onPress={x} />\n<Pressable style={a > b ? s : t}>\n</Pressable>',
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('a field is read by the name it shows', () => {
+  // sc-11238: a label chosen once for the eye and once for the reader drifted apart (WCAG 2.5.3, Label in Name).
+  // sc-11297: three fields in Ownership and leaving had no name, and TalkBack read each as "Edit box".
+  it('in every TextField, PasswordField and CodeField in the app, which has a name', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      KIT_FIELDS.flatMap((name) =>
+        selfClosing(name, text)
+          .filter((tag) => !named(tag.markup))
+          .map((tag) => `${path}:${tag.line}`),
+      ),
+    );
+
+    expect(offenders, 'Give the field accessibilityLabel, its shown label.').toEqual([]);
+  });
+
+  it('notices a field with no name', () => {
+    expect(named('<TextField\n  value={name}\n  testID="delete.name"\n')).toBe(false);
+    expect(named('<CodeField {...sharedInput} ')).toBe(false);
+    expect(named("<PasswordField\n  accessibilityLabel={t('leave.password')}\n")).toBe(true);
+  });
+
+  it('in every Field in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      fieldsReadByAnotherName(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Give the control the accessibilityLabel its Field shows.').toEqual([]);
+  });
+
+  it('notices a field read by another name', () => {
+    expect(
+      fieldsReadByAnotherName(
+        "<Field label={t('a')}>\n  <CodeField accessibilityLabel={t('b')} />\n</Field>",
+      ),
+    ).toEqual([1]);
+    expect(
+      fieldsReadByAnotherName(
+        "<Field label={t(x ? 'a' : 'b')} error={e}>\n  <CodeField accessibilityLabel={t(x ? 'a' : 'b')} />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsReadByAnotherName(
+        "<Field\n  label={t(\n    x ? 'a' : 'b',\n  )}\n>\n  <CodeField\n    accessibilityLabel={t(\n      x ? 'a' : 'b',\n    )}\n  />\n</Field>",
+      ),
+    ).toEqual([]);
+    expect(
+      fieldsReadByAnotherName("<Field label={t('a')}>\n  <TextField value={v} />\n</Field>"),
+    ).toEqual([]);
+  });
+});
+
 describe('changing the layout keeps the form', () => {
   // A frame that returns a different tree per layout remounts the form, and a rotation throws away what was typed.
   it('is one tree at every size in AuthFrame', () => {
@@ -139,14 +263,13 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
-describe('a refused submit leaves the keyboard as it was', () => {
+describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
-  const FIELDS = ['TextField', 'PasswordField', 'CodeField'];
 
   it.each(HELD_FORMS)('%s holds its fields rather than disabling them', (file) => {
     const form = sources(['src/components']).find(({ path }) => path.endsWith(`/${file}`));
-    const fields = FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
+    const fields = KIT_FIELDS.flatMap((name) => selfClosing(name, form?.text ?? ''));
 
     expect(fields.length, `fields in ${file}`).toBeGreaterThan(0);
     expect(
@@ -168,6 +291,15 @@ describe('a refused submit leaves the keyboard as it was', () => {
         .filter(({ line }) => !line.includes('onSubmitEditing='))
         .map(({ at }) => at),
       'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.',
+    ).toEqual([]);
+    expect(
+      (form?.text ?? '')
+        .split('\n')
+        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
+        .filter(({ line }) => /Keyboard\.dismiss\(|\.current\?\.blur\(\)/u.test(line))
+        .filter(({ line }) => !line.includes('dropsKeysAfter('))
+        .map(({ at }) => at),
+      'Drop the keys only through dropsKeysAfter: sc-9442 is the one exception to sc-9471.',
     ).toEqual([]);
   });
 });
@@ -237,6 +369,89 @@ function takesRecoveryCode(markup: string): boolean {
   return /\btakesRecoveryCode(?!=\{false\})\b/u.test(markup);
 }
 
+function named(markup: string): boolean {
+  return /\baccessibilityLabel=/u.test(markup);
+}
+
 function movesFocus(text: string): boolean {
   return /\b(setAccessibilityFocus|sendAccessibilityEvent)\(/u.test(text);
+}
+
+function readsOut(text: string): boolean {
+  return /\baccessibilityLiveRegion\b|\baria-live\b|\bannounceForAccessibility(WithOptions)?\(/u.test(
+    text,
+  );
+}
+
+/** importantForAccessibility="no" leaves an Android tile's letters to be read; only its descendants hidden skips them. */
+function hiddenTile(markup: string): boolean {
+  return (
+    /\baccessibilityElementsHidden\b/u.test(markup) &&
+    /\bimportantForAccessibility="no-hide-descendants"/u.test(markup)
+  );
+}
+
+/** The line of every Pressable that opens inside another one, read tag by tag. */
+function nestedPressables(text: string): number[] {
+  const nested: number[] = [];
+  let depth = 0;
+
+  for (const match of text.matchAll(/(?<![\w.])<(\/?)Pressable\b/gu)) {
+    if (match[1] === '/') {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (depth > 0) nested.push(text.slice(0, match.index).split('\n').length);
+    if (!selfCloses(text, match.index)) depth += 1;
+  }
+
+  return nested;
+}
+
+/** The line of every Field whose control carries an accessibilityLabel other than the Field's label. */
+function fieldsReadByAnotherName(text: string): number[] {
+  return [...text.matchAll(/(?<![\w.])<Field\b/gu)].flatMap((match) => {
+    const body = text.slice(match.index, text.indexOf('</Field>', match.index));
+    const label = propValue(body.slice(0, tagEnd(body, 0)), 'label');
+    const read = propValue(body.slice(tagEnd(body, 0)), 'accessibilityLabel');
+
+    return read == null || read.replace(/\s+/gu, '') === label?.replace(/\s+/gu, '')
+      ? []
+      : [text.slice(0, match.index).split('\n').length];
+  });
+}
+
+/** A prop's value as written, its braces balanced, or null when the markup does not set it. */
+function propValue(markup: string, name: string): string | null {
+  const start = markup.search(new RegExp(`\\b${name}=`, 'u'));
+  if (start === -1) return null;
+
+  const from = start + name.length + 1;
+  if (markup[from] !== '{') return markup.slice(from).split(/[\s>]/u)[0] ?? '';
+
+  let braces = 0;
+  for (let at = from; at < markup.length; at += 1) {
+    if (markup[at] === '{') braces += 1;
+    else if (markup[at] === '}' && --braces === 0) return markup.slice(from, at + 1);
+  }
+
+  return markup.slice(from);
+}
+
+/** Where the tag opening at `start` ends, skipping any `>` inside a prop's braces. */
+function tagEnd(text: string, start: number): number {
+  let braces = 0;
+
+  for (let at = start + 1; at < text.length; at += 1) {
+    if (text[at] === '{') braces += 1;
+    else if (text[at] === '}') braces -= 1;
+    else if (text[at] === '>' && braces === 0) return at + 1;
+  }
+
+  return text.length;
+}
+
+/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
+function selfCloses(text: string, start: number): boolean {
+  return text.slice(start, tagEnd(text, start)).endsWith('/>');
 }

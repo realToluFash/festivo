@@ -84,7 +84,7 @@ final class VerificationController
         if (\is_int($issued)) {
             throw new ApiException(
                 ErrorCode::TooManyAttempts,
-                'Wait before asking for another code.',
+                'code.wait',
                 [],
                 null,
                 ['Retry-After' => (string) $issued],
@@ -102,7 +102,7 @@ final class VerificationController
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         }
 
         $address = null === $id
@@ -110,7 +110,7 @@ final class VerificationController
             : Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getId()->toRfc4122() === $id);
 
         if (null === $address) {
-            throw ApiException::notFound('That address is not linked to this account.');
+            throw ApiException::notFound('contacts.address_not_linked');
         }
 
         return $address;

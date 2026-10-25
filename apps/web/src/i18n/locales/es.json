@@ -41,6 +41,8 @@
     "date": "Fecha",
     "time": "Hora",
     "endsHint": "Un evento puede terminar pasada la medianoche. Elija el día en que termina.",
+    "clocksSkip": "En {{zone}}, la hora {{time}} del {{day}} no existe: esa noche se adelantan los relojes. Se guardará como {{savedAs}}.",
+    "clocksSkipNextDay": "En {{zone}}, la hora {{time}} del {{day}} no existe: esa noche se adelantan los relojes. Se guardará el {{savedDay}}, como {{savedAs}}.",
     "timeZone": "Zona horaria",
     "currency": "Moneda",
     "defaultsHint": "Valores tomados de la configuración de {{name}}.",

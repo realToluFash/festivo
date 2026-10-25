@@ -34,9 +34,11 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
                 deadline: organisation.twoFactorDue.written,
               })}
             </p>
-            <Link className="link-button" to="/app/account/security">
-              {t('signInRules.dueSetUp')}
-            </Link>
+            <p className="notice-action">
+              <Link className="link-button" to="/app/account/security">
+                {t('signInRules.dueSetUp')}
+              </Link>
+            </p>
           </div>
         </div>
       )}
@@ -49,9 +51,11 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
           <div className="notice-body">
             <p className="notice-title">{t('signInRules.unlinkedTitle')}</p>
             <p>{t('signInRules.unlinkedBody', { organisation: name })}</p>
-            <Link className="link-button" to="/app/account/security">
-              {t('signInRules.unlinkedLink')}
-            </Link>
+            <p className="notice-action">
+              <Link className="link-button" to="/app/account/security">
+                {t('signInRules.unlinkedLink')}
+              </Link>
+            </p>
           </div>
         </div>
       )}
@@ -64,12 +68,16 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
           <div className="notice-body">
             <p className="notice-title">{t('signInRules.gateTitle', { organisation: name })}</p>
             <p>{t('signInRules.gateBody', { organisation: name })}</p>
-            <Link className="link-button" to="/app/account/security">
-              {t('signInRules.gateTurnOn')}
-            </Link>
-            <button className="link-button" type="button" onClick={() => setLater(true)}>
-              {t('signInRules.gateLater')}
-            </button>
+            <p className="notice-action">
+              <Link className="link-button" to="/app/account/security">
+                {t('signInRules.gateTurnOn')}
+              </Link>
+            </p>
+            <p className="notice-action">
+              <button className="link-button" type="button" onClick={() => setLater(true)}>
+                {t('signInRules.gateLater')}
+              </button>
+            </p>
           </div>
         </div>
       )}
@@ -87,9 +95,11 @@ export function SignInRulesNotices({ organisation }: { organisation: Membership 
                 day: formatDay(changedAt, dateLocale()),
               })}
             </p>
-            <Link className="link-button" to="/app/settings/sign-in-rules">
-              {t('signInRules.changedSee')}
-            </Link>
+            <p className="notice-action">
+              <Link className="link-button" to="/app/settings/sign-in-rules">
+                {t('signInRules.changedSee')}
+              </Link>
+            </p>
           </div>
           <button
             className="link-button notice-dismiss"

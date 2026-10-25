@@ -1,8 +1,7 @@
 import { type Account, type PhoneCodeRoute, phoneAwaitingCode } from '@soirely/api-client';
 import { cleanCode, codeProblem, codeWording, formatPhone } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -35,7 +34,6 @@ export default function VerifyPhone() {
   // From the verify answer, never the list read before it: the server decides (sc-2244).
   const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
   const wording = codeWording(route);
-  const lastRoute = useRef<PhoneCodeRoute | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -77,18 +75,6 @@ export default function VerifyPhone() {
 
     return () => clearInterval(watching);
   }, [wording.watch, alternative]);
-
-  // iOS has no live regions, so a changed line is announced by hand, as Android's live region does.
-  useEffect(() => {
-    const awaiting = account == null || account === 'none' ? null : phoneAwaitingCode(account);
-
-    if (lastRoute.current === 'whatsapp' && route === 'sms_fallback' && awaiting != null) {
-      AccessibilityInfo.announceForAccessibility(
-        t('verifyPhone.introFallback', { number: formatPhone(awaiting.number) }),
-      );
-    }
-    lastRoute.current = route;
-  }, [account, route, t]);
 
   useEffect(() => {
     if (cooldown <= 0) return;

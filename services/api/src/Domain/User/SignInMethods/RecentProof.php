@@ -80,7 +80,7 @@ final readonly class RecentProof
 
             try {
                 if (null === $code || '' === Str\trim($code)) {
-                    throw new ApiException(ErrorCode::TwoFactorRequired, 'Enter a code from your app, or a recovery code.');
+                    throw new ApiException(ErrorCode::TwoFactorRequired, 'validation.code_app_or_recovery_required');
                 }
 
                 $this->secondFactorCheck->passEither($factor, $code);
@@ -97,6 +97,7 @@ final readonly class RecentProof
                     $refusal,
                     $refusal->headers,
                     $members,
+                    $refusal->parameters,
                 );
             }
 
@@ -137,7 +138,7 @@ final readonly class RecentProof
 
         throw ApiException::validation([[
             'propertyPath' => null === $user->getPassword() ? 'provider' : 'password',
-            'message' => 'Enter your password, or confirm with Google or Apple.',
+            'message' => 'proof.password_or_provider',
             'code' => ErrorCode::ValidationFailed->value,
         ]]);
     }
@@ -150,8 +151,8 @@ final readonly class RecentProof
             fn (): array => [$this->passwordChangeAccountLimiter->create($user->getId()->toRfc4122())],
             fn (): ?WrongSecret => $this->passwordResolver->verify($user, $password)
                 ? null
-                : new WrongSecret(new ApiException(ErrorCode::InvalidCredentials, 'That is not your password.')),
-            'Too many tries.',
+                : new WrongSecret(new ApiException(ErrorCode::InvalidCredentials, 'proof.password_wrong')),
+            'limits.tries',
         );
     }
 
@@ -160,12 +161,12 @@ final readonly class RecentProof
         $identity = $this->providerIdentityRepository->findOneBySubject($provider, $claims->subject);
 
         if (null === $identity || !$identity->getUser()->getId()->equals($user->getId())) {
-            throw new ApiException(ErrorCode::InvalidCredentials, 'That account is not linked to this Soirely account.');
+            throw new ApiException(ErrorCode::InvalidCredentials, 'proof.provider_not_linked');
         }
 
         $since = $claims->authenticatedAt;
         if (null === $since || $since < $this->clock->now()->modify('-' . SignInProof::MINUTES . ' minutes')) {
-            throw new ApiException(ErrorCode::InvalidCredentials, 'Sign in again to confirm it is you.');
+            throw new ApiException(ErrorCode::InvalidCredentials, 'proof.sign_in_again');
         }
 
         return $since;

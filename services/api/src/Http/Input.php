@@ -33,14 +33,14 @@ final readonly class Input
         $raw = $request->getContent();
 
         if ('' === \trim($raw)) {
-            throw new ApiException(ErrorCode::BadRequest, 'A JSON body is required.');
+            throw new ApiException(ErrorCode::BadRequest, 'request.body_required');
         }
 
         // Not Json\decode: it reads an integer past PHP_INT_MAX as a string, which a string field would then take.
         try {
             $decoded = \json_decode($raw, true, 512, \JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
-            throw new ApiException(ErrorCode::BadRequest, 'The request body is not valid JSON.', [], $e);
+            throw new ApiException(ErrorCode::BadRequest, 'request.body_not_json', [], $e);
         }
 
         // `[]` and `{}` decode to the same array, so only the text tells a list from an object.
