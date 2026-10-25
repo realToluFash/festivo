@@ -1178,7 +1178,6 @@ export function batchCheck(flow, check, language, { reset }) {
 
 export function batchFlow({ checks, languages, cold }) {
   const lines = [`appId: ${EXPO_GO}`, '---', '- launchApp:', `    appId: ${EXPO_GO}`];
-  // A batch straight after another keeps the loaded bundle; a cold check relaunches.
   lines.push(`    stopApp: ${cold ? 'true' : 'false'}`);
   if (cold) lines.push('- runFlow: batch/sign-out.yaml');
   lines.push('- runFlow: batch/session.yaml');
