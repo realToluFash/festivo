@@ -379,6 +379,24 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       expect(field.classList.contains('input-wrong')).toBe(false);
     });
 
+    it('leaves a failed add as it was, beside its own failure (sc-11481)', async () => {
+      answering({ 'GET /api/orgs/org_1/domains': () => json(listed(FIVE.slice(0, 2))) });
+      settings();
+
+      const field = await screen.findByLabelText('Add a domain');
+      fireEvent.change(field, { target: { value: 'ire.events' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+      expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+
+      await removing('ire.ng');
+
+      await waitFor(() =>
+        expect(screen.getAllByText('That did not work. Try again in a moment.')).toHaveLength(2),
+      );
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect((field as HTMLInputElement).value).toBe('ire.events');
+    });
+
     it('stays through an add the card refuses without sending, and goes with one it sends', async () => {
       answering({
         'GET /api/orgs/org_1/domains': () => json(listed(FIVE.slice(0, 2))),
