@@ -59,7 +59,6 @@
     "provider.unlinked.notYou": "If this wasn't you, change your password and check Security.",
     "provider.unlinked.notYouNoPassword": "If this wasn't you, check Security and sign out any devices you don't recognise.",
     "provider.why": "You're getting this because the ways you sign in to Soirely changed.",
-    "time.dateAt": "{date} at {time} {zone}",
     "twoFactorRecovery.code.subject": "Your code to get back into Soirely",
     "twoFactorRecovery.code.body": "Enter this code in Soirely to ask to get back in without your authenticator:",
     "twoFactorRecovery.code.expiry": "It works for {minutes} minutes.",

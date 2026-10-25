@@ -22,6 +22,8 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\Translation\Loader\ArrayLoader;
+use Symfony\Component\Translation\Translator;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
@@ -123,7 +125,21 @@ final class JsonExceptionListenerTest extends TestCase
 
         $body = \json_decode((string) $event->getResponse()?->getContent(), true, 512, \JSON_THROW_ON_ERROR);
 
-        self::assertSame('limits.tries{"{time}":"14:35"}', $body['detail']);
+        self::assertSame('limits.tries{"{time}":"14:35","{hour}":14}', $body['detail']);
+    }
+
+    /** es and pt agree the article with the hour: "a la 01:05", "a las 13:05" (sc-11332). */
+    #[Test]
+    public function aTryAgainTimeGivesAnIcuKeyItsHourToAgreeWith(): void
+    {
+        $translator = new Translator('es');
+        $translator->addLoader('array', new ArrayLoader());
+        $translator->addResource('array', ['limits.tries' => '{hour, plural, =1 {a la {time}} other {a las {time}}}'], 'es', 'messages+intl-icu');
+
+        $worded = fn (string $windowEnd): mixed => $this->handleWith(ApiException::tooManyAttempts('limits.tries', new DateTimeImmutable($windowEnd)), $translator)['detail'];
+
+        self::assertSame('a la 01:05', $worded('2026-10-25 01:04:10'));
+        self::assertSame('a las 13:05', $worded('2026-10-25 13:04:10'));
     }
 
     #[Test]
@@ -197,6 +213,18 @@ final class JsonExceptionListenerTest extends TestCase
     {
         $event = $this->event($e, correlationId: $correlationId);
         ($this->listener())($event);
+
+        $response = $event->getResponse();
+        self::assertNotNull($response);
+
+        return \json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+    }
+
+    /** @return array<string, mixed> */
+    private function handleWith(Throwable $e, TranslatorInterface $translator): array
+    {
+        $event = $this->event($e);
+        new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator))($event);
 
         $response = $event->getResponse();
         self::assertNotNull($response);

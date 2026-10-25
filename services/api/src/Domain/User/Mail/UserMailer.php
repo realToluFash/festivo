@@ -97,6 +97,7 @@ final readonly class UserMailer
         return $this->line('time.dateAt', $locale, [
             '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),
             '{time}' => $local->format('H:i'),
+            '{hour}' => (int) $local->format('G'),
             '{zone}' => $label,
         ]);
     }
