@@ -21,6 +21,7 @@ import {
   composeBatch,
   localise,
   parseBatch,
+  rerunHints,
   STEP_MS,
   totp,
   androidFlows,
@@ -729,6 +730,35 @@ describe('the batch command', () => {
 
   it('asks for a check', () => {
     expect(() => parseBatch(['tour', 'EMAIL=a@b.test'])).toThrow('which batch?');
+  });
+
+  it('re-runs every failed check on the same device in its own language', () => {
+    const failures = [
+      { check: 'settings', language: 'es' },
+      { check: 'home', language: 'en' },
+    ];
+    expect(
+      rerunHints('tour', failures, {
+        args: ['--ipad', '--lang', 'en,es'],
+        email: 'a@b.test',
+        secret: 'S',
+      }),
+    ).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-settings-es settings --lang es --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+      'node .qa/bin/qa-env.mjs batch tour-home-en home --lang en --cold --ipad EMAIL=a@b.test PASSWORD=… TOTP_SECRET=…',
+    ]);
+  });
+
+  it("re-runs in the account's own language when the batch named none", () => {
+    expect(
+      rerunHints('tour', [{ check: 'home', language: 'any' }], {
+        args: ['--android'],
+        email: 'a@b.test',
+        secret: null,
+      }),
+    ).toEqual([
+      'node .qa/bin/qa-env.mjs batch tour-home home --cold --android EMAIL=a@b.test PASSWORD=…',
+    ]);
   });
 });
 

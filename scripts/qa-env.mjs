@@ -1448,7 +1448,8 @@ async function batch(args) {
   const seconds = Math.round((Date.now() - started) / 1000);
 
   spawnSync('sh', ['-c', `find "${out}" -mindepth 2 -name '*.png' -exec cp {} "${out}/" \\;`]);
-  const ids = languages.flatMap((language) => checks.map((check) => checkId(check, language)));
+  const runs = languages.flatMap((language) => checks.map((check) => ({ check, language })));
+  const ids = runs.map(({ check, language }) => checkId(check, language));
   const failed = ids.filter((id) => !passed.has(id));
   console.log(
     `\nBatch ${name}${cold ? ', each check alone and cold' : ''}: ` +
@@ -1457,13 +1458,30 @@ async function batch(args) {
   for (const id of ids) console.log(`  ${passed.has(id) ? '✓' : '✗'} ${id}`);
   console.log(`Evidence in ${out}`);
   if (failed.length) {
-    const check = failed[0].split('.')[0];
-    console.log(
-      `Re-run one alone, cold: node .qa/bin/qa-env.mjs batch ${name}-${check} ${check} --cold` +
-        ` EMAIL=${email} PASSWORD=…${secret ? ' TOTP_SECRET=…' : ''}`,
-    );
+    const failures = runs.filter(({ check, language }) => !passed.has(checkId(check, language)));
+    console.log('Re-run each alone, cold:');
+    for (const hint of rerunHints(name, failures, { args, email, secret }))
+      console.log(`  ${hint}`);
     process.exitCode = 1;
   }
+}
+
+// The same device and the same language, so a check that passes alone points at the batch.
+export function rerunHints(name, failures, { args, email, secret }) {
+  const device = ['--ipad', '--android'].filter((flag) => args.includes(flag));
+  return failures.map(({ check, language }) =>
+    [
+      'node .qa/bin/qa-env.mjs batch',
+      `${name}-${checkId(check, language).replace('.', '-')}`,
+      check,
+      ...(language === 'any' ? [] : ['--lang', language]),
+      '--cold',
+      ...device,
+      `EMAIL=${email}`,
+      'PASSWORD=…',
+      ...(secret ? ['TOTP_SECRET=…'] : []),
+    ].join(' '),
+  );
 }
 
 // --ready finishes Complete your profile and founds one organisation; --two-factor also turns it on.
