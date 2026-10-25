@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Platform, View, type ViewProps } from 'react-native';
 
-import { howToReadOut, settleMs, shownAtMount } from '../kit/readOut.ts';
+import { howToReadOut, settleMs, shownAtMount, shownOnceSaid } from '../kit/readOut.ts';
 
 /** Hands words to the screen reader to say, without moving its focus; the returned function takes them back unsaid. */
 export function readOut(
@@ -43,16 +43,9 @@ export function useReadOut(
   const typing = afterTyping !== undefined;
 
   useEffect(() => {
-    const {
-      shown: now,
-      handOver,
-      takeBack,
-    } = howToReadOut(shown.current, words, {
-      os: Platform.OS,
-      afterTyping: typing,
-      interrupts,
-    });
-    if (!typing || now == null) shown.current = now;
+    const reading = { os: Platform.OS, afterTyping: typing, interrupts };
+    const { shown: now, handOver, takeBack } = howToReadOut(shown.current, words, reading);
+    shown.current = now;
 
     if (takeBack) {
       unsaid.current?.();
@@ -62,11 +55,9 @@ export function useReadOut(
       unsaid.current = readOut(handOver.words, {
         interrupts: !handOver.queue,
         afterMs: handOver.afterMs,
-        onSaid: typing
-          ? () => {
-              shown.current = handOver.words;
-            }
-          : undefined,
+        onSaid: () => {
+          shown.current = shownOnceSaid(shown.current, handOver, reading);
+        },
       });
     }
   }, [words, afterTyping, typing, interrupts]);

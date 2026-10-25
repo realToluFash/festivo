@@ -5,8 +5,10 @@ import {
   newWords,
   settleMs,
   shownAtMount,
+  shownOnceSaid,
   TALKBACK_SETTLE_MS,
   TYPING_PAUSE_MS,
+  type HandOver,
   type Reading,
 } from './readOut.ts';
 
@@ -43,10 +45,16 @@ describe('a message read out once the typing stops', () => {
     expect(TYPING_PAUSE_MS).toBeGreaterThan(TALKBACK_SETTLE_MS);
   });
 
-  it('takes back what is still waiting at every key, so nothing is said between keys', () => {
-    expect(howToReadOut(null, nothing('Atlantisx'), { ...typing, os: 'android' }).takeBack).toBe(
-      true,
-    );
+  it('takes back what is still waiting at a key that brings back the words last said', () => {
+    expect(
+      howToReadOut(nothing('Atlantis'), nothing('Atlantis'), { ...typing, os: 'android' }).takeBack,
+    ).toBe(true);
+  });
+
+  it('keeps the words last said as `before` while new words wait', () => {
+    expect(
+      howToReadOut(nothing('Atlantis'), nothing('Atlantisx'), { ...typing, os: 'ios' }).shown,
+    ).toBe(nothing('Atlantis'));
   });
 
   it('is said again with new words after the last said', () => {
@@ -61,6 +69,98 @@ describe('a message read out once the typing stops', () => {
       howToReadOut(nothing('Atlantis'), nothing('Atlantis'), { ...typing, os: 'ios' }).handOver,
     ).toBeNull();
   });
+});
+
+/** The words said, and when, as a message shows each key's words at its time in ms, as `useReadOut` would. */
+function saidAsTyped(keys: [number, string | null][], reading: Reading) {
+  const said: [number, string][] = [];
+  let shown: string | null = null;
+  let waiting: { at: number; handOver: HandOver } | null = null;
+  const sayWaiting = () => {
+    if (waiting == null) return;
+    said.push([waiting.at, waiting.handOver.words]);
+    shown = shownOnceSaid(shown, waiting.handOver, reading);
+    waiting = null;
+  };
+
+  for (const [at, now] of keys) {
+    if (waiting != null && waiting.at <= at) sayWaiting();
+    const answer = howToReadOut(shown, now, reading);
+    shown = answer.shown;
+    if (answer.takeBack) waiting = null;
+    if (answer.handOver != null) {
+      waiting = { at: at + answer.handOver.afterMs, handOver: answer.handOver };
+    }
+  }
+  sayWaiting();
+
+  return said;
+}
+
+describe('the time zone’s no-match line, typed key by key (sc-11930)', () => {
+  const nothing = (typed: string) => `No time zone matches “${typed}”.`;
+  const keys = (from: number, every: number, lines: (string | null)[]) =>
+    lines.map((line, i): [number, string | null] => [from + i * every, line]);
+
+  for (const os of ['ios', 'android']) {
+    const typing = { os, interrupts: false, afterTyping: true };
+
+    it(`on ${os}, says nothing while keys come every 1.2 s, then the last words 2 s after the last key`, () => {
+      const typed = keys(0, 1200, [
+        nothing('Atlantis'),
+        nothing('Atlantisx'),
+        nothing('Atlantisxy'),
+      ]);
+
+      expect(saidAsTyped(typed, typing)).toEqual([[2400 + TYPING_PAUSE_MS, nothing('Atlantisxy')]]);
+    });
+
+    it(`on ${os}, says it once more with new words typed after it was said`, () => {
+      const typed = [
+        [0, nothing('Atlantis')],
+        ...keys(5000, 1200, [nothing('Atlantisx'), nothing('Atlantisxy')]),
+      ] satisfies [number, string | null][];
+
+      expect(saidAsTyped(typed, typing)).toEqual([
+        [TYPING_PAUSE_MS, nothing('Atlantis')],
+        [6200 + TYPING_PAUSE_MS, nothing('Atlantisxy')],
+      ]);
+    });
+
+    it(`on ${os}, does not say it again for a space after the s`, () => {
+      expect(
+        saidAsTyped(
+          [
+            [0, nothing('Atlantis')],
+            [5000, nothing('Atlantis')],
+          ],
+          typing,
+        ),
+      ).toEqual([[TYPING_PAUSE_MS, nothing('Atlantis')]]);
+    });
+
+    it(`on ${os}, never says a line gone before the typing stops`, () => {
+      expect(
+        saidAsTyped(
+          [
+            [0, nothing('Atlantis')],
+            [300, null],
+          ],
+          typing,
+        ),
+      ).toEqual([]);
+    });
+
+    it(`on ${os}, says nothing for an x typed and deleted again before the pause`, () => {
+      const typed = [
+        [0, nothing('Atlantis')],
+        [5000, nothing('Atlantisx')],
+        [5600, nothing('Atlantis')],
+      ] satisfies [number, string | null][];
+
+      expect(saidAsTyped(typed, typing)).toEqual([[TYPING_PAUSE_MS, nothing('Atlantis')]]);
+    });
+  }
 });
 
 /** The words handed over as a message shows each of `steps` in turn, from what it showed at mount. */

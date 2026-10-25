@@ -26,7 +26,7 @@ export interface HandOver {
 }
 
 export interface ReadAnswer {
-  /** What becomes `before` for the next words. */
+  /** What becomes `before` for the next words; with `afterTyping`, the words last said, and `shownOnceSaid` moves it on as words are said. */
   shown: string | null;
   handOver: HandOver | null;
   /** Words handed over before and still waiting are not said: the message has gone or has new words. */
@@ -55,9 +55,19 @@ export function howToReadOut(
   const afterMs = afterTyping ? TYPING_PAUSE_MS : settleMs(os);
 
   return {
-    shown: now,
+    // A key typed while words wait has said nothing yet, so the next pause with those words still says them.
+    shown: afterTyping && now != null ? before : now,
     handOver: said == null ? null : { words: said, queue: !interrupts, afterMs },
     // Each key restarts the wait, so words still waiting go with it.
     takeBack: afterTyping || now == null || said != null,
   };
+}
+
+/** What `before` becomes as `handOver` is said: once the typing stops, the words said; otherwise it is already what is shown. */
+export function shownOnceSaid(
+  shown: string | null,
+  handOver: HandOver,
+  { afterTyping }: Pick<Reading, 'afterTyping'>,
+): string | null {
+  return afterTyping ? handOver.words : shown;
 }
