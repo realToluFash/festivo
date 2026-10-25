@@ -59,8 +59,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `messages:invitations.*`, sc-2922). The web twins of the app’s Members keys are the app’s
   words, except where they put « à » or « de » straight before {{organisation}}: the web’s
   `removeBody`, `removeConfirmBody`, `removed`, `removeButton` and `empty.suspended.body` say
-  « l’organisation {{organisation}} » or « l’organisation », and the app’s are swept when next
-  touched. An invitation is feminine and its states agree with it: « En attente »,
+  « l’organisation {{organisation}} », keeping every slot English has (the parity guard counts
+  them, so « y » cannot stand in for a second {{organisation}}), and the app’s are swept when
+  next touched. An invitation is feminine and its states agree with it: « En attente »,
   « Expirée », « Retirée » (revoked and withdrawn alike), « Refusée », « Acceptée »,
   « Supprimée »; "Revoke" is « Retirer ». "Works until" is « Valable jusqu’au {{date}} ».
   Joining is « rejoindre {{organisation}} », or « rejoindre l’organisation » where no name
