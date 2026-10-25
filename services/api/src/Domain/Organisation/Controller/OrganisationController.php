@@ -88,7 +88,7 @@ final readonly class OrganisationController
         $user = $this->security->getUser();
 
         if (!$user instanceof User) {
-            throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+            throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
         }
 
         $body = Input::body($request, Type\shape([
@@ -114,7 +114,7 @@ final readonly class OrganisationController
     public function update(Request $request, string $organisationId): JsonResponse
     {
         $organisation = $this->organisationRepository->find($organisationId)
-            ?? throw ApiException::notFound('Not found.');
+            ?? throw ApiException::notFound('access.not_found');
 
         $body = Input::body($request, Type\shape([
             'name' => Type\optional(Type\string()),

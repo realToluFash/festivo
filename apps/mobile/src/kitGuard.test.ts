@@ -86,6 +86,28 @@ describe('screen reader focus moves on both platforms', () => {
   });
 });
 
+describe('a message is read out on both platforms', () => {
+  // A live region means nothing to VoiceOver, so a message marked with one alone is silent on iOS (sc-10955).
+  it('is marked only in ReadOut.tsx', () => {
+    const offenders = sources(['src', 'app'])
+      .filter(({ path }) => !path.endsWith('/ReadOut.tsx'))
+      .filter(({ text }) => readsOut(text))
+      .map(({ path }) => path);
+
+    expect(
+      offenders,
+      'Use ReadOut, useReadOut or readOut from src/components/ReadOut.tsx.',
+    ).toEqual([]);
+  });
+
+  it('notices a screen that marks a message itself', () => {
+    expect(readsOut('<View accessibilityLiveRegion="polite">')).toBe(true);
+    expect(readsOut('<Text style={styles.error} aria-live="polite">')).toBe(true);
+    expect(readsOut('AccessibilityInfo.announceForAccessibility(words);')).toBe(true);
+    expect(readsOut('<ReadOut words={saved}>')).toBe(false);
+  });
+});
+
 describe('a screen reader skips the initials beside a name', () => {
   it('on both platforms, in every tile in the app', () => {
     const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
@@ -109,6 +131,30 @@ describe('a screen reader skips the initials beside a name', () => {
         '<View accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Text>',
       ),
     ).toBe(true);
+  });
+});
+
+describe('a screen reader reaches what is inside a button', () => {
+  // iOS reads a Pressable as one item, so a button inside another is out of VoiceOver's reach (sc-10712).
+  it('in every Pressable in the app', () => {
+    const offenders = sources(['src', 'app']).flatMap(({ path, text }) =>
+      nestedPressables(text).map((line) => `${path}:${line}`),
+    );
+
+    expect(offenders, 'Make the outer press a sibling, not a parent.').toEqual([]);
+  });
+
+  it('notices a Pressable inside another', () => {
+    expect(
+      nestedPressables(
+        '<Pressable onPress={() => close()}>\n  <Pressable onPress={x} />\n</Pressable>',
+      ),
+    ).toEqual([2]);
+    expect(
+      nestedPressables(
+        '<Pressable onPress={x} />\n<Pressable style={a > b ? s : t}>\n</Pressable>',
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -267,10 +313,48 @@ function movesFocus(text: string): boolean {
   return /\b(setAccessibilityFocus|sendAccessibilityEvent)\(/u.test(text);
 }
 
+function readsOut(text: string): boolean {
+  return /\baccessibilityLiveRegion\b|\baria-live\b|\bannounceForAccessibility(WithOptions)?\(/u.test(
+    text,
+  );
+}
+
 /** importantForAccessibility="no" leaves an Android tile's letters to be read; only its descendants hidden skips them. */
 function hiddenTile(markup: string): boolean {
   return (
     /\baccessibilityElementsHidden\b/u.test(markup) &&
     /\bimportantForAccessibility="no-hide-descendants"/u.test(markup)
   );
+}
+
+/** The line of every Pressable that opens inside another one, read tag by tag. */
+function nestedPressables(text: string): number[] {
+  const nested: number[] = [];
+  let depth = 0;
+
+  for (const match of text.matchAll(/(?<![\w.])<(\/?)Pressable\b/gu)) {
+    if (match[1] === '/') {
+      depth = Math.max(0, depth - 1);
+      continue;
+    }
+    if (depth > 0) nested.push(text.slice(0, match.index).split('\n').length);
+    if (!selfCloses(text, match.index)) depth += 1;
+  }
+
+  return nested;
+}
+
+/** Whether the tag opening at `start` ends in `/>`, skipping any `>` inside a prop's braces. */
+function selfCloses(text: string, start: number): boolean {
+  let braces = 0;
+
+  for (let at = start + 1; at < text.length; at += 1) {
+    const char = text[at];
+
+    if (char === '{') braces += 1;
+    else if (char === '}') braces -= 1;
+    else if (char === '>' && braces === 0) return text[at - 1] === '/';
+  }
+
+  return false;
 }

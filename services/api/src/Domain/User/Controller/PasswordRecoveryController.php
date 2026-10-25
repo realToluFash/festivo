@@ -47,7 +47,7 @@ final readonly class PasswordRecoveryController
             $limit = $limiter->consume();
 
             if (!$limit->isAccepted()) {
-                throw ApiException::tooManyAttempts('Too many reset requests.', $limit->getRetryAfter());
+                throw ApiException::tooManyAttempts('limits.reset_requests', $limit->getRetryAfter());
             }
         }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Domain\User\SignInMethods\RecentProof;
 use App\Domain\User\TwoFactor\SecondFactorCheck;
 use App\Domain\User\TwoFactor\SecretBox;
 use App\Domain\User\UserRegistrar;
@@ -296,12 +297,28 @@ final class TwoFactorTest extends ApiTestCase
 
         $paused = $this->refusal(static fn () => $check->passCode($factor, '000000'));
         self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
-        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', $paused->getMessage());
+        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', self::worded($paused));
         self::assertArrayHasKey('Retry-After', $paused->headers);
 
         self::mockTime('+30 seconds');
         $code = $this->codeNow($secret);
         self::assertSame(ErrorCode::TooManyAttempts, $this->refusal(static fn () => $check->passCode($factor, $code))->errorCode, 'a right code waits out the pause too');
+    }
+
+    #[Test]
+    public function theProofStepsPauseSaysUntilWhenToo(): void
+    {
+        $this->turnedOn();
+        $proof = self::service(RecentProof::class);
+
+        foreach (Vec\range(1, 4) as $_) {
+            self::assertSame(ErrorCode::TwoFactorCodeInvalid, $this->refusal(fn () => $proof->prove($this->fresh(), self::PASSWORD, null, '000000'))->errorCode);
+        }
+
+        $paused = $this->refusal(fn () => $proof->prove($this->fresh(), self::PASSWORD, null, '000000'));
+        self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
+        self::assertMatchesRegularExpression('/^Too many wrong codes\. Try again at \d\d:\d\d\.$/', self::worded($paused));
+        self::assertArrayHasKey('pendingProof', $paused->members);
     }
 
     #[Test]

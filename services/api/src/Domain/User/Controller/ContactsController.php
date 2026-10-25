@@ -106,13 +106,13 @@ final readonly class ContactsController
 
     private static function id(string $id): Uuid
     {
-        return Uuid::isValid($id) ? Uuid::fromString($id) : throw ApiException::notFound('That is not linked to this account.');
+        return Uuid::isValid($id) ? Uuid::fromString($id) : throw ApiException::notFound('contacts.not_linked');
     }
 
     private function user(): User
     {
         $user = $this->security->getUser();
 
-        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
     }
 }

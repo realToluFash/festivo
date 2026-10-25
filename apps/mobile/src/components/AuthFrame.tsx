@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { Screen } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
@@ -29,6 +30,7 @@ export function AuthHeading({
   const { kind } = useLayout();
   const size = kind === 'phone' ? tokens.typeTitlePhone.size : tokens.typeTitlePage.size;
   const showIntro = intro != null && (!introBeside || kind === 'tabletLandscape');
+  const introSaid = useReadOut(introLive && showIntro ? intro : null, { quietAtMount: true });
 
   return (
     <>
@@ -44,11 +46,7 @@ export function AuthHeading({
           {title}
         </Text>
         {showIntro && (
-          <Text
-            size={tokens.typeBodyPhone.size}
-            style={styles.secondary}
-            accessibilityLiveRegion={introLive ? 'polite' : 'none'}
-          >
+          <Text size={tokens.typeBodyPhone.size} style={styles.secondary} {...introSaid}>
             {intro}
           </Text>
         )}

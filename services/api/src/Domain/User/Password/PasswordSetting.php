@@ -76,7 +76,7 @@ final readonly class PasswordSetting
             fn () => $this->entityManager->refresh($user, LockMode::PESSIMISTIC_WRITE),
             fn (): array => [$this->passwordSetAccountLimiter->create($user->getId()->toRfc4122())],
             fn (): string|WrongSecret => $this->check($user, $code),
-            'Too many tries.',
+            'limits.tries',
         );
     }
 
@@ -99,7 +99,7 @@ final readonly class PasswordSetting
             $held = $this->passwordSetCodeRepository->findOneForUser($user);
 
             if (null === $held || !$held->takeStepUp(TokenIssuer::hash($stepUp), $now)) {
-                throw new ApiException(ErrorCode::VerificationCodeExpired, 'Enter the code from the email again.');
+                throw new ApiException(ErrorCode::VerificationCodeExpired, 'code.email_again');
             }
 
             $violations = $this->newPasswordRules->violations($password, 'newPassword');
@@ -131,9 +131,9 @@ final readonly class PasswordSetting
         $now = $this->clock->now();
 
         match (true) {
-            null === $held => throw new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.'),
-            $held->isCodeExpiredAt($now) => throw new ApiException(ErrorCode::VerificationCodeExpired, 'That code has expired.'),
-            $held->isExhausted() => throw new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.'),
+            null === $held => throw new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch'),
+            $held->isCodeExpiredAt($now) => throw new ApiException(ErrorCode::VerificationCodeExpired, 'code.expired'),
+            $held->isExhausted() => throw new ApiException(ErrorCode::VerificationCodeExhausted, 'code.exhausted'),
             default => null,
         };
 
@@ -141,8 +141,8 @@ final readonly class PasswordSetting
             $held->wrongAttempt();
 
             return new WrongSecret($held->isExhausted()
-                ? new ApiException(ErrorCode::VerificationCodeExhausted, 'That code no longer works.')
-                : new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.'));
+                ? new ApiException(ErrorCode::VerificationCodeExhausted, 'code.exhausted')
+                : new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch'));
         }
 
         $stepUp = \bin2hex(SecureRandom\bytes(self::STEP_UP_BYTES));
@@ -154,7 +154,7 @@ final readonly class PasswordSetting
     private function refuseIfSet(User $user): void
     {
         if (null !== $user->getPassword()) {
-            throw new ApiException(ErrorCode::Conflict, 'This account already has a password.');
+            throw new ApiException(ErrorCode::Conflict, 'password.already_set');
         }
     }
 }

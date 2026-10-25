@@ -35,14 +35,14 @@ final readonly class EventEditor
     public function edit(Event $event, ?string $ifMatch, User $by, array $fields): Event
     {
         if (null === $ifMatch || '*' === Str\trim($ifMatch)) {
-            throw new ApiException(ErrorCode::PreconditionRequired, 'Send the version you are changing, as If-Match.');
+            throw new ApiException(ErrorCode::PreconditionRequired, 'event.version_required');
         }
 
         return $this->entityManager->wrapInTransaction(function () use ($event, $ifMatch, $by, $fields): Event {
             $this->entityManager->refresh($event, LockMode::PESSIMISTIC_WRITE);
 
             if (!EntityTag::matches($ifMatch, EntityTag::of($event->getVersion()))) {
-                throw new ApiException(ErrorCode::PreconditionFailed, 'Somebody else changed this event since you opened it.');
+                throw new ApiException(ErrorCode::PreconditionFailed, 'event.changed_since');
             }
 
             $before = self::recorded($event);
@@ -55,7 +55,7 @@ final readonly class EventEditor
             ], $event->getCurrency());
 
             if ($checked['currency'] !== $event->getCurrency() && $this->eventAmounts->anyRecordedFor($event)) {
-                throw new ApiException(ErrorCode::EventCurrencyInUse, 'The currency cannot change once amounts are recorded against the event.');
+                throw new ApiException(ErrorCode::EventCurrencyInUse, 'event.currency_in_use');
             }
 
             $event->setName($checked['name']);

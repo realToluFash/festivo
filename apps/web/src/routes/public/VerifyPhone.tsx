@@ -376,9 +376,11 @@ function Banner({
       <div className="notice-body">
         <p className="notice-title">{title}</p>
         <p>{body}</p>
-        <button className="link-button" type="button" onClick={onAction}>
-          {action}
-        </button>
+        <p className="notice-action">
+          <button className="link-button" type="button" onClick={onAction}>
+            {action}
+          </button>
+        </p>
       </div>
     </div>
   );

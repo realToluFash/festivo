@@ -64,7 +64,7 @@ final readonly class TwoFactorRecoveries
         $challenge = $this->twoFactorChallengeRepository->findOneByHash(TokenIssuer::hash($challengeToken));
 
         if (null === $challenge || !$challenge->isOpenAt($this->clock->now()) || null === $this->twoFactorFactorRepository->findActiveFor($challenge->getUser())) {
-            throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'Sign in again.');
+            throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'sign_in.again');
         }
 
         return $challenge->getUser();
@@ -96,7 +96,7 @@ final readonly class TwoFactorRecoveries
             $email = $user->getPrimaryEmailAddress();
 
             if ([] === $this->recoveryApprovers->for($user) || null === $email || !$email->isVerified()) {
-                return new ApiException(ErrorCode::RecoveryNobodyToApprove, 'Nobody in your organisation can confirm this. Contact Soirely support.');
+                return new ApiException(ErrorCode::RecoveryNobodyToApprove, 'recovery.nobody_to_approve');
             }
 
             $limit = $this->overLimit($user);
@@ -135,10 +135,10 @@ final readonly class TwoFactorRecoveries
     public function find(#[SensitiveParameter] string $handle): TwoFactorRecovery
     {
         $recovery = $this->twoFactorRecoveryRepository->findOneByHandle(TokenIssuer::hash($handle))
-            ?? throw new ApiException(ErrorCode::RecoveryRequestInvalid, 'Start again from the sign-in code screen.');
+            ?? throw new ApiException(ErrorCode::RecoveryRequestInvalid, 'recovery.start_again');
 
         if (TwoFactorRecoveryStatus::Replaced === $recovery->statusAt($this->clock->now())) {
-            throw new ApiException(ErrorCode::RecoveryRequestReplaced, 'A newer request was started on another device. Start again to ask from here.', [], null, [], ['requestStatus' => TwoFactorRecoveryStatus::Replaced->value]);
+            throw new ApiException(ErrorCode::RecoveryRequestReplaced, 'recovery.replaced', [], null, [], ['requestStatus' => TwoFactorRecoveryStatus::Replaced->value]);
         }
 
         return $recovery;
@@ -159,7 +159,7 @@ final readonly class TwoFactorRecoveries
         $left = $this->cooldownSeconds($recovery);
 
         if ($left > 0) {
-            throw new ApiException(ErrorCode::TooManyAttempts, 'Wait before asking for new codes.', [], null, ['Retry-After' => (string) $left]);
+            throw new ApiException(ErrorCode::TooManyAttempts, 'recovery.codes_wait', [], null, ['Retry-After' => (string) $left]);
         }
 
         $this->entityManager->wrapInTransaction(function () use ($recovery): void {
@@ -172,7 +172,7 @@ final readonly class TwoFactorRecoveries
     {
         $this->proving($recovery);
         $phone = $recovery->getPhoneNumber()
-            ?? throw new ApiException(ErrorCode::Conflict, 'This request has no phone code.');
+            ?? throw new ApiException(ErrorCode::Conflict, 'recovery.no_phone_code');
 
         $this->phoneCodeDispatch->textInstead($phone);
     }
@@ -216,7 +216,7 @@ final readonly class TwoFactorRecoveries
                 $challenge = $this->verificationChallengeRepository->findLiveFor($contact);
 
                 if (null === $challenge) {
-                    return new ApiException(ErrorCode::VerificationCodeExpired, 'Those codes have expired.');
+                    return new ApiException(ErrorCode::VerificationCodeExpired, 'recovery.codes_expired');
                 }
 
                 try {
@@ -227,12 +227,12 @@ final readonly class TwoFactorRecoveries
                         return $e;
                     }
 
-                    $wrong[] = ['propertyPath' => $field, 'message' => 'That code does not match.', 'code' => ErrorCode::VerificationCodeInvalid->value];
+                    $wrong[] = ['propertyPath' => $field, 'message' => 'code.mismatch', 'code' => ErrorCode::VerificationCodeInvalid->value];
                 }
             }
 
             if ([] !== $wrong) {
-                return new ApiException(ErrorCode::VerificationCodeInvalid, 'That code does not match.', $wrong);
+                return new ApiException(ErrorCode::VerificationCodeInvalid, 'code.mismatch', $wrong);
             }
 
             $now = $this->clock->now();
@@ -247,7 +247,7 @@ final readonly class TwoFactorRecoveries
                 $this->audit('two_factor_recovery.nobody_to_approve', $recovery, Actor::System, null);
                 $this->entityManager->flush();
 
-                return new ApiException(ErrorCode::RecoveryNobodyToApprove, 'Nobody in your organisation can confirm this. Contact Soirely support.');
+                return new ApiException(ErrorCode::RecoveryNobodyToApprove, 'recovery.nobody_to_approve');
             }
 
             $recovery->proved($now);
@@ -268,7 +268,7 @@ final readonly class TwoFactorRecoveries
     public function cancel(TwoFactorRecovery $recovery): void
     {
         if (!$recovery->statusAt($this->clock->now())->isOpen()) {
-            throw new ApiException(ErrorCode::RecoveryRequestClosed, 'This request has already ended.', [], null, [], ['requestStatus' => $recovery->statusAt($this->clock->now())->value]);
+            throw new ApiException(ErrorCode::RecoveryRequestClosed, 'recovery.closed', [], null, [], ['requestStatus' => $recovery->statusAt($this->clock->now())->value]);
         }
 
         $this->notMe($recovery->getUser());
@@ -341,8 +341,8 @@ final readonly class TwoFactorRecoveries
 
         return match ($status) {
             TwoFactorRecoveryStatus::Proving => null,
-            TwoFactorRecoveryStatus::Waiting => new ApiException(ErrorCode::RecoveryRequestProved, 'This request is already waiting for an answer.', [], null, [], ['requestStatus' => $status->value]),
-            default => new ApiException(ErrorCode::RecoveryRequestClosed, 'This request has already ended.', [], null, [], ['requestStatus' => $status->value]),
+            TwoFactorRecoveryStatus::Waiting => new ApiException(ErrorCode::RecoveryRequestProved, 'recovery.waiting', [], null, [], ['requestStatus' => $status->value]),
+            default => new ApiException(ErrorCode::RecoveryRequestClosed, 'recovery.closed', [], null, [], ['requestStatus' => $status->value]),
         };
     }
 
@@ -358,7 +358,7 @@ final readonly class TwoFactorRecoveries
         $locale = $this->userMailer->shownLocaleFor($user);
 
         return ApiException::tooManyAttemptsUntil(
-            'You can ask 3 times a day.',
+            'limits.recoveries_per_day',
             $started[Iter\count($started) - TwoFactorRecovery::PER_DAY]->modify('+24 hours'),
             fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $user, $locale),
         );

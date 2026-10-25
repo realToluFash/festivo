@@ -189,13 +189,13 @@ final readonly class LinkedContacts
     private function ownEmail(User $user, Uuid $id): EmailAddress
     {
         return Iter\search($user->getEmailAddresses(), static fn (EmailAddress $held): bool => $held->getId()->equals($id))
-            ?? throw ApiException::notFound('That address is not linked to this account.');
+            ?? throw ApiException::notFound('contacts.address_not_linked');
     }
 
     private function ownPhone(User $user, Uuid $id): PhoneNumber
     {
         return Iter\search($user->getPhoneNumbers(), static fn (PhoneNumber $held): bool => $held->getId()->equals($id) && !$held->isPending())
-            ?? throw ApiException::notFound('That number is not linked to this account.');
+            ?? throw ApiException::notFound('contacts.number_not_linked');
     }
 
     /** @param callable(): (EmailAddress|PhoneNumber|ApiException) $add returned, not thrown: a throw closes the manager */
@@ -224,7 +224,7 @@ final readonly class LinkedContacts
         $limit = $this->contactAddAccountLimiter->create($user->getId()->toRfc4122())->consume();
 
         if (!$limit->isAccepted()) {
-            throw ApiException::tooManyAttempts('Too many tries.', $limit->getRetryAfter());
+            throw ApiException::tooManyAttempts('limits.tries', $limit->getRetryAfter());
         }
     }
 

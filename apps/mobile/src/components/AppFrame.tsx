@@ -28,6 +28,7 @@ import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut, useReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
@@ -94,6 +95,7 @@ export function AppFrame({
   const pill = useRef<View>(null);
   const creatingFrom = useRef<View>(null);
   const [created, setCreated] = useState<string | null>(null);
+  const switched = created == null ? null : t('switcher.switched', { name: created });
   const [backHidden, setBackHidden] = useState(false);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
@@ -140,14 +142,10 @@ export function AppFrame({
           pill={pill}
         />
         <View style={styles.body}>
-          {created != null && (
-            <View style={styles.created} accessibilityLiveRegion="polite">
-              <Notice
-                tone="done"
-                mark={tokens.marks.done.glyph}
-                body={t('switcher.switched', { name: created })}
-              />
-            </View>
+          {switched != null && (
+            <ReadOut style={styles.created} words={switched}>
+              <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
+            </ReadOut>
           )}
           <OpenSwitcher.Provider value={openSwitcher}>
             <StartOrganisation.Provider value={startOrganisation}>
@@ -545,6 +543,7 @@ function Switcher({
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
+  const { width, height } = useLayout();
 
   return (
     <Modal
@@ -554,8 +553,21 @@ function Switcher({
       supportedOrientations={TURNS_WITH_THE_APP}
       onRequestClose={onClose}
     >
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('switcher.close')}>
-        <View style={styles.sheetFrame} onStartShouldSetResponder={() => true}>
+      {/* Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118). */}
+      <View
+        style={[styles.scrim, { width, height }]}
+        accessibilityViewIsModal
+        onAccessibilityEscape={onClose}
+      >
+        {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).
+            VoiceOver closes the sheet from this Close or the two-finger escape on the scrim. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={t('switcher.close')}
+        />
+        <View style={styles.sheetFrame}>
           <ScrollView contentContainerStyle={styles.sheet}>
             <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
               {t('switcher.heading')}
@@ -636,7 +648,7 @@ function Switcher({
             )}
           </ScrollView>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -646,6 +658,13 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const unavailable = t('domainJoining.unavailable');
+  const unavailableLive = useReadOut(failed ? unavailable : null);
+  const waiting = t('domainJoining.waiting');
+  const asked = t('domainJoining.switcherAsked', { email });
+  const askedLive = useReadOut(offer.asked ? `${waiting}\n${asked}` : null, {
+    quietAtMount: true,
+  });
 
   async function ask(): Promise<void> {
     setBusy(true);
@@ -669,22 +688,25 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
         {t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}
       </Text>
       {offer.asked ? (
-        <View style={styles.offerAsked} accessibilityLiveRegion="polite">
+        <View style={styles.offerAsked} {...askedLive}>
           <View style={styles.offerRing} />
           <View style={styles.offerAskedWords}>
             <Text size={tokens.typeBody.size} weight="semibold">
-              {t('domainJoining.waiting')}
+              {waiting}
             </Text>
-            <Text size={tokens.typeBody.size}>
-              {`· ${t('domainJoining.switcherAsked', { email })}`}
-            </Text>
+            <Text size={tokens.typeBody.size}>{`· ${asked}`}</Text>
           </View>
         </View>
       ) : (
         <>
           {failed && (
-            <Text size={tokens.typeBody.size} style={styles.broken} accessibilityRole="alert">
-              {t('domainJoining.unavailable')}
+            <Text
+              size={tokens.typeBody.size}
+              style={styles.broken}
+              accessibilityRole="alert"
+              {...unavailableLive}
+            >
+              {unavailable}
             </Text>
           )}
           <View style={styles.offerButtons}>
@@ -894,7 +916,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccentTint,
   },
   scrim: {
-    flex: 1,
     justifyContent: 'center',
     padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,

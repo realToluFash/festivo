@@ -57,7 +57,7 @@ final readonly class TwoFactorSettings
         $existing = $this->twoFactorFactorRepository->findOneFor($user);
 
         if (null !== $existing && $existing->isActive()) {
-            throw new ApiException(ErrorCode::TwoFactorAlreadyOn, 'Two-factor is already on.');
+            throw new ApiException(ErrorCode::TwoFactorAlreadyOn, 'two_factor.already_on');
         }
 
         if (null !== $existing) {
@@ -81,7 +81,7 @@ final readonly class TwoFactorSettings
         $factor = $this->twoFactorFactorRepository->findOneFor($user);
 
         if (null === $factor || $factor->isActive()) {
-            throw new ApiException(ErrorCode::TwoFactorNotEnrolled, 'Start setting up two-factor first.');
+            throw new ApiException(ErrorCode::TwoFactorNotEnrolled, 'two_factor.not_enrolled');
         }
 
         $this->secondFactorCheck->passCode($factor, $code);
@@ -118,7 +118,7 @@ final readonly class TwoFactorSettings
         if (null !== $requiring) {
             throw new ApiException(
                 ErrorCode::TwoFactorKeptByRule,
-                'Your organisation requires two-factor, so you cannot turn it off.',
+                'two_factor.required_by_organisation',
                 [],
                 null,
                 [],
@@ -138,6 +138,6 @@ final readonly class TwoFactorSettings
     private function active(User $user): TwoFactorFactor
     {
         return $this->twoFactorFactorRepository->findActiveFor($user)
-            ?? throw new ApiException(ErrorCode::TwoFactorOff, 'Two-factor is not on.');
+            ?? throw new ApiException(ErrorCode::TwoFactorOff, 'two_factor.off');
     }
 }

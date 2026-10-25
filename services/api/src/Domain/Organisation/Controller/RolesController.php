@@ -44,7 +44,7 @@ final readonly class RolesController
     public function permissions(string $organisationId): JsonResponse
     {
         $grants = $this->membershipDirectory->grantsIn($this->user(), Uuid::fromString($organisationId))
-            ?? throw ApiException::notFound('Not found.');
+            ?? throw ApiException::notFound('access.not_found');
 
         return new JsonResponse([
             'permissions' => Vec\map(
@@ -134,13 +134,13 @@ final readonly class RolesController
 
     private function organisation(string $id): Organisation
     {
-        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('Not found.');
+        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('access.not_found');
     }
 
     private function user(): User
     {
         $user = $this->security->getUser();
 
-        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
     }
 }

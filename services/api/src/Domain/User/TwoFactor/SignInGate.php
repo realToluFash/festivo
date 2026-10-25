@@ -71,18 +71,18 @@ final readonly class SignInGate
         $now = $this->clock->now();
 
         if (null === $challenge || !$challenge->isOpenAt($now)) {
-            throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'Sign in again.');
+            throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'sign_in.again');
         }
 
         $user = $challenge->getUser();
         // Turned off since the challenge was made: the first factor still has to be repeated.
         $factor = $this->twoFactorFactorRepository->findActiveFor($user)
-            ?? throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'Sign in again.');
+            ?? throw new ApiException(ErrorCode::TwoFactorChallengeInvalid, 'sign_in.again');
 
         match (true) {
             null !== $code => $this->secondFactorCheck->passCode($factor, $code),
             null !== $recoveryCode => $this->secondFactorCheck->passRecoveryCode($factor, $recoveryCode),
-            default => throw new ApiException(ErrorCode::BadRequest, 'Send a code or a recoveryCode.'),
+            default => throw new ApiException(ErrorCode::BadRequest, 'two_factor.code_or_recovery_code'),
         };
 
         $challenge->markUsed($now);

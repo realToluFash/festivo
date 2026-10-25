@@ -1,9 +1,10 @@
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { findLiterals } from './literals.ts';
+import { sourcesOf } from './sources.ts';
 import { LITERAL_EXEMPT, ROOT, SURFACES } from './surfaces.ts';
 
 /**
@@ -13,32 +14,6 @@ import { LITERAL_EXEMPT, ROOT, SURFACES } from './surfaces.ts';
  * perfectly in English, has no key, and is simply absent in the other three
  * languages. No type error, no failing request, no log line.
  */
-interface Source {
-  path: string;
-  text: string;
-}
-
-function sourcesOf(roots: readonly string[]): Source[] {
-  const found: Source[] = [];
-
-  const walk = (dir: string): void => {
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
-        walk(path);
-      } else if (/\.tsx?$/.test(entry.name) && !entry.name.includes('.test.')) {
-        found.push({ path: relative(ROOT, path), text: readFileSync(path, 'utf8') });
-      }
-    }
-  };
-
-  for (const root of roots) walk(join(ROOT, root));
-
-  return found;
-}
-
 const exemptPaths = new Set(LITERAL_EXEMPT.map((e) => e.path));
 
 describe.each(SURFACES.filter((s) => s.sources.length > 0).map((s) => [s.name, s] as const))(

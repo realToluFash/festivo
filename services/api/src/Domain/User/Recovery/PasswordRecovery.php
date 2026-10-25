@@ -95,12 +95,12 @@ final readonly class PasswordRecovery
     ): void {
         $reset = $this->usable($token);
         $factor = $this->twoFactorFactorRepository->findActiveFor($reset->getUser())
-            ?? throw new ApiException(ErrorCode::TwoFactorOff, 'Two-factor is not on.');
+            ?? throw new ApiException(ErrorCode::TwoFactorOff, 'two_factor.off');
 
         match (true) {
             null !== $code => $this->secondFactorCheck->passCode($factor, $code),
             null !== $recoveryCode => $this->secondFactorCheck->passRecoveryCode($factor, $recoveryCode),
-            default => throw new ApiException(ErrorCode::BadRequest, 'Send a code or a recoveryCode.'),
+            default => throw new ApiException(ErrorCode::BadRequest, 'two_factor.code_or_recovery_code'),
         };
 
         $reset->passedSecondFactor($this->clock->now());
@@ -121,7 +121,7 @@ final readonly class PasswordRecovery
         $now = $this->clock->now();
 
         if ($this->asksForSecondFactor($user) && !$reset->hasPassedSecondFactor()) {
-            throw new ApiException(ErrorCode::TwoFactorRequired, 'Enter the code from your authenticator app first.');
+            throw new ApiException(ErrorCode::TwoFactorRequired, 'two_factor.code_first');
         }
 
         $user->setPassword($this->passwordResolver->hash($password));
@@ -155,15 +155,15 @@ final readonly class PasswordRecovery
         $reset = '' === $token ? null : $this->passwordResetTokenRepository->findOneByHash(TokenIssuer::hash($token));
 
         if (null === $reset) {
-            throw new ApiException(ErrorCode::ResetLinkInvalid, 'That reset link is not one Soirely sent.');
+            throw new ApiException(ErrorCode::ResetLinkInvalid, 'password.reset_link_invalid');
         }
 
         if ($reset->isUsed()) {
-            throw new ApiException(ErrorCode::ResetLinkUsed, 'This link has already been used.');
+            throw new ApiException(ErrorCode::ResetLinkUsed, 'password.reset_link_used');
         }
 
         if ($reset->isExpiredAt($this->clock->now())) {
-            throw new ApiException(ErrorCode::ResetLinkExpired, 'This link has expired.');
+            throw new ApiException(ErrorCode::ResetLinkExpired, 'password.reset_link_expired');
         }
 
         return $reset;

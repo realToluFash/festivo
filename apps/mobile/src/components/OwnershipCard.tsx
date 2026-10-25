@@ -20,6 +20,7 @@ import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field, FieldError, TextField } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -78,9 +79,9 @@ export function OwnershipCard({
       {step.kind === 'resting' && (
         <>
           {step.flash != null && (
-            <View accessibilityLiveRegion="polite">
+            <ReadOut words={step.flash}>
               <Notice tone="done" mark={tokens.marks.done.glyph} body={step.flash} />
-            </View>
+            </ReadOut>
           )}
           {owner && (
             <Row
@@ -266,9 +267,9 @@ function Transfer({
       </Text>
 
       {refused?.field === null && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+        <ReadOut words={refused.message} interrupts accessibilityRole="alert">
           <Notice tone="broken" mark={tokens.marks.broken.glyph} body={refused.message} />
-        </View>
+        </ReadOut>
       )}
 
       <View ref={ownerRow} accessibilityRole="radiogroup" style={styles.choices}>
@@ -382,6 +383,8 @@ function Leave({
   const [refused, setRefused] = useState<string | null>(null);
   const [refusedLast, setRefusedLast] = useState(false);
   const name = organisation.name;
+  const onlyOwnerTitle = t('ownership.onlyOwnerTitle');
+  const onlyOwnerBody = t('ownership.onlyOwnerBody');
 
   async function leave(): Promise<void> {
     setBusy(true);
@@ -404,14 +407,13 @@ function Leave({
       </Text>
       {onlyOwner || refusedLast ? (
         <>
-          <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-            <Notice
-              tone="attention"
-              mark="!"
-              title={t('ownership.onlyOwnerTitle')}
-              body={t('ownership.onlyOwnerBody')}
-            />
-          </View>
+          <ReadOut
+            words={`${onlyOwnerTitle}\n${onlyOwnerBody}`}
+            interrupts
+            accessibilityRole="alert"
+          >
+            <Notice tone="attention" mark="!" title={onlyOwnerTitle} body={onlyOwnerBody} />
+          </ReadOut>
           <PrimaryButton
             label={t('ownership.transfer')}
             onPress={onTransfer}
@@ -505,9 +507,9 @@ function Delete({
         }
       />
       {failed != null && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+        <ReadOut words={failed} interrupts accessibilityRole="alert">
           <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
-        </View>
+        </ReadOut>
       )}
       <View {...aboveKeyboard} style={styles.form}>
         <Field

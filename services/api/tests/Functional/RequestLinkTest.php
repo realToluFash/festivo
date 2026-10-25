@@ -304,7 +304,7 @@ final class RequestLinkTest extends ApiTestCase
             self::fail('A sixth request was let through.');
         } catch (ApiException $refusal) {
             self::assertSame(ErrorCode::TooManyAttempts, $refusal->errorCode);
-            self::assertStringStartsWith('Too many requests for now. Try again at ', $refusal->getMessage());
+            self::assertStringStartsWith('Too many requests for now. Try again at ', self::worded($refusal));
             self::assertArrayHasKey('Retry-After', $refusal->headers);
         }
 

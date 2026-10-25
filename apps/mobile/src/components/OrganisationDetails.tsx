@@ -37,6 +37,7 @@ import { CountryPicker, focusPicker } from './CountryPicker.tsx';
 import { Field, TextField } from './Field.tsx';
 import { ListPicker } from './ListPicker.tsx';
 import { Notice } from './Notice.tsx';
+import { ReadOut } from './ReadOut.tsx';
 import { Text } from './Text.tsx';
 
 type Status = 'editing' | 'saving' | 'saved' | 'failed';
@@ -145,27 +146,23 @@ export function EditableDetails({
     setStatus(outcome.kind === 'refused' ? 'editing' : outcome.kind);
   }
 
+  const saved =
+    newLanguage == null
+      ? t('orgGeneral.saved', { name: organisation.name })
+      : t('orgGeneral.savedLanguage', { language: languageNameInSentence(t, newLanguage) });
+  const failed = t('orgGeneral.failed');
+
   return (
     <>
       {status === 'saved' && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            body={
-              newLanguage == null
-                ? t('orgGeneral.saved', { name: organisation.name })
-                : t('orgGeneral.savedLanguage', {
-                    language: languageNameInSentence(t, newLanguage),
-                  })
-            }
-          />
-        </View>
+        <ReadOut words={saved}>
+          <Notice tone="done" mark={tokens.marks.done.glyph} body={saved} />
+        </ReadOut>
       )}
       {status === 'failed' && (
-        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={t('orgGeneral.failed')} />
-        </View>
+        <ReadOut words={failed} interrupts accessibilityRole="alert">
+          <Notice tone="broken" mark={tokens.marks.broken.glyph} body={failed} />
+        </ReadOut>
       )}
 
       <View style={cardFrame(kind)}>

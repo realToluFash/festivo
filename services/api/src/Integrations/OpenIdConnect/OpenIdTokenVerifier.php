@@ -177,6 +177,6 @@ final readonly class OpenIdTokenVerifier implements IdTokenVerifierInterface
 
     private static function refused(): ApiException
     {
-        return new ApiException(ErrorCode::OAuthTokenInvalid, 'That sign-in could not be checked.');
+        return new ApiException(ErrorCode::OAuthTokenInvalid, 'provider.unchecked');
     }
 }
