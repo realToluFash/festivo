@@ -53,6 +53,7 @@ describe('a single-surface change runs that surface and no other', () => {
       'services/api/tests/Fixtures/LocalTime/wall-clock-times.json',
     ],
     ['the regions the domain reads', 'services/api/src/Domain/Organisation/Regions.php'],
+    ['the domain refusals the cards read', 'services/api/src/Enum/DomainRefusal.php'],
   ])('%s runs the packages', (_name, path) => {
     expect(changedSurfaces([path]).packages).toBe(true);
   });
