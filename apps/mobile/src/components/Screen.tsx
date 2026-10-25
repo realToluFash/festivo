@@ -10,17 +10,14 @@ import {
   useState,
 } from 'react';
 import {
-  AccessibilityInfo,
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Platform,
   ScrollView,
   type StyleProp,
   StyleSheet,
   View,
   type ViewStyle,
-  findNodeHandle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -35,6 +32,7 @@ import {
   shownEnd,
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
+import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
@@ -251,8 +249,8 @@ function bringIntoView(scroll: ScreenScrollView | null, line: View | null): void
   });
 }
 
-/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it, or on Android, where TalkBack ignores that focus (sc-9950), reads its words out. */
-export function useBroughtIntoView(words: string): RefObject<View | null> {
+/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it. */
+export function useBroughtIntoView(): RefObject<View | null> {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
 
@@ -262,16 +260,11 @@ export function useBroughtIntoView(words: string): RefObject<View | null> {
     const focus = setTimeout(() => {
       // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
       bringIntoView(scroll, ref.current);
-      if (Platform.OS === 'android') {
-        AccessibilityInfo.announceForAccessibility(words);
-        return;
-      }
-      const node = findNodeHandle(ref.current);
-      if (node != null) AccessibilityInfo.setAccessibilityFocus(node);
+      moveScreenReaderFocus(ref.current);
     }, SETTLED_MS);
 
     return () => clearTimeout(focus);
-  }, [scroll, words]);
+  }, [scroll]);
 
   return ref;
 }

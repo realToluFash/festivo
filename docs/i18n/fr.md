@@ -54,6 +54,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
+  « Modifier les informations », never « détails »; "Save changes" « Enregistrer les
+  modifications ». A refused save starts « Non enregistré. »; the colleague is « quelqu’un
+  d’autre », as `errors:precondition_failed`. What was typed is « ce que vous avez saisi ».
+  After a save the live region says « Modifications enregistrées », not a bare « Enregistré ».
+  The currency refusal is one sentence in `web` and `errors`, « … pour cet événement ».
 - **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
   `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
   sc-8735). « Suspendre {{name}} », « Rétablir l’accès ». What is suspended is « l’accès », so
