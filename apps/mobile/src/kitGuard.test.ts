@@ -467,6 +467,12 @@ describe('a contact confirmation shows its request running, its way back off (sc
 
     expect(off).toEqual(['{`contacts.${row.id}.keep`}', '{`contacts.${kind}.cancel`}']);
   });
+
+  it('back on Make this your primary address? when a change fails past the check', () => {
+    expect(text).toMatch(
+      /else if \(proof != null\) setAsking\(\{ id: row\.id, what: 'promote' \}\);/u,
+    );
+  });
 });
 
 describe('a screen is a composition of the kit', () => {
@@ -488,6 +494,31 @@ describe('a screen is a composition of the kit', () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('a way back that names an outcome is off while its request runs (sc-12511)', () => {
+  it('in Ownership and leaving, on Keep ownership, Stay and Keep ‹organisation›', () => {
+    const text = readFileSync(join('src', 'components', 'OwnershipCard.tsx'), 'utf8');
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{busy\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual([
+      '"ownership.transfer.keep"',
+      '"ownership.leave.stay"',
+      '"ownership.delete.keep"',
+    ]);
+  });
+
+  it('where QuietButton taken off cannot be pressed, and is read as off', () => {
+    const text = readFileSync(join('src', 'components', 'Buttons.tsx'), 'utf8');
+    const body = text.slice(text.indexOf('export function QuietButton('));
+    const start = body.indexOf('<Pressable');
+    const pressable = body.slice(start, tagEnd(body, start));
+
+    expect(propValue(pressable, 'disabled')).toBe('{off}');
+    expect(propValue(pressable, 'accessibilityState')).toBe('{{ disabled: off }}');
   });
 });
 
