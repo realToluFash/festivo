@@ -875,10 +875,11 @@ const styles = StyleSheet.create({
   levelsBeside: { flexShrink: 0 },
   levelsWrap: { flexWrap: 'wrap' },
   level: {
-    height: tokens.sizeHit,
+    minHeight: tokens.sizeHit,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: LEVEL_PADDING,
+    paddingVertical: tokens.spaceXs,
     borderRadius: tokens.sizeHit / 2,
     borderWidth: 1,
     borderColor: tokens.colorControlBorder,
