@@ -267,6 +267,14 @@ describe('verifying an email address', () => {
     expect(screen.queryByLabelText('Code from the email')).toBeNull();
   });
 
+  it('says the account is still signed in when it cannot reach Soirely', () => {
+    __setSessionState({ status: 'unreachable', retrying: false });
+
+    open();
+
+    expect(screen.getByRole('status').textContent).toMatch(/You are still signed in\./);
+  });
+
   it('sends somebody with no session to sign in', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
 
