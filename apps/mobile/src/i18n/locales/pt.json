@@ -1226,6 +1226,8 @@
     "onlyOwnerRestoreNeedsAddress": "O acesso só pode ser reposto quando o endereço de e-mail principal desta pessoa voltar a ser um endereço de {{domain}} verificado.",
     "restore": "Repor",
     "restored": "O acesso de {{name}} a {{organisation}} foi reposto.",
+    "restoredNow": "{{name}} voltou a ter acesso, com a função {{role}}.",
+    "restoredNowNext": "Esta pessoa volta a ter acesso a {{organisation}} assim que usar a Soirely e é avisada por e-mail, no idioma que usa.",
     "restoreNeedsAddress": "{{name}} precisa primeiro de um endereço de {{domain}} verificado.",
     "noRoleYet": "Ainda sem função",
     "awaiting": {
