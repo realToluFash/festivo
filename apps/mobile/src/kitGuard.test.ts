@@ -87,7 +87,7 @@ describe('screen reader focus moves on both platforms', () => {
 });
 
 describe('a message is read out on both platforms', () => {
-  // A live region means nothing to VoiceOver, so a message marked with one alone is silent on iOS (sc-10955).
+  // VoiceOver has no live region, and Fabric flattens away a layout-only View along with its live region, so a message marked with one can be silent (sc-10955).
   it('is marked only in ReadOut.tsx', () => {
     const offenders = sources(['src', 'app'])
       .filter(({ path }) => !path.endsWith('/ReadOut.tsx'))

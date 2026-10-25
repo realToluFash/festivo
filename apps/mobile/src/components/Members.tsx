@@ -121,10 +121,10 @@ function Avatar({ name, large = false }: { name: string; large?: boolean }) {
 /** Scrolled into view when it appears, since the answer was given further down the list. */
 function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => void }) {
   const top = useScrolledToTop();
-  const live = useReadOut(answered.text);
+  useReadOut(answered.text);
 
   return (
-    <View ref={top} {...live}>
+    <View ref={top}>
       <Notice
         tone="done"
         mark={tokens.marks.done.glyph}

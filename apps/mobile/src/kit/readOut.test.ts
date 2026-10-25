@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { howToReadOut, newWords, shownAtMount, type Reading } from './readOut.ts';
+import {
+  howToReadOut,
+  newWords,
+  settleMs,
+  shownAtMount,
+  TALKBACK_SETTLE_MS,
+  type Reading,
+} from './readOut.ts';
 
 describe('a message read out', () => {
   it('is said as it appears', () => {
@@ -47,46 +54,42 @@ function handedOver(atMount: string | null, steps: (string | null)[], reading: R
 describe('which screen reader gets a message, and how', () => {
   const plain = { once: false, interrupts: false };
 
-  it('on iOS, every new message is handed to VoiceOver, with no live region', () => {
+  it('on iOS, every new message is handed to VoiceOver at once', () => {
     expect(howToReadOut(null, 'Saved.', { ...plain, os: 'ios' })).toEqual({
       shown: 'Saved.',
-      handOver: { words: 'Saved.', queue: true },
-      liveRegion: undefined,
+      handOver: { words: 'Saved.', queue: true, afterMs: 0 },
+      takeBack: true,
     });
   });
 
-  it('on Android, a message sets a live region and is not handed over', () => {
+  it('on Android, every new message is handed to TalkBack once its focus has settled', () => {
     expect(howToReadOut(null, 'Saved.', { ...plain, os: 'android' })).toEqual({
       shown: 'Saved.',
-      handOver: null,
-      liveRegion: 'polite',
+      handOver: { words: 'Saved.', queue: true, afterMs: TALKBACK_SETTLE_MS },
+      takeBack: true,
     });
   });
 
-  it('a message said once is handed over on both, with no live region', () => {
+  it('a message said once is handed over on both', () => {
     for (const os of ['ios', 'android']) {
-      expect(howToReadOut(null, 'No match.', { os, once: true, interrupts: false })).toEqual({
-        shown: 'No match.',
-        handOver: { words: 'No match.', queue: true },
-        liveRegion: undefined,
-      });
+      expect(
+        howToReadOut(null, 'No match.', { os, once: true, interrupts: false }).handOver,
+      ).toEqual(expect.objectContaining({ words: 'No match.', queue: true }));
     }
   });
 
-  it('a message that interrupts is assertive on Android and not queued on iOS', () => {
+  it('a message that interrupts is not queued', () => {
     const interrupting = { once: false, interrupts: true };
 
-    expect(howToReadOut(null, 'Not saved.', { ...interrupting, os: 'android' }).liveRegion).toBe(
-      'assertive',
-    );
     expect(howToReadOut(null, 'Not saved.', { ...interrupting, os: 'ios' }).handOver).toEqual({
       words: 'Not saved.',
       queue: false,
+      afterMs: 0,
     });
   });
 
-  it('sets no live region once the message has gone', () => {
-    expect(howToReadOut('Saved.', null, { ...plain, os: 'android' }).liveRegion).toBeUndefined();
+  it('hands nothing over once the message has gone', () => {
+    expect(howToReadOut('Saved.', null, { ...plain, os: 'android' }).handOver).toBeNull();
   });
 
   it('says nothing of words already there at mount, when quiet at mount', () => {
@@ -94,7 +97,7 @@ describe('which screen reader gets a message, and how', () => {
 
     expect(handedOver(shownAtMount(intro, true), [intro], { ...plain, os: 'ios' })).toEqual([null]);
     expect(handedOver(shownAtMount(intro, false), [intro], { ...plain, os: 'ios' })).toEqual([
-      { words: intro, queue: true },
+      { words: intro, queue: true, afterMs: 0 },
     ]);
   });
 
@@ -102,9 +105,44 @@ describe('which screen reader gets a message, and how', () => {
     const once = { os: 'ios', once: true, interrupts: false };
 
     expect(handedOver(null, ['No match for “Atl”.', null, 'No match for “Lon”.'], once)).toEqual([
-      { words: 'No match for “Atl”.', queue: true },
+      { words: 'No match for “Atl”.', queue: true, afterMs: 0 },
       null,
-      { words: 'No match for “Lon”.', queue: true },
+      { words: 'No match for “Lon”.', queue: true, afterMs: 0 },
     ]);
+  });
+});
+
+describe('words still waiting to be said', () => {
+  const plain = { os: 'android', once: false, interrupts: false };
+
+  it('are taken back as the message goes, though the screen stays', () => {
+    const nothing = 'No time zone matches “Atlantis”.';
+
+    expect(howToReadOut(nothing, null, { ...plain, once: true }).takeBack).toBe(true);
+    expect(howToReadOut('You cannot ask to join that organisation.', null, plain).takeBack).toBe(
+      true,
+    );
+  });
+
+  it('are taken back when new words replace them', () => {
+    expect(howToReadOut('Saved.', 'Not saved.', plain).takeBack).toBe(true);
+  });
+
+  it('are kept while a message read once stays with new words', () => {
+    expect(
+      howToReadOut('No match for “Atl”.', 'No match for “Atla”.', { ...plain, once: true })
+        .takeBack,
+    ).toBe(false);
+  });
+
+  it('are kept while the words stay', () => {
+    expect(howToReadOut('Saved.', 'Saved.', plain).takeBack).toBe(false);
+  });
+});
+
+describe('the settle before words are handed over', () => {
+  it('is TalkBack’s alone', () => {
+    expect(settleMs('android')).toBe(TALKBACK_SETTLE_MS);
+    expect(settleMs('ios')).toBe(0);
   });
 });
