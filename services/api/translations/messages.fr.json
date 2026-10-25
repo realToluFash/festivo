@@ -28,7 +28,7 @@
     "roles.owner_fixed": "Le rôle Propriétaire est intégré et ne peut être ni modifié ni supprimé. Il comprend toujours tout.",
     "roles.permission_unknown": "Cette autorisation n’existe pas dans Soirely. Rechargez la page et réessayez.",
     "roles.replacement_invalid": "Choisissez un autre rôle de cette organisation.",
-    "roles.replacement_required": "Choisissez le rôle que ces personnes reçoivent.",
+    "roles.replacement_required": "Choisissez le rôle de remplacement.",
     "roles.seeded_kept": "Les rôles intégrés ne peuvent pas être supprimés, mais vous pouvez modifier ce qu’ils comprennent. Si personne n’a besoin de celui-ci, ne l’attribuez à aucun membre.",
     "seeded_role.administrator": "Administrateur",
     "seeded_role.coordinator": "Coordinateur",

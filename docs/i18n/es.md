@@ -388,3 +388,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   a sentence. A request started elsewhere is reported in the perfect, «Se ha iniciado…», on
   screen and in `errors:recovery_request_replaced` alike. The daily limit is worded as
   `limitedBody` words it: «una de las 3 veces al día que puede pedirlo» (sc-1457).
+- **25 Oct 2026. Moving the people off a removed role** is worded so it reads for one person
+  or many, because the button and the refusal get no {{count}}: «Reasignar y eliminar {{role}}»,
+  and «Elija el rol de sustitución», the same noun as the legend «Rol de sustitución». Not
+  «Pasarlas…» or «estas personas» after «1 persona tiene este rol» (sc-13017).
