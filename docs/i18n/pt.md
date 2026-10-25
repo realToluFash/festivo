@@ -41,6 +41,14 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, "Só alguém com a função Proprietário…", as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word, and `restore` the second sentence of `ownership.deleteWindow`, "restaurá-la" included.
+  The subject is "A organização {organisation} foi eliminada", so the participle agrees with
+  "organização", never with a name. The date is "a {when}", as `password.changed.body`. The
+  footer says "era membro".
 - **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is "o pedido
   HTTP" where a recovery or join "pedido" could be meant (the body refusals), and "o pedido" in
   the assistant's lines; an API path is "este URL", masculine. An id is "esse identificador",
