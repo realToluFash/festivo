@@ -1126,7 +1126,9 @@ span {
 
 /* The browser paints a :disabled button in GrayText here, and nothing paints an aria-disabled one. */
 @media (forced-colors: active) {
-  [data-off] {
+  [data-off],
+  .button[data-off],
+  .button-primary[data-off] {
     color: GrayText;
     border-color: GrayText;
   }
