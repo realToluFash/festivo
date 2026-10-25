@@ -578,7 +578,8 @@ span {
   margin: 0;
 }
 
-.button-primary:disabled {
+.button-primary:disabled,
+.button-primary[data-off] {
   background: var(--colorBorder);
   border-color: var(--colorBorder);
   color: var(--colorInkSecondary);
@@ -1115,11 +1116,20 @@ span {
   color: var(--colorInkSecondary);
 }
 
-.button:disabled {
+.button:disabled,
+.button[data-off] {
   background: var(--colorInset);
   border-color: var(--colorBorder);
   color: var(--colorInkSecondary);
   cursor: default;
+}
+
+/* The browser paints a :disabled button in GrayText here, and nothing paints an aria-disabled one. */
+@media (forced-colors: active) {
+  [data-off] {
+    color: GrayText;
+    border-color: GrayText;
+  }
 }
 
 /* ── Done ─────────────────────────────────────────────────────────────────── */

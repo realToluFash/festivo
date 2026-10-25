@@ -37,9 +37,15 @@ export interface FieldText {
   pinned: string | undefined;
 }
 
-/** The text a held field was submitted with, kept once it is released: native rewrites an uncontrolled field whenever this changes, and tells nobody. */
-export function pinnedText({ held, value, typed, pinned }: FieldText): string | undefined {
-  return held && value === undefined ? typed : pinned;
+/** The text an uncontrolled field was last given, and the font scale it was given at: native puts that text back, telling nobody, whenever it changes and whenever the text size does. */
+export function nextPin(
+  field: FieldText,
+  fontScale: number,
+  scale: number,
+): { pinned: string | undefined; scale: number } {
+  const repin = (field.held || fontScale !== scale) && field.value === undefined;
+
+  return { pinned: repin ? field.typed : field.pinned, scale: fontScale };
 }
 
 /** What a field hands TextInput as its text, held or not. */

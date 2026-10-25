@@ -1,7 +1,7 @@
 import { ApiError, type TwoFactorEnrolment, type TwoFactorStatus } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatTimeOfDay, keyInGroups, lockLiftsAt } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -9,10 +9,11 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 
 type Stage =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; pressed: boolean }
   | { kind: 'at-rest'; status: TwoFactorStatus }
   | { kind: 'setting-up'; enrolment: TwoFactorEnrolment }
   | { kind: 'saving-codes'; codes: string[] }
@@ -34,6 +35,8 @@ export function TwoFactorCard({
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [refusedBy, setRefusedBy] = useState<string | null>(null);
+  const [stepHeading, arriveAtStep] = useStepFocus();
+  const [failedNotice, arriveAtFailedTurningOn] = useStepFocus<HTMLDivElement>();
   const sessionState = useSessionState();
   // sc-609: the server refuses it too; this says so before a code is asked for.
   const keptBy =
@@ -51,7 +54,7 @@ export function TwoFactorCard({
         if (live) setStage({ kind: 'at-rest', status });
       })
       .catch(() => {
-        if (live) setStage({ kind: 'failed' });
+        if (live) setStage({ kind: 'failed', pressed: false });
       });
 
     return () => {
@@ -86,9 +89,16 @@ export function TwoFactorCard({
   async function turnOn(): Promise<void> {
     try {
       setStage({ kind: 'setting-up', enrolment: await api.enrolTwoFactor() });
+      arriveAtStep();
     } catch {
-      setStage({ kind: 'failed' });
+      setStage({ kind: 'failed', pressed: true });
+      arriveAtFailedTurningOn();
     }
+  }
+
+  function bring(next: Stage): void {
+    setStage(next);
+    arriveAtStep();
   }
 
   return (
@@ -98,11 +108,15 @@ export function TwoFactorCard({
       {stage.kind === 'failed' && (
         <>
           <h2 id="two-factor-title">{t('twoFactorCard.title')}</h2>
-          <div className="notice notice-broken" role="alert">
+          <div className="notice notice-broken" role={stage.pressed ? undefined : 'alert'}>
             <span className="mark mark-broken" aria-hidden="true">
               ✕
             </span>
-            <div className="notice-body">
+            <div
+              className="notice-body"
+              ref={failedNotice}
+              tabIndex={stage.pressed ? -1 : undefined}
+            >
               <p className="notice-title">{t('twoFactorCard.failedTitle')}</p>
               <p>{t('twoFactorCard.failedBody')}</p>
             </div>
@@ -118,29 +132,31 @@ export function TwoFactorCard({
           status={stage.status}
           onTurnOn={() => void turnOn()}
           refusedBy={refusedBy}
-          onTurnOff={() =>
-            keptBy == null ? setStage({ kind: 'turning-off' }) : setRefusedBy(keptBy)
-          }
-          onNewCodes={() => setStage({ kind: 'new-codes' })}
+          onTurnOff={() => (keptBy == null ? bring({ kind: 'turning-off' }) : setRefusedBy(keptBy))}
+          onNewCodes={() => bring({ kind: 'new-codes' })}
         />
       )}
 
       {stage.kind === 'setting-up' && (
         <SettingUp
           enrolment={stage.enrolment}
+          headingRef={stepHeading}
           onActivated={(codes) => {
-            setStage({ kind: 'saving-codes', codes });
+            bring({ kind: 'saving-codes', codes });
             if (sessionState.status === 'signedIn') void refreshAccount();
           }}
           onCancel={reload}
         />
       )}
 
-      {stage.kind === 'saving-codes' && <SavingCodes codes={stage.codes} onFinish={reload} />}
+      {stage.kind === 'saving-codes' && (
+        <SavingCodes codes={stage.codes} headingRef={stepHeading} onFinish={reload} />
+      )}
 
       {stage.kind === 'turning-off' && (
         <TurningOff
           email={email}
+          headingRef={stepHeading}
           onOff={reload}
           onKeep={reload}
           onKept={(organisation) => {
@@ -152,7 +168,8 @@ export function TwoFactorCard({
 
       {stage.kind === 'new-codes' && (
         <ConfirmNewCodes
-          onMade={(codes) => setStage({ kind: 'saving-codes', codes })}
+          headingRef={stepHeading}
+          onMade={(codes) => bring({ kind: 'saving-codes', codes })}
           onKeep={reload}
         />
       )}
@@ -232,10 +249,12 @@ function AtRest({
 
 function SettingUp({
   enrolment,
+  headingRef,
   onActivated,
   onCancel,
 }: {
   enrolment: TwoFactorEnrolment;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onActivated: (codes: string[]) => void;
   onCancel: () => void;
 }) {
@@ -273,7 +292,9 @@ function SettingUp({
 
   return (
     <>
-      <h2 id="two-factor-title">{t('twoFactorCard.setupTitle')}</h2>
+      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
+        {t('twoFactorCard.setupTitle')}
+      </h2>
 
       <ol className="two-factor-steps">
         <li>
@@ -331,7 +352,15 @@ function SettingUp({
   );
 }
 
-function SavingCodes({ codes, onFinish }: { codes: string[]; onFinish: () => void }) {
+function SavingCodes({
+  codes,
+  headingRef,
+  onFinish,
+}: {
+  codes: string[];
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  onFinish: () => void;
+}) {
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -347,7 +376,9 @@ function SavingCodes({ codes, onFinish }: { codes: string[]; onFinish: () => voi
 
   return (
     <>
-      <h2 id="two-factor-title">{t('twoFactorCard.saveTitle')}</h2>
+      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
+        {t('twoFactorCard.saveTitle')}
+      </h2>
       <p>{t('twoFactorCard.saveIntro')}</p>
 
       <ul className="recovery-codes" aria-label={t('twoFactorCard.recoveryCodes')}>
@@ -396,11 +427,13 @@ function SavingCodes({ codes, onFinish }: { codes: string[]; onFinish: () => voi
 
 function TurningOff({
   email,
+  headingRef,
   onOff,
   onKeep,
   onKept,
 }: {
   email: string;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onOff: () => void;
   onKeep: () => void;
   onKept: (organisation: string) => void;
@@ -446,7 +479,9 @@ function TurningOff({
 
   return (
     <>
-      <h2 id="two-factor-title">{t('twoFactorCard.offTitle')}</h2>
+      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
+        {t('twoFactorCard.offTitle')}
+      </h2>
       <p>{t('twoFactorCard.offBody')}</p>
 
       <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
@@ -488,9 +523,11 @@ function TurningOff({
 }
 
 function ConfirmNewCodes({
+  headingRef,
   onMade,
   onKeep,
 }: {
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onMade: (codes: string[]) => void;
   onKeep: () => void;
 }) {
@@ -530,7 +567,9 @@ function ConfirmNewCodes({
 
   return (
     <>
-      <h2 id="two-factor-title">{t('twoFactorCard.newTitle')}</h2>
+      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
+        {t('twoFactorCard.newTitle')}
+      </h2>
       <div className="notice notice-attention">
         <span className="mark mark-attention" aria-hidden="true">
           !

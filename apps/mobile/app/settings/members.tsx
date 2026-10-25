@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../src/api.ts';
 import { AppFrame } from '../../src/components/AppFrame.tsx';
 import { bodyEdges } from '../../src/components/bodyEdges.ts';
-import { ComeForward } from '../../src/components/comeForward.ts';
+import { ComeForward, FocusWhenBehind } from '../../src/components/comeForward.ts';
 import { QuietButton, SecondaryButton } from '../../src/components/Buttons.tsx';
 import {
   type Answered,
@@ -20,7 +20,7 @@ import { Notice } from '../../src/components/Notice.tsx';
 import { Screen, ScrollColumn } from '../../src/components/Screen.tsx';
 import { SettingsSplit, backToSettings } from '../../src/components/SettingsList.tsx';
 import { SheetsAtRoot } from '../../src/components/Sheet.tsx';
-import { Text } from '../../src/components/Text.tsx';
+import { type TextHandle, Text } from '../../src/components/Text.tsx';
 import { cardFrame } from '../../src/components/cardFrame.ts';
 import { useShownLanguage } from '../../src/i18n/index.ts';
 import { DESTINATION_HREF, SECTION_HREF } from '../../src/kit/appNav.ts';
@@ -72,6 +72,11 @@ export default function MembersScreen() {
   useEffect(() => {
     landscapeNow.current = landscape;
   }, [landscape]);
+  const memberName = useRef<TextHandle>(null);
+  const listBehindNow = useRef(false);
+  const [nameWhenBehind] = useState(
+    () => () => (listBehindNow.current ? memberName.current : null),
+  );
   const language = useShownLanguage();
 
   useEffect(() => {
@@ -96,15 +101,20 @@ export default function MembersScreen() {
     };
   }, [organisationId, attempt, language]);
 
-  if (organisation != null && !roleHolds(organisation, 'members.read')) {
-    return <Redirect href={DESTINATION_HREF.settings} />;
-  }
-
   const member =
     load.kind === 'loaded' && showing.kind === 'member'
       ? (load.list.members.find((one) => one.id === showing.id) ?? null)
       : null;
   const inFront = showing.kind === 'member' && showing.behind === true ? null : member;
+  const listBehind = !landscape && inFront != null;
+  useEffect(() => {
+    listBehindNow.current = listBehind;
+  }, [listBehind]);
+
+  if (organisation != null && !roleHolds(organisation, 'members.read')) {
+    return <Redirect href={DESTINATION_HREF.settings} />;
+  }
+
   const toList = () => setShowing(LIST);
   const listForward = () => {
     if (landscapeNow.current) return;
@@ -205,6 +215,7 @@ export default function MembersScreen() {
         }}
         onAnswered={answered}
         onGoToOrganisation={() => router.replace(SECTION_HREF.organisation)}
+        nameRef={memberName}
       />
     ) : null;
 
@@ -212,6 +223,7 @@ export default function MembersScreen() {
     <AppFrame
       current="settings"
       title={phone ? (inFront?.user.name ?? t('membersScreen.title')) : t('settings.title')}
+      titleRef={phone && inFront != null ? memberName : undefined}
       back={
         phone
           ? inFront != null
@@ -230,16 +242,15 @@ export default function MembersScreen() {
             {landscape && heading}
             <View style={landscape ? styles.split : styles.fill}>
               <View
-                style={[
-                  landscape ? styles.listColumn : styles.fill,
-                  !landscape && inFront != null && styles.behind,
-                ]}
+                style={[landscape ? styles.listColumn : styles.fill, listBehind && styles.behind]}
               >
                 <ComeForward.Provider value={listForward}>
-                  <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
-                    {!landscape && heading}
-                    {waiting ?? list}
-                  </ScrollColumn>
+                  <FocusWhenBehind.Provider value={nameWhenBehind}>
+                    <ScrollColumn style={styles.fill} contentContainerStyle={columnContent}>
+                      {!landscape && heading}
+                      {waiting ?? list}
+                    </ScrollColumn>
+                  </FocusWhenBehind.Provider>
                 </ComeForward.Provider>
               </View>
               <View style={[styles.fill, !landscape && inFront == null && styles.behind]}>

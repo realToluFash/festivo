@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
@@ -181,7 +182,7 @@ describe('switching organisation', () => {
 });
 
 describe('switching away from a paused organisation (sc-564)', () => {
-  it('opens the switcher with nothing marked current, then works in the one chosen', () => {
+  function pausedInLagos(organisations: Membership[]): void {
     const { id, name, countryCode, currency, timezone, contactAddress, locale } = membership({
       id: 'org_3',
       name: 'Lagos Weddings',
@@ -198,7 +199,7 @@ describe('switching away from a paused organisation (sc-564)', () => {
         needsOrganisation: false,
         hasPassword: true,
         organisation: IRE,
-        organisations: [IRE, OKAFOR],
+        organisations,
         organisationCountry: null,
         timezone: null,
         waitingFor: null,
@@ -222,6 +223,10 @@ describe('switching away from a paused organisation (sc-564)', () => {
       },
     });
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({ invitations: [] }, 200));
+  }
+
+  it('opens the switcher with nothing marked current, then works in the one chosen', () => {
+    pausedInLagos([IRE, OKAFOR]);
     at('/app');
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
@@ -238,6 +243,17 @@ describe('switching away from a paused organisation (sc-564)', () => {
 
     expect(screen.getByRole('status').textContent).toMatch(/Now working in Ìrè Events\./);
     expect(screen.queryByRole('button', { name: 'Switch organisation' })).toBeNull();
+  });
+
+  it('with one other organisation, works in it and takes focus to the line that says so', () => {
+    pausedInLagos([IRE]);
+    at('/app');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch organisation' }));
+
+    const switched = screen.getByText('Now working in Ìrè Events.');
+    expect(document.activeElement).toBe(switched.closest('.notice'));
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });
 

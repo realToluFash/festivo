@@ -476,8 +476,8 @@ describe('getting back in without the authenticator', () => {
       screen.getByText('You can ask 3 times a day. Try again Sunday, Oct 18 at 17:09 WAT.'),
     ).toBeDefined();
     expect(
-      (screen.getByRole('button', { name: 'Send the codes' }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+      screen.getByRole('button', { name: 'Send the codes' }).getAttribute('aria-disabled'),
+    ).toBe('true');
   });
 });
 
@@ -550,11 +550,31 @@ describe('"This wasn\'t me" from an email', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Cancelled and signed out' }),
-    ).toBeDefined();
+    const done = await screen.findByRole('heading', {
+      level: 1,
+      name: 'Cancelled and signed out',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(done));
+    expect(screen.queryByRole('status')).toBeNull();
     expect(sent).toEqual([
       { path: '/api/auth/two-factor/recovery/not-me', body: { request: 'rq_1', token: 'signed' } },
     ]);
+  });
+
+  it('takes focus to the line that says the link no longer works, read once', async () => {
+    answering({});
+    render(
+      <RouterProvider
+        router={createMemoryRouter(routes, {
+          initialEntries: ['/two-factor/not-me?request=rq_1&token=signed'],
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel and sign out everywhere' }));
+
+    const broken = await screen.findByText(/That link doesn’t work/);
+    await waitFor(() => expect(document.activeElement).toBe(broken));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

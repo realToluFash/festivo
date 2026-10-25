@@ -201,9 +201,18 @@ function AtRest({
         </View>
         {/* A mark and the word, never the colour alone. */}
         <View style={styles.state}>
-          <View style={[styles.mark, status.on ? styles.markOn : styles.markOff]}>
+          <View
+            style={[styles.mark, status.on ? styles.markOn : styles.markOff]}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
             {status.on && (
-              <Text size={tokens.typePill.size} weight="bold" style={styles.markOnInk}>
+              <Text
+                size={tokens.typePill.size}
+                weight="bold"
+                style={styles.markOnInk}
+                accessible={false}
+              >
                 ✓
               </Text>
             )}
@@ -382,7 +391,7 @@ function SavingCodes({
           : t('twoFactorCard.saveIntro')}
       </Text>
 
-      <View style={styles.codes} accessibilityLabel={t('twoFactorCard.recoveryCodes')}>
+      <View style={styles.codes}>
         {codes.map((code) => (
           <Text key={code} size={tokens.typeBodyPhone.size} selectable style={styles.code}>
             {code}
@@ -410,9 +419,18 @@ function SavingCodes({
         accessibilityState={{ checked: saved }}
         testID="twoFactor.saved"
       >
-        <View style={[styles.box, saved && styles.boxOn]}>
+        <View
+          style={[styles.box, saved && styles.boxOn]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
           {saved && (
-            <Text size={tokens.typePill.size} weight="bold" style={styles.markOnInk}>
+            <Text
+              size={tokens.typePill.size}
+              weight="bold"
+              style={styles.markOnInk}
+              accessible={false}
+            >
               ✓
             </Text>
           )}

@@ -185,6 +185,7 @@ describe('AccessPaused', () => {
     ).toBeDefined();
     expect(screen.getByText('Ownership passes on Tuesday 27 Oct at 10:00 WAT.')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Stop this claim' }));
+    expect(document.activeElement).toBe(screen.getByText("Stop Bisi's claim?"));
     fireEvent.click(screen.getByRole('button', { name: 'Stop the claim' }));
 
     expect(

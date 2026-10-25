@@ -71,6 +71,12 @@ final readonly class UserMailer
         return $this->accountLanguage->shown($user);
     }
 
+    /** The language of a date inside the API's own sentence, which is the sentence's (sc-11329). */
+    public function answeredLocale(): string
+    {
+        return $this->accountLanguage->answered();
+    }
+
     /** A time for a person (sc-868), in the zone and with the label `deadline()` shares: their zone, else UTC, "WAT" or "UTC+04:00". */
     public function moment(DateTimeImmutable $at, User $user, string $locale): string
     {
@@ -97,6 +103,7 @@ final readonly class UserMailer
         return $this->line('time.dateAt', $locale, [
             '{date}' => $formatter?->format($local) ?: $local->format('Y-m-d'),
             '{time}' => $local->format('H:i'),
+            '{hour}' => (int) $local->format('G'),
             '{zone}' => $label,
         ]);
     }

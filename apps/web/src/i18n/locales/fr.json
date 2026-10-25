@@ -356,8 +356,8 @@
     "unreachableBody": "Votre session est toujours ouverte. Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
     "unreachableBodySignedOut": "Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
     "retrying": "Nouvelle tentative…",
-    "stillSignedInTitle": "You are still signed in",
-    "stillSignedInBody": "Soirely could not be reached, so this device was not signed out. Check your connection, then try again."
+    "stillSignedInTitle": "Votre session est toujours ouverte",
+    "stillSignedInBody": "Soirely est injoignable, cet appareil n’a donc pas été déconnecté. Vérifiez votre connexion, puis réessayez."
   },
   "switcher": {
     "yourRole": "Votre rôle · {{role}}",

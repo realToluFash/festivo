@@ -184,7 +184,7 @@ describe('a sign-in that asks for a second factor', () => {
       ),
     ).toBeDefined();
     const button = screen.getByRole('button', { name: /^Try again at \d\d:\d\d$/ });
-    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('link', { name: 'Reset your password' }).getAttribute('href')).toBe(
       '/forgot-password',
     );

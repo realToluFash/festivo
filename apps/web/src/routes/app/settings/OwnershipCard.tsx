@@ -5,7 +5,7 @@ import {
   type OrganisationMember,
 } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
@@ -13,7 +13,9 @@ import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
+import { offButton } from '../../../offButton.ts';
 import { refreshAccount } from '../../../session.ts';
+import { focusStep } from '../../../stepFocus.ts';
 
 type Step =
   | { kind: 'resting'; flash: string | null }
@@ -365,7 +367,11 @@ function Leave({
   const [busy, setBusy] = useState(false);
   const [refused, setRefused] = useState<string | null>(null);
   const [refusedLast, setRefusedLast] = useState(false);
+  const [openedOnlyOwner] = useState(onlyOwner);
   const lastOwner = onlyOwner || refusedLast;
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function leave(): Promise<void> {
     setBusy(true);
@@ -387,10 +393,12 @@ function Leave({
 
   return (
     <div className="settings-form">
-      <h3>{t('ownership.leaveTitle', { organisation: organisation.name })}</h3>
+      <h3 tabIndex={-1} ref={heading}>
+        {t('ownership.leaveTitle', { organisation: organisation.name })}
+      </h3>
       {lastOwner ? (
         <>
-          <div className="notice notice-attention" role="alert">
+          <div className="notice notice-attention" role={openedOnlyOwner ? undefined : 'alert'}>
             <span className="mark mark-attention" aria-hidden="true">
               !
             </span>
@@ -417,7 +425,7 @@ function Leave({
               type="button"
               className="button button-danger"
               aria-busy={busy}
-              disabled={busy}
+              {...offButton(busy)}
               onClick={() => void leave()}
             >
               {t('ownership.leave', { organisation: organisation.name })}
@@ -441,6 +449,9 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const matches = typed.trim() === organisation.name;
+  const heading = useRef<HTMLHeadingElement>(null);
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   useEffect(() => {
     let current = true;
@@ -490,25 +501,31 @@ function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: ()
 
   return (
     <form className="settings-form" noValidate onSubmit={(event) => void submit(event)}>
-      <h3>{t('ownership.deleteTitle', { organisation: organisation.name })}</h3>
-      <div className="notice notice-attention" role="alert">
+      <h3 tabIndex={-1} ref={heading}>
+        {t('ownership.deleteTitle', { organisation: organisation.name })}
+      </h3>
+      <div className="notice notice-attention">
         <span className="mark mark-attention" aria-hidden="true">
           !
         </span>
         <div className="notice-body">
           <p className="notice-title">{t('ownership.deleteWarningTitle')}</p>
-          {preview == null ? (
-            <p>{t('ownership.deleteLoading')}</p>
-          ) : (
-            <p>
-              {t('ownership.deleteCounts', {
-                events: t('ownership.events', { count: preview.events }),
-                guests: t('ownership.guests', { count: preview.guests }),
-                members: t('ownership.members', { count: preview.members }),
-              })}{' '}
-              {t('ownership.deleteWindow', { deadline: preview.restoreCloses })}
-            </p>
-          )}
+          <div>
+            {preview == null && <p>{t('ownership.deleteLoading')}</p>}
+            {/* Mounted empty with the heading, so only the counts are announced, when they come. */}
+            <div role="alert">
+              {preview != null && (
+                <p>
+                  {t('ownership.deleteCounts', {
+                    events: t('ownership.events', { count: preview.events }),
+                    guests: t('ownership.guests', { count: preview.guests }),
+                    members: t('ownership.members', { count: preview.members }),
+                  })}{' '}
+                  {t('ownership.deleteWindow', { deadline: preview.restoreCloses })}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

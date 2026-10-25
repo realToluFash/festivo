@@ -142,6 +142,12 @@ they are where AC fails:
 - **Name the exact options**, the exact labels, the exact navigation path. QA has to find
   the thing before they can test it, and "the closest match" is not verifiable while "the
   highest amount that does not exceed the figure" is.
+- **Name a device only on the bullet that needs it.** QA tests on an iPhone 17 Pro and an
+  iPad, in English and one other language, unless a bullet says otherwise. A bullet about
+  a small screen — the keyboard up, a phone on its side, a long label — names the iPhone SE
+  (375×667pt) and its languages: English and the longest, not all four. An SE named for
+  the whole story is a second full pass in every language, and the tester's run outlasts
+  its time limit.
 - **Close with a regression bullet** naming what must keep working untouched.
 - **Never invent a field name or a label.** Search the codebase for the real one. If it does
   not exist, that is a question, not a guess.

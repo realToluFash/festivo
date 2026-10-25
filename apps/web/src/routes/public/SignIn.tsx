@@ -12,6 +12,7 @@ import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { type ProviderOnly, type TimedOut, providerOnlyBy } from '../../session.ts';
 import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { offButton } from '../../offButton.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 
 type Status =
@@ -290,8 +291,8 @@ export function SignIn() {
             <button
               className="button button-primary"
               type="submit"
-              disabled={locked}
               aria-busy={busy}
+              {...offButton(locked)}
             >
               {locked
                 ? t('signIn.lockedUntil', { time: status.retryAt })

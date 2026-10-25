@@ -13,6 +13,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { SecondFactorStep } from '../../components/SecondFactorStep.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { adoptAccount, landingFor, providerOnlyBy } from '../../session.ts';
+import { useStepFocus } from '../../stepFocus.ts';
 
 type Dead = 'used' | 'expired' | 'invalid';
 
@@ -37,6 +38,7 @@ export function ResetPassword() {
   const [password, setPassword] = useState('');
   const [refusal, setRefusal] = useState<string | null>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
+  const [stepHeading, arriveAtStep] = useStepFocus();
   const checks = useFormChecks(
     ['password'] as const,
     (_field, value) => (value === '' ? t('recovery.passwordBlank') : null),
@@ -80,6 +82,7 @@ export function ResetPassword() {
       const { account } = await api.resetPassword(token, password);
       await adoptAccount(account);
       setStatus({ kind: 'done', email, account });
+      arriveAtStep();
     } catch (error) {
       const dead = deadFrom(error);
       const providerOnly = error instanceof ApiError ? providerOnlyBy(error.problem) : undefined;
@@ -89,6 +92,7 @@ export function ResetPassword() {
         navigate('/sign-in', { replace: true, state: { providerOnly } });
       } else if (dead != null) {
         setStatus({ kind: dead });
+        arriveAtStep();
       } else if (error instanceof ApiError && error.is('validation_failed')) {
         const violation = error.problem.violations?.find((v) => v.propertyPath === 'password');
         setRefusal(
@@ -109,7 +113,9 @@ export function ResetPassword() {
     return (
       <AuthPage>
         <div className="auth-heading">
-          <h1>{t(`recovery.${status.kind}Title`)}</h1>
+          <h1 ref={stepHeading} tabIndex={-1}>
+            {t(`recovery.${status.kind}Title`)}
+          </h1>
           <p>{t(`recovery.${status.kind}Body`)}</p>
         </div>
         <Link className="button button-primary" to="/forgot-password">
@@ -142,11 +148,16 @@ export function ResetPassword() {
               const dead = deadFrom(error);
               if (dead == null) throw error;
               setStatus({ kind: dead });
+              arriveAtStep();
               return;
             }
             setStatus({ kind: 'ready', email });
+            arriveAtStep();
           }}
-          onExpired={() => setStatus({ kind: 'expired' })}
+          onExpired={() => {
+            setStatus({ kind: 'expired' });
+            arriveAtStep();
+          }}
         />
       </AuthPage>
     );
@@ -159,7 +170,9 @@ export function ResetPassword() {
           ✓
         </span>
         <div className="auth-heading">
-          <h1>{t('recovery.doneTitle')}</h1>
+          <h1 ref={stepHeading} tabIndex={-1}>
+            {t('recovery.doneTitle')}
+          </h1>
           <p>{t('recovery.doneBody', { email: status.email })}</p>
         </div>
         <button
@@ -179,7 +192,9 @@ export function ResetPassword() {
   return (
     <AuthPage>
       <div className="auth-heading">
-        <h1>{t('recovery.newTitle')}</h1>
+        <h1 ref={stepHeading} tabIndex={-1}>
+          {t('recovery.newTitle')}
+        </h1>
         <p>{t('recovery.newFor', { email: status.email })}</p>
       </div>
 

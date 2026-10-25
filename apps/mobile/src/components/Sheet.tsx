@@ -27,7 +27,7 @@ import { useLayout } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { keyboardTopNow, watchKeyboardTop } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
-import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 
 type SheetProps = {
   open: boolean;
@@ -36,7 +36,7 @@ type SheetProps = {
   /** Given, a tap on the scrim closes the sheet, and a screen reader names it so. */
   scrimLabel?: string;
   /** Where screen reader focus goes back to once the sheet has gone. */
-  opener: RefObject<View | null>;
+  opener: RefObject<ScreenReaderTarget | null>;
   testID?: string;
   children: ReactNode;
 };
@@ -182,7 +182,7 @@ function useKeyboardTop(): number | null {
 }
 
 /** Hands screen reader focus back to `opener` once a sheet that was open has slid away (WCAG 2.4.3). */
-function useFocusBack(open: boolean, opener: RefObject<View | null>): void {
+function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget | null>): void {
   const wasOpen = useRef(open);
 
   useEffect(() => {

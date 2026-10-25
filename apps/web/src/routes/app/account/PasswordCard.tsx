@@ -2,13 +2,12 @@ import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import {
   cleanCode,
   codeProblem,
-  formatCountdown,
   formatTimeOfDay,
   lockLiftsAt,
   meetsPasswordLength,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
@@ -17,8 +16,10 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { PasswordRule } from '../../../components/PasswordRule.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
+import { useResendCountdown } from '../../../resendCountdown.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
+import { focusStep, useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
 
 type Stage =
@@ -133,7 +134,10 @@ function Setting({
 }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<SetStep>({ kind: 'code', refusal: null, paused: null });
-  const [cooldown, setCooldown] = useState(0);
+  const resending = useResendCountdown({
+    resend: 'passwordCard.resend',
+    resendIn: 'passwordCard.resendIn',
+  });
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
@@ -141,6 +145,7 @@ function Setting({
   const [passwordRefusal, setPasswordRefusal] = useState<string | null>(null);
   const codeInput = useRef<HTMLInputElement>(null);
   const passwordInput = useRef<HTMLInputElement>(null);
+  const [stepHeading, arriveAtStep] = useStepFocus();
   const codeChecks = useFormChecks(
     ['code'] as const,
     (_field, value) => {
@@ -157,34 +162,34 @@ function Setting({
     () => passwordInput.current?.focus(),
   );
 
-  async function send(): Promise<void> {
+  const send = (clicked: boolean): Promise<void> => resending.once(() => sendOnce(clicked));
+
+  async function sendOnce(clicked: boolean): Promise<void> {
     setFailed(false);
 
+    const countDown = clicked ? resending.countDown : resending.begin;
+
     try {
-      setCooldown(await api.startSettingPassword());
+      countDown(await api.startSettingPassword());
     } catch (error) {
       const seconds =
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
 
-      if (Number.isFinite(seconds) && seconds > 0) setCooldown(seconds);
+      if (Number.isFinite(seconds) && seconds > 0) countDown(seconds);
       else setFailed(true);
     }
   }
+
+  // Only ever opened by a click, so focus goes with it.
+  useLayoutEffect(() => focusStep(stepHeading.current), [stepHeading]);
 
   // Sent once, when the step opens; Send a new code sends again.
   const sent = useRef(false);
   useEffect(() => {
     if (sent.current) return;
     sent.current = true;
-    void send();
+    void send(false);
   });
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
 
   async function passCode(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -194,6 +199,7 @@ function Setting({
 
     try {
       setStep({ kind: 'password', stepUp: await api.passPasswordCode(cleanCode(code)) });
+      arriveAtStep();
     } catch (error) {
       setStep({ kind: 'code', ...codeRefusal(error, t) });
     } finally {
@@ -242,7 +248,9 @@ function Setting({
 
     return (
       <>
-        <h2 id="password-title">{t('passwordCard.setNewTitle')}</h2>
+        <h2 id="password-title" ref={stepHeading} tabIndex={-1}>
+          {t('passwordCard.setNewTitle')}
+        </h2>
         <form className="auth-form" noValidate onSubmit={(event) => void save(event)}>
           <div className="field">
             <label htmlFor="set-password">{t('passwordCard.setNewLabel')}</label>
@@ -288,7 +296,9 @@ function Setting({
 
   return (
     <>
-      <h2 id="password-title">{t('passwordCard.setCodeTitle')}</h2>
+      <h2 id="password-title" ref={stepHeading} tabIndex={-1}>
+        {t('passwordCard.setCodeTitle')}
+      </h2>
 
       {step.paused != null && (
         <div className="notice notice-attention" role="alert">
@@ -352,17 +362,18 @@ function Setting({
           <button
             className="button"
             type="button"
-            disabled={cooldown > 0}
-            onClick={() => void send()}
+            {...resending.button}
+            onClick={() => void send(true)}
           >
-            {cooldown > 0
-              ? t('passwordCard.resendIn', { time: formatCountdown(cooldown) })
-              : t('passwordCard.resend')}
+            {resending.label}
           </button>
           <button className="button" type="button" onClick={onCancel}>
             {t('passwordCard.cancel')}
           </button>
         </div>
+        <span className="visually-hidden" role="status">
+          {resending.status}
+        </span>
       </form>
     </>
   );
@@ -425,6 +436,7 @@ function Changing({
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const currentInput = useRef<HTMLInputElement>(null);
   const nextInput = useRef<HTMLInputElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const checks = useFormChecks(
     ['currentPassword', 'newPassword'] as const,
     (field, value) =>
@@ -435,6 +447,8 @@ function Changing({
           : t('passwordCard.newBlank'),
     (field) => (field === 'currentPassword' ? currentInput : nextInput).current?.focus(),
   );
+
+  useLayoutEffect(() => focusStep(heading.current), []);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -471,7 +485,9 @@ function Changing({
 
   return (
     <>
-      <h2 id="password-title">{t('passwordCard.formTitle')}</h2>
+      <h2 id="password-title" ref={heading} tabIndex={-1}>
+        {t('passwordCard.formTitle')}
+      </h2>
 
       {refusal?.field === 'paused' && (
         <div className="notice notice-attention" role="alert">

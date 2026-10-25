@@ -74,10 +74,13 @@ screen.
 ## Rate limits a person can hit
 
 Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in seconds
-and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. The
+and a `detail` naming the minute it lifts ("Try again at 14:35 UTC."), rounded up. The
+minute is UTC and says so, whoever asks and from wherever: a limit hit signed out has no
+account to take a zone from, and the clients write their own time from `Retry-After`. The
 sentence and the minute are one catalogue entry with a `{time}` slot, never two joined in
-code. A client shows the time from `Retry-After`, in the reader's timezone, never a figure
-of its own.
+code; the slot carries the zone after the minute, where `time.dateAt` places one. A
+client shows the time from `Retry-After`, in the reader's timezone, never a figure of its
+own.
 
 Where a budget is spent by a wrong secret (a password or a code), the wrong try that spends
 the last of it is itself answered with the pause, not with that place's wrong-secret error,
@@ -88,7 +91,9 @@ A limit that can last past the day it was hit also names its instant for the rea
 `UserMailer::deadline`: the `detail` reads "Try again Sunday, Oct 18 at 17:09 WAT." (or
 "UTC" with no zone), and the same words come as a `retryAt` member. A client quotes
 `retryAt` as it is, and falls back to `Retry-After` only when it is absent. `Retry-After`
-stays in seconds either way (RFC 9110 §10.2.3). Today only
+stays in seconds either way (RFC 9110 §10.2.3). That instant keeps the account's zone, but
+`{when}` and `retryAt` are in the language of the `detail` they belong to: the request's,
+else English, never the account's saved one. Today only
 `POST /api/auth/two-factor/recovery` carries `retryAt`.
 
 | Endpoint                                           | Budget                                                          | Spent by                 |

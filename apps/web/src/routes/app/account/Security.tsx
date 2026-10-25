@@ -9,7 +9,7 @@ import {
   thisDeviceFirst,
 } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
@@ -28,6 +28,7 @@ import {
   heldProviderReturn,
 } from '../../../providerSignIn.ts';
 import { forgetSession, refreshAccount, rereadCredentials, useSession } from '../../../session.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 import { currentSessionId } from '../../../tokens.ts';
 import { useSignOut } from '../../../signOut.ts';
 
@@ -42,6 +43,7 @@ export function Security() {
   const [devices, setDevices] = useState<Devices>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const [checking, setChecking] = useState<DeviceSession | null>(null);
+  const [checkHeading, arriveAtCheck] = useStepFocus();
   const [ended, setEnded] = useState<string | null>(null);
   const [endFailed, setEndFailed] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
@@ -266,7 +268,10 @@ export function Security() {
                       device={device}
                       here={device.id === currentSessionId()}
                       onEndHere={() => void endHere()}
-                      onCheck={() => setChecking(device)}
+                      onCheck={() => {
+                        setChecking(device);
+                        arriveAtCheck();
+                      }}
                     />
                   ))}
                 </ul>
@@ -293,6 +298,7 @@ export function Security() {
           ) : (
             <Check
               device={checking}
+              heading={checkHeading}
               onEnd={() => void end(checking)}
               onKeep={() => setChecking(null)}
             />
@@ -358,19 +364,22 @@ function Row({
 
 function Check({
   device,
+  heading,
   onEnd,
   onKeep,
 }: {
   device: DeviceSession;
+  heading: RefObject<HTMLHeadingElement | null>;
   onEnd: () => void;
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
   const locale = dateLocale();
-
   return (
     <>
-      <h2 id="devices-title">{t('devices.checkTitle', { name: nameOf(device, t) })}</h2>
+      <h2 id="devices-title" ref={heading} tabIndex={-1}>
+        {t('devices.checkTitle', { name: nameOf(device, t) })}
+      </h2>
       <p>
         {t('devices.checkBody', {
           started: moment(device.startedAt, locale, t),

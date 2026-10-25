@@ -224,7 +224,7 @@ export function DevicesCard({
       )}
 
       {devices.kind === 'ready' && (
-        <View accessibilityLabel={t('devices.listLabel')}>
+        <View>
           {thisDeviceFirst(devices.sessions, here).map((device) => (
             <Row
               key={device.id}

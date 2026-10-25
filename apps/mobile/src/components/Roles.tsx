@@ -143,6 +143,7 @@ export function RolePage({
   onRemove,
   onSaved,
   onEdited,
+  onUsed,
 }: {
   kind: LayoutKind;
   organisation: Membership;
@@ -152,6 +153,8 @@ export function RolePage({
   onRemove: () => void;
   onSaved: (role: OrganisationRole) => void;
   onEdited: () => void;
+  /** Anything done on the page, a change or a look, so it stays open through a turn. */
+  onUsed: () => void;
 }) {
   const { t } = useTranslation();
   const phone = kind === 'phone';
@@ -199,6 +202,7 @@ export function RolePage({
     setGrant(next);
     setStatus('editing');
     onEdited();
+    onUsed();
   }
 
   function refuseName(message: string): void {
@@ -277,6 +281,7 @@ export function RolePage({
                   autoComplete="off"
                   accessibilityLabel={t('rolesScreen.nameLabel')}
                   style={styles.nameInput}
+                  onFocus={onUsed}
                   onChangeText={(next) => {
                     setTyped(next);
                     setNameError(null);
@@ -434,7 +439,7 @@ export function RolePage({
             ? t('rolesScreen.nobody')
             : t('rolesScreen.holders', { count: role?.holders ?? 0 })}
         </Text>
-        {role != null && <Holders holders={role.holderNames} />}
+        {role != null && <Holders holders={role.holderNames} onMore={onUsed} />}
       </View>
 
       <View style={[styles.card, styles.padded]}>
@@ -448,7 +453,7 @@ export function RolePage({
   );
 }
 
-function Holders({ holders }: { holders: readonly RoleHolder[] }) {
+function Holders({ holders, onMore }: { holders: readonly RoleHolder[]; onMore: () => void }) {
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
   const { shown, more } = shownHolders(holders, all);
@@ -485,7 +490,10 @@ function Holders({ holders }: { holders: readonly RoleHolder[] }) {
       {more > 0 && (
         <Pressable
           style={styles.moreHolders}
-          onPress={() => setAll(true)}
+          onPress={() => {
+            setAll(true);
+            onMore();
+          }}
           accessibilityRole="button"
           testID="roles.moreHolders"
         >
@@ -519,11 +527,7 @@ function GridRow<T extends string>({
   testID: string;
 }) {
   const picker = fixed == null && (
-    <View
-      style={[styles.levels, !phone && styles.levelsBeside]}
-      accessibilityRole="radiogroup"
-      accessibilityLabel={name}
-    >
+    <View style={[styles.levels, !phone && styles.levelsBeside]} accessibilityRole="radiogroup">
       {options.map((option) => (
         <Pressable
           key={option.value}

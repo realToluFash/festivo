@@ -38,6 +38,14 @@ final readonly class AccountLanguage
         return self::askedIn($this->requestStack->getMainRequest()) ?? $this->of($user);
     }
 
+    /** What the API's own sentences are in (sc-10700), and so a date written inside one (sc-11329): the language the listener settled for the request, which its `detail` is translated in; never the account's. */
+    public function answered(): string
+    {
+        $answered = $this->requestStack->getMainRequest()?->attributes->get(RequestLocaleListener::ATTRIBUTE);
+
+        return \is_string($answered) ? SupportedLocales::narrow($answered) : SupportedLocales::DEFAULT;
+    }
+
     /** @return bool whether it had none, and now has the one asked in */
     /** Only a language the request actually asked for: a request that named none leaves the account to a later one. */
     public static function rememberIfNone(User $user, ?Request $request): bool

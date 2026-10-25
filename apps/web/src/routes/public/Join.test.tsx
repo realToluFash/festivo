@@ -178,7 +178,10 @@ describe('an invitation, signed out', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create account and join' }));
 
-    expect(await screen.findByText('You joined Ìrè Events as Event manager.')).toBeDefined();
+    const joined = await screen.findByRole('heading', { level: 1, name: 'You are in' });
+    await waitFor(() => expect(document.activeElement).toBe(joined));
+    expect(screen.getByText('You joined Ìrè Events as Event manager.')).toBeDefined();
+    expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByRole('link', { name: 'Open Ìrè Events' }).getAttribute('href')).toBe('/app');
     expect(sent.find((one) => one.line === 'POST /api/auth/register')?.body).toMatchObject({
       invitationToken: TOKEN,
@@ -201,7 +204,10 @@ describe('an invitation, signed out', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Create account and join' }));
 
-    expect(await screen.findByText('You already have an account')).toBeDefined();
+    const signIn = await screen.findByRole('heading', { level: 1, name: 'Sign in to accept' });
+    await waitFor(() => expect(document.activeElement).toBe(signIn));
+    expect(screen.getByText('You already have an account')).toBeDefined();
+    expect(screen.queryByRole('status')).toBeNull();
     expect(
       screen.getByText(
         'kemi.l@gmail.com already has a Soirely account. Sign in with it, and you can accept the invitation there.',
@@ -221,6 +227,8 @@ describe('an invitation, signed out', () => {
     expect(
       await screen.findByRole('heading', { name: 'We could not find that invitation' }),
     ).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
+    expect(screen.getByRole('status')).toBeDefined();
   });
 });
 
@@ -257,6 +265,8 @@ describe('an invitation that can no longer be answered', () => {
     expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeDefined();
     expect(screen.getByText(body)).toBeDefined();
     expect(screen.queryByLabelText('Full name')).toBeNull();
+    expect(document.activeElement).toBe(document.body);
+    expect(screen.getByRole('status')).toBeDefined();
   });
 });
 
@@ -286,8 +296,28 @@ describe('an invitation, signed in', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Accept and join' }));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'You are in' })).toBeDefined();
+    const joined = await screen.findByRole('heading', { level: 1, name: 'You are in' });
+    await waitFor(() => expect(document.activeElement).toBe(joined));
+    expect(screen.queryByRole('status')).toBeNull();
     expect(sent.map((one) => one.line)).toContain('POST /api/invitations/inv_1/accept');
+  });
+
+  it('takes focus to the refusal’s heading when the invitation changed in the meantime', async () => {
+    signedIn();
+    answering({
+      [LINK]: () => json({ ...PREVIEW, forYou: true, signedInAs: 'kemi.l@gmail.com' }),
+      'POST /api/invitations/inv_1/accept': () => problem(410, 'invitation_revoked'),
+    });
+    open();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Accept and join' }));
+
+    const refused = await screen.findByRole('heading', {
+      level: 1,
+      name: 'This invitation was withdrawn',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(refused));
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('declines, and creates nothing', async () => {
@@ -303,14 +333,25 @@ describe('an invitation, signed in', () => {
     expect(
       await screen.findByText('You declined. Bisi Adeyemi will see that you said no.'),
     ).toBeDefined();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole('heading', { level: 1, name: 'Invitation declined' }),
+      ),
+    );
+    expect(screen.queryByRole('status')).toBeNull();
     expect(sent.map((one) => one.line)).not.toContain('POST /api/invitations/inv_1/accept');
   });
 
   it('says whose it is when the account is somebody else, and offers to switch', async () => {
     signedIn('folake@ire.events');
+    let signedOut = false;
     const sent = answering({
-      [LINK]: () => json({ ...PREVIEW, forYou: false, signedInAs: 'folake@ire.events' }),
-      'POST /api/auth/logout': () => new Response(null, { status: 204 }),
+      [LINK]: () =>
+        json(signedOut ? PREVIEW : { ...PREVIEW, forYou: false, signedInAs: 'folake@ire.events' }),
+      'POST /api/auth/logout': () => {
+        signedOut = true;
+        return new Response(null, { status: 204 });
+      },
     });
     open();
 
@@ -326,7 +367,65 @@ describe('an invitation, signed in', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign out and use kemi.l@gmail.com' }));
 
-    await waitFor(() => expect(sent.map((one) => one.line)).toContain('POST /api/auth/logout'));
+    const join = await screen.findByRole('heading', { level: 1, name: 'Join Ìrè Events' });
+    await waitFor(() => expect(document.activeElement).toBe(join));
+    expect(sent.map((one) => one.line)).toContain('POST /api/auth/logout');
+  });
+
+  it('takes focus to the refusal’s heading when the switch finds the invitation changed', async () => {
+    signedIn('folake@ire.events');
+    let signedOut = false;
+    answering({
+      [LINK]: () =>
+        json(
+          signedOut
+            ? { ...PREVIEW, refusal: 'invitation_revoked' }
+            : { ...PREVIEW, forYou: false, signedInAs: 'folake@ire.events' },
+        ),
+      'POST /api/auth/logout': () => {
+        signedOut = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sign out and use kemi.l@gmail.com' }),
+    );
+
+    const refused = await screen.findByRole('heading', {
+      level: 1,
+      name: 'This invitation was withdrawn',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(refused));
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('takes focus to “We could not find that invitation” when the switch finds the link replaced', async () => {
+    signedIn('folake@ire.events');
+    let signedOut = false;
+    answering({
+      [LINK]: () =>
+        signedOut
+          ? problem(404, 'invitation_not_found')
+          : json({ ...PREVIEW, forYou: false, signedInAs: 'folake@ire.events' }),
+      'POST /api/auth/logout': () => {
+        signedOut = true;
+        return new Response(null, { status: 204 });
+      },
+    });
+    open();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Sign out and use kemi.l@gmail.com' }),
+    );
+
+    const missing = await screen.findByRole('heading', {
+      level: 1,
+      name: 'We could not find that invitation',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(missing));
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('stays signed in as the other account, and says so, when switching cannot reach Soirely', async () => {

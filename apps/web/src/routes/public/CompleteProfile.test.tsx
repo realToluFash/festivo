@@ -405,12 +405,12 @@ describe('an organisation at the domain of the address (sc-561)', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Ìrè Events' }));
 
-    expect(
-      await screen.findByRole('heading', {
-        level: 1,
-        name: 'Waiting for Ìrè Events to approve you',
-      }),
-    ).toBeDefined();
+    const waiting = await screen.findByRole('heading', {
+      level: 1,
+      name: 'Waiting for Ìrè Events to approve you',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(waiting));
+    expect(screen.getByText(/Waiting for approval/).closest('[role]')).toBeNull();
     expect(sent.find((request) => request.method === 'PATCH')?.body).toEqual({
       name: 'Ada Okeke',
       askToJoin: 'org_ire',
@@ -435,7 +435,13 @@ describe('an organisation at the domain of the address (sc-561)', () => {
     expect(
       screen.getByText('We’ll email ada@ire.events when somebody there answers.'),
     ).toBeDefined();
-    expect(screen.getByText(/Waiting for approval/)).toBeDefined();
+    expect(
+      screen
+        .getByText(/Waiting for approval/)
+        .closest('[role]')
+        ?.getAttribute('role'),
+    ).toBe('status');
+    expect(document.activeElement).toBe(document.body);
     expect(
       screen.getByText(
         'Your details are saved. Until somebody at Ìrè Events approves you, there is nothing of theirs to see.',

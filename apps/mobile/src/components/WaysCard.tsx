@@ -198,7 +198,7 @@ export function WaysCard({
 
       {stage.kind === 'list' && stage.said != null && <SaidNotice said={stage.said} />}
 
-      <View accessibilityLabel={t('waysCard.title')}>
+      <View>
         <View style={styles.row}>
           <View style={styles.detail}>
             <Text size={tokens.typeRowTitle.size} weight="semibold">
@@ -299,9 +299,13 @@ function Row({
 function State({ on, word, address }: { on: boolean; word: string; address?: string | null }) {
   return (
     <View style={styles.state}>
-      <View style={on ? styles.markOn : styles.markOff}>
+      <View
+        style={on ? styles.markOn : styles.markOff}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         {on && (
-          <Text size={tokens.typePill.size} weight="bold" style={styles.markInk}>
+          <Text size={tokens.typePill.size} weight="bold" style={styles.markInk} accessible={false}>
             {tokens.marks.done.glyph}
           </Text>
         )}

@@ -216,9 +216,18 @@ function ContactsCard({
                   {row.shown}
                 </Text>
                 <View style={styles.state}>
-                  <View style={row.verified ? styles.markOn : styles.markOff}>
+                  <View
+                    style={row.verified ? styles.markOn : styles.markOff}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                  >
                     {row.verified && (
-                      <Text size={tokens.typePill.size} weight="bold" style={styles.markInk}>
+                      <Text
+                        size={tokens.typePill.size}
+                        weight="bold"
+                        style={styles.markInk}
+                        accessible={false}
+                      >
                         {tokens.marks.done.glyph}
                       </Text>
                     )}
