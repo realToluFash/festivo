@@ -1165,7 +1165,7 @@ describe('inviting somebody', () => {
   describe('a member whose role holds a permission the viewer lacks (sc-11160)', () => {
     const FINANCE = { id: 'role_9', seededAs: null, name: 'Finance' };
     const BEYOND =
-      'Their role holds a permission yours does not, so you cannot change their role or remove them.';
+      'Their role holds a permission yours does not, so you cannot change their role or their access.';
     const withFinance = {
       ...ROLES,
       roles: [
