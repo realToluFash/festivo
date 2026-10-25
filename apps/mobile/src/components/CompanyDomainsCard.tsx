@@ -1,5 +1,5 @@
 import { ApiError, type CompanyDomains, type Membership } from '@soirely/api-client';
-import { companyDomainProblem, domainOf, normaliseDomain } from '@soirely/domain';
+import { companyDomainProblem, domainOf, normaliseDomain, removalAnswers } from '@soirely/domain';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -10,10 +10,15 @@ import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Field, TextField } from './Field.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { Notice } from './Notice.tsx';
 import { Text } from './Text.tsx';
+import { ReadOut } from './ReadOut.tsx';
+import { useScrolledToTop } from './Screen.tsx';
 
 type Flash = { kind: 'added' | 'removed'; domain: string } | null;
+
+type Refusal = { message: string; code?: string };
 
 /** Settings > Organisation's "Company domain joining" (sc-561), for those who can manage members. */
 export function CompanyDomainsCard({
@@ -26,10 +31,11 @@ export function CompanyDomainsCard({
   const { t } = useTranslation();
   const [list, setList] = useState<CompanyDomains | null>(null);
   const [typed, setTyped] = useState('');
-  const [error, setError] = useState<string | undefined>(undefined);
+  const [error, setError] = useState<Refusal | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
+  const [notRemoved, setNotRemoved] = useState(false);
   const input = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -50,6 +56,12 @@ export function CompanyDomainsCard({
   const on = list.domains.some((one) => !one.stopped);
   const full = list.domains.length >= list.most;
   const example = domainOf(list.ownAddress) ?? 'example.com';
+  const flashTitle =
+    flash?.kind === 'added'
+      ? t('companyDomains.added', { domain: flash.domain })
+      : t('companyDomains.removed', { domain: flash?.domain ?? '' });
+  const flashBody =
+    flash?.kind === 'added' ? t('companyDomains.addedNext') : t('companyDomains.removedNext');
 
   async function add(): Promise<void> {
     if (busy) return;
@@ -57,29 +69,32 @@ export function CompanyDomainsCard({
     const problem = companyDomainProblem(typed);
 
     if (problem != null) {
-      setError(
-        problem === 'blank'
-          ? t('companyDomains.blank', { example })
-          : t('companyDomains.shape', { example }),
-      );
+      setError({
+        message:
+          problem === 'blank'
+            ? t('companyDomains.blank', { example })
+            : t('companyDomains.shape', { example }),
+      });
       input.current?.focus();
       return;
     }
 
     setBusy(true);
     setFlash(null);
+    setNotRemoved(false);
 
     try {
       const domain = normaliseDomain(typed);
       setList(await api.addCompanyDomain(organisation.id, domain));
       setTyped('');
+      setError(undefined);
       setFlash({ kind: 'added', domain });
     } catch (refusal) {
-      const message =
+      const violation =
         refusal instanceof ApiError && refusal.is('validation_failed')
-          ? refusal.fieldErrors().domain
+          ? refusal.problem.violations?.find((one) => one.propertyPath === 'domain')
           : undefined;
-      setError(message ?? t('companyDomains.failed'));
+      setError(violation ?? { message: t('companyDomains.failed') });
       input.current?.focus();
     } finally {
       setBusy(false);
@@ -89,12 +104,14 @@ export function CompanyDomainsCard({
   async function remove(domain: string): Promise<void> {
     setBusy(true);
     setFlash(null);
+    setNotRemoved(false);
 
     try {
       setList(await api.removeCompanyDomain(organisation.id, domain));
       setFlash({ kind: 'removed', domain });
+      if (removalAnswers(error?.code, typed, domain)) setError(undefined);
     } catch {
-      setError(t('companyDomains.failed'));
+      setNotRemoved(true);
     } finally {
       setConfirming(null);
       setBusy(false);
@@ -119,23 +136,12 @@ export function CompanyDomainsCard({
       </Text>
 
       {flash != null && (
-        <View accessibilityLiveRegion="polite">
-          <Notice
-            tone="done"
-            mark={tokens.marks.done.glyph}
-            title={
-              flash.kind === 'added'
-                ? t('companyDomains.added', { domain: flash.domain })
-                : t('companyDomains.removed', { domain: flash.domain })
-            }
-            body={
-              flash.kind === 'added'
-                ? t('companyDomains.addedNext')
-                : t('companyDomains.removedNext')
-            }
-          />
-        </View>
+        <ReadOut words={`${flashTitle}\n${flashBody}`}>
+          <Notice tone="done" mark={tokens.marks.done.glyph} title={flashTitle} body={flashBody} />
+        </ReadOut>
       )}
+
+      {notRemoved && <NotRemovedLine words={t('companyDomains.failed')} />}
 
       {list.domains.map(({ domain, stopped }) => (
         <View key={domain} style={styles.row}>
@@ -166,9 +172,9 @@ export function CompanyDomainsCard({
           )}
           {confirming === domain && (
             <View style={styles.confirm}>
-              <Text size={tokens.typeRowTitle.size} weight="bold" accessibilityRole="header">
+              <AnswerHeading answer={confirming} size={tokens.typeRowTitle.size} weight="bold">
                 {t('companyDomains.removeTitle', { domain })}
-              </Text>
+              </AnswerHeading>
               <Text size={tokens.typeBodyPhone.size}>
                 {t('companyDomains.removeBody', { domain })}
               </Text>
@@ -199,7 +205,7 @@ export function CompanyDomainsCard({
         <>
           <Field
             label={t('companyDomains.addLabel')}
-            error={error}
+            error={error?.message}
             help={
               list.ownAddress == null
                 ? t('companyDomains.helpNoAddress', { count: list.most })
@@ -234,6 +240,19 @@ export function CompanyDomainsCard({
           />
         </>
       )}
+    </View>
+  );
+}
+
+/** Scrolled into view when it appears, since the removal it answers can sit a screen below it. */
+function NotRemovedLine({ words }: { words: string }) {
+  const top = useScrolledToTop();
+
+  return (
+    <View ref={top}>
+      <ReadOut words={words} interrupts accessibilityRole="alert">
+        <Notice tone="broken" mark={tokens.marks.broken.glyph} body={words} />
+      </ReadOut>
     </View>
   );
 }

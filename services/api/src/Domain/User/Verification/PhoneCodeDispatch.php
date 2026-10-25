@@ -91,7 +91,7 @@ final readonly class PhoneCodeDispatch
         });
 
         if (!$sent) {
-            throw new ApiException(ErrorCode::Conflict, 'This code is not on WhatsApp now. Send a new code.');
+            throw new ApiException(ErrorCode::Conflict, 'code.not_on_whatsapp');
         }
     }
 

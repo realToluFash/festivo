@@ -1,21 +1,24 @@
 import { ApiError, type TwoFactorEnrolment, type TwoFactorStatus } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatTimeOfDay, keyInGroups, lockLiftsAt } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Pending } from '../../../components/Pending.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { dateLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
+import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 
 type Stage =
   | { kind: 'loading' }
-  | { kind: 'failed' }
+  | { kind: 'failed'; pressed: boolean }
   | { kind: 'at-rest'; status: TwoFactorStatus }
   | { kind: 'setting-up'; enrolment: TwoFactorEnrolment }
-  | { kind: 'saving-codes'; codes: string[] }
+  | { kind: 'saving-codes'; codes: string[]; renewed: boolean }
   | { kind: 'turning-off' }
   | { kind: 'new-codes' };
 
@@ -33,7 +36,17 @@ export function TwoFactorCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [refusedBy, setRefusedBy] = useState<string | null>(null);
+  const [refusedBy, setRefusedBy] = useState<{ organisation: string; landed: boolean } | null>(
+    null,
+  );
+  const [stepHeading, arriveAtStep] = useStepFocus();
+  const [failedNotice, arriveAtFailedTurningOn] = useStepFocus<HTMLDivElement>();
+  const restHeading = useRef<HTMLHeadingElement>(null);
+  const refusal = useRef<HTMLDivElement>(null);
+  const turnOnButton = useRef<HTMLButtonElement>(null);
+  const turnOffButton = useRef<HTMLButtonElement>(null);
+  const newCodesButton = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
   const sessionState = useSessionState();
   // sc-609: the server refuses it too; this says so before a code is asked for.
   const keptBy =
@@ -51,7 +64,7 @@ export function TwoFactorCard({
         if (live) setStage({ kind: 'at-rest', status });
       })
       .catch(() => {
-        if (live) setStage({ kind: 'failed' });
+        if (live) setStage({ kind: 'failed', pressed: attempt > 0 });
       });
 
     return () => {
@@ -78,17 +91,25 @@ export function TwoFactorCard({
   const busy = stage.kind === 'setting-up' || stage.kind === 'saving-codes';
   useEffect(() => onBusy(busy), [busy, onBusy]);
 
-  function reload(): void {
+  function reload(target: RefObject<HTMLElement | null> = restHeading): void {
     setStage({ kind: 'loading' });
     setAttempt((n) => n + 1);
+    land(() => failedNotice.current ?? target.current ?? restHeading.current);
   }
 
   async function turnOn(): Promise<void> {
     try {
       setStage({ kind: 'setting-up', enrolment: await api.enrolTwoFactor() });
+      arriveAtStep();
     } catch {
-      setStage({ kind: 'failed' });
+      setStage({ kind: 'failed', pressed: true });
+      arriveAtFailedTurningOn();
     }
+  }
+
+  function bring(next: Stage): void {
+    setStage(next);
+    arriveAtStep();
   }
 
   return (
@@ -98,15 +119,19 @@ export function TwoFactorCard({
       {stage.kind === 'failed' && (
         <>
           <h2 id="two-factor-title">{t('twoFactorCard.title')}</h2>
-          <div className="notice notice-broken" role="alert">
+          <div className="notice notice-broken" role={stage.pressed ? undefined : 'alert'}>
             <span className="mark mark-broken" aria-hidden="true">
               ✕
             </span>
-            <div className="notice-body">
+            <div
+              className="notice-body"
+              ref={failedNotice}
+              tabIndex={stage.pressed ? -1 : undefined}
+            >
               <p className="notice-title">{t('twoFactorCard.failedTitle')}</p>
               <p>{t('twoFactorCard.failedBody')}</p>
             </div>
-            <button className="button" type="button" onClick={reload}>
+            <button className="button" type="button" onClick={() => reload()}>
               {t('error.retry')}
             </button>
           </div>
@@ -116,44 +141,60 @@ export function TwoFactorCard({
       {stage.kind === 'at-rest' && (
         <AtRest
           status={stage.status}
+          heading={restHeading}
+          refusal={refusal}
+          turnOnButton={turnOnButton}
+          turnOffButton={turnOffButton}
+          newCodesButton={newCodesButton}
           onTurnOn={() => void turnOn()}
           refusedBy={refusedBy}
           onTurnOff={() =>
-            keptBy == null ? setStage({ kind: 'turning-off' }) : setRefusedBy(keptBy)
+            keptBy == null
+              ? bring({ kind: 'turning-off' })
+              : setRefusedBy({ organisation: keptBy, landed: false })
           }
-          onNewCodes={() => setStage({ kind: 'new-codes' })}
+          onNewCodes={() => bring({ kind: 'new-codes' })}
         />
       )}
 
       {stage.kind === 'setting-up' && (
         <SettingUp
           enrolment={stage.enrolment}
+          headingRef={stepHeading}
           onActivated={(codes) => {
-            setStage({ kind: 'saving-codes', codes });
+            bring({ kind: 'saving-codes', codes, renewed: false });
             if (sessionState.status === 'signedIn') void refreshAccount();
           }}
-          onCancel={reload}
+          onCancel={() => reload(turnOnButton)}
         />
       )}
 
-      {stage.kind === 'saving-codes' && <SavingCodes codes={stage.codes} onFinish={reload} />}
+      {stage.kind === 'saving-codes' && (
+        <SavingCodes
+          codes={stage.codes}
+          headingRef={stepHeading}
+          onFinish={() => reload(stage.renewed ? newCodesButton : restHeading)}
+        />
+      )}
 
       {stage.kind === 'turning-off' && (
         <TurningOff
           email={email}
-          onOff={reload}
-          onKeep={reload}
+          headingRef={stepHeading}
+          onOff={() => reload()}
+          onKeep={() => reload(turnOffButton)}
           onKept={(organisation) => {
-            setRefusedBy(organisation);
-            reload();
+            setRefusedBy({ organisation, landed: true });
+            reload(refusal);
           }}
         />
       )}
 
       {stage.kind === 'new-codes' && (
         <ConfirmNewCodes
-          onMade={(codes) => setStage({ kind: 'saving-codes', codes })}
-          onKeep={reload}
+          headingRef={stepHeading}
+          onMade={(codes) => bring({ kind: 'saving-codes', codes, renewed: true })}
+          onKeep={() => reload(newCodesButton)}
         />
       )}
     </section>
@@ -162,13 +203,23 @@ export function TwoFactorCard({
 
 function AtRest({
   status,
+  heading,
+  refusal,
+  turnOnButton,
+  turnOffButton,
+  newCodesButton,
   refusedBy,
   onTurnOn,
   onTurnOff,
   onNewCodes,
 }: {
   status: TwoFactorStatus;
-  refusedBy: string | null;
+  heading: RefObject<HTMLHeadingElement | null>;
+  refusal: RefObject<HTMLDivElement | null>;
+  turnOnButton: RefObject<HTMLButtonElement | null>;
+  turnOffButton: RefObject<HTMLButtonElement | null>;
+  newCodesButton: RefObject<HTMLButtonElement | null>;
+  refusedBy: { organisation: string; landed: boolean } | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
   onNewCodes: () => void;
@@ -178,7 +229,9 @@ function AtRest({
   return (
     <>
       <div className="card-heading">
-        <h2 id="two-factor-title">{t('twoFactorCard.title')}</h2>
+        <h2 id="two-factor-title" ref={heading} tabIndex={-1}>
+          {t('twoFactorCard.title')}
+        </h2>
         {/* A mark and the word, never the colour alone. */}
         <span className={status.on ? 'status-done' : 'card-count'}>
           <span className={status.on ? 'mark mark-done' : 'mark mark-off'} aria-hidden="true">
@@ -198,21 +251,26 @@ function AtRest({
                 {t('twoFactorCard.unused', { left: status.recoveryCodesLeft, total: 10 })}
               </p>
             </div>
-            <button className="button" type="button" onClick={onNewCodes}>
+            <button className="button" type="button" ref={newCodesButton} onClick={onNewCodes}>
               {t('twoFactorCard.makeNewCodes')}
             </button>
           </div>
           <div className="actions">
-            <button className="button" type="button" onClick={onTurnOff}>
+            <button className="button" type="button" ref={turnOffButton} onClick={onTurnOff}>
               {t('twoFactorCard.turnOff')}
             </button>
           </div>
           {refusedBy != null && (
-            <div className="notice notice-attention" role="alert">
+            <div
+              className="notice notice-attention"
+              role={refusedBy.landed ? undefined : 'alert'}
+              ref={refusal}
+              tabIndex={refusedBy.landed ? -1 : undefined}
+            >
               <span className="mark mark-attention" aria-hidden="true">
                 !
               </span>
-              <p>{t('twoFactorCard.keptByRule', { organisation: refusedBy })}</p>
+              <p>{t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}</p>
             </div>
           )}
         </>
@@ -220,7 +278,12 @@ function AtRest({
         <>
           <p>{t('twoFactorCard.offIntro')}</p>
           <div className="actions">
-            <button className="button button-primary" type="button" onClick={onTurnOn}>
+            <button
+              className="button button-primary"
+              type="button"
+              ref={turnOnButton}
+              onClick={onTurnOn}
+            >
               {t('twoFactorCard.turnOn')}
             </button>
           </div>
@@ -232,10 +295,12 @@ function AtRest({
 
 function SettingUp({
   enrolment,
+  headingRef,
   onActivated,
   onCancel,
 }: {
   enrolment: TwoFactorEnrolment;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onActivated: (codes: string[]) => void;
   onCancel: () => void;
 }) {
@@ -256,6 +321,7 @@ function SettingUp({
     }
 
     setChecking(true);
+    const land = focusWhereSent();
 
     try {
       onActivated(await api.activateTwoFactor(cleanCode(typed)));
@@ -268,12 +334,15 @@ function SettingUp({
             ? t('twoFactorCard.setupWrong')
             : t('twoFactorCard.failedBody'),
       );
+      land('setup-code');
     }
   }
 
   return (
     <>
-      <h2 id="two-factor-title">{t('twoFactorCard.setupTitle')}</h2>
+      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
+        {t('twoFactorCard.setupTitle')}
+      </h2>
 
       <ol className="two-factor-steps">
         <li>
@@ -302,7 +371,7 @@ function SettingUp({
                 autoCorrect="off"
                 spellCheck={false}
                 value={typed}
-                disabled={checking}
+                {...offField(checking)}
                 aria-invalid={error != null}
                 aria-describedby={error == null ? 'setup-note' : 'setup-code-error setup-note'}
                 onChange={(event) => {
@@ -320,7 +389,7 @@ function SettingUp({
               <button className="button button-primary" type="submit" aria-busy={checking}>
                 {t('twoFactorCard.checkCode')}
               </button>
-              <button className="button" type="button" onClick={onCancel}>
+              <button className="button" type="button" {...offButton(checking)} onClick={onCancel}>
                 {t('twoFactorCard.cancel')}
               </button>
             </div>
@@ -331,7 +400,15 @@ function SettingUp({
   );
 }
 
-function SavingCodes({ codes, onFinish }: { codes: string[]; onFinish: () => void }) {
+function SavingCodes({
+  codes,
+  headingRef,
+  onFinish,
+}: {
+  codes: string[];
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  onFinish: () => void;
+}) {
   const { t } = useTranslation();
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -347,7 +424,9 @@ function SavingCodes({ codes, onFinish }: { codes: string[]; onFinish: () => voi
 
   return (
     <>
-      <h2 id="two-factor-title">{t('twoFactorCard.saveTitle')}</h2>
+      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
+        {t('twoFactorCard.saveTitle')}
+      </h2>
       <p>{t('twoFactorCard.saveIntro')}</p>
 
       <ul className="recovery-codes" aria-label={t('twoFactorCard.recoveryCodes')}>
@@ -396,11 +475,13 @@ function SavingCodes({ codes, onFinish }: { codes: string[]; onFinish: () => voi
 
 function TurningOff({
   email,
+  headingRef,
   onOff,
   onKeep,
   onKept,
 }: {
   email: string;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onOff: () => void;
   onKeep: () => void;
   onKept: (organisation: string) => void;
@@ -421,6 +502,7 @@ function TurningOff({
     }
 
     setChecking(true);
+    const land = focusWhereSent();
 
     try {
       await api.disableTwoFactor(typed.trim());
@@ -441,12 +523,15 @@ function TurningOff({
               ? t('twoFactorCard.offWrong')
               : t('twoFactorCard.failedBody'),
       );
+      land('off-code');
     }
   }
 
   return (
     <>
-      <h2 id="two-factor-title">{t('twoFactorCard.offTitle')}</h2>
+      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
+        {t('twoFactorCard.offTitle')}
+      </h2>
       <p>{t('twoFactorCard.offBody')}</p>
 
       <form className="auth-form" noValidate onSubmit={(event) => void submit(event)}>
@@ -460,7 +545,7 @@ function TurningOff({
             autoCorrect="off"
             spellCheck={false}
             value={typed}
-            disabled={checking}
+            {...offField(checking)}
             aria-invalid={error != null}
             aria-describedby={error == null ? 'off-note' : 'off-code-error off-note'}
             onChange={(event) => {
@@ -478,7 +563,7 @@ function TurningOff({
           <button className="button button-dark" type="submit" aria-busy={checking}>
             {t('twoFactorCard.turnItOff')}
           </button>
-          <button className="button" type="button" onClick={onKeep}>
+          <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepItOn')}
           </button>
         </div>
@@ -488,9 +573,11 @@ function TurningOff({
 }
 
 function ConfirmNewCodes({
+  headingRef,
   onMade,
   onKeep,
 }: {
+  headingRef: RefObject<HTMLHeadingElement | null>;
   onMade: (codes: string[]) => void;
   onKeep: () => void;
 }) {
@@ -511,6 +598,7 @@ function ConfirmNewCodes({
     }
 
     setChecking(true);
+    const land = focusWhereSent();
 
     try {
       onMade(await api.newRecoveryCodes(typed.trim()));
@@ -525,12 +613,15 @@ function ConfirmNewCodes({
               ? t('twoFactorCard.offWrong')
               : t('twoFactorCard.failedBody'),
       );
+      land('new-codes-code');
     }
   }
 
   return (
     <>
-      <h2 id="two-factor-title">{t('twoFactorCard.newTitle')}</h2>
+      <h2 id="two-factor-title" ref={headingRef} tabIndex={-1}>
+        {t('twoFactorCard.newTitle')}
+      </h2>
       <div className="notice notice-attention">
         <span className="mark mark-attention" aria-hidden="true">
           !
@@ -552,7 +643,7 @@ function ConfirmNewCodes({
             autoCorrect="off"
             spellCheck={false}
             value={typed}
-            disabled={checking}
+            {...offField(checking)}
             aria-invalid={error != null}
             aria-describedby={error == null ? 'new-codes-note' : 'new-codes-error new-codes-note'}
             onChange={(event) => {
@@ -570,7 +661,7 @@ function ConfirmNewCodes({
           <button className="button button-primary" type="submit" aria-busy={checking}>
             {t('twoFactorCard.makeNewCodes')}
           </button>
-          <button className="button" type="button" onClick={onKeep}>
+          <button className="button" type="button" {...offButton(checking)} onClick={onKeep}>
             {t('twoFactorCard.keepCodes')}
           </button>
         </div>
@@ -585,5 +676,5 @@ function pausedMessage(refusal: ApiError, t: TFunction): string {
 
   return liftsAt == null
     ? t('twoFactorCard.failedBody')
-    : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, currentLocale()) });
+    : t('twoFactor.pausedBody', { time: formatTimeOfDay(liftsAt, dateLocale()) });
 }

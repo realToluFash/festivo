@@ -15,13 +15,16 @@ from . import roles
 HERE = pathlib.Path(__file__).resolve().parent
 EXAMPLE = HERE.parent / "agents.example.json"
 MODELS = HERE.parent / "models.json"
-SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd", "wakeEvery")
+SETTINGS = ("model", "effort", "memoryMax", "maxRuntime", "maxBudgetUsd", "wakeEvery",
+            "workers")
 SIZE = re.compile(r"^\d+[KMG]$")
 RUNTIME = re.compile(r"^(\d+)(m|h)$")
 # Claude Code's own default folder, which keeps its account file beside it, not inside.
 CLAUDE_DEFAULT = pathlib.Path("~/.claude").expanduser()
 # Under everything in agents.json: a worker is never left without a time limit.
-BUILT_IN = {"maxRuntime": "90m", "wakeEvery": "3m"}
+BUILT_IN = {"maxRuntime": "90m", "wakeEvery": "3m", "workers": 1}
+# What every worker on the machine may use between them, the systemd slice's MemoryMax.
+SLICE_MEMORY = "16G"
 
 
 class ConfigError(RuntimeError):
@@ -91,15 +94,33 @@ def workspace(config):
     return expand(config.get("workspace"))
 
 
-def checkout(config, role):
+def checkout(config, role, worker=None):
+    """The role's checkout; a second worker and on works in one of its own beside it."""
     own = (config.get("roles", {}).get(role) or {}).get("checkout")
-    if own:
-        return expand(own)
     root = workspace(config)
-    if not root:
+    if own:
+        path = expand(own)
+    elif not root:
         return None
-    return root / (config.get("mainCheckout") or "soirely") if role == "dev" \
-        else root / f"soirely-{role}"
+    else:
+        path = root / (config.get("mainCheckout") or "soirely") if role == "dev" \
+            else root / f"soirely-{role}"
+    if worker and worker != role:
+        return path.with_name(f"{path.name}-{worker_number(worker)}")
+    return path
+
+
+def worker_names(role, count):
+    """`pm`, then `pm-2`, `pm-3`: the first keeps the role's own name, unit and checkout."""
+    return [role] + [f"{role}-{n}" for n in range(2, (count or 1) + 1)]
+
+
+def worker_role(name):
+    return name.split("-")[0]
+
+
+def worker_number(name):
+    return int(name.split("-")[1]) if "-" in name else 1
 
 
 def claude_dir(config, role):
@@ -144,6 +165,12 @@ def settings(config, role):
     return merged
 
 
+def slice_memory(config):
+    """`sliceMemoryMax`, or 16G when it is unset or not a size, which `check` reports."""
+    value = config.get("sliceMemoryMax")
+    return str(value) if value is not None and SIZE.match(str(value)) else SLICE_MEMORY
+
+
 def minutes(runtime):
     number, unit = RUNTIME.match(runtime).groups()
     return int(number) * (60 if unit == "h" else 1)
@@ -171,6 +198,10 @@ def setting_problems(values, known, where):
     every = values.get("wakeEvery")
     if every is not None and (not RUNTIME.match(str(every)) or not minutes(str(every))):
         problems.append(f"{where}: wakeEvery {every!r} is not a time such as 3m or 1h")
+    workers = values.get("workers")
+    if workers is not None and (isinstance(workers, bool) or not isinstance(workers, int)
+                                or workers < 1):
+        problems.append(f"{where}: workers {workers!r} is not a whole number from 1")
     budget = values.get("maxBudgetUsd")
     if budget is not None and (isinstance(budget, bool) or not isinstance(budget, (int, float))
                                or budget <= 0):
@@ -211,6 +242,9 @@ def check(config, known=None, logged_in=account):
         if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
                                   or value < 0):
             errors.append(f"{name} is {value!r} in {path()}: a number, or null")
+    limit = config.get("sliceMemoryMax")
+    if limit is not None and not SIZE.match(str(limit)):
+        errors.append(f"sliceMemoryMax is {limit!r} in {path()}: a size such as 28G, or null")
     for role in listed:
         if role in unknown:
             continue
@@ -218,6 +252,10 @@ def check(config, known=None, logged_in=account):
         problems = setting_problems(values, known, role)
         if problems:
             refused[role] = "; ".join(problems)
+            continue
+        if (values.get("workers") or 1) > 1 and role not in roles.PARALLEL:
+            refused[role] = (f"workers is {values['workers']}, but {role} keeps one stack, so "
+                             f"runs one worker; only {', '.join(roles.PARALLEL)} run more")
             continue
         place = checkout(config, role)
         if place and not place.exists():

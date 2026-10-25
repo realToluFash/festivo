@@ -124,93 +124,93 @@ class AssistantInteraction
         $this->outputTokens = $outputTokens;
     }
 
-    public function id(): Uuid
+    public function getId(): Uuid
     {
         return $this->id;
     }
 
-    public function occurredAt(): DateTimeImmutable
+    public function getOccurredAt(): DateTimeImmutable
     {
         return $this->occurredAt;
     }
 
-    public function actorType(): Actor
+    public function getActorType(): Actor
     {
         return $this->actorType;
     }
 
-    public function sessionId(): ?string
+    public function getSessionId(): ?string
     {
         return $this->sessionId;
     }
 
-    public function context(): string
+    public function getContext(): string
     {
         return $this->context;
     }
 
-    public function usageFeature(): string
+    public function getUsageFeature(): string
     {
         return $this->usageFeature;
     }
 
-    public function provider(): string
+    public function getProvider(): string
     {
         return $this->provider;
     }
 
-    public function model(): string
+    public function getModel(): string
     {
         return $this->model;
     }
 
-    public function locale(): string
+    public function getLocale(): string
     {
         return $this->locale;
     }
 
-    public function outcome(): string
+    public function getOutcome(): string
     {
         return $this->outcome;
     }
 
-    public function systemPrompt(): string
+    public function getSystemPrompt(): string
     {
         return $this->systemPrompt;
     }
 
-    public function userPrompt(): ?string
+    public function getUserPrompt(): ?string
     {
         return $this->userPrompt;
     }
 
-    public function resourceContext(): ?string
+    public function getResourceContext(): ?string
     {
         return $this->resourceContext;
     }
 
     /** @return list<string> */
-    public function toolsOffered(): array
+    public function getToolsOffered(): array
     {
         return $this->toolsOffered;
     }
 
-    public function toolCalled(): ?string
+    public function getToolCalled(): ?string
     {
         return $this->toolCalled;
     }
 
-    public function response(): ?string
+    public function getResponse(): ?string
     {
         return $this->response;
     }
 
-    public function inputTokens(): int
+    public function getInputTokens(): int
     {
         return $this->inputTokens;
     }
 
-    public function outputTokens(): int
+    public function getOutputTokens(): int
     {
         return $this->outputTokens;
     }

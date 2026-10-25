@@ -20,10 +20,12 @@ on:
     branches: [main]
 
 concurrency:
-  # A new push supersedes the run in flight. Without this a branch pushed three
-  # times holds three sets of runners and the newest result arrives last.
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # A new push to a pull request supersedes the run in flight. Without this a
+  # branch pushed three times holds three sets of runners and the newest result
+  # arrives last. Main's runs are never cancelled: each one is the only check of
+  # what its merge did to main.
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -242,6 +244,18 @@ jobs:
 
       - name: Generate the JWT signing keypair
         run: docker compose exec -T api php bin/console lexik:jwt:generate-keypair --skip-if-exists
+
+      - name: Responses do not name the PHP release
+        # PHP's SAPI adds X-Powered-By below Symfony, so no test in the suite
+        # can see it. A route that does not exist is a 404 whatever the
+        # database is doing, so this cannot flake on anything but the header.
+        run: |
+          curl -sS --retry 10 --retry-connrefused --retry-delay 1 \
+            -D "$RUNNER_TEMP/api-headers" -o /dev/null http://localhost:8080/api/no-such-thing
+          if grep -i '^x-powered-by:' "$RUNNER_TEMP/api-headers"; then
+            echo "::error::The API sends X-Powered-By; expose_php is on again (services/api/Dockerfile)"
+            exit 1
+          fi
 
       - name: Create a throwaway database and migrate it
         # Drops and recreates, so a removed migration is actually gone — the

@@ -96,7 +96,8 @@ a one-line reference; use `--again` only if you truly need its full text again.
 order is:
 
 1. **A translation ticket in `Failed QA`.** It was nearly done.
-2. **A translation ticket** in `To Do` or `In Progress` (label `translation`), oldest first.
+2. **A translation ticket** in `To Do`, `Ready For Dev` or `In Progress` (label
+   `translation`), oldest first.
 3. **A request**: a comment from the product manager, designer, QA or another role asking for
    wording, a review of a string, or copy for a new channel. Requests become tickets
    (section 3) unless they are a one-word answer.
@@ -157,10 +158,10 @@ feature merges.
 
 **One ticket is one branch and one pull request, with all four languages in it.**
 
-1. **Move the ticket to `In Progress`**: `sq l10n move sc-N "In Progress"` (from `To Do` or
-   `Failed QA`).
+1. **Move the ticket to `In Progress`**: `sq l10n move sc-N "In Progress"` (from `To Do`,
+   `Ready For Dev` or `Failed QA`).
 2. **Work in your own worktree**, `~/Projects/soirely-l10n`, never in `~/Projects/soirely` or
-   `~/Projects/soirely-dev2`, which are the developers'. It has a stack of its own; if it is
+   `~/Projects/soirely-devN`, which are the developers'. It has a stack of its own; if it is
    not there, `just dev-env setup --role l10n` from the main checkout makes it. Branch there:
 
    ```sh
@@ -182,15 +183,20 @@ feature merges.
    the four guides, and `same-as-english.json`. Anything else you think needs changing, such
    as a key, a component or a format, is a `[dev]` comment.
 6. **Check it**: `node scripts/locale-status.mjs` shows nothing left for the ticket's keys in
-   any locale. Run the catalogue guards (`npm test -w apps/web -w apps/mobile`); CI runs the
-   API's.
+   any locale. Run the catalogue guards (`npm test -w apps/web -w apps/mobile`), output to
+   `"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}/guards.out"` rather than a pipe or a fixed name in `/tmp`; CI runs the
+   API's and the rest of the suite.
 7. **Push and open one pull request** with `sq l10n pr-create --head l10n/sc-<id> --title "…"`
    and the body on stdin, in the `create-pr` shape. Its title names the outcome, for example
    `feat(i18n): the sign-in screens in every language (sc-900)`. It is **not a draft**,
    because you merge it, and you skip `create-pr`'s show-and-wait step. Its Evidence of work
    lists each key with its English and the text in each locale. Answer a review comment with
    `sq l10n pr-reply N <comment id>`.
-8. **Merge it yourself** once its checks are green on the head commit: `sq l10n merge N`. It
+8. **Merge it yourself** once its checks are green on the head commit: `sq l10n merge N`.
+   Wait for them with `sq l10n checks N --wait --head <sha>` as a background command, `<sha>`
+   the commit you pushed, never a polling loop you write; it ends by itself, non-zero unless
+   every check passed. If the run ends first, finished checks wake you again: green to
+   merge, red to fix (`sq l10n checks N`, or `sq l10n rerun N` for a flaky job). It
    makes a merge commit, deletes the branch, and refuses, with the reason, when a check is not
    green, the branch conflicts with `main`, or the pull request changes anything outside the
    locale files. A branch merely behind `main` merges as it is; on a conflict, merge
@@ -240,14 +246,15 @@ moving it back to `Ready For QA`.
   and whether the artboards' English is the copy or a placeholder.
 - **QA `[qa]`**: what to test, and the findings. QA's screenshots in each locale are the best
   evidence of a string that does not fit.
-- **Developer `[dev]` or `[dev2]`**: a missing key, a stitched-together sentence, a missing
+- **Developer `[dev]`, or `[devN]` for developer N**: a missing key, a stitched-together sentence, a missing
   plural or slot, a date in a string, a literal in code. You never fix those yourself.
-  Wherever this skill says `[dev]`, tag the developer who built the string: `[dev2]` when the
-  feature story carries the `dev2` label, `[dev]` when it carries `dev1` or no label. A
-  translation ticket carries neither, so a bare `[dev]` on one reaches developer 1 whoever
+  Wherever this skill says `[dev]`, tag the developer who built the string: `[devN]` when the
+  feature story carries the `devN` label, `[dev]` when it carries `dev1` or no label. On a
+  feature story, tag `[dev]` and sq routes it to the developer whose label the story carries. A
+  translation ticket carries no developer label, so a bare `[dev]` on one reaches developer 1 whoever
   built the feature. Under **Covers**, find the feature story the key came from and use its
-  label. A ticket can cover stories from both developers, so a comment about keys from both
-  is addressed to both, `[dev] [dev2]`.
+  label. A ticket can cover stories from several developers, so a comment about keys from
+  several is addressed to each, as `[dev] [dev3]`.
 - **Business manager `[bm]`**: the cost of an SMS that grew a segment, and a plan or price name.
 - **Creative director `[cd]`**: wording that an idea depends on.
 

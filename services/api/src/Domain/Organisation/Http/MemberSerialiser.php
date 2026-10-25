@@ -10,6 +10,7 @@ use App\Entity\MembershipTransition;
 use App\Entity\Role;
 use App\Entity\User;
 use App\Enum\MembershipStatus;
+use Closure;
 use DateTimeImmutable;
 use DateTimeInterface;
 use Psl\Iter;
@@ -19,17 +20,20 @@ use Psl\Vec;
 final readonly class MemberSerialiser
 {
     /**
-     * @param list<MembershipTransition> $history  this membership's, oldest first
-     * @param list<Invitation>           $accepted invitations this member accepted here
+     * @param list<MembershipTransition>         $history    this membership's, oldest first
+     * @param list<Invitation>                   $accepted   invitations this member accepted here
+     * @param Closure(DateTimeImmutable): string $written    a deadline as the caller reads it (sc-868)
+     * @param array<string, mixed>|null          $suspension MemberSuspension::describe(), for the caller
      *
      * @return array<string, mixed>
      */
-    public static function member(Membership $membership, array $history, array $accepted, User $caller): array
+    public static function member(Membership $membership, array $history, array $accepted, User $caller, Closure $written, ?array $suspension = null): array
     {
         $user = $membership->getUser();
         $last = Iter\last($history);
-        $entered = Iter\last(Vec\filter($history, static fn (MembershipTransition $step): bool => $step->getToStatus()->isEntry()));
+        $entered = Iter\last(Vec\filter($history, static fn (MembershipTransition $step): bool => $step->getToStatus()->isEntry() && self::fromOutside($step)));
         $invitation = Iter\last($accepted);
+        $removesAt = MembershipStatus::PendingApproval === $membership->getStatus() ? $membership->getRequestExpiresAt() : null;
 
         return [
             'id' => $membership->getId()->toRfc4122(),
@@ -42,7 +46,10 @@ final readonly class MemberSerialiser
             'status' => $membership->getStatus()->value,
             'former' => MembershipStatus::LeftOrRemoved === $membership->getStatus() ? self::former($last, $user) : null,
             'channel' => $entered?->getChannel()->value,
+            'suspension' => $suspension,
+            'message' => MembershipStatus::PendingApproval === $membership->getStatus() ? $membership->getRequestMessage() : null,
             'since' => self::at($last?->getOccurredAt()),
+            'removesAt' => null === $removesAt ? null : ['at' => self::at($removesAt), 'written' => $written($removesAt)],
             'invitedBy' => null === $invitation ? null : self::person($invitation->getInvitedBy()),
             'invitedAt' => self::at($invitation?->getSentAt() ?? $invitation?->getCreatedAt()),
             'self' => $user->getId()->equals($caller->getId()),
@@ -83,6 +90,14 @@ final readonly class MemberSerialiser
             'seededAs' => $role->getSeededAs()?->value,
             'name' => $role->getName(),
         ];
+    }
+
+    /** Approval and Restore move a member already inside, in Settings, and are not how they came. */
+    private static function fromOutside(MembershipTransition $step): bool
+    {
+        $from = $step->getFromStatus();
+
+        return null === $from || MembershipStatus::LeftOrRemoved === $from;
     }
 
     // The machine has one state for both; who caused it tells them apart.

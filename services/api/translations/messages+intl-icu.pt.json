@@ -1,0 +1,9 @@
+{
+    "members.seats_in_use": "{count, plural, one {O único lugar de equipa do plano desta organização está ocupado, por isso nada mudou.} other {Os # lugares de equipa do plano desta organização estão todos ocupados, por isso nada mudou.}}",
+    "limits.tries": "Demasiadas tentativas. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "limits.wrong_codes": "Demasiados códigos errados. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "limits.sign_in": "Demasiadas tentativas de início de sessão. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "limits.reset_requests": "Demasiados pedidos de reposição. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "limits.organisations": "Por agora, não é possível criar mais organizações. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}.",
+    "limits.sign_ups": "Demasiados registos a partir desta rede. Tente novamente {hour, plural, =1 {à {time}} other {às {time}}}."
+}

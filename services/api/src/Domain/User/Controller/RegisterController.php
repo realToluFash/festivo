@@ -109,7 +109,7 @@ final class RegisterController
         $wait = $this->pendingRegistrations->resend($body['registration']);
 
         if (null !== $wait) {
-            throw new ApiException(ErrorCode::TooManyAttempts, 'Wait before asking for another code.', [], null, ['Retry-After' => (string) $wait]);
+            throw new ApiException(ErrorCode::TooManyAttempts, 'code.wait', [], null, ['Retry-After' => (string) $wait]);
         }
 
         return new JsonResponse(['cooldownSeconds' => VerificationChallenge::RESEND_COOLDOWN_SECONDS]);
@@ -120,7 +120,7 @@ final class RegisterController
         $limit = $this->registrationLimiter->create($request->getClientIp())->consume();
 
         if (!$limit->isAccepted()) {
-            throw ApiException::tooManyAttempts('Too many sign-ups from this network.', $limit->getRetryAfter());
+            throw ApiException::tooManyAttempts('limits.sign_ups', $limit->getRetryAfter());
         }
     }
 }

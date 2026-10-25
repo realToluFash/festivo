@@ -721,6 +721,10 @@ describe('a browser never holds the refresh token', () => {
       removable: true,
       permissions: ['events.read'],
       holders: 2,
+      holderNames: [
+        { name: 'Ada Okeke', suspended: false },
+        { name: 'Émeka Obi', suspended: true },
+      ],
     };
 
     const client = new ApiClient({
@@ -746,6 +750,7 @@ describe('a browser never holds the refresh token', () => {
     await client.deleteRole('org_1', 'role_6', 'role_5');
 
     expect(catalogue.roles[0]?.name).toBe('Door team');
+    expect(catalogue.roles[0]?.holderNames).toEqual(door.holderNames);
     expect(catalogue.areas).toEqual([{ area: 'events', permissions: ['events.read'] }]);
     expect(sent.slice(1)).toEqual([
       {
@@ -982,13 +987,57 @@ describe('a browser never holds the refresh token', () => {
     expect(saved.verificationNeeded).toBe(false);
   });
 
-  test('signing out clears the session even when the request fails', async () => {
+  test('a sign-out the API never answered keeps the session where only the API can clear the cookie', async () => {
     const tokens = store('good', null);
 
     const client = new ApiClient({
       baseUrl: () => 'http://api.test',
       tokens,
       refreshTokenIn: 'cookie',
+      fetch: async () => {
+        throw new Error('offline');
+      },
+    });
+
+    await expect(client.signOut()).rejects.toBeInstanceOf(ApiUnreachableError);
+    expect(await tokens.access()).toBe('good');
+  });
+
+  test('an error of the API on a sign-out counts as not reached', async () => {
+    const tokens = store('good', null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => problem(500, 'internal'),
+    });
+
+    await expect(client.signOut()).rejects.toBeInstanceOf(ApiUnreachableError);
+    expect(await tokens.access()).toBe('good');
+  });
+
+  test('any other answer to a sign-out ends the session', async () => {
+    const tokens = store('good', null);
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
+      refreshTokenIn: 'cookie',
+      fetch: async () => problem(401, 'invalid_refresh_token'),
+    });
+
+    await client.signOut();
+
+    expect(await tokens.access()).toBeNull();
+  });
+
+  test('a sign-out that holds its refresh token clears it even when the request fails', async () => {
+    const tokens = store('good', 'refresh');
+
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      tokens,
       fetch: async () => {
         throw new Error('offline');
       },
@@ -1151,6 +1200,108 @@ describe('company domain joining (sc-561)', () => {
     expect(sent).toEqual([
       { url: 'http://api.test/api/orgs/org_1/domains/ire.events', method: 'DELETE' },
     ]);
+  });
+
+  test('lists the organisations the account is paused in, with why and the removal instant', async () => {
+    const suspension = {
+      reason: 'address_gone',
+      domain: 'ire.events',
+      since: { at: '2026-10-16T08:40:00+00:00', written: 'Friday, Oct 16 at 09:40 WAT' },
+      removesAt: { at: '2026-11-15T08:40:00+00:00', written: 'Sunday, Nov 15 at 09:40 WAT' },
+      onlyOwner: false,
+    };
+    const { client } = answering({
+      organisations: [],
+      paused: [
+        {
+          id: 'org_1',
+          name: 'Ìrè Events',
+          countryCode: 'NG',
+          currency: 'NGN',
+          timezone: 'Africa/Lagos',
+          contactAddress: 'hello@ire.events',
+          locale: 'en',
+          suspension,
+        },
+      ],
+    });
+
+    const { paused } = await client.organisationsWithPaused();
+
+    expect(paused[0]?.name).toBe('Ìrè Events');
+    expect(paused[0]?.suspension).toEqual(suspension);
+  });
+
+  test('restores a suspended member', async () => {
+    const { client, sent } = answering(null, 204);
+
+    await client.restoreMember('org_1', 'mem_1');
+
+    expect(sent).toEqual([
+      { url: 'http://api.test/api/orgs/org_1/members/mem_1/restore', method: 'POST' },
+    ]);
+  });
+});
+
+describe('requests to join (sc-562)', () => {
+  function answering(body: unknown, status = 200) {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return new Response(body == null ? null : JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    return { client, sent };
+  }
+
+  test('sends the token in the body, never the URL, and reads only the name', async () => {
+    const { client, sent } = answering({
+      organisation: { name: 'Ìrè Events' },
+      standing: 'cooling_off',
+      askAgainFrom: '2026-11-20T09:00:00+00:00',
+    });
+
+    expect(await client.requestLinkPreview('ab12')).toEqual({
+      organisation: { name: 'Ìrè Events' },
+      standing: 'cooling_off',
+      askAgainFrom: '2026-11-20T09:00:00+00:00',
+    });
+    expect(sent).toEqual([
+      { url: 'http://api.test/api/request-links/link', method: 'POST', body: { token: 'ab12' } },
+    ]);
+  });
+
+  test('a blank message is sent as none', async () => {
+    const { client, sent } = answering(
+      { request: { organisation: { id: 'org_1', name: 'Ìrè Events' }, askedAt: 'x' } },
+      201,
+    );
+
+    await client.askThroughRequestLink('ab12', '   ');
+
+    expect(sent[0]?.body).toEqual({ token: 'ab12', message: null });
+  });
+
+  test('turns the link on with a PUT and reads it in full', async () => {
+    const { client, sent } = answering({ on: true, url: 'https://soirely.test/join/ab12' });
+
+    expect(await client.turnOnRequestLink('org_1')).toEqual({
+      on: true,
+      url: 'https://soirely.test/join/ab12',
+    });
+    expect(sent[0]?.method).toBe('PUT');
+    expect(sent[0]?.url).toBe('http://api.test/api/orgs/org_1/request-link');
   });
 });
 
@@ -1985,6 +2136,53 @@ describe('invitations and members', () => {
     ]);
   });
 
+  test('somebody awaiting approval carries the instant they are removed, as the server wrote it', async () => {
+    const { api } = client(
+      json({
+        members: [
+          {
+            id: 'm_ada',
+            user: { id: 'u3', name: 'Ada Okeke', email: 'ada@okeke.ng' },
+            role: { id: 'role_5', seededAs: 'read_only', name: null },
+            status: 'pending_approval',
+            former: null,
+            channel: 'request',
+            message: null,
+            since: '2026-10-12T08:40:00+00:00',
+            removesAt: {
+              at: '2026-11-11T08:40:00+00:00',
+              written: 'Wednesday, Nov 11 at 09:40 WAT',
+            },
+            invitedBy: null,
+            invitedAt: null,
+            self: false,
+            history: [],
+          },
+        ],
+        invitations: [],
+      }),
+    );
+
+    const [ada] = (await api.members('org_1')).members;
+
+    expect(ada?.removesAt).toEqual({
+      at: '2026-11-11T08:40:00+00:00',
+      written: 'Wednesday, Nov 11 at 09:40 WAT',
+    });
+  });
+
+  test('a request to join is approved with a role, or turned down', async () => {
+    const { api, sent } = client(new Response(null, { status: 204 }));
+
+    await api.approveMember('org_1', 'm_ada', 'role_5');
+    await api.turnDownMember('org_1', 'm_chidi');
+
+    expect(sent).toEqual([
+      { line: 'POST /api/orgs/org_1/members/m_ada/approve', body: { roleId: 'role_5' } },
+      { line: 'POST /api/orgs/org_1/members/m_chidi/turn-down', body: {} },
+    ]);
+  });
+
   test('a deletion keeps the deadline as the server wrote it for the reader', async () => {
     const { api, sent } = client(
       json({
@@ -2011,6 +2209,7 @@ describe('events (sc-1486)', () => {
     startsAt: '2026-11-14T16:00:00+01:00',
     endsAt: '2026-11-15T02:00:00+01:00',
     timeZone: 'Africa/Lagos',
+    dayCount: 2,
     currency: 'NGN',
     createdAt: '2026-10-21T09:00:00+00:00',
   };
@@ -2070,6 +2269,37 @@ describe('events (sc-1486)', () => {
     await expect(
       client(() => json({ event: { ...EVENT, timeZone: undefined } })).api.event('e1'),
     ).rejects.toThrow(/events controller/);
+    await expect(
+      client(() => json({ event: { ...EVENT, dayCount: 0 } })).api.event('e1'),
+    ).rejects.toThrow(/events controller/);
+  });
+
+  test('an edit opens with the tag it read, and sends it back as If-Match', async () => {
+    const headers: (string | null)[] = [];
+    const api = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (_url, init) => {
+        headers.push(new Headers(init?.headers).get('If-Match'));
+
+        return new Response(JSON.stringify({ event: EVENT }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json', ETag: '"2"' },
+        });
+      },
+    });
+
+    expect(await api.taggedEvent(EVENT.id)).toEqual({ event: EVENT, tag: '"2"' });
+    expect(await api.updateEvent(EVENT.id, { name: 'Renamed' }, '"2"')).toEqual({
+      event: EVENT,
+      tag: '"2"',
+    });
+    expect(headers).toEqual([null, '"2"']);
+  });
+
+  test('an event answered without its ETag is an error, as an edit could not be saved', async () => {
+    await expect(client(() => json({ event: EVENT })).api.taggedEvent('e1')).rejects.toThrow(
+      /ETag/,
+    );
   });
 
   test('a refused create carries its violations by field', async () => {
@@ -2099,5 +2329,97 @@ describe('events (sc-1486)', () => {
         });
       });
     expect.assertions(1);
+  });
+});
+
+describe('claiming an organisation with no active owner (sc-6640)', () => {
+  function answering(body: unknown, status = 200) {
+    const sent: { url: string; method: string; body: unknown }[] = [];
+    const client = new ApiClient({
+      baseUrl: () => 'http://api.test',
+      fetch: async (input, init) => {
+        sent.push({
+          url: String(input),
+          method: init?.method ?? 'GET',
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : null,
+        });
+
+        return new Response(JSON.stringify(body), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+
+    return { client, sent };
+  }
+
+  const when = { at: '2026-10-27T09:00:00+00:00', written: 'Tuesday 27 Oct at 10:00 WAT' };
+  // Every key OwnerClaimDescriber writes; OwnerClaimTest asserts the same list on the server.
+  const claim = {
+    id: 'claim_1',
+    claimant: { id: 'u_bisi', name: 'Bisi', email: 'bisi@ire.events' },
+    mine: true,
+    domain: 'ire.events',
+    record: { type: 'TXT', name: '_soirely-verify.ire.events', value: 'soirely-claim=abc' },
+    startedAt: when,
+    lapsesAt: when,
+    foundAt: null,
+    passesAt: null,
+  };
+
+  test('reads the banner with the claimant’s record', async () => {
+    const banner = { state: 'open', domain: 'ire.events', claim, stopped: null, lapsed: null };
+    const { client, sent } = answering({ ownerClaim: banner });
+
+    expect(await client.startOwnerClaim('org_1')).toEqual(banner);
+    expect(sent).toEqual([
+      {
+        url: 'http://api.test/api/orgs/org_1/owner-claim',
+        method: 'POST',
+        body: {},
+      },
+    ]);
+  });
+
+  test('reads no banner as null, and a shape it does not know as an error', async () => {
+    expect(await answering({ ownerClaim: null }).client.ownerClaim('org_1')).toBeNull();
+    await expect(
+      answering({ ownerClaim: { state: 'odd' } }).client.ownerClaim('org_1'),
+    ).rejects.toThrow(/OwnerClaimDescriber/);
+  });
+
+  test('says whether Check record found it', async () => {
+    const banner = {
+      state: 'found',
+      domain: 'ire.events',
+      claim: { ...claim, foundAt: when, passesAt: when },
+      stopped: null,
+      lapsed: null,
+    };
+    const { client } = answering({ ownerClaim: banner, found: true });
+
+    expect(await client.checkOwnerClaim('org_1')).toEqual({ ownerClaim: banner, found: true });
+  });
+
+  test('says whether anybody is told of a withdrawal (sc-8204)', async () => {
+    const banner = {
+      state: 'no_owner',
+      domain: 'ire.events',
+      claim: null,
+      stopped: null,
+      lapsed: null,
+    };
+
+    expect(
+      await answering({ ownerClaim: banner, withdrawn: { told: true } }).client.withdrawOwnerClaim(
+        'org_1',
+      ),
+    ).toEqual({ ownerClaim: banner, told: true });
+    expect(
+      await answering({ ownerClaim: banner, withdrawn: { told: false } }).client.withdrawOwnerClaim(
+        'org_1',
+      ),
+    ).toEqual({ ownerClaim: banner, told: false });
   });
 });

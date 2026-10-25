@@ -15,6 +15,8 @@ final readonly class OnboardingGate implements OnboardingGateInterface
     /** The whole list, by route name. Logout and refresh are public, so they never reach the gate. */
     public const array EXEMPT = [
         'auth_me',
+        // The language switcher in the auth frame, so the screens that must be finished can be read (sc-6887).
+        'auth_locale',
         'auth_verify_email',
         'auth_verify_resend',
         'auth_verify_resend_cooldown',
@@ -30,6 +32,8 @@ final readonly class OnboardingGate implements OnboardingGateInterface
         'invitations_decline',
         // "A few details" offers the organisations at the address's domain (sc-561).
         'join_offers',
+        // Somebody registered from a request link asks before they have an organisation (sc-562); it checks verified itself.
+        'request_links_ask',
     ];
 
     public function __construct(

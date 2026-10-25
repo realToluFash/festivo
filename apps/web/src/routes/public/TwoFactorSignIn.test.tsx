@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
 const ACCOUNT = {
@@ -85,7 +84,6 @@ function enter(code: string, button = 'Verify and sign in'): void {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('a sign-in that asks for a second factor', () => {
@@ -186,7 +184,7 @@ describe('a sign-in that asks for a second factor', () => {
       ),
     ).toBeDefined();
     const button = screen.getByRole('button', { name: /^Try again at \d\d:\d\d$/ });
-    expect((button as HTMLButtonElement).disabled).toBe(true);
+    expect(button.getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('link', { name: 'Reset your password' }).getAttribute('href')).toBe(
       '/forgot-password',
     );

@@ -25,6 +25,8 @@ export interface Problem {
   retryAt?: string;
   /** On a refused two-factor code after the first factor passed: send it back with the next code instead. */
   pendingProof?: string;
+  /** On `team_seats_in_use`: how many team seats the plan has. */
+  limit?: number;
   /** On `two_factor_required` straight after a Google or Apple sign-in: the address that sign-in vouched for. */
   providerEmail?: string;
   /** On `oauth_only`, `session_timed_out`, `provider_kept_by_rule` or `two_factor_kept_by_rule`: the organisation whose rule it is (sc-69, sc-609). */
@@ -34,6 +36,8 @@ export interface Problem {
   /** On `session_timed_out`: the limit that ended it. With `oauth_only` too, the address to sign back in with. */
   days?: number;
   email?: string;
+  /** On `join_request_cooling_off`: when they may ask that organisation again (sc-562). */
+  until?: string;
   /** On `provider_kept_by_rule`: the provider that must stay linked. */
   provider?: string;
   /** On `organisation_two_factor_required`: the permission kept back. */

@@ -15,5 +15,8 @@ export default defineConfig({
     // reader can tell where `expect` came from, and the type surface does not
     // depend on an ambient declaration being picked up.
     setupFiles: ['./src/test-setup.ts'],
+    // At least three times asyncUtilTimeout in test-setup.ts, so a test with
+    // two waits on a loaded runner is not killed before its waits run out.
+    testTimeout: 10000,
   },
 });

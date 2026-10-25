@@ -14,7 +14,7 @@ import {
 import { qaConfig, TESTERS } from './qa-env.mjs';
 
 // Two stacks on one port is a developer's tests reading another stack's database.
-describe('a second developer’s stack', () => {
+describe('a developer’s own stack', () => {
   const config = devConfig(2);
 
   it('is its own compose project, in its own worktree', () => {
@@ -34,6 +34,15 @@ describe('a second developer’s stack', () => {
     expect(new Set(ports).size).toBe(ports.length);
     expect(Math.max(...ports)).toBeLessThan(65536);
     expect(config.ports.API_PORT).toBe(48080);
+  });
+
+  it('has developers 3 and 4 at worktrees and ports of their own', () => {
+    expect(devConfig(3).project).toBe('soirely-dev3');
+    expect(devConfig(4).project).toBe('soirely-dev4');
+    expect(developerOf('/Users/x/Projects/soirely-dev4')).toBe(4);
+    expect(devConfig(3).ports.API_PORT).toBe(33080);
+    expect(devConfig(4).ports.API_PORT).toBe(43080);
+    expect(() => devConfig(5)).toThrow(/no developer 5/);
   });
 
   it('refuses a developer it has no stack for', () => {

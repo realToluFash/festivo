@@ -212,6 +212,23 @@ export interface JoinOffers {
   request: JoinRequest | null;
 }
 
+/** Settings > General's Requests to join (sc-562): the link in full while it is on. */
+export interface RequestLink {
+  on: boolean;
+  url: string | null;
+}
+
+/** Why somebody signed in cannot ask through a request link: they belong, they wait, or they were turned down lately. */
+export type RequestStanding = 'member' | 'waiting' | 'cooling_off';
+
+/** What a request link opens onto (sc-562). Only the organisation's name: a dead link is refused `request_link_dead`. */
+export interface RequestLinkPreview {
+  organisation: { name: string };
+  standing: RequestStanding | null;
+  /** While cooling off, when they may ask again. */
+  askAgainFrom: string | null;
+}
+
 /** Settings > General's Company domain joining (sc-561): `stopped` for one another organisation proved. */
 export interface CompanyDomains {
   domains: { domain: string; stopped: boolean }[];
@@ -243,6 +260,14 @@ export interface OrganisationRole extends MemberRole {
   removable: boolean;
   permissions: string[];
   holders: number;
+  /** Whom `holders` counts, alphabetical by name, ties by email (sc-6447). */
+  holderNames: RoleHolder[];
+}
+
+/** A name as its person wrote it, never translated; a suspended holder still holds the role. */
+export interface RoleHolder {
+  name: string;
+  suspended: boolean;
 }
 
 /** Every role, and every registered permission grouped by area, in the order the grid shows them. */
@@ -262,6 +287,8 @@ export interface OrganisationEvent {
   startsAt: string;
   endsAt: string;
   timeZone: string;
+  /** The calendar dates in `timeZone` the event touches, at least 1; an end at 00:00 does not touch the new date (sc-98). */
+  dayCount: number;
   currency: string;
   createdAt: string;
 }
@@ -273,6 +300,15 @@ export interface NewEvent {
   endsAt: string;
   timeZone: string;
   currency: string;
+}
+
+/** What an edit sends: any of the fields, those left out keep their value (sc-3587). */
+export type EventChanges = Partial<NewEvent>;
+
+/** An event with its `ETag`, which an edit sends back as `If-Match`. */
+export interface TaggedEvent {
+  event: OrganisationEvent;
+  tag: string;
 }
 
 export interface Membership extends Organisation {
@@ -292,6 +328,52 @@ export interface Membership extends Organisation {
 export interface TwoFactorDeadline {
   at: string;
   written: string;
+}
+
+/** `manual` is somebody who manages members suspending them (sc-3575): it is never removed by itself, and its organisation is never listed as paused. */
+export type SuspensionReason =
+  'address_gone' | 'domain_closed' | 'domain_managed_elsewhere' | 'manual';
+
+/** Why and since when a member is suspended: by the company domain (sc-564) or by hand (sc-3575); each instant in the reader's zone, and no removal for the only owner. */
+export interface Suspension {
+  reason: SuspensionReason;
+  domain: string | null;
+  since: TwoFactorDeadline;
+  removesAt: TwoFactorDeadline | null;
+  /** The organisation's only Owner: never removed, and restored by anyone holding members.manage. */
+  onlyOwner: boolean;
+}
+
+/** An organisation the account's access to is paused in: no grant at all, only why. */
+export interface PausedOrganisation extends Organisation {
+  suspension: Suspension;
+  /** An open claim to own it, for a suspended Owner to stop (sc-6640). */
+  ownerClaim: OwnerClaim | null;
+}
+
+export type OwnerClaimState = 'no_owner' | 'open' | 'found' | 'closed';
+
+/** An Administrator becoming the owner while no Owner is active (sc-6640); each instant as the reader writes it. */
+export interface OwnerClaim {
+  id: string;
+  claimant: { id: string; name: string; email: string | null };
+  mine: boolean;
+  domain: string;
+  record: { type: 'TXT'; name: string; value: string } | null;
+  startedAt: TwoFactorDeadline;
+  lapsesAt: TwoFactorDeadline;
+  foundAt: TwoFactorDeadline | null;
+  passesAt: TwoFactorDeadline | null;
+}
+
+/** The banner at the top of Members, only for an active Administrator while no Owner is active. */
+export interface OwnerClaimBanner {
+  state: OwnerClaimState;
+  domain: string | null;
+  claim: OwnerClaim | null;
+  /** Once a claim is stopped, self-serve is closed for good. */
+  stopped: { by: string; claimant: string; mine: boolean; at: TwoFactorDeadline } | null;
+  lapsed: { outcome: 'unfound' | 'record_removed'; at: TwoFactorDeadline } | null;
 }
 
 export interface TwoFactorDue extends TwoFactorDeadline {
@@ -396,11 +478,16 @@ export interface OrganisationMember {
   status: MemberStatus;
   former: 'left' | 'removed' | null;
   channel: MemberChannel | null;
+  /** What somebody waiting wrote when they asked through the request link (sc-562). */
+  message: string | null;
   since: string | null;
+  /** While waiting for approval (sc-392): the instant it is removed if nobody answers, and that instant as the caller reads it. */
+  removesAt: { at: string; written: string } | null;
   invitedBy: MemberPerson | null;
   invitedAt: string | null;
   self: boolean;
   history: MembershipStep[];
+  suspension: Suspension | null;
 }
 
 export type SentInvitationStatus = 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired';
@@ -500,6 +587,13 @@ export class ApiClient {
   constructor(private readonly options: ClientOptions) {}
 
   async request<T>(path: string, init: RequestOptions = {}): Promise<T> {
+    return (await this.exchange<T>(path, init)).body;
+  }
+
+  private async exchange<T>(
+    path: string,
+    init: RequestOptions,
+  ): Promise<{ body: T; response: Response }> {
     let response = await this.send(path, init);
 
     // One retry, and only after a refresh that actually succeeded. Retrying a
@@ -525,9 +619,9 @@ export class ApiClient {
       throw error;
     }
 
-    if (response.status === 204) return undefined as T;
+    if (response.status === 204) return { body: undefined as T, response };
 
-    return (await response.json()) as T;
+    return { body: (await response.json()) as T, response };
   }
 
   get<T>(path: string, init?: Omit<RequestOptions, 'method' | 'body'>): Promise<T> {
@@ -1101,20 +1195,35 @@ export class ApiClient {
   }
 
   async organisations(): Promise<Membership[]> {
-    const raw = await this.get<unknown>('/api/orgs');
-    const listed =
-      typeof raw === 'object' && raw != null
-        ? (raw as Record<string, unknown>).organisations
-        : null;
-    const memberships = Array.isArray(listed) ? listed.map(asMembership) : null;
+    return (await this.organisationsWithPaused()).organisations;
+  }
 
-    if (memberships == null || memberships.some((membership) => membership == null)) {
+  /** The same list, with the organisations the account's access to is paused in (sc-564). */
+  async organisationsWithPaused(): Promise<{
+    organisations: Membership[];
+    paused: PausedOrganisation[];
+  }> {
+    const raw = await this.get<unknown>('/api/orgs');
+    const body = typeof raw === 'object' && raw != null ? (raw as Record<string, unknown>) : {};
+    const memberships = Array.isArray(body.organisations)
+      ? body.organisations.map(asMembership)
+      : null;
+    const paused = Array.isArray(body.paused) ? body.paused.map(asPausedOrganisation) : [];
+
+    if (
+      memberships == null ||
+      memberships.some((membership) => membership == null) ||
+      paused.some((one) => one == null)
+    ) {
       throw new Error(
         'The API answered /api/orgs in a shape this client does not know. Check OrganisationController in services/api.',
       );
     }
 
-    return memberships as Membership[];
+    return {
+      organisations: memberships as Membership[],
+      paused: paused as PausedOrganisation[],
+    };
   }
 
   async signInRules(organisationId: string): Promise<SignInRulesPage> {
@@ -1261,6 +1370,44 @@ export class ApiClient {
     );
   }
 
+  /** The event as an edit form opens it, with the tag the save sends back. */
+  async taggedEvent(eventId: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: 'GET',
+      }),
+    );
+  }
+
+  /** Refused 412 when somebody saved since `tag`, 409 `event_currency_in_use`, and as createEvent. */
+  async updateEvent(eventId: string, changes: EventChanges, tag: string): Promise<TaggedEvent> {
+    return this.tagged(
+      await this.exchange<{ event?: unknown }>(`/api/events/${encodeURIComponent(eventId)}`, {
+        method: 'PATCH',
+        body: changes,
+        headers: { 'If-Match': tag },
+      }),
+    );
+  }
+
+  private tagged({
+    body,
+    response,
+  }: {
+    body: { event?: unknown } | null | undefined;
+    response: Response;
+  }): TaggedEvent {
+    const tag = response.headers.get('ETag');
+
+    if (tag == null || tag === '') {
+      throw new Error(
+        'The API answered an event with no ETag. Check that the events controller tags it and that CORS exposes ETag.',
+      );
+    }
+
+    return { event: this.organisationEvent(body), tag };
+  }
+
   private organisationEvent(body: { event?: unknown } | null | undefined): OrganisationEvent {
     const event = asOrganisationEvent(body?.event);
 
@@ -1325,6 +1472,104 @@ export class ApiClient {
     await this.request<unknown>(
       `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}`,
       { method: 'DELETE' },
+    );
+  }
+
+  /** Refused 403 for yourself or an Owner, and 409 unless they are active. */
+  async suspendMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/suspend`,
+      {},
+    );
+  }
+
+  /** Null for anybody the banner is not shown to (sc-6640). */
+  async ownerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/owner-claim`),
+    );
+  }
+
+  /** For the domain of the caller's own address. Refused `owner_claim_address`, `owner_claim_managed`, `owner_claim_open` or `owner_claim_closed`. */
+  async startOwnerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.post<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/owner-claim`, {}),
+    );
+  }
+
+  async checkOwnerClaim(
+    organisationId: string,
+  ): Promise<{ ownerClaim: OwnerClaimBanner | null; found: boolean }> {
+    const raw = await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/check`,
+      {},
+    );
+
+    return {
+      ownerClaim: this.ownerClaimBanner(raw),
+      found: (raw as Record<string, unknown> | null)?.found === true,
+    };
+  }
+
+  /** By an Administrator other than the claimant, or a suspended Owner. Refused `owner_claim_own` for the claimant, `owner_claim_ended` once it has ended. */
+  async stopOwnerClaim(organisationId: string): Promise<OwnerClaimBanner | null> {
+    return this.ownerClaimBanner(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/stop`,
+        {},
+      ),
+    );
+  }
+
+  /** By the claimant only (sc-8204), leaving the way open. `told` when the record had been found, so everybody told then is emailed. Refused `owner_claim_ended` once it has ended. */
+  async withdrawOwnerClaim(
+    organisationId: string,
+  ): Promise<{ ownerClaim: OwnerClaimBanner | null; told: boolean }> {
+    const raw = await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/owner-claim/withdraw`,
+      {},
+    );
+    const withdrawn = (raw as Record<string, unknown> | null)?.withdrawn as
+      Record<string, unknown> | undefined;
+
+    return { ownerClaim: this.ownerClaimBanner(raw), told: withdrawn?.told === true };
+  }
+
+  private ownerClaimBanner(raw: unknown): OwnerClaimBanner | null {
+    const body = (raw ?? {}) as Record<string, unknown>;
+    const banner = body.ownerClaim === null ? null : asOwnerClaimBanner(body.ownerClaim);
+
+    if (banner === undefined) {
+      throw new Error(
+        'The API answered an owner claim in a shape this client does not know. Check OwnerClaimDescriber in services/api.',
+      );
+    }
+
+    return banner;
+  }
+
+  /** Refused 409 unless they are suspended, `restore_needs_address` while an address that went is not back, verified and primary (sc-564),
+   * and `team_seats_in_use`, with the `limit`, when every seat is taken. */
+  async restoreMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.request<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/restore`,
+      { method: 'POST' },
+    );
+  }
+
+  /** Somebody awaiting approval becomes a member in that role. Refused `join_request_answered`, or `grant_not_held`. */
+  async approveMember(organisationId: string, membershipId: string, roleId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/approve`,
+      { roleId },
+    );
+  }
+
+  /** Refused `join_request_answered` once somebody else answered it, or it was removed unanswered. */
+  async turnDownMember(organisationId: string, membershipId: string): Promise<void> {
+    await this.post<unknown>(
+      `/api/orgs/${encodeURIComponent(organisationId)}/members/${encodeURIComponent(membershipId)}/turn-down`,
+      {},
     );
   }
 
@@ -1400,6 +1645,69 @@ export class ApiClient {
     }
 
     return body.invitations.map((one: unknown) => this.invitationPreview(one));
+  }
+
+  /** The token is a credential, so it travels in the body. Refused `request_link_dead` for one unknown, off or replaced alike. */
+  async requestLinkPreview(token: string): Promise<RequestLinkPreview> {
+    const raw = await this.post<Record<string, unknown>>('/api/request-links/link', { token });
+    const organisation = raw?.organisation as Record<string, unknown> | null | undefined;
+
+    if (typeof organisation?.name !== 'string') {
+      throw new Error(
+        'The API answered POST /api/request-links/link in a shape this client does not know. Check RequestLinksController in services/api.',
+      );
+    }
+
+    return {
+      organisation: { name: organisation.name },
+      standing: oneOf(raw.standing, REQUEST_STANDINGS),
+      askAgainFrom: stringOrNull(raw.askAgainFrom),
+    };
+  }
+
+  /** Refused `already_a_member`, `join_request_waiting`, `join_request_cooling_off`, or `too_many_attempts` with Retry-After. */
+  async askThroughRequestLink(token: string, message: string): Promise<JoinRequest> {
+    const raw = await this.post<Record<string, unknown>>('/api/request-links/ask', {
+      token,
+      message: message.trim() === '' ? null : message,
+    });
+    const request = asJoinRequest(raw?.request);
+
+    if (request == null) {
+      throw new Error(
+        'The API answered an ask through a request link without the request. Check RequestLinksController in services/api.',
+      );
+    }
+
+    return request;
+  }
+
+  async requestLink(organisationId: string): Promise<RequestLink> {
+    return asRequestLink(
+      await this.get<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/request-link`),
+    );
+  }
+
+  async turnOnRequestLink(organisationId: string): Promise<RequestLink> {
+    return asRequestLink(
+      await this.put<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/request-link`, {}),
+    );
+  }
+
+  async turnOffRequestLink(organisationId: string): Promise<RequestLink> {
+    return asRequestLink(
+      await this.delete<unknown>(`/api/orgs/${encodeURIComponent(organisationId)}/request-link`),
+    );
+  }
+
+  /** The old link stops working at once. */
+  async replaceRequestLink(organisationId: string): Promise<RequestLink> {
+    return asRequestLink(
+      await this.post<unknown>(
+        `/api/orgs/${encodeURIComponent(organisationId)}/request-link/replace`,
+        {},
+      ),
+    );
   }
 
   async joinOffers(): Promise<JoinOffers> {
@@ -1590,7 +1898,13 @@ export class ApiClient {
       if (token != null && token !== '') body.refreshToken = token;
     }
 
-    await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+    const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+
+    // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
+    if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
+      throw new ApiUnreachableError();
+    }
+
     await this.options.tokens?.clear();
   }
 
@@ -1840,6 +2154,20 @@ export function awaiting(
   return account.waitingFor == null ? null : 'approval';
 }
 
+const REQUEST_STANDINGS = ['member', 'waiting', 'cooling_off'] as const;
+
+function asRequestLink(raw: unknown): RequestLink {
+  const body = raw as Record<string, unknown> | null;
+
+  if (typeof body?.on !== 'boolean') {
+    throw new Error(
+      'The API answered /api/orgs/{id}/request-link in a shape this client does not know. Check RequestLinkController in services/api.',
+    );
+  }
+
+  return { on: body.on, url: stringOrNull(body.url) };
+}
+
 function asJoinOffer(raw: unknown): JoinOffer | null {
   const candidate = raw as Record<string, unknown> | null;
 
@@ -1949,13 +2277,16 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
 
   const role = raw as Record<string, unknown>;
   const permissions = stringList(role.permissions);
+  const holderNames = Array.isArray(role.holderNames) ? role.holderNames.map(asRoleHolder) : null;
 
   if (
     typeof role.id !== 'string' ||
     typeof role.fixed !== 'boolean' ||
     typeof role.removable !== 'boolean' ||
     typeof role.holders !== 'number' ||
-    permissions == null
+    permissions == null ||
+    holderNames == null ||
+    !holderNames.every((holder) => holder != null)
   )
     return null;
 
@@ -1967,7 +2298,16 @@ function asOrganisationRole(raw: unknown): OrganisationRole | null {
     removable: role.removable,
     permissions,
     holders: role.holders,
+    holderNames,
   };
+}
+
+function asRoleHolder(raw: unknown): RoleHolder | null {
+  if (typeof raw !== 'object' || raw == null) return null;
+
+  const { name, suspended } = raw as Record<string, unknown>;
+
+  return typeof name === 'string' && typeof suspended === 'boolean' ? { name, suspended } : null;
 }
 
 function asRolesCatalogue(raw: unknown): RolesCatalogue | null {
@@ -2010,7 +2350,16 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     'createdAt',
   ] as const;
 
-  if (status == null || fields.some((field) => typeof candidate[field] !== 'string')) return null;
+  const dayCount = candidate.dayCount;
+
+  if (
+    status == null ||
+    fields.some((field) => typeof candidate[field] !== 'string') ||
+    typeof dayCount !== 'number' ||
+    !Number.isInteger(dayCount) ||
+    dayCount < 1
+  )
+    return null;
 
   return {
     id: candidate.id as string,
@@ -2020,6 +2369,7 @@ function asOrganisationEvent(raw: unknown): OrganisationEvent | null {
     startsAt: candidate.startsAt as string,
     endsAt: candidate.endsAt as string,
     timeZone: candidate.timeZone as string,
+    dayCount,
     currency: candidate.currency as string,
     createdAt: candidate.createdAt as string,
   };
@@ -2179,12 +2529,23 @@ function asOrganisationMember(raw: unknown): OrganisationMember | null {
     status,
     former: member.former === 'left' || member.former === 'removed' ? member.former : null,
     channel: oneOf(member.channel, CHANNELS),
+    message: stringOrNull(member.message),
     since: stringOrNull(member.since),
+    removesAt: asDeadline(member.removesAt),
     invitedBy: asPerson(member.invitedBy),
     invitedAt: stringOrNull(member.invitedAt),
     self: member.self === true,
     history: history as MembershipStep[],
+    suspension: asSuspension(member.suspension),
   };
+}
+
+function asDeadline(raw: unknown): { at: string; written: string } | null {
+  const deadline = raw as Record<string, unknown> | null;
+
+  return typeof deadline?.at === 'string' && typeof deadline.written === 'string'
+    ? { at: deadline.at, written: deadline.written }
+    : null;
 }
 
 function asSentInvitation(raw: unknown): SentInvitation | null {
@@ -2292,6 +2653,108 @@ function asTwoFactorDeadline(raw: unknown): TwoFactorDeadline | null {
   return typeof deadline.at === 'string' && typeof deadline.written === 'string'
     ? { at: deadline.at, written: deadline.written }
     : null;
+}
+
+const SUSPENSION_REASONS: readonly SuspensionReason[] = [
+  'address_gone',
+  'domain_closed',
+  'domain_managed_elsewhere',
+  'manual',
+];
+
+function asSuspension(raw: unknown): Suspension | null {
+  const suspension = (raw ?? {}) as Record<string, unknown>;
+  const reason = oneOf(suspension.reason, SUSPENSION_REASONS);
+  const since = asTwoFactorDeadline(suspension.since);
+  const removesAt = asTwoFactorDeadline(suspension.removesAt);
+
+  return reason == null || since == null
+    ? null
+    : {
+        reason,
+        domain: stringOrNull(suspension.domain),
+        since,
+        removesAt,
+        onlyOwner: suspension.onlyOwner === true,
+      };
+}
+
+function asPausedOrganisation(raw: unknown): PausedOrganisation | null {
+  const organisation = asOrganisation(raw);
+  const suspension = asSuspension((raw as Record<string, unknown> | null)?.suspension);
+  const claim = (raw as Record<string, unknown> | null)?.ownerClaim;
+  const ownerClaim = claim == null ? null : asOwnerClaim(claim);
+
+  return organisation == null || suspension == null || ownerClaim === undefined
+    ? null
+    : { ...organisation, suspension, ownerClaim };
+}
+
+const OWNER_CLAIM_STATES: readonly OwnerClaimState[] = ['no_owner', 'open', 'found', 'closed'];
+
+/** `undefined` for a shape this client does not know, so it is never read as no claim. */
+function asOwnerClaim(raw: unknown): OwnerClaim | undefined {
+  const claim = (raw ?? {}) as Record<string, unknown>;
+  const claimant = (claim.claimant ?? {}) as Record<string, unknown>;
+  const record = claim.record as Record<string, unknown> | null | undefined;
+  const startedAt = asTwoFactorDeadline(claim.startedAt);
+  const lapsesAt = asTwoFactorDeadline(claim.lapsesAt);
+
+  if (
+    typeof claim.id !== 'string' ||
+    typeof claimant.id !== 'string' ||
+    typeof claimant.name !== 'string' ||
+    typeof claim.domain !== 'string' ||
+    startedAt == null ||
+    lapsesAt == null
+  ) {
+    return undefined;
+  }
+
+  return {
+    id: claim.id,
+    claimant: { id: claimant.id, name: claimant.name, email: stringOrNull(claimant.email) },
+    mine: claim.mine === true,
+    domain: claim.domain,
+    record:
+      typeof record?.name === 'string' && typeof record.value === 'string'
+        ? { type: 'TXT', name: record.name, value: record.value }
+        : null,
+    startedAt,
+    lapsesAt,
+    foundAt: asTwoFactorDeadline(claim.foundAt),
+    passesAt: asTwoFactorDeadline(claim.passesAt),
+  };
+}
+
+function asOwnerClaimBanner(raw: unknown): OwnerClaimBanner | undefined {
+  const banner = (raw ?? {}) as Record<string, unknown>;
+  const state = oneOf(banner.state, OWNER_CLAIM_STATES);
+  const claim = banner.claim == null ? null : asOwnerClaim(banner.claim);
+  const stopped = banner.stopped as Record<string, unknown> | null | undefined;
+  const stoppedAt = asTwoFactorDeadline(stopped?.at);
+  const lapsed = banner.lapsed as Record<string, unknown> | null | undefined;
+  const lapsedOutcome = oneOf(lapsed?.outcome, ['unfound', 'record_removed'] as const);
+  const lapsedAt = asTwoFactorDeadline(lapsed?.at);
+
+  if (state == null || claim === undefined) return undefined;
+
+  return {
+    state,
+    domain: typeof banner.domain === 'string' ? banner.domain : null,
+    claim,
+    stopped:
+      stopped != null && stoppedAt != null
+        ? {
+            by: typeof stopped.by === 'string' ? stopped.by : '',
+            claimant: typeof stopped.claimant === 'string' ? stopped.claimant : '',
+            mine: stopped.mine === true,
+            at: stoppedAt,
+          }
+        : null,
+    lapsed:
+      lapsedOutcome != null && lapsedAt != null ? { outcome: lapsedOutcome, at: lapsedAt } : null,
+  };
 }
 
 function asTwoFactorDue(raw: unknown): TwoFactorDue | null {

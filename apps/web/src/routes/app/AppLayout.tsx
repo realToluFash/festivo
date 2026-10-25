@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NavLink, Navigate, Outlet, useLocation } from 'react-router';
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 
 import { CreateOrganisation } from '../../components/CreateOrganisation.tsx';
 import { ErrorBoundary } from '../../components/ErrorBoundary.tsx';
@@ -10,6 +10,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { SignInRulesNotices } from '../../components/SignInRulesNotices.tsx';
+import { AccessPaused } from '../../components/AccessPaused.tsx';
 import { TwoFactorOverdue } from '../../components/TwoFactorOverdue.tsx';
 import {
   joinOrganisation,
@@ -20,6 +21,8 @@ import {
   useSessionState,
 } from '../../session.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
+import { useStepFocus } from '../../stepFocus.ts';
+import { UNASKED } from '../../pageArrival.ts';
 import { useDomainOffer } from '../../joinOffers.ts';
 import { NoOrganisation } from './NoOrganisation.tsx';
 import { heldRegistration } from '../../pendingRegistration.ts';
@@ -51,17 +54,18 @@ export function AppLayout() {
     return (
       <Navigate
         to={state.ended ? '/sign-in?signed-out' : '/sign-in'}
-        state={
-          state.timedOut == null && state.providerOnly == null
-            ? undefined
-            : { timedOut: state.timedOut, providerOnly: state.providerOnly }
-        }
+        state={{
+          ...(state.ended ? UNASKED : {}),
+          ...(state.timedOut == null && state.providerOnly == null
+            ? {}
+            : { timedOut: state.timedOut, providerOnly: state.providerOnly }),
+        }}
         replace
       />
     );
   }
 
-  if (state.status === 'unreachable') return <Unreachable />;
+  if (state.status === 'unreachable') return <Unreachable signedIn />;
 
   if (state.status !== 'signedIn') return <Pending />;
 
@@ -75,14 +79,47 @@ export function AppLayout() {
 function Shell() {
   const { t } = useTranslation();
   const session = useSession();
-  const { pathname } = useLocation();
-  const [switched, setSwitched] = useState<{ name: string; at: string } | null>(null);
+  const location = useLocation();
+  const { pathname } = location;
+  const navigate = useNavigate();
+  const [switched, setSwitched] = useState<{
+    id: string;
+    name: string;
+    at: string;
+    takesFocus?: boolean;
+  } | null>(null);
+  const [switchedNotice, arriveAtSwitched] = useStepFocus<HTMLDivElement>();
   const [creating, setCreating] = useState(false);
+  const [choosing, setChoosing] = useState(0);
   const organisation = session.organisation;
   const waiting = useWaitingInvitations();
   const closeCreate = useCallback(() => setCreating(false), []);
   const offer = useDomainOffer();
   const overdue = useTwoFactorStanding(organisation) === 'overdue';
+  const switchTo = switchOf(location.state);
+
+  function switchInto(next: { id: string; name: string }): void {
+    setSwitched({ id: next.id, name: next.name, at: pathname });
+    void navigate(
+      { pathname, search: location.search, hash: location.hash },
+      { replace: true, state: { switchTo: next.id } },
+    );
+  }
+
+  // The switch is a navigation, so a form with unsaved changes can ask first; the state goes once the page has the new organisation.
+  useEffect(() => {
+    if (switchTo == null) return;
+
+    if (organisation?.id !== switchTo || session.pausedIn != null) {
+      switchOrganisation(switchTo);
+      return;
+    }
+
+    void navigate(
+      { pathname: location.pathname, search: location.search, hash: location.hash },
+      { replace: true, state: null },
+    );
+  }, [switchTo, organisation?.id, session.pausedIn, location, navigate]);
 
   return (
     <div className="shell">
@@ -100,10 +137,9 @@ function Shell() {
             waiting={waiting}
             offer={offer}
             email={session.email}
-            onSwitch={(next) => {
-              switchOrganisation(next.id);
-              setSwitched({ name: next.name, at: pathname });
-            }}
+            paused={session.pausedIn != null}
+            opened={choosing}
+            onSwitch={switchInto}
             onCreate={() => setCreating(true)}
           />
         )}
@@ -127,32 +163,53 @@ function Shell() {
 
       <main id="content" className="shell-content">
         <LinkedNotice />
-        {organisation != null && (
+        {organisation != null && session.pausedIn == null && (
           <SignInRulesNotices key={organisation.id} organisation={organisation} />
         )}
         {/* Said on the page it happened on, and gone once the person moves on. */}
-        {switched != null && switched.at === pathname && (
-          <div className="notice notice-done" role="status">
+        {switched != null && switched.at === pathname && switched.id === organisation?.id && (
+          <div
+            className="notice notice-done"
+            role={switched.takesFocus === true ? undefined : 'status'}
+            ref={switchedNotice}
+            tabIndex={switched.takesFocus === true ? -1 : undefined}
+          >
             <span className="mark mark-done" aria-hidden="true">
               ✓
             </span>
-            <p className="notice-title">{t('switcher.switched', { name: switched.name })}</p>
+            <p className="notice-title" data-notice-lead tabIndex={-1}>
+              {t('switcher.switched', { name: switched.name })}
+            </p>
           </div>
         )}
 
         <ErrorBoundary>
-          {organisation == null && !pathname.startsWith('/app/account') ? (
+          {session.pausedIn != null && !pathname.startsWith('/app/account') ? (
+            <AccessPaused
+              paused={session.pausedIn}
+              others={session.organisations}
+              onSwitch={(next) => {
+                switchOrganisation(next.id);
+                setSwitched({ id: next.id, name: next.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
+              }}
+              onChoose={() => setChoosing((times) => times + 1)}
+            />
+          ) : organisation == null && !pathname.startsWith('/app/account') ? (
             <NoOrganisation
               waiting={waiting}
               onOpen={(id) => {
                 const joined = session.organisations.find((membership) => membership.id === id);
 
                 switchOrganisation(id);
-                if (joined != null) setSwitched({ name: joined.name, at: pathname });
+                if (joined == null) return;
+                setSwitched({ id, name: joined.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
               }}
               onStarted={(started) => {
                 switchOrganisation(started.id);
-                setSwitched({ name: started.name, at: pathname });
+                setSwitched({ id: started.id, name: started.name, at: pathname, takesFocus: true });
+                arriveAtSwitched();
               }}
             />
           ) : organisation != null && overdue && !pathname.startsWith('/app/account') ? (
@@ -170,11 +227,17 @@ function Shell() {
           onCreated={(created) => {
             setCreating(false);
             joinOrganisation(created);
-            switchOrganisation(created.id);
-            setSwitched({ name: created.name, at: pathname });
+            switchInto(created);
           }}
         />
       )}
     </div>
   );
+}
+
+function switchOf(state: unknown): string | null {
+  const switchTo =
+    typeof state === 'object' && state != null && 'switchTo' in state ? state.switchTo : null;
+
+  return typeof switchTo === 'string' ? switchTo : null;
 }

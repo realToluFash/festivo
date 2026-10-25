@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  approvalRoles,
   historyLine,
   memberChannelWords,
+  memberHeldNoRole,
   memberIsShown,
   memberRowLine,
   memberRowVerb,
@@ -11,9 +13,9 @@ import {
 } from './members.ts';
 
 describe('which members a chip lists', () => {
-  it('lists everybody but former members under All', () => {
+  it('lists active and suspended members under All, with nobody awaiting approval twice', () => {
     expect(memberIsShown('active', 'all')).toBe(true);
-    expect(memberIsShown('pending_approval', 'all')).toBe(true);
+    expect(memberIsShown('pending_approval', 'all')).toBe(false);
     expect(memberIsShown('suspended', 'all')).toBe(true);
     expect(memberIsShown('left_or_removed', 'all')).toBe(false);
   });
@@ -47,6 +49,28 @@ describe('how a member got here', () => {
     expect(historyLine({ ...step, by: null }, 'u1')).toEqual({ key: 'removed', named: true });
   });
 
+  it('tells a request turned down from one nobody answered', () => {
+    const step = { from: 'pending_approval', to: 'left_or_removed', channel: 'settings' } as const;
+
+    expect(historyLine({ ...step, by: 'u2' }, 'u1')).toEqual({ key: 'turnedDown', named: true });
+    expect(historyLine({ ...step, by: null }, 'u1')).toEqual({
+      key: 'requestExpired',
+      named: false,
+    });
+    expect(historyLine({ ...step, by: 'u1' }, 'u1')).toEqual({ key: 'left', named: false });
+  });
+
+  it('offers Read-only first and never Owner when approving', () => {
+    const roles = [
+      { id: 'r1', seededAs: 'owner' },
+      { id: 'r2', seededAs: 'administrator' },
+      { id: 'r5', seededAs: 'read_only' },
+      { id: 'r6', seededAs: null },
+    ];
+
+    expect(approvalRoles(roles).map((role) => role.id)).toEqual(['r5', 'r2', 'r6']);
+  });
+
   it('names who suspended, restored and approved', () => {
     expect(
       historyLine({ from: 'active', to: 'suspended', channel: 'join_code', by: 'u2' }, 'u1').key,
@@ -58,6 +82,14 @@ describe('how a member got here', () => {
       historyLine({ from: 'pending_approval', to: 'active', channel: 'request', by: 'u2' }, 'u1')
         .key,
     ).toBe('approved');
+  });
+
+  it('names nobody for a domain suspension, whoever or whatever triggered it', () => {
+    for (const by of ['u1', 'u2', null]) {
+      expect(historyLine({ from: 'active', to: 'suspended', channel: 'domain', by }, 'u1')).toEqual(
+        { key: 'suspendedAddressGone', named: false },
+      );
+    }
   });
 
   it('words re-joining as joining, through the channel used the second time', () => {
@@ -76,17 +108,21 @@ describe('how a member got here', () => {
 });
 
 describe("what a member's page offers", () => {
-  const member = (seededAs: string, status: 'active' | 'suspended' = 'active', self = false) => ({
+  const member = (
+    seededAs: string,
+    status: 'active' | 'suspended' | 'left_or_removed' = 'active',
+    self = false,
+  ) => ({
     self,
     status,
-    role: { seededAs },
+    role: { id: seededAs, seededAs },
   });
   const owner = member('owner');
   const secondOwner = member('owner');
   const coordinator = member('coordinator');
   const you = member('administrator', 'active', true);
-  const admin = { owns: false, manages: true };
-  const anOwner = { owns: true, manages: true };
+  const admin = { owns: false, manages: true, withholds: [{ id: 'owner' }, { id: 'finance' }] };
+  const anOwner = { owns: true, manages: true, withholds: [] };
 
   it('offers nothing on your own page', () => {
     expect(memberStanding(you, [owner, you], anOwner)).toBe('self');
@@ -97,20 +133,71 @@ describe("what a member's page offers", () => {
     expect(memberStanding(owner, [owner, member('owner', 'suspended')], anOwner)).toBe('onlyOwner');
   });
 
+  it('lets anyone who manages members restore or remove the suspended only owner', () => {
+    const suspended = { ...member('owner', 'suspended'), suspension: { onlyOwner: true } };
+
+    expect(memberStanding(suspended, [suspended, you], admin)).toBe('suspendedOnlyOwner');
+    expect(memberStanding(suspended, [suspended, you], anOwner)).toBe('suspendedOnlyOwner');
+    expect(
+      memberStanding(suspended, [suspended, you], { owns: false, manages: false, withholds: [] }),
+    ).toBe('readOnly');
+    expect(
+      memberStanding({ ...suspended, suspension: { onlyOwner: false } }, [suspended, owner], admin),
+    ).toBe('ownerOnly');
+  });
+
   it('lets an owner change or remove a second owner, and nobody else', () => {
     expect(memberStanding(secondOwner, [owner, secondOwner], anOwner)).toBe('manageable');
     expect(memberStanding(secondOwner, [owner, secondOwner], admin)).toBe('ownerOnly');
   });
 
   it('shows the role only to somebody without members.manage', () => {
-    const reader = { owns: false, manages: false };
+    const reader = { owns: false, manages: false, withholds: [] };
 
     expect(memberStanding(coordinator, [owner, coordinator], reader)).toBe('readOnly');
     expect(memberStanding(secondOwner, [owner, secondOwner], reader)).toBe('readOnly');
   });
 
+  it('shows a former member read-only, even to an owner', () => {
+    const former = member('coordinator', 'left_or_removed');
+
+    expect(memberStanding(former, [owner, former], anOwner)).toBe('readOnly');
+    expect(memberStanding(former, [owner, former], admin)).toBe('readOnly');
+    expect(memberStanding(member('finance', 'left_or_removed'), [owner], admin)).toBe('readOnly');
+  });
+
+  it('fixes the role of a member whose role holds a permission the viewer lacks', () => {
+    const finance = member('finance');
+    const suspended = { ...member('finance', 'suspended'), suspension: { onlyOwner: false } };
+
+    expect(memberStanding(finance, [owner, finance], admin)).toBe('beyondGrant');
+    expect(memberStanding(suspended, [owner, suspended], admin)).toBe('beyondGrant');
+    expect(memberStanding(finance, [owner, finance], anOwner)).toBe('manageable');
+    expect(
+      memberStanding(finance, [owner, finance], { ...anOwner, withholds: [{ id: 'finance' }] }),
+    ).toBe('manageable');
+    expect(memberStanding(finance, [owner, finance], { ...admin, manages: false })).toBe(
+      'readOnly',
+    );
+  });
+
+  it('leaves a role the loaded catalogue lacks to the picker and the API', () => {
+    expect(memberStanding(member('door team'), [owner], admin)).toBe('manageable');
+  });
+
+  it('keeps the owner line ahead of the grant line', () => {
+    expect(memberStanding(secondOwner, [owner, secondOwner], admin)).toBe('ownerOnly');
+  });
+
+  it('leaves somebody awaiting approval to be answered, whatever role they hold for now', () => {
+    const waiting = { ...member('finance'), status: 'pending_approval' as const };
+
+    expect(memberStanding(waiting, [owner, waiting], admin)).toBe('manageable');
+  });
+
   it('offers a role change and removal for everybody else', () => {
     expect(memberStanding(coordinator, [owner, coordinator], admin)).toBe('manageable');
+    expect(memberStanding(member('administrator'), [owner, you], admin)).toBe('manageable');
   });
 });
 
@@ -125,6 +212,7 @@ describe("what a member's row says", () => {
     invitedBy: null,
     self: false,
     role: { seededAs: 'coordinator', name: null },
+    history: [],
   };
 
   it('dates a row by what happened last', () => {
@@ -145,6 +233,25 @@ describe("what a member's row says", () => {
     );
   });
 
+  it('says a domain member was suspended because the company address went', () => {
+    expect(
+      memberStatusWord(word, {
+        ...member,
+        status: 'suspended',
+        suspension: { reason: 'domain_closed' },
+      }),
+    ).toBe('membersScreen.state.domainSuspended');
+    expect(memberStatusWord(word, { ...member, status: 'suspended' })).toBe(
+      'membersScreen.state.suspended',
+    );
+  });
+
+  it('says only Suspended for a member somebody suspended by hand', () => {
+    expect(
+      memberStatusWord(word, { ...member, status: 'suspended', suspension: { reason: 'manual' } }),
+    ).toBe('membersScreen.state.suspended');
+  });
+
   it('names the inviter when there is one', () => {
     const invited = { ...member, channel: 'invitation' as const, invitedBy: { name: 'Ada' } };
 
@@ -158,5 +265,34 @@ describe("what a member's row says", () => {
     expect(memberRowLine(word, { ...member, self: true }, 'Ìrè', () => '1 Oct')).toBe(
       'roles.coordinator · membersScreen.you · membersScreen.how.join_code(Ìrè) · membersScreen.when.since(1 Oct)',
     );
+  });
+
+  it('gives somebody awaiting approval no role yet', () => {
+    expect(
+      memberRowLine(
+        word,
+        { ...member, status: 'pending_approval', channel: 'request' },
+        'Ìrè',
+        () => '12 Oct',
+      ),
+    ).toBe(
+      'membersScreen.noRoleYet · membersScreen.how.request(Ìrè) · membersScreen.when.asked(12 Oct)',
+    );
+  });
+
+  it('gives somebody turned down, withdrawn or expired while awaiting approval no role', () => {
+    const asked = { from: null, to: 'pending_approval' as const };
+    const turnedDown = { from: 'pending_approval' as const, to: 'left_or_removed' as const };
+    const approved = { from: 'pending_approval' as const, to: 'active' as const };
+    const removed = { from: 'active' as const, to: 'left_or_removed' as const };
+    const former = { ...member, status: 'left_or_removed' as const };
+
+    expect(memberHeldNoRole({ ...former, history: [asked, turnedDown] })).toBe(true);
+    expect(memberHeldNoRole({ ...former, history: [asked, approved, removed] })).toBe(false);
+    expect(memberHeldNoRole({ ...former, history: [] })).toBe(false);
+    expect(memberHeldNoRole({ ...member, history: [asked, approved] })).toBe(false);
+    expect(
+      memberRowLine(word, { ...former, history: [asked, turnedDown] }, 'Ìrè', () => '12 Oct'),
+    ).toMatch(/^membersScreen\.noRoleYet · /);
   });
 });

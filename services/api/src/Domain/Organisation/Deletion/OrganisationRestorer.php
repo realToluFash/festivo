@@ -32,7 +32,7 @@ final readonly class OrganisationRestorer
         }
 
         $organisation = $this->findDeleted($organisationId);
-        $deletedAt = $organisation->deletedAt();
+        $deletedAt = $organisation->getDeletedAt();
 
         if (null === $deletedAt) {
             throw new RuntimeException('That organisation is not deleted.');
@@ -42,7 +42,8 @@ final readonly class OrganisationRestorer
             throw new RuntimeException(Str\format('Its restore window closed at %s UTC. It cannot be restored.', RestoreWindow::closesAt($deletedAt)->format('Y-m-d H:i:s')));
         }
 
-        $organisation->restore();
+        $organisation->setDeletedAt(null);
+        $organisation->setDeletedBy(null);
         $this->auditor->record(self::RESTORED, 'Organisation', $organisation->getId(), Actor::Agent, null, Str\trim($agent), [
             'deletedAt' => [$deletedAt->format(\DATE_ATOM), null],
         ]);

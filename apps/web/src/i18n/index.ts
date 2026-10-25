@@ -17,11 +17,12 @@ import {
   LOCALE_CODES,
   followPluralLocales,
   followValueStops,
+  formattingLocale,
   narrowLocale,
 } from '@soirely/domain';
 import i18next from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
-import { initReactI18next } from 'react-i18next';
+import { initReactI18next, useTranslation } from 'react-i18next';
 
 import en from './locales/en.json';
 import es from './locales/es.json';
@@ -65,6 +66,18 @@ export async function initI18n(): Promise<void> {
 /** The resolved locale, narrowed to one we have a catalogue for. */
 export function currentLocale(): string {
   return narrowLocale(i18next.resolvedLanguage ?? i18next.language);
+}
+
+/** The language the screen is shown in, which a fetch of server-written dates names so the picker asks again (sc-9267). */
+export function useShownLanguage(): string {
+  const { i18n } = useTranslation();
+
+  return narrowLocale(i18n.resolvedLanguage ?? i18n.language);
+}
+
+/** What dates and times are written in: the browser's region, while it speaks the shown language. */
+export function dateLocale(): string {
+  return formattingLocale(currentLocale(), navigator.language);
 }
 
 /** Null clears the override and goes back to what the browser says. */

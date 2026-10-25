@@ -55,7 +55,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         self::assertSame([['domain' => 'ire.events', 'stopped' => false]], $body['domains']);
         self::assertSame('folake@ire.events', $body['ownAddress']);
         self::assertSame(5, $body['most']);
-        self::assertSame(['domain' => [null, 'ire.events']], $this->audited('organisation_domain.added', $organisation)->changes());
+        self::assertSame(['domain' => [null, 'ire.events']], $this->audited('organisation_domain.added', $organisation)->getChanges());
     }
 
     #[Test]
@@ -67,7 +67,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         $body = $this->send('POST', $this->domains($organisation), ['domain' => 'okafor.family']);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertSame([['domain', 'Add a domain your own address is at.']], $this->violations($body));
+        self::assertSame([['domain', 'Add a domain your own address is at.', 'domain_not_yours']], $this->violations($body));
     }
 
     #[Test]
@@ -79,20 +79,20 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         $body = $this->send('POST', $this->domains($organisation), ['domain' => 'gmail.com']);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertSame([['domain', 'You cannot use a public email domain.']], $this->violations($body));
+        self::assertSame([['domain', 'You cannot use a public email domain.', 'domain_public']], $this->violations($body));
     }
 
-    /** @return iterable<string, array{string, string}> */
+    /** @return iterable<string, array{string, string, string}> */
     public static function formChecks(): iterable
     {
-        yield 'blank' => ['   ', 'Enter a domain, like ire.events.'];
-        yield 'no dot' => ['ireevents', 'Enter a domain with a dot and no spaces, like ire.events.'];
-        yield 'a space' => ['ire events.com', 'Enter a domain with a dot and no spaces, like ire.events.'];
+        yield 'blank' => ['   ', 'Enter a domain, like ire.events.', 'domain_blank'];
+        yield 'no dot' => ['ireevents', 'Enter a domain with a dot and no spaces, like ire.events.', 'domain_invalid'];
+        yield 'a space' => ['ire events.com', 'Enter a domain with a dot and no spaces, like ire.events.', 'domain_invalid'];
     }
 
     #[Test]
     #[DataProvider('formChecks')]
-    public function aDomainIsRequiredAndMustBeAHostnameWithADot(string $typed, string $message): void
+    public function aDomainIsRequiredAndMustBeAHostnameWithADot(string $typed, string $message, string $code): void
     {
         [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
         $this->signIn($owner);
@@ -100,7 +100,33 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         $body = $this->send('POST', $this->domains($organisation), ['domain' => $typed]);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertSame([['domain', $message]], $this->violations($body));
+        self::assertSame([['domain', $message, $code]], $this->violations($body));
+    }
+
+    #[Test]
+    public function aDomainAlreadyListedIsRefused(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $this->list($organisation, 'ire.events');
+        $this->signIn($owner);
+
+        $body = $this->send('POST', $this->domains($organisation), ['domain' => 'IRE.events']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([['domain', 'ire.events is already on the list.', 'domain_listed']], $this->violations($body));
+    }
+
+    #[Test]
+    public function aDomainSomebodyElseListedIsRefusedAsListedToo(): void
+    {
+        [$owner, $organisation] = $this->organisation('folake@ire.events', 'Ìrè Events');
+        $this->list($organisation, 'ire-catering.com');
+        $this->signIn($owner);
+
+        $body = $this->send('POST', $this->domains($organisation), ['domain' => 'ire-catering.com']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([['domain', 'ire-catering.com is already on the list.', 'domain_listed']], $this->violations($body));
     }
 
     #[Test]
@@ -115,7 +141,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         $body = $this->send('POST', $this->domains($organisation), ['domain' => 'ire.events']);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertSame([['domain', 'That is 5 domains, the most the list can hold. Remove one to add another.']], $this->violations($body));
+        self::assertSame([['domain', 'That is 5 domains, the most the list can hold. Remove one to add another.', 'domain_full']], $this->violations($body));
     }
 
     #[Test]
@@ -129,7 +155,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(200);
         self::assertSame([], $body['domains']);
-        self::assertSame(['domain' => ['ire.events', null]], $this->audited('organisation_domain.removed', $organisation)->changes());
+        self::assertSame(['domain' => ['ire.events', null]], $this->audited('organisation_domain.removed', $organisation)->getChanges());
     }
 
     #[Test]
@@ -209,7 +235,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         $body = $this->send('POST', $this->domains($kitchen), ['domain' => 'ire.events']);
 
         self::assertResponseStatusCodeSame(422);
-        self::assertSame([['domain', 'Another organisation has proved ire.events on Enterprise, so only its listing works.']], $this->violations($body));
+        self::assertSame([['domain', 'Another organisation has proved ire.events on Enterprise, so only its listing works.', 'domain_proved_elsewhere']], $this->violations($body));
     }
 
     #[Test]
@@ -267,7 +293,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         self::assertSame(MembershipStatus::PendingApproval, $membership->getStatus());
         self::assertSame(SeededRole::ReadOnly, $membership->getRole()->getSeededAs(), 'least privilege until somebody chooses');
         self::assertSame(MembershipChannel::Domain, $this->lastStep($membership)->getChannel());
-        self::assertSame(['organisation' => [null, $organisation->getId()->toRfc4122()]], $this->audited('domain_join.asked', $membership)->changes());
+        self::assertSame(['organisation' => [null, $organisation->getId()->toRfc4122()]], $this->audited('domain_join.asked', $membership)->getChanges());
     }
 
     #[Test]
@@ -333,7 +359,7 @@ final class CompanyDomainJoiningTest extends ApiTestCase
         self::assertResponseStatusCodeSame(204);
         $membership = $this->membershipOf($newcomer, $events);
         self::assertSame(MembershipStatus::LeftOrRemoved, $membership->getStatus());
-        self::assertSame(['status' => ['pending_approval', 'left_or_removed']], $this->audited('domain_join.withdrawn', $membership)->changes());
+        self::assertSame(['status' => ['pending_approval', 'left_or_removed']], $this->audited('domain_join.withdrawn', $membership)->getChanges());
         self::assertNull(Type\dict(Type\string(), Type\mixed())->coerce($this->send('GET', '/api/auth/me'))['waitingFor']);
         self::assertSame(['Ìrè Events', 'Ìrè Events Kitchen'], Vec\map($this->offers(), static fn (array $offer): mixed => $offer['name']), 'withdrawing is not being turned down');
 
@@ -570,13 +596,13 @@ final class CompanyDomainJoiningTest extends ApiTestCase
     /**
      * @param array<string, mixed> $body
      *
-     * @return list<array{string, string}>
+     * @return list<array{string, string, string}>
      */
     private function violations(array $body): array
     {
         return Vec\map(
-            Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string()], true))->coerce($body['violations']),
-            static fn (array $violation): array => [$violation['propertyPath'], $violation['message']],
+            Type\vec(Type\shape(['propertyPath' => Type\string(), 'message' => Type\string(), 'code' => Type\string()], true))->coerce($body['violations']),
+            static fn (array $violation): array => [$violation['propertyPath'], $violation['message'], $violation['code']],
         );
     }
 

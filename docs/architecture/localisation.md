@@ -26,13 +26,18 @@ who invites a Portuguese-speaking guest must produce a **Portuguese** invitation
 ### A response — the request locale
 
 1. An explicit `?locale=` parameter
-2. The authenticated account's stored preference
-3. `Accept-Language`, matched against the supported set
+2. `Accept-Language`, matched against the supported set
+3. The authenticated account's stored preference
 4. English
 
 The explicit parameter comes first because somebody whose account is in French still needs
-to produce an English error to paste into a support ticket. The account preference comes
-before the header because a person's stored choice outranks whatever browser they are on.
+to produce an English error to paste into a support ticket. The header comes before the
+account preference because a screen asks in the language it is showing, and a language
+picker switch asks before the account has saved it (sc-9267, decided 24 Oct): a date the
+server writes into an answer read before the save would otherwise sit in the old language
+inside a sentence in the new one. The stored preference answers only a request that names
+none of the four. `AccountLanguage::shown()` is the one place this order lives; a new
+field the server writes for the reader goes through it, not through `of()`.
 
 ### Anything sent to a person — the recipient locale
 

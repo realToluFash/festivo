@@ -3,7 +3,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest import mock
 
-from soirely_queue import cli
+from soirely_queue import cli, store
 
 
 class FormerLinguists(unittest.TestCase):
@@ -41,3 +41,130 @@ class HelpTopic(unittest.TestCase):
         with redirect_stdout(out):
             cli.main(["pm", "help", "move"])
         self.assertIn("any story from any state", out.getvalue())
+
+
+class InsideAWorker(unittest.TestCase):
+    def setUp(self):
+        self.db = store.connect(":memory:")
+        store.record(self.db, [{"fingerprint": f"inbox:{n}", "pool": "pm", "roles": ["pm"],
+                                "kind": "inbox", "reason": f"[pm] on sc-{n}", "priority": 1}
+                               for n in (1, 2)], 1000)
+        self.session = mock.Mock(db=self.db, role="pm")
+
+    def run_command(self, command):
+        out = io.StringIO()
+        with redirect_stdout(out), mock.patch.dict("os.environ", {"SOIRELY_WORKER": "pm"}), \
+                mock.patch("soirely_queue.cli.synced"), \
+                mock.patch("soirely_queue.cli.render", lambda s, row: print(row["id"])), \
+                mock.patch("time.time", return_value=1000):
+            command(self.session, mock.Mock())
+        return out.getvalue().strip()
+
+    def test_next_and_tick_never_claim_once_the_workers_item_is_finished(self):
+        store.claim(self.db, "pm", 1000, worker="pm")
+        store.finish(self.db, 1, now=1000)
+        for command in (cli.cmd_next, cli.cmd_tick):
+            self.assertEqual(self.run_command(command), "pm's item is finished: end this run")
+        self.assertFalse(store.held_by(self.db, "pm", 1000))
+
+    def test_next_prints_the_workers_own_item(self):
+        store.claim(self.db, "pm", 1000, worker="pm")
+        self.assertEqual(self.run_command(cli.cmd_next), "1")
+        self.assertEqual(self.run_command(cli.cmd_tick), "busy")
+
+
+def check(name, bucket):
+    return {"name": name, "bucket": bucket, "workflow": "Pull request", "link": f"https://x/{name}"}
+
+
+class Checks(unittest.TestCase):
+    def run_checks(self, *answers, wait=True, timeout=20, clock=(0,), heads=("abc1234f",),
+                   head=None, mergeable="CONFLICTING"):
+        answers = list(answers)
+        heads = list(heads)
+        ticks = iter(clock)
+        last = [0]
+
+        def monotonic():
+            last[0] = next(ticks, last[0])
+            return last[0]
+
+        def live(number):
+            sha = heads.pop(0) if len(heads) > 1 else heads[0]
+            return {"headRefOid": sha, "mergeable": mergeable}
+        out = io.StringIO()
+        code = 0
+        with redirect_stdout(out), \
+                mock.patch("soirely_queue.github.pr_checks", lambda n: answers.pop(0)), \
+                mock.patch("soirely_queue.github.live", live), \
+                mock.patch("soirely_queue.github.failed_log", lambda link, tail: "boom"), \
+                mock.patch("time.monotonic", monotonic), mock.patch("time.sleep") as slept:
+            try:
+                cli.cmd_checks(mock.Mock(), mock.Mock(pr=7, names=False, tail=40, wait=wait,
+                                                      timeout=timeout, head=head))
+            except SystemExit as stopped:
+                code = stopped.code
+        return out.getvalue(), code, slept.call_count
+
+    def test_nothing_pending_leaves_pending_out_of_the_summary(self):
+        out, code, _ = self.run_checks([check("api", "pass")], wait=False)
+        self.assertEqual(out.splitlines(), ["PR #7 at abc1234: 1 checks, 0 failed"])
+        self.assertNotIn("pending", out)
+        self.assertEqual(code, 0)
+
+    def test_a_wait_ends_green_once_nothing_is_pending(self):
+        out, code, slept = self.run_checks([], [check("api", "pending")],
+                                           [check("api", "pass"), check("web", "skipping")])
+        self.assertEqual(out.splitlines(), ["PR #7 at abc1234: 2 checks, 0 failed"])
+        self.assertEqual((code, slept), (0, 2))
+
+    def test_a_wait_that_ends_with_a_failure_exits_non_zero(self):
+        out, code, _ = self.run_checks([check("api", "pending"), check("web", "pending")],
+                                       [check("api", "fail"), check("web", "pass")])
+        self.assertTrue(out.startswith("PR #7 at abc1234: 2 checks, 1 failed\n"))
+        self.assertIn("  boom", out)
+        self.assertEqual(code, 1)
+
+    def test_a_cancelled_check_is_listed_and_is_not_green(self):
+        out, code, _ = self.run_checks([check("api", "cancel"), check("web", "pass")])
+        self.assertEqual(out.splitlines(), [
+            "PR #7 at abc1234: 2 checks, 0 failed, 1 cancelled",
+            "  cancelled: Pull request / api https://x/api",
+        ])
+        self.assertEqual(code, 1)
+
+    def test_a_head_with_no_checks_stops_early_and_says_why(self):
+        out, code, slept = self.run_checks(*[[]] * 10)
+        self.assertEqual(out.splitlines(), [
+            "PR #7: no checks on head abc1234, which conflicts with main; a conflicting head "
+            "runs none, so merge origin/main and push",
+        ])
+        self.assertEqual((code, slept), (1, cli.NO_CHECKS_POLLS))
+
+    def test_a_head_slow_to_get_checks_is_not_told_to_merge_main(self):
+        out, code, _ = self.run_checks(*[[]] * 10, mergeable="MERGEABLE")
+        self.assertEqual(out.splitlines(), ["PR #7: no checks appeared on head abc1234 after 2 minutes"])
+        self.assertEqual(code, 1)
+
+    def test_a_look_before_checks_are_queued_says_none_yet(self):
+        out, code, _ = self.run_checks([], wait=False, mergeable="UNKNOWN")
+        self.assertEqual(out.splitlines(), ["PR #7: no checks on head abc1234 yet"])
+        self.assertEqual(code, 0)
+
+    def test_a_wait_for_a_head_ignores_the_previous_heads_checks(self):
+        out, code, slept = self.run_checks([check("api", "pending")], [check("api", "pass")],
+                                           heads=("old0000", "old0000", "new1111"),
+                                           head="new1111")
+        self.assertEqual(out.splitlines(), ["PR #7 at new1111: 1 checks, 0 failed"])
+        self.assertEqual((code, slept), (0, 3))
+
+    def test_a_wait_gives_up_at_its_timeout(self):
+        pending = [check("api", "pending")]
+        out, code, slept = self.run_checks(pending, pending, pending, timeout=1,
+                                           clock=(0, 0, 30, 61))
+        self.assertEqual(out.splitlines(), [
+            "PR #7: timed out after 1 minutes with checks still pending",
+            "PR #7 at abc1234: 1 checks, 0 failed, 1 pending",
+            "  pending: Pull request / api",
+        ])
+        self.assertEqual((code, slept), (1, 2))

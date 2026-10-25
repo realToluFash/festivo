@@ -1,8 +1,7 @@
 import { type Account, type PhoneCodeRoute, phoneAwaitingCode } from '@soirely/api-client';
 import { cleanCode, codeProblem, codeWording, formatPhone } from '@soirely/domain';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
@@ -20,7 +19,7 @@ import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/
 import { rereadAccount } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
-type Status = CodeStatus | { kind: 'verified' };
+type Status = CodeStatus | { kind: 'verified'; tapped?: boolean };
 
 export default function VerifyPhone() {
   const { t } = useTranslation();
@@ -31,11 +30,11 @@ export default function VerifyPhone() {
   const [cooldown, setCooldown] = useState(0);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
-  const [textingFailed, setTextingFailed] = useState(false);
+  // A new one with each failed tap, so the same words are read out again.
+  const [textingFailed, setTextingFailed] = useState<object | null>(null);
   // From the verify answer, never the list read before it: the server decides (sc-2244).
   const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
   const wording = codeWording(route);
-  const lastRoute = useRef<PhoneCodeRoute | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -77,18 +76,6 @@ export default function VerifyPhone() {
 
     return () => clearInterval(watching);
   }, [wording.watch, alternative]);
-
-  // iOS has no live regions, so a changed line is announced by hand, as Android's live region does.
-  useEffect(() => {
-    const awaiting = account == null || account === 'none' ? null : phoneAwaitingCode(account);
-
-    if (lastRoute.current === 'whatsapp' && route === 'sms_fallback' && awaiting != null) {
-      AccessibilityInfo.announceForAccessibility(
-        t('verifyPhone.introFallback', { number: formatPhone(awaiting.number) }),
-      );
-    }
-    lastRoute.current = route;
-  }, [account, route, t]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -133,7 +120,7 @@ export default function VerifyPhone() {
 
     try {
       setMadePrimary((await api.verifyPhone(code, alternative)).primary);
-      setStatus({ kind: 'verified' });
+      setStatus({ kind: 'verified', tapped: true });
       // Account, under this screen, shows the row verified however it is reached.
       if (alternative != null) void rereadAccount().catch(() => {});
     } catch (error) {
@@ -171,13 +158,13 @@ export default function VerifyPhone() {
   }
 
   async function textInstead(): Promise<void> {
-    setTextingFailed(false);
+    setTextingFailed(null);
 
     try {
       await api.textPhoneCodeInstead(alternative);
       setRoute('sms_chosen');
     } catch {
-      setTextingFailed(true);
+      setTextingFailed({});
     }
   }
 
@@ -210,6 +197,7 @@ export default function VerifyPhone() {
                     : t('verifyPhone.doneBodyAlternative', { number })
             }
             introLive={!verified}
+            answer={status.kind === 'verified' && status.tapped === true ? status : undefined}
           />
         </>
       }
@@ -241,11 +229,12 @@ export default function VerifyPhone() {
               testID="verifyPhone.textInstead"
             />
           )}
-          {textingFailed && (
+          {textingFailed != null && (
             <Notice
               tone="broken"
               mark={tokens.marks.broken.glyph}
               body={t('verifyPhone.textInsteadFailed')}
+              answer={textingFailed}
             />
           )}
 

@@ -1,3 +1,5 @@
+import { roleName } from './organisations.ts';
+
 export type Level = 'nothing' | 'read' | 'change';
 
 export const ROLE_NAME_MAXIMUM = 40;
@@ -106,4 +108,109 @@ export function whatTheySee(
     hidden: areas.filter((area) => levelOf(held, area) === 'nothing'),
     readOnly: areas.filter((area) => levelOf(held, area) === 'read'),
   };
+}
+
+/** The roles a granter may hand out, as the API refuses otherwise: only what they hold, and Owner only from an owner. */
+export function grantableRoles<
+  R extends { seededAs: string | null; permissions: readonly string[] },
+>(
+  roles: readonly R[],
+  granter: { role: { seededAs: string | null }; permissions: readonly string[] },
+): R[] {
+  return roles.filter((role) => mayGrant(role, granter));
+}
+
+/** The roles in the catalogue a granter may not hand out: a member holding one is beyond their grant (sc-11160). */
+export function withheldRoles<
+  R extends { seededAs: string | null; permissions: readonly string[] },
+>(
+  roles: readonly R[],
+  granter: { role: { seededAs: string | null }; permissions: readonly string[] },
+): R[] {
+  return roles.filter((role) => !mayGrant(role, granter));
+}
+
+function mayGrant(
+  role: { seededAs: string | null; permissions: readonly string[] },
+  granter: { role: { seededAs: string | null }; permissions: readonly string[] },
+): boolean {
+  return (
+    (granter.role.seededAs === 'owner' || role.seededAs !== 'owner') &&
+    role.permissions.every((permission) => granter.permissions.includes(permission))
+  );
+}
+
+/** The roles a removed role's members may move to: only one whose every permission the caller holds (sc-66). */
+export function replacementsFor<R extends { id: string; permissions: readonly string[] }>(
+  roles: readonly R[],
+  removing: { id: string },
+  held: readonly string[],
+): R[] {
+  return roles.filter(
+    (one) =>
+      one.id !== removing.id && one.permissions.every((permission) => held.includes(permission)),
+  );
+}
+
+/** What remains once a role is removed: its members counted and named on the role they moved to. */
+export function withoutRole<
+  R extends { id: string; holders: number; holderNames: readonly H[] },
+  H extends { name: string },
+>(roles: readonly R[], removed: R, replacement: string | null): R[] {
+  return roles
+    .filter((one) => one.id !== removed.id)
+    .map((one) =>
+      one.id === replacement
+        ? {
+            ...one,
+            holders: one.holders + removed.holders,
+            holderNames: byHolderName([...one.holderNames, ...removed.holderNames]),
+          }
+        : one,
+    );
+}
+
+/** The open role names this many of its holders before "and N more" (sc-6447). */
+export const HOLDERS_SHOWN = 5;
+
+/** As the API orders them, alphabetical ignoring case and accents; the API also breaks ties by email, which a client does not hold. */
+export function byHolderName<H extends { name: string }>(holders: readonly H[]): H[] {
+  const collator = new Intl.Collator('und', { sensitivity: 'base' });
+
+  return [...holders].sort((a, b) => collator.compare(a.name, b.name));
+}
+
+/** The holders the open role names, and how many "and N more" stands for. */
+export function shownHolders<H>(
+  holders: readonly H[],
+  all: boolean,
+): { shown: readonly H[]; more: number } {
+  if (all || holders.length <= HOLDERS_SHOWN) return { shown: holders, more: 0 };
+
+  return { shown: holders.slice(0, HOLDERS_SHOWN), more: holders.length - HOLDERS_SHOWN };
+}
+
+/** The names a role may not take: every other role's, a seeded one's in every language, as the API refuses them (sc-2301). */
+export function takenRoleNames(
+  roles: readonly { id: string; seededAs: string | null; name: string | null }[],
+  except: string | undefined,
+  languages: readonly ((key: string) => string)[],
+): string[] {
+  return roles
+    .filter((one) => one.id !== except)
+    .flatMap((one) => languages.map((word) => roleName(word, one)));
+}
+
+/** The areas a caller cannot change on this role, and each extra they lack wherever its area shows. */
+export function lockedAreas(
+  grant: readonly string[],
+  held: readonly string[],
+  areas: readonly { area: string; permissions: readonly string[] }[],
+): string[] {
+  return areas.flatMap(({ area, permissions }) => [
+    ...(settableLevels(grant, held, area, permissions).length < 2 ? [area] : []),
+    ...(levelOf(grant, area) === 'nothing'
+      ? []
+      : extrasOf(area, permissions).filter((extra) => !held.includes(extra))),
+  ]);
 }

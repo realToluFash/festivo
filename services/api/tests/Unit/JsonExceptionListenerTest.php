@@ -6,9 +6,12 @@ namespace App\Tests\Unit;
 
 use App\Enum\ErrorCode;
 use App\Http\Exception\ApiException;
+use App\Http\Exception\ShapeRefusal;
 use App\Http\Listener\CorrelationIdListener;
 use App\Http\Listener\JsonExceptionListener;
 use App\Http\ProblemRenderer;
+use DateTimeImmutable;
+use DateTimeZone;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -16,8 +19,12 @@ use RuntimeException;
 use stdClass;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Event\ExceptionEvent;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnsupportedMediaTypeHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\Translation\Loader\ArrayLoader;
+use Symfony\Component\Translation\Translator;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
 use Symfony\Component\Validator\Exception\ValidationFailedException;
@@ -107,6 +114,57 @@ final class JsonExceptionListenerTest extends TestCase
         self::assertSame('The request does not have the expected shape.', $body['detail']);
     }
 
+    #[Test]
+    public function aRefusalsKeyIsWordedWithItsSlots(): void
+    {
+        $translator = $this->createMock(TranslatorInterface::class);
+        $translator->method('trans')->willReturnCallback(
+            static fn (string $id, array $parameters = []): string => $id . \json_encode($parameters, \JSON_THROW_ON_ERROR),
+        );
+        $event = $this->event(ApiException::tooManyAttempts('limits.tries', new DateTimeImmutable('2026-10-25 14:34:10 UTC')));
+        new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator))($event);
+
+        $body = \json_decode((string) $event->getResponse()?->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+
+        self::assertSame('limits.tries{"{time}":"14:35 UTC","{hour}":14}', $body['detail']);
+    }
+
+    /** es and pt agree the article with the hour: "a la 01:05", "a las 13:05" (sc-11332). */
+    #[Test]
+    public function aTryAgainTimeGivesAnIcuKeyItsHourToAgreeWith(): void
+    {
+        $translator = new Translator('es');
+        $translator->addLoader('array', new ArrayLoader());
+        $translator->addResource('array', ['limits.tries' => '{hour, plural, =1 {a la {time}} other {a las {time}}}'], 'es', 'messages+intl-icu');
+
+        $worded = fn (string $windowEnd): mixed => $this->handleWith(ApiException::tooManyAttempts('limits.tries', new DateTimeImmutable($windowEnd)), $translator)['detail'];
+
+        self::assertSame('a la 01:05 UTC', $worded('2026-10-25 01:04:10 UTC'));
+        self::assertSame('a las 13:05 UTC', $worded('2026-10-25 13:04:10 UTC'));
+    }
+
+    /** sc-11329: a limit hit signed out has no account to take a zone from, so every reader is given UTC. */
+    #[Test]
+    public function aTryAgainMinuteIsUtcWhateverZoneTheWindowEndsIn(): void
+    {
+        $refusal = ApiException::tooManyAttempts('limits.sign_in', new DateTimeImmutable('2026-10-25 08:38:10', new DateTimeZone('Africa/Lagos')));
+
+        self::assertSame(['{time}' => '07:39 UTC', '{hour}' => 7], $refusal->parameters);
+    }
+
+    #[Test]
+    public function aShapeRefusalIsWordedThroughTheCatalogueNeverByTheParser(): void
+    {
+        $body = $this->handle(new ShapeRefusal('countryCode', 'validation.country_invalid'));
+
+        self::assertSame(422, $body['status']);
+        self::assertSame('translated:validation.request_shape', $body['detail']);
+        self::assertSame(
+            [['propertyPath' => 'countryCode', 'message' => 'translated:validation.country_invalid', 'code' => 'invalid_shape']],
+            $body['violations'],
+        );
+    }
+
     /** Symfony writes the whole violation list, class names and all, as the exception's message. */
     #[Test]
     public function aSymfonyValidationFailureIsDetailedByItsFirstViolationNotItsMessage(): void
@@ -130,6 +188,24 @@ final class JsonExceptionListenerTest extends TestCase
 
         self::assertSame('https://soirely.com/errors/not_found', $body['type']);
         self::assertSame(404, $body['status']);
+        self::assertSame('translated:access.not_found', $body['detail']);
+    }
+
+    #[Test]
+    public function aRefusedMethodIsNamedInACatalogueSentenceNeverTheRoutersMessage(): void
+    {
+        $body = $this->handle(new MethodNotAllowedHttpException(['GET', 'POST'], 'No route found for "PUT http://localhost/api/orgs": Method Not Allowed'));
+
+        self::assertSame(405, $body['status']);
+        self::assertSame('translated:request.method_not_accepted', $body['detail']);
+    }
+
+    #[Test]
+    public function anyOtherFrameworkRefusalIsDetailedByItsTitle(): void
+    {
+        $body = $this->handle(new UnsupportedMediaTypeHttpException('Unsupported format "xml".'));
+
+        self::assertSame($body['title'], $body['detail']);
     }
 
     /** Only /api is ours to reshape; anything else keeps Symfony's behaviour. */
@@ -147,6 +223,18 @@ final class JsonExceptionListenerTest extends TestCase
     {
         $event = $this->event($e, correlationId: $correlationId);
         ($this->listener())($event);
+
+        $response = $event->getResponse();
+        self::assertNotNull($response);
+
+        return \json_decode((string) $response->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+    }
+
+    /** @return array<string, mixed> */
+    private function handleWith(Throwable $e, TranslatorInterface $translator): array
+    {
+        $event = $this->event($e);
+        new JsonExceptionListener(new NullLogger(), new ProblemRenderer($translator))($event);
 
         $response = $event->getResponse();
         self::assertNotNull($response);

@@ -324,7 +324,7 @@ final class AlternativeContactsTest extends ApiTestCase
         self::assertSame([
             ['primary' => [null, '+2348035550143']],
             ['primary' => ['+2348035550143', '+2348035550144']],
-        ], Vec\map($entries, static fn (AuditEntry $entry): array => $entry->changes()));
+        ], Vec\map($entries, static fn (AuditEntry $entry): array => $entry->getChanges()));
     }
 
     #[Test]
@@ -482,7 +482,7 @@ final class AlternativeContactsTest extends ApiTestCase
         $entries = self::em()->getRepository(AuditEntry::class)->findBy(['subjectId' => $this->user->getId()], ['occurredAt' => 'ASC', 'id' => 'ASC']);
 
         return Vec\values(Vec\filter(
-            Vec\map($entries, static fn (AuditEntry $entry): string => $entry->action()),
+            Vec\map($entries, static fn (AuditEntry $entry): string => $entry->getAction()),
             static fn (string $action): bool => Str\starts_with($action, 'email.') || Str\starts_with($action, 'phone.'),
         ));
     }

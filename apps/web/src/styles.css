@@ -46,6 +46,19 @@ h2 {
   margin: 0 0 var(--spaceSm);
 }
 
+h1,
+h2,
+h3,
+p,
+dt,
+dd,
+li,
+button,
+label,
+span {
+  overflow-wrap: anywhere;
+}
+
 .muted {
   color: var(--colorInkSecondary);
 }
@@ -92,7 +105,7 @@ h2 {
 
 .shell {
   display: grid;
-  grid-template-columns: var(--sizeRail) 1fr;
+  grid-template-columns: var(--sizeRail) minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -320,7 +333,7 @@ h2 {
 
 @media (width <= 60rem) {
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .shell-sidebar {
@@ -431,6 +444,14 @@ h2 {
   border-color: var(--colorBroken);
 }
 
+.input-unchosen {
+  color: var(--colorInkTertiary);
+}
+
+.input-unchosen option {
+  color: var(--colorInk);
+}
+
 .field-reveal {
   position: relative;
 }
@@ -460,6 +481,7 @@ h2 {
   gap: var(--spaceMd);
   padding: var(--spaceLg) var(--spaceXl);
   border-radius: var(--radiusInset);
+  overflow-wrap: anywhere;
 }
 
 .notice-body {
@@ -556,7 +578,8 @@ h2 {
   margin: 0;
 }
 
-.button-primary:disabled {
+.button-primary:disabled,
+.button-primary[data-off] {
   background: var(--colorBorder);
   border-color: var(--colorBorder);
   color: var(--colorInkSecondary);
@@ -844,6 +867,12 @@ h2 {
   border-color: var(--colorDarkInset);
 }
 
+.button-dark[aria-busy='true'] {
+  background: var(--colorDarkInset);
+  border-color: var(--colorDarkInset);
+  color: var(--colorInkOnDark);
+}
+
 /* ── Your account at phone width ──────────────────────────────────────────── */
 
 @media (width <= 40rem) {
@@ -1093,11 +1122,22 @@ h2 {
   color: var(--colorInkSecondary);
 }
 
-.button:disabled {
+.button:disabled,
+.button[data-off] {
   background: var(--colorInset);
   border-color: var(--colorBorder);
   color: var(--colorInkSecondary);
   cursor: default;
+}
+
+/* The browser paints a :disabled button in GrayText here, and nothing paints an aria-disabled one. */
+@media (forced-colors: active) {
+  [data-off],
+  .button[data-off],
+  .button-primary[data-off] {
+    color: GrayText;
+    border-color: GrayText;
+  }
 }
 
 /* ── Done ─────────────────────────────────────────────────────────────────── */
@@ -1134,6 +1174,60 @@ h2 {
   color: var(--colorAccentText);
   font: var(--typeButton);
   cursor: pointer;
+}
+
+.auth-footnote .link-button {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* Lines at the body leading, so a wrapped label reads as one, with padding making a one-line label's 44px. */
+.notice-action {
+  padding-block: calc((var(--sizeHit) - 1lh) / 2);
+  font: var(--typeButton);
+  line-height: 1.5;
+}
+
+.notice-action:last-child {
+  margin-bottom: calc(var(--spaceLg) * -1);
+}
+
+/* Inline, so a wrapped label takes clicks on its own lines only, its first line's area reaching over the next. An inline box is as tall as the font's ascent and descent, 1.22em in Instrument Sans, so its padding is what tops it up to 44px. */
+.notice-action > a.link-button {
+  display: inline;
+  padding: calc((var(--sizeHit) - 1.22em) / 2) var(--spaceXs);
+  margin-inline: calc(var(--spaceXs) * -1);
+  box-decoration-break: clone;
+}
+
+.notice-action > button.link-button {
+  min-width: var(--sizeHit);
+  min-height: 0;
+  padding: calc((var(--sizeHit) - 1lh) / 2) var(--spaceXs);
+  margin: calc((1lh - var(--sizeHit)) / 2) calc(var(--spaceXs) * -1);
+  line-height: 1.5;
+  text-align: start;
+}
+
+/* The link's ring is drawn on its paragraph, one box however the link wraps, because Firefox outlines each line of an inline element on its own. */
+.notice-action:has(> a.link-button) {
+  width: fit-content;
+  padding-inline: var(--spaceXs);
+  margin-inline: calc(var(--spaceXs) * -1);
+}
+
+.notice-action:has(> a.link-button) > a.link-button:focus-visible {
+  outline: none;
+}
+
+.notice-action:has(> a.link-button:focus-visible) {
+  outline: 2px solid var(--colorAccent);
+  outline-offset: -2px;
+}
+
+.notice-action > button.link-button:focus-visible {
+  outline-offset: -2px;
 }
 
 .auth-back {
@@ -1320,6 +1414,7 @@ h2 {
   display: flex;
   flex-direction: column;
   width: max(100%, 22rem);
+  max-width: calc(100vw - 2 * var(--spaceLg));
   padding: var(--spaceSm) 0;
   background: var(--colorCard);
   border: var(--borderCard);
@@ -1439,7 +1534,6 @@ h2 {
 
 .invitation-row p {
   margin: 0;
-  overflow-wrap: anywhere;
 }
 
 .invitation-row-name {
@@ -1630,6 +1724,10 @@ h2 {
   cursor: pointer;
 }
 
+.dialog-scrim:disabled {
+  cursor: progress;
+}
+
 .dialog {
   position: fixed;
   top: 6rem;
@@ -1649,6 +1747,10 @@ h2 {
   border: var(--borderCard);
   border-radius: var(--radiusCardDesktop);
   box-shadow: var(--shadowDialog);
+}
+
+.dialog:focus {
+  outline: none;
 }
 
 .dialog-heading {
@@ -1714,6 +1816,15 @@ h2 {
 
 .notice-done p {
   margin: 0;
+}
+
+/* Margins on the notices rather than a gap on the column, so the spacing inside a screen and its heading's place with no notice stay as they are. */
+.shell-content > .notice {
+  margin: 0 0 var(--spaceLg);
+}
+
+.shell-content > .notice:has(+ :not(.notice)) {
+  margin-bottom: var(--spaceXl);
 }
 
 /* ── Settings > General ───────────────────────────────────────────────────── */
@@ -1803,6 +1914,7 @@ h2 {
 }
 
 .settings-read-only dd {
+  min-width: 0;
   margin: 0;
 }
 
@@ -1823,6 +1935,7 @@ h2 {
   flex: 1 1 15rem;
   flex-direction: column;
   gap: var(--spaceXxs);
+  min-width: 0;
 }
 
 .roles-list-head {
@@ -1831,6 +1944,13 @@ h2 {
   align-items: flex-start;
   gap: var(--spaceXs);
   padding-bottom: var(--spaceSm);
+}
+
+.roles h1,
+.roles h2,
+.roles p,
+.roles-grid-head {
+  overflow-wrap: anywhere;
 }
 
 .roles-list-head h1,
@@ -1872,9 +1992,14 @@ h2 {
 
 .roles-pick-name {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm);
+}
+
+.roles-pick-name strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roles-detail {
@@ -2002,6 +2127,17 @@ h2 {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spaceSm);
+  min-width: 0;
+}
+
+.roles-actions .button {
+  max-width: 100%;
+}
+
+.roles-button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roles-panels {
@@ -2026,6 +2162,23 @@ h2 {
   font: var(--typeLabel);
   letter-spacing: var(--typeLabelTracking);
   text-transform: uppercase;
+}
+
+.roles-holders {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceXs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.roles-holders li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  overflow-wrap: anywhere;
 }
 
 .roles-removing {
@@ -2058,6 +2211,7 @@ h2 {
 
 .roles-replacement .roles-row-name {
   flex: 1;
+  overflow-wrap: anywhere;
 }
 
 /* Under the name, past the radio: a 20px control and the row's gap. */
@@ -2080,6 +2234,13 @@ h2 {
   .roles[data-open='false'] .roles-detail,
   .roles[data-open='true'] .roles-list {
     display: none;
+  }
+}
+
+@media (width <= 40rem) {
+  .roles-pick-text,
+  .roles-row-text {
+    flex-basis: 13rem;
   }
 }
 
@@ -2137,8 +2298,10 @@ h2 {
   gap: var(--spaceSm);
 }
 
+/* Text on web breaks words anywhere; a pill's never break, so what is beside it gives way. */
 .pill-quiet {
   display: inline-flex;
+  flex: none;
   align-items: center;
   height: var(--sizePill);
   padding: 0 var(--spaceMd);
@@ -2146,13 +2309,38 @@ h2 {
   background: var(--colorInset);
   color: var(--colorInkSecondary);
   font: var(--typePill);
+  white-space: nowrap;
 }
 
 /* ── A notice that can be put away ─────────────────────────────────────────── */
 
+/* The notice breaks words anywhere so a long address fits; its button's one word never breaks. */
 .notice-dismiss {
+  flex: none;
+  min-width: var(--sizeHit);
   min-height: var(--sizeHit);
   margin-left: auto;
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+.notice-action-row {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--spaceMd);
+  min-width: 0;
+}
+
+/* Taking no height, the button centres on the sentence instead of making the row 44px tall and pulling the sentence off its mark. */
+.notice-action-row .notice-dismiss {
+  margin-block: calc(var(--sizeHit) / -2);
+  padding-inline: var(--spaceXxs);
+}
+
+/* The box overhangs a one-line notice, so the ring is drawn inside it rather than across the notice's border, in the padding clear of the word. */
+.notice-action-row .notice-dismiss:focus-visible {
+  outline-offset: -2px;
 }
 
 /* ── Two-factor, in Settings > Security ──────────────────────────────────── */
@@ -2460,6 +2648,98 @@ h2 {
   align-self: flex-start;
 }
 
+/* The banner while an organisation has no active Owner (sc-6640): wraps rather than truncates at every width. */
+.owner-claim {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceMd);
+}
+
+.owner-claim p,
+.owner-claim h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.owner-claim-head {
+  display: flex;
+  align-items: center;
+  gap: var(--spaceSm);
+}
+
+.owner-claim-skeleton {
+  min-height: calc(var(--sizeHit) * 2);
+  background: var(--colorInset);
+}
+
+.mark-waiting {
+  border: var(--borderMark) var(--colorInkSecondary);
+  color: var(--colorInkSecondary);
+}
+
+.owner-claim-record {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  margin: 0;
+  padding: var(--spaceLg);
+  background: var(--colorInset);
+  border: var(--borderInset);
+  border-radius: var(--radiusInset);
+}
+
+.owner-claim-record-row dt {
+  color: var(--colorInkSecondary);
+}
+
+.owner-claim-record-row dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spaceSm);
+  margin: 0;
+}
+
+.owner-claim-record-row code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--fontFamilyMono);
+  word-break: break-all;
+}
+
+/* Withdraw your claim? (sc-8204): the scrim is not a way out, and the sheet stacks its buttons. */
+.dialog-scrim[aria-hidden='true'] {
+  cursor: default;
+}
+
+.dialog-close {
+  position: absolute;
+  top: var(--spaceLg);
+  right: var(--spaceLg);
+  width: var(--sizeHit);
+  height: var(--sizeHit);
+  border: 0;
+  border-radius: var(--radiusPill);
+  background: transparent;
+  color: var(--colorInkSecondary);
+  cursor: pointer;
+}
+
+.owner-claim-withdraw .dialog-actions {
+  justify-content: flex-start;
+}
+
+@media (width <= 40rem) {
+  .owner-claim-withdraw {
+    border-radius: var(--radiusSheet) var(--radiusSheet) 0 0;
+  }
+
+  .owner-claim-withdraw .dialog-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .members-chips {
   display: flex;
   flex-wrap: wrap;
@@ -2590,6 +2870,18 @@ button.members-row {
   cursor: pointer;
 }
 
+.members-request,
+.members-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spaceSm);
+  padding: var(--spaceSm) 0;
+}
+
+.members-answer h3 {
+  margin: 0;
+}
+
 /* ── Settings > Sign-in rules (sc-69): the rules beside what saving does ─── */
 
 .sign-in-rules {
@@ -2707,7 +2999,12 @@ button.members-row {
 
 .join-offer-title {
   font: var(--typeRowTitle);
-  overflow-wrap: anywhere;
+}
+
+@media (width <= 40rem) {
+  .join-offer-text {
+    flex-basis: 100%;
+  }
 }
 
 .join-offers-back {
@@ -2736,6 +3033,36 @@ button.members-row {
 }
 
 .state-word-on .state-dot {
+  border: 0;
+  background: var(--colorAccent);
+}
+
+.state-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--spaceXs);
+  min-height: var(--sizeHit);
+  padding: 0 var(--spaceLg);
+  border: var(--borderControl);
+  border-radius: var(--radiusPill);
+  background: var(--colorCard);
+  color: var(--colorInkSecondary);
+  font: var(--typeButton);
+  cursor: pointer;
+}
+
+.state-switch:hover {
+  background: var(--colorInset);
+}
+
+.state-switch-on {
+  border-color: var(--colorAccentTintBorder);
+  background: var(--colorAccentTint);
+  color: var(--colorAccentText);
+}
+
+.state-switch-on .state-dot {
   border: 0;
   background: var(--colorAccent);
 }
@@ -2818,7 +3145,6 @@ button.members-row {
 
 .org-switcher-offer p {
   margin: 0;
-  overflow-wrap: anywhere;
 }
 
 .org-switcher-offer-text {
@@ -2969,13 +3295,36 @@ button.members-row {
   flex: 1 1 7rem;
 }
 
+.event-moment-live:empty {
+  margin-top: calc(-1 * var(--spaceSm));
+}
+
+.event-moment-gap {
+  padding: var(--spaceMd) var(--spaceLg);
+  font: var(--typeSmall);
+  color: var(--colorInk);
+}
+
+.event-moment-gap p {
+  margin: 0;
+}
+
+.event-page-outcome {
+  margin: 0;
+  font: var(--typeRowTitle);
+  color: var(--colorAccentText);
+}
+
+.event-form-actions,
+.event-page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spaceMd);
+}
+
 .event-page-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--spaceSm) var(--spaceMd);
-}
-
-.event-page-head h1 {
-  overflow-wrap: anywhere;
 }

@@ -7,29 +7,37 @@ import { SECTION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { signOutHere } from '../signedIn.ts';
 import { tokens } from '../theme/tokens.ts';
-import { bodyEdges } from './AppFrame.tsx';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
+import { bodyEdges } from './bodyEdges.ts';
 import { Screen } from './Screen.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { Text } from './Text.tsx';
 
 /** `PolicySignIn-*` state `everyone_blocked`: in place of every screen of the organisation (sc-609). */
-export function TwoFactorOverdue({ organisation }: { organisation: Membership }) {
+export function TwoFactorOverdue({
+  organisation,
+  answer,
+}: {
+  organisation: Membership;
+  /** A tapped switch into the organisation, which takes screen reader focus to the heading (sc-11032). */
+  answer: unknown;
+}) {
   const { t } = useTranslation();
   const { kind } = useLayout();
 
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
       <View style={[cardFrame(kind), styles.card]}>
-        <Text
+        <AnswerHeading
           size={
             kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitleDialog.size
           }
           weight="bold"
-          accessibilityRole="header"
+          answer={answer}
         >
           {t('signInRules.overdueTitle')}
-        </Text>
+        </AnswerHeading>
         <Text size={tokens.typeBodyPhone.size}>
           {t('signInRules.overdueBody', { organisation: organisation.name })}
         </Text>

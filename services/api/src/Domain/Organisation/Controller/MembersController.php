@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Controller;
 
+use App\Domain\Organisation\DomainJoining\DomainSuspender;
 use App\Domain\Organisation\Http\MemberSerialiser;
 use App\Domain\Organisation\Invitations\InvitationSender;
+use App\Domain\Organisation\Members\JoinRequests;
 use App\Domain\Organisation\Members\MemberActions;
+use App\Domain\Organisation\Members\MemberSuspension;
 use App\Domain\Organisation\Members\OwnershipTransfer;
+use App\Domain\Organisation\OwnerClaims\OwnerClaimHandler;
 use App\Domain\Organisation\Roles\RoleManager;
+use App\Domain\User\Mail\UserMailer;
 use App\Entity\Invitation;
 use App\Entity\Membership;
 use App\Entity\MembershipTransition;
@@ -53,6 +58,11 @@ final readonly class MembersController
         private OwnershipTransfer $ownershipTransfer,
         private TranslatorInterface $translator,
         private MembershipDirectoryInterface $membershipDirectory,
+        private DomainSuspender $domainSuspender,
+        private MemberSuspension $memberSuspension,
+        private JoinRequests $joinRequests,
+        private UserMailer $userMailer,
+        private OwnerClaimHandler $ownerClaimHandler,
     ) {
     }
 
@@ -62,6 +72,9 @@ final readonly class MembersController
     {
         $organisation = $this->organisation($organisationId);
         $caller = $this->user();
+        $this->joinRequests->expireDue($organisation);
+        $this->domainSuspender->removeExpired($organisation);
+        $this->ownerClaimHandler->settleDue($organisation);
         $history = Dict\group_by(
             $this->membershipTransitionRepository->findInOrganisation($organisation),
             static fn (MembershipTransition $step): string => $step->getMembership()->getId()->toRfc4122(),
@@ -72,20 +85,23 @@ final readonly class MembersController
             static fn (Invitation $invitation): string => $invitation->getAcceptedBy()?->getId()->toRfc4122() ?? '',
         );
         $now = new DateTimeImmutable();
-        // Somebody waiting for approval is shown only to the people who decide on them (sc-392, #529).
+        $locale = $this->userMailer->shownLocaleFor($caller);
+        $written = fn (DateTimeImmutable $at): string => $this->userMailer->deadline($at, $caller, $locale);
         $decides = true === $this->membershipDirectory->grantsIn($caller, $organisation->getId())?->holds(Permission::MembersManage);
+
+        // Somebody who asked to join and was never let in is shown only to the people who decide on them (sc-392, sc-8168).
+        $shown = static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus() && $membership->hasBeenActive();
 
         return new JsonResponse([
             'members' => Vec\map(
-                Vec\filter(
-                    $this->membershipRepository->findInOrganisation($organisation),
-                    static fn (Membership $membership): bool => $decides || MembershipStatus::PendingApproval !== $membership->getStatus(),
-                ),
-                static fn (Membership $membership): array => MemberSerialiser::member(
+                Vec\filter($this->membershipRepository->findInOrganisation($organisation), $shown),
+                fn (Membership $membership): array => MemberSerialiser::member(
                     $membership,
                     $history[$membership->getId()->toRfc4122()] ?? [],
                     $accepted[$membership->getUser()->getId()->toRfc4122()] ?? [],
                     $caller,
+                    $written,
+                    $this->memberSuspension->describe($membership, $caller),
                 ),
             ),
             'invitations' => Vec\map($invitations, static fn (Invitation $invitation): array => MemberSerialiser::invitation($invitation, $now)),
@@ -121,7 +137,7 @@ final readonly class MembersController
             : null;
 
         if (null === $invitation) {
-            throw ApiException::notFound('Not found.');
+            throw ApiException::notFound('access.not_found');
         }
 
         $this->invitationSender->revoke($invitation, $this->user());
@@ -148,6 +164,48 @@ final readonly class MembersController
     {
         $organisation = $this->organisation($organisationId);
         $this->memberActions->remove($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** Takes effect on the member's next request, as a removal does: only an active membership grants anything. */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/suspend', name: 'orgs_members_suspend', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function suspend(string $organisationId, string $membershipId): Response
+    {
+        $this->memberActions->suspend($this->organisation($organisationId), $membershipId, $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** Refused `restore_needs_address` while a member whose address went has no verified primary one at the domain again, and `team_seats_in_use` while every seat is taken. */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/restore', name: 'orgs_members_restore', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function restore(string $organisationId, string $membershipId): Response
+    {
+        $organisation = $this->organisation($organisationId);
+        $this->memberActions->restore($this->memberActions->find($organisation, $membershipId, $this->user()), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    /** Somebody awaiting approval becomes an active member in the role chosen (sc-392). */
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/approve', name: 'orgs_members_approve', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function approve(Request $request, string $organisationId, string $membershipId): Response
+    {
+        $organisation = $this->organisation($organisationId);
+        $body = Input::body($request, Type\shape(['roleId' => Type\string()]));
+        $this->joinRequests->approve($organisation, $membershipId, $this->role($organisation, $body['roleId']), $this->user());
+
+        return new Response(null, Response::HTTP_NO_CONTENT);
+    }
+
+    #[Route('/api/orgs/{organisationId}/members/{membershipId}/turn-down', name: 'orgs_members_turn_down', methods: ['POST'])]
+    #[InOrganisation(Permission::MembersManage)]
+    public function turnDown(string $organisationId, string $membershipId): Response
+    {
+        $this->joinRequests->turnDown($this->organisation($organisationId), $membershipId, $this->user());
 
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
@@ -190,13 +248,13 @@ final readonly class MembersController
 
     private function organisation(string $id): Organisation
     {
-        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('Not found.');
+        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('access.not_found');
     }
 
     private function user(): User
     {
         $user = $this->security->getUser();
 
-        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
     }
 }

@@ -5,8 +5,10 @@ import re
 import subprocess
 import time
 
+from . import roles
+
 BUILDING = ("To Do", "Ready For Dev", "In Progress", "Failed QA", "Failed Code Review")
-BRANCH_HOLDERS = ("dev", "dev2", "l10n")
+BRANCH_HOLDERS = (*roles.DEVS, "l10n")
 
 
 def decide(role, branch, dirty, story=None):
@@ -42,6 +44,16 @@ def fetch(path, tries=3, sleep=time.sleep):
         if attempt < tries:
             sleep(5 * attempt)
     raise Unprepared(f"git fetch failed {tries} times: {done.stderr.strip()}")
+
+
+def ensure(base, path):
+    """A further worker's checkout: a worktree of the role's own, made the first time."""
+    if path.exists():
+        return
+    made = git(base, "worktree", "add", "--quiet", "--detach", str(path), "origin/main",
+               check=False)
+    if made.returncode:
+        raise Unprepared(f"git worktree add {path} failed: {made.stderr.strip()}")
 
 
 def prepare(path, role, story=None, sleep=time.sleep):

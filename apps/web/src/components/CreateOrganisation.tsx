@@ -9,12 +9,15 @@ import {
 } from '@soirely/domain';
 import type { TFunction } from 'i18next';
 import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
 import { useFormChecks } from '../formChecks.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { currentLocale, dateLocale } from '../i18n/index.ts';
+import { focusWhereSent, offField } from '../offField.ts';
 import { FieldError } from './FieldError.tsx';
+import { useDialogKeys } from '../dialogFocus.ts';
 
 const FIELDS: readonly NewOrganisationField[] = ['name', 'countryCode'];
 
@@ -45,10 +48,12 @@ export function CreateOrganisation({
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
+  const focusField = (field: NewOrganisationField): void =>
+    (field === 'name' ? nameInput : countryInput).current?.focus();
   const checks = useFormChecks<NewOrganisationField>(
     FIELDS,
     (field, value) => problemMessage(field, value, t),
-    (field) => (field === 'name' ? nameInput : countryInput).current?.focus(),
+    focusField,
   );
   const errors = { ...refused, ...checks.errors };
 
@@ -62,16 +67,7 @@ export function CreateOrganisation({
     };
   }, []);
 
-  useEffect(() => {
-    const keep = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onCancel();
-      if (event.key === 'Tab' && dialog.current != null) keepFocusIn(dialog.current, event);
-    };
-
-    document.addEventListener('keydown', keep);
-
-    return () => document.removeEventListener('keydown', keep);
-  }, [onCancel]);
+  useDialogKeys(dialog, onCancel, saving);
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -81,11 +77,15 @@ export function CreateOrganisation({
 
   async function create(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (saving) return;
     setRefused({});
 
     if (!checks.passes(values)) return;
 
     setSaving(true);
+    // A click's button turns off under it (sc-8898); Enter leaves focus in the field.
+    if (document.activeElement !== nameInput.current) dialog.current?.focus();
+    const land = focusWhereSent();
     setFailed(false);
     setLimitedUntil(null);
 
@@ -98,16 +98,22 @@ export function CreateOrganisation({
         }),
       );
     } catch (error) {
-      setSaving(false);
+      flushSync(() => setSaving(false));
 
       if (error instanceof ApiError && error.is('too_many_attempts')) {
+        land('create-organisation-name');
         const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
-        setLimitedUntil(liftsAt == null ? '' : formatTimeOfDay(liftsAt, locale));
+        setLimitedUntil(liftsAt == null ? '' : formatTimeOfDay(liftsAt, dateLocale()));
         return;
       }
 
       if (error instanceof ApiError && error.is('validation_failed')) {
         const fields = error.fieldErrors();
+        land(
+          fields.name == null && fields.countryCode != null
+            ? 'create-organisation-country'
+            : 'create-organisation-name',
+        );
 
         // A refusal naming only a field this form lacks, such as the derived contact address.
         if (fields.name == null && fields.countryCode == null) {
@@ -116,10 +122,10 @@ export function CreateOrganisation({
         }
 
         setRefused({ name: fields.name, countryCode: fields.countryCode });
-        (fields.name != null ? nameInput : countryInput).current?.focus();
         return;
       }
 
+      land('create-organisation-name');
       setFailed(true);
     }
   }
@@ -131,11 +137,13 @@ export function CreateOrganisation({
         className="dialog-scrim"
         tabIndex={-1}
         aria-label={t('createOrganisation.cancel')}
+        disabled={saving}
         onClick={onCancel}
       />
       <div
         ref={dialog}
         className="dialog"
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-organisation-title"
@@ -183,7 +191,7 @@ export function CreateOrganisation({
               autoCorrect="off"
               spellCheck={false}
               value={values.name}
-              disabled={saving}
+              {...offField(saving)}
               aria-invalid={errors.name != null}
               aria-describedby={
                 errors.name == null
@@ -231,10 +239,15 @@ export function CreateOrganisation({
           <p className="dialog-note">{t('createOrganisation.defaults', { email })}</p>
 
           <div className="dialog-actions">
-            <button className="button" type="button" onClick={onCancel}>
+            <button className="button" type="button" onClick={onCancel} disabled={saving}>
               {t('createOrganisation.cancel')}
             </button>
-            <button className="button button-primary" type="submit" aria-busy={saving}>
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={saving}
+              aria-busy={saving}
+            >
               {saving ? t('createOrganisation.creating') : t('createOrganisation.create')}
             </button>
           </div>
@@ -242,26 +255,6 @@ export function CreateOrganisation({
       </div>
     </>
   );
-}
-
-function keepFocusIn(dialog: HTMLElement, event: KeyboardEvent): void {
-  const controls = [
-    ...dialog.querySelectorAll<HTMLElement>('input, select, textarea, button, a[href]'),
-  ].filter((control) => !control.matches(':disabled'));
-  const first = controls[0];
-  const last = controls[controls.length - 1];
-
-  if (first == null || last == null) return;
-
-  const inside = dialog.contains(document.activeElement);
-
-  if (event.shiftKey && (!inside || document.activeElement === first)) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && (!inside || document.activeElement === last)) {
-    event.preventDefault();
-    first.focus();
-  }
 }
 
 function problemMessage(field: NewOrganisationField, value: string, t: TFunction): string | null {

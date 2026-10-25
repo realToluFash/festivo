@@ -1,14 +1,20 @@
-import { Text as RNText, StyleSheet, type TextProps as RNTextProps } from 'react-native';
+import { type Ref } from 'react';
+import {
+  Text as RNText,
+  StyleSheet,
+  type TextProps as RNTextProps,
+  useWindowDimensions,
+} from 'react-native';
 
-import { WEIGHTS, type WeightName } from '../theme/fonts.ts';
+import { WEIGHTS, faced, type WeightName } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
 
 /**
  * Text with a weight, and without the two shapes that crash on web.
  *
- * It takes `weight` and resolves it to `fontWeight`, so no screen ever writes a
- * `fontFamily` — see src/theme/fonts.ts for why that matters once a custom
- * face is registered.
+ * It takes `weight` and resolves it to `fontWeight`, and `faced()` turns the
+ * weight into a face, so no screen ever writes a `fontFamily` — see
+ * src/theme/fonts.ts. `mono` is for step numbers and keyboard shortcuts only.
  *
  * It deliberately does NOT accept `onPress`. A Text with an onPress crashed the
  * previous build on React Native Web, so the replacement is a Pressable with a
@@ -19,17 +25,35 @@ export interface TextProps extends Omit<RNTextProps, 'onPress' | 'onLongPress'> 
   weight?: WeightName;
   size?: number;
   muted?: boolean;
+  mono?: boolean;
+  ref?: Ref<TextHandle> | undefined;
 }
 
-export function Text({ weight = 'regular', size = 16, muted = false, style, ...rest }: TextProps) {
+export type TextHandle = RNText;
+
+export function Text({
+  weight = 'regular',
+  size = 16,
+  muted = false,
+  mono = false,
+  style,
+  ...rest
+}: TextProps) {
+  const { fontScale } = useWindowDimensions();
+
   return (
     <RNText
-      style={[
-        styles.base,
-        { fontWeight: WEIGHTS[weight], fontSize: size },
-        muted && styles.muted,
-        style,
-      ]}
+      // Native measures text again when the text size changes, but lays out nothing around it: a new text is laid out from the root down.
+      key={fontScale}
+      style={faced(
+        [
+          styles.base,
+          { fontWeight: WEIGHTS[weight], fontSize: size },
+          muted && styles.muted,
+          style,
+        ],
+        mono,
+      )}
       {...rest}
     />
   );

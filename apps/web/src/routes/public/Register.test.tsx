@@ -2,7 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
 function at(path: string) {
@@ -80,7 +79,6 @@ function fillIn(password = 'lagos-evening-air') {
 afterEach(() => {
   sessionStorage.clear();
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('creating an account', () => {

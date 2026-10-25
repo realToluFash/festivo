@@ -55,6 +55,12 @@ RFC 7807, `Content-Type: application/problem+json`:
 - **`detail`** is this particular instance of the problem. **Present on a `4xx`, never on a
   `5xx`** — that message is ours and routinely quotes a query, a path or a connection
   string.
+  On a `4xx` it is a catalogue sentence in the same language as the `title`, as is each
+  violation's `message`: a refusal is thrown with a key from `translations/messages.*.json`
+  and its slots (a violation carries its own as `parameters`, which are never sent), and
+  `ProblemRenderer` words it for the request. A sentence that reaches a refusal fails
+  `RefusalsAreKeyedTest`, which names its file and line, whether it is written there,
+  formatted, held in a variable, a constant or a property, or passed down through a helper.
 - **`correlationId`** ties the response to the server logs for the same request.
 - **`violations`** carries per-field validation failures, each with `propertyPath`,
   `message` and `code`, so a form marks the offending input rather than showing one banner.
@@ -68,33 +74,44 @@ screen.
 ## Rate limits a person can hit
 
 Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in seconds
-and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. A client
-shows the time from `Retry-After`, in the reader's timezone, never a figure of its own.
+and a `detail` naming the minute it lifts ("Try again at 14:35 UTC."), rounded up. The
+minute is UTC and says so, whoever asks and from wherever: a limit hit signed out has no
+account to take a zone from, and the clients write their own time from `Retry-After`. The
+sentence and the minute are one catalogue entry with a `{time}` slot, never two joined in
+code; the slot carries the zone after the minute, where `time.dateAt` places one. A
+client shows the time from `Retry-After`, in the reader's timezone, never a figure of its
+own.
 
 Where a budget is spent by a wrong secret (a password or a code), the wrong try that spends
 the last of it is itself answered with the pause, not with that place's wrong-secret error,
 so nobody spends one more try to learn the time. Every try after it, the right secret
 included, gets the pause unchecked until the window ends. A right secret spends nothing.
 
-A limit that can last past the day it was hit also names its instant for the reader, by
-`UserMailer::deadline`: the `detail` reads "Try again Sunday, Oct 18 at 17:09 WAT." (or
-"UTC" with no zone), and the same words come as a `retryAt` member. A client quotes
-`retryAt` as it is, and falls back to `Retry-After` only when it is absent. `Retry-After`
-stays in seconds either way (RFC 9110 §10.2.3). Today only
-`POST /api/auth/two-factor/recovery` carries `retryAt`.
+A limit that can last past the day it was hit names the day as well as the minute, by
+`UserMailer::deadline`'s words, in the language of the `detail`: the request's, else
+English, never the account's saved one. The two-factor recovery's
+(`POST /api/auth/two-factor/recovery`) names it in the account's zone ("Try again Sunday,
+Oct 18 at 17:09 WAT.", or "UTC" with no zone), and the same words come as a `retryAt`
+member, because **Get back in without your authenticator** quotes them. A client quotes
+`retryAt` as it is, and falls back to `Retry-After` only when it is absent. Only the
+recovery carries `retryAt`. Any other such limit names it in UTC ("Try again Monday 26 Oct
+at 16:32 UTC."), in its `detail` only (sc-12379): no screen quotes it, and whoever reads a
+raw `detail` reads it from anywhere. `Retry-After` stays in seconds either way (RFC 9110
+§10.2.3).
 
-| Endpoint                                           | Budget                                                          | Spent by                 |
-| -------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
-| `POST /api/auth/register`                          | 10 per IP per hour, fixed window                                | every attempt            |
-| `POST /api/auth/login`                             | 5 per address and 30 per IP per 15 minutes, fixed windows       | a refused password       |
-| `PATCH /api/auth/password`, `POST /api/auth/proof` | 5 per account per 15 minutes, fixed window, one budget for both | a wrong current password |
-| `POST /api/auth/password/set/code`                 | 5 per account per 15 minutes, fixed window, across resends      | a wrong code             |
-| Two-factor codes, wherever asked                   | 5 per account per 15 minutes, fixed window                      | a wrong code             |
-| `POST /api/auth/verify/resend`                     | one per 60 seconds per address                                  | every code sent          |
-| `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                             | every request started    |
-| `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                      | every proved call        |
-| `POST /api/auth/emails`, `/phones`                 | 10 per account per hour, fixed window, shared                   | every add asked for      |
-| `POST /api/orgs`                                   | 5 per account per hour, fixed window                            | every organisation made  |
+| Endpoint                                           | Budget                                                             | Spent by                 |
+| -------------------------------------------------- | ------------------------------------------------------------------ | ------------------------ |
+| `POST /api/auth/register`                          | 10 per IP per hour, fixed window                                   | every attempt            |
+| `POST /api/auth/login`                             | 5 per address and 30 per IP per 15 minutes, fixed windows          | a refused password       |
+| `PATCH /api/auth/password`, `POST /api/auth/proof` | 5 per account per 15 minutes, fixed window, one budget for both    | a wrong current password |
+| `POST /api/auth/password/set/code`                 | 5 per account per 15 minutes, fixed window, across resends         | a wrong code             |
+| Two-factor codes, wherever asked                   | 5 per account per 15 minutes, fixed window                         | a wrong code             |
+| `POST /api/auth/verify/resend`                     | one per 60 seconds per address                                     | every code sent          |
+| `POST /api/auth/two-factor/recovery`               | 3 per account per 24 hours, rolling                                | every request started    |
+| `POST /api/auth/sessions/others`                   | 5 per account per 15 minutes, fixed window                         | every proved call        |
+| `POST /api/auth/emails`, `/phones`                 | 10 per account per hour, fixed window, shared                      | every add asked for      |
+| `POST /api/orgs`                                   | 5 per account per hour, fixed window                               | every organisation made  |
+| `POST /api/request-links/ask`                      | 5 per account and 100 per organisation per 24 hours, fixed windows | every request made       |
 
 ## Verifying an address
 
@@ -264,6 +281,61 @@ permissions are defaults written once at creation, then the organisation's to ch
   `403 grant_not_held`, and nothing changes.
 - A role id from another organisation is `404`. Demoting the last active owner is
   `409 last_owner` (`RoleAssignment`).
+
+## Answering a request to join
+
+Somebody who asked through the request link or the company domain is a membership in
+`pending_approval` (sc-392). Only a caller holding `members.manage` sees one: for anybody
+else `GET /api/orgs/{id}/members` leaves them out entirely.
+
+- Each pending member in that list carries `removesAt`: `at`, the moment it was asked
+  - 30 × 24 h (`memberships.request_expires_at`), and `written`, that instant for the
+    caller by `UserMailer::deadline` ("Wednesday, Nov 11 at 09:40 WAT", or UTC, labelled).
+    Every other member has `removesAt: null`.
+- `POST /api/orgs/{id}/members/{membershipId}/approve` (`members.manage`) takes `roleId`
+  and answers `204`: the membership is `active` in that role, audited
+  `membership.approved`. The role is held to `RoleManager::mayGrant`, so a role the caller
+  could not grant is `403 grant_not_held`.
+- `POST …/members/{membershipId}/turn-down` (`members.manage`) answers `204`: the
+  membership ends `left_or_removed`, audited `membership.turned_down`, and the person is
+  emailed in their language without being told who.
+- A request already answered, or past its instant, is `409 join_request_answered` for
+  either. A pending membership is not a member: `PATCH` and `DELETE` on
+  `…/members/{membershipId}` are `404` for it.
+- A request is removed at its instant whether or not `app:join-requests:run` (every
+  minute) has run yet: the list and both answers remove any lapsed request in the
+  organisation first, recorded as of the instant, with no actor, audited
+  `membership.request_expired`, and the person is emailed. The same job emails everybody
+  holding `members.manage` when requests arrive, at most once in any 24 hours per
+  organisation (`organisations.join_requests_noticed_at`).
+
+### Claiming an organisation with no active Owner (sc-6640)
+
+- `GET /api/orgs/{id}/owner-claim` (`members.read`) answers `{ownerClaim}`: `null` unless
+  the caller is an active Administrator and every Owner is `suspended`. Otherwise
+  `{state, domain, claim, stopped, lapsed}`, `state` one of `no_owner`, `open` (record not
+  found), `found` and `closed` (a claim was stopped: self-serve is over for good). `claim`
+  carries `record` (`{type, name, value}`) for the claimant alone, and every instant as
+  `{at, written}` in the caller's zone. `domain` is the one the caller's claim would be for:
+  their verified primary address's, when the organisation lists it; otherwise the
+  organisation's own (proved first), which the address refusal names.
+- `POST /api/orgs/{id}/owner-claim` takes no body: the claim is for the domain of the caller's
+  verified primary address. It answers `201` with the banner. Refused
+  `409 owner_claim_address` (the caller's verified primary address is elsewhere),
+  `owner_claim_managed` (another organisation proved it), `owner_claim_open`,
+  `owner_claim_closed`, `owner_claim_unavailable` (an Owner is active), or `403` for anybody
+  but an active Administrator.
+- `POST …/owner-claim/check` looks the claimant's record up at once and answers the banner
+  with `found`. `POST …/owner-claim/stop` is any signed-in account's route, allowed to an
+  active Administrator or a suspended Owner (who reads the claim as `paused[].ownerClaim` on
+  `GET /api/orgs`), never to the claimant (`409 owner_claim_own`); `409 owner_claim_ended`
+  once it has ended. An account with no membership in the organisation gets `404 not_found`,
+  as on every other `/api/orgs/{id}` route.
+- `app:owner-claims:run` (every minute) passes a claim at `found + 72 h` if the record is
+  still published there, lapses it at that instant if not, lapses an unfound one at
+  `started + 7 × 24 h`, and looks an unfound record up hourly. The banner, Members and the
+  check settle a due claim first. The record is asked of DNS over HTTPS at
+  `DNS_TXT_ENDPOINT` (smocker in the local stack).
 
 ## Authentication
 

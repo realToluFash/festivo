@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { browser } from '../../providerSignIn.ts';
-import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
 const ACCOUNT = {
@@ -75,7 +74,6 @@ const FIRST_TIME = `code=the-code&state=the-state&user=${encodeURIComponent(
 afterEach(() => {
   vi.restoreAllMocks();
   sessionStorage.clear();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('continue with Apple', () => {

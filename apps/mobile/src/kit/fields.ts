@@ -28,3 +28,31 @@ export function codeProps(takesRecoveryCode: boolean) {
     autoCapitalize: 'none',
   } as const;
 }
+
+export interface FieldText {
+  held: boolean;
+  value: string | undefined;
+  defaultValue: string | undefined;
+  typed: string;
+  pinned: string | undefined;
+}
+
+/** The text an uncontrolled field was last given, and the font scale it was given at: native puts that text back, telling nobody, whenever it changes and whenever the text size does. */
+export function nextPin(
+  field: FieldText,
+  fontScale: number,
+  scale: number,
+): { pinned: string | undefined; scale: number } {
+  const repin = (field.held || fontScale !== scale) && field.value === undefined;
+
+  return { pinned: repin ? field.typed : field.pinned, scale: fontScale };
+}
+
+/** What a field hands TextInput as its text, held or not. */
+export function fieldText(field: FieldText): { value?: string; defaultValue?: string } {
+  if (field.value !== undefined) return { value: field.value };
+  if (field.held) return { value: field.typed };
+  const defaultValue = field.pinned ?? field.defaultValue;
+
+  return defaultValue === undefined ? {} : { defaultValue };
+}

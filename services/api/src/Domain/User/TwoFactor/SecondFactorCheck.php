@@ -39,7 +39,7 @@ final readonly class SecondFactorCheck
 
             // A code already accepted, or one older than it, is a replay and reads as a wrong one.
             if (null === $step || (null !== $last && $step <= $last)) {
-                return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'That code did not work.'));
+                return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'code.did_not_work'));
             }
 
             $factor->accepted($step);
@@ -54,11 +54,11 @@ final readonly class SecondFactorCheck
             $code = $this->recoveryCodes->find($factor->getUser(), $typed);
 
             if (null === $code) {
-                return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'That code did not work.'));
+                return new WrongSecret(new ApiException(ErrorCode::TwoFactorCodeInvalid, 'code.did_not_work'));
             }
 
             if ($code->isUsed()) {
-                return new WrongSecret(new ApiException(ErrorCode::RecoveryCodeUsed, 'That recovery code has already been used.'));
+                return new WrongSecret(new ApiException(ErrorCode::RecoveryCodeUsed, 'two_factor.recovery_code_used'));
             }
 
             $code->markUsed($this->clock->now());
@@ -84,7 +84,7 @@ final readonly class SecondFactorCheck
             fn () => $this->entityManager->refresh($factor, LockMode::PESSIMISTIC_WRITE),
             fn (): array => [$this->twoFactorAccountLimiter->create($factor->getUser()->getId()->toRfc4122())],
             $check,
-            'Too many wrong codes.',
+            'limits.wrong_codes',
         );
     }
 }

@@ -52,7 +52,8 @@ final readonly class OrganisationDeleter
 
         $members = Vec\map($this->membershipRepository->findActiveIn($organisation), static fn (Membership $membership): User => $membership->getUser());
         $at = RestoreWindow::toTheSecond($this->clock->now());
-        $organisation->softDelete($by->getId(), $at);
+        $organisation->setDeletedAt($at);
+        $organisation->setDeletedBy($by->getId());
         $this->auditor->record(self::DELETED, 'Organisation', $organisation->getId(), Actor::User, $by->getId(), $by->getName(), [
             'deletedAt' => [null, $at->format(\DATE_ATOM)],
         ]);

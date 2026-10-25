@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
@@ -29,15 +29,15 @@ function signedIn(organisation = IRE): void {
 }
 
 function languageField(): HTMLSelectElement {
-  return screen.getByLabelText('Language', { selector: '#organisation-locale' });
+  const field = document.querySelector<HTMLSelectElement>('select#organisation-locale');
+
+  expect(field?.labels?.length).toBe(1);
+
+  return field as HTMLSelectElement;
 }
 
-function readOnlyLanguage(): Element {
-  const row = [...document.querySelectorAll('dl.settings-read-only div')].find(
-    (one) => one.querySelector('dt')?.textContent === 'Language',
-  );
-
-  return row?.querySelector('dd') ?? document.body;
+function readOnlyLanguage(): HTMLElement {
+  return screen.getByTestId('organisation-locale');
 }
 
 function settings() {
@@ -63,7 +63,6 @@ beforeEach(() => signedIn());
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('Settings > General', () => {
@@ -155,9 +154,13 @@ describe('Settings > General', () => {
     fireEvent.change(languageField(), { target: { value: 'pt' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
 
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'Nothing was saved. Your role does not include the permission this needs.',
-    );
+    const refused = (
+      await screen.findByText(
+        'Nothing was saved. Your role does not include the permission this needs.',
+      )
+    ).closest('.notice');
+    await waitFor(() => expect(document.activeElement).toBe(refused));
+    expect(refused?.getAttribute('role')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Save changes' })).toBeNull();
     expect(readOnlyLanguage().textContent).toBe('English');
     await waitFor(() =>
@@ -203,7 +206,64 @@ describe('Settings > General', () => {
     expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
     expect(screen.getByText(/That does not look like an email address/)).toBeDefined();
     expect(screen.getByLabelText('Name').getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(screen.getByLabelText('Name'));
     expect(sent).toEqual([]);
+  });
+
+  it('offers the currencies in use today, by name then code, and not the retired ones', () => {
+    settings();
+
+    const offered = [...(screen.getByLabelText('Currency') as HTMLSelectElement).options];
+
+    expect(offered.map(({ value }) => value)).toContain('SLE');
+    expect(offered.map(({ value }) => value)).toContain('ZWG');
+    expect(offered.map(({ value }) => value)).not.toContain('SLL');
+    expect(offered.map(({ value }) => value)).not.toContain('ZWL');
+    expect(offered.map(({ value }) => value)).not.toContain('XXX');
+    expect(offered.find(({ value }) => value === 'NGN')?.textContent).toBe('Nigerian Naira (NGN)');
+  });
+
+  it('keeps a held currency that is no longer in use, first and chosen, through a save of the name', async () => {
+    const held = membership({ id: 'org_1', name: 'Ìrè Events', currency: 'SLL' });
+    signedIn(held);
+    const sent = answering(
+      (body) =>
+        new Response(JSON.stringify({ ...held, ...(body as object), role: undefined }), {
+          status: 200,
+        }),
+    );
+    settings();
+
+    const currency = screen.getByLabelText('Currency') as HTMLSelectElement;
+    expect(currency.value).toBe('SLL');
+    expect(currency.options[0]?.textContent).toBe('SLL (no longer in use)');
+
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Ìrè Events Ltd' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(() => expect(screen.getByRole('status')).toBeDefined());
+    expect(
+      sent.filter((request) => request.path.startsWith('/api/orgs') && request.method !== 'GET'),
+    ).toEqual([{ method: 'PATCH', path: '/api/orgs/org_1', body: { name: 'Ìrè Events Ltd' } }]);
+  });
+
+  it('starts an organisation with no currency of its own empty, and refuses to save it so', () => {
+    signedIn(membership({ id: 'org_1', name: 'Ìrè Events', countryCode: 'AQ', currency: '' }));
+    const sent = answering(() => new Response('{}', { status: 500 }));
+    settings();
+
+    const currency = screen.getByLabelText('Currency') as HTMLSelectElement;
+    expect(currency.value).toBe('');
+    expect(currency.options[0]?.textContent).toBe('Choose a currency');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(screen.getByText('Choose a currency.')).toBeDefined();
+    expect(currency.getAttribute('aria-invalid')).toBe('true');
+    expect(sent).toEqual([]);
+
+    fireEvent.change(currency, { target: { value: 'USD' } });
+    expect([...currency.options].map(({ value }) => value)).not.toContain('');
   });
 
   it("shows the API's refusal under the field it names", async () => {
@@ -232,6 +292,7 @@ describe('Settings > General', () => {
 
     await waitFor(() => expect(screen.getByText('Elija una zona horaria.')).toBeDefined());
     expect(screen.getByLabelText('Time zone').getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(screen.getByLabelText('Time zone'));
   });
 
   it('shows the details as text, with no controls, to a role that cannot change them', () => {
@@ -260,14 +321,16 @@ describe('Settings > General', () => {
     );
     settings();
 
-    expect(screen.getAllByRole('term').map((term) => term.textContent)).toEqual([
+    const terms = screen.getAllByRole('term');
+
+    expect(terms.slice(0, -1).map((term) => term.textContent)).toEqual([
       'Name',
       'Country',
       'Contact address',
       'Currency',
       'Time zone',
-      'Language',
     ]);
+    expect(terms.at(-1)).toBe(readOnlyLanguage().previousElementSibling);
 
     const note = screen.getByText(
       'Currency and time zone: new events start with these. Events you already have keep theirs.',
@@ -325,6 +388,28 @@ describe('Settings > General, a request to get back in', () => {
       body: null,
     });
     expect(screen.queryByText('Proved with a code to their email (no verified phone)')).toBeNull();
+  });
+
+  it.each([
+    ['Approve', 'Cancel'],
+    ['Turn down', 'Keep the request'],
+  ])('puts focus back on %s for that request after %s (sc-11369)', async (opener, closer) => {
+    answering(
+      () =>
+        new Response(
+          JSON.stringify({
+            requests: [{ ...REQUEST, id: 'rq_0', name: 'Ada Obi' }, REQUEST],
+          }),
+          { status: 200 },
+        ),
+    );
+    settings();
+
+    const request = (await screen.findByText('Tope Bello')).closest('article')!;
+    fireEvent.click(within(request).getByRole('button', { name: opener }));
+    fireEvent.click(within(request).getByRole('button', { name: closer }));
+
+    expect(document.activeElement).toBe(within(request).getByRole('button', { name: opener }));
   });
 
   it('never offers an answer to your own request', async () => {

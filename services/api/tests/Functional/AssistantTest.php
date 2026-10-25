@@ -17,6 +17,7 @@ use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use LogicException;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Json;
+use Psl\Vec;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 
@@ -201,6 +202,8 @@ final class AssistantTest extends ApiTestCase
             self::assertResponseStatusCodeSame(422, "{$field} should be refused");
             self::assertSame($field, $body['violations'][0]['propertyPath']);
             self::assertSame('too_large', $body['violations'][0]['code']);
+            self::assertSame(['propertyPath', 'message', 'code'], Vec\keys($body['violations'][0]), 'its slots are worded in, not sent');
+            self::assertStringNotContainsString('{', $body['violations'][0]['message']);
             // Refused, not truncated. A truncated conversation answers a
             // question nobody asked.
             self::assertSame(0, $this->interactionCount(), "{$field} should not have reached the provider");
@@ -288,16 +291,16 @@ final class AssistantTest extends ApiTestCase
 
         $recorded = $this->lastInteraction();
 
-        self::assertSame('answered', $recorded->outcome());
-        self::assertSame('organiser', $recorded->context());
-        self::assertSame('assistant.organiser', $recorded->usageFeature());
-        self::assertSame('scripted', $recorded->provider());
-        self::assertSame('session-abc', $recorded->sessionId());
-        self::assertSame('how many have replied?', $recorded->userPrompt());
-        self::assertSame(['count_replies'], $recorded->toolsOffered());
-        self::assertNull($recorded->toolCalled());
+        self::assertSame('answered', $recorded->getOutcome());
+        self::assertSame('organiser', $recorded->getContext());
+        self::assertSame('assistant.organiser', $recorded->getUsageFeature());
+        self::assertSame('scripted', $recorded->getProvider());
+        self::assertSame('session-abc', $recorded->getSessionId());
+        self::assertSame('how many have replied?', $recorded->getUserPrompt());
+        self::assertSame(['count_replies'], $recorded->getToolsOffered());
+        self::assertNull($recorded->getToolCalled());
         // The prompt as sent, so a later prompt edit does not rewrite history.
-        self::assertStringContainsString('You are the assistant inside Soirely', $recorded->systemPrompt());
+        self::assertStringContainsString('You are the assistant inside Soirely', $recorded->getSystemPrompt());
     }
 
     #[Test]
@@ -311,8 +314,8 @@ final class AssistantTest extends ApiTestCase
 
         $recorded = $this->lastInteraction();
 
-        self::assertSame('tool_call', $recorded->outcome());
-        self::assertSame('move_guest', $recorded->toolCalled());
+        self::assertSame('tool_call', $recorded->getOutcome());
+        self::assertSame('move_guest', $recorded->getToolCalled());
     }
 
     /**
@@ -328,7 +331,7 @@ final class AssistantTest extends ApiTestCase
                 ['role' => 'user', 'content' => $directive],
             ]]);
 
-            self::assertSame($outcome, $this->lastInteraction()->outcome(), "{$directive} should record {$outcome}");
+            self::assertSame($outcome, $this->lastInteraction()->getOutcome(), "{$directive} should record {$outcome}");
         }
     }
 
@@ -347,8 +350,8 @@ final class AssistantTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         self::assertStringContainsString('fr', $body['data']['text']);
-        self::assertSame('fr', $this->lastInteraction()->locale());
-        self::assertStringContainsString('French', $this->lastInteraction()->systemPrompt());
+        self::assertSame('fr', $this->lastInteraction()->getLocale());
+        self::assertStringContainsString('French', $this->lastInteraction()->getSystemPrompt());
     }
 
     /** An unsupported language narrows to the default rather than being refused. */
@@ -360,7 +363,7 @@ final class AssistantTest extends ApiTestCase
             ['HTTP_ACCEPT_LANGUAGE' => 'no'],
         );
 
-        self::assertSame('en', $this->lastInteraction()->locale());
+        self::assertSame('en', $this->lastInteraction()->getLocale());
     }
 
     /**

@@ -11,8 +11,9 @@ import {
 import { useTranslation } from 'react-i18next';
 
 import { passwordProps } from '../kit/fields.ts';
+import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
-import { fieldStyles } from './Field.tsx';
+import { fieldStyles, useHeld } from './Field.tsx';
 import { Text } from './Text.tsx';
 
 /** Room for "Show" or "Hide", so typed text never runs under the control. */
@@ -22,6 +23,8 @@ const REVEAL_ROOM = 72;
 export function PasswordField({
   wrong = false,
   submitting = false,
+  value,
+  onChangeText,
   onSubmitEditing,
   ref,
   testID,
@@ -51,14 +54,17 @@ export function PasswordField({
   }, []);
 
   useFocusEffect(useCallback(() => () => setRevealed(false), []));
+  const holding = useHeld(submitting, value, rest.defaultValue, onChangeText);
 
   return (
     <View>
       <TextInput
         {...rest}
         {...passwordProps(revealed)}
+        value={value}
+        {...holding}
         ref={ref}
-        style={[fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong]}
+        style={faced([fieldStyles.input, styles.withReveal, wrong && fieldStyles.wrong])}
         aria-invalid={wrong}
         testID={testID}
         onSubmitEditing={(event) => {

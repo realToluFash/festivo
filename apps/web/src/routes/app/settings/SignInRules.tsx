@@ -7,17 +7,22 @@ import {
 } from '@soirely/api-client';
 import { formatDay, formatTimeOfDay, roleName } from '@soirely/domain';
 import type { TFunction } from 'i18next';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
-import { currentLocale } from '../../../i18n/index.ts';
+import { currentLocale, dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, replaceOrganisation, useSession } from '../../../session.ts';
+import { offButton } from '../../../offButton.ts';
 import { markRulesSeen } from '../../../signInRulesSeen.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 
-type Load = { kind: 'loading' } | { kind: 'failed' } | { kind: 'loaded'; page: SignInRulesPage };
+type Load =
+  | { kind: 'loading' }
+  | { kind: 'failed'; retried: boolean }
+  | { kind: 'loaded'; page: SignInRulesPage };
 
 type Rules = Required<SignInRulesChanges>;
 
@@ -29,20 +34,40 @@ export function SignInRules() {
   const [load, setLoad] = useState<Load>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
   const organisationId = organisation?.id;
+  const language = useShownLanguage();
+  const loadedFor = useRef<string | null>(null);
+  const retrying = useRef(false);
+  const [heading, arriveAtHeading] = useStepFocus();
+  const [failedLine, arriveAtFailed] = useStepFocus<HTMLParagraphElement>();
 
   useEffect(() => {
     if (organisationId == null) return;
     let current = true;
+    const askedAgain = loadedFor.current === organisationId;
 
     api.signInRules(organisationId).then(
-      (page) => current && setLoad({ kind: 'loaded', page }),
-      () => current && setLoad({ kind: 'failed' }),
+      (page) => {
+        if (!current) return;
+        loadedFor.current = organisationId;
+        setLoad({ kind: 'loaded', page });
+        if (retrying.current) arriveAtHeading();
+        retrying.current = false;
+      },
+      () => {
+        if (!current) return;
+        const retried = retrying.current;
+        retrying.current = false;
+        setLoad((before) =>
+          askedAgain && before.kind === 'loaded' ? before : { kind: 'failed', retried },
+        );
+        if (retried) arriveAtFailed();
+      },
     );
 
     return () => {
       current = false;
     };
-  }, [organisationId, attempt]);
+  }, [organisationId, attempt, language, arriveAtHeading, arriveAtFailed]);
 
   useEffect(() => {
     if (organisation != null) markRulesSeen(organisation);
@@ -56,7 +81,7 @@ export function SignInRules() {
     <div className="settings settings-wide">
       <SettingsSections />
       <div className="settings-heading">
-        <h1>
+        <h1 ref={heading} tabIndex={-1}>
           {manages
             ? t('signInRules.title')
             : t('signInRules.readTitle', { organisation: organisation.name })}
@@ -74,16 +99,19 @@ export function SignInRules() {
         </p>
       )}
       {load.kind === 'failed' && (
-        <div className="notice notice-broken" role="alert">
+        <div className="notice notice-broken" role={load.retried ? undefined : 'alert'}>
           <span className="mark mark-broken" aria-hidden="true">
             ✕
           </span>
           <div className="notice-body">
-            <p>{t('signInRules.failedLoad')}</p>
+            <p ref={failedLine} tabIndex={load.retried ? -1 : undefined}>
+              {t('signInRules.failedLoad')}
+            </p>
             <button
               type="button"
               className="button"
               onClick={() => {
+                retrying.current = true;
                 setLoad({ kind: 'loading' });
                 setAttempt((n) => n + 1);
               }}
@@ -462,7 +490,13 @@ function Editable({
                     <p className="notice-title">
                       {t('signInRules.everyoneWithoutTitle', { count: withoutTwoFactor.length })}
                     </p>
-                    <p>{t('signInRules.everyoneWithoutBody', { deadline, organisation: name })}</p>
+                    <p>
+                      {t('signInRules.everyoneWithoutBody', {
+                        count: withoutTwoFactor.length,
+                        deadline,
+                        organisation: name,
+                      })}
+                    </p>
                     <ul aria-label={t('signInRules.everyoneWithoutList')}>
                       {withoutTwoFactor.map((member) => (
                         <li key={member.userId}>
@@ -500,8 +534,8 @@ function Editable({
             <button
               className="button button-primary"
               type="button"
-              disabled={!dirty}
               aria-busy={status === 'saving'}
+              {...offButton(!dirty)}
               onClick={() => void save()}
             >
               {status === 'saving'
@@ -602,7 +636,7 @@ function InForce({ organisation, page }: { organisation: Membership; page: SignI
 
 function Changes({ changes }: { changes: SignInRuleChange[] }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   return (
     <section className="card settings-card" aria-labelledby="rules-changes">

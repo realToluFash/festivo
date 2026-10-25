@@ -24,3 +24,21 @@ export function withRemoved(memberId: string) {
   return (member: OrganisationMember): OrganisationMember =>
     member.id === memberId ? { ...member, status: 'left_or_removed', former: 'removed' } : member;
 }
+
+export function withRestored(memberId: string) {
+  return (member: OrganisationMember): OrganisationMember =>
+    member.id === memberId ? { ...member, status: 'active', suspension: null } : member;
+}
+
+/** Somebody awaiting approval (sc-392), approved into a role or turned down, while the list could not be read again. */
+export function withApproved(memberId: string, role: MemberRole) {
+  return (member: OrganisationMember): OrganisationMember =>
+    member.id === memberId
+      ? { ...withRole(memberId, role)(member), status: 'active', removesAt: null }
+      : member;
+}
+
+export function withTurnedDown(memberId: string) {
+  return (member: OrganisationMember): OrganisationMember =>
+    member.id === memberId ? { ...withRemoved(memberId)(member), removesAt: null } : member;
+}

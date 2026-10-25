@@ -29,6 +29,20 @@ framework:
             limit: 5
             interval: '1 hour'
 
+        join_request_account:
+            # Per account, spent by each request made through a request link (sc-562), across every
+            # organisation. Fixed, so the refusal's time holds still.
+            policy: fixed_window
+            limit: 5
+            interval: '24 hours'
+
+        join_request_organisation:
+            # Per organisation, so a shared link cannot bury its managers in requests. The refusal
+            # reads as the per-account one and does not say whose limit it is (#605).
+            policy: fixed_window
+            limit: 100
+            interval: '24 hours'
+
         assistant_chat:
             # Lower than the geocoder's and burstier than it looks: one thing an
             # organiser asks for is several turns of an agent loop, each a

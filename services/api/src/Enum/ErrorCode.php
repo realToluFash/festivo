@@ -28,6 +28,9 @@ enum ErrorCode: string
     case LastSignInMethod = 'last_sign_in_method';
     case ProviderKeptByRule = 'provider_kept_by_rule';
     case UnsupportedMediaType = 'unsupported_media_type';
+    case PreconditionFailed = 'precondition_failed';
+    case PreconditionRequired = 'precondition_required';
+    case EventCurrencyInUse = 'event_currency_in_use';
 
     case AlreadyAMember = 'already_a_member';
     case EmailTaken = 'email_taken';
@@ -38,7 +41,20 @@ enum ErrorCode: string
     case InvitationDeclined = 'invitation_declined';
     case InvitationNotYours = 'invitation_not_yours';
     case JoinOfferUnavailable = 'join_offer_unavailable';
+    case TeamSeatsInUse = 'team_seats_in_use';
+    case RequestLinkDead = 'request_link_dead';
+    case JoinRequestWaiting = 'join_request_waiting';
+    case JoinRequestCoolingOff = 'join_request_cooling_off';
+    case JoinRequestAnswered = 'join_request_answered';
     case OrganisationDeleted = 'organisation_deleted';
+    case RestoreNeedsAddress = 'restore_needs_address';
+    case OwnerClaimAddress = 'owner_claim_address';
+    case OwnerClaimManaged = 'owner_claim_managed';
+    case OwnerClaimOpen = 'owner_claim_open';
+    case OwnerClaimClosed = 'owner_claim_closed';
+    case OwnerClaimEnded = 'owner_claim_ended';
+    case OwnerClaimUnavailable = 'owner_claim_unavailable';
+    case OwnerClaimOwn = 'owner_claim_own';
 
     case Unauthenticated = 'unauthenticated';
     case InvalidCredentials = 'invalid_credentials';
@@ -99,11 +115,16 @@ enum ErrorCode: string
             self::OwnerRoleFixed, self::SeededRoleKept, self::LastOwner => 409,
             self::AlreadyLinked, self::AddressLimitReached, self::AddressNotVerified, self::PrimaryAddress, self::LastVerifiedAddress => 409,
             self::RecoveryRequestInvalid => 404,
-            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable => 409,
-            self::InvitationNotFound => 404,
+            self::AlreadyAMember, self::EmailTaken, self::InvitationAccepted, self::InvitationDeclined, self::JoinOfferUnavailable, self::RestoreNeedsAddress, self::TeamSeatsInUse => 409,
+            self::InvitationNotFound, self::RequestLinkDead => 404,
+            self::JoinRequestWaiting, self::JoinRequestCoolingOff, self::JoinRequestAnswered => 409,
+            self::OwnerClaimAddress, self::OwnerClaimManaged, self::OwnerClaimOpen, self::OwnerClaimClosed, self::OwnerClaimEnded, self::OwnerClaimUnavailable, self::OwnerClaimOwn => 409,
             self::InvitationExpired, self::InvitationRevoked, self::OrganisationDeleted => 410,
             self::InvitationNotYours => 403,
             self::UnsupportedMediaType => 415,
+            self::PreconditionFailed => 412,
+            self::PreconditionRequired => 428,
+            self::EventCurrencyInUse => 409,
             self::Unauthenticated, self::InvalidCredentials, self::InvalidRefreshToken, self::OAuthTokenInvalid, self::TwoFactorChallengeInvalid, self::SessionTimedOut => 401,
             self::Forbidden, self::PermissionRequired, self::GrantNotHeld, self::AccountUnverified, self::ProfileIncomplete, self::TwoFactorRequired, self::ProofRequired => 403,
             self::OAuthOnly, self::OAuthOnlyUnlinked, self::OrganisationTwoFactorRequired, self::OrganisationTwoFactorOverdue, self::OwnerRequired => 403,

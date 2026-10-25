@@ -49,7 +49,7 @@ final class AddressController
         ]);
     }
 
-    #[Route('/api/addresses/{id}', name: 'address_resolve', methods: ['GET'], requirements: ['id' => '.+'])]
+    #[Route('/api/addresses/{id}', name: 'address_resolve', methods: ['GET'], requirements: ['id' => '[^/]+'])]
     public function resolve(string $id, Request $request): JsonResponse
     {
         $this->limit($request);
@@ -57,7 +57,7 @@ final class AddressController
         try {
             $address = $this->addressLookup->resolve($id);
         } catch (AddressNotFound $e) {
-            throw new ApiException(ErrorCode::NotFound, 'No address with that id.', [], $e);
+            throw new ApiException(ErrorCode::NotFound, 'address.unknown', [], $e);
         } catch (ProviderUnavailable $e) {
             throw $this->unavailable($e);
         }
@@ -72,7 +72,7 @@ final class AddressController
         if (!$limiter->consume()->isAccepted()) {
             throw new ApiException(
                 ErrorCode::TooManyRequests,
-                'Too many address lookups. Please wait a moment.',
+                'address.lookups_too_many',
             );
         }
     }

@@ -1,7 +1,10 @@
+import type { Ref } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
 import type { FieldAction } from './Field.tsx';
+import { useReadOut } from './ReadOut.tsx';
+import { useFocusOnAnswer } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
@@ -17,6 +20,9 @@ export function Notice({
   action,
   heading = false,
   announce = false,
+  answer,
+  takesFocus = false,
+  wordsRef,
 }: {
   tone: NoticeTone;
   mark: string;
@@ -30,7 +36,21 @@ export function Notice({
   heading?: boolean;
   /** The notice appears in answer to something the person did, so a screen reader reads it out. */
   announce?: boolean;
+  /** What a tap set for this notice to answer it: the notice is read out as it appears, and again with each new answer, without changing what a screen reader reads on it. */
+  answer?: unknown;
+  /** The answer takes screen reader focus to the words, which focus reads, in place of reading them out (sc-11032). */
+  takesFocus?: boolean;
+  /** Its words as one item, without the action, for screen reader focus to be moved to. */
+  wordsRef?: Ref<View> | undefined;
 }) {
+  useReadOut(
+    !takesFocus && (announce || answer !== undefined)
+      ? [title, body, detail].filter((line) => line != null).join('\n')
+      : null,
+    { answer },
+  );
+  const { shown, read } = useFocusOnAnswer(takesFocus ? answer : undefined);
+  const wordsAsOne = announce || takesFocus || wordsRef != null;
   const surface = {
     quiet: styles.quiet,
     attention: styles.attention,
@@ -49,36 +69,56 @@ export function Notice({
     broken: styles.inkBroken,
     done: styles.inkDone,
   };
-  const titleInk = accentTitle ? styles.accent : tone === 'quiet' ? undefined : ink[tone];
+  const toneInk = {
+    quiet: undefined,
+    attention: styles.inkAttention,
+    broken: styles.inkBroken,
+    done: styles.accent,
+  }[tone];
+  const titleInk = accentTitle ? styles.accent : toneInk;
+  const bodyInk = tone === 'done' ? styles.accent : undefined;
 
   return (
-    <View
-      style={[styles.notice, surface]}
-      accessible={announce || undefined}
-      accessibilityLiveRegion={announce ? 'polite' : undefined}
-    >
-      <View style={[styles.mark, ring]}>
-        <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]}>
+    <View ref={shown} style={[styles.notice, surface]}>
+      {/* The words already say what the mark says (WCAG 2.2 SC 1.1.1). */}
+      <View
+        style={[styles.mark, ring]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <Text size={tokens.typePill.size} weight="bold" style={ink[markTone]} accessible={false}>
           {mark}
         </Text>
       </View>
       <View style={styles.body}>
-        {title != null && (
-          <Text
-            size={heading ? tokens.typeTitleDialog.size : tokens.typeRowTitle.size}
-            weight="bold"
-            style={titleInk}
-            accessibilityRole={heading ? 'header' : undefined}
-          >
-            {title}
-          </Text>
-        )}
-        {body != null && <Text size={tokens.typeBodyPhone.size}>{body}</Text>}
-        {detail != null && (
-          <Text size={tokens.typeSmall.size} muted>
-            {detail}
-          </Text>
-        )}
+        <View
+          ref={takesFocus ? read : wordsRef}
+          style={styles.words}
+          accessible={wordsAsOne || undefined}
+          // As one item, the words keep their title's "heading" only on the item itself.
+          accessibilityRole={wordsAsOne && heading ? 'header' : undefined}
+        >
+          {title != null && (
+            <Text
+              size={heading ? tokens.typeTitleDialog.size : tokens.typeRowTitle.size}
+              weight="bold"
+              style={titleInk}
+              accessibilityRole={heading ? 'header' : undefined}
+            >
+              {title}
+            </Text>
+          )}
+          {body != null && (
+            <Text size={tokens.typeBodyPhone.size} style={bodyInk}>
+              {body}
+            </Text>
+          )}
+          {detail != null && (
+            <Text size={tokens.typeSmall.size} muted>
+              {detail}
+            </Text>
+          )}
+        </View>
         {action != null && (
           <Pressable
             style={styles.action}
@@ -113,6 +153,7 @@ const styles = StyleSheet.create({
   broken: { backgroundColor: tokens.colorBrokenTint, borderColor: tokens.colorBroken },
   done: { backgroundColor: tokens.colorAccentTint, borderColor: tokens.colorAccentTintBorder },
   body: { flex: 1, gap: tokens.spaceHair },
+  words: { gap: tokens.spaceHair },
   action: { minHeight: tokens.sizeHit, justifyContent: 'center', alignSelf: 'flex-start' },
   accent: { color: tokens.colorAccentText },
 

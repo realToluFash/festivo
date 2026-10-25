@@ -11,7 +11,7 @@ import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../api.ts';
-import { currentLocale } from '../i18n/index.ts';
+import { dateLocale } from '../i18n/index.ts';
 import {
   type EverywhereRefusal,
   deviceMoment,
@@ -23,10 +23,12 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { PROVIDER_NAMES, confirmWithProvider } from '../providerSignIn.ts';
 import { tokens } from '../theme/tokens.ts';
 import { currentSessionId } from '../tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -183,6 +185,7 @@ export function DevicesCard({
           tone="done"
           mark={tokens.marks.done.glyph}
           body={t('devices.ended', { name: said.name })}
+          answer={said}
         />
       )}
       {said?.kind === 'everywhere' && (
@@ -194,6 +197,7 @@ export function DevicesCard({
               ? t('devices.everywhereNone')
               : t('devices.everywhereDone', { count: said.signedOut })
           }
+          answer={said}
         />
       )}
       {said?.kind === 'endFailed' && (
@@ -202,6 +206,7 @@ export function DevicesCard({
           mark={tokens.marks.broken.glyph}
           title={t('devices.endFailedTitle')}
           body={t('devices.endFailedBody')}
+          answer={said}
         />
       )}
 
@@ -218,13 +223,14 @@ export function DevicesCard({
             mark={tokens.marks.broken.glyph}
             title={t('devices.failedTitle')}
             body={t('devices.failedBody')}
+            answer={devices}
           />
           <SecondaryButton label={t('devices.retry')} onPress={retry} testID="devices.retry" />
         </>
       )}
 
       {devices.kind === 'ready' && (
-        <View accessibilityLabel={t('devices.listLabel')}>
+        <View>
           {thisDeviceFirst(devices.sessions, here).map((device) => (
             <Row
               key={device.id}
@@ -265,7 +271,7 @@ function Row({
   onEndHere: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
 
   return (
     <View style={styles.row} testID={here ? 'devices.here' : `devices.row.${device.id}`}>
@@ -320,14 +326,14 @@ function Check({
   onKeep: () => void;
 }) {
   const { t } = useTranslation();
-  const locale = currentLocale();
+  const locale = dateLocale();
   const name = deviceName(device, t);
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer={device}>
         {t('devices.checkTitle', { name })}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {t('devices.checkBody', {
           started: deviceMoment(device.startedAt, locale, t),
@@ -459,7 +465,7 @@ function EverywhereElse({
 
   const until =
     refusal?.kind === 'limited' && refusal.until != null
-      ? formatTimeOfDay(refusal.until, currentLocale())
+      ? formatTimeOfDay(refusal.until, dateLocale())
       : null;
   const passwordError =
     checks.errors.password ??
@@ -468,12 +474,17 @@ function EverywhereElse({
     checks.errors.code ??
     (refusal?.kind === 'field' && refusal.field === 'code' ? refusal.message : null);
   const viaName = provider != null && !confirmed ? PROVIDER_NAMES[provider] : null;
+  const confirmedLine =
+    provider != null && confirmed && codeAsked
+      ? t('devices.everywhereProviderConfirmed', { provider: PROVIDER_NAMES[provider] })
+      : null;
+  useReadOut(confirmedLine);
 
   return (
     <>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <AnswerHeading size={tokens.typeTitleSection.size} weight="bold" answer="everywhere">
         {t('devices.everywhereTitle')}
-      </Text>
+      </AnswerHeading>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
         {keepsThisDevice
           ? t('devices.everywhereBody', { count })
@@ -490,6 +501,7 @@ function EverywhereElse({
               ? t('devices.everywhereLimitedSoon')
               : t('devices.everywhereLimitedBody', { time: until })
           }
+          answer={refusal}
         />
       )}
       {refusal?.kind === 'failed' && (
@@ -498,12 +510,13 @@ function EverywhereElse({
           mark={tokens.marks.broken.glyph}
           title={t('devices.everywhereFailedTitle')}
           body={refusal.message}
+          answer={refusal}
         />
       )}
 
-      {provider != null && confirmed && codeAsked && (
+      {confirmedLine != null && (
         <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('devices.everywhereProviderConfirmed', { provider: PROVIDER_NAMES[provider] })}
+          {confirmedLine}
         </Text>
       )}
 

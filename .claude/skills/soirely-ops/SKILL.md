@@ -40,8 +40,10 @@ from the main checkout makes it).
      sq takes only a story in Backlog, Ready For Dev or In Progress that nobody holds, and
      tells `[pm]` it has left their queue. `needs qa` you change only on your own stories.
   2. **Open the pull request ready for review**, never as a draft:
-     `sq ops pr-create --head <branch> --title "… (sc-N)"`, body on stdin. When its checks
-     are green, `sq ops move sc-N "In Review"`, which wakes `[lead]`. Answer review
+     `sq ops pr-create --head <branch> --title "… (sc-N)"`, body on stdin. Wait for its checks
+     with `sq ops checks N --wait --head <sha>` as a background command, `<sha>` the commit
+     you pushed, never a polling loop you write; it ends by itself, non-zero unless every
+     check passed. When they are green, `sq ops move sc-N "In Review"`, which wakes `[lead]`. Answer review
      comments with `sq ops pr-reply N <comment id>`.
   3. **Merge it yourself once the lead passes it** at its head: `sq ops merge N`. sq
      refuses without that pass, with open threads, or with red checks. An infra change
@@ -70,7 +72,7 @@ Read this, then check it is still true. It is a snapshot, and the repository is 
 - **Local stack**: `compose.yaml`, project `soirely`, managed with `just up`, `just down` and
   the rest. **QA stack**: `../soirely-qa`, project `soirely-qa`, ports moved up by 10000, run
   through `.qa/bin/qa-env.mjs` (`CONTRIBUTING.md`). **Role stacks**: `../soirely-<role>` for
-  `dev2`, `lead`, `ops`, `en`, `es`, `fr` and `pt`, made by `just dev-env setup --role <role>`,
+  `dev2`, `dev3`, `dev4`, `lead`, `ops` and `l10n`, made by `just dev-env setup --role <role>`,
   on the offsets in `STACKS` in `scripts/dev-env.mjs`. All of these belong to other roles day
   to day. You keep them working.
 - **CI**: `.github/workflows/pull-request.yml`, which runs on pull requests, decides which
@@ -133,6 +135,10 @@ no argument, in this order:
   demo and in production. Only the environment differs, as `.env.example` already shows.
 - **Test the script, not just the config.** A `scripts/*.mjs` change carries a test beside
   it (`writing-tests`), and `test:scripts` runs it.
+- **Locally, run only what the change touches**: its tests (`test:scripts`, `test:queue`),
+  and lint and format on the changed files. CI green on the pushed head proves it. Logs go
+  to `"${SQ_RUN_DIR:?export SQ_RUN_DIR=\$(mktemp -d) first}/<check>.out"`, never a fixed name in `/tmp`, and never through a pipe
+  into `tail` or `grep`, which reports the pipe's status rather than the check's.
 
 ## 5. Deploying
 

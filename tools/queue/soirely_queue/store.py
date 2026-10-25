@@ -28,6 +28,7 @@ create table if not exists work (
   comments text,
   status text not null default 'open',
   claimed_by text,
+  worker text,
   lease_until real,
   first_seen real not null,
   done_at real,
@@ -68,8 +69,11 @@ def connect(path):
     db.row_factory = sqlite3.Row
     db.execute("pragma journal_mode = wal")
     db.executescript(SCHEMA)
-    if "rank" not in {row["name"] for row in db.execute("pragma table_info(work)")}:
+    columns = {row["name"] for row in db.execute("pragma table_info(work)")}
+    if "rank" not in columns:
         db.execute("alter table work add column rank integer not null default 0")
+    if "worker" not in columns:
+        db.execute("alter table work add column worker text")
     if not get_meta(db, "linguists_merged"):
         db.execute("begin immediate")
         merge_linguists(db)
@@ -146,7 +150,8 @@ def prs_for_story(db, story_id):
 def record(db, items, now=None):
     """Adds new work and retires open work that no longer applies.
 
-    Claimed work is left alone: the run holding it finishes or its lease runs out.
+    Open work follows the roles it is now derived for. Claimed work is left alone: the run
+    holding it finishes or its lease runs out.
     """
     now = now or time.time()
     db.execute("begin immediate")
@@ -158,6 +163,7 @@ def record(db, items, now=None):
                 "priority, rank, comments, first_seen) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
                 "on conflict (fingerprint) do update set priority = excluded.priority, "
                 "rank = excluded.rank, "
+                "roles = case work.status when 'claimed' then work.roles else excluded.roles end, "
                 "status = case work.status when 'gone' then 'open' else work.status end",
                 (item["fingerprint"], item["pool"], ",".join(item["roles"]), item["kind"],
                  item.get("story_id"), item.get("pr"), item["reason"], item["priority"],
@@ -165,18 +171,22 @@ def record(db, items, now=None):
         for row in db.execute("select id, fingerprint from work where status = 'open'"):
             if row["fingerprint"] not in current:
                 db.execute("update work set status = 'gone' where id = ?", (row["id"],))
-        db.execute("update work set status = 'open', claimed_by = null, lease_until = null "
-                   "where status = 'claimed' and lease_until < ?", (now,))
+        db.execute("update work set status = 'open', claimed_by = null, worker = null, "
+                   "lease_until = null where status = 'claimed' and lease_until < ?", (now,))
         db.execute("commit")
     except BaseException:
         db.execute("rollback")
         raise
 
 
-def held_by(db, role, now=None):
+def held_by(db, role, now=None, worker=None):
+    """The item the role holds; with `worker`, the one that worker holds. A worker is named
+    for its role, or `pm-2` and on for a role that runs more than one."""
     now = now or time.time()
     return db.execute("select * from work where status = 'claimed' and claimed_by = ? "
-                      "and lease_until >= ?", (role, now)).fetchone()
+                      "and lease_until >= ? and coalesce(worker, claimed_by) = "
+                      "coalesce(?, worker, claimed_by) order by id",
+                      (role, now, worker)).fetchone()
 
 
 def waiting(db, role):
@@ -190,25 +200,32 @@ def claim_key(row):
     return f"sc-{row['story_id']}" if row["story_id"] else row["kind"]
 
 
-def claim(db, role, now=None, kinds=None, skip=()):
-    """The role's top open item, or None. One claim per role, and one per pool item.
-    `kinds` limits it to some kinds of work; `skip` holds the (pool, claim key) pairs taken
-    on another machine."""
+def claim(db, role, now=None, kinds=None, skip=(), worker=None, workers=1):
+    """The role's top open item, or None. One claim per worker, at most `workers` per role,
+    one per pool item, and never two on one story or one pull request. `kinds` limits it to some kinds of
+    work; `skip` holds the (pool, claim key) pairs taken on another machine."""
     now = now or time.time()
     db.execute("begin immediate")
     try:
-        if held_by(db, role, now):
+        held = db.execute("select coalesce(worker, claimed_by) as worker, story_id, pr from work "
+                          "where status = 'claimed' and claimed_by = ? and lease_until >= ?",
+                          (role, now)).fetchall()
+        if len(held) >= workers or (worker or role) in {row["worker"] for row in held}:
             db.execute("commit")
             return None
+        busy = {row["story_id"] for row in held if row["story_id"]}
+        reviewing = {row["pr"] for row in held if row["pr"]}
         rows = [row for row in waiting(db, role)
                 if (kinds is None or row["kind"] in kinds)
-                and (row["pool"], claim_key(row)) not in skip]
+                and (row["pool"], claim_key(row)) not in skip
+                and row["story_id"] not in busy and row["pr"] not in reviewing]
         if not rows:
             db.execute("commit")
             return None
         top = rows[0]
-        db.execute("update work set status = 'claimed', claimed_by = ?, lease_until = ? "
-                   "where id = ?", (role, now + LEASE_MINUTES * 60, top["id"]))
+        db.execute("update work set status = 'claimed', claimed_by = ?, worker = ?, "
+                   "lease_until = ? where id = ?",
+                   (role, worker, now + LEASE_MINUTES * 60, top["id"]))
         db.execute("commit")
         return db.execute("select * from work where id = ?", (top["id"],)).fetchone()
     except BaseException:
@@ -234,8 +251,8 @@ def finish(db, work_id, note=None, now=None):
 
 
 def release(db, work_id):
-    db.execute("update work set status = 'open', claimed_by = null, lease_until = null "
-               "where id = ? and status = 'claimed'", (work_id,))
+    db.execute("update work set status = 'open', claimed_by = null, worker = null, "
+               "lease_until = null where id = ? and status = 'claimed'", (work_id,))
 
 
 def mark_run(db, role, now=None):
@@ -247,6 +264,13 @@ def mark_run(db, role, now=None):
 def last_run(db, role):
     row = db.execute("select last_done from runs where role = ?", (role,)).fetchone()
     return row["last_done"] if row else None
+
+
+def worked_on(db, role):
+    """When the role last finished an item on each story."""
+    return {row["story_id"]: row["at"] for row in db.execute(
+        "select story_id, max(done_at) as at from work where status = 'done' "
+        "and story_id is not null and claimed_by = ? group by story_id", (role,))}
 
 
 def item(db, work_id):

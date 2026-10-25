@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Organisation\Roles;
 
+use App\Domain\Organisation\DomainJoining\RemovalClock;
 use App\Entity\Membership;
-use App\Entity\Organisation;
 use App\Entity\Role;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipStatus;
 use App\Http\Exception\ApiException;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Psl\Type;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -20,32 +21,45 @@ final readonly class RoleAssignment
     public function __construct(
         private EntityManagerInterface $entityManager,
         private TranslatorInterface $translator,
+        private RemovalClock $removalClock,
     ) {
     }
 
-    public function assign(Membership $membership, Role $role): void
+    /** `$at` is when it took effect, for a change made at its own instant rather than now (sc-6640). */
+    public function assign(Membership $membership, Role $role, ?DateTimeImmutable $at = null): void
     {
         if (!$role->isOwner()) {
             $this->release($membership);
         }
 
+        $wasOwner = $membership->getRole()->isOwner();
         $membership->changeRole($role);
+        $this->removalClock->wind($membership, $wasOwner, $at);
     }
 
-    /** Refused for the last active owner: demoting, removing and leaving all pass through here. */
+    /** Refused for the last owner: demoting, removing and leaving all pass through here. */
     public function release(Membership $membership): void
     {
-        if ($membership->getRole()->isOwner() && $membership->isActive() && 1 === $this->activeOwners($membership->getOrganisation())) {
+        if ($this->isLastOwner($membership)) {
             throw new ApiException(ErrorCode::LastOwner, $this->translator->trans('roles.last_owner'));
         }
     }
 
-    private function activeOwners(Organisation $organisation): int
+    /** An owner, active or suspended (sc-564), with no other active owner beside them. */
+    public function isLastOwner(Membership $membership): bool
+    {
+        return $membership->getRole()->isOwner()
+            && $membership->getStatus()->holdsRole()
+            && 0 === $this->otherActiveOwners($membership);
+    }
+
+    private function otherActiveOwners(Membership $membership): int
     {
         return Type\int()->coerce($this->entityManager->createQuery(
-            'SELECT COUNT(m.id) FROM ' . Membership::class . ' m JOIN m.role r WHERE m.organisation = :organisation AND m.status = :active AND r.seededAs = :owner',
+            'SELECT COUNT(m.id) FROM ' . Membership::class . ' m JOIN m.role r WHERE m.organisation = :organisation AND m <> :membership AND m.status = :active AND r.seededAs = :owner',
         )
-            ->setParameter('organisation', $organisation)
+            ->setParameter('organisation', $membership->getOrganisation())
+            ->setParameter('membership', $membership)
             ->setParameter('active', MembershipStatus::Active)
             ->setParameter('owner', 'owner')
             ->getSingleScalarResult());

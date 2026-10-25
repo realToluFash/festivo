@@ -1,8 +1,17 @@
 import { type Membership, primaryEmailAddress } from '@soirely/api-client';
-import { initials, roleName, waitingInvitations } from '@soirely/domain';
+import { roleName, waitingInvitations } from '@soirely/domain';
 import { router } from 'expo-router';
-import { type ReactNode, createContext, useContext, useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
@@ -10,24 +19,41 @@ import { useTranslation } from 'react-i18next';
 import { type WaitingInvitations, useWaitingInvitations } from '../invitations.ts';
 import { type DomainOffer, useDomainOffer } from '../joinOffers.ts';
 import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.ts';
+import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
+import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { InvitationRows } from './InvitationRows.tsx';
+import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
-import { Text } from './Text.tsx';
+import { ReadOut, useReadOut } from './ReadOut.tsx';
+import { useFocusOnAnswer } from './Screen.tsx';
+import { type TextHandle, Text } from './Text.tsx';
+import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
 
 const RAIL_WIDTH = 220;
 
-const OpenSwitcher = createContext<(() => void) | undefined>(undefined);
+type Opening = (opener: RefObject<View | null>) => void;
+
+const OpenSwitcher = createContext<Opening | undefined>(undefined);
 
 /** Opens the frame's organisation switcher; undefined while there is no organisation and no invitation. */
-export function useOpenSwitcher(): (() => void) | undefined {
+export function useOpenSwitcher(): Opening | undefined {
   return useContext(OpenSwitcher);
+}
+
+type OrganisationStart = Opening;
+
+const StartOrganisation = createContext<OrganisationStart | undefined>(undefined);
+
+/** Opens the frame's Create an organisation sheet, as the switcher's last row does (sc-5932). */
+export function useStartOrganisation(): OrganisationStart | undefined {
+  return useContext(StartOrganisation);
 }
 
 const HideBack = createContext<((hidden: boolean) => void) | undefined>(undefined);
@@ -51,25 +77,24 @@ const ICONS: Record<Destination, readonly [string, string]> = {
   ],
 };
 
-/** The edges a signed-in screen's own `Screen` insets: the frame's header, rail and tab bar take the rest. */
-export function bodyEdges(kind: LayoutKind): readonly ('top' | 'bottom' | 'left' | 'right')[] {
-  if (kind === 'phone') return ['left', 'right'];
-
-  return kind === 'tabletPortrait' ? ['left', 'right', 'bottom'] : ['right', 'bottom'];
-}
-
 /** The body keeps its place in the tree on every layout, so a rotation keeps what was typed. */
 export function AppFrame({
   current,
   title,
   back,
+  titleRef,
   aboutTheAccount = false,
+  bodyTakesSwitch = false,
   children,
 }: {
   current: Destination;
   title: string;
+  /** The title on a phone, where it stands for the page's own heading. */
+  titleRef?: RefObject<TextHandle | null> | undefined;
   /** Security and Account stay open past an organisation's two-factor deadline, to set it up (sc-609). */
   aboutTheAccount?: boolean;
+  /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
+  bodyTakesSwitch?: boolean;
   /** On a phone, the page this one was opened from, as Security's "Settings". */
   back?: { label: string; onPress: () => void } | undefined;
   children: ReactNode;
@@ -78,7 +103,11 @@ export function AppFrame({
   const { kind } = useLayout();
   const [choosing, setChoosing] = useState(false);
   const [creating, setCreating] = useState(false);
+  const pill = useRef<View>(null);
+  const [switcherFrom, setSwitcherFrom] = useState<RefObject<View | null> | null>(null);
+  const [creatingFrom, setCreatingFrom] = useState<RefObject<View | null> | null>(null);
   const [created, setCreated] = useState<string | null>(null);
+  const switched = created == null ? null : t('switcher.switched', { name: created });
   const [backHidden, setBackHidden] = useState(false);
   const signedIn = useSignedIn();
   const waiting = useWaitingInvitations();
@@ -87,13 +116,28 @@ export function AppFrame({
   // It opens with one organisation too, because it ends with "Create an organisation" (sc-390).
   const openSwitcher =
     signedIn.organisation != null || waiting.invitations.length > 0 || offer.organisation != null
-      ? () => {
+      ? (opener: RefObject<View | null>) => {
           setCreated(null);
+          setSwitcherFrom(opener);
           setChoosing(true);
         }
       : undefined;
+  const switchFromPill = openSwitcher && (() => openSwitcher(pill));
+  const startOrganisation = (opener: RefObject<View | null>) => {
+    setCreated(null);
+    setCreatingFrom(opener);
+    setCreating(true);
+  };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
   const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
+  const switchAnswer = useFrameSwitch();
+  const standIn = aboutTheAccount
+    ? null
+    : signedIn.pausedIn != null
+      ? 'paused'
+      : overdue && signedIn.organisation != null
+        ? 'overdue'
+        : null;
 
   return (
     <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
@@ -102,7 +146,8 @@ export function AppFrame({
           current={current}
           organisation={signedIn.organisation}
           waiting={count}
-          onSwitch={openSwitcher}
+          onSwitch={switchFromPill}
+          pill={pill}
         />
       )}
       <View style={styles.column}>
@@ -110,31 +155,39 @@ export function AppFrame({
           kind={kind}
           current={current}
           title={title}
+          titleRef={titleRef}
+          switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
           back={back}
           backHidden={backHidden}
           email={email}
           organisation={signedIn.organisation}
           waiting={count}
-          onSwitch={openSwitcher}
+          onSwitch={switchFromPill}
+          pill={pill}
         />
         <View style={styles.body}>
-          {created != null && (
-            <View style={styles.created} accessibilityLiveRegion="polite">
-              <Notice
-                tone="done"
-                mark={tokens.marks.done.glyph}
-                body={t('switcher.switched', { name: created })}
-              />
-            </View>
+          {switched != null && (
+            <ReadOut style={styles.created} words={switched}>
+              <Notice tone="done" mark={tokens.marks.done.glyph} body={switched} />
+            </ReadOut>
           )}
           <OpenSwitcher.Provider value={openSwitcher}>
-            <HideBack.Provider value={setBackHidden}>
-              {overdue && !aboutTheAccount && signedIn.organisation != null ? (
-                <TwoFactorOverdue organisation={signedIn.organisation} />
-              ) : (
-                children
-              )}
-            </HideBack.Provider>
+            <StartOrganisation.Provider value={startOrganisation}>
+              <HideBack.Provider value={setBackHidden}>
+                {standIn === 'paused' && signedIn.pausedIn != null ? (
+                  <AccessPaused
+                    paused={signedIn.pausedIn}
+                    others={signedIn.organisations}
+                    onSwitch={(next) => switchByTap(next.id)}
+                    onChoose={() => switchFromPill?.()}
+                  />
+                ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                  <TwoFactorOverdue organisation={signedIn.organisation} answer={switchAnswer} />
+                ) : (
+                  <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
+                )}
+              </HideBack.Provider>
+            </StartOrganisation.Provider>
           </OpenSwitcher.Provider>
         </View>
         {kind === 'phone' && <TabBar current={current} />}
@@ -142,19 +195,20 @@ export function AppFrame({
       <Switcher
         open={choosing}
         organisations={signedIn.organisations}
-        current={signedIn.organisation}
+        current={signedIn.pausedIn != null ? null : signedIn.organisation}
         waiting={waiting}
         offer={offer}
         email={email}
         onClose={() => setChoosing(false)}
         onCreate={() => {
           setChoosing(false);
-          setCreating(true);
+          startOrganisation(switcherFrom ?? pill);
         }}
       />
       <CreateOrganisation
         open={creating}
         email={email}
+        opener={creatingFrom ?? pill}
         onCancel={() => setCreating(false)}
         onCreated={(organisation) => {
           setCreating(false);
@@ -171,31 +225,39 @@ function FrameHeader({
   kind,
   current,
   title,
+  titleRef,
+  switchAnswer,
   back,
   backHidden,
   email,
   organisation,
   waiting,
   onSwitch,
+  pill,
 }: {
   kind: LayoutKind;
   current: Destination;
   title: string;
+  titleRef: RefObject<TextHandle | null> | undefined;
+  /** A tapped switch of organisation, which takes screen reader focus to the title. */
+  switchAnswer: unknown;
   back: { label: string; onPress: () => void } | undefined;
   backHidden: boolean;
   email: string;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
+  pill: Ref<View>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const top = { paddingTop: insets.top + (kind === 'tabletLandscape' ? 0 : tokens.spaceXxs) };
+  const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
 
   if (kind === 'tabletLandscape') {
     return (
       <View style={[styles.header, styles.landscapeHeader, top]}>
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header" ref={read}>
           {title}
         </Text>
         <View style={styles.fill} />
@@ -210,7 +272,7 @@ function FrameHeader({
     return (
       <View style={[styles.header, styles.portraitHeader, top]}>
         {organisation != null && (
-          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+          <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
         )}
         <View style={styles.pills} accessibilityRole="tablist">
           {DESTINATIONS.map((destination) => {
@@ -237,7 +299,7 @@ function FrameHeader({
             );
           })}
         </View>
-        <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
+        <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header" ref={read}>
           {title}
         </Text>
       </View>
@@ -247,7 +309,7 @@ function FrameHeader({
   return (
     <View style={[styles.header, styles.phoneHeader, top]}>
       {current === 'home' && organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} />
+        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} ref={pill} />
       )}
       {back != null && !backHidden && (
         <Pressable
@@ -268,6 +330,7 @@ function FrameHeader({
         size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
         weight="bold"
         accessibilityRole="header"
+        ref={read}
       >
         {title}
       </Text>
@@ -317,11 +380,13 @@ function Rail({
   organisation,
   waiting,
   onSwitch,
+  pill,
 }: {
   current: Destination;
   organisation: Membership | null;
   waiting: number;
   onSwitch: (() => void) | undefined;
+  pill: Ref<View>;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -367,7 +432,13 @@ function Rail({
         </Text>
       </View>
       {organisation != null && (
-        <OrgPill organisation={organisation} waiting={waiting} onSwitch={onSwitch} railed />
+        <OrgPill
+          organisation={organisation}
+          waiting={waiting}
+          onSwitch={onSwitch}
+          railed
+          ref={pill}
+        />
       )}
       <View style={styles.railGroup}>{DESTINATIONS.filter((d) => d !== 'settings').map(item)}</View>
       <View style={styles.fill} />
@@ -375,10 +446,12 @@ function Rail({
         {item('settings')}
         {account != null && (
           <View style={styles.person}>
-            <View style={styles.avatar}>
-              <Text size={tokens.typeMeta.size} weight="semibold">
-                {initials(account.name)}
-              </Text>
+            <View
+              style={styles.avatar}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <Initials name={account.name} size={tokens.typeMeta.size} weight="semibold" />
             </View>
             <View style={styles.shrink}>
               <Text size={tokens.typeBody.size} weight="semibold" numberOfLines={1}>
@@ -402,11 +475,13 @@ function OrgPill({
   waiting,
   onSwitch,
   railed = false,
+  ref,
 }: {
   organisation: Membership;
   waiting: number;
   onSwitch: (() => void) | undefined;
   railed?: boolean;
+  ref: Ref<View>;
 }) {
   const { t } = useTranslation();
   const role = roleName(t, organisation.role);
@@ -419,6 +494,7 @@ function OrgPill({
 
   return (
     <Pressable
+      ref={ref}
       style={[
         styles.org,
         railed ? styles.orgRailed : styles.orgPill,
@@ -440,7 +516,7 @@ function OrgPill({
           {organisation.name}
         </Text>
         {railed && (
-          <Text size={tokens.typeMeta.size} muted>
+          <Text size={tokens.typeMeta.size} muted numberOfLines={1}>
             {t('frame.organisation')}
           </Text>
         )}
@@ -464,10 +540,12 @@ function OrgPill({
 
 function Tile({ name }: { name: string }) {
   return (
-    <View style={styles.tile}>
-      <Text size={tokens.typeMeta.size} weight="bold" style={styles.accent}>
-        {initials(name)}
-      </Text>
+    <View
+      style={styles.tile}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Initials name={name} size={tokens.typeMeta.size} weight="bold" style={styles.accent} />
     </View>
   );
 }
@@ -492,11 +570,42 @@ function Switcher({
   onCreate: () => void;
 }) {
   const { t } = useTranslation();
+  const { width, height } = useLayout();
+  const insets = useSafeAreaInsets();
+  // Android's window runs behind the bars and the cutout, so the card keeps its margin from them, not from the edge.
+  const fit =
+    Platform.OS === 'android'
+      ? {
+          flex: 1,
+          paddingTop: insets.top + tokens.spaceXxl,
+          paddingBottom: insets.bottom + tokens.spaceXxl,
+          paddingLeft: insets.left + tokens.spaceXxl,
+          paddingRight: insets.right + tokens.spaceXxl,
+        }
+      : // Sized from the window: on an iPhone on its side the modal can keep its upright height (sc-10118).
+        { width, height };
 
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('switcher.close')}>
-        <View style={styles.sheetFrame} onStartShouldSetResponder={() => true}>
+    <Modal
+      visible={open}
+      transparent
+      animationType="fade"
+      supportedOrientations={TURNS_WITH_THE_APP}
+      // Android's modal window stops at the system bars unless told otherwise, leaving them undimmed.
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={onClose}
+    >
+      <View style={[styles.scrim, fit]} accessibilityViewIsModal onAccessibilityEscape={onClose}>
+        {/* A sibling, not a parent: iOS reads a labelled button as one item and nothing inside it (sc-10712).
+            VoiceOver closes the sheet from this Close or the two-finger escape on the scrim. */}
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={t('switcher.close')}
+        />
+        <View style={styles.sheetFrame}>
           <ScrollView contentContainerStyle={styles.sheet}>
             <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
               {t('switcher.heading')}
@@ -518,10 +627,10 @@ function Switcher({
                 >
                   <Tile name={organisation.name} />
                   <View style={[styles.fill, styles.shrink]}>
-                    <Text size={tokens.typeBodyPhone.size} weight="semibold">
+                    <Text size={tokens.typeBodyPhone.size} weight="semibold" numberOfLines={1}>
                       {organisation.name}
                     </Text>
-                    <Text size={tokens.typeBody.size} muted>
+                    <Text size={tokens.typeBody.size} muted numberOfLines={1}>
                       {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
                     </Text>
                   </View>
@@ -577,7 +686,7 @@ function Switcher({
             )}
           </ScrollView>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
@@ -587,6 +696,13 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const unavailable = t('domainJoining.unavailable');
+  useReadOut(failed ? unavailable : null);
+  const waiting = t('domainJoining.waiting');
+  const asked = t('domainJoining.switcherAsked', { email });
+  useReadOut(offer.asked ? `${waiting}\n${asked}` : null, {
+    quietAtMount: true,
+  });
 
   async function ask(): Promise<void> {
     setBusy(true);
@@ -610,22 +726,20 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
         {t('domainJoining.switcherBody', { domain: offer.domain ?? '' })}
       </Text>
       {offer.asked ? (
-        <View style={styles.offerAsked} accessibilityLiveRegion="polite">
+        <View style={styles.offerAsked}>
           <View style={styles.offerRing} />
           <View style={styles.offerAskedWords}>
             <Text size={tokens.typeBody.size} weight="semibold">
-              {t('domainJoining.waiting')}
+              {waiting}
             </Text>
-            <Text size={tokens.typeBody.size}>
-              {`· ${t('domainJoining.switcherAsked', { email })}`}
-            </Text>
+            <Text size={tokens.typeBody.size}>{`· ${asked}`}</Text>
           </View>
         </View>
       ) : (
         <>
           {failed && (
             <Text size={tokens.typeBody.size} style={styles.broken} accessibilityRole="alert">
-              {t('domainJoining.unavailable')}
+              {unavailable}
             </Text>
           )}
           <View style={styles.offerButtons}>
@@ -835,7 +949,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.colorAccentTint,
   },
   scrim: {
-    flex: 1,
     justifyContent: 'center',
     padding: tokens.spaceXxl,
     backgroundColor: tokens.scrimDialog,

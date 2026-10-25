@@ -31,6 +31,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Settings > Sign-in rules (sc-69): every member reads them; organisation.manage changes them. */
 final readonly class SignInRulesController
@@ -47,6 +48,7 @@ final readonly class SignInRulesController
         private SignInRules $signInRules,
         private UserMailer $userMailer,
         private ClockInterface $clock,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -72,11 +74,13 @@ final readonly class SignInRulesController
         $days = $body['inactivityTimeoutDays'] ?? null;
 
         if (null !== $days && !Iter\contains(SignInRules::INACTIVITY_DAYS, $days)) {
+            $refusal = $this->translator->trans('sign_in_rules.inactivity_choice');
+
             throw ApiException::validation([[
                 'propertyPath' => 'inactivityTimeoutDays',
-                'message' => 'Choose 7 days, 30 days or no limit.',
+                'message' => $refusal,
                 'code' => 'choice',
-            ]], 'Choose 7 days, 30 days or no limit.');
+            ]], $refusal);
         }
 
         $this->signInRulesEditor->change($organisation, $this->user(), $body, $request);
@@ -131,7 +135,7 @@ final readonly class SignInRulesController
 
         return [
             'at' => $deadline->format(DateTimeInterface::ATOM),
-            'written' => $this->userMailer->deadline($deadline, $this->user(), $this->userMailer->localeFor($this->user())),
+            'written' => $this->userMailer->deadline($deadline, $this->user(), $this->userMailer->shownLocaleFor($this->user())),
         ];
     }
 
@@ -142,9 +146,9 @@ final readonly class SignInRulesController
         $changes = [];
 
         foreach ($entries as $entry) {
-            foreach ($entry->changes() as $rule => [$was, $now]) {
+            foreach ($entry->getChanges() as $rule => [$was, $now]) {
                 $changes[] = [
-                    'at' => $entry->occurredAt()->format(DateTimeInterface::ATOM),
+                    'at' => $entry->getOccurredAt()->format(DateTimeInterface::ATOM),
                     'by' => $this->by($entry, $organisation),
                     'rule' => $rule,
                     'now' => $now,
@@ -159,10 +163,10 @@ final readonly class SignInRulesController
     /** @return array{name: ?string, role: ?array<string, mixed>} the role they hold now, null once they have left */
     private function by(AuditEntry $entry, Organisation $organisation): array
     {
-        $actor = $entry->actorId();
+        $actor = $entry->getActorId();
         $membership = null === $actor ? null : $this->membershipRepository->findActiveByUserId($actor, $organisation->getId());
 
-        return ['name' => $entry->actorLabel(), 'role' => null === $membership ? null : self::role($membership->getRole())];
+        return ['name' => $entry->getActorLabel(), 'role' => null === $membership ? null : self::role($membership->getRole())];
     }
 
     /** @return array<string, mixed> */
@@ -183,13 +187,13 @@ final readonly class SignInRulesController
 
     private function organisation(string $id): Organisation
     {
-        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('Not found.');
+        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('access.not_found');
     }
 
     private function user(): User
     {
         $user = $this->security->getUser();
 
-        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
     }
 }

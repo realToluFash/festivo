@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  fallsOnLaterDay,
   formatCountdown,
   formatDay,
   formatEventDate,
   formatEventRange,
   formatTimeOfDay,
+  formatWallClock,
+  formatWallDay,
   lockLiftsAt,
   secondsUntil,
 } from './datetime.ts';
@@ -95,6 +98,27 @@ describe('when a lock lifts', () => {
   });
 });
 
+describe('whether a moment falls on a later day', () => {
+  const evening = new Date(2026, 9, 21, 18, 59);
+
+  it('is not, later the same evening', () => {
+    expect(fallsOnLaterDay(new Date(2026, 9, 21, 23, 59), evening)).toBe(false);
+  });
+
+  it('is, at the same time tomorrow', () => {
+    expect(fallsOnLaterDay(new Date(2026, 9, 22, 18, 59), evening)).toBe(true);
+  });
+
+  it('is, a minute past local midnight', () => {
+    expect(fallsOnLaterDay(new Date(2026, 9, 22, 0, 1), evening)).toBe(true);
+    expect(fallsOnLaterDay(new Date(2026, 9, 22, 0, 0), evening)).toBe(true);
+  });
+
+  it('answers no for something that is not a date', () => {
+    expect(fallsOnLaterDay('not a date', evening)).toBe(false);
+  });
+});
+
 describe("an event's start and end", () => {
   const spaced = (text: string) => text.replace(/\s/g, ' ');
 
@@ -146,5 +170,27 @@ describe("an event's start and end", () => {
       'Sat, Nov 14, 2026',
     );
     expect(formatEventDate('not a date', 'Africa/Lagos', 'en')).toBe('');
+  });
+});
+
+describe('a wall-clock day and time, as the event page writes them', () => {
+  it("writes the page's day without its year", () => {
+    expect(formatWallDay('2026-11-14', 'en')).toBe('Sat, Nov 14');
+    expect(formatEventDate('2026-11-14T16:00:00+01:00', 'Africa/Lagos', 'en')).toBe(
+      'Sat, Nov 14, 2026',
+    );
+    expect(formatWallDay('2026-11-14', 'fr')).toMatch(/^sam\. 14 nov\.$/);
+  });
+
+  it("writes the page's clock, from a time or a date and time", () => {
+    expect(formatWallClock('02:30', 'en-US')).toBe('02:30');
+    expect(formatWallClock('2027-03-28T03:30', 'en')).toBe('03:30');
+  });
+
+  it('writes nothing for a day or a time it cannot read', () => {
+    expect(formatWallDay('', 'en')).toBe('');
+    expect(formatWallDay('2027-03-', 'en')).toBe('');
+    expect(formatWallClock('', 'en')).toBe('');
+    expect(formatWallClock('2027-03-28T03:30:00+02:00', 'en')).toBe('');
   });
 });

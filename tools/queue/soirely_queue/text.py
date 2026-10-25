@@ -1,5 +1,6 @@
 """Story descriptions as sections, so a role reads or edits one part rather than all of it."""
 
+import datetime
 import hashlib
 import re
 
@@ -9,6 +10,14 @@ TOP = "(top)"
 
 def digest(text):
     return hashlib.sha1((text or "").encode()).hexdigest()[:12]
+
+
+def epoch(stamp):
+    """Seconds since the epoch for one of Shortcut's or GitHub's ISO stamps, or None."""
+    try:
+        return datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp()
+    except (AttributeError, ValueError):
+        return None
 
 
 def sections(markdown):
@@ -29,17 +38,45 @@ def sections(markdown):
 
 def find(markdown, name):
     """The section whose heading matches the name: exact first, then by prefix."""
+    found = matching(markdown, name)
+    return next((s for s in sections(markdown) if s[0] == found[0]), None) if found else None
+
+
+def matching(markdown, name):
+    """Every heading the name matches: the exact ones, or failing those, the ones it begins."""
     wanted = name.strip().lower()
-    candidates = sections(markdown)
-    for heading, level, body in candidates:
-        if heading.lower() == wanted:
-            return heading, level, body
-    aliases = {"ac": ("ac", "acceptance")}
-    prefixes = aliases.get(wanted, (wanted,))
-    for heading, level, body in candidates:
-        if heading.lower().startswith(prefixes):
-            return heading, level, body
-    return None
+    headings = [h for h, _, _ in sections(markdown)]
+    exact = [h for h in headings if h.lower() == wanted]
+    if exact:
+        return exact
+    prefixes = {"ac": ("ac", "acceptance")}.get(wanted, (wanted,))
+    return [h for h in headings if h.lower().startswith(prefixes)]
+
+
+def swap(markdown, heading, body):
+    """The text with one section's own text replaced and every other byte as it was: the
+    blank lines around the old text, and the line endings, stay."""
+    lines = markdown.splitlines(keepends=True)
+    marks, fence = [], False
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("```"):
+            fence = not fence
+        elif not fence and HEADING.match(line):
+            marks.append(i)
+    start = next(i for i in marks if HEADING.match(lines[i]).group(2) == heading)
+    end = next((i for i in marks if i > start), len(lines))
+    eol = "\r\n" if lines[start].endswith("\r\n") else "\n"
+    old = lines[start + 1:end]
+    text = [line for line in old if line.strip()]
+    if not text:
+        tail = eol if end < len(lines) else ""
+        middle = [eol, eol.join(body.strip().splitlines()) + eol, tail]
+        return "".join(lines[:start + 1] + middle + lines[end:])
+    first = next(i for i, line in enumerate(old) if line.strip())
+    last = max(i for i, line in enumerate(old) if line.strip())
+    ending = old[last][len(old[last].rstrip("\r\n")):]
+    new = eol.join(body.strip().splitlines()) + ending
+    return "".join(lines[:start + 1] + old[:first] + [new] + old[last + 1:] + lines[end:])
 
 
 def is_ac(heading):
@@ -51,12 +88,13 @@ def is_design(heading):
 
 
 def replace(markdown, name, body):
-    """The description with one section's body replaced, or the section added at the end."""
+    """The description with one section's own text replaced, as `find` reads it: the
+    headings under it are other sections and stay. A missing section is added at the end."""
     lines = (markdown or "").splitlines()
     found = find(markdown, name)
     if not found:
-        return (markdown or "").rstrip() + f"\n\n## {name}\n\n{body.strip()}\n"
-    heading, level, _ = found
+        return append_dated(markdown, name, body)
+    heading = found[0]
     start = next(i for i, line in enumerate(lines)
                  if (m := HEADING.match(line)) and m.group(2) == heading)
     end = len(lines)
@@ -64,8 +102,7 @@ def replace(markdown, name, body):
     for i in range(start + 1, len(lines)):
         if lines[i].lstrip().startswith("```"):
             fence = not fence
-        m = None if fence else HEADING.match(lines[i])
-        if m and len(m.group(1)) <= level:
+        if not fence and HEADING.match(lines[i]):
             end = i
             break
     new = lines[:start + 1] + ["", body.strip(), ""] + lines[end:]
@@ -73,7 +110,11 @@ def replace(markdown, name, body):
 
 
 def append_dated(markdown, title, body):
-    return (markdown or "").rstrip() + f"\n\n## {title}\n\n{body.strip()}\n"
+    """A section added at the end, at the description's top level so it never lands
+    under the last section."""
+    levels = [level for heading, level, _ in sections(markdown) if heading != TOP]
+    hashes = "#" * (min(levels) if levels else 2)
+    return (markdown or "").rstrip() + f"\n\n{hashes} {title}\n\n{body.strip()}\n"
 
 
 def outstanding_items(text):

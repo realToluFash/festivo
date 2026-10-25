@@ -7,6 +7,7 @@ namespace App\Tests\Functional;
 use App\Domain\Organisation\Deletion\DeletedOrganisationPruner;
 use App\Domain\Organisation\Deletion\OrganisationRestorer;
 use App\Domain\Organisation\OrganisationFounder;
+use App\Domain\User\Mail\UserMailer;
 use App\Domain\User\UserRegistrar;
 use App\Entity\AuditEntry;
 use App\Entity\Membership;
@@ -70,7 +71,7 @@ final class OrganisationDeletionTest extends ApiTestCase
 
         self::assertSame(200, $this->statusCode(), Json\encode($body));
         self::assertSame(
-            ['events' => 0, 'guests' => 0, 'members' => 2, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday, Nov 16 at 14:20 WAT'],
+            ['events' => 0, 'guests' => 0, 'members' => 2, 'restoreClosesAt' => '2026-11-16T13:20:00+00:00', 'restoreCloses' => 'Monday 16 Nov at 14:20 WAT'],
             $body,
         );
     }
@@ -90,12 +91,29 @@ final class OrganisationDeletionTest extends ApiTestCase
         self::assertSame([self::DELETED_AT, '2026-11-16T13:20:00+00:00', $written], [$body['deletedAt'], $body['restoreClosesAt'], $body['restoreCloses']]);
     }
 
+    /** sc-9267: written in the language the request asks for, not the one the owner saved. */
+    #[Test]
+    public function theRestoreDeadlineIsWrittenInTheLanguageTheRequestAsksFor(): void
+    {
+        $owner = self::em()->find(User::class, $this->owner->getId()) ?? self::fail('no owner');
+        $owner->setLocale('pt');
+        self::em()->flush();
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'es');
+
+        $previewed = $this->as($this->owner, 'GET', $this->path('/deletion'));
+        $deleted = $this->delete($this->owner, 'Ìrè Events');
+
+        $written = static fn (string $locale): string => self::service(UserMailer::class)->deadline(new DateTimeImmutable('2026-11-16T13:20:00+00:00'), $owner, $locale);
+        self::assertSame([$written('es'), $written('es')], [$previewed['restoreCloses'], $deleted['restoreCloses']]);
+        self::assertNotSame($written('pt'), $written('es'));
+    }
+
     /** @return iterable<string, array{?string, string}> */
     public static function readers(): iterable
     {
-        yield 'Lagos' => ['Africa/Lagos', 'Monday, Nov 16 at 14:20 WAT'];
-        yield 'London' => ['Europe/London', 'Monday, Nov 16 at 13:20 GMT'];
-        yield 'no zone' => [null, 'Monday, Nov 16 at 13:20 UTC'];
+        yield 'Lagos' => ['Africa/Lagos', 'Monday 16 Nov at 14:20 WAT'];
+        yield 'London' => ['Europe/London', 'Monday 16 Nov at 13:20 GMT'];
+        yield 'no zone' => [null, 'Monday 16 Nov at 13:20 UTC'];
     }
 
     /** @return iterable<string, array{string}> */
@@ -194,7 +212,7 @@ final class OrganisationDeletionTest extends ApiTestCase
         $to = Vec\sort(Vec\map($mails, static fn (object $mail): string => Type\instance_of(Email::class)->coerce($mail)->getTo()[0]->getAddress()));
         self::assertSame(['bisi@ire.events', 'folake@ire.events'], $to);
         $toBisi = Type\instance_of(Email::class)->coerce(Iter\first(Vec\filter($mails, static fn (object $mail): bool => 'bisi@ire.events' === Type\instance_of(Email::class)->coerce($mail)->getTo()[0]->getAddress())));
-        self::assertStringContainsString('Soirely support can restore it until Monday, Nov 16 at 13:20 GMT; after that it is gone for good.', (string) $toBisi->getTextBody());
+        self::assertStringContainsString('Soirely support can restore it until Monday 16 Nov at 13:20 GMT; after that it is gone for good.', (string) $toBisi->getTextBody());
         self::assertStringContainsString('Folake Adeyemi deleted Ìrè Events', (string) $toBisi->getTextBody());
     }
 
@@ -219,8 +237,8 @@ final class OrganisationDeletionTest extends ApiTestCase
         $this->delete($this->owner, 'Ìrè Events');
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'organisation.deleted', 'subjectId' => $this->organisation->getId()]);
-        self::assertSame([Actor::User, $this->owner->getId()->toRfc4122(), 'Folake Adeyemi'], [$entry?->actorType(), $entry?->actorId()?->toRfc4122(), $entry?->actorLabel()]);
-        self::assertSame(['deletedAt' => [null, self::DELETED_AT]], $entry?->changes());
+        self::assertSame([Actor::User, $this->owner->getId()->toRfc4122(), 'Folake Adeyemi'], [$entry?->getActorType(), $entry?->getActorId()?->toRfc4122(), $entry?->getActorLabel()]);
+        self::assertSame(['deletedAt' => [null, self::DELETED_AT]], $entry?->getChanges());
     }
 
     #[Test]
@@ -240,7 +258,7 @@ final class OrganisationDeletionTest extends ApiTestCase
             static fn (array $role): ?string => $role['seededAs'],
         ));
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'organisation.restored', 'subjectId' => $this->organisation->getId()]);
-        self::assertSame([Actor::Agent, 'Adaeze from support'], [$entry?->actorType(), $entry?->actorLabel()]);
+        self::assertSame([Actor::Agent, 'Adaeze from support'], [$entry?->getActorType(), $entry?->getActorLabel()]);
     }
 
     #[Test]

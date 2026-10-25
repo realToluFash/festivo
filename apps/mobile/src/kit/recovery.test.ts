@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   loadRecovery,
   type RecoveryLoading,
+  recoveryCodeLabel,
   recoveryCodeProblems,
   replacedElsewhere,
   startRefusal,
@@ -42,6 +43,13 @@ describe('the two codes of a request to get back in', () => {
     expect(
       recoveryCodeProblems(['emailCode'], { emailCode: '481920', phoneCode: '' }, false),
     ).toEqual({});
+  });
+
+  it('labels the phone code by where it went', () => {
+    expect(recoveryCodeLabel('emailCode', true)).toBe('lostTwoFactor.emailLabel');
+    expect(recoveryCodeLabel('emailCode', false)).toBe('lostTwoFactor.emailLabel');
+    expect(recoveryCodeLabel('phoneCode', true)).toBe('lostTwoFactor.phoneLabelWhatsApp');
+    expect(recoveryCodeLabel('phoneCode', false)).toBe('lostTwoFactor.phoneLabel');
   });
 
   it('marks only the codes the server says are wrong', () => {

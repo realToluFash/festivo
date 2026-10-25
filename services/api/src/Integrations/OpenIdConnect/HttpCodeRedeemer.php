@@ -56,7 +56,7 @@ final readonly class HttpCodeRedeemer implements CodeRedeemerInterface
 
             $body = Type\shape(['id_token' => Type\non_empty_string()], true)->coerce($response->toArray());
         } catch (ExceptionInterface|Type\Exception\CoercionException) {
-            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'The provider would not redeem that code.');
+            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'provider.code_not_redeemed');
         }
 
         return $body['id_token'];

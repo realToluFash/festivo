@@ -68,6 +68,12 @@ services:
     # querying and swapping it is this line plus a class.
     App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Integrations\Hibp\HibpBreachedPasswordChecker'
 
+    # One adapter behind the port; in development it reaches the DNS mock, where a record can be published.
+    App\Integrations\Dns\DnsOverHttpsTxtLookup:
+        arguments:
+            $endpoint: '%env(DNS_TXT_ENDPOINT)%'
+    App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Integrations\Dns\DnsOverHttpsTxtLookup'
+
     # One adapter behind the port; in development it reaches the SMS mock.
     App\Integrations\Twilio\TwilioTextMessageSender:
         arguments:
@@ -90,6 +96,9 @@ services:
         arguments:
             $whatsAppEnabled: '%env(bool:WHATSAPP_ENABLED)%'
             $smsOnlyCountries: '%env(PHONE_CODES_SMS_ONLY_COUNTRIES)%'
+    App\Domain\Organisation\Members\TeamSeats:
+        arguments:
+            $teamSeatLimit: '%env(TEAM_SEAT_LIMIT)%'
     App\Domain\User\Controller\WhatsAppWebhookController:
         arguments:
             $verifyToken: '%env(WHATSAPP_WEBHOOK_VERIFY_TOKEN)%'
@@ -133,6 +142,12 @@ services:
     App\Domain\Organisation\Invitations\InvitationMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Members\JoinRequestMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Controller\RequestLinkController:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\Password\PasswordChangeMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
@@ -140,6 +155,15 @@ services:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\User\SignInMethods\SignInMethodMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\Members\MemberAccessMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\DomainJoining\DomainSuspensionMailer:
+        arguments:
+            $webOrigin: '%env(CORS_WEB_ORIGIN)%'
+    App\Domain\Organisation\OwnerClaims\OwnerClaimMailer:
         arguments:
             $webOrigin: '%env(CORS_WEB_ORIGIN)%'
     App\Domain\Organisation\SignInRules\SignInRulesMailer:
@@ -189,10 +213,18 @@ when@test:
         # billable or dependent on somebody having an account.
         App\AI\Interfaces\AssistantInterface: '@App\AI\ScriptedAssistant'
 
+        # Nothing records an amount against an event yet (sc-100 will); a test records one here.
+        App\Tests\Double\ScriptedEventAmounts:
+            public: true
+            autoconfigure: true
+
         # No test reaches Have I Been Pwned. The stand-in's list is what makes
         # "this password is in a breach" assertable at all: the real corpus is
         # somebody else's data and could answer differently tomorrow.
         App\Domain\User\Interfaces\BreachedPasswordCheckerInterface: '@App\Domain\User\Password\ScriptedBreachedPasswordChecker'
+
+        # No test asks real DNS: a test publishes the record it means to be found.
+        App\Domain\Organisation\Interfaces\TxtRecordLookupInterface: '@App\Domain\Organisation\OwnerClaims\ScriptedTxtRecordLookup'
 
         # No test reaches a provider; the suite signs its own tokens and can rotate the key.
         App\Tests\Fixtures\OpenIdConnect\TestSigningKeys:
@@ -209,6 +241,13 @@ when@test:
         App\Domain\User\Verification\RecordingWhatsAppSender:
             public: true
         App\Domain\User\Interfaces\WhatsAppSenderInterface: '@App\Domain\User\Verification\RecordingWhatsAppSender'
+        # No limit in the suite, whatever the stack's environment says: the seat tests set their own.
+        App\Domain\Organisation\Members\TeamSeats:
+            public: true
+            autowire: true
+            arguments:
+                $teamSeatLimit: ''
+
         # Pinned off, as the container's environment wins over .env.test: codes are texted in the
         # suite as before sc-750, and the WhatsApp tests replace this with WhatsApp first.
         App\Domain\User\Verification\PhoneCodeChannels:

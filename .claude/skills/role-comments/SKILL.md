@@ -1,6 +1,6 @@
 ---
 name: role-comments
-description: How the roles talk to each other on a Shortcut story — a comment addressed with [pm] [qa] [qa2] [qa3] [ux] [dev] [dev2] [bm] [lead] [ops] [cd] [l10n], answered in its own thread, and the inbox routine every role runs to find what is waiting on it. Use when a role needs something from another, and at the start of every /soirely-* run.
+description: How the roles talk to each other on a Shortcut story — a comment addressed with [pm] [qa] [qa2] [qa3] [ux] [dev] [dev2] [dev3] [dev4] [bm] [lead] [ops] [cd] [l10n], answered in its own thread, and the inbox routine every role runs to find what is waiting on it. Use when a role needs something from another, and at the start of every /soirely-* run.
 user-invocable: false
 ---
 
@@ -16,6 +16,8 @@ anybody reading the story later can see what was asked and what was decided.
 | `[ux]`   | `/soirely-designer`         | what a screen looks like, an artboard, a missing one              |
 | `[dev]`  | `/soirely-developer`        | how it was built, a defect, a branch, a pull request              |
 | `[dev2]` | `/soirely-developer dev2`   | the same, on a story labelled `dev2`                              |
+| `[dev3]` | `/soirely-developer dev3`   | the same, on a story labelled `dev3`                              |
+| `[dev4]` | `/soirely-developer dev4`   | the same, on a story labelled `dev4`                              |
 | `[qa]`   | `/soirely-qa-tester`        | what was tested, a finding, a re-test: tester 1, or QA in general |
 | `[qa2]`  | `/soirely-qa-tester qa2`    | a finding or a re-test from tester 2's report                     |
 | `[qa3]`  | `/soirely-qa-tester qa3`    | a finding or a re-test from tester 3's report                     |
@@ -27,8 +29,9 @@ anybody reading the story later can see what was asked and what was decided.
 
 **A QA report is answered to the tester who signed it**: `(from qa2)` gets `[qa2]`. A
 question for QA in general is `[qa]`. **A developer question goes to the developer whose
-label the story carries**: `dev2` gets `[dev2]`, and `dev1` or no label gets `[dev]`. A
-bare `[dev]` on a `dev2` story still reaches developer 2, but write the tag that is meant. A
+label the story carries**: `devN` gets `[devN]`, and `dev1` or no label gets `[dev]`. A
+bare `[dev]` reaches the developer whose label the story carries (sq routes it), but write
+the tag that is meant. A
 translation ticket carries no developer label, so a bare `[dev]` on one reaches developer 1:
 there, use the label of the feature story the string came from, which its **Covers** names. **Wording questions go to `[l10n]`**, the one linguist, for any language. `[en]`, `[es]`,
 `[fr]` and `[pt]` still reach it, but write `[l10n]`. **Product questions go to `[pm]`.** If you are deciding what the product should do, stop:

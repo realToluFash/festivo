@@ -4,8 +4,14 @@ import {
   type Provider,
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
-import { PROOF_MINUTES, proveWith, providerRows, type ProviderRow } from '@soirely/domain';
-import { useEffect, useRef, useState } from 'react';
+import {
+  PROOF_MINUTES,
+  proveWith,
+  providerRows,
+  remainingWay,
+  type ProviderRow,
+} from '@soirely/domain';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -15,9 +21,11 @@ import {
   PROVIDER_NAMES,
   type ProviderReturn,
   startProviderSignIn,
-  takeProviderReturn,
+  dropProviderReturn,
+  heldProviderReturn,
 } from '../../../providerSignIn.ts';
 import { heldProof, holdProof } from '../../../recentProof.ts';
+import { useFocusOnceShown } from '../../../stepFocus.ts';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -31,7 +39,7 @@ type Notice =
   | { kind: 'failed' };
 
 type Stage =
-  | { kind: 'list'; notice: Notice | null }
+  | { kind: 'list'; notice: Notice | null; answers?: boolean }
   | { kind: 'proving'; act: Act; returned: ProviderSignInAttempt | null }
   | { kind: 'confirming'; act: Act }
   | { kind: 'working' };
@@ -42,6 +50,7 @@ export function WaysCard({
   hasPassword,
   providers,
   onChanged,
+  onRefused,
   onSetPassword,
   onSignedOutHere,
   onCodeSpent,
@@ -50,13 +59,16 @@ export function WaysCard({
   hasPassword: boolean;
   providers: readonly LinkedProvider[];
   onChanged: () => Promise<void>;
-  onSetPassword: () => void;
+  /** The server refused an unlink, so the rows on screen may be stale; a failed read leaves them. */
+  onRefused: () => Promise<void>;
+  /** `opener` finds the Set a password that was clicked, for Cancel to go back to. */
+  onSetPassword: (opener: () => HTMLElement | null) => void;
   onSignedOutHere: () => void;
   /** A two-factor or recovery code was accepted, so the two-factor card's count may be stale. */
   onCodeSpent: () => void;
 }) {
   const { t } = useTranslation();
-  const [returned] = useState<ProviderReturn | null>(takeProviderReturn);
+  const [returned] = useState<ProviderReturn | null>(heldProviderReturn);
   const [stage, setStage] = useState<Stage>(() =>
     returned == null || ('failed' in returned && returned.failed === 'cancelled')
       ? { kind: 'list', notice: null }
@@ -67,6 +79,13 @@ export function WaysCard({
   const [twoFactorOn, setTwoFactorOn] = useState(false);
   const started = useRef(false);
   const rows = providerRows(hasPassword, providers);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const said = useRef<HTMLDivElement>(null);
+  const card = useRef<HTMLElement>(null);
+  const land = useFocusOnceShown();
+  const find = (way: string) => () =>
+    card.current?.querySelector<HTMLElement>(`[data-way="${way}"]`) ?? heading.current;
+  const back = (way: string) => land(find(way));
 
   function begin(act: Act): void {
     if (heldProof() == null) setStage({ kind: 'proving', act, returned: null });
@@ -163,16 +182,20 @@ export function WaysCard({
       }
 
       await onChanged();
-      setStage({ kind: 'list', notice: { kind: 'unlinked', provider } });
+      setStage({ kind: 'list', notice: { kind: 'unlinked', provider }, answers: true });
     } catch (error) {
-      setStage({ kind: 'list', notice: refused(error, provider) });
+      if (error instanceof ApiError) await onRefused().catch(() => {});
+      setStage({ kind: 'list', notice: refused(error, provider), answers: true });
     }
+    land(() => said.current);
   }
 
   useEffect(() => {
     // Strict mode runs this twice, and a provider's code is spent on first use.
     if (started.current) return;
     started.current = true;
+    // Removed only once committed: React may abandon a render and run the initializer again.
+    if (returned != null) dropProviderReturn();
 
     void api
       .twoFactorStatus()
@@ -186,7 +209,7 @@ export function WaysCard({
   }, []);
 
   return (
-    <section className="card" aria-labelledby="ways-title">
+    <section className="card" ref={card} aria-labelledby="ways-title">
       {stage.kind === 'proving' ? (
         <Proving
           act={stage.act}
@@ -197,7 +220,10 @@ export function WaysCard({
           returned={stage.returned}
           onProved={() => void proceed(stage.act)}
           onCodeSpent={onCodeSpent}
-          onCancel={() => setStage({ kind: 'list', notice: null })}
+          onCancel={() => {
+            setStage({ kind: 'list', notice: null });
+            back(`${stage.act.action}-${stage.act.provider}`);
+          }}
         />
       ) : stage.kind === 'confirming' ? (
         <Confirming
@@ -205,14 +231,21 @@ export function WaysCard({
           hasPassword={hasPassword}
           providers={providers}
           onUnlink={() => void unlink(stage.act.provider)}
-          onKeep={() => setStage({ kind: 'list', notice: null })}
+          onKeep={() => {
+            setStage({ kind: 'list', notice: null });
+            back(`unlink-${stage.act.provider}`);
+          }}
         />
       ) : (
         <>
-          <h2 id="ways-title">{t('waysCard.title')}</h2>
+          <h2 id="ways-title" ref={heading} tabIndex={-1}>
+            {t('waysCard.title')}
+          </h2>
           <p>{t('waysCard.intro', { email })}</p>
 
-          {stage.kind === 'list' && stage.notice != null && <Said notice={stage.notice} />}
+          {stage.kind === 'list' && stage.notice != null && (
+            <Said notice={stage.notice} answers={stage.answers === true ? said : null} />
+          )}
 
           <ul className="ways-list" aria-label={t('waysCard.title')}>
             <li className="way">
@@ -227,7 +260,12 @@ export function WaysCard({
                 />
               </div>
               {!hasPassword && (
-                <button className="button" type="button" onClick={onSetPassword}>
+                <button
+                  className="button"
+                  type="button"
+                  data-way="set-password"
+                  onClick={() => onSetPassword(find('set-password'))}
+                >
                   {t('waysCard.setPassword')}
                 </button>
               )}
@@ -240,7 +278,7 @@ export function WaysCard({
                 busy={stage.kind === 'working'}
                 onLink={() => begin({ action: 'link', provider: row.provider })}
                 onUnlink={() => begin({ action: 'unlink', provider: row.provider })}
-                onSetPassword={onSetPassword}
+                onSetPassword={() => onSetPassword(find(`set-password-${row.provider}`))}
               />
             ))}
           </ul>
@@ -281,7 +319,13 @@ function Row({
       </div>
 
       {row.canLink && (
-        <button className="button" type="button" disabled={busy} onClick={onLink}>
+        <button
+          className="button"
+          type="button"
+          data-way={`link-${row.provider}`}
+          disabled={busy}
+          onClick={onLink}
+        >
           {t('waysCard.link', { provider: name })}
         </button>
       )}
@@ -290,6 +334,7 @@ function Row({
         <button
           className="button"
           type="button"
+          data-way={`unlink-${row.provider}`}
           disabled={busy}
           aria-label={t('waysCard.unlinkLabel', { provider: name })}
           onClick={onUnlink}
@@ -301,7 +346,12 @@ function Row({
       {row.last && (
         <div className="notice notice-quiet way-last">
           <p>{t('waysCard.last', { provider: name })}</p>
-          <button className="button" type="button" onClick={onSetPassword}>
+          <button
+            className="button"
+            type="button"
+            data-way={`set-password-${row.provider}`}
+            onClick={onSetPassword}
+          >
             {t('waysCard.setPassword')}
           </button>
         </div>
@@ -323,14 +373,21 @@ function State({ on, word, address }: { on: boolean; word: string; address?: str
   );
 }
 
-function Said({ notice }: { notice: Notice }) {
+function Said({
+  notice,
+  answers,
+}: {
+  notice: Notice;
+  answers: RefObject<HTMLDivElement | null> | null;
+}) {
   const { t } = useTranslation();
+  const focusable = answers == null ? {} : { ref: answers, tabIndex: -1 };
 
   if (notice.kind === 'linked' || notice.kind === 'unlinked') {
     const provider = PROVIDER_NAMES[notice.provider];
 
     return (
-      <div className="status-done" role="status">
+      <div className="status-done" role={answers == null ? 'status' : undefined} {...focusable}>
         <span className="mark mark-done" aria-hidden="true">
           ✓
         </span>
@@ -357,11 +414,11 @@ function Said({ notice }: { notice: Notice }) {
     const other = PROVIDER_NAMES[notice.provider === 'google' ? 'apple' : 'google'];
 
     return (
-      <div className="notice notice-broken" role="alert">
+      <div className="notice notice-broken" role={answers == null ? 'alert' : undefined}>
         <span className="mark mark-broken" aria-hidden="true">
           ✕
         </span>
-        <div className="notice-body">
+        <div className="notice-body" {...focusable}>
           <p className="notice-title">
             {t('waysCard.keptByRule', { organisation: notice.organisation })}
           </p>
@@ -383,11 +440,11 @@ function Said({ notice }: { notice: Notice }) {
             : t('waysCard.failedTitle');
 
   return (
-    <div className="notice notice-broken" role="alert">
+    <div className="notice notice-broken" role={answers == null ? 'alert' : undefined}>
       <span className="mark mark-broken" aria-hidden="true">
         ✕
       </span>
-      <div className="notice-body">
+      <div className="notice-body" {...focusable}>
         <p className="notice-title">{title}</p>
         {notice.kind === 'taken' && (
           <p>{t('waysCard.takenNext', { provider: PROVIDER_NAMES[notice.provider] })}</p>
@@ -468,7 +525,13 @@ function Confirming({
   const { t } = useTranslation();
   const name = PROVIDER_NAMES[act.provider];
   const address = providers.find((entry) => entry.provider === act.provider)?.email ?? null;
-  const other = providers.find((entry) => entry.provider !== act.provider)?.provider;
+  const way = remainingWay(hasPassword, providers, act.provider);
+  const still =
+    way == null
+      ? null
+      : way === 'password'
+        ? t('waysCard.stillPassword')
+        : t('waysCard.stillProvider', { provider: PROVIDER_NAMES[way] });
   const heading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => heading.current?.focus(), []);
@@ -481,10 +544,8 @@ function Confirming({
       <p>
         {address == null
           ? t('waysCard.confirmBodyPlain', { provider: name })
-          : t('waysCard.confirmBody', { provider: name, address })}{' '}
-        {hasPassword || other == null
-          ? t('waysCard.stillPassword')
-          : t('waysCard.stillProvider', { provider: PROVIDER_NAMES[other] })}
+          : t('waysCard.confirmBody', { provider: name, address })}
+        {still == null ? null : ` ${still}`}
       </p>
 
       <div className="notice notice-attention">

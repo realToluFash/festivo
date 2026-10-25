@@ -225,7 +225,7 @@ final readonly class UserRegistrar
     private static function taken(?Throwable $previous = null): ApiException
     {
         // Reached only by an invitation or a race: a password sign-up never says an address is taken (sc-512).
-        return new ApiException(ErrorCode::EmailTaken, 'That email address cannot be used.', [], $previous);
+        return new ApiException(ErrorCode::EmailTaken, 'registration.email_taken', [], $previous);
     }
 
     /**

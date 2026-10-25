@@ -2,7 +2,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState } from '../../session.ts';
 import { routes } from '../index.tsx';
 
 function at(path: string) {
@@ -125,7 +124,7 @@ interface Sent {
   credentials: string | undefined;
 }
 
-function answering(answers: Record<string, () => Response>, sent: Sent[] = []) {
+function answering(answers: Record<string, () => Response | Promise<Response>>, sent: Sent[] = []) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const { pathname } = new URL(String(input));
     const method = init?.method ?? 'GET';
@@ -184,7 +183,6 @@ const ISSUED = {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  __setSessionState({ status: 'unknown' });
 });
 
 describe('signing in, for real', () => {
@@ -339,6 +337,96 @@ describe('signing in, for real', () => {
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/did not work/));
     expect(screen.getByRole('alert').textContent).toMatch(/Try again in a moment/);
+  });
+});
+
+describe('a field keeps focus while signing in, and takes it for its line (sc-11588)', () => {
+  function refusedLater(): () => void {
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'POST /api/auth/login': () =>
+        new Promise<Response>((resolve) => {
+          answer = resolve;
+        }),
+    });
+
+    return () => answer(problem(401, 'invalid_credentials'));
+  }
+
+  function typeIn() {
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'folake@ire.events' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'lagos-evenings' } });
+  }
+
+  it('keeps focus in Password while it sends after Enter, and there once refused', async () => {
+    const refuse = refusedLater();
+    at('/sign-in');
+    typeIn();
+    const password = screen.getByLabelText<HTMLInputElement>('Password');
+    password.focus();
+
+    fireEvent.submit(password);
+
+    await waitFor(() => expect(password.readOnly).toBe(true));
+    expect(document.activeElement).toBe(password);
+    expect(password.hasAttribute('disabled')).toBe(false);
+    expect(password.getAttribute('aria-disabled')).toBe('true');
+
+    act(refuse);
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/do not match/));
+    expect(document.activeElement).toBe(password);
+    expect(password.readOnly).toBe(false);
+  });
+
+  it('puts focus in Password when the refusal follows a click on Sign in', async () => {
+    const refuse = refusedLater();
+    at('/sign-in');
+    typeIn();
+    const button = screen.getByRole('button', { name: 'Sign in' });
+    button.focus();
+
+    fireEvent.click(button);
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLInputElement>('Password').readOnly).toBe(true),
+    );
+    act(refuse);
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/do not match/));
+    expect(document.activeElement).toBe(screen.getByLabelText('Password'));
+  });
+
+  it('leaves focus where the person moved it while it sent', async () => {
+    const refuse = refusedLater();
+    at('/sign-in');
+    typeIn();
+    const email = screen.getByLabelText('Email');
+    email.focus();
+
+    fireEvent.submit(email);
+    await waitFor(() =>
+      expect(screen.getByLabelText<HTMLInputElement>('Email').readOnly).toBe(true),
+    );
+    const forgot = screen.getByRole('link', { name: 'Forgot your password?' });
+    forgot.focus();
+    act(refuse);
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/do not match/));
+    expect(document.activeElement).toBe(forgot);
+  });
+
+  it('sends once, whatever Enter is pressed again while it sends', async () => {
+    const refuse = refusedLater();
+    at('/sign-in');
+    typeIn();
+    const password = screen.getByLabelText('Password');
+
+    fireEvent.submit(password);
+    fireEvent.submit(password);
+    act(refuse);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
+    expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(1);
   });
 });
 

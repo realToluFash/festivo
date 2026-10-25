@@ -6,6 +6,8 @@ namespace App\Entity;
 
 use App\Doctrine\Traits\Timestampable;
 use App\Enum\MembershipStatus;
+use App\Enum\Suspension;
+use DateInterval;
 use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -21,9 +23,14 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_membership_organisation', columns: ['organisation_id'])]
 #[ORM\Index(name: 'idx_membership_user', columns: ['user_id'])]
 #[ORM\Index(name: 'idx_membership_role', columns: ['role_id'])]
+#[ORM\Index(name: 'idx_membership_domain', columns: ['domain'])]
+#[ORM\Index(name: 'idx_membership_request_expires', columns: ['request_expires_at'])]
 class Membership
 {
     use Timestampable;
+
+    /** A request to join (sc-392) or a suspension (sc-564) nobody answers is removed 30 × 24 h on, one instant for every reader. */
+    public const string UNANSWERED_FOR = 'PT720H';
 
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
@@ -53,6 +60,28 @@ class Membership
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $twoFactorBlockedAt = null;
 
+    /** The domain a membership through company domain joining stays tied to (sc-564); null for every other channel. */
+    #[ORM\Column(type: Types::STRING, length: 253, nullable: true)]
+    private ?string $domain = null;
+
+    #[ORM\Column(type: Types::STRING, length: 30, nullable: true, enumType: Suspension::class)]
+    private ?Suspension $suspension = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $suspendedAt = null;
+
+    /** Unset while the suspended member is the organisation's only Owner: RemovalClock keeps it. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $removesAt = null;
+
+    /** What the person wrote when asking through the request link (sc-562), for whoever answers. */
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $requestMessage = null;
+
+    /** The instant a request to join nobody answered is removed (sc-392): set on asking, and cleared once it is answered. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $requestExpiresAt = null;
+
     public function __construct(Organisation $organisation, User $user, Role $role, MembershipStatus $status, DateTimeImmutable $at)
     {
         $this->id = Uuid::v7();
@@ -68,6 +97,10 @@ class Membership
 
         if (MembershipStatus::Active === $status) {
             $this->joinedAt = $at;
+        }
+
+        if (MembershipStatus::PendingApproval === $status) {
+            $this->requestExpiresAt = $at->add(new DateInterval(self::UNANSWERED_FOR));
         }
     }
 
@@ -114,6 +147,7 @@ class Membership
         }
 
         $this->status = $status;
+        $this->requestExpiresAt = MembershipStatus::PendingApproval === $status ? $at->add(new DateInterval(self::UNANSWERED_FOR)) : null;
     }
 
     public function isActive(): bool
@@ -126,6 +160,12 @@ class Membership
         return $this->joinedAt;
     }
 
+    /** Somebody who asked and was never let in was never a member (sc-8168), whatever they are now. */
+    public function hasBeenActive(): bool
+    {
+        return null !== $this->joinedAt;
+    }
+
     public function getTwoFactorBlockedAt(): ?DateTimeImmutable
     {
         return $this->twoFactorBlockedAt;
@@ -134,5 +174,70 @@ class Membership
     public function setTwoFactorBlockedAt(?DateTimeImmutable $twoFactorBlockedAt): void
     {
         $this->twoFactorBlockedAt = $twoFactorBlockedAt;
+    }
+
+    public function getDomain(): ?string
+    {
+        return $this->domain;
+    }
+
+    public function setDomain(?string $domain): void
+    {
+        $this->domain = $domain;
+    }
+
+    public function getSuspension(): ?Suspension
+    {
+        return $this->suspension;
+    }
+
+    public function getSuspendedAt(): ?DateTimeImmutable
+    {
+        return $this->suspendedAt;
+    }
+
+    public function getRemovesAt(): ?DateTimeImmutable
+    {
+        return $this->removesAt;
+    }
+
+    public function setRemovesAt(?DateTimeImmutable $removesAt): void
+    {
+        if (null !== $removesAt && MembershipStatus::Suspended !== $this->status) {
+            throw new LogicException('Only a suspended membership is removed at an instant.');
+        }
+
+        $this->removesAt = $removesAt;
+    }
+
+    public function setSuspension(?Suspension $suspension, ?DateTimeImmutable $at): void
+    {
+        if (null !== $suspension && MembershipStatus::Suspended !== $this->status) {
+            throw new LogicException('Only a suspended membership carries why.');
+        }
+
+        $this->suspension = $suspension;
+        $this->suspendedAt = $at;
+    }
+
+    public function getRequestMessage(): ?string
+    {
+        return $this->requestMessage;
+    }
+
+    public function setRequestMessage(?string $requestMessage): void
+    {
+        $this->requestMessage = $requestMessage;
+    }
+
+    public function getRequestExpiresAt(): ?DateTimeImmutable
+    {
+        return $this->requestExpiresAt;
+    }
+
+    /** Waiting past its instant reads as removed, whether or not the expiry job has run yet. */
+    public function isAwaitingApprovalAt(DateTimeImmutable $now): bool
+    {
+        return MembershipStatus::PendingApproval === $this->status && (null === $this->requestExpiresAt || $now < $this->requestExpiresAt);
     }
 }

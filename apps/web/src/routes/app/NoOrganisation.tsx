@@ -1,12 +1,14 @@
 import { ApiError, type Membership } from '@soirely/api-client';
-import { countryChoices, deviceCountry } from '@soirely/domain';
+import { type NewOrganisationField, countryChoices, deviceCountry } from '@soirely/domain';
 import { type FormEvent, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../api.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { InvitationRows } from '../../components/InvitationRows.tsx';
+import { focusWhereSent, offField } from '../../offField.ts';
 import { currentLocale } from '../../i18n/index.ts';
 import type { WaitingInvitations } from '../../invitations.ts';
 import { joinOrganisation, useSession } from '../../session.ts';
@@ -26,7 +28,9 @@ export function NoOrganisation({
 
   return (
     <section className="card no-organisation" aria-labelledby="no-organisation-title">
-      <h1 id="no-organisation-title">{t('noOrganisation.title')}</h1>
+      <h1 id="no-organisation-title" tabIndex={-1}>
+        {t('noOrganisation.title')}
+      </h1>
       <p>{t('noOrganisation.body')}</p>
       {waiting.invitations.length > 0 ? (
         <div className="no-organisation-invitations">
@@ -69,10 +73,11 @@ function StartOrganisation({
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
+  const sending = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
 
-  function change(field: 'name' | 'countryCode', value: string): void {
+  function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
     setErrors((previous) => {
       const next = { ...previous };
@@ -83,6 +88,7 @@ function StartOrganisation({
 
   async function start(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (sending.current) return;
 
     const checked: Errors = {};
     const name = values.name.trim();
@@ -98,8 +104,10 @@ function StartOrganisation({
       return;
     }
 
+    sending.current = true;
     setSaving(true);
     setFailed(false);
+    const land = focusWhereSent();
 
     try {
       const membership = await api.createOrganisation({
@@ -111,18 +119,21 @@ function StartOrganisation({
       joinOrganisation(membership);
       onStarted(membership);
     } catch (error) {
-      setSaving(false);
+      sending.current = false;
+      flushSync(() => setSaving(false));
 
       if (error instanceof ApiError && error.is('validation_failed')) {
         const fields = error.fieldErrors();
 
         // A refusal naming only a field this form lacks, such as the derived contact address.
         if (fields.name != null || fields.countryCode != null) {
+          land(fields.name == null ? 'start-organisation-country' : 'start-organisation-name');
           setErrors({ name: fields.name, countryCode: fields.countryCode } as Errors);
           return;
         }
       }
 
+      land('start-organisation-name');
       setFailed(true);
     }
   }
@@ -159,7 +170,7 @@ function StartOrganisation({
           autoCorrect="off"
           spellCheck={false}
           value={values.name}
-          disabled={saving}
+          {...offField(saving)}
           aria-invalid={errors.name != null}
           aria-describedby={
             errors.name == null
@@ -208,7 +219,7 @@ function StartOrganisation({
         <p>{t('noOrganisation.derived', { email })}</p>
       </div>
 
-      <button className="button button-primary" type="submit" aria-busy={saving}>
+      <button className="button button-primary" type="submit" disabled={saving} aria-busy={saving}>
         {saving ? t('noOrganisation.starting') : t('noOrganisation.start')}
       </button>
     </form>

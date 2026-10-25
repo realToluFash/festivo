@@ -1,8 +1,8 @@
 import { ApiError, type Membership } from '@soirely/api-client';
 import {
+  CURRENCY_CODES,
   EVENT_NAME_MAXIMUM,
   type EventDraft,
-  type EventField,
   eventNameLength,
   eventNameOf,
   eventProblems,
@@ -15,14 +15,13 @@ import { Link, useNavigate } from 'react-router';
 
 import { api } from '../../../api.ts';
 import { currentLocale } from '../../../i18n/index.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
 import { Forbidden } from '../Forbidden.tsx';
-
-type Field = EventField | 'timeZone' | 'currency';
-type Errors = Partial<Record<Field, string | undefined>>;
-
-const FIELDS: readonly Field[] = ['name', 'startsAt', 'endsAt', 'timeZone', 'currency'];
+import { Choice, FieldError, Moment } from './EventFields.tsx';
+import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import { skippedLine } from './skippedLine.ts';
 
 export function NewEvent() {
   const session = useSession();
@@ -45,23 +44,21 @@ function EventForm({ organisation }: { organisation: Membership }) {
     endDate: '',
     endTime: '',
   });
+  const [endChosen, setEndChosen] = useState(false);
   const [timeZone, setTimeZone] = useState(organisation.timezone);
-  const [currency, setCurrency] = useState(organisation.currency);
+  const [currency, setCurrency] = useState(
+    CURRENCY_CODES.includes(organisation.currency) ? organisation.currency : '',
+  );
   const [errors, setErrors] = useState<Errors>({});
   const [unsent, setUnsent] = useState(0);
   const [status, setStatus] = useState<'editing' | 'creating' | 'failed'>('editing');
-  const focusNext = useRef<string | null>(null);
-  const currencies = useMemo(
-    () => currencyChoices(organisation.currency, locale),
-    [organisation.currency, locale],
-  );
+  const focusNext = useRef<(() => void) | null>(null);
+  const currencies = useMemo(() => currencyChoices('', currency, locale, t), [currency, locale, t]);
   const zones = useMemo(() => timeZoneChoices(organisation.timezone), [organisation.timezone]);
   const busy = status === 'creating';
 
   useEffect(() => {
-    if (focusNext.current == null) return;
-
-    document.getElementById(focusNext.current)?.focus();
+    focusNext.current?.();
     focusNext.current = null;
   }, [errors]);
 
@@ -70,10 +67,13 @@ function EventForm({ organisation }: { organisation: Membership }) {
     setErrors((previous) => ({ ...previous, [field]: undefined }));
   }
 
-  function refuse(found: Errors): void {
+  function refuse(
+    found: Errors,
+    focus = (id: string) => document.getElementById(id)?.focus(),
+  ): void {
     const first = FIELDS.find((field) => found[field] != null);
 
-    focusNext.current = first == null ? null : inputFor(first, draft);
+    focusNext.current = first == null ? null : () => focus(inputFor(first, draft));
     setErrors(found);
   }
 
@@ -81,14 +81,15 @@ function EventForm({ organisation }: { organisation: Membership }) {
     event.preventDefault();
     if (busy) return;
 
-    const problems = eventProblems(draft);
+    const found: Errors = {};
+    for (const { field, problem } of eventProblems(draft, timeZone))
+      found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
+    if (currency === '') found.currency = t('orgGeneral.currencyBlank');
 
-    if (problems.length > 0) {
-      const found: Errors = {};
-      for (const { field, problem } of problems)
-        found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
+    const unsentFields = Object.keys(found).length;
 
-      setUnsent(problems.length);
+    if (unsentFields > 0) {
+      setUnsent(unsentFields);
       setStatus('editing');
       refuse(found);
       return;
@@ -96,6 +97,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
     setUnsent(0);
     setStatus('creating');
+    const land = focusWhereSent();
 
     try {
       const created = await api.createEvent(organisation.id, {
@@ -114,7 +116,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
 
       if (Object.keys(found).length > 0) {
         setStatus('editing');
-        refuse(found);
+        refuse(found, land);
         return;
       }
 
@@ -123,6 +125,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   }
 
   const nameLength = eventNameLength(draft.name);
+  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, t);
 
   return (
     <div className="event-form-page">
@@ -156,7 +159,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
               value={draft.name}
               autoComplete="off"
               spellCheck={false}
-              disabled={busy}
+              {...offField(busy)}
               aria-invalid={errors.name != null}
               aria-describedby={describedBy(
                 errors.name == null ? null : 'event-name-error',
@@ -166,7 +169,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
             />
             <FieldError id="event-name-error" message={errors.name} />
             <p className="field-help" id="event-name-count">
-              {t('eventForm.nameCount', { length: nameLength, most: EVENT_NAME_MAXIMUM })}
+              {t('eventForm.nameCount', { count: nameLength, most: EVENT_NAME_MAXIMUM })}
             </p>
           </div>
         </section>
@@ -176,24 +179,32 @@ function EventForm({ organisation }: { organisation: Membership }) {
           <Moment
             id="event-start"
             legend={t('eventForm.starts')}
+            skipped={startSkipped}
             date={draft.startDate}
             time={draft.startTime}
             error={errors.startsAt}
             busy={busy}
             onDate={(startDate) =>
-              edit('startsAt', { startDate, endDate: filledEndDate(startDate, draft.endDate) })
+              edit('startsAt', {
+                startDate,
+                endDate: filledEndDate(startDate, draft.endDate, endChosen),
+              })
             }
             onTime={(startTime) => edit('startsAt', { startTime })}
           />
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
+            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
             time={draft.endTime}
             error={errors.endsAt}
             busy={busy}
-            onDate={(endDate) => edit('endsAt', { endDate })}
+            onDate={(endDate) => {
+              setEndChosen(endDate !== '');
+              edit('endsAt', { endDate });
+            }}
             onTime={(endTime) => edit('endsAt', { endTime })}
           />
         </section>
@@ -235,148 +246,6 @@ function EventForm({ organisation }: { organisation: Membership }) {
           </button>
         </div>
       </form>
-    </div>
-  );
-}
-
-/** The input focus goes to: the empty half of a start or an end, or the end's date when it is too early. */
-function inputFor(field: Field, draft: EventDraft): string {
-  if (field === 'name') return 'event-name';
-  if (field === 'timeZone') return 'event-time-zone';
-  if (field === 'currency') return 'event-currency';
-
-  const [prefix, date, time] =
-    field === 'startsAt'
-      ? ['event-start', draft.startDate, draft.startTime]
-      : ['event-end', draft.endDate, draft.endTime];
-
-  return date !== '' && time === '' ? `${prefix}-time` : `${prefix}-date`;
-}
-
-function describedBy(...ids: (string | null)[]): string | undefined {
-  const joined = ids.filter((id) => id != null).join(' ');
-
-  return joined === '' ? undefined : joined;
-}
-
-function Moment({
-  id,
-  legend,
-  hint,
-  date,
-  time,
-  error,
-  busy,
-  onDate,
-  onTime,
-}: {
-  id: string;
-  legend: string;
-  hint?: string;
-  date: string;
-  time: string;
-  error: string | undefined;
-  busy: boolean;
-  onDate: (date: string) => void;
-  onTime: (time: string) => void;
-}) {
-  const { t } = useTranslation();
-  const described = describedBy(
-    error == null ? null : `${id}-error`,
-    hint == null ? null : `${id}-hint`,
-  );
-  const className = error == null ? 'input' : 'input input-wrong';
-
-  return (
-    <fieldset className="event-moment">
-      <legend>{legend}</legend>
-      <div className="event-moment-inputs">
-        <div className="field event-moment-date">
-          <label htmlFor={`${id}-date`}>{t('eventForm.date')}</label>
-          <input
-            id={`${id}-date`}
-            className={className}
-            type="date"
-            value={date}
-            disabled={busy}
-            aria-invalid={error != null}
-            aria-describedby={described}
-            onChange={(event) => onDate(event.target.value)}
-          />
-        </div>
-        <div className="field event-moment-time">
-          <label htmlFor={`${id}-time`}>{t('eventForm.time')}</label>
-          <input
-            id={`${id}-time`}
-            className={className}
-            type="time"
-            value={time}
-            disabled={busy}
-            aria-invalid={error != null}
-            aria-describedby={described}
-            onChange={(event) => onTime(event.target.value)}
-          />
-        </div>
-      </div>
-      <FieldError id={`${id}-error`} message={error} />
-      {hint != null && (
-        <p className="field-help" id={`${id}-hint`}>
-          {hint}
-        </p>
-      )}
-    </fieldset>
-  );
-}
-
-function Choice({
-  id,
-  label,
-  value,
-  error,
-  busy,
-  options,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  error: string | undefined;
-  busy: boolean;
-  options: { value: string; label: string }[];
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      <select
-        id={id}
-        className={error == null ? 'input' : 'input input-wrong'}
-        value={value}
-        disabled={busy}
-        aria-invalid={error != null}
-        aria-describedby={error == null ? undefined : `${id}-error`}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <FieldError id={`${id}-error`} message={error} />
-    </div>
-  );
-}
-
-function FieldError({ id, message }: { id: string; message: string | undefined }) {
-  if (message == null) return null;
-
-  return (
-    <div className="field-error" id={id}>
-      <span className="mark mark-broken" aria-hidden="true">
-        ✕
-      </span>
-      <p>{message}</p>
     </div>
   );
 }

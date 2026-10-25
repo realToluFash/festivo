@@ -20,6 +20,8 @@ from .ledger import Printer
 from .shortcut import Shortcut
 
 HERE = pathlib.Path(__file__).resolve().parent
+CHECKS_POLL = 30
+NO_CHECKS_POLLS = 4
 OWNER_ONLY = ("run", "start", "stop", "pause", "resume", "agents", "web")
 ADMIN = ("status", "sync", "install", "run", "worker", "worker-ended", "worker-supervise",
          "start", "stop", "pause",
@@ -49,9 +51,15 @@ def refresh_work(db, now):
         "and kind not in ('pick', 'sweep')")}
     busy_roles = {role for roles_ in busy for role in roles_.split(",")}
     last_runs = {row["role"]: row["last_done"] for row in db.execute("select * from runs")}
+    last_sweeps = {row["pool"]: row["at"] for row in db.execute(
+        "select pool, max(done_at) as at from work where kind = 'sweep' and status = 'done' "
+        "group by pool")}
     items = work.derive(store.stories(db), store.prs(db), store.get_meta(db, "main_run"),
                         last_runs, busy_roles, now, store.handled(db), store.moves(db),
-                        store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"))
+                        store.get_meta(db, "machine_checks"), store.get_meta(db, "epics"),
+                        store.worked_on(db, "l10n"),
+                        [row for row in store.waiting(db, "l10n") if row["kind"] == "unblocked"],
+                        last_sweeps)
     store.record(db, items, now)
     return items
 
@@ -65,7 +73,7 @@ def baseline(db):
         store.mark_run(db, role)
     refresh_work(db, time.time())
     db.execute("update work set status = 'done', note = 'already waiting at install' "
-               "where status = 'open' and kind = 'story'")
+               "where status = 'open' and kind in ('story', 'unblocked')")
     store.set_meta(db, "baselined_at", time.time())
 
 
@@ -123,9 +131,17 @@ def synced(db, now):
 # Work
 
 
+def this_worker():
+    """The worker this command runs in, so it touches only that worker's item; a run by hand
+    is any of the role's."""
+    return os.environ.get("SOIRELY_WORKER")
+
+
 def cmd_tick(s, a):
     now = time.time()
     synced(s.db, now)
+    if this_worker():
+        return own_item(s, now, lambda row: print("busy"))
     if store.held_by(s.db, s.role, now):
         return print("busy")
     row = store.claim(s.db, s.role, now)
@@ -137,16 +153,32 @@ def cmd_tick(s, a):
 def cmd_next(s, a):
     now = time.time()
     synced(s.db, now)
+    if this_worker():
+        return own_item(s, now, lambda row: render(s, row))
     row = store.held_by(s.db, s.role, now) or store.claim(s.db, s.role, now)
     if not row:
         return print("idle")
+    render(s, row)
+
+
+def own_item(s, now, show):
+    """Inside a worker, the item the runner launched it on; it never claims another, since
+    the runner would not know the claim was its worker's and would wait out the lease."""
+    row = store.held_by(s.db, s.role, now, this_worker())
+    if not row:
+        return print(f"{this_worker()}'s item is finished: end this run")
+    show(row)
+
+
+def render(s, row):
     s.printer.run = f"work:{row['id']}"
     payloads.render(s.printer, s.db, row, s.cache)
     s.done()
 
 
 def cmd_done(s, a):
-    row = store.item(s.db, int(a.id)) if a.id else store.held_by(s.db, s.role)
+    row = store.item(s.db, int(a.id)) if a.id else \
+        store.held_by(s.db, s.role, worker=this_worker())
     if row:
         store.finish(s.db, row["id"], a.note)
     else:
@@ -155,7 +187,7 @@ def cmd_done(s, a):
 
 
 def cmd_release(s, a):
-    row = store.held_by(s.db, s.role)
+    row = store.held_by(s.db, s.role, worker=this_worker())
     if row:
         store.release(s.db, row["id"])
     print("released")
@@ -170,8 +202,10 @@ def cmd_drawings(s, a):
     found = store.drawings(s.db)
     if not found:
         print("nothing to draw")
+    busy = (store.get_meta(s.db, "drawing") or {}).get("story_id")
     for drawing in found:
-        print(f"sc-{drawing['story_id']}  {drawing['name']}")
+        now = "  (sq is drawing it now: leave it)" if drawing["story_id"] == busy else ""
+        print(f"sc-{drawing['story_id']}  {drawing['name']}{now}")
         print("\n".join("    " + line for line in drawing["prompt"].splitlines()))
 
 
@@ -238,17 +272,61 @@ def cmd_diff(s, a):
 
 
 def cmd_checks(s, a):
-    found = github.pr_checks(a.pr)
+    head, found = read_checks(a.pr, a.head)
+    empty = 0
+    if a.wait:
+        deadline = time.monotonic() + a.timeout * 60
+        while head is None or not found or any(c.get("bucket") == "pending" for c in found):
+            # Straight after a push the head has no checks yet; a conflicting head never will.
+            empty = empty + 1 if head is not None and not found else 0
+            if empty > NO_CHECKS_POLLS:
+                break
+            if time.monotonic() >= deadline:
+                waiting = (f"for the head to reach {a.head[:7]}" if head is None else
+                           "with no checks on the head" if not found else
+                           "with checks still pending")
+                print(f"PR #{a.pr}: timed out after {a.timeout} minutes {waiting}")
+                break
+            time.sleep(CHECKS_POLL)
+            head, found = read_checks(a.pr, a.head)
+    if head is None:
+        sys.exit(f"PR #{a.pr}: the head is not {a.head[:7]} yet")
+    if not found:
+        sha = head["headRefOid"][:7]
+        if head["mergeable"] == "CONFLICTING":
+            print(f"PR #{a.pr}: no checks on head {sha}, which conflicts with main; "
+                  "a conflicting head runs none, so merge origin/main and push")
+        elif a.wait:
+            print(f"PR #{a.pr}: no checks appeared on head {sha} after "
+                  f"{NO_CHECKS_POLLS * CHECKS_POLL // 60} minutes")
+        else:
+            print(f"PR #{a.pr}: no checks on head {sha} yet")
+        sys.exit(1 if a.wait else 0)
     failed = [c for c in found if c.get("bucket") == "fail"]
+    cancelled = [c for c in found if c.get("bucket") == "cancel"]
     pending = [c for c in found if c.get("bucket") == "pending"]
-    print(f"PR #{a.pr}: {len(found)} checks, {len(failed)} failed, {len(pending)} pending")
+    summary = f"PR #{a.pr} at {head['headRefOid'][:7]}: {len(found)} checks, {len(failed)} failed"
+    print(summary + "".join(f", {len(group)} {word}" for group, word in
+                            ((cancelled, "cancelled"), (pending, "pending")) if group))
     for check in failed:
         print(f"\n{check['workflow']} / {check['name']} {check['link']}")
         if not a.names:
             log = github.failed_log(check["link"], tail=a.tail)
             print("\n".join("  " + line for line in log.splitlines()))
+    for check in cancelled:
+        print(f"  cancelled: {check['workflow']} / {check['name']} {check['link']}")
     for check in pending:
         print(f"  pending: {check['workflow']} / {check['name']}")
+    if a.wait and any(c.get("bucket") not in ("pass", "skipping") for c in found):
+        sys.exit(1)
+
+
+def read_checks(number, want=None):
+    """The live head and its checks, or no head while the pull request has not reached `want`."""
+    head = github.live(number)
+    if want and not head["headRefOid"].startswith(want):
+        return None, []
+    return head, github.pr_checks(number)
 
 
 def cmd_runs(s, a):
@@ -325,7 +403,8 @@ def cmd_history(s, a):
 
 
 TAKES_BODY = {actions.comment, actions.note, actions.to_draw, actions.report, actions.edit, actions.new_story,
-              actions.new_epic, actions.review, actions.pr_reply, actions.pr_create}
+              actions.new_epic, actions.review, actions.pr_reply, actions.pr_create,
+              actions.pr_close, actions.pr_edit, actions.unclaim}
 
 
 def write(fn):
@@ -369,9 +448,14 @@ READS = [
     ("diff", cmd_diff, "a pull request's files, or the diff of the paths you name",
      lambda p: (p.add_argument("pr", type=int), p.add_argument("paths", nargs="*"),
                 p.add_argument("--all", action="store_true"))),
-    ("checks", cmd_checks, "a pull request's checks, with the failed logs' last lines",
+    ("checks", cmd_checks, "a pull request's checks and failed logs; --wait for them",
      lambda p: (p.add_argument("pr", type=int), p.add_argument("--names", action="store_true"),
-                p.add_argument("--tail", type=int, default=40))),
+                p.add_argument("--tail", type=int, default=40),
+                p.add_argument("--wait", action="store_true",
+                               help="return once no check is pending; exit 1 unless all passed"),
+                p.add_argument("--head", help="with --wait, first wait for the head to be this sha"),
+                p.add_argument("--timeout", type=int, default=20,
+                               help="minutes --wait gives up after, exiting 1"))),
     ("runs", cmd_runs, "the last runs on main", None),
     ("find", cmd_find, "Shortcut search, one line per story",
      lambda p: (p.add_argument("query"), p.add_argument("--limit", type=int, default=20))),
@@ -433,6 +517,8 @@ WRITES = [
     ("report", actions.report, "QA report: upload files, comment, move to the result",
      lambda p: (p.add_argument("story"), p.add_argument("result", choices=["passed", "failed"]),
                 p.add_argument("--files", nargs="+"), body(p))),
+    ("unclaim", actions.unclaim, "give back to Ready For QA a story you hold but cannot test",
+     lambda p: (p.add_argument("story"), body(p))),
     ("edit", actions.edit, "replace a section, add a dated one, or --replace one line, "
      "on sc-<n> or epic-<n>",
      lambda p: (p.add_argument("targets", nargs="+", metavar="target"),
@@ -483,6 +569,11 @@ WRITES = [
     ("merge", actions.merge, "merge a pull request once every condition holds",
      lambda p: (p.add_argument("pr", type=int),
                 p.add_argument("--text", help="anything QA should know"))),
+    ("pr-close", actions.pr_close, "close a pull request unmerged, saying why on it",
+     lambda p: (p.add_argument("pr", type=int), body(p))),
+    ("pr-edit", actions.pr_edit, "replace one section of a pull request's body",
+     lambda p: (p.add_argument("pr", type=int), p.add_argument("--section", required=True),
+                body(p))),
     ("to-qa", actions.to_qa, "hand a merged story to QA, naming the merge commit",
      lambda p: (p.add_argument("story"), p.add_argument("--text"))),
     ("rerun", actions.rerun, "rerun a pull request's failed jobs, or a --run",
@@ -560,6 +651,8 @@ def status(db, platform, now):
             rows.append((role["role"], f"refused: {role['detail']}", "", "", "", "", []))
             continue
         state = {"busy": f"busy, item {(role['held'] or {}).get('id')}",
+                 "running": f"running {role.get('running')} of {role.get('workers')}"
+                 if (role.get("workers") or 1) > 1 else "running",
                  "elsewhere": "on {machine}, seen {ago}".format(
                      machine=(role["detail"] or {}).get("machine"),
                      ago=ago((role["detail"] or {}).get("seen", 0)))}.get(role["state"],

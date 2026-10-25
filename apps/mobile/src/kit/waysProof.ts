@@ -92,6 +92,11 @@ export function keptProofRanOut(error: unknown, sentKept: boolean): boolean {
   return sentKept && error instanceof ApiError && error.is('proof_required');
 }
 
+/** The server counted Unlink's proof as lapsed, however the phone's clock saw it: back to Confirm it's you (sc-12545). */
+export function unlinkProofLapsed(error: unknown): boolean {
+  return error instanceof ApiError && error.is('proof_required');
+}
+
 /** Where a refused proof is said: a provider's refusal is the trip's, never a password field the screen doesn't show. */
 export function provingRefusal(
   error: unknown,

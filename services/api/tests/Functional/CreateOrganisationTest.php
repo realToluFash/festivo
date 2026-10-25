@@ -19,6 +19,7 @@ use App\Tests\ApiTestCase;
 use App\Tests\Double\RefusingRateLimiterFactory;
 use App\Tests\Traits\OnboardsAccounts;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Psl\Iter;
 use Psl\Json;
@@ -112,6 +113,44 @@ final class CreateOrganisationTest extends ApiTestCase
         self::assertSame(['name'], $this->refusedFields($body));
     }
 
+    /**
+     * The clients' own words, so a caller that skips their check reads the same refusal.
+     *
+     * @param positive-int $length
+     */
+    #[Test]
+    #[DataProvider('tooLongInEachLanguage')]
+    public function anOverLongNameIsRefusedWithItsLengthInTheCallersLanguage(string $language, int $length, string $message): void
+    {
+        $this->signedIn('long-' . $language . $length . '@example.com');
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', $language);
+
+        $body = $this->create(['name' => Str\repeat('é', $length), 'countryCode' => 'NG', 'timezone' => 'Africa/Lagos']);
+
+        self::assertResponseStatusCodeSame(422);
+        self::assertSame([$message], $this->refusedMessages($body));
+    }
+
+    /** @return iterable<string, array{string, positive-int, string}> */
+    public static function tooLongInEachLanguage(): iterable
+    {
+        yield 'en' => ['en', 101, 'That name is 101 characters. Use 100 or fewer.'];
+        yield 'es' => ['es', 101, 'Ese nombre tiene 101 caracteres. Acórtelo a 100 como máximo.'];
+        yield 'fr' => ['fr', 101, 'Ce nom compte 101 caractères. Raccourcissez-le à 100 caractères maximum.'];
+        yield 'pt' => ['pt', 101, 'Este nome tem 101 caracteres. Encurte-o para um máximo de 100.'];
+        yield 'the length measured' => ['en', 250, 'That name is 250 characters. Use 100 or fewer.'];
+    }
+
+    #[Test]
+    public function aNameOfExactlyOneHundredCharactersIsAccepted(): void
+    {
+        $this->signedIn('hundred@example.com');
+
+        $this->create(['name' => Str\repeat('é', 100), 'countryCode' => 'NG', 'timezone' => 'Africa/Lagos']);
+
+        self::assertResponseStatusCodeSame(201);
+    }
+
     /** A country nobody recognises fails its currency too, which the form does not show. */
     #[Test]
     public function aRefusalReportsOnlyTheFieldsTheFormHas(): void
@@ -188,11 +227,11 @@ final class CreateOrganisationTest extends ApiTestCase
         $id = Type\shape(['id' => Type\string()], true)->coerce($body['organisation'])['id'];
 
         $entry = self::em()->getRepository(AuditEntry::class)->findOneBy(['action' => 'organisation.created']) ?? self::fail('no audit entry');
-        self::assertSame('Organisation', $entry->subjectType());
-        self::assertSame($id, $entry->subjectId()->toRfc4122());
-        self::assertSame(Actor::User, $entry->actorType());
-        self::assertTrue($user->getId()->equals($entry->actorId()));
-        self::assertSame([null, 'EUR'], $entry->changes()['currency']);
+        self::assertSame('Organisation', $entry->getSubjectType());
+        self::assertSame($id, $entry->getSubjectId()->toRfc4122());
+        self::assertSame(Actor::User, $entry->getActorType());
+        self::assertTrue($user->getId()->equals($entry->getActorId()));
+        self::assertSame([null, 'EUR'], $entry->getChanges()['currency']);
     }
 
     #[Test]
@@ -263,6 +302,19 @@ final class CreateOrganisationTest extends ApiTestCase
         return Vec\map(
             Type\vec(Type\dict(Type\string(), Type\string()))->coerce($body['violations']),
             static fn (array $violation): string => $violation['propertyPath'] ?? '',
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return list<string>
+     */
+    private function refusedMessages(array $body): array
+    {
+        return Vec\map(
+            Type\vec(Type\dict(Type\string(), Type\string()))->coerce($body['violations']),
+            static fn (array $violation): string => $violation['message'] ?? '',
         );
     }
 

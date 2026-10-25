@@ -41,6 +41,156 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
+  (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
+  `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
+  words. An invitation is "convite", masculine, and its states agree with it: "Pendente",
+  "Expirado", "Retirado" (revoked and withdrawn alike), "Recusado", "Aceite"; the deleted
+  organisation is "Eliminada". "Revoke" is "Retirar". Joining is "aderir a {{organisation}}".
+  The invitee is never the object of "convidar", which agrees with a gender: "enviou-lhe um
+  convite", "quem lhe enviou o convite", and the email subject "Convite de {inviter} para
+  aderir a {organisation} na Soirely". `formatDay` dates take "no dia" ("Enviado no dia
+  {{sent}} · expira no dia {{ended}}") or "até", and never close a sentence: "Até {{date}},
+  pode usar este convite." The email's `{date}` has a full month, so "válido até {date}."
+  ends it. The subtitle names its counts after a colon, "com acesso: {{active}} · convites:
+  {{invited}}". History lines name what was acted on, "Convite enviado por", "Pedido aprovado
+  por", "Acesso suspenso / reposto / retirado por".
+- **25 Oct 2026. Deleting an organisation** (`errors:owner_required`,
+  `messages:organisation.owner_required`, `delete_name_mismatch`, `emails:organisationDeleted.*`,
+  sc-3215). The refusals name the role, "Só alguém com a função Proprietário…", as
+  `transfer_owner_required`. `delete_name_mismatch` is `ownership.deleteMismatch` word for
+  word, and `restore` the second sentence of `ownership.deleteWindow`, "restaurá-la" included.
+  The subject is "A organização {organisation} foi eliminada", so the participle agrees with
+  "organização", never with a name. The date is "a {when}", as `password.changed.body`. The
+  footer says "era membro".
+- **25 Oct 2026. The API's refusals** (`messages:*`, sc-10809). An HTTP request is "o pedido
+  HTTP" where a recovery or join "pedido" could be meant (the body refusals), and "o pedido" in
+  the assistant's lines; an API path is "este URL", masculine. An id is "esse identificador",
+  and a postal address is "morada". Field names an integrator sends (`idToken`, `code`,
+  `recoveryCode`, `If-Match`, `context`, the assistant's roles) stay as written, in straight
+  quotes where the English quotes them; "system prompt" stays English. Where a screen says the
+  same sentence (`lostTwoFactor.*`, `signIn.timedOutBody_*`, `createOrganisation.limitedTitle`,
+  the lock-outs' "Tente novamente às {time}"), the refusal says it too.
+- **25 Oct 2026. The article before an API time** (sc-11332). The 01 hour is "a uma", so the
+  lock-outs (`messages+intl-icu:limits.*`) and `emails+intl-icu:time.dateAt` choose the
+  contraction from `{hour}` (0–23): `{hour, plural, =1 {à {time}} other {às {time}}}`, "à 01:05",
+  "às 00:05" (zero horas), "às 13:05". Any new string that puts "à/às" before a clock time takes
+  the same form, or "a hora {time}" where no `{hour}` reaches it.
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675, reworded in sc-11163). "Em {{zone}}, a hora {{time}} do dia {{day}} não existe:
+  nessa noite, os relógios são adiantados. Será guardada como {{savedAs}}." The next-day line
+  ends "guardada no dia {{savedDay}}, às {{savedAs}}.", so the date never stands before the
+  colon ("mar.:") or closes the sentence. "Do dia" and "no dia"
+  agree with "dia", not with the weekday, which is how a weekday date takes a preposition
+  inside a sentence (the 19 Oct rule forbids "a" and "na/no" alone). "Guardada" agrees with
+  "a hora". Rejected "hora de verão", which names the rule rather than the missing hour.
+- **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
+  "Editar detalhes", "Save changes" "Guardar alterações", and changes are always "alterações",
+  never "mudanças". A refused save starts "Não foi guardado."; the colleague is "outra pessoa",
+  as `errors:precondition_failed`. What was typed is "o que escreveu". After a save the live
+  region says "Alterações guardadas". The currency refusal is one sentence in `web` and
+  `errors`, "… neste evento".
+- **24 Oct 2026. Suspending a member by hand and restoring them** (`membersScreen.suspend*`,
+  `restore*`, `seats*`, `emails:memberSuspended.*`, `memberRestored.*`, `messages:members.*`,
+  sc-8735). "Suspender {{name}}", "Repor o acesso". What is suspended is "o acesso", so nothing
+  agrees with the member: "O acesso de {{name}} foi suspenso", "Um acesso suspenso não ocupa
+  lugar", "Só é possível suspender um acesso ativo". The member's language is "o idioma que
+  usa", never "o seu idioma", which reads as the admin's. A team seat is "lugar de equipa" of
+  "o plano", as `errors:team_seats_in_use`. "An administrator of" in the email is "alguém que
+  administre {organisation}", which also covers owners. The email facts read "Data da
+  suspensão" and "Data da reposição". `ownerNoSuspend` and `members.suspend_owner` say the
+  same sentence.
+- **24 Oct 2026. The claim that lapsed** (`emails:ownerClaim.lapsed.*`, sc-9219). "Lapse" is
+  "caducar", as the web. The subject is "{claimant} não assumiu a propriedade de
+  {organisation}. O pedido caducou", never "o pedido de {claimant}" with a bare address. Each
+  reason ends "por isso a propriedade não foi transferida"; the date takes a label, "Data em
+  que o pedido caducou: {deadline}.", as the withdrawn email.
+- **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
+  sc-9068). "e mais {{count}}", after the five names, the order Portuguese counts on in; "e
+  outros" or "outras pessoas" would make the count agree with a gender nobody knows. No
+  `_many` (sc-4188).
+- **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
+  `validation.request_shape`, sc-8716). "Este campo não aceita esse valor", which also holds for
+  a required field left out, then "Verifique-o e tente novamente", the pronoun for the field. The
+  422 `detail` speaks of "os dados enviados", not "o pedido", which here is a request to join.
+- **24 Oct 2026. Withdrawing your own claim** (`ownerClaim.withdraw*`, `youWithdrew*`,
+  `emails:ownerClaim.withdrawn.*`, `messages:owner_claims.not_claimant`, sc-8556). The claimant
+  "retira" o pedido; anybody else "interrompe" um. Button "Retirar o meu pedido", confirm
+  "Retirar o seu pedido?" with "Retirar" / "Manter o meu pedido", pending "A retirar". "Any
+  Administrator, you included" became "Pode voltar a fazer um pedido, tal como qualquer pessoa
+  com a função Administrador", since "incluindo-o a si" agrees with a gender. The email date
+  takes a label, "Data em que o pedido foi retirado: {deadline}", never "retirada", a retreat.
+- **24 Oct 2026. Getting an owner back** (`ownerClaim.*`, web and app, `emails:ownerClaim.*`,
+  `messages:owner_claims.*`, `errors:owner_claim_*`, sc-8216). "Become the owner" is "assumir a
+  propriedade", never "tornar-se proprietário", which agrees with a gender; the claim is "o
+  pedido", and the claimant "pediu para assumir a propriedade", true before and after the
+  record is found. dev3's draft of `owner_claim_own` said "você" and "reivindicação"; it now
+  says "Não pode interromper o seu próprio pedido". A DNS record is "registo", never
+  "registro"; the claimant's is "o registo DNS desta pessoa". "Stop" is "interromper",
+  "Soirely support" "o apoio ao cliente da Soirely", restoring "repor". The weekday dates
+  follow the rule below: "até {{when}}" where the meaning allows, otherwise a label at the
+  end, "Data da transferência: {{when}}"; the email subject puts it in brackets.
+- **24 Oct 2026. The only owner left suspended** (`accessPaused.stillOnlyOwner`,
+  `membersScreen.suspendedOnlyOwner`, `onlyOwnerNotRemovable`, `onlyOwnerRestoreNeedsAddress`,
+  `history.suspendedAddressGone`, sc-7831). As `emails:domainSuspended.keptOnlyOwner`: "a única
+  pessoa com a função Proprietário em {{organisation}}" and "não sai da organização". The
+  refusal names "esta pessoa", so "removida" agrees with the noun, not the member, as the app's
+  `onlyOwner`. Restoring needs "o endereço de e-mail principal desta pessoa". The history line
+  is "Acesso suspenso: o endereço de e-mail da empresa deixou de dar acesso".
+- **23 Oct 2026. Ownership and leaving** (`ownership.*`, web and app,
+  `messages:organisation.transfer_owner_required`, `emails:ownershipTransferred.*`, sc-7715).
+  The act is "transferir a propriedade", the organisation "cedida"; the people are "alguém com
+  a função Proprietário" and "a função Administrador", never "o novo proprietário". "The new
+  owner" is "quem receber a propriedade", the legend "Transferir para". "You become an
+  Administrator" is "a sua função passa a ser Administrador", so the subject is never left to
+  guess. Both people are told by "… a si e a {{name}}". The email subject "{organisation}
+  mudou de proprietário" keeps the fixed phrase, which names no person. "Support" is "o apoio
+  ao cliente da Soirely". The delete counts put the verb first, "São eliminados com ela
+  {{events}}, …". i18next's 'pt' counts 0 as one, so a 0 shows "0 convidado" until [dev]
+  gives the clients PT-PT's rule (sc-3030); raised again on sc-68. A slot appears once per key (the parity
+  guard counts them), so `transferred` closes "… para as duas contas", not a second {{name}}.
+
+- **21 Oct 2026. Approving or turning down a request to join** (`membersScreen.awaiting.*`,
+  `membersScreen.history.turnedDown`, `requestExpired`, `emails:joinRequest.*`,
+  `messages:members.request_answered`, sc-7217). "Approve" is "Aprovar", "turn down"
+  "Recusar", and what is refused is "o pedido", never the person: "Recusar o pedido de
+  {{name}}?", "Recusar o pedido de {{name}}", "Pedido recusado por {{by}}". A request nobody answered "é
+  removido se ninguém responder até {{deadline}}": the slot opens on a weekday, so "até",
+  never "a" (24 Oct, from QA; see the weekday rule below). A role given on approval is
+  "com a função {{role}}"; the person refused "não passou a fazer parte da organização", never
+  "não foi adicionado", so nothing agrees with them. The waiting email's count takes `=0`
+  (PHP's ICU counts 0 as one in "pt") and `many`, "1 000 000 de pessoas".
+
+- **24 Oct 2026. Who did it, in a history line** (`membersScreen.byYou`, `membersScreen.someone`,
+  sc-7217, from QA). Both fill `{{by}}` after "por": the reader is "si" ("Pedido recusado por si"),
+  never Brazilian "você", and a person who has since left is "alguém que já não é membro".
+
+- **21 Oct 2026. A domain member paused** (`accessPaused.*`, `membersScreen.suspended*`,
+  `restore*`, `emails:domainSuspended.*`, sc-6703). The person reads "Em pausa", the admins
+  "Acesso suspenso", as the English keeps them apart. Restoring is "repor", as the drafted
+  error had it. Nothing agrees with the member: "o acesso é retirado", "esta pessoa deixa de
+  fazer parte", and the only Owner "não sai da organização" rather than "não é removido". A
+  closed domain "deixou de aceitar adesões", as the setting's "Adesão por domínio da empresa".
+  "Account settings" is "Definições da conta", button and sentence alike.
+  24 Oct (qa2, #8038): the email subject opens on what happened, "Acesso em pausa: {name} em
+  {organisation}", so a phone inbox shows it before the names. The admins' label is "Acesso
+  suspenso: domínio da empresa" for all three reasons, as the setting. The member's history
+  line (`history.suspendedAddressGone`, sc-8868) is the label's words, whatever the reason.
+- **21 Oct 2026. Request link** (`requestLink.*`, `requestToJoin.*`,
+  `messages:request_link.*`, `errors:request_link_dead`, `join_request_*`, sc-6460). A link
+  is "a ligação", never "o link" (dev2's draft of `errors:request_link_dead` said "link"); the
+  setting's is "a ligação de adesão". The setting is "Pedidos de adesão", so its state agrees:
+  "Ativados" / "Desativados". The act stays "pedir para aderir", as domain joining; what waits
+  is "o pedido de adesão … já aguarda resposta". `formatDay` ends on "nov.", so a date never
+  closes a sentence: "A partir de {{date}}, pode voltar a pedir para aderir."
+
+- **21 Oct 2026. Creating an event** (`events.*`, `eventForm.*`, `eventPage.*`,
+  `rolesScreen.createEvents*`, `messages:validation.event_*`, sc-6302). A draft is "Rascunho";
+  the form's legends "Início" and "Fim". An end before the start is "O evento termina antes de
+  começar". "Carry on planning" is "prosseguir com o planeamento". An owner is "alguém com a
+  função Proprietário", as "função" for a role. The permission's states are "Permitido" /
+  "Não permitido". A refused send closes "por isso nada foi enviado".
+
 - **21 Oct 2026. Two-factor for everyone** (`signInRules.everyone*`, `due*`, `overdue*`,
   `twoFactorCard.keptByRule`, `emails:signInRules.twoFactorDue.*`, sc-5702). "Require" is
   "exigir", as the server's errors; "for everyone" is "para todos". The date is "a partir de
@@ -71,8 +221,15 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-4188). An invitation is "convite", waiting is "pendente". With several, "that
   organisation" is "a organização que o enviou", where "o" is the invitation, never the
   person. A button in a sentence goes in «» after "Selecione": "Selecione «Guardar e
-  continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". No
+  continuar» para entrar nela". Switching is "mudar para", as "Mudar de organização". "Accept an invitation above" is "aceite um convite pendente", the
+  word the intro uses, not "aceite acima", which reads stiffly. No
   `_many` yet: the key-parity guard refuses a form English lacks (sc-4188, [dev2]).
+
+- **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
+  once sc-5932 adds it, sc-6897). "Start" is "criar", since "iniciar uma organização" is not
+  how PT-PT says it: the heading is "Crie a sua própria organização", the button "Criar
+  organização", as `createOrganisation.create`. One character is "carácter", several
+  "caracteres". The help and the derived-settings line are `createOrganisation`'s words.
 
 - **21 Oct 2026. Creating another organisation** (`createOrganisation.*`, web and app, sc-3490).
   "You will be its owner" is "Terá a função Proprietário", never "será o proprietário".
@@ -156,7 +313,9 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   app, sc-3030). `{{day}}` is "segunda-feira, 19 de out.": before a weekday PT-PT says "na" or
   "no" (sábado, domingo), which the copy cannot agree with, and the abbreviated month brings
   its own full stop. It is a label at the end, with no full stop after the slot:
-  "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}". The
+  "{{organisation}} alterou as regras de início de sessão. Data da alteração: {{day}}". After a
+  status it is lowercase, with the time after a comma: "data do pedido: {{day}}, às {{time}}"
+  (`domainJoining.asked`, sc-4434). The
   "a {when}" rule below stays for a date without a weekday. A period without use is "Quem
   passar {{count}} dias sem utilizar a Soirely terá de…" (`effectIdle_*`,
   `emails+intl-icu:signInRules.rule.inactivity`), not "Quem não utilizar… há", which mixes a

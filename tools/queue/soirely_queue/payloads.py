@@ -154,13 +154,25 @@ def checks_red(p, pr, story, row):
 def merge(p, pr, story, row):
     V.pr_status(p, pr, compact=True)
     live = github.live(pr["number"])
+    if live["mergeable"] == "CONFLICTING" and p.role in R.LINGUISTS:
+        p.add("", "It conflicts with main. Merge origin/main into the branch and push; the "
+                  "green checks on the new head wake you to merge.")
+        return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"brought main in\"")
     if live["mergeable"] == "CONFLICTING":
         p.add("", "It conflicts with main, so it cannot merge as passed. Merge origin/main into "
                   "the branch and push. The push voids the pass, and the lead reviews the new "
                   "head, wherever the story is.")
         return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"brought main in\"")
-    next_lines(p, f"{SQ} {p.role} merge {pr['number']}   (checks every condition, merges at the "
-                  "passed sha, moves the story to Ready For QA and tells QA)",
+    if p.role in R.LINGUISTS:
+        merges = ("merges it once it changes only locale files; then move the ticket to Ready "
+                  "For QA if everything it covers is merged, as your skill's section 5 says")
+    elif W.side_pr(story, pr):
+        merges = (f"merges at the passed sha; sc-{story['id']} is a translation ticket and "
+                  "stays where the linguist put it, so the merge is still yours")
+    else:
+        merges = ("checks every condition, merges at the passed sha, moves the story to Ready "
+                  "For QA and tells QA")
+    next_lines(p, f"{SQ} {p.role} merge {pr['number']}   ({merges})",
                f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
 
 
@@ -214,10 +226,21 @@ def render(p, db, row, cache):
         V.pr_status(p, pr, compact=True)
         return next_lines(p, f"{SQ} {p.role} comment sc-{story['id']} --to lead --text \"…\"",
                           f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
+    if kind == "unblocked":
+        story_for(p, db, story, p.role)
+        return next_lines(p, f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
     if kind == "main":
         return main_red(p, db, row)
     if kind in ("pick", "sweep"):
         return digests.render(p, db, row)
+    if kind == "held":
+        story_for(p, db, story, p.role)
+        p.add("", "You claimed this and no report followed. Test it now if your stack answers; "
+                  "if it cannot be tested, give it back rather than leave it In QA.")
+        return next_lines(p, f"{SQ} {p.role} report sc-{story['id']} passed|failed --text \"…\"",
+                          f"{SQ} {p.role} unclaim sc-{story['id']} "
+                          "--text \"<why it was not tested>\"",
+                          f"{SQ} {p.role} done {row['id']} --note \"<one line>\"")
     if kind == "story":
         story_for(p, db, story, p.role)
         if p.role in R.DEVS + R.TESTERS and story["state"] in CLAIMABLE:
