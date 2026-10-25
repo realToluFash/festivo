@@ -7,7 +7,11 @@ export function StillSignedIn() {
   const notice = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    notice.current?.scrollIntoView({ block: 'nearest' });
+    const inView = () => notice.current?.scrollIntoView({ block: 'nearest' });
+
+    inView();
+    // A web font that arrives late rewraps the page above the notice and pushes it out of view.
+    void document.fonts.ready.then(inView);
   }, []);
 
   return (
