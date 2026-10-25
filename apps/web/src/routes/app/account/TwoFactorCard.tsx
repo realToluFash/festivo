@@ -1,7 +1,7 @@
 import { ApiError, type TwoFactorEnrolment, type TwoFactorStatus } from '@soirely/api-client';
 import { cleanCode, codeProblem, formatTimeOfDay, keyInGroups, lockLiftsAt } from '@soirely/domain';
 import { type TFunction } from 'i18next';
-import { type FormEvent, type RefObject, useEffect, useState } from 'react';
+import { type FormEvent, type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../../../api.ts';
@@ -9,14 +9,14 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
-import { useStepFocus } from '../../../stepFocus.ts';
+import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 
 type Stage =
   | { kind: 'loading' }
   | { kind: 'failed'; pressed: boolean }
   | { kind: 'at-rest'; status: TwoFactorStatus }
   | { kind: 'setting-up'; enrolment: TwoFactorEnrolment }
-  | { kind: 'saving-codes'; codes: string[] }
+  | { kind: 'saving-codes'; codes: string[]; renewed: boolean }
   | { kind: 'turning-off' }
   | { kind: 'new-codes' };
 
@@ -34,9 +34,17 @@ export function TwoFactorCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [refusedBy, setRefusedBy] = useState<string | null>(null);
+  const [refusedBy, setRefusedBy] = useState<{ organisation: string; landed: boolean } | null>(
+    null,
+  );
   const [stepHeading, arriveAtStep] = useStepFocus();
   const [failedNotice, arriveAtFailedTurningOn] = useStepFocus<HTMLDivElement>();
+  const restHeading = useRef<HTMLHeadingElement>(null);
+  const refusal = useRef<HTMLDivElement>(null);
+  const turnOnButton = useRef<HTMLButtonElement>(null);
+  const turnOffButton = useRef<HTMLButtonElement>(null);
+  const newCodesButton = useRef<HTMLButtonElement>(null);
+  const land = useFocusOnceShown();
   const sessionState = useSessionState();
   // sc-609: the server refuses it too; this says so before a code is asked for.
   const keptBy =
@@ -54,7 +62,7 @@ export function TwoFactorCard({
         if (live) setStage({ kind: 'at-rest', status });
       })
       .catch(() => {
-        if (live) setStage({ kind: 'failed', pressed: false });
+        if (live) setStage({ kind: 'failed', pressed: attempt > 0 });
       });
 
     return () => {
@@ -81,9 +89,10 @@ export function TwoFactorCard({
   const busy = stage.kind === 'setting-up' || stage.kind === 'saving-codes';
   useEffect(() => onBusy(busy), [busy, onBusy]);
 
-  function reload(): void {
+  function reload(target: RefObject<HTMLElement | null> = restHeading): void {
     setStage({ kind: 'loading' });
     setAttempt((n) => n + 1);
+    land(() => failedNotice.current ?? target.current ?? restHeading.current);
   }
 
   async function turnOn(): Promise<void> {
@@ -120,7 +129,7 @@ export function TwoFactorCard({
               <p className="notice-title">{t('twoFactorCard.failedTitle')}</p>
               <p>{t('twoFactorCard.failedBody')}</p>
             </div>
-            <button className="button" type="button" onClick={reload}>
+            <button className="button" type="button" onClick={() => reload()}>
               {t('error.retry')}
             </button>
           </div>
@@ -130,9 +139,18 @@ export function TwoFactorCard({
       {stage.kind === 'at-rest' && (
         <AtRest
           status={stage.status}
+          heading={restHeading}
+          refusal={refusal}
+          turnOnButton={turnOnButton}
+          turnOffButton={turnOffButton}
+          newCodesButton={newCodesButton}
           onTurnOn={() => void turnOn()}
           refusedBy={refusedBy}
-          onTurnOff={() => (keptBy == null ? bring({ kind: 'turning-off' }) : setRefusedBy(keptBy))}
+          onTurnOff={() =>
+            keptBy == null
+              ? bring({ kind: 'turning-off' })
+              : setRefusedBy({ organisation: keptBy, landed: false })
+          }
           onNewCodes={() => bring({ kind: 'new-codes' })}
         />
       )}
@@ -142,26 +160,30 @@ export function TwoFactorCard({
           enrolment={stage.enrolment}
           headingRef={stepHeading}
           onActivated={(codes) => {
-            bring({ kind: 'saving-codes', codes });
+            bring({ kind: 'saving-codes', codes, renewed: false });
             if (sessionState.status === 'signedIn') void refreshAccount();
           }}
-          onCancel={reload}
+          onCancel={() => reload(turnOnButton)}
         />
       )}
 
       {stage.kind === 'saving-codes' && (
-        <SavingCodes codes={stage.codes} headingRef={stepHeading} onFinish={reload} />
+        <SavingCodes
+          codes={stage.codes}
+          headingRef={stepHeading}
+          onFinish={() => reload(stage.renewed ? newCodesButton : restHeading)}
+        />
       )}
 
       {stage.kind === 'turning-off' && (
         <TurningOff
           email={email}
           headingRef={stepHeading}
-          onOff={reload}
-          onKeep={reload}
+          onOff={() => reload()}
+          onKeep={() => reload(turnOffButton)}
           onKept={(organisation) => {
-            setRefusedBy(organisation);
-            reload();
+            setRefusedBy({ organisation, landed: true });
+            reload(refusal);
           }}
         />
       )}
@@ -169,8 +191,8 @@ export function TwoFactorCard({
       {stage.kind === 'new-codes' && (
         <ConfirmNewCodes
           headingRef={stepHeading}
-          onMade={(codes) => bring({ kind: 'saving-codes', codes })}
-          onKeep={reload}
+          onMade={(codes) => bring({ kind: 'saving-codes', codes, renewed: true })}
+          onKeep={() => reload(newCodesButton)}
         />
       )}
     </section>
@@ -179,13 +201,23 @@ export function TwoFactorCard({
 
 function AtRest({
   status,
+  heading,
+  refusal,
+  turnOnButton,
+  turnOffButton,
+  newCodesButton,
   refusedBy,
   onTurnOn,
   onTurnOff,
   onNewCodes,
 }: {
   status: TwoFactorStatus;
-  refusedBy: string | null;
+  heading: RefObject<HTMLHeadingElement | null>;
+  refusal: RefObject<HTMLDivElement | null>;
+  turnOnButton: RefObject<HTMLButtonElement | null>;
+  turnOffButton: RefObject<HTMLButtonElement | null>;
+  newCodesButton: RefObject<HTMLButtonElement | null>;
+  refusedBy: { organisation: string; landed: boolean } | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
   onNewCodes: () => void;
@@ -195,7 +227,9 @@ function AtRest({
   return (
     <>
       <div className="card-heading">
-        <h2 id="two-factor-title">{t('twoFactorCard.title')}</h2>
+        <h2 id="two-factor-title" ref={heading} tabIndex={-1}>
+          {t('twoFactorCard.title')}
+        </h2>
         {/* A mark and the word, never the colour alone. */}
         <span className={status.on ? 'status-done' : 'card-count'}>
           <span className={status.on ? 'mark mark-done' : 'mark mark-off'} aria-hidden="true">
@@ -215,21 +249,26 @@ function AtRest({
                 {t('twoFactorCard.unused', { left: status.recoveryCodesLeft, total: 10 })}
               </p>
             </div>
-            <button className="button" type="button" onClick={onNewCodes}>
+            <button className="button" type="button" ref={newCodesButton} onClick={onNewCodes}>
               {t('twoFactorCard.makeNewCodes')}
             </button>
           </div>
           <div className="actions">
-            <button className="button" type="button" onClick={onTurnOff}>
+            <button className="button" type="button" ref={turnOffButton} onClick={onTurnOff}>
               {t('twoFactorCard.turnOff')}
             </button>
           </div>
           {refusedBy != null && (
-            <div className="notice notice-attention" role="alert">
+            <div
+              className="notice notice-attention"
+              role={refusedBy.landed ? undefined : 'alert'}
+              ref={refusal}
+              tabIndex={refusedBy.landed ? -1 : undefined}
+            >
               <span className="mark mark-attention" aria-hidden="true">
                 !
               </span>
-              <p>{t('twoFactorCard.keptByRule', { organisation: refusedBy })}</p>
+              <p>{t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}</p>
             </div>
           )}
         </>
@@ -237,7 +276,12 @@ function AtRest({
         <>
           <p>{t('twoFactorCard.offIntro')}</p>
           <div className="actions">
-            <button className="button button-primary" type="button" onClick={onTurnOn}>
+            <button
+              className="button button-primary"
+              type="button"
+              ref={turnOnButton}
+              onClick={onTurnOn}
+            >
               {t('twoFactorCard.turnOn')}
             </button>
           </div>

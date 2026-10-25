@@ -125,6 +125,10 @@ describe('turning two-factor on', () => {
     fireEvent.click(finish);
 
     await screen.findByText('10 of 10 unused · each works once', undefined, UNDER_LOAD);
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Two-factor authentication' }),
+    );
+    expect(document.activeElement?.nextElementSibling?.textContent).toBe('✓On');
     await waitFor(() => expect(onBusy).toHaveBeenLastCalledWith(false), UNDER_LOAD);
   });
 
@@ -210,6 +214,10 @@ describe('turning two-factor off', () => {
 
     await waitFor(() => expect(screen.getByText('Off')).toBeDefined(), UNDER_LOAD);
     expect(screen.getByRole('button', { name: 'Turn on two-factor' })).toBeDefined();
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { name: 'Two-factor authentication' }),
+    );
+    expect(document.activeElement?.nextElementSibling?.textContent).toBe('Off');
   });
 
   it('says a wrong code did not work', async () => {
@@ -270,12 +278,18 @@ describe('while an organisation requires two-factor of everyone (sc-609)', () =>
     });
     card();
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD));
+    const turnOff = await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD);
+    turnOff.focus();
+    fireEvent.click(turnOff);
 
     expect(
       screen.getByText('Ìrè Events requires two-factor, so you cannot turn it off.'),
     ).toBeDefined();
     expect(screen.getByText('On')).toBeDefined();
+    expect(screen.getByRole('alert')).toBeDefined();
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Turn off two-factor' }),
+    );
     expect(screen.queryByLabelText('Code')).toBeNull();
     expect(sent.filter(({ path }) => path.endsWith('/disable'))).toEqual([]);
   });
@@ -308,5 +322,117 @@ describe('while an organisation requires two-factor of everyone (sc-609)', () =>
       ),
     ).toBeDefined();
     expect(sent.some(({ path }) => path.endsWith('/disable'))).toBe(true);
+    expect(document.activeElement?.textContent).toBe(
+      '!Ìrè Events requires two-factor, so you cannot turn it off.',
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('closing a step on Two-factor authentication', () => {
+  it('goes back to Turn on two-factor after Cancel, once the card has loaded again', async () => {
+    answering({
+      'GET /api/auth/two-factor': () => json({ on: false, recoveryCodesLeft: 0 }),
+      'POST /api/auth/two-factor/enrol': () => json(ENROLMENT),
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn on two-factor' }, UNDER_LOAD));
+    await screen.findByRole('heading', { name: 'Turn on two-factor authentication' }, UNDER_LOAD);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    const opener = await screen.findByRole('button', { name: 'Turn on two-factor' }, UNDER_LOAD);
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('goes back to Turn off two-factor after Keep it on', async () => {
+    answering({ 'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 10 }) });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it on' }));
+
+    const opener = await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD);
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it('goes back to Make new codes after Keep current codes, and after Finish on the new codes', async () => {
+    answering({
+      'GET /api/auth/two-factor': () => json({ on: true, recoveryCodesLeft: 3 }),
+      'POST /api/auth/two-factor/recovery-codes': () => json({ recoveryCodes: CODES }),
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Make new codes' }, UNDER_LOAD));
+    fireEvent.click(screen.getByRole('button', { name: 'Keep current codes' }));
+
+    const opener = await screen.findByRole('button', { name: 'Make new codes' }, UNDER_LOAD);
+    expect(document.activeElement).toBe(opener);
+
+    fireEvent.click(opener);
+    fireEvent.change(screen.getByLabelText('Code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Make new codes' }));
+    fireEvent.click(
+      await screen.findByLabelText('I have saved these codes somewhere safe', {}, UNDER_LOAD),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
+
+    const again = await screen.findByRole('button', { name: 'Make new codes' }, UNDER_LOAD);
+    expect(document.activeElement).toBe(again);
+  });
+
+  it('takes focus to the notice, read once, when the card cannot load again', async () => {
+    let reachable = true;
+    answering({
+      'GET /api/auth/two-factor': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json({ on: true, recoveryCodesLeft: 10 });
+      },
+    });
+    card();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Turn off two-factor' }, UNDER_LOAD));
+    reachable = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it on' }));
+
+    await waitFor(
+      () =>
+        expect(document.activeElement?.textContent).toBe(
+          'Two-factor did not loadSomething went wrong on our side. Try again in a moment.',
+        ),
+      UNDER_LOAD,
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('takes Try again to the notice when it fails again, and to the heading once it loads', async () => {
+    let reachable = false;
+    answering({
+      'GET /api/auth/two-factor': () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json({ on: false, recoveryCodesLeft: 0 });
+      },
+    });
+    card();
+
+    await screen.findByRole('alert', undefined, UNDER_LOAD);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(
+      () => expect(document.activeElement?.textContent).toMatch(/^Two-factor did not load/),
+      UNDER_LOAD,
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(
+      () =>
+        expect(document.activeElement).toBe(
+          screen.getByRole('heading', { name: 'Two-factor authentication' }),
+        ),
+      UNDER_LOAD,
+    );
   });
 });
