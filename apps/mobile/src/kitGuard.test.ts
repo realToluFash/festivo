@@ -137,7 +137,26 @@ describe('a screen reader skips the initials beside a name', () => {
       .flatMap(({ text }) => textTags(text).map(({ markup }) => markup));
 
     expect(tags).toHaveLength(1);
-    expect(tags.filter((markup) => !unreportable(markup))).toEqual([]);
+    expect(tags.filter((markup) => !unreportable(markup) || !hidesItself(markup))).toEqual([]);
+  });
+
+  it('notices a tile Text that leaves its hiding to the View around it', () => {
+    expect(
+      hidesItself(
+        '<Text {...rest} accessible={false} accessibilityElementsHidden importantForAccessibility="no">',
+      ),
+    ).toBe(true);
+    expect(hidesItself('<Text {...rest} accessible={false} importantForAccessibility="no">')).toBe(
+      false,
+    );
+    expect(hidesItself('<Text {...rest} accessible={false} accessibilityElementsHidden>')).toBe(
+      false,
+    );
+    expect(
+      hidesItself(
+        '<Text accessibilityElementsHidden importantForAccessibility="no" {...rest} accessible={false}>',
+      ),
+    ).toBe(false);
   });
 
   it('notices a tile Android still reads', () => {
@@ -648,6 +667,15 @@ function hiddenTexts(text: string): { line: number; markup: string }[] {
   }
 
   return hidden;
+}
+
+/** Both hiding props, after any spread, so the Text stays hidden wherever its View's hiding misses it. */
+function hidesItself(markup: string): boolean {
+  const after = markup.slice(markup.lastIndexOf('{...') + 1);
+
+  return (
+    /\baccessibilityElementsHidden\b/u.test(after) && /importantForAccessibility="no"/u.test(after)
+  );
 }
 
 /** A spread after `accessible={false}` can carry `accessible: true` and turn it back off. */
