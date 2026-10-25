@@ -226,6 +226,10 @@ is held to what both can do:
   off screen, or its ref is emptied in the handler that removes it. A button sends what
   its field shows (sc-11175, sc-11253). A `defaultValue` that follows the ref while the
   field is up gets rewritten into the native field (`kit/fields.ts`).
+- Every `TextField`, `PasswordField` and `CodeField` takes its shown label as
+  `accessibilityLabel`, on the tag itself rather than through a spread. A `Field` label
+  beside it is not read with it, so TalkBack reads a bare "Edit box"; `kitGuard.test.ts`
+  holds the rule (sc-11297).
 
 Accessible as drawn: real `button`, `a`, `input` + `label`; `aria-label` on icon-only
 controls; focus always visible; **and anything designed around dragging needs a
