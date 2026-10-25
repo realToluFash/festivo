@@ -83,6 +83,11 @@ function at(path: string): void {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
+/** The words of a field's clocks-skip notice, without its aria-hidden mark. */
+function gapLine(id: string): string {
+  return document.querySelector(`#${id} p`)?.textContent ?? '';
+}
+
 function spaced(text: string | null): string {
   return (text ?? '').replace(/\s/g, ' ');
 }
@@ -480,6 +485,169 @@ describe('New event', () => {
   });
 });
 
+describe('A time the clocks skip, in New event (sc-10638)', () => {
+  const START_SKIPPED =
+    'There is no 02:30 on Sun, Mar 28 in Europe/Paris: the clocks go forward that night. It will be saved as 03:30.';
+
+  function fill(id: string, value: string): void {
+    fireEvent.change(document.getElementById(id)!, { target: { value } });
+  }
+
+  function described(element: string | Element): string {
+    const owner = typeof element === 'string' ? document.getElementById(element)! : element;
+    const ids = (owner.getAttribute('aria-describedby') ?? '').split(' ');
+
+    return ids.map((one) => document.getElementById(one)?.textContent ?? '').join(' ');
+  }
+
+  async function form(zone = 'Europe/Paris'): Promise<void> {
+    signedIn(membership({ ...IRE, timezone: zone }));
+    at('/app/events/new');
+    await screen.findByRole('heading', { level: 1, name: 'New event' });
+  }
+
+  it('says so under Starts after a typed time and a typed date, and goes once out of the gap', async () => {
+    answering({});
+    await form();
+
+    const region = document.getElementById('event-start-gap')!;
+    const starts = region.closest('fieldset')!;
+    expect(region.getAttribute('aria-live')).toBe('polite');
+    expect(region.textContent).toBe('');
+    expect(starts.hasAttribute('aria-describedby')).toBe(false);
+
+    fill('event-start-time', '02:30');
+    expect(screen.queryByText(START_SKIPPED)).toBeNull();
+    fill('event-start-date', '2027-03-28');
+
+    expect(gapLine('event-start-gap')).toBe(START_SKIPPED);
+    expect(document.getElementById('event-start-gap')).toBe(region);
+    expect(described(starts)).toContain(START_SKIPPED);
+    expect(described('event-start-date')).toContain(START_SKIPPED);
+    expect(described('event-start-time')).toContain(START_SKIPPED);
+    expect(document.getElementById('event-start-time')!.getAttribute('aria-invalid')).toBe('false');
+
+    fill('event-start-date', '2027-03-27');
+    expect(gapLine('event-start-gap')).toBe('');
+    expect(starts.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('shows it under Starts and Ends at once, keeping the Ends hint', async () => {
+    answering({});
+    await form();
+
+    const ends = document.getElementById('event-end-gap')!.closest('fieldset')!;
+    expect(ends.hasAttribute('aria-describedby')).toBe(false);
+
+    fill('event-start-date', '2027-03-28');
+    fill('event-start-time', '02:00');
+    fill('event-end-time', '02:45');
+
+    expect(gapLine('event-start-gap')).toContain('It will be saved as 03:00.');
+    expect(gapLine('event-end-gap')).toContain('It will be saved as 03:45.');
+    expect(described(ends)).toContain('It will be saved as 03:45.');
+    expect(described('event-end-time')).toContain(
+      'An event can run past midnight. Choose the day it ends.',
+    );
+
+    fill('event-end-time', '04:00');
+    expect(gapLine('event-end-gap')).toBe('');
+    expect(ends.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it("writes the night in the browser's regional order, as the event's page does", async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    answering({});
+    await form();
+
+    fill('event-start-date', '2027-03-28');
+    fill('event-start-time', '02:30');
+
+    expect(gapLine('event-start-gap')).toBe(
+      'There is no 02:30 on Sun 28 Mar in Europe/Paris: the clocks go forward that night. It will be saved as 03:30.',
+    );
+  });
+
+  it('names a gap that is not an hour long', async () => {
+    answering({});
+    await form('Australia/Lord_Howe');
+
+    fill('event-start-date', '2027-10-03');
+    fill('event-start-time', '02:15');
+
+    expect(gapLine('event-start-gap')).toBe(
+      'There is no 02:15 on Sun, Oct 3 in Australia/Lord_Howe: the clocks go forward that night. It will be saved as 02:45.',
+    );
+  });
+
+  it('names the day too when the saved time falls on the next one', async () => {
+    vi.spyOn(navigator, 'language', 'get').mockReturnValue('en-GB');
+    answering({});
+    await form('America/Scoresbysund');
+
+    fill('event-start-date', '2027-03-27');
+    fill('event-start-time', '23:30');
+
+    expect(gapLine('event-start-gap')).toBe(
+      'There is no 23:30 on Sat 27 Mar in America/Scoresbysund: the clocks go forward that night. It will be saved as 00:30 on Sun 28 Mar.',
+    );
+  });
+
+  it('says nothing in the hour the clocks repeat, nor without a zone', async () => {
+    answering({});
+    await form();
+
+    fill('event-start-date', '2027-10-31');
+    fill('event-start-time', '02:30');
+    expect(gapLine('event-start-gap')).toBe('');
+
+    fill('event-start-date', '2027-03-28');
+    fill('event-time-zone', '');
+    expect(gapLine('event-start-gap')).toBe('');
+  });
+
+  it('does not stop the save, and sends the time as typed', async () => {
+    const sent = answering({
+      'POST /api/orgs/org_1/events': () => json({ event: event() }, 201),
+      'GET /api/events/ev_1': () => json({ event: event() }),
+    });
+    await form();
+
+    fill('event-name', 'Gala');
+    fill('event-start-date', '2027-03-28');
+    fill('event-start-time', '02:30');
+    fill('event-end-time', '05:00');
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    await waitFor(() =>
+      expect(sent.find(({ line }) => line.startsWith('POST'))?.body).toMatchObject({
+        startsAt: '2027-03-28T02:30',
+        endsAt: '2027-03-28T05:00',
+        timeZone: 'Europe/Paris',
+      }),
+    );
+  });
+
+  it('refuses a start the gap moves past the end, keeping the notice under Starts', async () => {
+    const sent = answering({});
+    await form();
+
+    fill('event-name', 'Gala');
+    fill('event-start-date', '2027-03-28');
+    fill('event-start-time', '02:30');
+    fill('event-end-time', '03:15');
+    fireEvent.click(screen.getByRole('button', { name: 'Create event' }));
+
+    await waitFor(() =>
+      expect(described('event-end-time')).toContain(
+        'The end is before the start. Choose a later end.',
+      ),
+    );
+    expect(gapLine('event-start-gap')).toBe(START_SKIPPED);
+    expect(sent.filter(({ line }) => line.startsWith('POST'))).toEqual([]);
+  });
+});
+
 describe("An event's page", () => {
   it("shows the name, Draft, and the start and end in the event's zone", async () => {
     signedIn();
@@ -769,6 +937,68 @@ describe("Editing an event's details (sc-3587)", () => {
       await screen.findByRole('heading', { level: 1, name: 'Adaeze and Tunde' }),
     ).toBeDefined();
     expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('says under Ends when a change of zone puts it in the gap, and keeps the zone example true (sc-10638)', async () => {
+    signedIn();
+    serving({
+      'GET /api/events/ev_1': () =>
+        tagged(
+          {
+            event: event({
+              startsAt: '2027-03-27T20:00:00+01:00',
+              endsAt: '2027-03-28T02:00:00+01:00',
+            }),
+          },
+          '"1"',
+        ),
+    });
+    await editing();
+
+    expect(gapLine('event-end-gap')).toBe('');
+    fireEvent.change(screen.getByLabelText('Time zone'), { target: { value: 'Europe/Paris' } });
+
+    expect(gapLine('event-end-gap')).toBe(
+      'There is no 02:00 on Sun, Mar 28 in Europe/Paris: the clocks go forward that night. It will be saved as 03:00.',
+    );
+    expect(
+      screen.getByText(
+        'Changing the zone keeps the times as typed. Sat 20:00 stays 20:00 in the new zone.',
+      ),
+    ).toBeDefined();
+
+    fireEvent.change(document.getElementById('event-start-date')!, {
+      target: { value: '2027-03-28' },
+    });
+    fireEvent.change(document.getElementById('event-start-time')!, {
+      target: { value: '02:30' },
+    });
+
+    expect(gapLine('event-start-gap')).toContain('It will be saved as 03:30.');
+    expect(document.getElementById('event-time-zone-hint')!.textContent).toBe(
+      'Changing the zone keeps the times as typed.',
+    );
+  });
+
+  it('refuses a start the gap moves past the end, and sends nothing (sc-10638)', async () => {
+    signedIn();
+    const { sent } = serving();
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Time zone'), { target: { value: 'Europe/Paris' } });
+    for (const [id, value] of [
+      ['event-start-date', '2027-03-28'],
+      ['event-start-time', '02:30'],
+      ['event-end-date', '2027-03-28'],
+      ['event-end-time', '03:15'],
+    ] as const)
+      fireEvent.change(document.getElementById(id)!, { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    expect(
+      await screen.findByText('The end is before the start. Choose a later end.'),
+    ).toBeDefined();
+    expect(sent.filter(({ line }) => line.startsWith('PATCH'))).toEqual([]);
   });
 
   it('is refused to a role without events.manage', async () => {

@@ -20,6 +20,7 @@ import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoice
 import { Forbidden } from '../Forbidden.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import { skippedLine } from './skippedLine.ts';
 
 export function NewEvent() {
   const session = useSession();
@@ -79,7 +80,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
     if (busy) return;
 
     const found: Errors = {};
-    for (const { field, problem } of eventProblems(draft))
+    for (const { field, problem } of eventProblems(draft, timeZone))
       found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
     if (currency === '') found.currency = t('orgGeneral.currencyBlank');
 
@@ -121,6 +122,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
   }
 
   const nameLength = eventNameLength(draft.name);
+  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, t);
 
   return (
     <div className="event-form-page">
@@ -174,6 +176,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
           <Moment
             id="event-start"
             legend={t('eventForm.starts')}
+            skipped={startSkipped}
             date={draft.startDate}
             time={draft.startTime}
             error={errors.startsAt}
@@ -189,6 +192,7 @@ function EventForm({ organisation }: { organisation: Membership }) {
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
+            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
             time={draft.endTime}

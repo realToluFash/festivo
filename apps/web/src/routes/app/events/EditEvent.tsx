@@ -19,6 +19,7 @@ import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoice
 import { Forbidden } from '../Forbidden.tsx';
 import { Choice, FieldError, Moment } from './EventFields.tsx';
 import { type Errors, FIELDS, type Field, describedBy, inputFor } from './eventFieldOrder.ts';
+import { skippedLine } from './skippedLine.ts';
 
 /** What the event page announces once the form has closed (sc-3587). */
 export type EditOutcome = 'saved' | 'unchanged';
@@ -218,7 +219,7 @@ function DetailsForm({
     if (busy) return;
 
     const found: Errors = {};
-    for (const { field, problem } of eventProblems(draft))
+    for (const { field, problem } of eventProblems(draft, timeZone))
       found[field] ??= t(`eventForm.${problem}`, { most: EVENT_NAME_MAXIMUM });
     if (currency === '') found.currency = t('orgGeneral.currencyBlank');
 
@@ -289,19 +290,21 @@ function DetailsForm({
 
   const nameLength = eventNameLength(draft.name);
   const typedStart = new Date(`${draft.startDate}T${draft.startTime}Z`);
-  const zoneHint = Number.isNaN(typedStart.getTime())
-    ? t('eventEdit.zoneHintPlain')
-    : t('eventEdit.zoneHint', {
-        day: new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(
-          typedStart,
-        ),
-        time: new Intl.DateTimeFormat(locale, {
-          hour: '2-digit',
-          minute: '2-digit',
-          hourCycle: 'h23',
-          timeZone: 'UTC',
-        }).format(typedStart),
-      });
+  const startSkipped = skippedLine(draft.startDate, draft.startTime, timeZone, t);
+  const zoneHint =
+    Number.isNaN(typedStart.getTime()) || startSkipped != null
+      ? t('eventEdit.zoneHintPlain')
+      : t('eventEdit.zoneHint', {
+          day: new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(
+            typedStart,
+          ),
+          time: new Intl.DateTimeFormat(locale, {
+            hour: '2-digit',
+            minute: '2-digit',
+            hourCycle: 'h23',
+            timeZone: 'UTC',
+          }).format(typedStart),
+        });
 
   return (
     <>
@@ -343,6 +346,7 @@ function DetailsForm({
           <Moment
             id="event-start"
             legend={t('eventForm.starts')}
+            skipped={startSkipped}
             date={draft.startDate}
             time={draft.startTime}
             error={errors.startsAt}
@@ -353,6 +357,7 @@ function DetailsForm({
           <Moment
             id="event-end"
             legend={t('eventForm.ends')}
+            skipped={skippedLine(draft.endDate, draft.endTime, timeZone, t)}
             hint={t('eventForm.endsHint')}
             date={draft.endDate}
             time={draft.endTime}
