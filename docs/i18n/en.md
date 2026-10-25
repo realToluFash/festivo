@@ -83,6 +83,12 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   `ownership.deleteWindow`, the sentence the owner read before deleting. `errors:owner_required`
   is the code's own, any act; `organisation.owner_required` names the act. The footer says "you
   were a member": the organisation no longer exists when it is read.
+- **25 Oct 2026. The sign-in rules refusals (sc-10594, sc-10716, `messages:sign_in_rules.*`).**
+  `inactivity_choice` stays: "Choose 7 days, 30 days or no limit." The other two are the
+  Owner's own state, as the page's `needsOwn*` says it, and should read "Turn on two-factor for
+  yourself before requiring it." and "Link Google or Apple for yourself before requiring it.",
+  but `SignInRulesTest::eachRefusalReadsInEnglishAsItDidBefore` pins the English, so that waits on
+  `[dev]`. es, fr and pt already say it the page's way, after the `errors:` title.
 - **25 Oct 2026. The API's refusals in the request's language (sc-10700, sc-10809, `messages:*`).**
   Settled as sc-10700 wrote them, with three changes. `event.currency_in_use` says "against this
   event", as its screen twin `eventEdit.currencyInUse`. `access.two_factor_required` says "requires
