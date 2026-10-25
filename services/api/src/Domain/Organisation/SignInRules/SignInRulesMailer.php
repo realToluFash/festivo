@@ -50,14 +50,16 @@ final readonly class SignInRulesMailer
 
             $locale = $this->userMailer->localeFor($member);
             $named = ['{organisation}' => $organisation->getName()];
+            $due = [...$named, '{deadline}' => $this->userMailer->deadline($deadline, $member, $locale)];
 
             $this->userMailer->send($address, $locale, 'signInRules.twoFactorDue.subject', [
-                $this->userMailer->line('signInRules.twoFactorDue.body', $locale, [...$named, '{deadline}' => $this->userMailer->deadline($deadline, $member, $locale)]),
-                $this->userMailer->line('signInRules.twoFactorDue.after', $locale, $named),
+                $this->userMailer->line('signInRules.twoFactorDue.body', $locale, $due),
+                $this->userMailer->line('signInRules.twoFactorDue.explain', $locale),
+                $this->userMailer->line('signInRules.twoFactorDue.facts', $locale, [...$due, '{address}' => $address]),
                 $this->userMailer->line('signInRules.twoFactorDue.turnOn', $locale, ['{link}' => $origin . '/app/account/security']),
                 '--',
                 $this->userMailer->line('signInRules.changed.footer', $locale, $named),
-            ], $named);
+            ], $due);
         }
     }
 
