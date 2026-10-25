@@ -170,8 +170,8 @@ function Choosing({
   const help = t('timeZone.help', { now: now ?? t('timeZone.nowUnset') });
   const noneMatch = typed.trim() !== '' && !showingPicked && matches.length === 0;
   const nothing = t('timeZone.noneMatch', { typed: typed.trim() });
-  // Its words change with every key, and saying them each time would talk over the typing (sc-10955).
-  useReadOut(noneMatch && error == null ? nothing : null, { once: true });
+  // Said as each key lands, it would talk over the typing (sc-10955); said only as it appears, it goes unheard by somebody still typing (sc-11930).
+  useReadOut(noneMatch && error == null ? nothing : null, { afterTyping: typed });
   const listMost =
     room == null
       ? LIST_HEIGHT

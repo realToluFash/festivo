@@ -1,13 +1,16 @@
 export interface Reading {
   os: string;
-  /** Said once as the words appear, and not again as they change while they stay. */
-  once: boolean;
+  /** Waits for the typing to stop, and `before` is the words last said rather than last shown. */
+  afterTyping: boolean;
   /** On iOS, said before whatever VoiceOver was saying rather than after it; TalkBack says it after the settle like any other. */
   interrupts: boolean;
 }
 
 /** Long enough for what TalkBack says as its focus moves, on a new screen or off a button gone busy, to go first. */
 export const TALKBACK_SETTLE_MS = 1000;
+
+/** No key for this long and the typing has stopped: a pause neither WAI-ARIA nor WCAG puts a number on (sc-11930). */
+export const TYPING_PAUSE_MS = 2000;
 
 /** How long words wait before they are handed over on `os`. */
 export function settleMs(os: string): number {
@@ -36,8 +39,8 @@ export function shownAtMount(words: string | null, quietAtMount: boolean): strin
 }
 
 /** The words to say as a message goes from `before` to `now`, or null when there is nothing new to say. */
-export function newWords(before: string | null, now: string | null, once: boolean): string | null {
-  if (now == null || now === before || (once && before != null)) return null;
+export function newWords(before: string | null, now: string | null): string | null {
+  if (now == null || now === before) return null;
 
   return now;
 }
@@ -46,13 +49,15 @@ export function newWords(before: string | null, now: string | null, once: boolea
 export function howToReadOut(
   before: string | null,
   now: string | null,
-  { os, once, interrupts }: Reading,
+  { os, interrupts, afterTyping }: Reading,
 ): ReadAnswer {
-  const said = newWords(before, now, once);
+  const said = newWords(before, now);
+  const afterMs = afterTyping ? TYPING_PAUSE_MS : settleMs(os);
 
   return {
     shown: now,
-    handOver: said == null ? null : { words: said, queue: !interrupts, afterMs: settleMs(os) },
-    takeBack: now == null || said != null,
+    handOver: said == null ? null : { words: said, queue: !interrupts, afterMs },
+    // Each key restarts the wait, so words still waiting go with it.
+    takeBack: afterTyping || now == null || said != null,
   };
 }
