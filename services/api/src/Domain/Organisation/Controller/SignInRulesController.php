@@ -31,6 +31,7 @@ use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /** Settings > Sign-in rules (sc-69): every member reads them; organisation.manage changes them. */
 final readonly class SignInRulesController
@@ -47,6 +48,7 @@ final readonly class SignInRulesController
         private SignInRules $signInRules,
         private UserMailer $userMailer,
         private ClockInterface $clock,
+        private TranslatorInterface $translator,
     ) {
     }
 
@@ -72,11 +74,13 @@ final readonly class SignInRulesController
         $days = $body['inactivityTimeoutDays'] ?? null;
 
         if (null !== $days && !Iter\contains(SignInRules::INACTIVITY_DAYS, $days)) {
+            $refusal = $this->translator->trans('sign_in_rules.inactivity_choice');
+
             throw ApiException::validation([[
                 'propertyPath' => 'inactivityTimeoutDays',
-                'message' => 'Choose 7 days, 30 days or no limit.',
+                'message' => $refusal,
                 'code' => 'choice',
-            ]], 'Choose 7 days, 30 days or no limit.');
+            ]], $refusal);
         }
 
         $this->signInRulesEditor->change($organisation, $this->user(), $body, $request);
