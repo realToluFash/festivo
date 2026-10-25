@@ -527,11 +527,7 @@ function GridRow<T extends string>({
   testID: string;
 }) {
   const picker = fixed == null && (
-    <View
-      style={[styles.levels, !phone && styles.levelsBeside]}
-      accessibilityRole="radiogroup"
-      accessibilityLabel={name}
-    >
+    <View style={[styles.levels, !phone && styles.levelsBeside]} accessibilityRole="radiogroup">
       {options.map((option) => (
         <Pressable
           key={option.value}

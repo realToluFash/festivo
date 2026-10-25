@@ -18,7 +18,7 @@ export function OnboardingSteps({
   const detailsNow = at === 'details';
 
   return (
-    <View style={styles.steps} accessibilityLabel={t('verifyEmail.stepsLabel')}>
+    <View style={styles.steps}>
       <View style={styles.step}>
         <View
           style={[styles.mark, emailDone ? styles.done : styles.now]}

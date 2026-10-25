@@ -271,7 +271,7 @@ export function MemberList({
         </View>
       )}
 
-      <View style={styles.chips} accessibilityLabel={t('membersScreen.show')}>
+      <View style={styles.chips}>
         {APP_FILTERS.map((one) => (
           <Pressable
             key={one}
@@ -308,7 +308,7 @@ export function MemberList({
           />
         </View>
       ) : (
-        <View style={styles.rows} accessibilityLabel={t('membersScreen.shown')}>
+        <View style={styles.rows}>
           {shown.map((member, index) => (
             <MemberRow
               key={member.id}
@@ -734,11 +734,7 @@ function JoinRequestAnswer({
 
   return (
     <View style={styles.actions}>
-      <View
-        style={styles.choices}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={t('membersScreen.awaiting.roleFor', { name })}
-      >
+      <View style={styles.choices} accessibilityRole="radiogroup">
         {offered.map((one) => (
           <Pressable
             key={one.id}
@@ -907,11 +903,7 @@ function RolePicker({
   return (
     <>
       {done != null && <NoticeInView tone="done" mark={tokens.marks.done.glyph} body={done} />}
-      <View
-        style={styles.choices}
-        accessibilityRole="radiogroup"
-        accessibilityLabel={t('membersScreen.roleFor', { name: member.user.name })}
-      >
+      <View style={styles.choices} accessibilityRole="radiogroup">
         {offered.map((one) => (
           <Pressable
             key={one.id}

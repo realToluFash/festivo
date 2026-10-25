@@ -391,7 +391,7 @@ function SavingCodes({
           : t('twoFactorCard.saveIntro')}
       </Text>
 
-      <View style={styles.codes} accessibilityLabel={t('twoFactorCard.recoveryCodes')}>
+      <View style={styles.codes}>
         {codes.map((code) => (
           <Text key={code} size={tokens.typeBodyPhone.size} selectable style={styles.code}>
             {code}
