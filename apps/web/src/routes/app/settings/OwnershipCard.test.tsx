@@ -1,8 +1,10 @@
+import { type Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
-import { __setSessionState, type Session } from '../../../session.ts';
+import { __setSessionState, switchOrganisation, type Session } from '../../../session.ts';
 import { membership } from '../../../test-memberships.ts';
 import { breaksAnywhere } from '../../../test-wrapping.ts';
 import { routes } from '../../index.tsx';
@@ -35,7 +37,7 @@ const MEMBERS = {
   invitations: [],
 };
 
-function signedIn(organisation = IRE): void {
+function signedIn(organisation = IRE, others: Membership[] = []): void {
   const session: Session = {
     name: 'Folake Adeyemi',
     email: 'folake@ire.events',
@@ -46,7 +48,7 @@ function signedIn(organisation = IRE): void {
     needsOrganisation: false,
     hasPassword: true,
     organisation,
-    organisations: [organisation],
+    organisations: [organisation, ...others],
     organisationCountry: null,
     timezone: null,
     waitingFor: null,
@@ -79,7 +81,7 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { line: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -100,6 +102,14 @@ function settings() {
     <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/app/settings'] })} />,
   );
 }
+
+const DELETION = {
+  events: 5,
+  guests: 1204,
+  members: 9,
+  restoreClosesAt: '2026-11-16T13:20:00+00:00',
+  restoreCloses: 'Monday, Nov 16 at 14:20 WAT',
+};
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -278,6 +288,75 @@ describe('Settings > General, ownership and leaving', () => {
         '5 events, 1,204 guests and 9 members are deleted with it. This deletes it for everybody now. Soirely support can restore it until Monday, Nov 16 at 14:20 WAT; after that it is gone for good.',
       ),
     ).toBeDefined();
+  });
+
+  it.each([
+    ['comes back', (answer: (response: Response) => void) => answer(json(DELETION))],
+    ['fails', (answer: (response: Response) => void) => answer(json({ title: 'Down' }, 503))],
+  ])(
+    'keeps the confirm closed after Keep, when the count %s later (sc-11295)',
+    async (_, settle) => {
+      signedIn();
+      const answers: ((response: Response) => void)[] = [];
+      answering({
+        'GET /api/orgs/org_1/members': () => json(MEMBERS),
+        'GET /api/orgs/org_1/deletion': () =>
+          new Promise<Response>((answer) => answers.push(answer)),
+      });
+      settings();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+      expect(screen.getByText('Counting what it holds…')).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Keep Ìrè Events' }));
+
+      await waitFor(() => expect(answers).toHaveLength(1));
+      settle(answers[0]!);
+      await new Promise((settled) => setTimeout(settled, 0));
+
+      expect(screen.queryByRole('heading', { name: 'Delete Ìrè Events?' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'Delete organisation' })).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete organisation' }));
+      expect(screen.getByRole('heading', { name: 'Delete Ìrè Events?' })).toBeDefined();
+      expect(screen.getByText('Counting what it holds…')).toBeDefined();
+    },
+  );
+
+  it('leaves a failed count reading as counting, with the confirm still open (sc-11295)', async () => {
+    signedIn();
+    answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'GET /api/orgs/org_1/deletion': () => json({ title: 'Down' }, 503),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    await new Promise((settled) => setTimeout(settled, 0));
+
+    expect(screen.getByRole('heading', { name: 'Delete Ìrè Events?' })).toBeDefined();
+    expect(screen.getByText('Counting what it holds…')).toBeDefined();
+  });
+
+  it('opens no confirm for the organisation switched to before the count comes back (sc-11295)', async () => {
+    const other = membership({ id: 'org_2', name: 'Ọ̀ṣun Weddings' });
+    signedIn(IRE, [other]);
+    const answers: ((response: Response) => void)[] = [];
+    answering({
+      'GET /api/orgs/org_1/members': () => json(MEMBERS),
+      'GET /api/orgs/org_2/members': () => json(MEMBERS),
+      'GET /api/orgs/org_1/deletion': () => new Promise<Response>((answer) => answers.push(answer)),
+    });
+    settings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete organisation' }));
+    act(() => switchOrganisation('org_2'));
+    await waitFor(() => expect(answers).toHaveLength(1));
+    answers[0]!(json(DELETION));
+    await new Promise((settled) => setTimeout(settled, 0));
+
+    expect(screen.queryByRole('heading', { name: 'Delete Ọ̀ṣun Weddings?' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Delete Ìrè Events?' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete organisation' })).toBeDefined();
   });
 
   it('sends nothing until the name is typed exactly, case and accents included', async () => {

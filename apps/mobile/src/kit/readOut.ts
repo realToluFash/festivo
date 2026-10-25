@@ -1,22 +1,33 @@
 export interface Reading {
   os: string;
-  /** Said once as the words appear, and not again as they change while they stay: a live region would say each change. */
+  /** Said once as the words appear, and not again as they change while they stay. */
   once: boolean;
-  /** Said before whatever the screen reader was saying, rather than after it. */
+  /** On iOS, said before whatever VoiceOver was saying rather than after it; TalkBack says it after the settle like any other. */
   interrupts: boolean;
+}
+
+/** Long enough for what TalkBack says as its focus moves, on a new screen or off a button gone busy, to go first. */
+export const TALKBACK_SETTLE_MS = 1000;
+
+/** How long words wait before they are handed over on `os`. */
+export function settleMs(os: string): number {
+  return os === 'android' ? TALKBACK_SETTLE_MS : 0;
 }
 
 export interface HandOver {
   words: string;
   /** VoiceOver waits for what it is saying to finish; TalkBack has no queue to choose. */
   queue: boolean;
+  /** TalkBack drops words handed over just before its focus moves, so they wait for it. */
+  afterMs: number;
 }
 
 export interface ReadAnswer {
   /** What becomes `before` for the next words. */
   shown: string | null;
   handOver: HandOver | null;
-  liveRegion: 'polite' | 'assertive' | undefined;
+  /** Words handed over before and still waiting are not said: the message has gone or has new words. */
+  takeBack: boolean;
 }
 
 /** What `before` is as a message mounts: words already there were not an answer to anything, so they are not said. */
@@ -31,29 +42,17 @@ export function newWords(before: string | null, now: string | null, once: boolea
   return now;
 }
 
-/** The live region a message sets: TalkBack's alone, and none for a message said once, which is handed over instead. */
-export function liveRegionFor(
-  now: string | null,
-  { os, once, interrupts }: Reading,
-): ReadAnswer['liveRegion'] {
-  if (os !== 'android' || now == null || once) return undefined;
-
-  return interrupts ? 'assertive' : 'polite';
-}
-
-/** TalkBack takes a live region; VoiceOver has none, so it is handed the words, and so is a message said once (WCAG 2.2 SC 4.1.3). */
+/** Both screen readers are handed the words: VoiceOver has no live region, and Fabric flattens away a layout-only View along with its live region, so TalkBack never sees it (WCAG 2.2 SC 4.1.3). */
 export function howToReadOut(
   before: string | null,
   now: string | null,
-  reading: Reading,
+  { os, once, interrupts }: Reading,
 ): ReadAnswer {
-  const { os, once, interrupts } = reading;
   const said = newWords(before, now, once);
-  const handedOver = os === 'ios' || once;
 
   return {
     shown: now,
-    handOver: said != null && handedOver ? { words: said, queue: !interrupts } : null,
-    liveRegion: liveRegionFor(now, reading),
+    handOver: said == null ? null : { words: said, queue: !interrupts, afterMs: settleMs(os) },
+    takeBack: now == null || said != null,
   };
 }

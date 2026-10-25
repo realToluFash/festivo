@@ -19,7 +19,7 @@ type Step =
   | { kind: 'resting'; flash: string | null }
   | { kind: 'transfer' }
   | { kind: 'leave' }
-  | { kind: 'delete'; preview: OrganisationDeletion | null };
+  | { kind: 'delete' };
 
 /** General's "Ownership and leaving" (sc-68): hand the organisation on, leave it, or delete it. */
 export function OwnershipCard({ organisation }: { organisation: Membership }) {
@@ -101,13 +101,7 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
               <button
                 type="button"
                 className="button button-danger"
-                onClick={() => {
-                  setStep({ kind: 'delete', preview: null });
-                  api.organisationDeletion(organisation.id).then(
-                    (preview) => setStep({ kind: 'delete', preview }),
-                    () => setStep({ kind: 'delete', preview: null }),
-                  );
-                }}
+                onClick={() => setStep({ kind: 'delete' })}
               >
                 {t('ownership.delete')}
               </button>
@@ -142,7 +136,6 @@ export function OwnershipCard({ organisation }: { organisation: Membership }) {
       {step.kind === 'delete' && (
         <Delete
           organisation={organisation}
-          preview={step.preview}
           onKeep={() => setStep({ kind: 'resting', flash: null })}
         />
       )}
@@ -439,22 +432,28 @@ function Leave({
   );
 }
 
-function Delete({
-  organisation,
-  preview,
-  onKeep,
-}: {
-  organisation: Membership;
-  preview: OrganisationDeletion | null;
-  onKeep: () => void;
-}) {
+function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [preview, setPreview] = useState<OrganisationDeletion | null>(null);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const matches = typed.trim() === organisation.name;
+
+  useEffect(() => {
+    let current = true;
+
+    api.organisationDeletion(organisation.id).then(
+      (counted) => current && setPreview(counted),
+      () => {},
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisation.id]);
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();

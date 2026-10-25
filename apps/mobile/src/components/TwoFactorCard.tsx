@@ -366,7 +366,7 @@ function SavingCodes({
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
   const copiedAll = t('twoFactorCard.copiedAll', { count: codes.length });
-  const copiedLive = useReadOut(copied ? copiedAll : null);
+  useReadOut(copied ? copiedAll : null);
   const top = useScrolledToTop();
 
   useEffect(() => Keyboard.dismiss(), []);
@@ -398,7 +398,7 @@ function SavingCodes({
         testID="twoFactor.copyAll"
       />
       {copied && (
-        <Text size={tokens.typeSmall.size} weight="semibold" style={styles.on} {...copiedLive}>
+        <Text size={tokens.typeSmall.size} weight="semibold" style={styles.on}>
           {copiedAll}
         </Text>
       )}

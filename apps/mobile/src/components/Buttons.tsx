@@ -1,3 +1,4 @@
+import type { Ref } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { tokens } from '../theme/tokens.ts';
@@ -11,6 +12,7 @@ export function PrimaryButton({
   busy = false,
   off = false,
   accessibilityLabel,
+  ref,
   testID,
 }: {
   label: string;
@@ -18,12 +20,14 @@ export function PrimaryButton({
   busy?: boolean;
   off?: boolean;
   accessibilityLabel?: string;
+  ref?: Ref<View>;
   testID: string;
 }) {
   const inactive = busy || off;
 
   return (
     <Pressable
+      ref={ref}
       style={[styles.primary, busy && styles.primaryBusy, off && styles.primaryOff]}
       onPress={onPress}
       disabled={inactive}
@@ -49,6 +53,7 @@ export function SecondaryButton({
   off = false,
   stacked = false,
   accessibilityLabel,
+  ref,
   testID,
 }: {
   label: string;
@@ -58,10 +63,12 @@ export function SecondaryButton({
   stacked?: boolean;
   /** When the visible label leans on its row, as "Unlink" does beside "Google". */
   accessibilityLabel?: string;
+  ref?: Ref<View>;
   testID: string;
 }) {
   return (
     <Pressable
+      ref={ref}
       style={[styles.secondary, stacked && styles.secondaryStacked, off && styles.secondaryOff]}
       onPress={onPress}
       disabled={off}
