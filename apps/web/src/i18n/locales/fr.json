@@ -354,7 +354,9 @@
   "session": {
     "unreachableTitle": "Impossible de joindre Soirely",
     "unreachableBody": "Votre session est toujours ouverte. Soirely ne répond pas, donc rien ne peut encore se charger. Vérifiez votre connexion, puis réessayez.",
-    "retrying": "Nouvelle tentative…"
+    "retrying": "Nouvelle tentative…",
+    "stillSignedInTitle": "You are still signed in",
+    "stillSignedInBody": "Soirely could not be reached, so this device was not signed out. Check your connection, then try again."
   },
   "switcher": {
     "yourRole": "Votre rôle · {{role}}",

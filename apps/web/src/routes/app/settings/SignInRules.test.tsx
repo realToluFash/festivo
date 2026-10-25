@@ -646,6 +646,36 @@ describe('what the rules ask of a member, on every page', () => {
 
     await waitFor(() => expect(screen.queryByText('Turn on two-factor to carry on')).toBeNull());
   });
+
+  it('past the deadline, stays signed in and says so when signing out cannot reach Soirely', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    signedIn(
+      membership({
+        twoFactorDue: {
+          at: '2026-10-24T13:20:00+00:00',
+          written: 'Saturday, Oct 24 at 14:20 WAT',
+          overdue: true,
+        },
+      }),
+    );
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      if (new URL(String(input)).pathname === '/api/auth/logout') {
+        throw new TypeError('Failed to fetch');
+      }
+
+      return new Response(JSON.stringify(PAGE), { status: 200 });
+    });
+    open('/app/settings/sign-in-rules');
+
+    await screen.findByText('Turn on two-factor to carry on');
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    button.focus();
+    fireEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
 });
 
 describe('the two-factor deadline after a language change (sc-9267)', () => {

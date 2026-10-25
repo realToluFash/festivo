@@ -19,12 +19,12 @@ import {
   RemoveInAccount,
 } from '../../components/BackToAccount.tsx';
 import { Pending } from '../../components/Pending.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { dropRegistration, heldRegistration } from '../../pendingRegistration.ts';
 import { heldInvitation } from '../../heldInvitation.ts';
 import {
   adoptAccount,
-  forgetSession,
   landingFor,
   refreshAccount,
   restoreSession,
@@ -32,6 +32,7 @@ import {
 } from '../../session.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { useFormChecks } from '../../formChecks.ts';
+import { useSignOut } from '../../signOut.ts';
 
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export function VerifyEmail() {
@@ -128,6 +129,7 @@ function ForRegistration({ pending }: { pending: PendingRegistration }) {
 function ForSession() {
   const navigate = useNavigate();
   const state = useSessionState();
+  const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
 
   useEffect(() => {
     void restoreSession();
@@ -152,11 +154,8 @@ function ForSession() {
         await refreshAccount();
         navigate('/app');
       }}
-      wrongAddress={async () => {
-        await api.signOut();
-        forgetSession();
-        navigate('/sign-in');
-      }}
+      wrongAddress={signOut}
+      stillSignedIn={unreached}
     />
   );
 }
@@ -172,6 +171,7 @@ function CodeScreen({
   carryOn,
   wrongAddress,
   registersAgain = false,
+  stillSignedIn = false,
   fromAccount,
 }: {
   address: string;
@@ -186,6 +186,7 @@ function CodeScreen({
   wrongAddress?: () => void | Promise<void>;
   /** A sign-up has no session to sign out of: it starts again at Register. */
   registersAgain?: boolean;
+  stillSignedIn?: boolean;
   /** The id of an address added in Account: Account's way back replaces the steps and the way on. */
   fromAccount?: string;
 }) {
@@ -424,6 +425,8 @@ function CodeScreen({
           )}
 
           {fromAccount != null && <RemoveInAccount kind="email" />}
+
+          {stillSignedIn && <StillSignedIn />}
 
           {wrongAddress != null && (
             <div className="auth-footnote">

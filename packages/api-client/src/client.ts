@@ -1898,7 +1898,13 @@ export class ApiClient {
       if (token != null && token !== '') body.refreshToken = token;
     }
 
-    await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+    const response = await this.sendTokenRequest('/api/auth/logout', body).catch(() => null);
+
+    // Only the API can clear an httpOnly cookie, so a sign-out it never answered has not happened.
+    if (this.delivery() === 'cookie' && (response == null || response.status >= 500)) {
+      throw new ApiUnreachableError();
+    }
+
     await this.options.tokens?.clear();
   }
 

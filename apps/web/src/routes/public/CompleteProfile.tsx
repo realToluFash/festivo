@@ -22,18 +22,19 @@ import { LinkedNotice } from '../../components/LinkedNotice.tsx';
 import { AuthPage } from '../../components/AuthPage.tsx';
 import { Pending } from '../../components/Pending.tsx';
 import { PhoneEntry } from '../../components/PhoneEntry.tsx';
+import { StillSignedIn } from '../../components/StillSignedIn.tsx';
 import { Unreachable } from '../../components/Unreachable.tsx';
 import { currentLocale, dateLocale } from '../../i18n/index.ts';
 import { useWaitingInvitations } from '../../invitations.ts';
 import { phoneProblemMessage } from '../../phoneProblem.ts';
 import {
   adoptAccount,
-  forgetSession,
   landingFor,
   rememberOrganisation,
   restoreSession,
   useSessionState,
 } from '../../session.ts';
+import { useSignOut } from '../../signOut.ts';
 
 type Field =
   'name' | 'organisationName' | 'countryCode' | 'timezone' | 'phoneCountryCode' | 'phoneNumber';
@@ -43,6 +44,7 @@ type Errors = Partial<Record<Field, string>>;
 export function CompleteProfile() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { signOut, unreached } = useSignOut(() => navigate('/sign-in'));
   const state = useSessionState();
 
   useEffect(() => {
@@ -58,12 +60,6 @@ export function CompleteProfile() {
   const vouched = (name: string) => state.session.providers.some((p) => p.provider === name);
   const provider = vouched('google') ? 'Google' : vouched('apple') ? 'Apple' : null;
   if (landing !== '/complete-profile') return <Navigate to={landing} replace />;
-
-  async function signOut(): Promise<void> {
-    await api.signOut();
-    forgetSession();
-    navigate('/sign-in');
-  }
 
   return (
     <AuthPage>
@@ -123,6 +119,8 @@ export function CompleteProfile() {
           />
         </>
       )}
+
+      {unreached && <StillSignedIn />}
 
       <div className="auth-footnote">
         <span>{t('completeProfile.signedInAs', { email: state.session.email })}</span>
