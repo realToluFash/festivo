@@ -236,7 +236,12 @@ project but your own.
 
 Then **CI, on the real head**, and green before the handover: `sq dev checks <n>` reads the
 checks live, says how many failed and how many are still pending, and prints each failed
-log's last lines. Nothing pending and nothing failed is green.
+log's last lines. Nothing pending and nothing failed is green. To wait for CI, run
+`sq dev checks <n> --wait --head <sha>` as a background command, `<sha>` the commit you
+pushed: it returns once nothing is pending on that head, exits non-zero unless every check
+passed, after a few minutes with no checks at all (a head that conflicts with `main`), or
+after `--timeout` minutes (20), and never needs a polling loop.
+Never write one: a loop that does not end holds the run until its time limit.
 
 ## 7. Hand it over
 
