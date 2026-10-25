@@ -38,6 +38,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
@@ -630,6 +631,7 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const comeForward = useComeForward();
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
   const read = () => api.members(organisation.id);
@@ -647,6 +649,7 @@ function JoinRequestAnswer({
     } catch (error) {
       setFailed(refusalFor(error, 'roleId', t('membersScreen.actionFailed')));
       setBusy(false);
+      comeForward();
       return;
     }
 
