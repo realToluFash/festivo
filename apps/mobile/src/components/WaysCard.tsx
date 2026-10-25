@@ -6,7 +6,7 @@ import {
   type ProviderSignInAttempt,
 } from '@soirely/api-client';
 import { proveWith, providerRows, remainingWay, type ProviderRow } from '@soirely/domain';
-import { useEffect, useState } from 'react';
+import { type Ref, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -21,7 +21,8 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { ConfirmItsYou } from './ConfirmItsYou.tsx';
 import { Notice } from './Notice.tsx';
-import { Text } from './Text.tsx';
+import { type StepClosed, stepClosed, useFocusBack } from './Screen.tsx';
+import { Text, type TextHandle } from './Text.tsx';
 
 type Act = { action: 'link' | 'unlink'; provider: Provider };
 
@@ -32,7 +33,7 @@ type Said =
   | { kind: 'failed' };
 
 type Stage =
-  | { kind: 'list'; said: Said | null }
+  | { kind: 'list'; said: Said | null; closed?: StepClosed }
   | { kind: 'proving'; act: Act }
   | { kind: 'confirming'; act: Act; proof: string }
   | { kind: 'working' };
@@ -46,6 +47,7 @@ export function WaysCard({
   onChanged,
   onRefused,
   onSetPassword,
+  setPasswordClosed,
   onSignedOutHere,
   onCodeSpent,
 }: {
@@ -56,7 +58,10 @@ export function WaysCard({
   onChanged: () => Promise<void>;
   /** The server refused an unlink, so the rows on screen may be stale; a failed read leaves them. */
   onRefused: () => Promise<void>;
-  onSetPassword: () => void;
+  /** `from` names the Set a password tapped, for focus to go back to it. */
+  onSetPassword: (from: string) => void;
+  /** Setting a password from here was cancelled, back to the Set a password that opened it. */
+  setPasswordClosed?: StepClosed | undefined;
   onSignedOutHere: () => void;
   /** A two-factor or recovery code was accepted, so the two-factor card's count may be stale. */
   onCodeSpent: () => void;
@@ -64,7 +69,16 @@ export function WaysCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'list', said: null });
   const [twoFactorOn, setTwoFactorOn] = useState(false);
+  const [closedFor, setClosedFor] = useState(setPasswordClosed);
+  const title = useRef<TextHandle>(null);
+  const opener = useFocusBack(stage.kind === 'list' ? stage.closed : undefined, title);
   const frame = cardFrame(kind);
+
+  if (closedFor !== setPasswordClosed) {
+    setClosedFor(setPasswordClosed);
+    if (setPasswordClosed != null)
+      setStage({ kind: 'list', said: null, closed: setPasswordClosed });
+  }
   const rows = providerRows(hasPassword, providers);
 
   useEffect(() => {
@@ -107,6 +121,7 @@ export function WaysCard({
           error instanceof ProviderCancelled
             ? null
             : { kind: 'providerFailed', provider: act.provider },
+        ...(error instanceof ProviderCancelled && { closed: stepClosed(openerOf(act)) }),
       });
 
       return;
@@ -161,7 +176,9 @@ export function WaysCard({
           twoFactorOn={twoFactorOn}
           onProved={(proof) => void proceed(stage.act, proof)}
           onCodeSpent={onCodeSpent}
-          onCancel={() => setStage({ kind: 'list', said: null })}
+          onCancel={() =>
+            setStage({ kind: 'list', said: null, closed: stepClosed(openerOf(stage.act)) })
+          }
         />
       </View>
     );
@@ -175,7 +192,9 @@ export function WaysCard({
           hasPassword={hasPassword}
           providers={providers}
           onUnlink={() => void unlink(stage.act.provider, stage.proof)}
-          onKeep={() => setStage({ kind: 'list', said: null })}
+          onKeep={() =>
+            setStage({ kind: 'list', said: null, closed: stepClosed(openerOf(stage.act)) })
+          }
         />
       </View>
     );
@@ -183,7 +202,12 @@ export function WaysCard({
 
   return (
     <View style={frame}>
-      <Text size={tokens.typeTitleSection.size} weight="bold" accessibilityRole="header">
+      <Text
+        ref={title}
+        size={tokens.typeTitleSection.size}
+        weight="bold"
+        accessibilityRole="header"
+      >
         {t('waysCard.title')}
       </Text>
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
@@ -205,8 +229,9 @@ export function WaysCard({
           </View>
           {!hasPassword && (
             <SecondaryButton
+              ref={opener('setPassword')}
               label={t('waysCard.setPassword')}
-              onPress={onSetPassword}
+              onPress={() => onSetPassword('setPassword')}
               testID="ways.password.set"
             />
           )}
@@ -219,7 +244,8 @@ export function WaysCard({
             busy={stage.kind === 'working'}
             onLink={() => begin({ action: 'link', provider: row.provider })}
             onUnlink={() => begin({ action: 'unlink', provider: row.provider })}
-            onSetPassword={onSetPassword}
+            onSetPassword={() => onSetPassword(`setPassword.${row.provider}`)}
+            opener={opener}
           />
         ))}
       </View>
@@ -233,12 +259,14 @@ function Row({
   onLink,
   onUnlink,
   onSetPassword,
+  opener,
 }: {
   row: ProviderRow;
   busy: boolean;
   onLink: () => void;
   onUnlink: () => void;
   onSetPassword: () => void;
+  opener: (key: string) => Ref<View>;
 }) {
   const { t } = useTranslation();
   const name = PROVIDER_NAMES[row.provider];
@@ -258,6 +286,7 @@ function Row({
 
       {row.canLink && (
         <SecondaryButton
+          ref={opener(`link.${row.provider}`)}
           label={t('waysCard.link', { provider: name })}
           onPress={onLink}
           off={busy}
@@ -267,6 +296,7 @@ function Row({
 
       {row.canUnlink && (
         <SecondaryButton
+          ref={opener(`unlink.${row.provider}`)}
           label={t('waysCard.unlink')}
           accessibilityLabel={t('waysCard.unlinkLabel', { provider: name })}
           onPress={onUnlink}
@@ -279,6 +309,7 @@ function Row({
         <View style={styles.last}>
           <Text size={tokens.typeBodyPhone.size}>{t('waysCard.last', { provider: name })}</Text>
           <SecondaryButton
+            ref={opener(`setPassword.${row.provider}`)}
             label={t('waysCard.setPassword')}
             onPress={onSetPassword}
             testID={`ways.${row.provider}.setPassword`}
@@ -343,6 +374,7 @@ function SaidNotice({ said }: { said: Said }) {
             : t('waysCard.unlinkedNext')
         }
         answer={said}
+        takesFocus
       />
     );
   }
@@ -358,6 +390,7 @@ function SaidNotice({ said }: { said: Said }) {
           other: PROVIDER_NAMES[said.provider === 'google' ? 'apple' : 'google'],
         })}
         answer={said}
+        takesFocus
       />
     );
   }
@@ -372,6 +405,7 @@ function SaidNotice({ said }: { said: Said }) {
         title={t('waysCard.taken', { provider })}
         body={t('waysCard.takenNext', { provider })}
         answer={said}
+        takesFocus
       />
     );
   }
@@ -388,6 +422,7 @@ function SaidNotice({ said }: { said: Said }) {
             : t('waysCard.failedBody')
       }
       answer={said}
+      takesFocus
     />
   );
 }
@@ -488,6 +523,10 @@ function Confirming({
       <SecondaryButton label={t('waysCard.keep')} onPress={onKeep} testID="ways.keep" />
     </>
   );
+}
+
+function openerOf(act: Act): string {
+  return `${act.action}.${act.provider}`;
 }
 
 function refused(error: unknown, provider: Provider): Said {

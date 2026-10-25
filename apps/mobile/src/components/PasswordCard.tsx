@@ -24,13 +24,13 @@ import { CodeField, Field, focusChecked } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { PasswordRule } from './PasswordRule.tsx';
-import { useAboveKeyboard } from './Screen.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBack } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 const PROVIDER_NAMES: Record<string, string> = { google: 'Google', apple: 'Apple' };
 
 type Stage =
-  | { kind: 'atRest'; signedOut: number | null; added: string | null }
+  | { kind: 'atRest'; signedOut: number | null; added: string | null; closed?: StepClosed }
   | { kind: 'changing' }
   | { kind: 'setting' };
 
@@ -43,6 +43,7 @@ export function PasswordCard({
   onAdded,
   setting = false,
   onSetting,
+  onSetCancelled,
   onChanged,
 }: {
   email: string;
@@ -53,6 +54,8 @@ export function PasswordCard({
   /** Opened from elsewhere too: the ways-to-sign-in card offers Set a password for the last way in. */
   setting?: boolean;
   onSetting?: (on: boolean) => void;
+  /** Setting a password opened from elsewhere was cancelled, so focus goes back to what opened it. */
+  onSetCancelled?: () => void;
   /** A change signs out every other device, so a list of them is now out of date. */
   onChanged?: () => void;
 }) {
@@ -62,6 +65,7 @@ export function PasswordCard({
     setStage(next);
     onSetting?.(next.kind === 'setting');
   };
+  const opener = useFocusBack(stage.kind === 'atRest' ? stage.closed : undefined);
   const frame = cardFrame(kind);
   const first = providers[0]?.provider;
   const provider = first == null ? '' : (PROVIDER_NAMES[first] ?? first);
@@ -76,7 +80,16 @@ export function PasswordCard({
               await onAdded();
               open({ kind: 'atRest', signedOut: null, added: provider });
             }}
-            onCancel={() => open({ kind: 'atRest', signedOut: null, added: null })}
+            onCancel={() => {
+              if (stage.kind === 'setting') {
+                open({ kind: 'atRest', signedOut: null, added: null, closed: stepClosed('set') });
+
+                return;
+              }
+
+              open({ kind: 'atRest', signedOut: null, added: null });
+              onSetCancelled?.();
+            }}
           />
         ) : (
           <>
@@ -85,6 +98,7 @@ export function PasswordCard({
               {t('passwordCard.setRest', { provider })}
             </Text>
             <SecondaryButton
+              ref={opener('set')}
               label={t('passwordCard.set')}
               onPress={() => open({ kind: 'setting' })}
               testID="password.set"
@@ -110,12 +124,14 @@ export function PasswordCard({
                   : t('passwordCard.done', { count: stage.signedOut ?? 0 })
               }
               answer={stage}
+              takesFocus
             />
           )}
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
             {t('passwordCard.intro')}
           </Text>
           <SecondaryButton
+            ref={opener('change')}
             label={t('passwordCard.change')}
             onPress={() => setStage({ kind: 'changing' })}
             testID="password.change"
@@ -128,7 +144,9 @@ export function PasswordCard({
             setStage({ kind: 'atRest', signedOut, added: null });
             onChanged?.();
           }}
-          onCancel={() => setStage({ kind: 'atRest', signedOut: null, added: null })}
+          onCancel={() =>
+            setStage({ kind: 'atRest', signedOut: null, added: null, closed: stepClosed('change') })
+          }
         />
       )}
     </View>
@@ -320,6 +338,7 @@ function Setting({
   const password = useRef('');
   // What Password remounts with after an expired code sends the card back to the code.
   const [kept, setKept] = useState('');
+  const [expired, setExpired] = useState<object | undefined>(undefined);
   const codeInput = useRef<TextInput>(null);
   const passwordInput = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
@@ -403,6 +422,7 @@ function Setting({
         code.current = '';
         setKept(password.current);
         setCodeRefusal(t('passwordCard.setCodeExpired'));
+        setExpired({});
         setPaused(null);
         setStep('code');
         return;
@@ -497,7 +517,11 @@ function Setting({
         {t('passwordCard.setCodeIntro', { email })}
       </Text>
       <View {...aboveKeyboard} style={styles.group}>
-        <Field label={t('passwordCard.setCodeLabel')} error={codeError}>
+        <Field
+          label={t('passwordCard.setCodeLabel')}
+          error={codeError}
+          errorAnswer={codeChecks.errors.code == null ? expired : undefined}
+        >
           <CodeField
             ref={codeInput}
             wrong={codeError != null}
@@ -505,6 +529,7 @@ function Setting({
             onChangeText={(text) => {
               code.current = text;
               setCodeRefusal(null);
+              setExpired(undefined);
               codeChecks.edited('code', text);
             }}
             onBlur={() => codeChecks.left('code', code.current)}

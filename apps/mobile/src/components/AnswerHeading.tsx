@@ -8,7 +8,7 @@ export function AnswerHeading({
   answer,
   ref,
   ...text
-}: Omit<TextProps, 'ref'> & { answer: unknown; ref?: RefObject<TextHandle | null> }) {
+}: Omit<TextProps, 'ref'> & { answer: unknown; ref?: RefObject<TextHandle | null> | undefined }) {
   const { read } = useFocusOnAnswer<TextHandle>(answer, ref);
 
   return <Text ref={read} accessibilityRole="header" {...text} />;
