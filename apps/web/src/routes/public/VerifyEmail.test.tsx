@@ -243,6 +243,21 @@ describe('verifying an email address', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
   });
 
+  it('stays signed in and says so when signing out cannot reach Soirely', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    answering({});
+
+    open();
+
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    button.focus();
+    fireEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
+
   it('opens already counting down from a send it did not make, such as the registration email', async () => {
     const seen = answering({ 'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 57 }) });
 

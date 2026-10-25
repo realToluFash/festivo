@@ -58,7 +58,10 @@ interface Call {
   path: string;
 }
 
-function answering(answers: Record<string, () => Response>, calls: Call[] = []) {
+function answering(
+  answers: Record<string, () => Response | Promise<Response>>,
+  calls: Call[] = [],
+) {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
     const { pathname } = new URL(String(input));
     const method = init?.method ?? 'GET';
@@ -375,6 +378,65 @@ describe('the devices signed in to an account', () => {
       expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
     );
     expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('takes the notice away while a second press tries, and says it again when that fails too', async () => {
+    let fail: (() => void) | null = null;
+    let presses = 0;
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'POST /api/auth/logout': () => {
+        presses += 1;
+        if (presses === 1) throw new TypeError('Failed to fetch');
+
+        return new Promise<Response>((_, reject) => {
+          fail = () => reject(new TypeError('Failed to fetch'));
+        });
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('This device')).toBeDefined());
+    fireEvent.click(endOf('Chrome on macOS'));
+    const first = await screen.findByRole('alert');
+    scrolled.mockClear();
+
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() => expect(fail).not.toBeNull());
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fail!();
+
+    const second = await screen.findByRole('alert');
+    expect(second.textContent).toMatch(/You are still signed in/);
+    expect(second).not.toBe(first);
+    expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+  });
+
+  it("keeps one answer per press, dropping another device's sign-out once this one's fails", async () => {
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      [`DELETE /api/auth/sessions/${ELSEWHERE}`]: () => new Response(null, { status: 204 }),
+      'POST /api/auth/logout': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+
+    openSecurity();
+
+    await waitFor(() => expect(screen.getByText('Chrome on Windows')).toBeDefined());
+    fireEvent.click(endOf('Chrome on Windows'));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign it out' }));
+    await waitFor(() => expect(screen.getByText('Chrome on Windows is signed out.')).toBeDefined());
+
+    fireEvent.click(endOf('Chrome on macOS'));
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert').textContent).toMatch(/You are still signed in/),
+    );
+    expect(screen.queryByText('Chrome on Windows is signed out.')).toBeNull();
   });
 
   it('signs out on the next press once Soirely answers', async () => {

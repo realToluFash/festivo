@@ -125,6 +125,8 @@ export function Security() {
 
   async function endHere(): Promise<void> {
     setEndFailed(false);
+    setEnded(null);
+    setEverywhereDone(null);
     await here.signOut();
   }
 
