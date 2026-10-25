@@ -38,6 +38,11 @@ export function shownAtMount(words: string | null, quietAtMount: boolean): strin
   return quietAtMount ? words : null;
 }
 
+/** What `before` is as a new tap's answer comes: the last answer's words were said for it, so this one's are said too, even in the same words. */
+export function shownBeforeAnswer(shown: string | null, newAnswer: boolean): string | null {
+  return newAnswer ? null : shown;
+}
+
 /** The words to say as a message goes from `before` to `now`, or null when there is nothing new to say. */
 export function newWords(before: string | null, now: string | null): string | null {
   if (now == null || now === before) return null;

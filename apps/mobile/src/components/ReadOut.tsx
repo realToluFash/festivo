@@ -1,7 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { AccessibilityInfo, Platform, View, type ViewProps } from 'react-native';
 
-import { howToReadOut, settleMs, shownAtMount, shownOnceSaid } from '../kit/readOut.ts';
+import {
+  howToReadOut,
+  settleMs,
+  shownAtMount,
+  shownBeforeAnswer,
+  shownOnceSaid,
+} from '../kit/readOut.ts';
 
 /** Hands words to the screen reader to say, without moving its focus; the returned function takes them back unsaid. */
 export function readOut(
@@ -31,20 +37,25 @@ export interface ReadOutOptions {
   interrupts?: boolean | undefined;
   /** Words already there as this mounts were not an answer to anything, so they are not said. */
   quietAtMount?: boolean | undefined;
+  /** The tap the words answer: a new one says them again, even in the same words. */
+  answer?: unknown;
 }
 
 /** Applies howToReadOut to a message as its words change. */
 export function useReadOut(
   words: string | null,
-  { afterTyping, interrupts = false, quietAtMount = false }: ReadOutOptions = {},
+  { afterTyping, interrupts = false, quietAtMount = false, answer }: ReadOutOptions = {},
 ): void {
   const shown = useRef(shownAtMount(words, quietAtMount));
+  const answered = useRef(answer);
   const unsaid = useRef<(() => void) | null>(null);
   const typing = afterTyping !== undefined;
 
   useEffect(() => {
     const reading = { os: Platform.OS, afterTyping: typing, interrupts };
-    const { shown: now, handOver, takeBack } = howToReadOut(shown.current, words, reading);
+    const before = shownBeforeAnswer(shown.current, !Object.is(answered.current, answer));
+    answered.current = answer;
+    const { shown: now, handOver, takeBack } = howToReadOut(before, words, reading);
     shown.current = now;
 
     if (takeBack) {
@@ -60,7 +71,7 @@ export function useReadOut(
         },
       });
     }
-  }, [words, afterTyping, typing, interrupts]);
+  }, [words, afterTyping, typing, interrupts, answer]);
 
   useEffect(() => () => unsaid.current?.(), []);
 }
@@ -69,10 +80,11 @@ export function useReadOut(
 export function ReadOut({
   words,
   interrupts,
+  answer,
   children,
   ...view
-}: ViewProps & { words: string } & Pick<ReadOutOptions, 'interrupts'>) {
-  useReadOut(words, { interrupts });
+}: ViewProps & { words: string } & Pick<ReadOutOptions, 'interrupts' | 'answer'>) {
+  useReadOut(words, { interrupts, answer });
 
   return <View {...view}>{children}</View>;
 }

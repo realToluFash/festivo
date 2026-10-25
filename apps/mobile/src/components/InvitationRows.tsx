@@ -83,7 +83,7 @@ function InvitationRow({
       {isWaiting(outcome) && (
         <View style={styles.answer}>
           {outcome?.kind === 'failed' && (
-            <Notice tone="broken" mark="✕" body={t('invitations.failed')} />
+            <Notice tone="broken" mark="✕" body={t('invitations.failed')} answers={outcome} />
           )}
           <View style={styles.buttons}>
             <PrimaryButton
@@ -111,7 +111,12 @@ function InvitationRow({
       {outcome?.kind === 'accepted' &&
         ('open' in after ? (
           <View style={styles.answer}>
-            <Notice tone="done" mark="✓" body={t('invitations.joined', { organisation, role })} />
+            <Notice
+              tone="done"
+              mark="✓"
+              body={t('invitations.joined', { organisation, role })}
+              answers={outcome}
+            />
             <PrimaryButton
               label={t('invitations.open', { organisation })}
               onPress={() => after.open(outcome.organisationId)}
@@ -124,11 +129,12 @@ function InvitationRow({
             mark="✓"
             title={t('invitations.joined', { organisation, role })}
             body={after.note(invitation.id)}
+            answers={outcome}
           />
         ))}
 
       {outcome?.kind === 'declined' && (
-        <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} />
+        <Notice tone="quiet" mark="–" body={t(keys.declined, { inviter })} answers={outcome} />
       )}
 
       {outcome?.kind === 'refused' && (
@@ -142,6 +148,7 @@ function InvitationRow({
             email: invitation.email,
             signedInAs: invitation.signedInAs ?? '',
           })}
+          answers={outcome}
         />
       )}
     </View>

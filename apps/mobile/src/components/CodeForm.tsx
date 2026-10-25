@@ -40,6 +40,7 @@ export function CodeForm({
   const { t } = useTranslation();
   const typed = useRef('');
   const verifying = status.kind === 'verifying';
+  const answer = 'opened' in status ? undefined : status;
 
   return (
     <View style={styles.form}>
@@ -49,6 +50,7 @@ export function CodeForm({
           mark="!"
           title={t(`${copy}.expiredTitle`)}
           body={t(`${copy}.expiredBody`)}
+          answers={answer}
         />
       )}
 
@@ -58,6 +60,7 @@ export function CodeForm({
           mark="!"
           title={t(`${copy}.exhaustedTitle`)}
           body={t(`${copy}.exhaustedBody`)}
+          answers={answer}
         />
       )}
 
@@ -67,6 +70,7 @@ export function CodeForm({
           mark={tokens.marks.broken.glyph}
           title={t(`${copy}.failedTitle`)}
           body={t(`${copy}.failedBody`)}
+          answers={answer}
         />
       )}
 

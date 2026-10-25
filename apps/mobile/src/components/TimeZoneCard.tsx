@@ -108,6 +108,7 @@ export function TimeZoneCard({
               tone="done"
               mark={tokens.marks.done.glyph}
               body={t('timeZone.saved', { zone: saved })}
+              answers={saved}
             />
           )}
           <SecondaryButton

@@ -97,6 +97,7 @@ export default function SignInRules() {
                 tone="broken"
                 mark={tokens.marks.broken.glyph}
                 body={t('signInRules.failedLoad')}
+                answers={load}
               />
               <SecondaryButton
                 label={t('signInRules.retry')}

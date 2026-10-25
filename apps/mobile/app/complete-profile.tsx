@@ -161,32 +161,33 @@ function Waiting({
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<object | null>(null);
 
   async function startOwn(): Promise<void> {
     if (busy) return;
 
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
 
     try {
       await api.withdrawJoinRequest();
       onWithdrawn();
     } catch {
       setBusy(false);
-      setFailed(true);
+      setFailed({});
     }
   }
 
   return (
     <View style={styles.form}>
-      {failed && (
+      {failed != null && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}
           title={t('completeProfile.failedTitle')}
           body={t('completeProfile.failedBody')}
           announce
+          answers={failed}
         />
       )}
       <Notice
@@ -221,7 +222,7 @@ function FoundOrganisation() {
   );
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<object | null>(null);
   const nameInput = useRef<TextInput>(null);
   const countryPicker = useRef<View>(null);
 
@@ -240,7 +241,7 @@ function FoundOrganisation() {
     }
 
     setSaving(true);
-    setFailed(false);
+    setFailed(null);
 
     try {
       await api.createOrganisation({
@@ -262,19 +263,20 @@ function FoundOrganisation() {
         return;
       }
 
-      setFailed(true);
+      setFailed({});
     }
   }
 
   return (
     <View style={styles.form}>
-      {failed && (
+      {failed != null && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}
           title={t('completeProfile.failedTitle')}
           body={t('completeProfile.failedBody')}
           announce
+          answers={failed}
         />
       )}
       <Field
@@ -345,7 +347,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
   const [phoneNumber, setPhoneNumber] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<object | null>(null);
   const nameInput = useRef<TextInput>(null);
   const organisationInput = useRef<TextInput>(null);
   const phoneInput = useRef<TextInput>(null);
@@ -441,7 +443,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
     }
 
     setSaving(true);
-    setFailed(false);
+    setFailed(null);
     setUnavailable(false);
 
     try {
@@ -483,18 +485,19 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
         return;
       }
 
-      setFailed(true);
+      setFailed({});
     }
   }
 
   return (
     <View style={styles.form}>
-      {failed && (
+      {failed != null && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}
           title={t('completeProfile.failedTitle')}
           body={t('completeProfile.failedBody')}
+          answers={failed}
         />
       )}
 

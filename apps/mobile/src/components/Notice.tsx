@@ -19,6 +19,7 @@ export function Notice({
   action,
   heading = false,
   announce = false,
+  answers,
   wordsRef,
 }: {
   tone: NoticeTone;
@@ -33,10 +34,17 @@ export function Notice({
   heading?: boolean;
   /** The notice appears in answer to something the person did, so a screen reader reads it out. */
   announce?: boolean;
+  /** What a tap set for this notice to answer it: the notice is read out as it appears, and again with each new answer, without changing what a screen reader reads on it. */
+  answers?: unknown;
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
   wordsRef?: Ref<View> | undefined;
 }) {
-  useReadOut(announce ? [title, body, detail].filter((line) => line != null).join('\n') : null);
+  useReadOut(
+    announce || answers !== undefined
+      ? [title, body, detail].filter((line) => line != null).join('\n')
+      : null,
+    { answer: answers },
+  );
   const surface = {
     quiet: styles.quiet,
     attention: styles.attention,

@@ -130,7 +130,7 @@ export default function LostTwoFactor() {
   }
   if (view.kind === 'nobody') return <Nobody supportAddress={view.supportAddress} />;
   if (view.kind === 'replaced') return <Replaced onStartAgain={() => void startAgain()} />;
-  if (view.kind === 'failed') return <Failed onRetry={reload} />;
+  if (view.kind === 'failed') return <Failed failure={view} onRetry={reload} />;
 
   return (
     <Request
@@ -248,6 +248,7 @@ function Start({
               ? t('lostTwoFactor.limitedBodyLater')
               : t('lostTwoFactor.limitedBody', { when: limitedUntil })
           }
+          answers={limitedUntil}
         />
       )}
       <View style={styles.steps}>
@@ -307,7 +308,7 @@ function Nobody({ supportAddress }: { supportAddress: string }) {
   );
 }
 
-function Failed({ onRetry }: { onRetry: () => void }) {
+function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
   const { t } = useTranslation();
 
   return (
@@ -317,6 +318,7 @@ function Failed({ onRetry }: { onRetry: () => void }) {
         mark={tokens.marks.broken.glyph}
         title={t('lostTwoFactor.failedTitle')}
         body={t('lostTwoFactor.failedBody')}
+        answers={failure}
       />
       <SecondaryButton
         label={t('lostTwoFactor.retry')}
@@ -535,7 +537,9 @@ function Codes({
   const inputs = { emailCode: useRef<TextInput>(null), phoneCode: useRef<TextInput>(null) };
   const [errors, setErrors] = useState<Partial<Record<RecoveryField, string>>>({});
   const [asking, setAsking] = useState(false);
-  const [failed, setFailed] = useState(false);
+  // New with each tap that fails, or that finds the codes spent, so the same words are read out again.
+  const [failed, setFailed] = useState<object | null>(null);
+  const [foundSpent, setFoundSpent] = useState<object | null>(null);
   const [textingFailed, setTextingFailed] = useState(false);
   const [cooldown, setCooldown] = useState(codes?.cooldownSeconds ?? 0);
   const lastRoute = useRef(codes?.route ?? null);
@@ -599,7 +603,7 @@ function Codes({
     }
 
     setAsking(true);
-    setFailed(false);
+    setFailed(null);
 
     try {
       onState(
@@ -638,16 +642,18 @@ function Codes({
           refusal.is('recovery_request_proved'))
       ) {
         onState(await api.recoveryState(recovery).catch(() => state));
+        setFoundSpent({});
         return;
       }
 
-      setFailed(true);
+      setFailed({});
     }
   }
 
   async function resend(): Promise<void> {
     try {
       const next = await api.resendRecoveryCodes(recovery);
+      setFoundSpent(null);
       typed.current = { emailCode: '', phoneCode: '' };
       inputs.emailCode.current?.clear();
       inputs.phoneCode.current?.clear();
@@ -669,7 +675,7 @@ function Codes({
       const seconds = retryAfter(refusal);
 
       if (seconds != null) setCooldown(seconds);
-      else setFailed(true);
+      else setFailed({});
     }
   }
 
@@ -728,14 +734,16 @@ function Codes({
                   })
                 : t('lostTwoFactor.expiredBodyEmailOnly')
           }
+          answers={foundSpent ?? undefined}
         />
       )}
-      {failed && (
+      {failed != null && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}
           title={t('lostTwoFactor.failedTitle')}
           body={t('lostTwoFactor.failedBody')}
+          answers={failed}
         />
       )}
 

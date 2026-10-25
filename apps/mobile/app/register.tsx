@@ -182,6 +182,7 @@ function Form({
           mark="!"
           title={t('register.limitedTitle')}
           body={t('register.limitedBody', { time: status.retryAt })}
+          answers={status}
         />
       )}
 
@@ -191,6 +192,7 @@ function Form({
           mark={tokens.marks.broken.glyph}
           title={t('register.failedTitle')}
           body={t('register.failedBody')}
+          answers={status}
         />
       )}
 

@@ -108,6 +108,7 @@ export function PasswordCard({
                   ? t('passwordCard.added', { provider: stage.added })
                   : t('passwordCard.done', { count: stage.signedOut ?? 0 })
               }
+              answers={stage}
             />
           )}
           <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
@@ -204,6 +205,7 @@ function Changing({
           mark="!"
           title={t('passwordCard.pausedTitle')}
           body={refusal.message}
+          answers={refusal}
         />
       )}
       {refusal?.field === 'failed' && (
@@ -212,6 +214,7 @@ function Changing({
           mark={tokens.marks.broken.glyph}
           title={t('passwordCard.failedTitle')}
           body={refusal.message}
+          answers={refusal}
         />
       )}
 
@@ -301,9 +304,9 @@ function Setting({
   const [step, setStep] = useState<'code' | 'password'>('code');
   const stepUp = useRef('');
   const [codeRefusal, setCodeRefusal] = useState<string | null>(null);
-  const [paused, setPaused] = useState<string | null>(null);
+  const [paused, setPaused] = useState<{ message: string } | null>(null);
   const [cooldown, setCooldown] = useState(0);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<object | null>(null);
   const [busy, setBusy] = useState(false);
   const [lengthMet, setLengthMet] = useState(false);
   const [passwordRefusal, setPasswordRefusal] = useState<string | null>(null);
@@ -331,13 +334,13 @@ function Setting({
   );
 
   async function send(): Promise<void> {
-    setFailed(false);
+    setFailed(null);
 
     try {
       setCooldown(await api.startSettingPassword());
     } catch (error) {
       const seconds = retryAfter(error);
-      if (seconds == null) setFailed(true);
+      if (seconds == null) setFailed({});
       else setCooldown(seconds);
     }
   }
@@ -367,7 +370,7 @@ function Setting({
     } catch (error) {
       const refused = setCodeRefusalFrom(error, t, dateLocale());
       setCodeRefusal(refused.refusal);
-      setPaused(refused.paused);
+      setPaused(refused.paused == null ? null : { message: refused.paused });
     } finally {
       setBusy(false);
     }
@@ -466,14 +469,21 @@ function Setting({
     <>
       <Title text={t('passwordCard.setCodeTitle')} />
       {paused != null && (
-        <Notice tone="attention" mark="!" title={t('passwordCard.pausedTitle')} body={paused} />
+        <Notice
+          tone="attention"
+          mark="!"
+          title={t('passwordCard.pausedTitle')}
+          body={paused.message}
+          answers={paused}
+        />
       )}
-      {failed && (
+      {failed != null && (
         <Notice
           tone="broken"
           mark={tokens.marks.broken.glyph}
           title={t('passwordCard.failedTitle')}
           body={t('passwordCard.setSendFailed')}
+          answers={failed}
         />
       )}
       <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>

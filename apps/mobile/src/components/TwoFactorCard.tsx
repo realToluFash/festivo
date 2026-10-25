@@ -51,7 +51,7 @@ export function TwoFactorCard({
   const { t } = useTranslation();
   const [stage, setStage] = useState<Stage>({ kind: 'loading' });
   const [attempt, setAttempt] = useState(0);
-  const [refusedBy, setRefusedBy] = useState<string | null>(null);
+  const [refusedBy, setRefusedBy] = useState<{ organisation: string } | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -115,6 +115,7 @@ export function TwoFactorCard({
             mark={tokens.marks.broken.glyph}
             title={t('twoFactorCard.failedTitle')}
             body={t('twoFactorCard.failedBody')}
+            answers={stage}
           />
           <SecondaryButton
             label={t('twoFactorCard.retry')}
@@ -130,7 +131,9 @@ export function TwoFactorCard({
           onTurnOn={() => void turnOn()}
           refusedBy={refusedBy}
           onTurnOff={() =>
-            keptBy == null ? setStage({ kind: 'turningOff' }) : setRefusedBy(keptBy)
+            keptBy == null
+              ? setStage({ kind: 'turningOff' })
+              : setRefusedBy({ organisation: keptBy })
           }
           onNewCodes={() => setStage({ kind: 'newCodes' })}
         />
@@ -157,7 +160,7 @@ export function TwoFactorCard({
           email={email}
           onDone={reload}
           onKept={(organisation) => {
-            setRefusedBy(organisation);
+            setRefusedBy({ organisation });
             reload();
           }}
         />
@@ -186,7 +189,7 @@ function AtRest({
   onNewCodes,
 }: {
   status: TwoFactorStatus;
-  refusedBy: string | null;
+  refusedBy: { organisation: string } | null;
   onTurnOn: () => void;
   onTurnOff: () => void;
   onNewCodes: () => void;
@@ -254,7 +257,8 @@ function AtRest({
             <Notice
               tone="attention"
               mark="!"
-              body={t('twoFactorCard.keptByRule', { organisation: refusedBy })}
+              body={t('twoFactorCard.keptByRule', { organisation: refusedBy.organisation })}
+              answers={refusedBy}
             />
           )}
         </>

@@ -159,6 +159,7 @@ export function SecondFactorStep({
                   ? t('twoFactor.pausedBody', { time: status.time })
                   : `${t('twoFactor.pausedBody', { time: status.time })} ${pausedNote}`
               }
+              answers={status}
             />
             <Footnote
               question={t('twoFactor.notYou')}
@@ -176,6 +177,7 @@ export function SecondFactorStep({
             mark={tokens.marks.broken.glyph}
             title={t('signIn.failedTitle')}
             body={t('signIn.failedBody')}
+            answers={status}
           />
         )}
 
