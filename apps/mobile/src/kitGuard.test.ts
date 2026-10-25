@@ -408,6 +408,17 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
+describe('a way back in Two-factor authentication is off while its request runs (sc-12537)', () => {
+  it('on Cancel, Keep it on and Keep current codes', () => {
+    const text = readFileSync(join('src', 'components', 'TwoFactorCard.tsx'), 'utf8');
+    const off = selfClosing('QuietButton', text)
+      .filter(({ markup }) => /\boff=\{checking\}/u.test(markup))
+      .map(({ markup }) => propValue(markup, 'testID'));
+
+    expect(off).toEqual(['"twoFactor.cancel"', '"twoFactor.keepItOn"', '"twoFactor.keepCodes"']);
+  });
+});
+
 describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
