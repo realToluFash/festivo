@@ -40,7 +40,7 @@ export function OrganisationSwitcher({
   const count = waitingInvitations(waiting.invitations, waiting.outcomes);
 
   const [seen, setSeen] = useState(opened);
-  // The organisation the button names once the menu has closed, when focus goes back to it.
+  // The organisation the button names once the menu has closed, when focus goes back to it; forgotten once focus goes elsewhere, as when a form with unsaved changes asks first.
   const returnTo = useRef<string | null>(null);
   const invitationsHeading = useRef<HTMLParagraphElement>(null);
   const note = useRef<HTMLParagraphElement>(null);
@@ -57,6 +57,16 @@ export function OrganisationSwitcher({
     returnTo.current = null;
     focusStep(button.current);
   });
+
+  useEffect(() => {
+    const elsewhere = (event: FocusEvent): void => {
+      if (!container.current?.contains(event.target as Node)) returnTo.current = null;
+    };
+
+    document.addEventListener('focusin', elsewhere);
+
+    return () => document.removeEventListener('focusin', elsewhere);
+  }, []);
 
   function closeTo(organisationId: string): void {
     returnTo.current = organisationId;

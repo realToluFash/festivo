@@ -4,12 +4,14 @@ import { join } from 'node:path';
 import type { Membership } from '@soirely/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { RouterProvider, createMemoryRouter } from 'react-router';
+import { MemoryRouter, RouterProvider, createMemoryRouter } from 'react-router';
 
+import type { WaitingInvitations } from '../invitations.ts';
 import { __setSessionState, adoptAccount } from '../session.ts';
 import { membership } from '../test-memberships.ts';
 import { BREAKS_ANYWHERE } from '../test-wrapping.ts';
 import { routes } from '../routes/index.tsx';
+import { OrganisationSwitcher } from './OrganisationSwitcher.tsx';
 
 const IRE = membership({ id: 'org_1', name: 'Ìrè Events' });
 const OKAFOR = membership({
@@ -825,6 +827,36 @@ describe('where focus goes as the switcher closes (sc-11369)', () => {
 
     await waitFor(() => expect(document.activeElement).toBe(switcherButton('Okafor Family')));
     expect(screen.getByRole('status').textContent).toMatch(/Now working in Okafor Family\./);
+  });
+
+  it('forgets the organisation picked once focus goes elsewhere, as on Keep editing', () => {
+    const waiting = {
+      invitations: [],
+      outcomes: {},
+      firstJoined: null,
+      answer: vi.fn(),
+    } as unknown as WaitingInvitations;
+    const switcher = (current: Membership) => (
+      <MemoryRouter>
+        <OrganisationSwitcher
+          current={current}
+          organisations={[IRE, OKAFOR]}
+          waiting={waiting}
+          onSwitch={() => {}}
+          onCreate={() => {}}
+        />
+        <button type="button">Keep editing</button>
+      </MemoryRouter>
+    );
+    const { rerender } = render(switcher(IRE));
+
+    fireEvent.click(switcherButton());
+    fireEvent.click(screen.getByRole('option', { name: /Okafor Family/ }));
+    const keep = screen.getByRole('button', { name: 'Keep editing' });
+    keep.focus();
+    rerender(switcher(OKAFOR));
+
+    expect(document.activeElement).toBe(keep);
   });
 });
 
