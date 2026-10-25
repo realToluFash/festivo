@@ -317,7 +317,9 @@ def developer_items(stories, prs):
         story = by_id.get(pr["story_id"])
         if not story or story["done"]:
             continue
-        role = R.builder_of(story["labels"])
+        side = side_pr(story, pr)
+        own = linguists(story) and not side
+        role = "l10n" if own else R.builder_of(story["labels"])
         sha = pr["head_sha"][:7]
         verdict = latest_verdict(pr)
         covered = covers(verdict, pr["head_sha"], pr.get("carried"))
@@ -327,7 +329,6 @@ def developer_items(stories, prs):
             items.append(_item(f"{role}:{kind}:#{number}@{sha}", role, [role], kind,
                                reason, PULL_REQUEST, story, pr))
 
-        side = side_pr(story, pr)
         if pr["state"] == "merged":
             if story["state"] in R.MERGING and not linguists(story):
                 if covered and verdict["verdict"] == "pass":
@@ -338,6 +339,13 @@ def developer_items(stories, prs):
                 else:
                     add("merged-unpassed", f"PR #{number} merged at {sha}, "
                                            "which no lead pass covers: ask [lead]")
+            continue
+        if own:
+            # The linguist merges its own once green, with no lead pass to wait for.
+            if pr["state"] == "open" and pr["checks"] == "red":
+                add("checks-red", f"PR #{number} checks are red at {sha}")
+            elif pr["state"] == "open" and pr["checks"] == "green":
+                add("merge", f"PR #{number} is green at {sha}: merge it")
             continue
         if pr["state"] != "open" or not (side or story["state"] in BUILDING_PR):
             continue
@@ -365,7 +373,7 @@ def developer_items(stories, prs):
     return items
 
 
-TRANSLATING = ("To Do", "In Progress")
+TRANSLATING = ("To Do", "Ready For Dev", "In Progress")
 
 
 def covered(ticket):
@@ -429,8 +437,9 @@ def main_items(main_run):
                   PULL_REQUEST)]
 
 
-def heartbeat_items(stories, last_runs, busy_roles, now, epics=None):
-    """After a quiet spell, a sweeping role sweeps and any other role with a queue picks."""
+def heartbeat_items(stories, last_runs, busy_roles, now, epics=None, last_sweeps=None):
+    """After a quiet spell, a sweeping role sweeps and any other role with a queue picks. A
+    role with `sweepEvery` picks too, and sweeps once that long has passed since its last."""
     items = []
     for role, config in R.ROLES.items():
         if role in busy_roles:
@@ -439,8 +448,10 @@ def heartbeat_items(stories, last_runs, busy_roles, now, epics=None):
         last = last_runs.get(role)
         if last and now - last < period:
             continue
-        if config.get("sweeps"):
-            kind, reason = "sweep", f"your sweep, {config['heartbeat']} minutes on"
+        every = config.get("sweepEvery")
+        swept = (last_sweeps or {}).get(role)
+        if config.get("sweeps") and not (every and swept and now - swept < every * 60):
+            kind, reason = "sweep", f"your sweep, {every or config['heartbeat']} minutes on"
         elif queued(role, stories, epics):
             kind, reason = "pick", f"{len(queued(role, stories, epics))} stories in your queue"
         else:
@@ -473,12 +484,12 @@ def finishing_first(items, stories):
 
 def derive(stories, prs, main_run=None, last_runs=None, busy_roles=(), now=0,
            handled=frozenset(), moves=None, checks=None, epics=None, translated=None,
-           raised=()):
+           raised=(), last_sweeps=None):
     return finishing_first(
         inbox_items(stories, handled) + developer_items(stories, prs)
         + unblocked_items(stories, prs, translated, raised)
         + review_items(stories, prs) + held_items(stories)
         + queue_items(stories, moves, now, epics)
         + main_items(main_run)
-        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics)
+        + heartbeat_items(stories, last_runs or {}, set(busy_roles), now, epics, last_sweeps)
         + machine_items(checks), stories)
