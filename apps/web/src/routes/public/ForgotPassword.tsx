@@ -60,9 +60,11 @@ export function ForgotPassword() {
           <div className="notice-body">
             <p className="notice-title">{t('recovery.nothingTitle')}</p>
             <p>{t('recovery.nothingBody')}</p>
-            <button className="link-button" type="button" onClick={() => void send(status.email)}>
-              {t('recovery.sendAgain')}
-            </button>
+            <p className="notice-action">
+              <button className="link-button" type="button" onClick={() => void send(status.email)}>
+                {t('recovery.sendAgain')}
+              </button>
+            </p>
           </div>
         </div>
 
