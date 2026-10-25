@@ -22,6 +22,7 @@ import { Unreachable } from '../../components/Unreachable.tsx';
 import { useFormChecks } from '../../formChecks.ts';
 import { dropHeldInvitation, holdInvitation } from '../../heldInvitation.ts';
 import { dateLocale } from '../../i18n/index.ts';
+import { useLinkRetry } from '../../linkRetry.ts';
 import {
   adoptAccount,
   forgetSession,
@@ -75,6 +76,7 @@ function Invited({ token }: { token: string }) {
   const settled = session.status === 'signedIn' || session.status === 'signedOut';
 
   const [attempt, setAttempt] = useState(0);
+  const retry = useLinkRetry(view);
 
   useEffect(() => {
     dropHeldInvitation();
@@ -97,16 +99,19 @@ function Invited({ token }: { token: string }) {
     return () => {
       current = false;
     };
-  }, [settled, token, attempt]);
+  }, [settled, token, attempt, retry.attempt]);
 
-  if (session.status === 'unreachable' || view.kind === 'unreachable') return <Unreachable />;
+  if (session.status === 'unreachable') return <Unreachable signedIn={false} />;
+  if (view.kind === 'unreachable') {
+    return <Unreachable signedIn={session.status === 'signedIn'} retry={retry} />;
+  }
   if (view.kind === 'loading') return <Pending />;
 
   if (view.kind === 'notFound') {
     return (
       <AuthPage>
         <div className="auth-heading">
-          <h1>{t('join.notFoundTitle')}</h1>
+          <h1 tabIndex={-1}>{t('join.notFoundTitle')}</h1>
         </div>
         <div className="notice notice-quiet" role="status">
           <span className="mark mark-info" aria-hidden="true">
@@ -162,7 +167,7 @@ function JoinPage({
   return (
     <AuthPage>
       <div className="auth-heading">
-        <h1>{title(t, view, words.organisation)}</h1>
+        <h1 tabIndex={-1}>{title(t, view, words.organisation)}</h1>
       </div>
 
       <div className="join-org">

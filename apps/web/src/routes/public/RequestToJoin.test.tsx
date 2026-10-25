@@ -260,3 +260,37 @@ describe('a request link (sc-562)', () => {
     expect(sent[0]?.line).toBe('POST /api/invitations/link');
   });
 });
+
+describe('a request link that did not load (sc-11488)', () => {
+  it('reads the link again on Try again, and puts focus on the heading once it loads', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    let reachable = false;
+    const sent = answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return json(PREVIEW);
+      },
+    });
+    open();
+
+    expect(
+      await screen.findByText(
+        'Soirely is not answering, so nothing can load yet. Check your connection, then try again.',
+      ),
+    ).toBeDefined();
+    expect(screen.queryByText(/You are still signed in\./)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('status')));
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'Ask to join Ìrè Events',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(sent.map((one) => one.line)).toEqual([LINK, LINK, LINK]);
+  });
+});

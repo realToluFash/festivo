@@ -1,13 +1,23 @@
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import type { LinkRetry } from '../linkRetry.ts';
 import { retrySession, useSessionState } from '../session.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
 
-/** No sign-in heading or form: the person is still signed in, and those would say otherwise. */
-export function Unreachable() {
+/** No sign-in heading or form, which would tell somebody signed in otherwise. Without `retry`, Try again reads the account. */
+export function Unreachable({ signedIn = true, retry }: { signedIn?: boolean; retry?: LinkRetry }) {
   const { t } = useTranslation();
   const state = useSessionState();
-  const retrying = state.status === 'unreachable' && state.retrying;
+  const retrying = retry?.retrying ?? (state.status === 'unreachable' && state.retrying);
+  const notice = useRef<HTMLDivElement>(null);
+  const wasRetrying = useRef(false);
+  const linked = retry != null;
+
+  useEffect(() => {
+    if (linked && wasRetrying.current && !retrying) notice.current?.focus();
+    wasRetrying.current = retrying;
+  }, [linked, retrying]);
 
   return (
     <div className="auth">
@@ -18,13 +28,20 @@ export function Unreachable() {
 
       <main id="content" className="auth-main">
         <section className="auth-card">
-          <div className="notice notice-quiet" role="status">
+          <div
+            ref={notice}
+            className="notice notice-quiet"
+            role="status"
+            tabIndex={linked ? -1 : undefined}
+          >
             <span className="mark mark-info" aria-hidden="true">
               i
             </span>
             <div className="notice-body">
               <h1 className="notice-heading">{t('session.unreachableTitle')}</h1>
-              <p>{t('session.unreachableBody')}</p>
+              <p>
+                {signedIn ? t('session.unreachableBody') : t('session.unreachableBodySignedOut')}
+              </p>
             </div>
           </div>
 
@@ -33,7 +50,7 @@ export function Unreachable() {
             type="button"
             disabled={retrying}
             aria-busy={retrying}
-            onClick={() => void retrySession()}
+            onClick={() => void (retry == null ? retrySession() : retry.again())}
           >
             {retrying ? t('session.retrying') : t('error.retry')}
           </button>

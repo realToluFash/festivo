@@ -354,6 +354,7 @@
   "session": {
     "unreachableTitle": "Cannot reach Soirely",
     "unreachableBody": "You are still signed in. Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
+    "unreachableBodySignedOut": "Soirely is not answering, so nothing can load yet. Check your connection, then try again.",
     "retrying": "Trying again…"
   },
   "switcher": {
