@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, type RefObject, useState } from 'react';
+import { type ReactNode, type Ref, type RefObject, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   Pressable,
@@ -12,6 +12,7 @@ import {
 import { codeProps, FIELD_DEFAULTS, fieldText, nextPin } from '../kit/fields.ts';
 import { faced } from '../theme/fonts.ts';
 import { tokens } from '../theme/tokens.ts';
+import { fieldFocused, fieldLeft } from './focusedField.ts';
 import { ReadOut } from './ReadOut.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { Text } from './Text.tsx';
@@ -37,8 +38,21 @@ export function Field({
   help?: string | readonly string[] | undefined;
   children: ReactNode;
 }) {
+  const field = useRef<View>(null);
+  useEffect(() => {
+    const mounted = field.current;
+
+    return () => fieldLeft(mounted);
+  }, []);
+
+  // A control's focus and blur bubble up to here.
   return (
-    <View style={styles.field}>
+    <View
+      ref={field}
+      onFocus={() => fieldFocused(field.current)}
+      onBlur={() => fieldLeft(field.current)}
+      style={styles.field}
+    >
       <View style={styles.labelRow}>
         <Text size={tokens.typeButton.size} weight="semibold">
           {label}

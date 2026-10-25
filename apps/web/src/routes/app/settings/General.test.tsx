@@ -206,6 +206,7 @@ describe('Settings > General', () => {
     expect(screen.getByText("Enter the organisation's name.")).toBeDefined();
     expect(screen.getByText(/That does not look like an email address/)).toBeDefined();
     expect(screen.getByLabelText('Name').getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(screen.getByLabelText('Name'));
     expect(sent).toEqual([]);
   });
 
@@ -291,6 +292,7 @@ describe('Settings > General', () => {
 
     await waitFor(() => expect(screen.getByText('Elija una zona horaria.')).toBeDefined());
     expect(screen.getByLabelText('Time zone').getAttribute('aria-invalid')).toBe('true');
+    expect(document.activeElement).toBe(screen.getByLabelText('Time zone'));
   });
 
   it('shows the details as text, with no controls, to a role that cannot change them', () => {

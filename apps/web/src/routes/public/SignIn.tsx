@@ -13,6 +13,7 @@ import { type ProviderOnly, type TimedOut, providerOnlyBy } from '../../session.
 import { landAfterSignIn } from '../../signedIn.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { offButton } from '../../offButton.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 
 type Status =
@@ -85,11 +86,14 @@ export function SignIn() {
     if (!checks.passes(values)) return;
 
     setStatus({ kind: 'signingIn' });
+    const land = focusWhereSent();
 
     try {
       await landAfterSignIn(await api.signIn(values.email, values.password), navigate);
     } catch (error) {
-      setStatus(refusalFrom(error, values.email));
+      const refusal = refusalFrom(error, values.email);
+      setStatus(refusal);
+      if (refusal.kind === 'refused') land('password');
     }
   }
 
@@ -233,7 +237,7 @@ export function SignIn() {
                 autoCorrect="off"
                 spellCheck={false}
                 defaultValue={status.kind === 'timedOut' ? status.rule.email : undefined}
-                disabled={busy}
+                {...offField(busy)}
                 required
                 aria-invalid={checks.errors.email != null}
                 aria-describedby={checks.errors.email == null ? undefined : 'email-error'}

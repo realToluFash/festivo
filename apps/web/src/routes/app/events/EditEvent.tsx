@@ -23,6 +23,7 @@ import { api } from '../../../api.ts';
 import { useDialogKeys } from '../../../dialogFocus.ts';
 import { currentLocale } from '../../../i18n/index.ts';
 import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { can, useSession } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 import { currencyChoices, timeZoneChoices } from '../../../zoneAndCurrencyChoices.ts';
@@ -177,7 +178,7 @@ function DetailsForm({
   const [status, setStatus] = useState<Status>('editing');
   const [confirming, setConfirming] = useState<'latest' | null>(null);
   const [fetchingLatest, setFetchingLatest] = useState(false);
-  const focusNext = useRef<string | null>(null);
+  const focusNext = useRef<(() => void) | null>(null);
   const closing = useRef(false);
   const saving = useRef(false);
   const [notSaved, arriveAtNotSaved] = useStepFocus<HTMLParagraphElement>();
@@ -209,9 +210,7 @@ function DetailsForm({
   }, [dirty]);
 
   useEffect(() => {
-    if (focusNext.current == null) return;
-
-    document.getElementById(focusNext.current)?.focus();
+    focusNext.current?.();
     focusNext.current = null;
   }, [errors]);
 
@@ -225,10 +224,13 @@ function DetailsForm({
     setErrors((previous) => ({ ...previous, [field]: undefined }));
   }
 
-  function refuse(found: Errors): void {
+  function refuse(
+    found: Errors,
+    focus = (id: string) => document.getElementById(id)?.focus(),
+  ): void {
     const first = FIELDS.find((field) => found[field] != null);
 
-    focusNext.current = first == null ? null : inputFor(first, draft);
+    focusNext.current = first == null ? null : () => focus(inputFor(first, draft));
     setErrors(found);
   }
 
@@ -264,6 +266,7 @@ function DetailsForm({
 
     setStatus('saving');
     saving.current = true;
+    const land = focusWhereSent();
 
     try {
       await api.updateEvent(saved.id, changes, opened.tag);
@@ -279,7 +282,7 @@ function DetailsForm({
 
       if (error instanceof ApiError && error.is('event_currency_in_use')) {
         setStatus('editing');
-        refuse({ currency: t('eventEdit.currencyInUse') });
+        refuse({ currency: t('eventEdit.currencyInUse') }, land);
         return;
       }
 
@@ -289,7 +292,7 @@ function DetailsForm({
 
       if (Object.keys(fromServer).length > 0) {
         setStatus('editing');
-        refuse(fromServer);
+        refuse(fromServer, land);
         return;
       }
 
@@ -352,7 +355,7 @@ function DetailsForm({
               value={draft.name}
               autoComplete="off"
               spellCheck={false}
-              disabled={busy}
+              {...offField(busy)}
               aria-invalid={errors.name != null}
               aria-describedby={describedBy(
                 errors.name == null ? null : 'event-name-error',

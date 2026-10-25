@@ -1,6 +1,8 @@
 import { type RefObject, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { offField } from '../offField.ts';
+
 /** Hidden by default, and hidden again on submit and when the tab is left. Paste always works. */
 export function PasswordField({
   id,
@@ -56,7 +58,7 @@ export function PasswordField({
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}
-        disabled={disabled}
+        {...offField(disabled)}
         value={value}
         required
         aria-invalid={wrong}

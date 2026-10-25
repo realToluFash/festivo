@@ -43,6 +43,7 @@ import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
 import { offButton } from '../../../offButton.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
@@ -1682,6 +1683,7 @@ function Invite({
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (busy) return;
 
     const typed = String(new FormData(event.currentTarget).get('email') ?? '');
 
@@ -1690,6 +1692,7 @@ function Invite({
     setBusy(true);
     setRefused(null);
     setFailed(null);
+    const land = focusWhereSent();
 
     try {
       const invitation = await api.inviteMember(organisation.id, typed.trim(), role.id);
@@ -1703,7 +1706,7 @@ function Invite({
       ) {
         const violation = error.problem.violations?.find((one) => one.propertyPath === 'email');
         setRefused(violation?.message ?? error.problem.title);
-        document.getElementById('invite-email')?.focus();
+        land('invite-email');
       } else if (error instanceof ApiError && error.is('grant_not_held')) {
         setFailed(error.problem.title);
       } else {
@@ -1747,7 +1750,7 @@ function Invite({
             autoCapitalize="none"
             spellCheck={false}
             defaultValue={email}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={emailError != null}
             aria-describedby={emailError != null ? 'invite-email-error' : undefined}
             onBlur={(event) => checks.left('email', event.target.value)}

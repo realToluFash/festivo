@@ -31,7 +31,7 @@ function settings(organisation = IRE) {
   );
 }
 
-function answering(answers: Record<string, (body: unknown) => Response>) {
+function answering(answers: Record<string, (body: unknown) => Response | Promise<Response>>) {
   const sent: { method: string; path: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -171,6 +171,30 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
 
     expect(await screen.findByText('Add a domain your own address is at.')).toBeDefined();
+  });
+
+  it('keeps focus in Add a domain while it adds after Enter, and there once refused (sc-11588)', async () => {
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(listed([])),
+      'POST /api/orgs/org_1/domains': () => new Promise<Response>((resolve) => (answer = resolve)),
+    });
+    settings();
+
+    const field = await screen.findByLabelText<HTMLInputElement>('Add a domain');
+    fireEvent.change(field, { target: { value: 'okafor.family' } });
+    field.focus();
+    fireEvent.submit(field);
+
+    await waitFor(() => expect(field.readOnly).toBe(true));
+    expect(document.activeElement).toBe(field);
+    expect(field.hasAttribute('disabled')).toBe(false);
+
+    answer(refused('Add a domain your own address is at.', 'domain_not_yours'));
+
+    expect(await screen.findByText('Add a domain your own address is at.')).toBeDefined();
+    expect(document.activeElement).toBe(field);
+    expect(field.readOnly).toBe(false);
   });
 
   it('asks before removing a domain', async () => {

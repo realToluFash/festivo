@@ -7,6 +7,7 @@ import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
 import { useStepFocus } from '../../../stepFocus.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 
 /** How many rows the list shows at once; the search narrows the rest. */
 const SHOWN = 50;
@@ -156,6 +157,8 @@ function Choosing({
   }
 
   function onKey(event: KeyboardEvent<HTMLInputElement>): void {
+    if (saving) return;
+
     if (event.key === 'ArrowDown' && matches.length > 0) {
       event.preventDefault();
       setActive((index) => Math.min(index + 1, matches.length - 1));
@@ -187,6 +190,7 @@ function Choosing({
     }
 
     setSaving(true);
+    const land = focusWhereSent();
 
     try {
       await api.setTimezone(zone.id);
@@ -198,6 +202,7 @@ function Choosing({
           ? t('timeZone.refused')
           : t('timeZone.failed'),
       );
+      land('tz-input');
     }
   }
 
@@ -227,7 +232,7 @@ function Choosing({
           spellCheck={false}
           placeholder={t('timeZone.placeholder')}
           value={shown}
-          disabled={saving}
+          {...offField(saving)}
           onChange={(event) => {
             setTyped(event.target.value);
             setPickedId(null);

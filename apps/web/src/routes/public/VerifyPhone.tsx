@@ -21,6 +21,7 @@ import { Pending } from '../../components/Pending.tsx';
 import { refreshAccount } from '../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../stepFocus.ts';
 import { FieldError } from '../../components/FieldError.tsx';
+import { focusWhereSent } from '../../offField.ts';
 import { useResendCountdown } from '../../resendCountdown.ts';
 
 /** "Check your messages": the code texted to the primary phone, under email's rules and with its parts. */
@@ -121,6 +122,7 @@ export function VerifyPhone() {
             ? t('verifyPhone.codeBlankWhatsApp')
             : t('verifyPhone.codeBlank'),
       );
+      document.getElementById('code')?.focus();
       return;
     }
 
@@ -129,6 +131,7 @@ export function VerifyPhone() {
     setCodeError(null);
     setStatus({ kind: 'verifying' });
     setAnswered(false);
+    const landWhereSent = focusWhereSent();
 
     try {
       setMadePrimary((await api.verifyPhone(code, alternative)).primary);
@@ -141,6 +144,7 @@ export function VerifyPhone() {
         setAnswered(true);
         arriveAtBanner();
       }
+      if (refusal.kind === 'wrong') landWhereSent('code');
     }
   }
 

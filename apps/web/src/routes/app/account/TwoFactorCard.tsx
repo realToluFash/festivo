@@ -8,6 +8,7 @@ import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { Pending } from '../../../components/Pending.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
+import { focusWhereSent, offField } from '../../../offField.ts';
 import { refreshAccount, useSessionState } from '../../../session.ts';
 import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 
@@ -319,6 +320,7 @@ function SettingUp({
     }
 
     setChecking(true);
+    const land = focusWhereSent();
 
     try {
       onActivated(await api.activateTwoFactor(cleanCode(typed)));
@@ -331,6 +333,7 @@ function SettingUp({
             ? t('twoFactorCard.setupWrong')
             : t('twoFactorCard.failedBody'),
       );
+      land('setup-code');
     }
   }
 
@@ -367,7 +370,7 @@ function SettingUp({
                 autoCorrect="off"
                 spellCheck={false}
                 value={typed}
-                disabled={checking}
+                {...offField(checking)}
                 aria-invalid={error != null}
                 aria-describedby={error == null ? 'setup-note' : 'setup-code-error setup-note'}
                 onChange={(event) => {
@@ -498,6 +501,7 @@ function TurningOff({
     }
 
     setChecking(true);
+    const land = focusWhereSent();
 
     try {
       await api.disableTwoFactor(typed.trim());
@@ -518,6 +522,7 @@ function TurningOff({
               ? t('twoFactorCard.offWrong')
               : t('twoFactorCard.failedBody'),
       );
+      land('off-code');
     }
   }
 
@@ -539,7 +544,7 @@ function TurningOff({
             autoCorrect="off"
             spellCheck={false}
             value={typed}
-            disabled={checking}
+            {...offField(checking)}
             aria-invalid={error != null}
             aria-describedby={error == null ? 'off-note' : 'off-code-error off-note'}
             onChange={(event) => {
@@ -592,6 +597,7 @@ function ConfirmNewCodes({
     }
 
     setChecking(true);
+    const land = focusWhereSent();
 
     try {
       onMade(await api.newRecoveryCodes(typed.trim()));
@@ -606,6 +612,7 @@ function ConfirmNewCodes({
               ? t('twoFactorCard.offWrong')
               : t('twoFactorCard.failedBody'),
       );
+      land('new-codes-code');
     }
   }
 
@@ -635,7 +642,7 @@ function ConfirmNewCodes({
             autoCorrect="off"
             spellCheck={false}
             value={typed}
-            disabled={checking}
+            {...offField(checking)}
             aria-invalid={error != null}
             aria-describedby={error == null ? 'new-codes-note' : 'new-codes-error new-codes-note'}
             onChange={(event) => {

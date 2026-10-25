@@ -1,13 +1,14 @@
 import { ApiError, type Membership } from '@soirely/api-client';
 import { type NewOrganisationField, countryChoices, deviceCountry } from '@soirely/domain';
 import { type FormEvent, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 
 import { api } from '../../api.ts';
 import { FieldError } from '../../components/FieldError.tsx';
 import { InvitationRows } from '../../components/InvitationRows.tsx';
-import { useFocusAfterSave } from '../../formChecks.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
 import { currentLocale } from '../../i18n/index.ts';
 import type { WaitingInvitations } from '../../invitations.ts';
 import { joinOrganisation, useSession } from '../../session.ts';
@@ -75,9 +76,6 @@ function StartOrganisation({
   const sending = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const countryInput = useRef<HTMLSelectElement>(null);
-  const focusAfterSave = useFocusAfterSave<NewOrganisationField>(saving, (field) =>
-    (field === 'name' ? nameInput : countryInput).current?.focus(),
-  );
 
   function change(field: NewOrganisationField, value: string): void {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -109,6 +107,7 @@ function StartOrganisation({
     sending.current = true;
     setSaving(true);
     setFailed(false);
+    const land = focusWhereSent();
 
     try {
       const membership = await api.createOrganisation({
@@ -120,21 +119,21 @@ function StartOrganisation({
       joinOrganisation(membership);
       onStarted(membership);
     } catch (error) {
-      focusAfterSave('name');
       sending.current = false;
-      setSaving(false);
+      flushSync(() => setSaving(false));
 
       if (error instanceof ApiError && error.is('validation_failed')) {
         const fields = error.fieldErrors();
 
         // A refusal naming only a field this form lacks, such as the derived contact address.
         if (fields.name != null || fields.countryCode != null) {
+          land(fields.name == null ? 'start-organisation-country' : 'start-organisation-name');
           setErrors({ name: fields.name, countryCode: fields.countryCode } as Errors);
-          if (fields.name == null) focusAfterSave('countryCode');
           return;
         }
       }
 
+      land('start-organisation-name');
       setFailed(true);
     }
   }
@@ -171,7 +170,7 @@ function StartOrganisation({
           autoCorrect="off"
           spellCheck={false}
           value={values.name}
-          disabled={saving}
+          {...offField(saving)}
           aria-invalid={errors.name != null}
           aria-describedby={
             errors.name == null

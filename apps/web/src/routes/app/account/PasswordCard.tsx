@@ -16,6 +16,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { PasswordRule } from '../../../components/PasswordRule.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
+import { focusWhereSent } from '../../../offField.ts';
 import { useResendCountdown } from '../../../resendCountdown.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
@@ -228,12 +229,15 @@ function Setting({
     if (busy || !codeChecks.passes({ code })) return;
 
     setBusy(true);
+    const land = focusWhereSent();
 
     try {
       setStep({ kind: 'password', stepUp: await api.passPasswordCode(cleanCode(code)) });
       arriveAtStep();
     } catch (error) {
-      setStep({ kind: 'code', ...codeRefusal(error, t) });
+      const refused = codeRefusal(error, t);
+      setStep({ kind: 'code', ...refused });
+      if (refused.refusal != null) land('set-code');
     } finally {
       setBusy(false);
     }
@@ -250,6 +254,7 @@ function Setting({
     }
 
     setBusy(true);
+    const landWhereSent = focusWhereSent();
 
     try {
       await api.setPassword(password, step.stepUp);
@@ -278,6 +283,7 @@ function Setting({
           ? t('register.breached')
           : (violation?.message ?? t('passwordCard.failedBody')),
       );
+      landWhereSent('set-password');
     }
   }
 
@@ -508,6 +514,7 @@ function Changing({
 
     setSaving(true);
     setRefusal(null);
+    const land = focusWhereSent();
 
     try {
       const { signedOut } = await api.changePassword({
@@ -518,7 +525,11 @@ function Changing({
       onChanged(signedOut);
     } catch (error) {
       setSaving(false);
-      setRefusal(refusalFrom(error, t));
+
+      const refused = refusalFrom(error, t);
+      setRefusal(refused);
+      if (refused.field === 'currentPassword') land('current-password');
+      if (refused.field === 'newPassword') land('new-password');
     }
   }
 

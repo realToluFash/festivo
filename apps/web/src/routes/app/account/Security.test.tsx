@@ -1049,6 +1049,41 @@ describe('changing the password', () => {
     expect(screen.getByLabelText('Current password').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('keeps focus in New password while it saves after Enter, then moves it to a refused Current password (sc-11588)', async () => {
+    let answer: (response: Response) => void = () => {};
+    answering({
+      'GET /api/auth/sessions': () => json(SESSIONS),
+      'PATCH /api/auth/password': () => new Promise<Response>((resolve) => (answer = resolve)),
+    });
+
+    openSecurity();
+    fireEvent.click(screen.getByRole('button', { name: 'Change password' }));
+    fireEvent.change(screen.getByLabelText('Current password'), {
+      target: { value: 'not the password' },
+    });
+    const next = screen.getByLabelText<HTMLInputElement>('New password');
+    fireEvent.change(next, { target: { value: 'a brand new passphrase' } });
+    next.focus();
+    fireEvent.submit(next);
+
+    await waitFor(() => expect(next.readOnly).toBe(true));
+    expect(document.activeElement).toBe(next);
+
+    answer(
+      json(
+        { type: 'https://soirely.com/errors/invalid_credentials', title: 'No', status: 401 },
+        401,
+      ),
+    );
+
+    expect(
+      await screen.findByText(
+        'That is not your current password. Try again, or reset it by email.',
+      ),
+    ).toBeDefined();
+    expect(document.activeElement).toBe(screen.getByLabelText('Current password'));
+  });
+
   it('says the same password is already the password, under the new one', async () => {
     answering({
       'GET /api/auth/sessions': () => json(SESSIONS),

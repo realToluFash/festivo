@@ -10,6 +10,7 @@ import { PasswordField } from '../../components/PasswordField.tsx';
 import { PasswordRule } from '../../components/PasswordRule.tsx';
 import { ProviderSignIn } from '../../components/ProviderSignIn.tsx';
 import { offButton } from '../../offButton.ts';
+import { focusWhereSent, offField } from '../../offField.ts';
 import { dateLocale } from '../../i18n/index.ts';
 import { emailMessage, useFormChecks } from '../../formChecks.ts';
 import { holdRegistration } from '../../pendingRegistration.ts';
@@ -67,6 +68,7 @@ export function Register() {
 
   async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (busy) return;
 
     const typed = new FormData(event.currentTarget);
     const values = {
@@ -84,13 +86,21 @@ export function Register() {
     }
 
     setStatus({ kind: 'submitting' });
+    const land = focusWhereSent();
 
     try {
       // Every address gets this same answer, so where it goes next says nothing either.
       holdRegistration(await api.register(values.email.trim(), values.name.trim(), password));
       navigate('/verify-email');
     } catch (error) {
-      setStatus(refusalFrom(error));
+      const refusal = refusalFrom(error);
+      setStatus(refusal);
+
+      const refused = refusal.kind === 'refused' ? refusal.fields : {};
+      const first = (['name', 'email', 'password'] as const).find(
+        (field) => refused[field] != null,
+      );
+      if (first != null) land(first);
     }
   }
 
@@ -136,7 +146,7 @@ export function Register() {
             autoComplete="name"
             autoCorrect="off"
             spellCheck={false}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={fields.name != null}
             aria-describedby={fields.name ? 'name-error' : undefined}
             onBlur={(event) => checks.left('name', event.target.value)}
@@ -155,7 +165,7 @@ export function Register() {
             autoComplete="email"
             autoCorrect="off"
             spellCheck={false}
-            disabled={busy}
+            {...offField(busy)}
             aria-invalid={fields.email != null}
             aria-describedby={fields.email ? 'email-error' : undefined}
             onBlur={(event) => checks.left('email', event.target.value)}
