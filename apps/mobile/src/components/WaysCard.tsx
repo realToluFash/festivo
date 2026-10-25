@@ -299,9 +299,13 @@ function Row({
 function State({ on, word, address }: { on: boolean; word: string; address?: string | null }) {
   return (
     <View style={styles.state}>
-      <View style={on ? styles.markOn : styles.markOff}>
+      <View
+        style={on ? styles.markOn : styles.markOff}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         {on && (
-          <Text size={tokens.typePill.size} weight="bold" style={styles.markInk}>
+          <Text size={tokens.typePill.size} weight="bold" style={styles.markInk} accessible={false}>
             {tokens.marks.done.glyph}
           </Text>
         )}

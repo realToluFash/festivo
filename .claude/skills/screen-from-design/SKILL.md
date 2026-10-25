@@ -192,6 +192,17 @@ is held to what both can do:
   it.
 - **Type is selected by weight, not by naming a family.** `apps/mobile/src/theme/fonts.ts`
   maps a weight to a file, and a `fontFamily` in a style bypasses it.
+- **An app text field is uncontrolled.** Seed a `TextInput` with `defaultValue` and read
+  `onChangeText` into a ref; a `value` prop sends the field's text back into the native
+  field as the user types, and drops characters (seen by QA: a password field holding nine
+  of twenty-eight, `soirely-qa-tester`, "What Maestro will do to you"). A re-render alone
+  does not: a `defaultValue` that stays put is never resent, so a search may redraw its
+  list on every keystroke. `react-native-best-practices`, `references/js-uncontrolled-components.md`,
+  says either works on the New Architecture; on this app it does not. A mounted field's
+  `defaultValue` may change only to the text the field already shows: native rewrites a
+  mounted field when it changes and sends no change event, so the field shows one text
+  and its ref holds another (`apps/mobile/src/kit/fields.ts`). A field that still passes
+  `value` stays as it is until a story of its own converts it.
 - **Overlays render at the root**, never inside the card that opened them: a card that
   rounds its corners also clips them. Drive them from the screen's state at the top level.
 - **An Android `Modal` with a scrim covers the system bars itself.** A transparent `Modal`
@@ -221,16 +232,28 @@ is held to what both can do:
 - `autoCorrect={false}` and `spellCheck={false}` on names, codes, emails and search.
 - A `returnKeyType` and an `onSubmitEditing` — the return key always has a job.
 - Check `autoFocus`: a reference sets it on an input that was conditionally mounted.
-- A field whose text lives in a ref (uncontrolled, since a `value` prop drops characters)
-  is drawn again with that text as its `defaultValue`, from state set while the field is
-  off screen, or its ref is emptied in the handler that removes it. A button sends what
-  its field shows (sc-11175, sc-11253). A `defaultValue` that follows the ref while the
-  field is up gets rewritten into the native field (`kit/fields.ts`).
+- A field whose text lives in a ref (section 7) is drawn again with that text as its
+  `defaultValue`, from state set while the field is off screen, or its ref is emptied in
+  the handler that removes it. A button sends what its field shows (sc-11175, sc-11253).
+- Every `TextField`, `PasswordField` and `CodeField` takes its shown label as
+  `accessibilityLabel`, on the tag itself rather than through a spread. A `Field` label
+  beside it is not read with it, so TalkBack reads a bare "Edit box"; `kitGuard.test.ts`
+  holds the rule (sc-11297).
 
 Accessible as drawn: real `button`, `a`, `input` + `label`; `aria-label` on icon-only
 controls; focus always visible; **and anything designed around dragging needs a
 click-click path** — pick, then place — because dragging is not an accessible interaction
 on its own.
+
+A mark, or a name's initials in a tile beside the name, next to words that say the same
+thing is hidden from screen readers. On the web that is `aria-hidden="true"`. On the app it
+is `accessibilityElementsHidden` and `importantForAccessibility="no-hide-descendants"` on
+the view holding the mark, never `"no"` on a view with text inside it, because Android
+hides only that view and still reads the text. Its `Text` also carries
+`accessible={false}`, after any spread, because iOS still reports a hidden `Text` on some
+opens without it. A checkbox's or a chosen option's ✓ goes
+too, since its state is already read. A mark that is part of a control's name, such as
+**✓ Copied**, stays. (sc-10365, sc-10664, sc-10712)
 
 Screen-reader focus on mobile, which fails silently — no test and no review sees it, only
 a TalkBack or VoiceOver pass:
@@ -243,6 +266,14 @@ a TalkBack or VoiceOver pass:
   `SETTLED_MS` first, as `useBroughtIntoView` does. TalkBack drops a hover on a view not
   yet in its tree, and VoiceOver drops a focus asked for while a sheet slides away
   (sc-9950, sc-9382).
+- A `Text` hidden from screen readers also carries `accessible={false}`, after any spread,
+  however it is hidden. React Native's iOS paragraph gives up its items by `accessible`
+  alone (`RCTParagraphComponentView.mm:186`), so `accessibilityElementsHidden` on the
+  `Text`, or on a `View` around it, still lets VoiceOver report it on some opens — the
+  "LG" a tile read out (sc-10712). `kitGuard.test.ts` holds both shapes.
+- A label goes only on what a screen reader lands on: a `Pressable`, a `TextInput`, or a
+  `View` with `accessible`. VoiceOver never reads a label on a plain `View`, and TalkBack
+  makes it a stop of its own, read before the words inside (sc-11419).
 
 **Never verify in a browser unless asked.** Use `tsc --noEmit`, the affected suites, and a
 reading of the branch you did not change. Put the judgement in a **pure function with

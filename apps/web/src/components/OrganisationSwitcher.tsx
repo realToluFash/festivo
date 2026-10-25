@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { WaitingInvitations } from '../invitations.ts';
 import type { DomainOffer } from '../joinOffers.ts';
+import { offButton } from '../offButton.ts';
 import { InvitationRows } from './InvitationRows.tsx';
 
 export function OrganisationSwitcher({
@@ -224,7 +225,7 @@ function OfferCard({ offer, email }: { offer: DomainOffer; email: string }) {
               className="button button-primary"
               type="button"
               aria-busy={busy}
-              disabled={busy}
+              {...offButton(busy)}
               onClick={() => void ask()}
             >
               {t('domainJoining.ask')}

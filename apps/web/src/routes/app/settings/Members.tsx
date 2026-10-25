@@ -22,6 +22,7 @@ import {
   memberStanding,
   memberStatusWord,
   roleName,
+  withheldRoles,
 } from '@soirely/domain';
 import {
   type FormEvent,
@@ -40,6 +41,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { OwnerClaimBanner } from '../../../components/OwnerClaimBanner.tsx';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
+import { offButton } from '../../../offButton.ts';
 import { dateLocale, useShownLanguage } from '../../../i18n/index.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useStepFocus } from '../../../stepFocus.ts';
@@ -194,6 +196,7 @@ function MembersLoaded({
         member={member}
         list={list}
         roles={grantableRoles(roles, organisation)}
+        withheld={withheldRoles(roles, organisation)}
         manages={manages}
         caller={list.members.find((one) => one.self)?.user.id ?? null}
         onChanged={onChange}
@@ -517,7 +520,12 @@ function InvitationRow({
           {t(`membersScreen.invitationState.${invitation.status}`)}
         </span>
         {manages && invitation.status === 'pending' && (
-          <button type="button" className="button" disabled={busy} onClick={() => void revoke()}>
+          <button
+            type="button"
+            className="button"
+            {...offButton(busy)}
+            onClick={() => void revoke()}
+          >
             {t('membersScreen.revoke')}
           </button>
         )}
@@ -547,6 +555,7 @@ function MemberDetail({
   member,
   list,
   roles,
+  withheld,
   manages,
   caller,
   onChanged,
@@ -557,6 +566,7 @@ function MemberDetail({
   member: OrganisationMember;
   list: MembersList;
   roles: OrganisationRole[];
+  withheld: OrganisationRole[];
   manages: boolean;
   caller: string | null;
   onChanged: (list: MembersList) => void;
@@ -575,7 +585,11 @@ function MemberDetail({
   const name = useRef<HTMLHeadingElement>(null);
   const [removeTitle, arriveAtRemove] = useStepFocus();
   const callerOwns = organisation.role.seededAs === 'owner';
-  const standing = memberStanding(member, list.members, { owns: callerOwns, manages });
+  const standing = memberStanding(member, list.members, {
+    owns: callerOwns,
+    manages,
+    withholds: withheld,
+  });
   const waiting = member.status === 'pending_approval';
   const noRole = memberHeldNoRole(member);
   const onlyOwner = standing === 'suspendedOnlyOwner';
@@ -600,8 +614,13 @@ function MemberDetail({
     if (outcome != null) said.current?.focus();
   }, [outcome]);
 
+  const askOpened = useRef(false);
+
   useEffect(() => {
-    if (suspending === 'confirming') asking.current?.focus();
+    if (!askOpened.current) return;
+
+    askOpened.current = false;
+    asking.current?.focus();
   }, [suspending]);
 
   async function reload(): Promise<void> {
@@ -774,9 +793,7 @@ function MemberDetail({
         ) : standing !== 'manageable' ? (
           <>
             <p className="members-row-name">{roleName(t, member.role)}</p>
-            {standing === 'ownerOnly' && member.suspension == null && (
-              <p className="muted">{t('membersScreen.ownerOnly')}</p>
-            )}
+            {member.suspension == null && <FixedLine standing={standing} />}
           </>
         ) : (
           <RolePicker
@@ -854,7 +871,14 @@ function MemberDetail({
               <p className="muted">
                 {t('membersScreen.suspendBody', { organisation: organisation.name })}
               </p>
-              <button type="button" className="button" onClick={() => setSuspending('confirming')}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  askOpened.current = true;
+                  setSuspending('confirming');
+                }}
+              >
                 {t('membersScreen.suspendButton')}
               </button>
             </>
@@ -876,7 +900,7 @@ function MemberDetail({
                   type="button"
                   className="button button-dark"
                   aria-busy={suspending === 'suspending'}
-                  disabled={suspending === 'suspending'}
+                  {...offButton(suspending === 'suspending')}
                   onClick={() => void suspend()}
                 >
                   {t('membersScreen.suspendConfirm', { name: member.user.name })}
@@ -927,7 +951,7 @@ function MemberDetail({
                 type="button"
                 className="button button-danger"
                 aria-busy={removal === 'removing'}
-                disabled={removal === 'removing'}
+                {...offButton(removal === 'removing')}
                 onClick={() => (onlyOwner ? void remove() : confirmRemoving())}
               >
                 {t('membersScreen.removeButton', { organisation: organisation.name })}
@@ -953,7 +977,7 @@ function MemberDetail({
                   type="button"
                   className="button button-danger"
                   aria-busy={removal === 'removing'}
-                  disabled={removal === 'removing'}
+                  {...offButton(removal === 'removing')}
                   onClick={() => void remove()}
                 >
                   {t('membersScreen.removeConfirm', { name: member.user.name })}
@@ -1088,7 +1112,7 @@ function Suspension({
             type="button"
             className="button button-primary"
             aria-busy={restoring}
-            disabled={restoring}
+            {...offButton(restoring)}
             onClick={() => void restore()}
           >
             {t(byHand ? 'membersScreen.restoreAccess' : 'membersScreen.restore', named)}
@@ -1100,10 +1124,20 @@ function Suspension({
           )}
         </div>
       ) : (
-        standing === 'ownerOnly' && <p className="muted">{t('membersScreen.ownerOnly')}</p>
+        <FixedLine standing={standing} />
       )}
     </section>
   );
+}
+
+/** Why a manager can't change this member: an owner's role, or one holding what the viewer lacks (sc-11160). */
+function FixedLine({ standing }: { standing: MemberStanding }) {
+  const { t } = useTranslation();
+
+  if (standing === 'ownerOnly') return <p className="muted">{t('membersScreen.ownerOnly')}</p>;
+  if (standing === 'beyondGrant') return <p className="muted">{t('membersScreen.beyondGrant')}</p>;
+
+  return null;
 }
 
 /** Restore refused at the seat limit (sc-3575): the reason, the way through, and why suspending frees a seat. */
@@ -1319,7 +1353,7 @@ function JoinRequestAnswer({
             type="button"
             className="button button-danger"
             aria-busy={busy}
-            disabled={busy}
+            {...offButton(busy)}
             onClick={() => void answer()}
           >
             {t('membersScreen.awaiting.turnDownConfirm', { name })}
@@ -1362,7 +1396,8 @@ function JoinRequestAnswer({
           type="button"
           className="button button-primary"
           aria-busy={busy}
-          disabled={busy || role == null}
+          disabled={role == null}
+          {...offButton(busy)}
           onClick={() => void answer()}
         >
           {t('membersScreen.awaiting.approveAs', { role: role == null ? '' : roleName(t, role) })}
@@ -1475,8 +1510,8 @@ function RolePicker({
         <button
           type="button"
           className="button button-primary"
-          disabled={!changed || busy}
           aria-busy={busy}
+          {...offButton(!changed || busy)}
           onClick={() => void save()}
         >
           {changed

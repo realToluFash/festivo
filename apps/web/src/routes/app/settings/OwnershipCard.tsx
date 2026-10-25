@@ -13,6 +13,7 @@ import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
+import { offButton } from '../../../offButton.ts';
 import { refreshAccount } from '../../../session.ts';
 import { focusStep } from '../../../stepFocus.ts';
 
@@ -424,7 +425,7 @@ function Leave({
               type="button"
               className="button button-danger"
               aria-busy={busy}
-              disabled={busy}
+              {...offButton(busy)}
               onClick={() => void leave()}
             >
               {t('ownership.leave', { organisation: organisation.name })}

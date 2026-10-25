@@ -12,6 +12,7 @@ import { api } from '../api.ts';
 import { useDialogKeys } from '../dialogFocus.ts';
 import { useShownLanguage } from '../i18n/index.ts';
 import { useStepFocus } from '../stepFocus.ts';
+import { offButton } from '../offButton.ts';
 
 const MARKS = { attention: '!', waiting: '…', done: '✓', info: 'i' } as const;
 
@@ -428,7 +429,6 @@ function WithdrawConfirm({
   const { t } = useTranslation();
   const dialog = useRef<HTMLDivElement>(null);
   const keep = useRef<HTMLButtonElement>(null);
-  const unlessPending = (act: () => void) => () => !pending && act();
 
   useEffect(() => keep.current?.focus(), []);
 
@@ -449,8 +449,8 @@ function WithdrawConfirm({
           type="button"
           className="dialog-close"
           aria-label={t('ownerClaim.close')}
-          aria-disabled={pending}
-          onClick={unlessPending(onKeep)}
+          {...offButton(pending, { dim: false })}
+          onClick={onKeep}
         >
           ✕
         </button>
@@ -462,9 +462,9 @@ function WithdrawConfirm({
           <button
             type="button"
             className="button button-primary"
-            aria-disabled={pending}
+            {...offButton(pending, { dim: false })}
             aria-busy={pending}
-            onClick={unlessPending(onWithdraw)}
+            onClick={onWithdraw}
           >
             {pending ? t('ownerClaim.withdrawing') : t('ownerClaim.withdrawYes')}
           </button>
@@ -472,8 +472,8 @@ function WithdrawConfirm({
             ref={keep}
             type="button"
             className="button"
-            aria-disabled={pending}
-            onClick={unlessPending(onKeep)}
+            {...offButton(pending, { dim: false })}
+            onClick={onKeep}
           >
             {t('ownerClaim.withdrawNo')}
           </button>

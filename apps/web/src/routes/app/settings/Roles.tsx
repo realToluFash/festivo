@@ -43,6 +43,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { SettingsSections } from '../../../components/SettingsSections.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { offButton } from '../../../offButton.ts';
 import { can, useSession } from '../../../session.ts';
 import { focusStep, useStepFocus } from '../../../stepFocus.ts';
 import { Forbidden } from '../Forbidden.tsx';
@@ -594,7 +595,7 @@ function Editing({
               type="submit"
               className="button button-primary"
               title={saveLabel}
-              disabled={status === 'saving'}
+              {...offButton(status === 'saving')}
             >
               <span className="roles-button-label">{saveLabel}</span>
             </button>
@@ -847,8 +848,8 @@ function Removing({
         <button
           type="button"
           className="button button-dark"
-          disabled={status === 'removing'}
           title={removeLabel}
+          {...offButton(status === 'removing')}
           onClick={() => void remove()}
         >
           <span className="roles-button-label">{removeLabel}</span>

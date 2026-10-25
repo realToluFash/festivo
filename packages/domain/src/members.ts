@@ -64,19 +64,25 @@ export function historyLine(step: HistoryStep, member: string): { key: string; n
 
 /** What a member's page offers: sc-68's rules, read from the list the screen loaded, and checked again by the API. */
 export type MemberStanding =
-  'self' | 'onlyOwner' | 'suspendedOnlyOwner' | 'ownerOnly' | 'readOnly' | 'manageable';
+  | 'self'
+  | 'onlyOwner'
+  | 'suspendedOnlyOwner'
+  | 'ownerOnly'
+  | 'beyondGrant'
+  | 'readOnly'
+  | 'manageable';
 
 interface StandingMember {
   self: boolean;
   status: MemberState;
-  role: { seededAs: string | null };
+  role: { id: string; seededAs: string | null };
   suspension?: { onlyOwner: boolean } | null;
 }
 
 export function memberStanding(
   member: StandingMember,
   members: readonly StandingMember[],
-  caller: { owns: boolean; manages: boolean },
+  caller: { owns: boolean; manages: boolean; withholds: readonly { id: string }[] },
 ): MemberStanding {
   const owner = member.role.seededAs === 'owner';
   const activeOwners = members.filter(
@@ -90,6 +96,13 @@ export function memberStanding(
   // Decided 23 Oct (sc-564): nobody else could restore them, so members.manage may.
   if (owner && member.suspension?.onlyOwner === true) return 'suspendedOnlyOwner';
   if (owner && !caller.owns) return 'ownerOnly';
+  // sc-11160: the rule the role choices follow (sc-392). A role the loaded catalogue lacks falls to the picker and the API's answer.
+  if (
+    !caller.owns &&
+    member.status !== 'pending_approval' &&
+    caller.withholds.some((role) => role.id === member.role.id)
+  )
+    return 'beyondGrant';
 
   return 'manageable';
 }

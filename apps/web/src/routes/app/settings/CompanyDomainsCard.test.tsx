@@ -60,6 +60,12 @@ function listed(domains: { domain: string; stopped: boolean }[]) {
   return { domains, most: 5, ownAddress: 'folake@ire.events' };
 }
 
+async function removing(domain: string) {
+  fireEvent.click(await screen.findByRole('button', { name: `Remove ${domain}` }));
+  const confirm = screen.getAllByRole('button', { name: `Remove ${domain}` }).at(-1);
+  if (confirm != null) fireEvent.click(confirm);
+}
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -202,6 +208,92 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
     expect(screen.queryByLabelText('Add a domain')).toBeNull();
   });
 
+  it('forgets a failed add once the same add works (sc-11481)', async () => {
+    let tries = 0;
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(listed([])),
+      'POST /api/orgs/org_1/domains': () => {
+        tries += 1;
+        if (tries === 1) throw new TypeError('Failed to fetch');
+        return json(listed([{ domain: 'ire.events', stopped: false }]), 201);
+      },
+    });
+    settings();
+
+    const field = await screen.findByLabelText('Add a domain');
+    fireEvent.change(field, { target: { value: 'ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+    expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+    expect(await screen.findByText('ire.events added.')).toBeDefined();
+    expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+    expect(field.getAttribute('aria-invalid')).toBe('false');
+    expect(field.className).not.toContain('input-wrong');
+    expect((field as HTMLInputElement).value).toBe('');
+  });
+
+  it('brings Add a domain back clean after an add that failed, then filled the list (sc-11481)', async () => {
+    const four = [
+      { domain: 'ire.ng', stopped: false },
+      { domain: 'ire.co', stopped: false },
+      { domain: 'ire-catering.com', stopped: false },
+      { domain: 'ireweddings.com', stopped: false },
+    ];
+    let tries = 0;
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(listed(four)),
+      'POST /api/orgs/org_1/domains': () => {
+        tries += 1;
+        if (tries === 1) throw new TypeError('Failed to fetch');
+        return json(listed([...four, { domain: 'ire.events', stopped: false }]), 201);
+      },
+      'DELETE /api/orgs/org_1/domains/ire.ng': () =>
+        json(listed([...four.slice(1), { domain: 'ire.events', stopped: false }])),
+    });
+    settings();
+
+    fireEvent.change(await screen.findByLabelText('Add a domain'), {
+      target: { value: 'ire.events' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+    expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+    expect(
+      await screen.findByText(
+        'That is 5 domains, the most the list can hold. Remove one to add another.',
+      ),
+    ).toBeDefined();
+
+    await removing('ire.ng');
+
+    expect(await screen.findByText('ire.ng removed.')).toBeDefined();
+    const field = screen.getByLabelText('Add a domain');
+    expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+    expect(field.getAttribute('aria-invalid')).toBe('false');
+    expect((field as HTMLInputElement).value).toBe('');
+  });
+
+  it('leaves a failed add as it was after a removal that works (sc-11481)', async () => {
+    answering({
+      'GET /api/orgs/org_1/domains': () => json(listed([{ domain: 'ire.ng', stopped: false }])),
+      'DELETE /api/orgs/org_1/domains/ire.ng': () => json(listed([])),
+    });
+    settings();
+
+    const field = await screen.findByLabelText('Add a domain');
+    fireEvent.change(field, { target: { value: 'ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+    expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+
+    await removing('ire.ng');
+
+    expect(await screen.findByText('ire.ng removed.')).toBeDefined();
+    expect(screen.getByText('That did not work. Try again in a moment.')).toBeDefined();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect((field as HTMLInputElement).value).toBe('ire.events');
+  });
+
   describe('a removal that fails (sc-11339)', () => {
     const FIVE = [
       { domain: 'ire.events', stopped: false },
@@ -217,12 +309,6 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       scrolled.mockClear();
       Element.prototype.scrollIntoView = scrolled;
     });
-
-    async function removing(domain: string) {
-      fireEvent.click(await screen.findByRole('button', { name: `Remove ${domain}` }));
-      const confirm = screen.getAllByRole('button', { name: `Remove ${domain}` }).at(-1);
-      if (confirm != null) fireEvent.click(confirm);
-    }
 
     it('says so above the list when the list is full, and scrolls to it', async () => {
       answering({ 'GET /api/orgs/org_1/domains': () => json(listed(FIVE)) });
@@ -291,6 +377,24 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       const field = screen.getByLabelText('Add a domain');
       expect(field.getAttribute('aria-invalid')).toBe('false');
       expect(field.classList.contains('input-wrong')).toBe(false);
+    });
+
+    it('leaves a failed add as it was, beside its own failure (sc-11481)', async () => {
+      answering({ 'GET /api/orgs/org_1/domains': () => json(listed(FIVE.slice(0, 2))) });
+      settings();
+
+      const field = await screen.findByLabelText('Add a domain');
+      fireEvent.change(field, { target: { value: 'ire.events' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+      expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+
+      await removing('ire.ng');
+
+      await waitFor(() =>
+        expect(screen.getAllByText('That did not work. Try again in a moment.')).toHaveLength(2),
+      );
+      expect(field.getAttribute('aria-invalid')).toBe('true');
+      expect((field as HTMLInputElement).value).toBe('ire.events');
     });
 
     it('stays through an add the card refuses without sending, and goes with one it sends', async () => {

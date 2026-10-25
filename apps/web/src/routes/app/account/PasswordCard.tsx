@@ -2,7 +2,6 @@ import { ApiError, type LinkedProvider } from '@soirely/api-client';
 import {
   cleanCode,
   codeProblem,
-  formatCountdown,
   formatTimeOfDay,
   lockLiftsAt,
   meetsPasswordLength,
@@ -17,6 +16,7 @@ import { FieldError } from '../../../components/FieldError.tsx';
 import { PasswordField } from '../../../components/PasswordField.tsx';
 import { PasswordRule } from '../../../components/PasswordRule.tsx';
 import { useFormChecks } from '../../../formChecks.ts';
+import { useResendCountdown } from '../../../resendCountdown.ts';
 import { dateLocale } from '../../../i18n/index.ts';
 import { PROVIDER_NAMES } from '../../../providerSignIn.ts';
 import { focusStep, useStepFocus } from '../../../stepFocus.ts';
@@ -134,7 +134,10 @@ function Setting({
 }) {
   const { t } = useTranslation();
   const [step, setStep] = useState<SetStep>({ kind: 'code', refusal: null, paused: null });
-  const [cooldown, setCooldown] = useState(0);
+  const resending = useResendCountdown({
+    resend: 'passwordCard.resend',
+    resendIn: 'passwordCard.resendIn',
+  });
   const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState('');
@@ -159,16 +162,20 @@ function Setting({
     () => passwordInput.current?.focus(),
   );
 
-  async function send(): Promise<void> {
+  const send = (clicked: boolean): Promise<void> => resending.once(() => sendOnce(clicked));
+
+  async function sendOnce(clicked: boolean): Promise<void> {
     setFailed(false);
 
+    const countDown = clicked ? resending.countDown : resending.begin;
+
     try {
-      setCooldown(await api.startSettingPassword());
+      countDown(await api.startSettingPassword());
     } catch (error) {
       const seconds =
         error instanceof ApiError ? Number(error.response?.headers.get('Retry-After')) : NaN;
 
-      if (Number.isFinite(seconds) && seconds > 0) setCooldown(seconds);
+      if (Number.isFinite(seconds) && seconds > 0) countDown(seconds);
       else setFailed(true);
     }
   }
@@ -181,15 +188,8 @@ function Setting({
   useEffect(() => {
     if (sent.current) return;
     sent.current = true;
-    void send();
+    void send(false);
   });
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const tick = setTimeout(() => setCooldown((left) => left - 1), 1000);
-
-    return () => clearTimeout(tick);
-  }, [cooldown]);
 
   async function passCode(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -362,17 +362,18 @@ function Setting({
           <button
             className="button"
             type="button"
-            disabled={cooldown > 0}
-            onClick={() => void send()}
+            {...resending.button}
+            onClick={() => void send(true)}
           >
-            {cooldown > 0
-              ? t('passwordCard.resendIn', { time: formatCountdown(cooldown) })
-              : t('passwordCard.resend')}
+            {resending.label}
           </button>
           <button className="button" type="button" onClick={onCancel}>
             {t('passwordCard.cancel')}
           </button>
         </div>
+        <span className="visually-hidden" role="status">
+          {resending.status}
+        </span>
       </form>
     </>
   );

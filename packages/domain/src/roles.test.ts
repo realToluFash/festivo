@@ -16,6 +16,7 @@ import {
   whatTheySee,
   withLevel,
   withExtra,
+  withheldRoles,
   withoutRole,
 } from './roles.ts';
 
@@ -286,15 +287,35 @@ describe('the areas a caller cannot change', () => {
 });
 
 describe('the roles a caller may grant', () => {
-  const owner = { id: 'r1', seededAs: 'owner', permissions: ['members.manage', 'billing.manage'] };
+  const owner = {
+    id: 'r1',
+    seededAs: 'owner',
+    permissions: ['members.manage', 'billing.read', 'billing.manage'],
+  };
   const administrator = { id: 'r2', seededAs: 'administrator', permissions: ['members.manage'] };
-  const billing = { id: 'r6', seededAs: null, permissions: ['billing.manage'] };
+  const billing = { id: 'r6', seededAs: null, permissions: ['billing.read', 'billing.manage'] };
   const roles = [owner, administrator, billing];
 
   it('offers only what they hold, and Owner only to an owner', () => {
-    expect(grantableRoles(roles, { role: administrator, permissions: ['members.manage'] })).toEqual(
-      [administrator],
-    );
+    expect(
+      grantableRoles(roles, {
+        role: administrator,
+        permissions: ['members.manage', 'billing.read'],
+      }),
+    ).toEqual([administrator]);
     expect(grantableRoles(roles, { role: owner, permissions: owner.permissions })).toEqual(roles);
+  });
+
+  it('withholds what they may not grant, and nothing from an owner', () => {
+    expect(
+      withheldRoles(roles, {
+        role: administrator,
+        permissions: ['members.manage', 'billing.read'],
+      }),
+    ).toEqual([owner, billing]);
+    expect(withheldRoles(roles, { role: administrator, permissions: owner.permissions })).toEqual([
+      owner,
+    ]);
+    expect(withheldRoles(roles, { role: owner, permissions: owner.permissions })).toEqual([]);
   });
 });

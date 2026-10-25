@@ -20,6 +20,7 @@ use App\Entity\User;
 use App\Enum\ErrorCode;
 use App\Enum\MembershipChannel;
 use App\Enum\MembershipStatus;
+use App\Enum\Permission;
 use App\Enum\SeededRole;
 use App\Enum\Suspension;
 use App\Repository\MembershipRepository;
@@ -100,6 +101,64 @@ final class MemberActionsTest extends ApiTestCase
         self::assertSame(403, $this->statusCode(), Json\encode($body));
         self::assertSame(ErrorCode::GrantNotHeld->type(), $body['type'] ?? null);
         self::assertSame(SeededRole::Owner, $this->roleOf($this->owner));
+    }
+
+    #[Test]
+    public function anAdministratorMakesNobodyAnOwner(): void
+    {
+        $this->role(SeededRole::Administrator)->setPermissions(Permission::cases());
+        self::em()->flush();
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+
+        $body = $this->as($bisi, 'PATCH', $this->path('/members/' . $this->membershipOf($chidi)), ['roleId' => $this->roleId(SeededRole::Owner)]);
+
+        self::assertSame(403, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $body['type'] ?? null);
+        self::assertSame(SeededRole::Coordinator, $this->roleOf($chidi));
+        self::assertSame(0, $this->audited(MemberActions::ROLE_CHANGED));
+    }
+
+    #[Test]
+    public function nobodyChangesSuspendsOrRemovesAMemberWhoseRoleHoldsWhatTheyLack(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $this->financeFor($chidi);
+        $membership = $this->membershipOf($chidi);
+        $audited = $this->audited(MemberActions::ROLE_CHANGED);
+
+        $refusals = [
+            ['PATCH', '', ['roleId' => $this->roleId(SeededRole::Coordinator)]],
+            ['POST', '/suspend', null],
+            ['DELETE', '', null],
+        ];
+
+        foreach ($refusals as [$method, $action, $payload]) {
+            $body = $this->as($bisi, $method, $this->path('/members/' . $membership . $action), $payload);
+
+            self::assertSame(403, $this->statusCode(), $method . $action);
+            self::assertSame(ErrorCode::GrantNotHeld->type(), $body['type'] ?? null, Json\encode($body));
+        }
+        self::assertSame('Finance', $this->membership($chidi)->getRole()->getName());
+        self::assertSame(MembershipStatus::Active, $this->membership($chidi)->getStatus());
+        self::assertSame([$audited, 0, 0], [$this->audited(MemberActions::ROLE_CHANGED), $this->audited(MemberSuspension::SUSPENDED), $this->audited(MemberActions::REMOVED)]);
+    }
+
+    #[Test]
+    public function nobodyRestoresAMemberWhoseRoleHoldsWhatTheyLack(): void
+    {
+        $bisi = $this->member('bisi@ire.events', 'Bisi Adeyemi', SeededRole::Administrator);
+        $chidi = $this->member('chidi@ire.events', 'Chidi Okoro', SeededRole::Coordinator);
+        $this->financeFor($chidi);
+        $this->as($this->owner, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/suspend'));
+        self::assertSame(204, $this->statusCode());
+
+        $body = $this->as($bisi, 'POST', $this->path('/members/' . $this->membershipOf($chidi) . '/restore'));
+
+        self::assertSame(403, $this->statusCode(), Json\encode($body));
+        self::assertSame(ErrorCode::GrantNotHeld->type(), $body['type'] ?? null);
+        self::assertSame(MembershipStatus::Suspended, $this->membership($chidi)->getStatus());
     }
 
     #[Test]
@@ -538,6 +597,17 @@ final class MemberActionsTest extends ApiTestCase
         self::em()->flush();
 
         return $user;
+    }
+
+    /** Billing at Change, which only Owner holds in a new organisation, given by the owner as Settings > Roles and the member's page would. */
+    private function financeFor(User $member): void
+    {
+        $created = $this->as($this->owner, 'POST', $this->path('/roles'), ['name' => 'Finance', 'permissions' => ['billing.read', 'billing.manage']]);
+        self::assertSame(201, $this->statusCode(), Json\encode($created));
+        $finance = Type\shape(['id' => Type\string()], true)->coerce($created);
+
+        $this->as($this->owner, 'PATCH', $this->path('/members/' . $this->membershipOf($member)), ['roleId' => $finance['id']]);
+        self::assertSame(204, $this->statusCode());
     }
 
     private function role(SeededRole $seeded): Role

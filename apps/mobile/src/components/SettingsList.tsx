@@ -93,6 +93,7 @@ export function SettingsList({ kind, open }: { kind: LayoutKind; open: SettingsS
             muted
             accessibilityElementsHidden
             importantForAccessibility="no"
+            accessible={false}
           >
             ›
           </Text>

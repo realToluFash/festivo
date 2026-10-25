@@ -35,8 +35,17 @@ export function AuthHeading({
   return (
     <>
       {done && (
-        <View style={styles.doneMark}>
-          <Text size={tokens.typeTitlePage.size} weight="bold" style={styles.onAccent}>
+        <View
+          style={styles.doneMark}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <Text
+            size={tokens.typeTitlePage.size}
+            weight="bold"
+            style={styles.onAccent}
+            accessible={false}
+          >
             ✓
           </Text>
         </View>

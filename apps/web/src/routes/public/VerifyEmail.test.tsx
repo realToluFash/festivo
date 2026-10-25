@@ -210,14 +210,60 @@ describe('verifying an email address', () => {
     answering({ 'POST /api/auth/verify/resend': () => json({ cooldownSeconds: 42 }) });
 
     open();
-    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    const resend = screen.getByRole('button', { name: 'Send a new code' });
+    resend.focus();
+    fireEvent.click(resend);
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Send a new code in 0:42' })).toBeDefined(),
     );
-    expect(
-      screen.getByRole('button', { name: 'Send a new code in 0:42' }).hasAttribute('disabled'),
-    ).toBe(true);
+    expect(resend.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(resend);
+    expect(screen.getAllByRole('status').map(({ textContent }) => textContent)).toContain(
+      'Send a new code in 0:42',
+    );
+  });
+
+  it('sends nothing while it counts down, and keeps the button in reach', async () => {
+    const seen = answering({ 'POST /api/auth/verify/resend': () => json({ cooldownSeconds: 42 }) });
+
+    open();
+    fireEvent.click(screen.getByRole('button', { name: 'Send a new code' }));
+    const counting = await screen.findByRole('button', { name: 'Send a new code in 0:42' });
+    fireEvent.click(counting);
+
+    expect(seen.filter((call) => call === 'POST /api/auth/verify/resend')).toHaveLength(1);
+    expect(counting.hasAttribute('disabled')).toBe(false);
+  });
+
+  it('sends one new code while the first is unanswered, however often it is pressed', async () => {
+    const seen: string[] = [];
+    let answer: (response: Response) => void = () => undefined;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const line = `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`;
+      seen.push(line);
+      if (line !== 'POST /api/auth/verify/resend') throw new TypeError('Failed to fetch');
+
+      return new Promise<Response>((resolve) => {
+        answer = resolve;
+      });
+    });
+
+    open();
+    const resend = screen.getByRole('button', { name: 'Send a new code' });
+    fireEvent.click(resend);
+    await waitFor(() => expect(seen).toContain('POST /api/auth/verify/resend'));
+    fireEvent.click(resend);
+    fireEvent.keyDown(resend, { key: 'Enter' });
+    fireEvent.click(resend);
+
+    expect(seen.filter((call) => call === 'POST /api/auth/verify/resend')).toHaveLength(1);
+    expect(resend.getAttribute('aria-disabled')).toBe('false');
+
+    answer(json({ cooldownSeconds: 60 }));
+
+    expect(await screen.findByRole('button', { name: 'Send a new code in 1:00' })).toBeDefined();
+    expect(seen.filter((call) => call === 'POST /api/auth/verify/resend')).toHaveLength(1);
   });
 
   it('counts down from the time left when the resend was too soon', async () => {
@@ -245,6 +291,21 @@ describe('verifying an email address', () => {
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
   });
 
+  it('stays signed in and says so when signing out cannot reach Soirely', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    answering({});
+
+    open();
+
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    button.focus();
+    fireEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
+
   it('opens already counting down from a send it did not make, such as the registration email', async () => {
     const seen = answering({ 'GET /api/auth/verify/resend': () => json({ cooldownSeconds: 57 }) });
 
@@ -254,9 +315,12 @@ describe('verifying an email address', () => {
       expect(screen.getByRole('button', { name: 'Send a new code in 0:57' })).toBeDefined(),
     );
     expect(
-      screen.getByRole('button', { name: 'Send a new code in 0:57' }).hasAttribute('disabled'),
-    ).toBe(true);
+      screen.getByRole('button', { name: 'Send a new code in 0:57' }).getAttribute('aria-disabled'),
+    ).toBe('true');
     expect(seen).not.toContain('POST /api/auth/verify/resend');
+    expect(screen.queryAllByRole('status').map(({ textContent }) => textContent)).not.toContain(
+      'Send a new code in 0:57',
+    );
   });
 
   it('shows a verified account that it is verified, not a code to enter', () => {

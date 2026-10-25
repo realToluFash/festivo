@@ -88,6 +88,20 @@ describe('a few details', () => {
     expect(screen.getByText('Signed in as folake@ire.events.')).toBeDefined();
   });
 
+  it('stays signed in and says so when signing out cannot reach Soirely', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    answering({});
+    at('/complete-profile');
+
+    const button = screen.getByRole('button', { name: 'Sign out' });
+    button.focus();
+    fireEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
+    expect(document.activeElement).toBe(button);
+    expect(screen.queryByRole('heading', { name: 'Sign in' })).toBeNull();
+  });
+
   it('starts blank when the browser names no country, and refuses it blank before sending', () => {
     vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['es-419']);
     const sent = answering({});

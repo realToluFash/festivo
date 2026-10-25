@@ -428,6 +428,29 @@ describe('an invitation, signed in', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it('stays signed in as the other account, and says so, when switching cannot reach Soirely', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    signedIn('folake@ire.events');
+    answering({
+      [LINK]: () => json({ ...PREVIEW, forYou: false, signedInAs: 'folake@ire.events' }),
+      'POST /api/auth/logout': () => {
+        throw new TypeError('Failed to fetch');
+      },
+    });
+    open();
+
+    const button = await screen.findByRole('button', {
+      name: 'Sign out and use kemi.l@gmail.com',
+    });
+    button.focus();
+    fireEvent.click(button);
+
+    expect((await screen.findByRole('alert')).textContent).toMatch(/You are still signed in/);
+    expect(document.activeElement).toBe(button);
+    expect(screen.getByRole('link', { name: 'Stay signed in as folake@ire.events' })).toBeDefined();
+    expect(screen.queryByText('Cannot reach Soirely')).toBeNull();
+  });
+
   it('says whose it is when somebody else already accepted it, and offers no Open', async () => {
     signedIn('folake@ire.events');
     answering({
