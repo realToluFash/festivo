@@ -12,6 +12,7 @@ import {
   waitingInvitations,
 } from '@soirely/domain';
 import { type FormEvent, type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router';
 
@@ -410,7 +411,8 @@ function Details({
       await adoptAccount(saved.account);
       onSaved(saved.verificationNeeded, askToJoin != null);
     } catch (error) {
-      setSaving(false);
+      // Country and Code take focus only once they are on again.
+      flushSync(() => setSaving(false));
 
       if (error instanceof ApiError && error.is('join_offer_unavailable')) {
         // Taken off the list since the screen opened: what is offered now, and the fields if nothing is.
