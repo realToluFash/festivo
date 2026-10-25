@@ -1,10 +1,10 @@
 {
     "members.seats_in_use": "{count, plural, one {The only team seat on this organisation's plan is in use, so nothing has changed.} other {All # team seats on this organisation's plan are in use, so nothing has changed.}}",
-    "limits.tries": "Demasiados intentos. Inténtelo de nuevo {hour, plural, =1 {a la} other {a las}} {time}.",
-    "limits.wrong_codes": "Demasiados códigos incorrectos. Inténtelo de nuevo {hour, plural, =1 {a la} other {a las}} {time}.",
-    "limits.sign_in": "Demasiados intentos de inicio de sesión. Inténtelo de nuevo {hour, plural, =1 {a la} other {a las}} {time}.",
-    "limits.reset_requests": "Demasiadas solicitudes de restablecimiento. Inténtelo de nuevo {hour, plural, =1 {a la} other {a las}} {time}.",
-    "limits.join_requests": "Demasiadas solicitudes por ahora. Inténtelo de nuevo {hour, plural, =1 {a la} other {a las}} {time}.",
-    "limits.organisations": "Por ahora no se pueden crear más organizaciones. Inténtelo de nuevo {hour, plural, =1 {a la} other {a las}} {time}.",
-    "limits.sign_ups": "Demasiados registros desde esta red. Inténtelo de nuevo {hour, plural, =1 {a la} other {a las}} {time}."
+    "limits.tries": "Demasiados intentos. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.wrong_codes": "Demasiados códigos incorrectos. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.sign_in": "Demasiados intentos de inicio de sesión. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.reset_requests": "Demasiadas solicitudes de restablecimiento. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.join_requests": "Demasiadas solicitudes por ahora. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.organisations": "Por ahora no se pueden crear más organizaciones. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}.",
+    "limits.sign_ups": "Demasiados registros desde esta red. Inténtelo de nuevo {hour, plural, =1 {a la {time}} other {a las {time}}}."
 }

@@ -59,7 +59,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   lock-outs' «Inténtelo de nuevo a las {time}»), the refusal says it too.
 - **25 Oct 2026. The article before an API time** (sc-11332). The 01 hour is «la una», so the
   lock-outs (`messages+intl-icu:limits.*`) and `emails+intl-icu:time.dateAt` choose the article
-  from `{hour}` (0–23): `{hour, plural, =1 {a la} other {a las}} {time}`, «a la 01:05», «a las
+  from `{hour}` (0–23): `{hour, plural, =1 {a la {time}} other {a las {time}}}`, «a la 01:05», «a las
   00:05», «a las 13:05». Any new string that puts an article before a clock time takes the same
   form, or «la hora {time}» where no `{hour}` reaches it.
 - **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
