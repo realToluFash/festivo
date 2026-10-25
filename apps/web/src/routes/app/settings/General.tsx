@@ -12,6 +12,7 @@ import {
   timezoneLabel,
 } from '@soirely/domain';
 import { type FormEvent, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { type TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 
@@ -161,7 +162,7 @@ function Editable({
       if (error instanceof ApiError && error.is('validation_failed')) {
         const refused = error.fieldErrors() as Errors;
         setErrors(refused);
-        setStatus({ kind: 'editing' });
+        flushSync(() => setStatus({ kind: 'editing' }));
         focusFirst(refused, land);
         return;
       }
