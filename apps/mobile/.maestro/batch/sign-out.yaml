@@ -1,0 +1,23 @@
+# Signs whoever is signed in out, from Settings. Nobody signed in, it does nothing.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/
+- extendedWaitUntil:
+    visible: '{{t:any:settings.signedInAs}}|{{t:any:status.title}}'
+    timeout: 60000
+- runFlow:
+    when:
+      visible: '{{t:any:settings.signedInAs}}'
+    commands:
+      - openLink: ${METRO_URL}/--/settings
+      - scrollUntilVisible:
+          element:
+            id: 'settings.signOut'
+          direction: DOWN
+          timeout: 30000
+      - tapOn:
+          id: 'settings.signOut'
+      - extendedWaitUntil:
+          notVisible:
+            id: 'settings.signOut'
+          timeout: 30000

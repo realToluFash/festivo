@@ -1,0 +1,10 @@
+# Types into Organisation's Name and leaves without saving. Run before `organisation`, it
+# shows a check starts clean: the next one finds the saved name, not this.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- tapOn:
+    id: 'organisation.name'
+- eraseText: 120
+- inputText: 'Unsaved'
+- takeScreenshot: organisation-unsaved

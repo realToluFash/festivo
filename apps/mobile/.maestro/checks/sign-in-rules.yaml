@@ -1,0 +1,8 @@
+# Sign-in rules, opened by its link.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/sign-in-rules
+- extendedWaitUntil:
+    visible: '{{t:settings.signInRules}}'
+    timeout: 30000
+- takeScreenshot: sign-in-rules

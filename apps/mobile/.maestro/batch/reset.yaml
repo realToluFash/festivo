@@ -1,0 +1,17 @@
+# A check finds its screen as a person opening it would. `openLink` reaches a route
+# without remounting it, so the bundle is reloaded instead: every screen remounts, the
+# session is kept, and Expo Go is not relaunched.
+appId: host.exp.Exponent
+---
+- runScript:
+    file: helper.js
+    env:
+      ASK: /reload
+# Gone first, or the screen from before the reload passes the wait below.
+- extendedWaitUntil:
+    notVisible: '{{t:any:settings.signedInAs}}'
+    timeout: 10000
+    optional: true
+- extendedWaitUntil:
+    visible: '{{t:any:settings.signedInAs}}'
+    timeout: 60000

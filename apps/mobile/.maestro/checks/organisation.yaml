@@ -1,0 +1,9 @@
+# Organisation, with Name as it was saved, opened by its link.
+appId: host.exp.Exponent
+---
+- openLink: ${METRO_URL}/--/settings/organisation
+- extendedWaitUntil:
+    visible: '{{t:settings.organisation}}'
+    timeout: 30000
+- takeScreenshot: organisation
+- assertNotVisible: 'Unsaved'
