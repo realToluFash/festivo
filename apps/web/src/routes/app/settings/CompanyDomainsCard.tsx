@@ -18,7 +18,9 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [flash, setFlash] = useState<Flash>(null);
+  const [removeFailed, setRemoveFailed] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const removeFailure = useRef<HTMLDivElement>(null);
   const confirmHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -37,6 +39,10 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
   useEffect(() => {
     if (confirming != null) confirmHeading.current?.focus();
   }, [confirming]);
+
+  useEffect(() => {
+    if (removeFailed) removeFailure.current?.scrollIntoView({ block: 'nearest' });
+  }, [removeFailed]);
 
   if (list == null) {
     return failed ? (
@@ -68,6 +74,7 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
 
     setBusy(true);
     setFlash(null);
+    setRemoveFailed(false);
 
     try {
       const domain = normaliseDomain(typed);
@@ -90,12 +97,13 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
   async function remove(domain: string): Promise<void> {
     setBusy(true);
     setFlash(null);
+    setRemoveFailed(false);
 
     try {
       setList(await api.removeCompanyDomain(organisation.id, domain));
       setFlash({ kind: 'removed', domain });
     } catch {
-      setError(t('companyDomains.failed'));
+      setRemoveFailed(true);
     } finally {
       setConfirming(null);
       setBusy(false);
@@ -130,6 +138,15 @@ export function CompanyDomainsCard({ organisation }: { organisation: Membership 
                 : t('companyDomains.removedNext')}
             </p>
           </div>
+        </div>
+      )}
+
+      {removeFailed && (
+        <div ref={removeFailure} className="notice notice-broken" role="alert">
+          <span className="mark mark-broken" aria-hidden="true">
+            ✕
+          </span>
+          <p>{t('companyDomains.failed')}</p>
         </div>
       )}
 

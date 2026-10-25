@@ -87,7 +87,7 @@ describe('screen reader focus moves on both platforms', () => {
 });
 
 describe('a message is read out on both platforms', () => {
-  // A live region means nothing to VoiceOver, so a message marked with one alone is silent on iOS (sc-10955).
+  // VoiceOver has no live region, and Fabric flattens away a layout-only View along with its live region, so a message marked with one can be silent (sc-10955).
   it('is marked only in ReadOut.tsx', () => {
     const offenders = sources(['src', 'app'])
       .filter(({ path }) => !path.endsWith('/ReadOut.tsx'))
@@ -243,7 +243,7 @@ describe('a field that takes a recovery code gets the full keyboard', () => {
   });
 });
 
-describe('a refused submit leaves the keyboard as it was', () => {
+describe('a refused submit leaves the keyboard as it was, unless dropsKeysAfter says the name cannot fix it', () => {
   // sc-9471: a field disabled while saving lost its focus, so a server refusal closed the keyboard and a client one did not.
   const HELD_FORMS = ['CreateOrganisation.tsx', 'PasswordCard.tsx', 'TimeZoneCard.tsx'];
   const FIELDS = ['TextField', 'PasswordField', 'CodeField'];
@@ -272,6 +272,15 @@ describe('a refused submit leaves the keyboard as it was', () => {
         .filter(({ line }) => !line.includes('onSubmitEditing='))
         .map(({ at }) => at),
       'A refusal focuses through focusChecked or focusRefused: focus() skips a field Android left focused with the keys hidden.',
+    ).toEqual([]);
+    expect(
+      (form?.text ?? '')
+        .split('\n')
+        .map((line, index) => ({ line, at: `${file}:${index + 1}` }))
+        .filter(({ line }) => /Keyboard\.dismiss\(|\.current\?\.blur\(\)/u.test(line))
+        .filter(({ line }) => !line.includes('dropsKeysAfter('))
+        .map(({ at }) => at),
+      'Drop the keys only through dropsKeysAfter: sc-9442 is the one exception to sc-9471.',
     ).toEqual([]);
   });
 });

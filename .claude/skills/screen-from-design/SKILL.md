@@ -194,6 +194,12 @@ is held to what both can do:
   maps a weight to a file, and a `fontFamily` in a style bypasses it.
 - **Overlays render at the root**, never inside the card that opened them: a card that
   rounds its corners also clips them. Drive them from the screen's state at the top level.
+- **An Android `Modal` with a scrim covers the system bars itself.** A transparent `Modal`
+  that draws a scrim sets `statusBarTranslucent` and `navigationBarTranslucent`, or its
+  scrim stops at the status bar, the cutout and the navigation bar. With them its window no
+  longer resizes for the keys, so whatever rests low pads for them itself, and its frame
+  keeps clear of the bars by the safe-area insets. `Sheet.tsx` does all three; a new
+  overlay starts from it rather than from a bare `Modal`.
 - **Animate transform and opacity.** Both platforms do those cheaply and little else.
 - **Shadows differ by platform**, and every elevated surface also carries a 1px border —
   the shadow is a hint, never the structure.

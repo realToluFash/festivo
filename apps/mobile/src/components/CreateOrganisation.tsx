@@ -1,7 +1,7 @@
 import { type Membership } from '@soirely/api-client';
 import { type NewOrganisationField, deviceRegion } from '@soirely/domain';
 import { getCalendars, getLocales } from 'expo-localization';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import {
   type LayoutRectangle,
   Platform,
@@ -19,6 +19,7 @@ import { fieldKeptInSight, offsetToFocus, titleScrollsWhileTyping } from '../kit
 import {
   NEW_ORGANISATION_FIELDS,
   createOrganisation,
+  dropsKeysAfter,
   limitMessage,
   newOrganisationMessage,
 } from '../kit/organisationCreate.ts';
@@ -37,11 +38,13 @@ import { Text } from './Text.tsx';
 export function CreateOrganisation({
   open,
   email,
+  opener,
   onCreated,
   onCancel,
 }: {
   open: boolean;
   email: string;
+  opener: RefObject<View | null>;
   onCreated: (created: Membership) => void;
   onCancel: () => void;
 }) {
@@ -55,7 +58,12 @@ export function CreateOrganisation({
   const turned = { os: Platform.OS, phone, width, height, keysUp };
 
   return (
-    <Sheet open={open} onClose={onCancel} scrimLabel={t('createOrganisation.cancel')}>
+    <Sheet
+      open={open}
+      onClose={onCancel}
+      scrimLabel={t('createOrganisation.cancel')}
+      opener={opener}
+    >
       {open && (
         <Form
           email={email}
@@ -199,6 +207,7 @@ function Form({
     }
 
     setSaving(false);
+    if (dropsKeysAfter(outcome.kind, Platform.OS)) nameInput.current?.blur();
     if (outcome.kind === 'limited') setLimited(limitMessage(outcome.until, locale, t));
     if (outcome.kind === 'failed') setFailed(true);
     if (outcome.kind === 'refused') {

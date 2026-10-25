@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { __setSessionState, type Session } from '../../../session.ts';
@@ -58,6 +58,12 @@ function json(body: unknown, status = 200): Response {
 
 function listed(domains: { domain: string; stopped: boolean }[]) {
   return { domains, most: 5, ownAddress: 'folake@ire.events' };
+}
+
+async function removing(domain: string) {
+  fireEvent.click(await screen.findByRole('button', { name: `Remove ${domain}` }));
+  const confirm = screen.getAllByRole('button', { name: `Remove ${domain}` }).at(-1);
+  if (confirm != null) fireEvent.click(confirm);
 }
 
 afterEach(() => {
@@ -259,9 +265,7 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       ),
     ).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove ire.ng' }));
-    const confirm = screen.getAllByRole('button', { name: 'Remove ire.ng' }).at(-1);
-    if (confirm != null) fireEvent.click(confirm);
+    await removing('ire.ng');
 
     expect(await screen.findByText('ire.ng removed.')).toBeDefined();
     const field = screen.getByLabelText('Add a domain');
@@ -282,13 +286,118 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
     expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Remove ire.ng' }));
-    const confirm = screen.getAllByRole('button', { name: 'Remove ire.ng' }).at(-1);
-    if (confirm != null) fireEvent.click(confirm);
+    await removing('ire.ng');
 
     expect(await screen.findByText('ire.ng removed.')).toBeDefined();
     expect(screen.getByText('That did not work. Try again in a moment.')).toBeDefined();
     expect(field.getAttribute('aria-invalid')).toBe('true');
     expect((field as HTMLInputElement).value).toBe('ire.events');
+  });
+
+  describe('a removal that fails (sc-11339)', () => {
+    const FIVE = [
+      { domain: 'ire.events', stopped: false },
+      { domain: 'ire.ng', stopped: false },
+      { domain: 'ire.co', stopped: false },
+      { domain: 'ire-catering.com', stopped: false },
+      { domain: 'ireweddings.com', stopped: false },
+    ];
+
+    const scrolled = vi.fn();
+
+    beforeEach(() => {
+      scrolled.mockClear();
+      Element.prototype.scrollIntoView = scrolled;
+    });
+
+    it('says so above the list when the list is full, and scrolls to it', async () => {
+      answering({ 'GET /api/orgs/org_1/domains': () => json(listed(FIVE)) });
+      settings();
+
+      await removing('ireweddings.com');
+
+      const alert = await screen.findByText('That did not work. Try again in a moment.');
+      const notice = alert.closest('[role="alert"]');
+      expect(notice?.classList.contains('notice-broken')).toBe(true);
+      expect(screen.getByRole('list', { name: /domains/i }).previousElementSibling).toBe(notice);
+      expect(screen.getByRole('button', { name: 'Remove ireweddings.com' }).textContent).toBe(
+        'Remove',
+      );
+      expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+      expect(scrolled.mock.contexts).toEqual([notice]);
+    });
+
+    it('leaves the add field alone, and a removal that works takes it away', async () => {
+      let fails = true;
+      answering({
+        'GET /api/orgs/org_1/domains': () => json(listed(FIVE.slice(0, 2))),
+        'DELETE /api/orgs/org_1/domains/ire.ng': () => {
+          if (fails) throw new TypeError('Failed to fetch');
+          return json(listed(FIVE.slice(0, 1)));
+        },
+      });
+      settings();
+
+      await removing('ire.ng');
+
+      expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+      const field = screen.getByLabelText('Add a domain');
+      expect(field.getAttribute('aria-invalid')).toBe('false');
+      expect(field.classList.contains('input-wrong')).toBe(false);
+
+      fails = false;
+      await removing('ire.ng');
+
+      expect(await screen.findByText('ire.ng removed.')).toBeDefined();
+      expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+      expect(screen.getByLabelText('Add a domain').getAttribute('aria-invalid')).toBe('false');
+    });
+
+    it('leaves the hidden add field alone when the list is full, and it comes back clean', async () => {
+      let fails = true;
+      answering({
+        'GET /api/orgs/org_1/domains': () => json(listed(FIVE)),
+        'DELETE /api/orgs/org_1/domains/ire.ng': () => {
+          if (fails) throw new TypeError('Failed to fetch');
+          return json(listed(FIVE.filter(({ domain }) => domain !== 'ire.ng')));
+        },
+      });
+      settings();
+
+      await removing('ire.ng');
+
+      expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+      expect(screen.queryByLabelText('Add a domain')).toBeNull();
+
+      fails = false;
+      await removing('ire.ng');
+
+      expect(await screen.findByText('ire.ng removed.')).toBeDefined();
+      expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+      const field = screen.getByLabelText('Add a domain');
+      expect(field.getAttribute('aria-invalid')).toBe('false');
+      expect(field.classList.contains('input-wrong')).toBe(false);
+    });
+
+    it('stays through an add the card refuses without sending, and goes with one it sends', async () => {
+      answering({
+        'GET /api/orgs/org_1/domains': () => json(listed(FIVE.slice(0, 2))),
+        'POST /api/orgs/org_1/domains': () => json(listed(FIVE.slice(0, 3)), 201),
+      });
+      settings();
+
+      await removing('ire.ng');
+      expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+      expect(screen.getByText('Enter a domain, like ire.events.')).toBeDefined();
+      expect(screen.getByText('That did not work. Try again in a moment.')).toBeDefined();
+
+      fireEvent.change(screen.getByLabelText('Add a domain'), { target: { value: 'ire.co' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Add domain' }));
+
+      expect(await screen.findByText('ire.co added.')).toBeDefined();
+      expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+    });
   });
 });
