@@ -2,7 +2,12 @@ import { ApiError, type Membership } from '@soirely/api-client';
 import type { TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createOrganisation, limitMessage, newOrganisationMessage } from './organisationCreate.ts';
+import {
+  createOrganisation,
+  dropsKeysAfter,
+  limitMessage,
+  newOrganisationMessage,
+} from './organisationCreate.ts';
 
 const created: Membership = {
   id: 'org_9',
@@ -124,5 +129,18 @@ describe('the words before sending', () => {
       'createOrganisation.limitedTitle createOrganisation.limitedBody {"time":"14:35"}',
     );
     expect(limitMessage(null, 'en', words)).toBe('createOrganisation.limitedTitle');
+  });
+});
+
+describe('the keys after an answer the name cannot fix', () => {
+  it('drops the keys on iOS after the limit or a failure, which typing cannot fix', () => {
+    expect(dropsKeysAfter('limited', 'ios')).toBe(true);
+    expect(dropsKeysAfter('failed', 'ios')).toBe(true);
+  });
+
+  it('keeps them after a refusal of a field, and on Android after anything', () => {
+    expect(dropsKeysAfter('refused', 'ios')).toBe(false);
+    expect(dropsKeysAfter('limited', 'android')).toBe(false);
+    expect(dropsKeysAfter('failed', 'android')).toBe(false);
   });
 });

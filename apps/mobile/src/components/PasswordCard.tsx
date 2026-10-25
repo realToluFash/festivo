@@ -309,6 +309,8 @@ function Setting({
   const [passwordRefusal, setPasswordRefusal] = useState<string | null>(null);
   const code = useRef('');
   const password = useRef('');
+  // What Password remounts with after an expired code sends the card back to the code.
+  const [kept, setKept] = useState('');
   const codeInput = useRef<TextInput>(null);
   const passwordInput = useRef<TextInput>(null);
   const aboveKeyboard = useAboveKeyboard();
@@ -389,7 +391,10 @@ function Setting({
       setBusy(false);
 
       if (error instanceof ApiError && error.is('verification_code_expired')) {
+        code.current = '';
+        setKept(password.current);
         setCodeRefusal(t('passwordCard.setCodeExpired'));
+        setPaused(null);
         setStep('code');
         return;
       }
@@ -416,6 +421,7 @@ function Setting({
           <Field label={t('passwordCard.setNewLabel')} error={error}>
             <PasswordField
               ref={passwordInput}
+              defaultValue={kept}
               wrong={error != null}
               submitting={busy}
               autoComplete="new-password"
