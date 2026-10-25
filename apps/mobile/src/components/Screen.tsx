@@ -249,10 +249,16 @@ function bringIntoView(scroll: ScreenScrollView | null, line: View | null): void
   });
 }
 
-/** Brings the view wholly into sight once it mounts, unless it already is, then moves screen reader focus to it. */
-export function useBroughtIntoView(): RefObject<View | null> {
+export interface BroughtIntoView {
+  shown: RefObject<View | null>;
+  read: RefObject<View | null>;
+}
+
+/** Brings `shown` wholly into sight once it mounts, unless it already is, then moves screen reader focus to `read`. */
+export function useBroughtIntoView(): BroughtIntoView {
   const scroll = useContext(ScreenScroll);
   const ref = useRef<View>(null);
+  const read = useRef<View>(null);
 
   useEffect(() => {
     bringIntoView(scroll, ref.current);
@@ -260,13 +266,13 @@ export function useBroughtIntoView(): RefObject<View | null> {
     const focus = setTimeout(() => {
       // Content that shrinks around the line as it mounts can stop the first scroll short (sc-9382).
       bringIntoView(scroll, ref.current);
-      moveScreenReaderFocus(ref.current);
+      moveScreenReaderFocus(read.current);
     }, SETTLED_MS);
 
     return () => clearTimeout(focus);
   }, [scroll]);
 
-  return ref;
+  return { shown: ref, read };
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */
