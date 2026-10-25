@@ -234,8 +234,11 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       const notice = alert.closest('[role="alert"]');
       expect(notice?.classList.contains('notice-broken')).toBe(true);
       expect(screen.getByRole('list', { name: /domains/i }).previousElementSibling).toBe(notice);
-      expect(screen.getByRole('button', { name: 'Remove ireweddings.com' })).toBeDefined();
+      expect(screen.getByRole('button', { name: 'Remove ireweddings.com' }).textContent).toBe(
+        'Remove',
+      );
       expect(scrolled).toHaveBeenCalledWith({ block: 'nearest' });
+      expect(scrolled.mock.contexts).toEqual([notice]);
     });
 
     it('leaves the add field alone, and a removal that works takes it away', async () => {
@@ -262,6 +265,32 @@ describe('Settings > General > Company domain joining (sc-561)', () => {
       expect(await screen.findByText('ire.ng removed.')).toBeDefined();
       expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
       expect(screen.getByLabelText('Add a domain').getAttribute('aria-invalid')).toBe('false');
+    });
+
+    it('leaves the hidden add field alone when the list is full, and it comes back clean', async () => {
+      let fails = true;
+      answering({
+        'GET /api/orgs/org_1/domains': () => json(listed(FIVE)),
+        'DELETE /api/orgs/org_1/domains/ire.ng': () => {
+          if (fails) throw new TypeError('Failed to fetch');
+          return json(listed(FIVE.filter(({ domain }) => domain !== 'ire.ng')));
+        },
+      });
+      settings();
+
+      await removing('ire.ng');
+
+      expect(await screen.findByText('That did not work. Try again in a moment.')).toBeDefined();
+      expect(screen.queryByLabelText('Add a domain')).toBeNull();
+
+      fails = false;
+      await removing('ire.ng');
+
+      expect(await screen.findByText('ire.ng removed.')).toBeDefined();
+      expect(screen.queryByText('That did not work. Try again in a moment.')).toBeNull();
+      const field = screen.getByLabelText('Add a domain');
+      expect(field.getAttribute('aria-invalid')).toBe('false');
+      expect(field.classList.contains('input-wrong')).toBe(false);
     });
 
     it('stays through an add the card refuses without sending, and goes with one it sends', async () => {
