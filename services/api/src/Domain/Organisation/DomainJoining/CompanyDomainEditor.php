@@ -9,7 +9,7 @@ use App\Entity\Organisation;
 use App\Entity\OrganisationDomain;
 use App\Entity\User;
 use App\Enum\Actor;
-use App\Enum\ErrorCode;
+use App\Enum\DomainRefusal;
 use App\Http\Exception\ApiException;
 use App\Repository\OrganisationDomainRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -39,8 +39,8 @@ final readonly class CompanyDomainEditor
         if (null !== $refusal) {
             throw ApiException::validation([[
                 'propertyPath' => 'domain',
-                'message' => $refusal,
-                'code' => ErrorCode::ValidationFailed->value,
+                'message' => $this->message($refusal, $by, $domain),
+                'code' => $refusal->value,
             ]]);
         }
 
@@ -75,35 +75,32 @@ final readonly class CompanyDomainEditor
     }
 
     /** sc-63's two checks first, the ones the form makes too; then the server's. */
-    private function refusal(Organisation $organisation, User $by, string $domain): ?string
+    private function refusal(Organisation $organisation, User $by, string $domain): ?DomainRefusal
     {
-        // The example is the person's own domain, the one they can add.
-        $example = ['{example}' => JoinOfferFinder::domainFor($by) ?? 'example.com'];
-
         if ('' === $domain) {
-            return $this->translator->trans('domain_joining.domain_blank', $example);
+            return DomainRefusal::Blank;
         }
 
         if (!DomainNameNormaliser::isHostname($domain)) {
-            return $this->translator->trans('domain_joining.domain_invalid', $example);
+            return DomainRefusal::Invalid;
         }
 
         if (PublicMailDomains::includes($domain)) {
-            return $this->translator->trans('domain_joining.domain_public');
+            return DomainRefusal::Public;
         }
 
         $listed = $this->organisationDomainRepository->findForOrganisation($organisation);
 
         if (Iter\any($listed, static fn (OrganisationDomain $listing): bool => $listing->getDomain() === $domain)) {
-            return $this->translator->trans('domain_joining.domain_listed', ['{domain}' => $domain]);
+            return DomainRefusal::Listed;
         }
 
         if (JoinOfferFinder::domainFor($by) !== $domain) {
-            return $this->translator->trans('domain_joining.domain_not_yours');
+            return DomainRefusal::NotYours;
         }
 
         if (Iter\count($listed) >= self::MOST) {
-            return $this->translator->trans('domain_joining.domain_full', ['{count}' => (string) self::MOST]);
+            return DomainRefusal::Full;
         }
 
         $provedElsewhere = Iter\any(
@@ -111,6 +108,22 @@ final readonly class CompanyDomainEditor
             static fn (OrganisationDomain $listing): bool => null !== $listing->getProvedAt() && !$listing->getOrganisation()->getId()->equals($organisation->getId()),
         );
 
-        return $provedElsewhere ? $this->translator->trans('domain_joining.domain_proved_elsewhere', ['{domain}' => $domain]) : null;
+        return $provedElsewhere ? DomainRefusal::ProvedElsewhere : null;
+    }
+
+    private function message(DomainRefusal $refusal, User $by, string $domain): string
+    {
+        // The example is the person's own domain, the one they can add.
+        $example = ['{example}' => JoinOfferFinder::domainFor($by) ?? 'example.com'];
+
+        return match ($refusal) {
+            DomainRefusal::Blank => $this->translator->trans('domain_joining.domain_blank', $example),
+            DomainRefusal::Invalid => $this->translator->trans('domain_joining.domain_invalid', $example),
+            DomainRefusal::Public => $this->translator->trans('domain_joining.domain_public'),
+            DomainRefusal::Listed => $this->translator->trans('domain_joining.domain_listed', ['{domain}' => $domain]),
+            DomainRefusal::NotYours => $this->translator->trans('domain_joining.domain_not_yours'),
+            DomainRefusal::Full => $this->translator->trans('domain_joining.domain_full', ['{count}' => (string) self::MOST]),
+            DomainRefusal::ProvedElsewhere => $this->translator->trans('domain_joining.domain_proved_elsewhere', ['{domain}' => $domain]),
+        };
     }
 }
