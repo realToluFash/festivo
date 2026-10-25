@@ -112,6 +112,8 @@ function Asking({
   const { t } = useTranslation();
   const { preview } = view;
   const organisation = preview.organisation.name;
+  // Where the person stood as the link opened was not an answer to Ask to join, so it is not read out.
+  const [opened] = useState(view);
 
   return (
     <>
@@ -162,7 +164,7 @@ function Asking({
         <SignedOut token={token} organisation={organisation} />
       )}
       {view.kind === 'open' && view.signedIn && preview.standing != null && (
-        <Standing preview={preview} />
+        <Standing preview={preview} answer={view === opened ? undefined : view} />
       )}
       {view.kind === 'open' && view.signedIn && preview.standing == null && (
         <Ask token={token} preview={preview} onChange={onChange} />
@@ -210,7 +212,7 @@ function Ask({
   const organisation = preview.organisation.name;
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<object | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
   const input = useRef<TextInput>(null);
   const checks = useFormChecks(
@@ -227,7 +229,7 @@ function Ask({
     if (busy || !checks.passes({ message })) return;
 
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
 
     try {
       await api.askThroughRequestLink(token, message);
@@ -240,7 +242,7 @@ function Ask({
 
   function settle(problem: unknown): void {
     if (!(problem instanceof ApiError)) {
-      setFailed(true);
+      setFailed({});
       return;
     }
 
@@ -277,7 +279,7 @@ function Ask({
       return;
     }
 
-    setFailed(true);
+    setFailed({});
   }
 
   const failedTitle = t('requestToJoin.failedTitle');
@@ -285,8 +287,13 @@ function Ask({
 
   return (
     <>
-      {failed && (
-        <ReadOut words={`${failedTitle}\n${failedBody}`} interrupts accessibilityRole="alert">
+      {failed != null && (
+        <ReadOut
+          words={`${failedTitle}\n${failedBody}`}
+          interrupts
+          answer={failed}
+          accessibilityRole="alert"
+        >
           <Notice
             tone="broken"
             mark={tokens.marks.broken.glyph}
@@ -335,7 +342,7 @@ function Ask({
   );
 }
 
-function Standing({ preview }: { preview: RequestLinkPreview }) {
+function Standing({ preview, answer }: { preview: RequestLinkPreview; answer: Shown | undefined }) {
   const { t } = useTranslation();
   const organisation = preview.organisation.name;
   const from = preview.askAgainFrom;
@@ -353,7 +360,7 @@ function Standing({ preview }: { preview: RequestLinkPreview }) {
 
   return (
     <>
-      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={body} />
+      <Notice tone="quiet" mark={tokens.marks.info.glyph} body={body} answer={answer} />
       <CarryOn
         label={
           preview.standing === 'member' ? t('requestToJoin.open', { organisation }) : undefined

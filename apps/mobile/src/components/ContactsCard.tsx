@@ -126,13 +126,13 @@ function ContactsCard({
   const [asking, setAsking] = useState<Asking>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const [adding, setAdding] = useState(false);
-  const [said, setSaid] = useState<string | null>(null);
+  const [said, setSaid] = useState<{ line: string } | null>(null);
   const [arrived, setArrived] = useState(verified);
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
   const arrival = justVerified(rows, arrived);
   const done =
-    said ??
+    said?.line ??
     (arrival == null
       ? null
       : email
@@ -143,7 +143,7 @@ function ContactsCard({
 
   function setDone(line: string | null): void {
     setArrived(null);
-    setSaid(line);
+    setSaid(line == null ? null : { line });
   }
 
   /** True for a refusal that said the list had changed, once the list has been read again. */
@@ -202,7 +202,9 @@ function ContactsCard({
         {email ? t('contacts.emailsIntro') : t('contacts.phonesIntro')}
       </Text>
 
-      {done != null && <Notice tone="done" mark={tokens.marks.done.glyph} body={done} />}
+      {done != null && (
+        <Notice tone="done" mark={tokens.marks.done.glyph} body={done} answer={said ?? undefined} />
+      )}
 
       <View>
         {rows.map((row) => {

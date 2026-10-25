@@ -27,6 +27,7 @@ import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
 import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
+import { useReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
 import { useAboveKeyboard } from './Screen.tsx';
 import { Text } from './Text.tsx';
@@ -183,6 +184,7 @@ export function DevicesCard({
           tone="done"
           mark={tokens.marks.done.glyph}
           body={t('devices.ended', { name: said.name })}
+          answer={said}
         />
       )}
       {said?.kind === 'everywhere' && (
@@ -194,6 +196,7 @@ export function DevicesCard({
               ? t('devices.everywhereNone')
               : t('devices.everywhereDone', { count: said.signedOut })
           }
+          answer={said}
         />
       )}
       {said?.kind === 'endFailed' && (
@@ -202,6 +205,7 @@ export function DevicesCard({
           mark={tokens.marks.broken.glyph}
           title={t('devices.endFailedTitle')}
           body={t('devices.endFailedBody')}
+          answer={said}
         />
       )}
 
@@ -218,6 +222,7 @@ export function DevicesCard({
             mark={tokens.marks.broken.glyph}
             title={t('devices.failedTitle')}
             body={t('devices.failedBody')}
+            answer={devices}
           />
           <SecondaryButton label={t('devices.retry')} onPress={retry} testID="devices.retry" />
         </>
@@ -468,6 +473,11 @@ function EverywhereElse({
     checks.errors.code ??
     (refusal?.kind === 'field' && refusal.field === 'code' ? refusal.message : null);
   const viaName = provider != null && !confirmed ? PROVIDER_NAMES[provider] : null;
+  const confirmedLine =
+    provider != null && confirmed && codeAsked
+      ? t('devices.everywhereProviderConfirmed', { provider: PROVIDER_NAMES[provider] })
+      : null;
+  useReadOut(confirmedLine);
 
   return (
     <>
@@ -490,6 +500,7 @@ function EverywhereElse({
               ? t('devices.everywhereLimitedSoon')
               : t('devices.everywhereLimitedBody', { time: until })
           }
+          answer={refusal}
         />
       )}
       {refusal?.kind === 'failed' && (
@@ -498,12 +509,13 @@ function EverywhereElse({
           mark={tokens.marks.broken.glyph}
           title={t('devices.everywhereFailedTitle')}
           body={refusal.message}
+          answer={refusal}
         />
       )}
 
-      {provider != null && confirmed && codeAsked && (
+      {confirmedLine != null && (
         <Text size={tokens.typeBodyPhone.size} style={styles.secondary}>
-          {t('devices.everywhereProviderConfirmed', { provider: PROVIDER_NAMES[provider] })}
+          {confirmedLine}
         </Text>
       )}
 

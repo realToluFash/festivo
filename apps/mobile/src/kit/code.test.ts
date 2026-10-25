@@ -53,8 +53,14 @@ describe('where the verify screen opens', () => {
   });
 
   it('opens on the banner when the code is spent or has run out', () => {
-    expect(openingStatus({ kind: 'entering' }, 'exhausted')).toEqual({ kind: 'exhausted' });
-    expect(openingStatus({ kind: 'entering' }, 'expired')).toEqual({ kind: 'expired' });
+    expect(openingStatus({ kind: 'entering' }, 'exhausted')).toEqual({
+      kind: 'exhausted',
+      opened: true,
+    });
+    expect(openingStatus({ kind: 'entering' }, 'expired')).toEqual({
+      kind: 'expired',
+      opened: true,
+    });
   });
 
   it('leaves alone a screen the person has already moved on', () => {

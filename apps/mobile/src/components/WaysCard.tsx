@@ -348,6 +348,7 @@ function SaidNotice({ said }: { said: Said }) {
               : t('waysCard.linkedNext', { provider, address: said.email })
             : t('waysCard.unlinkedNext')
         }
+        answer={said}
       />
     );
   }
@@ -362,6 +363,7 @@ function SaidNotice({ said }: { said: Said }) {
           provider: PROVIDER_NAMES[said.provider],
           other: PROVIDER_NAMES[said.provider === 'google' ? 'apple' : 'google'],
         })}
+        answer={said}
       />
     );
   }
@@ -375,6 +377,7 @@ function SaidNotice({ said }: { said: Said }) {
         mark={tokens.marks.broken.glyph}
         title={t('waysCard.taken', { provider })}
         body={t('waysCard.takenNext', { provider })}
+        answer={said}
       />
     );
   }
@@ -390,6 +393,7 @@ function SaidNotice({ said }: { said: Said }) {
             ? t('waysCard.providerFailed', { provider: PROVIDER_NAMES[said.provider] })
             : t('waysCard.failedBody')
       }
+      answer={said}
     />
   );
 }

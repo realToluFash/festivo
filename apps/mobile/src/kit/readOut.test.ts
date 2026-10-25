@@ -5,6 +5,7 @@ import {
   newWords,
   settleMs,
   shownAtMount,
+  shownBeforeAnswer,
   shownOnceSaid,
   TALKBACK_SETTLE_MS,
   TYPING_PAUSE_MS,
@@ -27,6 +28,34 @@ describe('a message read out', () => {
 
   it('says nothing as it goes', () => {
     expect(newWords('Saved.', null)).toBeNull();
+  });
+});
+
+describe('a message that answers a tap', () => {
+  const reading = { os: 'ios', interrupts: false, afterTyping: false };
+  const said = (answered: unknown, answer: unknown) =>
+    howToReadOut(
+      shownBeforeAnswer('That did not work', answered, answer),
+      'That did not work',
+      reading,
+    ).handOver?.words ?? null;
+
+  it('is said again for a new tap, in the same words', () => {
+    expect(said({ kind: 'failed' }, { kind: 'failed' })).toBe('That did not work');
+  });
+
+  it('is said for the first tap it answers', () => {
+    expect(said(undefined, { kind: 'failed' })).toBe('That did not work');
+  });
+
+  it('is not said again while it answers the same tap', () => {
+    const answer = { kind: 'failed' };
+
+    expect(said(answer, answer)).toBeNull();
+  });
+
+  it('is not said again while it answers nothing', () => {
+    expect(said(undefined, undefined)).toBeNull();
   });
 });
 

@@ -64,7 +64,7 @@ export function ConfirmItsYou({
   const [codeAsked, setCodeAsked] = useState(codeBeforeTrip(via, twoFactorOn));
   const returned = useRef<ProviderSignInAttempt | null>(null);
   const kept = useRef<string | null>(null);
-  const [expired, setExpired] = useState(false);
+  const [expired, setExpired] = useState<object | null>(null);
   const [signedIn, setSignedIn] = useState<SignedIn | null>(null);
   const [checking, setChecking] = useState(false);
   const [refusal, setRefusal] = useState<{
@@ -90,7 +90,7 @@ export function ConfirmItsYou({
 
     setChecking(true);
     setRefusal(null);
-    setExpired(false);
+    setExpired(null);
     const sentKept = kept.current != null;
 
     try {
@@ -120,7 +120,7 @@ export function ConfirmItsYou({
         returned.current = null;
         code.current = '';
         setCodeAsked(codeBeforeTrip(via, twoFactorOn));
-        setExpired(true);
+        setExpired({});
 
         return;
       }
@@ -153,11 +153,12 @@ export function ConfirmItsYou({
         {intro}
       </Text>
 
-      {expired && via !== 'password' && via != null && (
+      {expired != null && via !== 'password' && via != null && (
         <Notice
           tone="attention"
           mark="!"
           body={t('waysCard.proofExpired', { provider: PROVIDER_NAMES[via], count: PROOF_MINUTES })}
+          answer={expired}
         />
       )}
 
@@ -179,6 +180,7 @@ export function ConfirmItsYou({
           mark={tokens.marks.broken.glyph}
           title={t('waysCard.failedTitle')}
           body={refusal.message}
+          answer={refusal}
         />
       )}
 

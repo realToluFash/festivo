@@ -196,6 +196,7 @@ export default function ResetPassword() {
             mark={tokens.marks.broken.glyph}
             title={t('recovery.failedTitle')}
             body={t('recovery.failedBody')}
+            answer={status}
           />
         )}
 

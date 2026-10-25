@@ -30,7 +30,8 @@ export default function VerifyPhone() {
   const [cooldown, setCooldown] = useState(0);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [route, setRoute] = useState<PhoneCodeRoute | null>(null);
-  const [textingFailed, setTextingFailed] = useState(false);
+  // A new one with each failed tap, so the same words are read out again.
+  const [textingFailed, setTextingFailed] = useState<object | null>(null);
   // From the verify answer, never the list read before it: the server decides (sc-2244).
   const [madePrimary, setMadePrimary] = useState<boolean | null>(null);
   const wording = codeWording(route);
@@ -157,13 +158,13 @@ export default function VerifyPhone() {
   }
 
   async function textInstead(): Promise<void> {
-    setTextingFailed(false);
+    setTextingFailed(null);
 
     try {
       await api.textPhoneCodeInstead(alternative);
       setRoute('sms_chosen');
     } catch {
-      setTextingFailed(true);
+      setTextingFailed({});
     }
   }
 
@@ -227,11 +228,12 @@ export default function VerifyPhone() {
               testID="verifyPhone.textInstead"
             />
           )}
-          {textingFailed && (
+          {textingFailed != null && (
             <Notice
               tone="broken"
               mark={tokens.marks.broken.glyph}
               body={t('verifyPhone.textInsteadFailed')}
+              answer={textingFailed}
             />
           )}
 
