@@ -49,6 +49,12 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675). «En {{zone}}, la hora {{time}} no existe el {{day}}: esa noche se adelantan los
+  relojes. Se guardará como {{savedAs}}.»; the next-day line ends «como {{savedAs}} del
+  {{savedDay}}». «La hora {{time}}», never «las {{time}}», which would need «la» at 01:30. «Se
+  adelantan los relojes» says what the reader sees happen, half-hour gap included; rejected
+  «cambio al horario de verano», which names the rule rather than the missing hour.
 - **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** «Editar detalles» opens
   and heads the form, «Guardar cambios» saves it. A refused save starts «No se ha guardado.»; the
   colleague is «otra persona», as `errors:precondition_failed`. "Show the latest" is «Ver la

@@ -41,6 +41,13 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. A time the clocks skip** (`eventForm.clocksSkip`, `clocksSkipNextDay`,
+  sc-10675). "Em {{zone}}, a hora {{time}} não existe no dia {{day}}: nessa noite, os relógios
+  são adiantados. Será guardada como {{savedAs}}." The next-day line ends "guardada no dia
+  {{savedDay}}, às {{savedAs}}.", so the abbreviated month never closes the sentence. "No dia"
+  agrees with "dia", not with the weekday, which is how a weekday date takes a preposition
+  inside a sentence (the 19 Oct rule forbids "a" and "na/no" alone). "Guardada" agrees with
+  "a hora". Rejected "hora de verão", which names the rule rather than the missing hour.
 - **25 Oct 2026. Editing an event's details (sc-9704, `eventEdit.*`).** "Edit details" is
   "Editar detalhes", "Save changes" "Guardar alterações", and changes are always "alterações",
   never "mudanças". A refused save starts "Não foi guardado."; the colleague is "outra pessoa",
