@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { DESTINATION_HREF } from '../kit/appNav.ts';
+import { stepOpeners } from '../kit/stepOpeners.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
 import { useTappedSwitch } from '../tappedSwitch.ts';
@@ -16,7 +17,7 @@ import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { LinkedNotice } from './LinkedNotice.tsx';
 import { NoOrganisation } from './NoOrganisation.tsx';
-import { Screen, type StepClosed, stepClosed, useFocusBack } from './Screen.tsx';
+import { Screen, useFocusOnAnswer } from './Screen.tsx';
 import type { ScreenReaderTarget } from './screenReaderFocus.ts';
 import { NOTICE_PLACES, type NoticePlace, SignInRulesNotices } from './SignInRulesNotices.tsx';
 import { cardFrame } from './cardFrame.ts';
@@ -87,38 +88,26 @@ function HomeBody() {
 
 /** A notice closed with its own button hands focus to the next notice under it, or to the heading when none is left (sc-11173). */
 function useNextAfterClosed() {
-  const [shown] = useState(() => new Map<NoticePlace, View>());
-  const [refs] = useState(() => new Map<NoticePlace, Ref<View>>());
+  const [places] = useState(() => stepOpeners<View>());
   const heading = useRef<TextHandle>(null);
-  const [last, setLast] = useState<{ at: NoticePlace; closed: StepClosed } | null>(null);
+  const [last, setLast] = useState<{ at: NoticePlace } | null>(null);
   const next = useMemo<RefObject<ScreenReaderTarget | null>>(
     () => ({
       get current() {
         const after = last == null ? [] : NOTICE_PLACES.slice(NOTICE_PLACES.indexOf(last.at) + 1);
-        const notice = after.map((at) => shown.get(at)).find((view) => view != null);
+        const notice = after.map((at) => places.target(at, null)).find((view) => view != null);
 
         return notice ?? heading.current;
       },
     }),
-    [last, shown],
+    [last, places],
   );
-  useFocusBack(last?.closed, next);
+  useFocusOnAnswer(last ?? undefined, next);
 
   return {
     heading,
-    place: (at: NoticePlace): Ref<View> => {
-      let ref = refs.get(at);
-      if (ref == null) {
-        ref = (view: View | null) => {
-          if (view == null) shown.delete(at);
-          else shown.set(at, view);
-        };
-        refs.set(at, ref);
-      }
-
-      return ref;
-    },
-    onClosed: (at: NoticePlace) => setLast({ at, closed: stepClosed('next') }),
+    place: (at: NoticePlace): Ref<View> => places.ref(at),
+    onClosed: (at: NoticePlace) => setLast({ at }),
   };
 }
 

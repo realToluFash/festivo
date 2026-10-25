@@ -30,7 +30,7 @@ import { CodeField, Field } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { useReadOut } from './ReadOut.tsx';
 import { PasswordField } from './PasswordField.tsx';
-import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBack } from './Screen.tsx';
+import { type StepClosed, stepClosed, useAboveKeyboard, useFocusBackToOpener } from './Screen.tsx';
 import { Text, type TextHandle } from './Text.tsx';
 
 type Devices =
@@ -77,7 +77,7 @@ export function DevicesCard({
   const [retried, setRetried] = useState<object | null>(null);
   const tappedRetry = useRef(false);
   const title = useRef<TextHandle>(null);
-  const opener = useFocusBack(stage.kind === 'list' ? stage.closed : undefined, title);
+  const opener = useFocusBackToOpener(stage.kind === 'list' ? stage.closed : undefined, title);
   const frame = cardFrame(kind);
   const here = currentSessionId();
 
@@ -85,7 +85,12 @@ export function DevicesCard({
     setListedFor(reload);
     setDevices({ kind: 'loading' });
     setStage({ kind: 'list', said: null });
+    setRetried(null);
   }
+
+  useEffect(() => {
+    tappedRetry.current = false;
+  }, [reload]);
 
   useEffect(() => {
     let live = true;
