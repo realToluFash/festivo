@@ -174,7 +174,7 @@ final readonly class OwnerClaimHandler
         if (null === $this->administratorMembership($by, $organisation) && !$this->isSuspendedOwner($by, $organisation)) {
             throw $this->isMember($by, $organisation)
                 ? new ApiException(ErrorCode::Forbidden, $this->translator->trans('owner_claims.who_may_stop'))
-                : ApiException::notFound('Not found.');
+                : ApiException::notFound('access.not_found');
         }
 
         if (true === $this->ownerClaimRepository->findOpenIn($organisation)?->getClaimant()->getId()->equals($by->getId())) {

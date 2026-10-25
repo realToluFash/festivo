@@ -84,13 +84,13 @@ final readonly class CompanyDomainsController
 
     private function organisation(string $id): Organisation
     {
-        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('Not found.');
+        return $this->organisationRepository->find($id) ?? throw ApiException::notFound('access.not_found');
     }
 
     private function user(): User
     {
         $user = $this->security->getUser();
 
-        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
     }
 }

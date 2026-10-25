@@ -92,6 +92,6 @@ final readonly class JoinOffersController
     {
         $user = $this->security->getUser();
 
-        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'Please sign in to continue.');
+        return $user instanceof User ? $user : throw new ApiException(ErrorCode::Unauthenticated, 'access.sign_in');
     }
 }

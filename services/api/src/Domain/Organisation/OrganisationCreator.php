@@ -42,7 +42,7 @@ final readonly class OrganisationCreator
             $peek = $limiter->consume(0);
 
             if ($peek->getRemainingTokens() <= 0) {
-                return ApiException::tooManyAttempts('Too many new organisations for now.', $peek->getRetryAfter());
+                return ApiException::tooManyAttempts('limits.organisations', $peek->getRetryAfter());
             }
 
             try {

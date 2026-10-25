@@ -38,7 +38,7 @@ final readonly class AppleAppReturn
     public function start(#[SensitiveParameter] string $state, string $codeChallenge): void
     {
         if ('' === $state || null !== $this->appleAppAttemptRepository->findOneByStateHash(TokenIssuer::hash($state))) {
-            throw new ApiException(ErrorCode::BadRequest, 'Start a new sign-in.');
+            throw new ApiException(ErrorCode::BadRequest, 'provider.start_again');
         }
 
         $this->entityManager->persist(new AppleAppAttempt(TokenIssuer::hash($state), $codeChallenge, $this->clock->now()));
@@ -108,7 +108,7 @@ final readonly class AppleAppReturn
         ?string $sentRedirectUri = null,
     ): array {
         if (null !== $sentRedirectUri && $sentRedirectUri !== $this->appleReturnUri) {
-            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'That sign-in could not be checked.');
+            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'provider.unchecked');
         }
 
         $attempt = '' === $handle ? null : $this->appleAppAttemptRepository->findOneByHandleHash(TokenIssuer::hash($handle));
@@ -116,7 +116,7 @@ final readonly class AppleAppReturn
         $code = $attempt?->getCode();
 
         if (null === $attempt || null === $code || !$attempt->isHandleOpenAt($now) || !\hash_equals($attempt->getCodeChallenge(), self::challengeOf($codeVerifier))) {
-            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'That sign-in could not be checked.');
+            throw new ApiException(ErrorCode::OAuthTokenInvalid, 'provider.unchecked');
         }
 
         $appleUser = $attempt->getAppleUser();

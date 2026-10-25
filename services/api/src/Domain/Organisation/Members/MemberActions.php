@@ -128,7 +128,7 @@ final readonly class MemberActions
             $removesAt = $membership->getRemovesAt();
 
             if (MembershipStatus::LeftOrRemoved === $membership->getStatus() || (null !== $removesAt && $removesAt <= $this->clock->now())) {
-                throw ApiException::notFound('That person is not a member of this organisation.');
+                throw ApiException::notFound('members.not_member');
             }
 
             $this->roleAssignment->release($membership);
@@ -186,7 +186,7 @@ final readonly class MemberActions
     public function leave(Organisation $organisation, User $user): void
     {
         $membership = $this->membershipRepository->findActive($user, $organisation->getId())
-            ?? throw ApiException::notFound('Not found.');
+            ?? throw ApiException::notFound('access.not_found');
         $this->roleAssignment->release($membership);
         $this->end($membership, self::LEFT, $user);
     }
@@ -208,7 +208,7 @@ final readonly class MemberActions
             : null;
 
         if (null === $membership || MembershipStatus::LeftOrRemoved === $membership->getStatus() || MembershipStatus::PendingApproval === $membership->getStatus()) {
-            throw ApiException::notFound('That person is not a member of this organisation.');
+            throw ApiException::notFound('members.not_member');
         }
 
         return $membership;

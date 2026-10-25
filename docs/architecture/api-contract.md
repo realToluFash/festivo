@@ -55,6 +55,12 @@ RFC 7807, `Content-Type: application/problem+json`:
 - **`detail`** is this particular instance of the problem. **Present on a `4xx`, never on a
   `5xx`** — that message is ours and routinely quotes a query, a path or a connection
   string.
+  On a `4xx` it is a catalogue sentence in the same language as the `title`, as is each
+  violation's `message`: a refusal is thrown with a key from `translations/messages.*.json`
+  and its slots (a violation carries its own as `parameters`, which are never sent), and
+  `ProblemRenderer` words it for the request. A sentence that reaches a refusal fails
+  `RefusalsAreKeyedTest`, which names its file and line, whether it is written there,
+  formatted, held in a variable, a constant or a property, or passed down through a helper.
 - **`correlationId`** ties the response to the server logs for the same request.
 - **`violations`** carries per-field validation failures, each with `propertyPath`,
   `message` and `code`, so a form marks the offending input rather than showing one banner.
@@ -68,8 +74,10 @@ screen.
 ## Rate limits a person can hit
 
 Every limit a person can reach is `429 too_many_attempts`, with `Retry-After` in seconds
-and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. A client
-shows the time from `Retry-After`, in the reader's timezone, never a figure of its own.
+and a `detail` naming the minute it lifts ("Try again at 14:35."), rounded up. The
+sentence and the minute are one catalogue entry with a `{time}` slot, never two joined in
+code. A client shows the time from `Retry-After`, in the reader's timezone, never a figure
+of its own.
 
 Where a budget is spent by a wrong secret (a password or a code), the wrong try that spends
 the last of it is itself answered with the pause, not with that place's wrong-secret error,

@@ -156,8 +156,8 @@ final class ChangePasswordTest extends ApiTestCase
             self::assertSame(ErrorCode::TooManyAttempts, $e->errorCode, 'even the right one waits');
         }
 
-        self::assertStringContainsString('Try again at ', $fifth->getMessage());
-        self::assertSame($e->getMessage(), $fifth->getMessage(), 'the fifth states the minute the sixth does (sc-965)');
+        self::assertStringContainsString('Try again at ', self::worded($fifth));
+        self::assertSame(self::worded($e), self::worded($fifth), 'the fifth states the minute the sixth does (sc-965)');
         self::assertEqualsWithDelta((int) $e->headers['Retry-After'], (int) $fifth->headers['Retry-After'], 1, 'and the same Retry-After, to the second');
 
         self::assertTrue(self::service(PasswordResolver::class)->verify($this->account(), self::OLD_PASSWORD), 'nothing changed');
