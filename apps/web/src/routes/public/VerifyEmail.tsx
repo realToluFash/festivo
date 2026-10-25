@@ -134,7 +134,7 @@ function ForSession() {
   }, []);
 
   if (state.status === 'signedOut') return <Navigate to="/sign-in" replace />;
-  if (state.status === 'unreachable') return <Unreachable />;
+  if (state.status === 'unreachable') return <Unreachable signedIn />;
   if (state.status !== 'signedIn') return <Pending />;
 
   return (

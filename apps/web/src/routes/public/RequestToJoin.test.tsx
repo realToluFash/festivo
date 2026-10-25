@@ -262,6 +262,10 @@ describe('a request link (sc-562)', () => {
 });
 
 describe('a request link that did not load (sc-11488)', () => {
+  const SIGNED_IN = 'You are still signed in.';
+  const NOT_ANSWERING =
+    'Soirely is not answering, so nothing can load yet. Check your connection, then try again.';
+
   it('reads the link again on Try again, and puts focus on the heading once it loads', async () => {
     __setSessionState({ status: 'signedOut', ended: false });
     let reachable = false;
@@ -273,12 +277,8 @@ describe('a request link that did not load (sc-11488)', () => {
     });
     open();
 
-    expect(
-      await screen.findByText(
-        'Soirely is not answering, so nothing can load yet. Check your connection, then try again.',
-      ),
-    ).toBeDefined();
-    expect(screen.queryByText(/You are still signed in\./)).toBeNull();
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+    expect(screen.queryByText(new RegExp(SIGNED_IN))).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('status')));
@@ -292,5 +292,45 @@ describe('a request link that did not load (sc-11488)', () => {
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(sent.map((one) => one.line)).toEqual([LINK, LINK, LINK]);
+  });
+
+  it('puts focus on the heading when Try again finds the link dead', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    let reachable = false;
+    answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return problem(404, 'request_link_dead');
+      },
+    });
+    open();
+
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: "This link doesn't work",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
+  it('keeps the full words signed in', async () => {
+    signedIn();
+    answering({});
+    open();
+
+    expect(await screen.findByText(`${SIGNED_IN} ${NOT_ANSWERING}`)).toBeDefined();
+  });
+
+  it('shows the words true for everybody when the account did not load', async () => {
+    __setSessionState({ status: 'unknown' });
+    answering({ [LINK]: () => json(PREVIEW) });
+    open();
+
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+    expect(screen.queryByText(new RegExp(SIGNED_IN))).toBeNull();
   });
 });

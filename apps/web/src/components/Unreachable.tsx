@@ -6,7 +6,7 @@ import { retrySession, useSessionState } from '../session.ts';
 import { LanguageChoice } from './LanguageChoice.tsx';
 
 /** No sign-in heading or form, which would tell somebody signed in otherwise. Without `retry`, Try again reads the account. */
-export function Unreachable({ signedIn = true, retry }: { signedIn?: boolean; retry?: LinkRetry }) {
+export function Unreachable({ signedIn, retry }: { signedIn: boolean; retry?: LinkRetry }) {
   const { t } = useTranslation();
   const state = useSessionState();
   const retrying = retry?.retrying ?? (state.status === 'unreachable' && state.retrying);

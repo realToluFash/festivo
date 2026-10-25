@@ -400,6 +400,29 @@ describe('an invitation whose link did not load (sc-11488)', () => {
     expect(sent.map((one) => one.line)).toEqual([LINK, LINK]);
   });
 
+  it('puts focus on the heading when Try again finds no invitation', async () => {
+    __setSessionState({ status: 'signedOut', ended: false });
+    let reachable = false;
+    answering({
+      [LINK]: () => {
+        if (!reachable) throw new TypeError('Failed to fetch');
+        return problem(404, 'invitation_not_found');
+      },
+    });
+    open();
+
+    expect(await screen.findByText(NOT_ANSWERING)).toBeDefined();
+
+    reachable = true;
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    const heading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'We could not find that invitation',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+  });
+
   it('shows the words true for everybody when the account did not load, and reads it then the link', async () => {
     __setSessionState({ status: 'unknown' });
     let reachable = false;
