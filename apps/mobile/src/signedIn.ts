@@ -152,12 +152,14 @@ export function rememberOrganisation(id: string): Promise<void> {
   return AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
 }
 
-export function switchOrganisation(id: string): void {
+export function switchOrganisation(id: string): boolean {
   const organisation = state.organisations.find((membership) => membership.id === id);
-  if (organisation == null) return;
+  if (organisation == null) return false;
 
   set({ ...state, organisation, pausedIn: null });
   void AsyncStorage.setItem(REMEMBERED, id).catch(() => {});
+
+  return true;
 }
 
 /** An invitation accepted in the app: the organisation joins the list, and nobody is moved into it. */

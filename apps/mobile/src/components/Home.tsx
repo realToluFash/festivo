@@ -26,7 +26,7 @@ export function Home() {
   const { t } = useTranslation();
 
   return (
-    <AppFrame current="home" title={t('frame.home')}>
+    <AppFrame current="home" title={t('frame.home')} bodyTakesSwitch>
       <HomeBody />
     </AppFrame>
   );
@@ -82,11 +82,7 @@ function SignedInHeading({ organisation }: { organisation: Membership }) {
   const { t } = useTranslation();
 
   return (
-    <AnswerHeading
-      size={tokens.typeTitleDialog.size}
-      weight="bold"
-      answer={useTappedSwitch(organisation.id)}
-    >
+    <AnswerHeading size={tokens.typeTitleDialog.size} weight="bold" answer={useTappedSwitch()}>
       {t('home.signedInTo', { name: organisation.name })}
     </AnswerHeading>
   );

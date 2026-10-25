@@ -22,6 +22,7 @@ import { DESTINATIONS, DESTINATION_HREF, type Destination } from '../kit/appNav.
 import { TURNS_WITH_THE_APP } from '../layout/orientations.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { joinOrganisation, switchOrganisation, useSignedIn } from '../signedIn.ts';
+import { FrameSwitch, switchByTap, useFrameSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { useTwoFactorStanding } from '../twoFactorStanding.ts';
 import { CreateOrganisation } from './CreateOrganisation.tsx';
@@ -30,6 +31,7 @@ import { InvitationRows } from './InvitationRows.tsx';
 import { Initials } from './Initials.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
+import { useFocusOnAnswer } from './Screen.tsx';
 import { type TextHandle, Text } from './Text.tsx';
 import { AccessPaused } from './AccessPaused.tsx';
 import { TwoFactorOverdue } from './TwoFactorOverdue.tsx';
@@ -82,14 +84,17 @@ export function AppFrame({
   back,
   titleRef,
   aboutTheAccount = false,
+  bodyTakesSwitch = false,
   children,
 }: {
   current: Destination;
   title: string;
   /** The title on a phone, where it stands for the page's own heading. */
-  titleRef?: Ref<TextHandle> | undefined;
+  titleRef?: RefObject<TextHandle | null> | undefined;
   /** Security and Account stay open past an organisation's two-factor deadline, to set it up (sc-609). */
   aboutTheAccount?: boolean;
+  /** A heading in the body takes screen reader focus after a tapped switch of organisation, in place of the title (sc-11032). */
+  bodyTakesSwitch?: boolean;
   /** On a phone, the page this one was opened from, as Security's "Settings". */
   back?: { label: string; onPress: () => void } | undefined;
   children: ReactNode;
@@ -125,6 +130,14 @@ export function AppFrame({
   };
   const email = signedIn.account == null ? '' : (primaryEmailAddress(signedIn.account) ?? '');
   const overdue = useTwoFactorStanding(signedIn.organisation) === 'overdue';
+  const switchAnswer = useFrameSwitch();
+  const standIn = aboutTheAccount
+    ? null
+    : signedIn.pausedIn != null
+      ? 'paused'
+      : overdue && signedIn.organisation != null
+        ? 'overdue'
+        : null;
 
   return (
     <View style={[styles.root, kind === 'tabletLandscape' && styles.row]}>
@@ -143,6 +156,7 @@ export function AppFrame({
           current={current}
           title={title}
           titleRef={titleRef}
+          switchAnswer={bodyTakesSwitch || standIn != null ? undefined : switchAnswer}
           back={back}
           backHidden={backHidden}
           email={email}
@@ -160,17 +174,17 @@ export function AppFrame({
           <OpenSwitcher.Provider value={openSwitcher}>
             <StartOrganisation.Provider value={startOrganisation}>
               <HideBack.Provider value={setBackHidden}>
-                {signedIn.pausedIn != null && !aboutTheAccount ? (
+                {standIn === 'paused' && signedIn.pausedIn != null ? (
                   <AccessPaused
                     paused={signedIn.pausedIn}
                     others={signedIn.organisations}
-                    onSwitch={(next) => switchOrganisation(next.id)}
+                    onSwitch={(next) => switchByTap(next.id)}
                     onChoose={() => switchFromPill?.()}
                   />
-                ) : overdue && !aboutTheAccount && signedIn.organisation != null ? (
-                  <TwoFactorOverdue organisation={signedIn.organisation} />
+                ) : standIn === 'overdue' && signedIn.organisation != null ? (
+                  <TwoFactorOverdue organisation={signedIn.organisation} answer={switchAnswer} />
                 ) : (
-                  children
+                  <FrameSwitch.Provider value={switchAnswer}>{children}</FrameSwitch.Provider>
                 )}
               </HideBack.Provider>
             </StartOrganisation.Provider>
@@ -212,6 +226,7 @@ function FrameHeader({
   current,
   title,
   titleRef,
+  switchAnswer,
   back,
   backHidden,
   email,
@@ -223,7 +238,9 @@ function FrameHeader({
   kind: LayoutKind;
   current: Destination;
   title: string;
-  titleRef: Ref<TextHandle> | undefined;
+  titleRef: RefObject<TextHandle | null> | undefined;
+  /** A tapped switch of organisation, which takes screen reader focus to the title. */
+  switchAnswer: unknown;
   back: { label: string; onPress: () => void } | undefined;
   backHidden: boolean;
   email: string;
@@ -235,11 +252,12 @@ function FrameHeader({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const top = { paddingTop: insets.top + (kind === 'tabletLandscape' ? 0 : tokens.spaceXxs) };
+  const { read } = useFocusOnAnswer<TextHandle>(switchAnswer, titleRef);
 
   if (kind === 'tabletLandscape') {
     return (
       <View style={[styles.header, styles.landscapeHeader, top]}>
-        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header">
+        <Text size={tokens.typeTitlePhone.size} weight="bold" accessibilityRole="header" ref={read}>
           {title}
         </Text>
         <View style={styles.fill} />
@@ -281,7 +299,7 @@ function FrameHeader({
             );
           })}
         </View>
-        <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header">
+        <Text size={tokens.typeTitlePage.size} weight="bold" accessibilityRole="header" ref={read}>
           {title}
         </Text>
       </View>
@@ -312,7 +330,7 @@ function FrameHeader({
         size={back == null ? tokens.typeTitlePage.size : tokens.typeTitlePhone.size}
         weight="bold"
         accessibilityRole="header"
-        ref={titleRef}
+        ref={read}
       >
         {title}
       </Text>

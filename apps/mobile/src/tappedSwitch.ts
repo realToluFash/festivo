@@ -1,26 +1,40 @@
-import { useEffect, useState } from 'react';
+import { useIsFocused } from 'expo-router';
+import { createContext, useContext, useEffect, useState } from 'react';
 
+import { SETTLED_MS } from './components/Screen.tsx';
+import { tappedSwitches } from './kit/tappedSwitch.ts';
 import { switchOrganisation } from './signedIn.ts';
 
-let pending: { id: string } | null = null;
+const switches = tappedSwitches();
 
-/** A switch into `id` the person tapped for, so the organisation's screen takes screen reader focus to its heading as it shows (sc-11032). */
-export function expectTappedSwitch(id: string): void {
-  pending = { id };
-}
+// Past the heading's focus, so a heading that shows later, as a paused or overdue screen gives way, takes nothing.
+const SERVED_MS = 2 * SETTLED_MS;
 
 export function switchByTap(id: string): void {
-  expectTappedSwitch(id);
-  switchOrganisation(id);
+  if (switchOrganisation(id)) switches.landed(id);
 }
 
-/** The tapped switch into `id` that this mount shows, once: a screen opened again later takes nothing. */
-export function useTappedSwitch(id: string): unknown {
-  const [answer] = useState(() => (pending?.id === id ? pending : undefined));
+/** A tapped switch that landed while this frame's screen was in view, until its heading has taken focus. */
+export function useFrameSwitch(): unknown {
+  const here = useIsFocused();
+  const [answer, setAnswer] = useState<unknown>(undefined);
+
+  useEffect(() => (here ? switches.listen(setAnswer) : undefined), [here]);
 
   useEffect(() => {
-    if (answer !== undefined && pending === answer) pending = null;
+    if (answer === undefined) return;
+
+    const served = setTimeout(() => setAnswer(undefined), SERVED_MS);
+
+    return () => clearTimeout(served);
   }, [answer]);
 
   return answer;
+}
+
+/** The frame's tapped switch, for a body heading that takes it in place of the frame's title. */
+export const FrameSwitch = createContext<unknown>(undefined);
+
+export function useTappedSwitch(): unknown {
+  return useContext(FrameSwitch);
 }

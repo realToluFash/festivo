@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
-import { expectTappedSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -97,14 +96,7 @@ export function AccessPaused({
           {switchTo != null && (
             <SecondaryButton
               label={t('accessPaused.switch')}
-              onPress={() => {
-                if (switchTo === 'switcher') {
-                  onChoose();
-                  return;
-                }
-                expectTappedSwitch(switchTo.id);
-                onSwitch(switchTo);
-              }}
+              onPress={() => (switchTo === 'switcher' ? onChoose() : onSwitch(switchTo))}
               testID="accessPaused.switch"
             />
           )}

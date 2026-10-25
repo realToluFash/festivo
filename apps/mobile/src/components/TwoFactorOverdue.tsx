@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { signOutHere } from '../signedIn.ts';
-import { useTappedSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
 import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -16,7 +15,14 @@ import { cardFrame } from './cardFrame.ts';
 import { Text } from './Text.tsx';
 
 /** `PolicySignIn-*` state `everyone_blocked`: in place of every screen of the organisation (sc-609). */
-export function TwoFactorOverdue({ organisation }: { organisation: Membership }) {
+export function TwoFactorOverdue({
+  organisation,
+  answer,
+}: {
+  organisation: Membership;
+  /** A tapped switch into the organisation, which takes screen reader focus to the heading (sc-11032). */
+  answer: unknown;
+}) {
   const { t } = useTranslation();
   const { kind } = useLayout();
 
@@ -28,7 +34,7 @@ export function TwoFactorOverdue({ organisation }: { organisation: Membership })
             kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitleDialog.size
           }
           weight="bold"
-          answer={useTappedSwitch(organisation.id)}
+          answer={answer}
         >
           {t('signInRules.overdueTitle')}
         </AnswerHeading>
