@@ -29,7 +29,7 @@ type Step =
   | { kind: 'resting'; flash: string | null }
   | { kind: 'transfer' }
   | { kind: 'leave' }
-  | { kind: 'delete'; preview: OrganisationDeletion | null };
+  | { kind: 'delete' };
 
 /** After leaving or deleting: launch reads the account again and opens its gate, or the app. */
 function landAfterLeaving(): void {
@@ -104,13 +104,7 @@ export function OwnershipCard({
               title={t('ownership.delete')}
               note={t('ownership.deleteNote')}
               action={t('ownership.delete')}
-              onPress={() => {
-                setStep({ kind: 'delete', preview: null });
-                api.organisationDeletion(organisation.id).then(
-                  (preview) => setStep({ kind: 'delete', preview }),
-                  () => setStep({ kind: 'delete', preview: null }),
-                );
-              }}
+              onPress={() => setStep({ kind: 'delete' })}
               testID="ownership.delete"
             />
           )}
@@ -143,7 +137,6 @@ export function OwnershipCard({
       {step.kind === 'delete' && (
         <Delete
           organisation={organisation}
-          preview={step.preview}
           onKeep={() => setStep({ kind: 'resting', flash: null })}
         />
       )}
@@ -440,16 +433,9 @@ function Leave({
   );
 }
 
-function Delete({
-  organisation,
-  preview,
-  onKeep,
-}: {
-  organisation: Membership;
-  preview: OrganisationDeletion | null;
-  onKeep: () => void;
-}) {
+function Delete({ organisation, onKeep }: { organisation: Membership; onKeep: () => void }) {
   const { t } = useTranslation();
+  const [preview, setPreview] = useState<OrganisationDeletion | null>(null);
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [mismatch, setMismatch] = useState<string | null>(null);
@@ -458,6 +444,19 @@ function Delete({
   const aboveKeyboard = useAboveKeyboard();
   const name = organisation.name;
   const matches = typed.trim() === name;
+
+  useEffect(() => {
+    let current = true;
+
+    api.organisationDeletion(organisation.id).then(
+      (counted) => current && setPreview(counted),
+      () => {},
+    );
+
+    return () => {
+      current = false;
+    };
+  }, [organisation.id]);
 
   async function submit(): Promise<void> {
     if (busy) return;
