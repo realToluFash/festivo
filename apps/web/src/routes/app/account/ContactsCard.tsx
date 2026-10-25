@@ -30,7 +30,7 @@ import { emailMessage, useFormChecks } from '../../../formChecks.ts';
 import { PhoneEntry } from '../../../components/PhoneEntry.tsx';
 import { dateLocale } from '../../../i18n/index.ts';
 import { phoneProblemMessage } from '../../../phoneProblem.ts';
-import { useStepFocus } from '../../../stepFocus.ts';
+import { useFocusOnceShown, useStepFocus } from '../../../stepFocus.ts';
 
 type Kind = 'email' | 'phone';
 
@@ -157,12 +157,20 @@ function ContactsCard({
   const [asking, setAsking] = useState<Asking>(() =>
     confirming?.returned == null ? null : { id: confirming.returned.address, what: 'prove' },
   );
-  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+  const [rowError, setRowError] = useState<{
+    id: string;
+    message: string;
+    changed: boolean;
+  } | null>(null);
+  const reason = useRef<HTMLDivElement>(null);
   const [adding, setAdding] = useState(false);
   const [said, setSaid] = useState<string | null>(null);
   const [arrived, setArrived] = useState(verified);
   const doneLine = useRef<HTMLDivElement>(null);
   const [confirmTitle, arriveAtConfirm] = useStepFocus<HTMLParagraphElement>();
+  const heading = useRef<HTMLHeadingElement>(null);
+  const card = useRef<HTMLElement>(null);
+  const land = useFocusOnceShown();
   const email = kind === 'email';
   const primary = rows.find((row) => row.primary);
   const arrival = justVerified(rows, arrived);
@@ -181,6 +189,20 @@ function ContactsCard({
   function ask(id: string, what: 'promote' | 'remove'): void {
     setAsking({ id, what });
     arriveAtConfirm();
+  }
+
+  function backTo(opener: string): void {
+    land(
+      () =>
+        [...(card.current?.querySelectorAll<HTMLElement>('[data-opens]') ?? [])].find(
+          (button) => button.dataset.opens === opener,
+        ) ?? heading.current,
+    );
+  }
+
+  function closeBackTo(opener: string): void {
+    setAsking(null);
+    backTo(opener);
   }
 
   function setDone(line: string | null): void {
@@ -226,15 +248,23 @@ function ContactsCard({
         await onChanged();
       }
     } catch (refusal) {
-      if (await rereadFor(refusal)) setAsking(null);
-      setRowError({ id: row.id, message: rowRefusal(refusal, kind, t) });
+      const changed = await rereadFor(refusal);
+
+      if (changed) setAsking(null);
+      setRowError({ id: row.id, message: rowRefusal(refusal, kind, t), changed });
+      if (changed) land(() => reason.current ?? heading.current);
     }
   }
 
+  function stopAdding(): void {
+    setAdding(false);
+    backTo('add');
+  }
+
   return (
-    <section className="card settings-card" aria-labelledby={`${kind}s-title`}>
+    <section ref={card} className="card settings-card" aria-labelledby={`${kind}s-title`}>
       <div className="contacts-head">
-        <h2 id={`${kind}s-title`}>
+        <h2 id={`${kind}s-title`} ref={heading} tabIndex={-1}>
           {email ? t('contacts.emailsTitle') : t('contacts.phonesTitle')}
         </h2>
         <span className="field-help">
@@ -298,6 +328,7 @@ function ContactsCard({
                   )}
                   {offers.makePrimary && (
                     <button
+                      data-opens={`promote ${row.id}`}
                       className="button"
                       type="button"
                       onClick={() => (email ? ask(row.id, 'promote') : void act(row, 'promote'))}
@@ -307,6 +338,7 @@ function ContactsCard({
                   )}
                   {offers.remove && (
                     <button
+                      data-opens={`remove ${row.id}`}
                       className="button"
                       type="button"
                       aria-label={t('contacts.removeLabel', { address: row.shown })}
@@ -335,7 +367,11 @@ function ContactsCard({
                       >
                         {t('contacts.promoteConfirm')}
                       </button>
-                      <button className="button" type="button" onClick={() => setAsking(null)}>
+                      <button
+                        className="button"
+                        type="button"
+                        onClick={() => closeBackTo(`promote ${row.id}`)}
+                      >
                         {t('contacts.promoteKeep', { old: primary?.shown ?? '' })}
                       </button>
                     </div>
@@ -355,7 +391,7 @@ function ContactsCard({
                     }
                     purpose={{ kind: 'makePrimary', address: row.id }}
                     onProved={(proof) => void act(row, 'promote', proof)}
-                    onCancel={() => setAsking(null)}
+                    onCancel={() => closeBackTo(`promote ${row.id}`)}
                   />
                 </div>
               )}
@@ -375,7 +411,11 @@ function ContactsCard({
                       >
                         {t(email ? 'contacts.removeConfirm' : 'contacts.removeConfirmPhone')}
                       </button>
-                      <button className="button" type="button" onClick={() => setAsking(null)}>
+                      <button
+                        className="button"
+                        type="button"
+                        onClick={() => closeBackTo(`remove ${row.id}`)}
+                      >
                         {t(email ? 'contacts.removeKeep' : 'contacts.removeKeepPhone')}
                       </button>
                     </div>
@@ -384,8 +424,12 @@ function ContactsCard({
               )}
 
               {rowError?.id === row.id && (
-                <div className="way-last">
-                  <FieldError id={`${kind}-${row.id}-error`} message={rowError.message} />
+                <div className="way-last" ref={reason} tabIndex={-1}>
+                  <FieldError
+                    id={`${kind}-${row.id}-error`}
+                    message={rowError.message}
+                    quiet={rowError.changed}
+                  />
                 </div>
               )}
             </li>
@@ -402,7 +446,7 @@ function ContactsCard({
               await onChanged();
             }}
             onRefused={rereadFor}
-            onCancel={() => setAdding(false)}
+            onCancel={stopAdding}
           />
         ) : (
           <AddPhone
@@ -413,12 +457,13 @@ function ContactsCard({
               await onChanged();
             }}
             onRefused={rereadFor}
-            onCancel={() => setAdding(false)}
+            onCancel={stopAdding}
           />
         )
       ) : (
         left > 0 && (
           <button
+            data-opens="add"
             className="button"
             type="button"
             onClick={() => {
@@ -541,6 +586,9 @@ function AddPhone({
   const [number, setNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const code = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => code.current?.focus(), []);
 
   async function send(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -576,6 +624,7 @@ function AddPhone({
         error={error}
         disabled={sending}
         help={t('contacts.phoneHelp')}
+        countryRef={code}
         onCountry={(code) => {
           setCountry(code);
           setError(null);

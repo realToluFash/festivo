@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../../../api.ts';
 import { FieldError } from '../../../components/FieldError.tsx';
 import { currentLocale } from '../../../i18n/index.ts';
+import { useStepFocus } from '../../../stepFocus.ts';
 
 /** How many rows the list shows at once; the search narrows the rest. */
 const SHOWN = 50;
@@ -25,6 +26,7 @@ export function TimeZoneCard({
   const [saved, setSaved] = useState<TimeZoneOption | null>(null);
   const [refocus, setRefocus] = useState(false);
   const changeButton = useRef<HTMLButtonElement>(null);
+  const [savedLine, arriveAtSaved] = useStepFocus<HTMLDivElement>();
 
   // Change is back in the page only once the edit has ended (WCAG 2.4.3).
   useEffect(() => {
@@ -64,7 +66,7 @@ export function TimeZoneCard({
             await onSaved();
             setEditing(false);
             setSaved(zone);
-            setRefocus(true);
+            arriveAtSaved();
           }}
           onCancel={() => {
             setEditing(false);
@@ -94,7 +96,7 @@ export function TimeZoneCard({
           </div>
 
           {savedZone != null && (
-            <div className="status-done" role="status">
+            <div className="status-done" tabIndex={-1} ref={savedLine}>
               <span className="mark mark-done" aria-hidden="true">
                 ✓
               </span>

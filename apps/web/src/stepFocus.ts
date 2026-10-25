@@ -24,3 +24,24 @@ export function useStepFocus<T extends HTMLElement = HTMLHeadingElement>(): [
 
   return [ref, arrive];
 }
+
+type Find = () => HTMLElement | null | undefined;
+
+/** Call `land(find)` as a step closes; focus goes to what `find` returns at the first render that has it. */
+export function useFocusOnceShown(): (find: Find) => void {
+  const pending = useRef<Find | null>(null);
+  const [, setRequests] = useState(0);
+
+  useLayoutEffect(() => {
+    const target = pending.current?.();
+    if (target == null) return;
+
+    pending.current = null;
+    focusStep(target);
+  });
+
+  return useCallback((find: Find) => {
+    pending.current = find;
+    setRequests((count) => count + 1);
+  }, []);
+}
