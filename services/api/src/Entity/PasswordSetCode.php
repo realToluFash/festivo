@@ -85,6 +85,12 @@ class PasswordSetCode
         return $this->attempts >= VerificationChallenge::MAXIMUM_ATTEMPTS;
     }
 
+    /** A code passes once (sc-13138): after that only a new code can. */
+    public function isPassed(): bool
+    {
+        return null !== $this->passedAt;
+    }
+
     public function wrongAttempt(): void
     {
         ++$this->attempts;

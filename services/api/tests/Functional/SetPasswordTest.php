@@ -143,6 +143,61 @@ final class SetPasswordTest extends ApiTestCase
         self::assertTrue(self::service(PasswordResolver::class)->verify($this->account(), self::PASSWORD));
     }
 
+    /** OWASP ASVS V2.7.3: an out-of-band code is usable once, so a second pass cannot take the password from the first. */
+    #[Test]
+    public function aCodePassesOnceAndTheRefusalsAfterItAreNotWrongTries(): void
+    {
+        $this->call('POST', '/api/auth/password/set/start');
+        $code = $this->codeSent();
+        $stepUp = $this->passed($code);
+
+        foreach ([$code, $code, '000000', $code, '000000'] as $again) {
+            $body = $this->call('POST', '/api/auth/password/set/code', ['code' => $again]);
+            self::assertSame(422, $this->statusCode());
+            self::assertSame(ErrorCode::VerificationCodeExhausted->type(), $body['type'], 'a passed code passes nothing more');
+            self::assertArrayNotHasKey('stepUp', $body);
+        }
+
+        $this->call('POST', '/api/auth/password/set', ['newPassword' => self::PASSWORD, 'stepUp' => $stepUp]);
+        self::assertSame(204, $this->statusCode(), 'the refused tries took nothing from the first pass');
+    }
+
+    #[Test]
+    public function aNewCodePassesAfterAPassAndVoidsTheFirst(): void
+    {
+        $this->call('POST', '/api/auth/password/set/start');
+        $first = $this->passed($this->codeSent());
+
+        for ($try = 1; $try <= 5; ++$try) {
+            $this->call('POST', '/api/auth/password/set/code', ['code' => '000000']);
+        }
+
+        self::mockTime('+61 seconds');
+        $this->call('POST', '/api/auth/password/set/start');
+        $code = $this->codeSent();
+        $second = $this->passed($code);
+
+        $this->call('POST', '/api/auth/password/set', ['newPassword' => self::THIEFS, 'stepUp' => $first]);
+        self::assertSame(ErrorCode::VerificationCodeExpired->type(), $this->last()['type'], 'a new code voids the first pass');
+        $this->call('POST', '/api/auth/password/set/code', ['code' => $code]);
+        self::assertSame(ErrorCode::VerificationCodeExhausted->type(), $this->last()['type'], 'the new code is passed already');
+
+        $this->call('POST', '/api/auth/password/set', ['newPassword' => self::PASSWORD, 'stepUp' => $second]);
+        self::assertSame(204, $this->statusCode());
+    }
+
+    #[Test]
+    public function aPassedCodeStillExpires(): void
+    {
+        $this->call('POST', '/api/auth/password/set/start');
+        $code = $this->codeSent();
+        $this->passed($code);
+
+        self::mockTime('+15 minutes');
+        $this->call('POST', '/api/auth/password/set/code', ['code' => $code]);
+        self::assertSame(ErrorCode::VerificationCodeExpired->type(), $this->last()['type']);
+    }
+
     #[Test]
     public function anAccountWithAPasswordHasNothingToAdd(): void
     {
