@@ -27,7 +27,7 @@ import { type Landing, landingFor } from '../src/landing.ts';
 import { dropRegistration, heldRegistration } from '../src/pendingRegistration.ts';
 import { rereadAccount } from '../src/signedIn.ts';
 
-type Status = CodeStatus | { kind: 'verified' };
+type Status = CodeStatus | { kind: 'verified'; tapped?: boolean };
 
 /** "Check your email": for a sign-up, by its registration handle; for an older unverified account, by its session. */
 export default function VerifyEmail() {
@@ -150,7 +150,7 @@ export default function VerifyEmail() {
         const link = await takeHeldLink();
         setNext(link == null ? landingFor(awaiting(account)) : `/join/${link}`);
       }
-      setStatus({ kind: 'verified' });
+      setStatus({ kind: 'verified', tapped: true });
     } catch (error) {
       if (error instanceof ApiError && error.is('registration_expired')) {
         await startAgain();
@@ -221,6 +221,7 @@ export default function VerifyEmail() {
                   ? t('verifyEmail.doneBody', { address })
                   : t('verifyEmail.doneBodyAlternative', { address })
             }
+            answer={status.kind === 'verified' && status.tapped === true ? status : undefined}
           />
         </>
       }

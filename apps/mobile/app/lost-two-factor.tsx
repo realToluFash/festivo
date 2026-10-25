@@ -7,7 +7,15 @@ import {
   recoveryIntroKey,
 } from '@soirely/domain';
 import { Redirect, router } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Linking, StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -37,10 +45,23 @@ import { tokens } from '../src/theme/tokens.ts';
 
 type Shown = RecoveryShown;
 
+/** The tap the step showing answers, for its heading to take screen reader focus (sc-11032). */
+const Tapped = createContext<object | undefined>(undefined);
+
 /** Lost both the authenticator and the recovery codes (sc-509): nothing on this screen signs anybody in. */
 export default function LostTwoFactor() {
   const challenge = heldChallenge()?.challenge ?? null;
-  const [view, setView] = useState<Shown>({ kind: 'loading' });
+  const [view, setShown] = useState<Shown>({ kind: 'loading' });
+  const [tapped, setTapped] = useState<object | undefined>(undefined);
+  const tapping = useRef(false);
+  const markTap = useCallback(() => {
+    tapping.current = true;
+  }, []);
+  const setView = useCallback((next: Shown) => {
+    setTapped(tapping.current ? {} : undefined);
+    tapping.current = false;
+    setShown(next);
+  }, []);
 
   const load = useCallback(
     async (): Promise<Shown> =>
@@ -65,10 +86,13 @@ export default function LostTwoFactor() {
     return () => {
       live = false;
     };
-  }, [load]);
+  }, [load, setView]);
 
   const reload = (): void => {
-    void load().then(setView);
+    void load().then((next) => {
+      markTap();
+      setView(next);
+    });
   };
 
   /** "Start again" from a replaced request: the start screen, never the newer request another device holds. */
@@ -80,8 +104,10 @@ export default function LostTwoFactor() {
 
     try {
       const opening = await api.recoveryOpening(challenge);
+      markTap();
       setView({ kind: 'start', opening, limitedUntil: null, sending: false });
     } catch (refusal) {
+      markTap();
       setView(startRefusal(refusal) === 'signIn' ? { kind: 'signIn' } : { kind: 'failed' });
     }
   }
@@ -97,6 +123,7 @@ export default function LostTwoFactor() {
     try {
       const started = await api.startRecovery(challenge);
       await holdRecovery(started.recovery);
+      markTap();
       setView({ kind: 'request', ...started });
     } catch (refusal) {
       const why = startRefusal(refusal);
@@ -109,47 +136,54 @@ export default function LostTwoFactor() {
           sending: false,
         });
       } else if (why === 'nobody') {
+        markTap();
         setView({ kind: 'nobody', supportAddress: opening.supportAddress });
       } else {
+        markTap();
         setView(why === 'signIn' ? { kind: 'signIn' } : { kind: 'failed' });
       }
     }
   }
 
-  if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
-  if (view.kind === 'loading') return <AuthFrame>{null}</AuthFrame>;
-  if (view.kind === 'start') {
+  return <Tapped.Provider value={tapped}>{shown()}</Tapped.Provider>;
+
+  function shown(): ReactNode {
+    if (view.kind === 'signIn') return <Redirect href="/sign-in" />;
+    if (view.kind === 'loading') return <AuthFrame>{null}</AuthFrame>;
+    if (view.kind === 'start') {
+      return (
+        <Start
+          opening={view.opening}
+          limitedUntil={view.limitedUntil}
+          sending={view.sending}
+          onSend={() => void start(view.opening)}
+        />
+      );
+    }
+    if (view.kind === 'nobody') return <Nobody supportAddress={view.supportAddress} />;
+    if (view.kind === 'replaced') return <Replaced onStartAgain={() => void startAgain()} />;
+    if (view.kind === 'failed') return <Failed failure={view} onRetry={reload} />;
+
     return (
-      <Start
-        opening={view.opening}
-        limitedUntil={view.limitedUntil}
-        sending={view.sending}
-        onSend={() => void start(view.opening)}
+      <Request
+        recovery={view.recovery}
+        state={view.state}
+        onTap={markTap}
+        onState={(state) => setView({ ...view, state })}
+        onNobody={() => {
+          void dropRecovery();
+          setView({ kind: 'nobody', supportAddress: view.state.supportAddress });
+        }}
+        onAskAgain={() => {
+          void dropRecovery().then(reload);
+        }}
+        onReplaced={() => {
+          void dropRecovery();
+          setView({ kind: 'replaced' });
+        }}
       />
     );
   }
-  if (view.kind === 'nobody') return <Nobody supportAddress={view.supportAddress} />;
-  if (view.kind === 'replaced') return <Replaced onStartAgain={() => void startAgain()} />;
-  if (view.kind === 'failed') return <Failed failure={view} onRetry={reload} />;
-
-  return (
-    <Request
-      recovery={view.recovery}
-      state={view.state}
-      onState={(state) => setView({ ...view, state })}
-      onNobody={() => {
-        void dropRecovery();
-        setView({ kind: 'nobody', supportAddress: view.state.supportAddress });
-      }}
-      onAskAgain={() => {
-        void dropRecovery().then(reload);
-      }}
-      onReplaced={() => {
-        void dropRecovery();
-        setView({ kind: 'replaced' });
-      }}
-    />
-  );
 }
 
 type Tone = StatusTone;
@@ -163,10 +197,12 @@ function Saying({
   intro: string;
   mark?: { tone: Tone; word: string };
 }) {
+  const tapped = useContext(Tapped);
+
   return (
     <View style={styles.saying}>
       {mark != null && <StatusMark tone={mark.tone} word={mark.word} />}
-      <AuthHeading title={title} intro={intro} />
+      <AuthHeading title={title} intro={intro} answer={tapped} />
     </View>
   );
 }
@@ -310,6 +346,7 @@ function Nobody({ supportAddress }: { supportAddress: string }) {
 
 function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
   const { t } = useTranslation();
+  const tapped = useContext(Tapped);
 
   return (
     <AuthFrame>
@@ -318,7 +355,8 @@ function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
         mark={tokens.marks.broken.glyph}
         title={t('lostTwoFactor.failedTitle')}
         body={t('lostTwoFactor.failedBody')}
-        answer={failure}
+        answer={tapped ?? failure}
+        takesFocus={tapped != null}
       />
       <SecondaryButton
         label={t('lostTwoFactor.retry')}
@@ -333,6 +371,7 @@ function Failed({ failure, onRetry }: { failure: Shown; onRetry: () => void }) {
 function Request({
   recovery,
   state,
+  onTap,
   onState,
   onNobody,
   onAskAgain,
@@ -340,6 +379,8 @@ function Request({
 }: {
   recovery: string;
   state: RecoveryState;
+  /** The next change of step answers a tap. */
+  onTap: () => void;
   onState: (state: RecoveryState) => void;
   onNobody: () => void;
   onAskAgain: () => void;
@@ -372,6 +413,7 @@ function Request({
       <Codes
         recovery={recovery}
         state={state}
+        onTap={onTap}
         onState={onState}
         onNobody={onNobody}
         onReplaced={onReplaced}
@@ -412,9 +454,14 @@ function Request({
           onPress={() => {
             api
               .cancelRecovery(recovery)
-              .then(onState)
+              .then((cancelled) => {
+                onTap();
+                onState(cancelled);
+              })
               .catch((refusal: unknown) => {
-                if (replacedElsewhere(refusal)) onReplaced();
+                if (!replacedElsewhere(refusal)) return;
+                onTap();
+                onReplaced();
               });
           }}
           testID="lostTwoFactor.cancel"
@@ -517,12 +564,14 @@ function Request({
 function Codes({
   recovery,
   state,
+  onTap,
   onState,
   onNobody,
   onReplaced,
 }: {
   recovery: string;
   state: RecoveryState;
+  onTap: () => void;
   onState: (state: RecoveryState) => void;
   onNobody: () => void;
   onReplaced: () => void;
@@ -606,23 +655,25 @@ function Codes({
     setFailed(null);
 
     try {
-      onState(
-        await api.proveRecovery(
-          recovery,
-          cleanCode(typed.current.emailCode),
-          hasPhone ? cleanCode(typed.current.phoneCode) : null,
-        ),
+      const proved = await api.proveRecovery(
+        recovery,
+        cleanCode(typed.current.emailCode),
+        hasPhone ? cleanCode(typed.current.phoneCode) : null,
       );
+      onTap();
+      onState(proved);
     } catch (refusal) {
       setAsking(false);
 
       if (replacedElsewhere(refusal)) {
+        onTap();
         onReplaced();
         return;
       }
 
       // The last approver left while the codes were out: the request is cancelled, nobody is told.
       if (startRefusal(refusal) === 'nobody') {
+        onTap();
         onNobody();
         return;
       }

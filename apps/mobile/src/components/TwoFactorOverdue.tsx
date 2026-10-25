@@ -6,7 +6,9 @@ import { useTranslation } from 'react-i18next';
 import { SECTION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { signOutHere } from '../signedIn.ts';
+import { useTappedSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { Screen } from './Screen.tsx';
@@ -21,15 +23,15 @@ export function TwoFactorOverdue({ organisation }: { organisation: Membership })
   return (
     <Screen edges={bodyEdges(kind)} contentStyle={CONTENT[kind]}>
       <View style={[cardFrame(kind), styles.card]}>
-        <Text
+        <AnswerHeading
           size={
             kind === 'tabletLandscape' ? tokens.typeTitlePage.size : tokens.typeTitleDialog.size
           }
           weight="bold"
-          accessibilityRole="header"
+          answer={useTappedSwitch(organisation.id)}
         >
           {t('signInRules.overdueTitle')}
-        </Text>
+        </AnswerHeading>
         <Text size={tokens.typeBodyPhone.size}>
           {t('signInRules.overdueBody', { organisation: organisation.name })}
         </Text>

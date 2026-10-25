@@ -1,4 +1,4 @@
-import { primaryEmailAddress } from '@soirely/api-client';
+import { type Membership, primaryEmailAddress } from '@soirely/api-client';
 import { roleName } from '@soirely/domain';
 import { router } from 'expo-router';
 import { useRef } from 'react';
@@ -8,7 +8,9 @@ import { useTranslation } from 'react-i18next';
 import { DESTINATION_HREF } from '../kit/appNav.ts';
 import { type LayoutKind, useLayout } from '../layout/useLayout.ts';
 import { useSignedIn } from '../signedIn.ts';
+import { useTappedSwitch } from '../tappedSwitch.ts';
 import { tokens } from '../theme/tokens.ts';
+import { AnswerHeading } from './AnswerHeading.tsx';
 import { AppFrame, useOpenSwitcher } from './AppFrame.tsx';
 import { bodyEdges } from './bodyEdges.ts';
 import { PrimaryButton, SecondaryButton } from './Buttons.tsx';
@@ -46,9 +48,7 @@ function HomeBody() {
       {account != null && organisation == null && <NoOrganisation />}
       {account != null && organisation != null && (
         <View style={[cardFrame(kind), styles.card]}>
-          <Text size={tokens.typeTitleDialog.size} weight="bold" accessibilityRole="header">
-            {t('home.signedInTo', { name: organisation.name })}
-          </Text>
+          <SignedInHeading organisation={organisation} />
           <View style={styles.lines}>
             <Text size={tokens.typeBodyPhone.size}>
               {t('switcher.yourRole', { role: roleName(t, organisation.role) })}
@@ -75,6 +75,20 @@ function HomeBody() {
         </View>
       )}
     </Screen>
+  );
+}
+
+function SignedInHeading({ organisation }: { organisation: Membership }) {
+  const { t } = useTranslation();
+
+  return (
+    <AnswerHeading
+      size={tokens.typeTitleDialog.size}
+      weight="bold"
+      answer={useTappedSwitch(organisation.id)}
+    >
+      {t('home.signedInTo', { name: organisation.name })}
+    </AnswerHeading>
   );
 }
 

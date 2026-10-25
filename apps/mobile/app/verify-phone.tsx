@@ -19,7 +19,7 @@ import { type CodeStatus, codeRefusal, openingStatus, retryAfter } from '../src/
 import { rereadAccount } from '../src/signedIn.ts';
 import { tokens } from '../src/theme/tokens.ts';
 
-type Status = CodeStatus | { kind: 'verified' };
+type Status = CodeStatus | { kind: 'verified'; tapped?: boolean };
 
 export default function VerifyPhone() {
   const { t } = useTranslation();
@@ -120,7 +120,7 @@ export default function VerifyPhone() {
 
     try {
       setMadePrimary((await api.verifyPhone(code, alternative)).primary);
-      setStatus({ kind: 'verified' });
+      setStatus({ kind: 'verified', tapped: true });
       // Account, under this screen, shows the row verified however it is reached.
       if (alternative != null) void rereadAccount().catch(() => {});
     } catch (error) {
@@ -197,6 +197,7 @@ export default function VerifyPhone() {
                     : t('verifyPhone.doneBodyAlternative', { number })
             }
             introLive={!verified}
+            answer={status.kind === 'verified' && status.tapped === true ? status : undefined}
           />
         </>
       }

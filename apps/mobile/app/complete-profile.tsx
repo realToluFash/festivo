@@ -17,6 +17,7 @@ import { StyleSheet, type TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { api } from '../src/api.ts';
+import { AnswerHeading } from '../src/components/AnswerHeading.tsx';
 import { AuthFrame, AuthHeading } from '../src/components/AuthFrame.tsx';
 import {
   Footnote,
@@ -56,6 +57,8 @@ export default function CompleteProfile() {
   const [account, setAccount] = useState<Account | null>(null);
   // Start my own organisation instead: the request withdrawn, the organisation fields alone.
   const [founding, setFounding] = useState(false);
+  // The tap that brought the step showing, for its heading to take screen reader focus.
+  const [tapped, setTapped] = useState<object | undefined>(undefined);
 
   useEffect(() => {
     let live = true;
@@ -98,9 +101,14 @@ export default function CompleteProfile() {
                   organisation: request.organisation.name,
                 })}
                 intro={t('domainJoining.waitingIntro', { email: primaryEmail })}
+                answer={tapped}
               />
             ) : (
-              <AuthHeading title={t('completeProfile.title')} intro={t('completeProfile.intro')} />
+              <AuthHeading
+                title={t('completeProfile.title')}
+                intro={t('completeProfile.intro')}
+                answer={tapped}
+              />
             )}
           </>
         }
@@ -115,6 +123,7 @@ export default function CompleteProfile() {
             onWithdrawn={() => {
               setFounding(true);
               setAccount({ ...account, waitingFor: null });
+              setTapped({});
             }}
           />
         ) : (
@@ -142,7 +151,13 @@ export default function CompleteProfile() {
           body={t('completeProfile.providerConfirmed', { provider, email: primaryEmail })}
         />
       )}
-      <Details account={account} onAsked={setAccount} />
+      <Details
+        account={account}
+        onAsked={(asked) => {
+          setAccount(asked);
+          setTapped({});
+        }}
+      />
       <SignedInAs
         email={account.emailAddresses.find((address) => address.primary)?.address ?? ''}
       />
@@ -373,6 +388,7 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
   // Only a self-registered account in no organisation is offered one at its domain (sc-561).
   const [offered, setOffered] = useState<JoinOffers | null>(null);
   const [own, setOwn] = useState(false);
+  const [askedInstead, setAskedInstead] = useState<object | undefined>(undefined);
   const [unavailable, setUnavailable] = useState(false);
 
   useEffect(() => {
@@ -577,9 +593,9 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
       {showOffers && (
         <View style={styles.offers}>
           <View style={styles.offersIntro}>
-            <Text size={tokens.typeButton.size} weight="semibold" accessibilityRole="header">
+            <AnswerHeading size={tokens.typeButton.size} weight="semibold" answer={askedInstead}>
               {t('domainJoining.heading')}
-            </Text>
+            </AnswerHeading>
             <Text size={tokens.typeSmall.size} muted>
               {t('domainJoining.intro', { domain: offered?.domain ?? '' })}
             </Text>
@@ -616,7 +632,10 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
           <SecondaryButton
             label={t('domainJoining.startOwn')}
             off={saving}
-            onPress={() => setOwn(true)}
+            onPress={() => {
+              setOwn(true);
+              setAskedInstead(undefined);
+            }}
             testID="completeProfile.startOwn"
           />
         </View>
@@ -625,7 +644,10 @@ function Details({ account, onAsked }: { account: Account; onAsked: (account: Ac
       {needsOne && offers.length > 0 && own && (
         <QuietButton
           label={t('domainJoining.askInstead', { domain: offered?.domain ?? '' })}
-          onPress={() => setOwn(false)}
+          onPress={() => {
+            setOwn(false);
+            setAskedInstead({});
+          }}
           testID="completeProfile.askInstead"
         />
       )}
