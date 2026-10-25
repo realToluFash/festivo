@@ -221,6 +221,18 @@ controls; focus always visible; **and anything designed around dragging needs a
 click-click path** — pick, then place — because dragging is not an accessible interaction
 on its own.
 
+Screen-reader focus on mobile, which fails silently — no test and no review sees it, only
+a TalkBack or VoiceOver pass:
+
+- Move it only through `moveScreenReaderFocus` (`screenReaderFocus.ts`), and only to a view
+  a screen reader can land on: a `Pressable`, a `TextInput`, or a `View` with `accessible`.
+  A ref on a plain wrapper `View` drops the move, because the view can be flattened away
+  and is no focus stop (sc-9950).
+- A move to something the same change draws, or one that follows a sheet closing, waits
+  `SETTLED_MS` first, as `useBroughtIntoView` does. TalkBack drops a hover on a view not
+  yet in its tree, and VoiceOver drops a focus asked for while a sheet slides away
+  (sc-9950, sc-9382).
+
 **Never verify in a browser unless asked.** Use `tsc --noEmit`, the affected suites, and a
 reading of the branch you did not change. Put the judgement in a **pure function with
 tests** — the layout classifier is the model: that is the check that survives the session,
