@@ -140,7 +140,7 @@ export const tokens = {
     "lineHeight": 1,
     "letterSpacing": "0"
   },
-  "typeMonoTime": {
+  "typeCode": {
     "size": 14,
     "weight": 600,
     "lineHeight": 1,
