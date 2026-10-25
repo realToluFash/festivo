@@ -180,6 +180,43 @@ describe('Events', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it.each([
+    ['the list', [event()], 'Events'],
+    ['the first-run card', [], 'Set up your first event'],
+  ])(
+    'takes focus to the heading above %s once Try again loads it (sc-11369)',
+    async (_what, events, heading) => {
+      signedIn();
+      let calls = 0;
+      answering({
+        'GET /api/orgs/org_1/events': () =>
+          ++calls === 1 ? problem(500, 'internal_error') : json({ events }),
+      });
+      at('/app/events');
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+      expect(document.activeElement).toBe(document.body);
+
+      const title = await screen.findByRole('heading', { name: heading });
+      await waitFor(() => expect(document.activeElement).toBe(title));
+    },
+  );
+
+  it('takes focus to the line that says the events did not load when Try again fails again (sc-11369)', async () => {
+    signedIn();
+    answering({ 'GET /api/orgs/org_1/events': () => problem(500, 'internal_error') });
+    at('/app/events');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByText('The events did not load. Try again in a moment.'),
+      ),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it("counts the organisation's events on the dashboard", async () => {
     signedIn();
     answering({
@@ -688,6 +725,57 @@ describe("An event's page", () => {
     expect(await screen.findByText('The guest list for this event is coming.')).toBeDefined();
   });
 
+  it.each([
+    ['the event', '/app/events/ev_1', 'Adaeze and Tunde'],
+    ['its Guests', '/app/events/ev_1/guests', 'Guests'],
+  ])(
+    'takes focus to the heading of %s once Try again loads it (sc-11369)',
+    async (_what, path, heading) => {
+      signedIn();
+      let calls = 0;
+      answering({
+        'GET /api/events/ev_1': () =>
+          ++calls === 1 ? problem(500, 'internal_error') : json({ event: event() }),
+      });
+      at(path);
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      const title = await screen.findByRole('heading', { level: 1, name: heading });
+      await waitFor(() => expect(document.activeElement).toBe(title));
+    },
+  );
+
+  it('takes focus to "This event is not available" when Try again finds the event gone (sc-11369)', async () => {
+    signedIn();
+    let calls = 0;
+    answering({
+      'GET /api/events/ev_1': () =>
+        ++calls === 1 ? problem(500, 'internal_error') : problem(404, 'not_found'),
+    });
+    at('/app/events/ev_1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    const gone = await screen.findByRole('heading', { name: 'This event is not available' });
+    await waitFor(() => expect(document.activeElement).toBe(gone));
+  });
+
+  it('takes focus to the line that says the event did not load when Try again fails again (sc-11369)', async () => {
+    signedIn();
+    answering({ 'GET /api/events/ev_1': () => problem(500, 'internal_error') });
+    at('/app/events/ev_1');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByText('The event did not load. Try again in a moment.'),
+      ),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it("says the same for an event that does not exist and another organisation's", async () => {
     signedIn();
     answering({
@@ -867,6 +955,73 @@ describe("Editing an event's details (sc-3587)", () => {
 
     await waitFor(() => expect(value('Event name')).toBe('Their name'));
     expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('takes focus to Edit details once Try again loads the event, and to the line when it fails again (sc-11369)', async () => {
+    signedIn();
+    let calls = 0;
+    serving({
+      'GET /api/events/ev_1': () =>
+        ++calls === 2 ? tagged({ event: event() }, '"1"') : problem(500, 'internal_error'),
+    });
+    at('/app/events/ev_1/edit');
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    const title = await screen.findByRole('heading', { level: 1, name: 'Edit details' });
+    await waitFor(() => expect(document.activeElement).toBe(title));
+
+    cleanup();
+    calls = 5;
+    at('/app/events/ev_1/edit');
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByText('The event did not load. Try again in a moment.'),
+      ),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('takes focus to Save changes after Cancel under "Not saved. Somebody else changed this event…" (sc-11369)', async () => {
+    signedIn();
+    serving({ 'PATCH /api/events/ev_1': () => problem(412, 'precondition_failed') });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'My name' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    const notice = (
+      await screen.findByText(
+        'Not saved. Somebody else changed this event since you opened it. What you typed is still here.',
+      )
+    ).closest('.notice') as HTMLElement;
+    fireEvent.click(within(notice).getByRole('button', { name: 'Cancel' }));
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Save changes' }));
+  });
+
+  it('takes focus to "Not saved" when Show the latest fails (sc-11369)', async () => {
+    signedIn();
+    let reads = 0;
+    serving({
+      'PATCH /api/events/ev_1': () => problem(412, 'precondition_failed'),
+      'GET /api/events/ev_1': () =>
+        ++reads === 1
+          ? tagged({ event: event() }, '"1"')
+          : Promise.reject(new TypeError('Failed to fetch')),
+    });
+    await editing();
+
+    fireEvent.change(screen.getByLabelText('Event name'), { target: { value: 'My name' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Show the latest' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'Show the latest version?' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Show the latest' }));
+
+    const notSaved = await screen.findByText('Not saved. Your changes are still here. Try again.');
+    await waitFor(() => expect(document.activeElement).toBe(notSaved));
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(value('Event name')).toBe('My name');
   });
 
   it('says the currency cannot change once amounts are recorded', async () => {
