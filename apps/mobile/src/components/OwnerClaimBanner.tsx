@@ -17,6 +17,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useComeForward } from './comeForward.ts';
 import { Notice, type NoticeTone } from './Notice.tsx';
 import { readOut } from './ReadOut.tsx';
 import { useBroughtIntoView } from './Screen.tsx';
@@ -166,6 +167,7 @@ function OwnerClaimCard({
   const [withdrawing, setWithdrawing] = useState<'asking' | 'pending' | null>(null);
   const withdrawButton = useRef<View>(null);
   const [withdrawRefused, setWithdrawRefused] = useState<string | null>(null);
+  const comeForward = useComeForward();
   const words = (line: OwnerClaimLine) => t(line.key, line.values);
   const { tone, mark } = TONES[view.tone];
 
@@ -195,6 +197,8 @@ function OwnerClaimCard({
         setRefusal(t(key, { domain: banner.domain }));
       }
       setBusy(false);
+    } finally {
+      comeForward();
     }
   }
 
@@ -214,6 +218,8 @@ function OwnerClaimCard({
       setNotFound(true);
     } catch {
       onReload();
+    } finally {
+      comeForward();
     }
 
     setBusy(false);
@@ -235,6 +241,8 @@ function OwnerClaimCard({
 
       setRefusal(t('ownerClaim.failed'));
       setBusy(false);
+    } finally {
+      comeForward();
     }
   }
 
@@ -254,6 +262,8 @@ function OwnerClaimCard({
       } else {
         setRefusal(t('ownerClaim.failed'));
       }
+    } finally {
+      comeForward();
     }
   }
 

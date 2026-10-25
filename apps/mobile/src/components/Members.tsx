@@ -29,6 +29,7 @@ import {
   membersAfterWrite,
   withApproved,
   withRemoved,
+  withRestored,
   withRole,
   withTurnedDown,
 } from '../kit/membersAfterWrite.ts';
@@ -37,6 +38,7 @@ import { type LayoutKind } from '../layout/useLayout.ts';
 import { tokens } from '../theme/tokens.ts';
 import { PrimaryButton, QuietButton, SecondaryButton } from './Buttons.tsx';
 import { cardFrame } from './cardFrame.ts';
+import { useComeForward } from './comeForward.ts';
 import { FieldError } from './Field.tsx';
 import { Notice } from './Notice.tsx';
 import { ReadOut, useReadOut } from './ReadOut.tsx';
@@ -137,17 +139,25 @@ function AnsweredLine({ answered, onNext }: { answered: Answered; onNext: () => 
 function NoticeInView({
   tone,
   mark,
+  title,
   body,
 }: {
   tone: 'quiet' | 'done';
   mark: string;
+  title?: string;
   body: string;
 }) {
   const { shown, read } = useBroughtIntoView();
 
   return (
     <View ref={shown}>
-      <Notice tone={tone} mark={mark} body={body} wordsRef={read} />
+      <Notice
+        tone={tone}
+        mark={mark}
+        {...(title != null && { title })}
+        body={body}
+        wordsRef={read}
+      />
     </View>
   );
 }
@@ -373,6 +383,11 @@ function MemberRow({
   );
 }
 
+/** What the last restore or stale answer came to; `seen` keys each answer so its notice mounts afresh. */
+type AccessOutcome = { seen: number } & (
+  { kind: 'conflict' } | { kind: 'restored'; byHand: boolean; role: string }
+);
+
 type Removal = 'resting' | 'confirming' | 'removing';
 
 /** One member, `MembersApp-*` state `member` and on: the web's `MemberDetail` without the history. */
@@ -405,7 +420,8 @@ export function MemberPage({
   const waiting = member.status === 'pending_approval';
   const role = memberHeldNoRole(member) ? t('membersScreen.noRoleYet') : roleName(t, member.role);
   const acts = standing === 'manageable' || standing === 'suspendedOnlyOwner';
-  const [conflict, setConflict] = useState(false);
+  const [outcome, setOutcome] = useState<AccessOutcome | null>(null);
+  const restored = outcome?.kind === 'restored' ? outcome : null;
 
   function changedElsewhere(): Promise<void> {
     // Shown once the member is reloaded, so the role card has settled under it before it is brought into view.
@@ -413,7 +429,7 @@ export function MemberPage({
       .members(organisation.id)
       .then(onChanged)
       .catch(() => undefined)
-      .finally(() => setConflict(true));
+      .finally(() => setOutcome((last) => ({ seen: (last?.seen ?? 0) + 1, kind: 'conflict' })));
   }
 
   return (
@@ -448,12 +464,23 @@ export function MemberPage({
         </View>
       </View>
 
-      {conflict && (
+      {outcome?.kind === 'conflict' ? (
         <NoticeInView
+          key={outcome.seen}
           tone="quiet"
           mark={tokens.marks.info.glyph}
           body={t('membersScreen.accessConflict', { name: member.user.name })}
         />
+      ) : (
+        restored?.byHand === true && (
+          <NoticeInView
+            key={restored.seen}
+            tone="done"
+            mark={tokens.marks.done.glyph}
+            title={t('membersScreen.restoredNow', { name: member.user.name, role: restored.role })}
+            body={t('membersScreen.restoredNowNext', { organisation: organisation.name })}
+          />
+        )
       )}
 
       <View style={cardFrame(kind)}>
@@ -505,16 +532,38 @@ export function MemberPage({
         )}
       </View>
 
-      {member.suspension != null && (
-        <Suspension
-          kind={kind}
-          organisation={organisation}
-          member={member}
-          suspension={member.suspension}
-          standing={standing}
-          acts={acts}
-          onChanged={onChanged}
+      {restored?.byHand === false ? (
+        <NoticeInView
+          key={restored.seen}
+          tone="done"
+          mark={tokens.marks.done.glyph}
+          body={t('membersScreen.restored', {
+            name: member.user.name,
+            organisation: organisation.name,
+          })}
         />
+      ) : (
+        member.suspension != null && (
+          <Suspension
+            kind={kind}
+            organisation={organisation}
+            member={member}
+            list={list}
+            suspension={member.suspension}
+            standing={standing}
+            acts={acts}
+            onRestored={(list) => {
+              onChanged(list);
+              setOutcome((last) => ({
+                seen: (last?.seen ?? 0) + 1,
+                kind: 'restored',
+                byHand: member.suspension?.reason === 'manual',
+                role,
+              }));
+            }}
+            onChangedElsewhere={changedElsewhere}
+          />
+        )
       )}
 
       {acts && !waiting && (
@@ -582,6 +631,7 @@ function JoinRequestAnswer({
   const [picked, setPicked] = useState(offered[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
+  const comeForward = useComeForward();
   const role = offered.find((one) => one.id === picked);
   const name = member.user.name;
   const read = () => api.members(organisation.id);
@@ -599,6 +649,7 @@ function JoinRequestAnswer({
     } catch (error) {
       setFailed(refusalFor(error, 'roleId', t('membersScreen.actionFailed')));
       setBusy(false);
+      comeForward();
       return;
     }
 
@@ -899,17 +950,21 @@ function Suspension({
   organisation,
   member,
   suspension,
+  list,
   standing,
   acts,
-  onChanged,
+  onRestored,
+  onChangedElsewhere,
 }: {
   kind: LayoutKind;
   organisation: Membership;
   member: OrganisationMember;
+  list: MembersList;
   suspension: Suspension;
   standing: MemberStanding;
   acts: boolean;
-  onChanged: (list: MembersList) => void;
+  onRestored: (list: MembersList) => void;
+  onChangedElsewhere: () => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
@@ -927,18 +982,25 @@ function Suspension({
 
     try {
       await api.restoreMember(organisation.id, member.id);
-      onChanged(await api.members(organisation.id));
     } catch (error) {
-      setFailed(
-        error instanceof ApiError && error.is('restore_needs_address')
-          ? t('membersScreen.restoreNeedsAddress', named)
-          : error instanceof ApiError && error.is('team_seats_in_use')
-            ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
-            : refusalTitle(error, t('membersScreen.actionFailed')),
-      );
-    } finally {
+      if (error instanceof ApiError && error.is('conflict')) {
+        await onChangedElsewhere();
+      } else {
+        setFailed(
+          error instanceof ApiError && error.is('restore_needs_address')
+            ? t('membersScreen.restoreNeedsAddress', named)
+            : error instanceof ApiError && error.is('team_seats_in_use')
+              ? t('membersScreen.seatsInUse', { count: error.problem.limit ?? 0 })
+              : refusalTitle(error, t('membersScreen.actionFailed')),
+        );
+      }
       setBusy(false);
+      return;
     }
+
+    onRestored(
+      await membersAfterWrite(() => api.members(organisation.id), list, withRestored(member.id)),
+    );
   }
 
   return (

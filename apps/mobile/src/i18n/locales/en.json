@@ -1226,6 +1226,8 @@
     "onlyOwnerRestoreNeedsAddress": "Restore works once their main email address is a verified {{domain}} address again.",
     "restore": "Restore",
     "restored": "{{name}}'s access to {{organisation}} is restored.",
+    "restoredNow": "{{name}} has access again, as {{role}}.",
+    "restoredNowNext": "They can use {{organisation}} from their next request, and they're emailed in their language.",
     "restoreNeedsAddress": "{{name}} needs a verified {{domain}} address first.",
     "noRoleYet": "No role yet",
     "awaiting": {

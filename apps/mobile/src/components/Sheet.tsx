@@ -1,4 +1,16 @@
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from 'react';
+import {
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  createContext,
+  useContext,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -17,15 +29,7 @@ import { keyboardTopNow, watchKeyboardTop } from './keyboardWatch.ts';
 import { SETTLED_MS } from './Screen.tsx';
 import { moveScreenReaderFocus } from './screenReaderFocus.ts';
 
-/** The app's one dialog frame (sc-8606): a bottom sheet on a phone, a centred card on a tablet. */
-export function Sheet({
-  open,
-  onClose,
-  scrimLabel,
-  opener,
-  testID,
-  children,
-}: {
+type SheetProps = {
   open: boolean;
   /** System back; the sheet's own buttons close it themselves. */
   onClose: () => void;
@@ -35,7 +39,69 @@ export function Sheet({
   opener: RefObject<View | null>;
   testID?: string;
   children: ReactNode;
-}) {
+};
+
+type SheetPlaces = {
+  put: (id: string, sheet: ReactNode) => void;
+  subscribe: (heard: () => void) => () => void;
+  current: () => ReadonlyMap<string, ReactNode>;
+};
+
+const Places = createContext<SheetPlaces | null>(null);
+
+function sheetPlaces(): SheetPlaces {
+  let sheets: ReadonlyMap<string, ReactNode> = new Map();
+  const listeners = new Set<() => void>();
+
+  return {
+    put: (id, sheet) => {
+      const next = new Map(sheets);
+      if (sheet == null) next.delete(id);
+      else next.set(id, sheet);
+      sheets = next;
+      listeners.forEach((heard) => heard());
+    },
+    subscribe: (heard) => {
+      listeners.add(heard);
+      return () => listeners.delete(heard);
+    },
+    current: () => sheets,
+  };
+}
+
+/** Draws every Sheet opened inside it here, so a part hidden with display: none keeps its sheet open (sc-11053). */
+export function SheetsAtRoot({ children }: { children: ReactNode }) {
+  const [places] = useState(sheetPlaces);
+
+  return (
+    <Places.Provider value={places}>
+      {children}
+      <PlacedSheets places={places} />
+    </Places.Provider>
+  );
+}
+
+function PlacedSheets({ places }: { places: SheetPlaces }) {
+  const sheets = useSyncExternalStore(places.subscribe, places.current);
+
+  return [...sheets].map(([id, sheet]) => <Fragment key={id}>{sheet}</Fragment>);
+}
+
+/** The app's one dialog frame (sc-8606): a bottom sheet on a phone, a centred card on a tablet. */
+export function Sheet(props: SheetProps) {
+  const places = useContext(Places);
+  const id = useId();
+  const sheet = <SheetFrame {...props} />;
+
+  useLayoutEffect(() => {
+    places?.put(id, sheet);
+  });
+  useLayoutEffect(() => () => places?.put(id, null), [places, id]);
+
+  return places == null ? sheet : null;
+}
+
+function SheetFrame({ open, onClose, scrimLabel, opener, testID, children }: SheetProps) {
   const { kind, height } = useLayout();
   const insets = useSafeAreaInsets();
   const phone = kind === 'phone';
