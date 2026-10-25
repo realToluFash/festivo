@@ -181,8 +181,8 @@ function useKeyboardTop(): number | null {
   return top;
 }
 
-/** Hands screen reader focus back to `opener` once a sheet that was open has slid away (WCAG 2.4.3). */
-function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget | null>): void {
+/** Hands screen reader focus back to `opener` once a sheet or dialog that was open has gone (WCAG 2.4.3). */
+export function useFocusBack(open: boolean, opener: RefObject<ScreenReaderTarget | null>): void {
   const wasOpen = useRef(open);
 
   useEffect(() => {
