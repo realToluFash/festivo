@@ -50,6 +50,7 @@ export function Notice({
     { answer },
   );
   const { shown, read } = useFocusOnAnswer(takesFocus ? answer : undefined);
+  const wordsAsOne = announce || takesFocus || wordsRef != null;
   const surface = {
     quiet: styles.quiet,
     attention: styles.attention,
@@ -93,7 +94,9 @@ export function Notice({
         <View
           ref={takesFocus ? read : wordsRef}
           style={styles.words}
-          accessible={announce || takesFocus || wordsRef != null || undefined}
+          accessible={wordsAsOne || undefined}
+          // As one item, the words keep their title's "heading" only on the item itself.
+          accessibilityRole={wordsAsOne && heading ? 'header' : undefined}
         >
           {title != null && (
             <Text
