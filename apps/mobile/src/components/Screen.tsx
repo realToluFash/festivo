@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import {
+  AccessibilityInfo,
   Keyboard,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -33,7 +34,7 @@ import {
 } from '../kit/keyboard.ts';
 import { tokens } from '../theme/tokens.ts';
 import { focusedField, watchFocusedField } from './focusedField.ts';
-import { moveScreenReaderFocus } from './screenReaderFocus.ts';
+import { type ScreenReaderTarget, moveScreenReaderFocus } from './screenReaderFocus.ts';
 import { LIFT, keyboardTopNow, settledLift, watchKeyboardTop } from './keyboardWatch.ts';
 
 type InnerViewRef = ScrollView & { getInnerViewRef(): View | null };
@@ -250,7 +251,7 @@ export function useScrolledToTop(): RefObject<View | null> {
 // VoiceOver drops a focus asked for while a sheet is still sliding away, and the scroll has to land first.
 export const SETTLED_MS = 500;
 
-function bringIntoView(scroll: ScreenScrollView | null, line: View | null): void {
+function bringIntoView(scroll: ScreenScrollView | null, line: ScreenReaderTarget | null): void {
   const view = scroll?.ref.current;
   const content = (view as InnerViewRef | null | undefined)?.getInnerViewRef();
   const scrollHost = view?.getNativeScrollRef();
@@ -295,6 +296,43 @@ export function useBroughtIntoView(): BroughtIntoView {
   }, [scroll]);
 
   return { shown: ref, read };
+}
+
+export interface FocusedOnAnswer<Read extends ScreenReaderTarget> {
+  shown: RefObject<View | null>;
+  read: RefObject<Read | null>;
+}
+
+/** With a screen reader on, once a tap's `answer` shows, brings `shown` (or `read`, with nothing on `shown`) wholly into sight and moves focus to `read`, and again with each new answer; with `answer` undefined, or no screen reader, nothing moves (sc-11032). */
+export function useFocusOnAnswer<Read extends ScreenReaderTarget = View>(
+  answer: unknown,
+): FocusedOnAnswer<Read> {
+  const scroll = useContext(ScreenScroll);
+  const shown = useRef<View>(null);
+  const read = useRef<Read>(null);
+
+  useEffect(() => {
+    if (answer === undefined) return;
+
+    let gone = false;
+    let focus: ReturnType<typeof setTimeout> | undefined;
+    void AccessibilityInfo.isScreenReaderEnabled().then((on) => {
+      if (!on || gone) return;
+
+      bringIntoView(scroll, shown.current ?? read.current);
+      focus = setTimeout(() => {
+        bringIntoView(scroll, shown.current ?? read.current);
+        moveScreenReaderFocus(read.current);
+      }, SETTLED_MS);
+    });
+
+    return () => {
+      gone = true;
+      clearTimeout(focus);
+    };
+  }, [answer, scroll]);
+
+  return { shown, read };
 }
 
 /** The scroll context a ScrollView provides, and the props that keep it in step with that view. */

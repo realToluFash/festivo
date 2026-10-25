@@ -19,8 +19,8 @@ type Status =
   | { kind: 'asking' }
   | { kind: 'sending' }
   | { kind: 'sent'; email: string }
-  | { kind: 'limited'; time: string }
-  | { kind: 'failed' };
+  | { kind: 'limited'; time: string; again: boolean }
+  | { kind: 'failed'; again: boolean };
 
 /** "Reset your password": an address in, and the same answer whether or not it has an account. */
 export default function ForgotPassword() {
@@ -37,14 +37,14 @@ export default function ForgotPassword() {
     () => emailInput.current?.focus(),
   );
 
-  async function send(email: string): Promise<void> {
+  async function send(email: string, again: boolean): Promise<void> {
     setStatus({ kind: 'sending' });
 
     try {
       await api.forgotPassword(email);
       setStatus({ kind: 'sent', email });
     } catch (error) {
-      setStatus(refusalFrom(error));
+      setStatus(refusalFrom(error, again));
     }
   }
 
@@ -55,13 +55,19 @@ export default function ForgotPassword() {
     if (!checks.passes({ email })) return;
 
     setKept(typed.current);
-    void send(email);
+    void send(email, false);
   }
 
   if (status.kind === 'sent') {
     return (
       <AuthFrame
-        saying={<AuthHeading title={t('recovery.sentTitle')} intro={t('recovery.sentBody')} />}
+        saying={
+          <AuthHeading
+            title={t('recovery.sentTitle')}
+            intro={t('recovery.sentBody')}
+            answer={status}
+          />
+        }
       >
         <Notice
           tone="quiet"
@@ -71,7 +77,7 @@ export default function ForgotPassword() {
         />
         <SecondaryButton
           label={t('recovery.sendAgain')}
-          onPress={() => void send(status.email)}
+          onPress={() => void send(status.email, true)}
           testID="recovery.sendAgain"
         />
         <Text size={tokens.typeSmall.size} style={styles.secondary}>
@@ -98,6 +104,7 @@ export default function ForgotPassword() {
             title={t('recovery.limitedTitle')}
             body={t('recovery.limitedBody', { time: status.time })}
             answer={status}
+            takesFocus={status.again}
           />
         )}
 
@@ -108,6 +115,7 @@ export default function ForgotPassword() {
             title={t('recovery.failedTitle')}
             body={t('recovery.failedBody')}
             answer={status}
+            takesFocus={status.again}
           />
         )}
 
@@ -152,14 +160,15 @@ export default function ForgotPassword() {
   );
 }
 
-function refusalFrom(error: unknown): Status {
+function refusalFrom(error: unknown, again: boolean): Status {
   if (error instanceof ApiError && error.is('too_many_attempts')) {
     const liftsAt = lockLiftsAt(Number(error.response?.headers.get('Retry-After')));
 
-    if (liftsAt != null) return { kind: 'limited', time: formatTimeOfDay(liftsAt, dateLocale()) };
+    if (liftsAt != null)
+      return { kind: 'limited', time: formatTimeOfDay(liftsAt, dateLocale()), again };
   }
 
-  return { kind: 'failed' };
+  return { kind: 'failed', again };
 }
 
 const styles = StyleSheet.create({

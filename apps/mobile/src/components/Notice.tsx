@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { tokens } from '../theme/tokens.ts';
 import type { FieldAction } from './Field.tsx';
 import { useReadOut } from './ReadOut.tsx';
+import { useFocusOnAnswer } from './Screen.tsx';
 import { Text } from './Text.tsx';
 
 export type NoticeTone = 'quiet' | 'attention' | 'broken' | 'done';
@@ -20,6 +21,7 @@ export function Notice({
   heading = false,
   announce = false,
   answer,
+  takesFocus = false,
   wordsRef,
 }: {
   tone: NoticeTone;
@@ -36,15 +38,18 @@ export function Notice({
   announce?: boolean;
   /** What a tap set for this notice to answer it: the notice is read out as it appears, and again with each new answer, without changing what a screen reader reads on it. */
   answer?: unknown;
+  /** The answer takes screen reader focus to the words, which focus reads, in place of reading them out (sc-11032). */
+  takesFocus?: boolean;
   /** Its words as one item, without the action, for screen reader focus to be moved to. */
   wordsRef?: Ref<View> | undefined;
 }) {
   useReadOut(
-    announce || answer !== undefined
+    !takesFocus && (announce || answer !== undefined)
       ? [title, body, detail].filter((line) => line != null).join('\n')
       : null,
     { answer },
   );
+  const { shown, read } = useFocusOnAnswer(takesFocus ? answer : undefined);
   const surface = {
     quiet: styles.quiet,
     attention: styles.attention,
@@ -73,7 +78,7 @@ export function Notice({
   const bodyInk = tone === 'done' ? styles.accent : undefined;
 
   return (
-    <View style={[styles.notice, surface]}>
+    <View ref={shown} style={[styles.notice, surface]}>
       {/* The words already say what the mark says (WCAG 2.2 SC 1.1.1). */}
       <View
         style={[styles.mark, ring]}
@@ -86,9 +91,9 @@ export function Notice({
       </View>
       <View style={styles.body}>
         <View
-          ref={wordsRef}
+          ref={takesFocus ? read : wordsRef}
           style={styles.words}
-          accessible={announce || wordsRef != null || undefined}
+          accessible={announce || takesFocus || wordsRef != null || undefined}
         >
           {title != null && (
             <Text
