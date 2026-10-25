@@ -994,5 +994,37 @@ describe('where focus goes once a click on Roles is answered (sc-11369)', () => 
         ),
       );
     });
+
+    it('puts focus on Roles after ‹ Roles once the role’s row has gone', async () => {
+      let gone = false;
+      answering((method) => {
+        if (method === 'DELETE') {
+          gone = true;
+          return new Response(null, { status: 204 });
+        }
+
+        return gone
+          ? new Response(
+              JSON.stringify({
+                roles: ROLES.filter((one) => one.id !== 'role_6' && one.id !== 'role_2'),
+                areas: AREAS,
+              }),
+              { status: 200 },
+            )
+          : null;
+      });
+      await roles();
+      pick(/^Door team/);
+      fireEvent.click(screen.getByRole('button', { name: 'Remove role' }));
+      fireEvent.click(screen.getByLabelText(/^Read-only/));
+      fireEvent.click(screen.getByRole('button', { name: 'Move them and remove Door team' }));
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: /^Administrator/ })).toBeNull(),
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /Roles$/ }));
+
+      expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'Roles' }));
+    });
   });
 });

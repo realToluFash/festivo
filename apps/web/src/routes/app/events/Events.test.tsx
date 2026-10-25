@@ -746,20 +746,27 @@ describe("An event's page", () => {
     },
   );
 
-  it('takes focus to "This event is not available" when Try again finds the event gone (sc-11369)', async () => {
-    signedIn();
-    let calls = 0;
-    answering({
-      'GET /api/events/ev_1': () =>
-        ++calls === 1 ? problem(500, 'internal_error') : problem(404, 'not_found'),
-    });
-    at('/app/events/ev_1');
+  it.each([
+    ['the event', '/app/events/ev_1'],
+    ['its Guests', '/app/events/ev_1/guests'],
+    ['Edit details', '/app/events/ev_1/edit'],
+  ])(
+    'takes focus to "This event is not available" when Try again on %s finds the event gone (sc-11369)',
+    async (_what, path) => {
+      signedIn();
+      let calls = 0;
+      answering({
+        'GET /api/events/ev_1': () =>
+          ++calls === 1 ? problem(500, 'internal_error') : problem(404, 'not_found'),
+      });
+      at(path);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
 
-    const gone = await screen.findByRole('heading', { name: 'This event is not available' });
-    await waitFor(() => expect(document.activeElement).toBe(gone));
-  });
+      const gone = await screen.findByRole('heading', { name: 'This event is not available' });
+      await waitFor(() => expect(document.activeElement).toBe(gone));
+    },
+  );
 
   it('takes focus to the line that says the event did not load when Try again fails again (sc-11369)', async () => {
     signedIn();
