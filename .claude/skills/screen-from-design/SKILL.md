@@ -192,6 +192,12 @@ is held to what both can do:
   it.
 - **Type is selected by weight, not by naming a family.** `apps/mobile/src/theme/fonts.ts`
   maps a weight to a file, and a `fontFamily` in a style bypasses it.
+- **App text fields are uncontrolled.** Seed a `TextInput` with `defaultValue` and read
+  `onChangeText` into a ref; a `value` prop drops characters as the user types. Change
+  `defaultValue` only to what the field already shows: native rewrites a mounted field
+  when it changes and sends no change event, so the field and its ref part
+  (`apps/mobile/src/kit/fields.ts`). The React Native reference says either pattern works
+  on the New Architecture; on this app it does not (sc-9471, sc-11175).
 - **Overlays render at the root**, never inside the card that opened them: a card that
   rounds its corners also clips them. Drive them from the screen's state at the top level.
 - **Animate transform and opacity.** Both platforms do those cheaply and little else.
