@@ -49,6 +49,15 @@ One way to say each recurring thing, everywhere. Seeded from the catalogues as t
 
 Dated, newest first: the wording, where it is used, and why it won over the alternative.
 
+- **25 Oct 2026. A count of a round million, `_many`** (every web and app count family,
+  sc-8529, now that the key-parity guard allows it, PR #324). At 1 000 000 and every exact
+  million, i18next picks `_many`. It is `_other` with «de» between the count and the noun it
+  counts, «1 000 000 de personas», «las {{count}} de sesiones», as the waiting email already
+  does. Where no noun follows the count («y {{count}} más», «en los {{count}}», «Puede añadir
+  {{count}} más»), `_many` is `_other` as it stands. Every new count family gets its `_many`,
+  except the proof window's lines (`waysCard.proveLink_*`, `proveUnlink_*`, `codeKeepsSignIn_*`):
+  they count PROOF_MINUTES, a constant that is never a million, and the app's test holds them to
+  `_one` and `_other`.
 - **25 Oct 2026. Settings > Members on the web, the invitation link and the invitation email**
   (`web:membersScreen.*`, `web:join.*`, `invitations.*` web and app, `emails:invitation.*`,
   `messages:invitations.*`, sc-2922). The web twins of the app's Members keys are the app's
@@ -109,7 +118,7 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   «Caducada el {deadline}», as «Retirada el».
 - **24 Oct 2026. The rest of a role's holders** (`rolesScreen.moreHolders_*`, web and app,
   sc-9068). «y {{count}} más», after the five names it continues; nothing agrees with the
-  people, so one form serves every count. No `_many`, as sc-4188 says.
+  people, so one form serves every count. `_many` as the 25 Oct entry says.
 - **24 Oct 2026. A request refused for its shape** (`messages:validation.invalid_shape`,
   `validation.request_shape`, sc-8716). The field «no admite ese valor», which also reads right
   for a required field left out; «Revíselo y vuelva a intentarlo». The 422 `detail` speaks of «los
@@ -143,8 +152,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   email subject «Cambio de propietario en {organisation}». Both people are named, «Usted y
   {{name}} recibirán…», never «los dos». "Stay" is «No salir», the refusal of the act, since a
   bare «Quedarse» reads oddly on a button. Deleting is «eliminar», as for a role; the counts
-  come before nothing that agrees, «Con ella se eliminan {{events}}, …». No `_many`, as
-  sc-4188 says. A slot appears once per key (the parity guard counts them), so `transferred`
+  come before nothing that agrees, «Con ella se eliminan {{events}}, …». `_many` as the
+  25 Oct entry says. A slot appears once per key (the parity guard counts them), so `transferred`
   closes «… a las dos cuentas», not a second {{name}}.
 
 - **21 Oct 2026. Approving or turning down a request to join** (`membersScreen.awaiting.*`,
@@ -223,8 +232,8 @@ Dated, newest first: the wording, where it is used, and why it won over the alte
   organización que le invita», since «esa» after «una» reads as nobody's. A button named in a
   sentence goes in «», with the verb: "Pulse «Guardar y continuar» para entrar en ella". "Nothing
   is waiting" says what is gone, «No queda ninguna invitación pendiente». "Accept an invitation above" is «acepte una invitación
-  pendiente», the word the intro uses, not «acepte arriba», which reads stiffly. No `_many` yet: the
-  key-parity guard refuses a form English lacks (sc-4188, [dev2]), so 1 000 000 falls back to English.
+  pendiente», the word the intro uses, not «acepte arriba», which reads stiffly. `_many` as the
+  25 Oct entry says.
 
 - **21 Oct 2026. Starting your own organisation** (`noOrganisation.start*`, web, and the app
   once sc-5932 adds it, sc-6897). "Start" is «crear», since «iniciar una organización» is not
