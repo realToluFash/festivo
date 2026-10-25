@@ -31,7 +31,8 @@ export function PrimaryButton({
       style={[styles.primary, busy && styles.primaryBusy, off && styles.primaryOff]}
       onPress={onPress}
       disabled={inactive}
-      accessibilityLabel={accessibilityLabel}
+      // Android names an unlabelled busy view "busy" alone, and keeps that name once it is idle.
+      accessibilityLabel={accessibilityLabel ?? label}
       accessibilityRole="button"
       accessibilityState={{ disabled: inactive, busy }}
       testID={testID}
