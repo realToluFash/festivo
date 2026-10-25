@@ -297,7 +297,7 @@ final class TwoFactorTest extends ApiTestCase
 
         $paused = $this->refusal(static fn () => $check->passCode($factor, '000000'));
         self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
-        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d\./', self::worded($paused));
+        self::assertMatchesRegularExpression('/Try again at \d\d:\d\d UTC\./', self::worded($paused));
         self::assertArrayHasKey('Retry-After', $paused->headers);
 
         self::mockTime('+30 seconds');
@@ -317,7 +317,7 @@ final class TwoFactorTest extends ApiTestCase
 
         $paused = $this->refusal(fn () => $proof->prove($this->fresh(), self::PASSWORD, null, '000000'));
         self::assertSame(ErrorCode::TooManyAttempts, $paused->errorCode);
-        self::assertMatchesRegularExpression('/^Too many wrong codes\. Try again at \d\d:\d\d\.$/', self::worded($paused));
+        self::assertMatchesRegularExpression('/^Too many wrong codes\. Try again at \d\d:\d\d UTC\.$/', self::worded($paused));
         self::assertArrayHasKey('pendingProof', $paused->members);
     }
 

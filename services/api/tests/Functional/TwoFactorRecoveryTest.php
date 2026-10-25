@@ -476,26 +476,27 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         yield 'only German' => ['de'];
     }
 
-    /** sc-9267: the refusal's retry time follows the request's language, not the saved one. */
+    /** sc-9267, sc-11329: the refusal's retry time is in the language of its sentence, the request's, not the saved one. */
     #[Test]
     public function theRetryTimeIsWrittenInTheLanguageTheRequestAsksFor(): void
     {
-        $this->fresh($this->person)->setTimezone(null);
-        $this->fresh($this->person)->setLocale('pt');
-        self::em()->flush();
-        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', 'fr');
-        $this->start();
-        $this->start();
-        $this->start();
+        $written = $this->refusedFourthIn('en', 'fr');
 
-        $this->call('POST', '/api/auth/two-factor/recovery', ['challenge' => $this->challenge()]);
-
-        self::assertSame(429, $this->statusCode());
-        $lifts = self::service(TwoFactorRecoveryRepository::class)->startedSince($this->fresh($this->person), new DateTimeImmutable('-24 hours'))[0]->modify('+24 hours');
-        $stated = new DateTimeImmutable('@' . (string) (Math\div($lifts->getTimestamp() + 60, 60) * 60));
-        $written = fn (string $locale): string => self::service(UserMailer::class)->deadline($stated, $this->fresh($this->person), $locale);
         self::assertSame($written('fr'), $this->last()['retryAt'] ?? null);
-        self::assertNotSame($written('pt'), $written('fr'));
+        self::assertSame('Vous pouvez le demander 3 fois par jour. Réessayez à partir du ' . $written('fr') . '.', $this->last()['detail']);
+        self::assertNotSame($written('en'), $written('fr'));
+    }
+
+    /** sc-11329: a request naming none of the four reads the refusal in English, its date too, whatever the account saved. */
+    #[Test]
+    #[DataProvider('namingNoneOfTheFour')]
+    public function theRetryTimeIsInTheSentencesLanguageWhenTheRequestNamesNone(string $header): void
+    {
+        $written = $this->refusedFourthIn('fr', $header);
+
+        self::assertSame($written('en'), $this->last()['retryAt'] ?? null);
+        self::assertSame('You can ask 3 times a day. Try again ' . $written('en') . '.', $this->last()['detail']);
+        self::assertNotSame($written('fr'), $written('en'));
     }
 
     #[Test]
@@ -599,6 +600,26 @@ final class TwoFactorRecoveryTest extends ApiTestCase
         self::assertSame(ErrorCode::TwoFactorChallengeInvalid->type(), $this->last()['type']);
         $this->call('POST', '/api/auth/two-factor/recovery/state', ['recovery' => 'not-a-handle']);
         self::assertSame(ErrorCode::RecoveryRequestInvalid->type(), $this->last()['type']);
+    }
+
+    /** @return callable(string): string the refusal's instant, as each language writes it */
+    private function refusedFourthIn(string $saved, string $header): callable
+    {
+        $this->fresh($this->person)->setTimezone(null);
+        $this->fresh($this->person)->setLocale($saved);
+        self::em()->flush();
+        $this->client->setServerParameter('HTTP_ACCEPT_LANGUAGE', $header);
+        $this->start();
+        $this->start();
+        $this->start();
+
+        $this->call('POST', '/api/auth/two-factor/recovery', ['challenge' => $this->challenge()]);
+
+        self::assertSame(429, $this->statusCode());
+        $lifts = self::service(TwoFactorRecoveryRepository::class)->startedSince($this->fresh($this->person), new DateTimeImmutable('-24 hours'))[0]->modify('+24 hours');
+        $stated = new DateTimeImmutable('@' . (string) (Math\div($lifts->getTimestamp() + 60, 60) * 60));
+
+        return fn (string $locale): string => self::service(UserMailer::class)->deadline($stated, $this->fresh($this->person), $locale);
     }
 
     private function proved(): string

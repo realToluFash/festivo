@@ -6,6 +6,7 @@ namespace App\Http\Exception;
 
 use App\Enum\ErrorCode;
 use DateTimeImmutable;
+use DateTimeZone;
 use Psl\Math;
 use RuntimeException;
 use Throwable;
@@ -16,7 +17,7 @@ class ApiException extends RuntimeException
      * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations each message a key, its slots in parameters
      * @param array<string, string>                                                                                $headers    Retry-After on a 429, and little else
      * @param array<string, int|string|list<string>>                                                               $members    extra problem members, such as the permission
-     * @param array<string, string>                                                                                $parameters the slots in the message's key
+     * @param array<string, int|string>                                                                            $parameters the slots in the message's key
      */
     public function __construct(
         public readonly ErrorCode $errorCode,
@@ -51,9 +52,11 @@ class ApiException extends RuntimeException
         return new self(ErrorCode::ValidationFailed, $message, $violations);
     }
 
-    /** A 429 that names the minute the window ends, as every limit a person can hit does: its key has a {time} slot. */
+    /** A 429 that names the minute the window ends, in UTC and saying so: its key has {time}, and {hour} for the article es and pt agree with it. */
     public static function tooManyAttempts(string $refusal, DateTimeImmutable $windowEnd): self
     {
+        $minute = self::statedMinute($windowEnd)->setTimezone(new DateTimeZone('UTC'));
+
         return new self(
             ErrorCode::TooManyAttempts,
             $refusal,
@@ -61,7 +64,7 @@ class ApiException extends RuntimeException
             null,
             ['Retry-After' => (string) self::secondsUntil($windowEnd)],
             [],
-            ['{time}' => self::statedMinute($windowEnd)->format('H:i')],
+            ['{time}' => $minute->format('H:i') . ' UTC', '{hour}' => (int) $minute->format('G')],
         );
     }
 

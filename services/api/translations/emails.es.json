@@ -59,7 +59,6 @@
     "provider.unlinked.notYou": "Si no fue usted, cambie su contraseña y revise Seguridad.",
     "provider.unlinked.notYouNoPassword": "Si no fue usted, revise Seguridad y cierre la sesión en los dispositivos que no reconozca.",
     "provider.why": "Recibe este correo porque han cambiado las formas de iniciar sesión en Soirely.",
-    "time.dateAt": "{date} a las {time} {zone}",
     "twoFactorRecovery.code.subject": "Su código para volver a entrar en Soirely",
     "twoFactorRecovery.code.body": "Introduzca este código en Soirely para pedir volver a entrar sin su aplicación de autenticación:",
     "twoFactorRecovery.code.expiry": "Sirve durante {minutes} minutos.",

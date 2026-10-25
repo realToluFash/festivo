@@ -26,7 +26,7 @@ final readonly class ProblemRenderer
      * @param list<array{propertyPath: string, message: string, code: string, parameters?: array<string, string>}> $violations
      * @param array<string, string>                                                                                $headers
      * @param array<string, int|string|list<string>>                                                               $members
-     * @param array<string, string>                                                                                $parameters the detail key's slots
+     * @param array<string, int|string>                                                                            $parameters the detail key's slots
      */
     public function render(
         Request $request,
@@ -95,7 +95,7 @@ final readonly class ProblemRenderer
     /**
      * A sentence was worded where it was thrown, or by the validator, and is left as it is.
      *
-     * @param array<string, string> $parameters
+     * @param array<string, int|string> $parameters
      */
     private function worded(string $message, array $parameters, ?string $locale): string
     {

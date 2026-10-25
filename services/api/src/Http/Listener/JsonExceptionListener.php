@@ -79,7 +79,7 @@ final readonly class JsonExceptionListener
     /**
      * The framework's own message is English and quotes the address back, so it is never sent.
      *
-     * @return array{0: string, 1: array<string, string>}
+     * @return array{0: string, 1: array<string, int|string>}
      */
     private function detailOf(Throwable $e, ErrorCode $code, Request $request): array
     {
