@@ -69,9 +69,11 @@ offline from first launch, or its own splash screen, needs the app itself.
 `node .qa/bin/qa-env.mjs release` (`just qa-env release --tester N` from the main checkout)
 builds a release APK of the QA worktree's commit, with the bundle and fonts inside, installs
 it fresh on the tester's phone emulator (`--tablet` for the other) and opens it, so that launch
-is its first. `--offline` turns airplane mode on and cuts the stack before that launch. Run
+is its first. `--offline` turns airplane mode on, cuts the stack and waits until the emulator has no
+network before that launch. It records the launch's first 15 seconds under `.qa/release`, since
+the emulator has no window to watch the splash in. Run
 `checkout main` first for main. A QA worktree made before the command existed has an old
-`.qa/bin` copy: run `just qa-env setup --tester N` once to get it. It needs no Expo account: `expo prebuild` writes `apps/mobile/android`, which
+`.qa/bin` copy: `just qa-env release --tester N` from the main checkout runs it all the same. It needs no Expo account: `expo prebuild` writes `apps/mobile/android`, which
 is ignored, and Gradle builds it. The first build on a machine fetches the NDK and an SDK
 platform and took an hour here. The APK is kept in
 `.qa/release`, named by its commit, so the next install of the same commit skips the build

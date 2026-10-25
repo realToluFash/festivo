@@ -220,6 +220,17 @@ export function releaseApk(root, sha) {
   return join(root, '.qa/release', `soirely-${sha.slice(0, 12)}.apk`);
 }
 
+export function staleApks(names, apk) {
+  return names.filter((name) => /^soirely-[0-9a-f]{12}\.apk$/.test(name) && name !== basename(apk));
+}
+
+// ConnectivityService prints its default network as a net id, or "none" once nothing is up.
+export function defaultNetwork(dump) {
+  const network = /^Active default network: (\S+)/m.exec(dump)?.[1];
+  if (!network) throw new Error('dumpsys connectivity names no default network');
+  return network === 'none' ? null : network;
+}
+
 // A release build refuses http, and a QA stack serves nothing else.
 export function allowCleartext(manifest) {
   const decided = /android:usesCleartextTraffic="([^"]*)"/.exec(manifest)?.[1];
@@ -693,6 +704,8 @@ async function startBundler(root, env = process.env) {
   return metro;
 }
 
+const LAUNCH_RECORDING = '/sdcard/soirely-launch.mp4';
+
 function emulatorSerial() {
   return `emulator-${CONFIG.emulatorPort}`;
 }
@@ -912,18 +925,48 @@ function buildRelease(tools, root, apk) {
 
   mkdirSync(dirname(apk), { recursive: true });
   copyFileSync(join(mobile, 'android/app/build/outputs/apk/release/app-release.apk'), apk);
+  // prebuild --clean writes it afresh, so keeping it holds a gigabyte for nothing.
+  rmSync(join(mobile, 'android'), { recursive: true, force: true });
+  for (const name of staleApks(readdirSync(dirname(apk)), apk)) rmSync(join(dirname(apk), name));
 }
 
 function airplaneMode(tools, on) {
   adbOut(tools, ['shell', 'cmd', 'connectivity', 'airplane-mode', on ? 'enable' : 'disable']);
 }
 
-// The release app owns soirely://, so while it is installed a provider's redirect never
-// reaches Expo Go.
+// Airplane mode returns once the setting is written; Wi-Fi and the modem drop afterwards.
+async function waitOffline(tools) {
+  for (let i = 0; i < 20; i++) {
+    const dump = adbOut(tools, ['shell', 'dumpsys', 'connectivity']);
+    if (dump && defaultNetwork(dump) === null) return;
+    await pause(500);
+  }
+  throw new Error('the emulator still has a network ten seconds after airplane mode went on');
+}
+
+function installedRelease(root) {
+  return join(root, '.qa/release/installed');
+}
+
+// The release app owns soirely:// and keeps redirects from Expo Go. Its package is the one
+// recorded at install: this copy of the harness is frozen at setup and may misread a new config.
 function removeRelease(tools, root) {
-  const id = androidPackage(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
-  adbOut(tools, ['uninstall', id]);
-  return id;
+  const recorded = installedRelease(root);
+  if (!existsSync(recorded)) return;
+  adbOut(tools, ['uninstall', readFileSync(recorded, 'utf8').trim()]);
+  rmSync(recorded);
+}
+
+function recordLaunch(tools) {
+  const recorder = spawn(
+    tools.adb,
+    ['-s', emulatorSerial(), 'shell', 'screenrecord', '--time-limit', '15', LAUNCH_RECORDING],
+    { stdio: 'ignore', env: tools.env },
+  );
+  return new Promise((done) => {
+    recorder.on('error', () => done());
+    recorder.on('exit', () => done());
+  });
 }
 
 async function release(args) {
@@ -957,20 +1000,32 @@ async function release(args) {
   step(`The ${open}`);
   await bootEmulator(tools, CONFIG.emulators[open].name);
   // A fresh install every time, so the launch below is the app's first, with no cache.
-  const id = removeRelease(tools, root);
+  const id = androidPackage(readFileSync(join(root, 'apps/mobile/app.config.ts'), 'utf8'));
+  removeRelease(tools, root);
+  adbOut(tools, ['uninstall', id]);
   run(tools.adb, ['-s', emulatorSerial(), 'install', apk], { env: tools.env });
+  writeFileSync(installedRelease(root), id);
   airplaneMode(tools, offline);
   if (offline) {
     adbOut(tools, ['reverse', '--remove-all']);
+    await waitOffline(tools);
   } else {
     for (const port of reversedPorts(CONFIG.ports)) {
       adbOut(tools, ['reverse', `tcp:${port}`, `tcp:${port}`]);
     }
   }
+
+  const recording = recordLaunch(tools);
+  await pause(1000);
   adbOut(tools, ['shell', 'am', 'start', '-n', `${id}/.MainActivity`]);
+  await recording;
+  const video = join(root, '.qa/release', `launch-${sha.slice(0, 12)}.mp4`);
+  adbOut(tools, ['pull', LAUNCH_RECORDING, video]);
+  adbOut(tools, ['shell', 'rm', '-f', LAUNCH_RECORDING]);
   console.log(
     `\nSoirely ${sha.slice(0, 12)}, a release build, on its first launch on the ${open}` +
-      ` (${emulatorSerial()}), ${offline ? 'offline: airplane mode on, no stack' : 'online'}.` +
+      ` (${emulatorSerial()}), ${offline ? 'offline: no default network, no stack' : 'online'}.` +
+      `\n${existsSync(video) ? `Its first 15 seconds: ${video}` : 'The launch was not recorded.'}` +
       `\nThe next \`android\` removes it and turns airplane mode off.`,
   );
 }

@@ -308,8 +308,13 @@ node .qa/bin/qa-env.mjs android --stop                   # the emulator, when th
 
 `android` behaves like `ios`: start it in the background, and restart it after a `checkout`.
 `release` needs no bundler and takes an hour the first time on a machine. The next `android`
-removes it. If it says `unknown command release`, run `just qa-env setup --tester N` once from
-the main checkout.
+removes it. The emulator has no window, so `release` records the launch's first 15 seconds and
+prints where: judge a splash bullet on that video, frame by frame, never on a screenshot taken
+afterwards. With `--offline` it launches only once the emulator reports no network, and stops
+with an error otherwise. If your worktree says `unknown command release`, run
+`just qa-env release --tester N [--offline]` from the main checkout instead: it uses that
+checkout's harness on your worktree and stack, and leaves your branch and data alone. Never run
+`setup` part way through a pass for this: it checks out main and rebuilds the database.
 To switch to the tablet, stop it, then run `android --tablet`. Stop the emulator when you
 finish, because it holds several GB of memory on a host every other role shares. The app uses
 the same `127.0.0.1` URLs as on a simulator, and a flow runs unchanged. A screenshot outside a

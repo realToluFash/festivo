@@ -19,6 +19,7 @@ import {
   androidSdk,
   branchForStory,
   clearApiCache,
+  defaultNetwork,
   COMPOSE_PROJECT,
   emulatorAbi,
   emulatorFor,
@@ -32,6 +33,7 @@ import {
   QA_PORTS,
   qaConfig,
   releaseApk,
+  staleApks,
   renderQaEnv,
   reversedPorts,
   simulatorFor,
@@ -233,6 +235,27 @@ describe('a release build', () => {
     expect(releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c')).toBe(
       '/qa/.qa/release/soirely-c8646738ce14.apk',
     );
+  });
+
+  it('leaves only the APK of the commit just built', () => {
+    const apk = releaseApk('/qa', 'c8646738ce1413ea1e718dce85ff4973f0f9b22c');
+    expect(
+      staleApks(
+        [
+          'soirely-c8646738ce14.apk',
+          'soirely-0123456789ab.apk',
+          'installed',
+          'launch-0123456789ab.mp4',
+        ],
+        apk,
+      ),
+    ).toEqual(['soirely-0123456789ab.apk']);
+  });
+
+  it('launches offline only once the emulator has no default network', () => {
+    expect(defaultNetwork('Active default network: none\n')).toBeNull();
+    expect(defaultNetwork('NetworkProviders:\nActive default network: 100\n')).toBe('100');
+    expect(() => defaultNetwork("Can't find service: connectivity")).toThrow(/no default network/);
   });
 
   it("is the app config's Android package", () => {
