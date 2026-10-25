@@ -1,9 +1,6 @@
 """Who each role is, what it watches, and how a comment says who it is for."""
 
-import functools
 import re
-import shutil
-import subprocess
 
 DEVELOPERS = {"dev": "dev1", "dev2": "dev2", "dev3": "dev3", "dev4": "dev4"}
 DEVS = tuple(DEVELOPERS)
@@ -174,22 +171,12 @@ def needs_ios(story):
             or bool(IOS_NAME.match(story.get("name") or "")))
 
 
-@functools.cache
-def has_xcode():
-    if not shutil.which("xcrun"):
-        return False
-    try:
-        return subprocess.run(["xcrun", "simctl", "help"], capture_output=True,
-                              timeout=20).returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
+def can_test(role, story, has_ios):
+    """A tester on a machine with no iOS simulator never takes a story that needs one.
+    `has_ios` asks the machine, and is called only for such a story."""
+    return role not in TESTERS or not needs_ios(story) or has_ios()
 
 
-def can_test(role, story, ios=None):
-    """A tester on a machine with no iOS simulator never takes a story that needs one."""
-    if role not in TESTERS or not needs_ios(story):
-        return True
-    return has_xcode() if ios is None else ios
 EVERYONE = tuple(ROLES)
 
 # What each role may write, from the "must not" sections of the skills. A command not

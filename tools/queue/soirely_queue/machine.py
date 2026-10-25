@@ -3,11 +3,13 @@
 Nothing here guesses. A role whose settings fail a check is refused with a reason, and the
 roles beside it keep running."""
 
+import functools
 import json
 import os
 import pathlib
 import re
 import shutil
+import subprocess
 import sys
 
 from . import roles
@@ -25,6 +27,17 @@ CLAUDE_DEFAULT = pathlib.Path("~/.claude").expanduser()
 BUILT_IN = {"maxRuntime": "90m", "wakeEvery": "3m", "workers": 1}
 # What every worker on the machine may use between them, the systemd slice's MemoryMax.
 SLICE_MEMORY = "16G"
+
+
+@functools.cache
+def has_xcode():
+    if not shutil.which("xcrun"):
+        return False
+    try:
+        return subprocess.run(["xcrun", "simctl", "help"], capture_output=True,
+                              timeout=20).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
 
 
 class ConfigError(RuntimeError):

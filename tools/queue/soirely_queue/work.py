@@ -3,6 +3,7 @@
 import re
 import time
 
+from . import machine
 from . import roles as R
 from . import text as T
 
@@ -155,10 +156,11 @@ def held_epic(story, epics):
 
 def queued(role, stories, epics=None, ios=None):
     config = R.ROLES[role]
+    has_ios = machine.has_xcode if ios is None else lambda: ios
     return [story for story in stories
             if not story["done"] and story["state"] in config["queue"]
             and config["filter"](set(story["labels"]), story["state"])
-            and R.can_test(role, story, ios)
+            and R.can_test(role, story, has_ios)
             and not held_epic(story, epics)]
 
 

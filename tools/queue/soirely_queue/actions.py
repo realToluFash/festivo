@@ -6,7 +6,7 @@ import re
 import socket
 import time
 
-from . import github, local, store, sync
+from . import github, local, machine, store, sync
 from . import roles as R
 from . import text as T
 from . import work as W
@@ -293,6 +293,8 @@ def label(c, a):
 
 
 STALE_CLAIM_HOURS = 3
+NEEDS_IOS = ("sc-{} needs iOS, and this machine has no Xcode: it is for a tester on the Mac, "
+             "pick another")
 
 
 def stack_up(c, story, held=False):
@@ -334,6 +336,8 @@ def claim(c, a):
                 stack_up(c, story, held=True)
                 c.refresh(story["id"])
                 return None
+            if not R.can_test(c.role, story, machine.has_xcode):
+                raise Refused(NEEDS_IOS.format(story["id"]))
             age = time.time() - datetime.datetime.fromisoformat(
                 last["at"].replace("Z", "+00:00")).timestamp() if last else float("inf")
             if age < STALE_CLAIM_HOURS * 3600:
@@ -343,9 +347,8 @@ def claim(c, a):
                 takeover = f", taking over from {R.claimant(last)}'s of {last['at'][11:16]}"
         elif story["state"] != "Ready For QA":
             raise Refused(f"sc-{story['id']} is {story['state']}, not Ready For QA")
-        elif not R.can_test(c.role, story):
-            raise Refused(f"sc-{story['id']} needs iOS, and this machine has no Xcode: it is "
-                          "for a tester on the Mac, pick another")
+        elif not R.can_test(c.role, story, machine.has_xcode):
+            raise Refused(NEEDS_IOS.format(story["id"]))
         else:
             first = W.retester(story)
             if first and first != c.role:
