@@ -3,6 +3,13 @@ import { codeProblem, recoveryFirstStep } from '@soirely/domain';
 
 export type RecoveryField = 'emailCode' | 'phoneCode';
 
+/** The field's label, which is also the name a screen reader reads (sc-11238). */
+export function recoveryCodeLabel(field: RecoveryField, fromWhatsApp: boolean): string {
+  if (field === 'emailCode') return 'lostTwoFactor.emailLabel';
+
+  return fromWhatsApp ? 'lostTwoFactor.phoneLabelWhatsApp' : 'lostTwoFactor.phoneLabel';
+}
+
 /** Both codes checked before asking (sc-509): the message key for each one that is blank or not 6 digits. */
 export function recoveryCodeProblems(
   fields: readonly RecoveryField[],

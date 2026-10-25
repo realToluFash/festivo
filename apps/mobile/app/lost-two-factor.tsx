@@ -27,6 +27,7 @@ import {
   type RecoveryField,
   loadRecovery,
   type RecoveryShown,
+  recoveryCodeLabel,
   recoveryCodeProblems,
   replacedElsewhere,
   startRefusal,
@@ -740,13 +741,7 @@ function Codes({
           {fields.map((field, index) => (
             <Field
               key={field}
-              label={
-                field === 'emailCode'
-                  ? t('lostTwoFactor.emailLabel')
-                  : wording.fromWhatsApp
-                    ? t('lostTwoFactor.phoneLabelWhatsApp')
-                    : t('lostTwoFactor.phoneLabel')
-              }
+              label={t(recoveryCodeLabel(field, wording.fromWhatsApp))}
               help={
                 field === 'emailCode' ? t('lostTwoFactor.sentTo', { email: state.email }) : sent
               }
@@ -764,11 +759,7 @@ function Codes({
                 onSubmitEditing={() =>
                   index === fields.length - 1 ? void submit() : inputs.phoneCode.current?.focus()
                 }
-                accessibilityLabel={
-                  field === 'emailCode'
-                    ? t('lostTwoFactor.emailLabel')
-                    : t('lostTwoFactor.phoneLabel')
-                }
+                accessibilityLabel={t(recoveryCodeLabel(field, wording.fromWhatsApp))}
                 testID={`lostTwoFactor.${field}`}
               />
             </Field>

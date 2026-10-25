@@ -25,7 +25,7 @@ function at(path: string) {
   return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 }
 
-function answering(answers: Record<string, () => Response>) {
+function answering(answers: Record<string, () => Response | Promise<Response>>) {
   const sent: { path: string; body: unknown }[] = [];
 
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -39,6 +39,10 @@ function answering(answers: Record<string, () => Response>) {
   });
 
   return sent;
+}
+
+async function settled(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve));
 }
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
@@ -71,7 +75,7 @@ describe('asking for a reset link', () => {
     );
   });
 
-  it('checks the address before sending, and sends nothing while it fails', () => {
+  it('checks the address before sending, and sends nothing while it fails', async () => {
     const sent = answering({});
     at('/forgot-password');
 
@@ -84,6 +88,7 @@ describe('asking for a reset link', () => {
       screen.getByText('That does not look like an email address. Check it has an @ and a domain.'),
     ).toBeDefined();
 
+    await settled();
     expect(sent).toEqual([]);
   });
 
@@ -120,6 +125,91 @@ describe('asking for a reset link', () => {
     expect(
       screen.getByText(/^Try again at \d\d:\d\d\. Any link already sent still works\.$/),
     ).toBeDefined();
+  });
+});
+
+describe('sending the link again', () => {
+  function sentOnce(again: () => Response | Promise<Response>) {
+    let answered = 0;
+    const sent = answering({
+      'POST /api/auth/password/forgot': () => (answered++ === 0 ? json({}, 202) : again()),
+    });
+    at('/forgot-password');
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'Folake@ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+
+    return sent;
+  }
+
+  async function sendAgain(): Promise<void> {
+    fireEvent.click(await screen.findByRole('button', { name: 'Send it again' }));
+  }
+
+  it('keeps the address as it was typed when the send fails', async () => {
+    sentOnce(() => {
+      throw new TypeError('Failed to fetch');
+    });
+    await sendAgain();
+
+    await waitFor(() => expect(screen.getByText('That did not work')).toBeDefined());
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('Folake@ire.events');
+  });
+
+  it('keeps the address when the send is refused for too many', async () => {
+    sentOnce(() => problem('too_many_attempts', 429, { 'Retry-After': '600' }));
+    await sendAgain();
+
+    await waitFor(() => expect(screen.getByText('Too many requests')).toBeDefined());
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('Folake@ire.events');
+  });
+
+  it('shows the address while it sends again', async () => {
+    sentOnce(() => new Promise<never>(() => {}));
+    await sendAgain();
+
+    await waitFor(() =>
+      expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('Folake@ire.events'),
+    );
+    expect(screen.getByRole('button', { name: 'Sending…' })).toBeDefined();
+  });
+
+  it('sends to the address the field shows, unchanged, and to a changed one instead of the earlier', async () => {
+    const sent = sentOnce(() => {
+      throw new TypeError('Failed to fetch');
+    });
+    await sendAgain();
+    await waitFor(() => expect(screen.getByText('That did not work')).toBeDefined());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+    await waitFor(() => expect(sent).toHaveLength(3));
+    await waitFor(() => expect(screen.getByText('That did not work')).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ade@ire.events' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+
+    await waitFor(() => expect(sent).toHaveLength(4));
+    expect(sent.map(({ body }) => body)).toEqual([
+      { email: 'Folake@ire.events' },
+      { email: 'Folake@ire.events' },
+      { email: 'Folake@ire.events' },
+      { email: 'ade@ire.events' },
+    ]);
+  });
+
+  it('asks for an address emptied by hand, and sends nothing', async () => {
+    const sent = sentOnce(() => {
+      throw new TypeError('Failed to fetch');
+    });
+    await sendAgain();
+    await waitFor(() => expect(screen.getByText('That did not work')).toBeDefined());
+
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+
+    expect(screen.getByText('Enter your email address.')).toBeDefined();
+    await settled();
+    expect(sent).toHaveLength(2);
   });
 });
 
